@@ -1511,11 +1511,12 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   }
 
   // find the matches
-  TRI_vector_pointer_t list = static_cast<triagens::arango::HashIndex*>(idx)->lookup(&searchValue);
+  std::vector<TRI_doc_mptr_copy_t> list;
+  static_cast<triagens::arango::HashIndex*>(idx)->lookup(&searchValue, list);
   DestroySearchValue(shaper->memoryZone(), searchValue);
 
   // convert result
-  size_t total = TRI_LengthVectorPointer(&list);
+  size_t total = list.size();
   size_t count = 0;
   bool error = false;
 
@@ -1529,7 +1530,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
       for (size_t i = s;  i < e;  ++i) {
         v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx,
                                                      collection->_cid,
-                                                     static_cast<TRI_doc_mptr_t*>(TRI_AtVectorPointer(&list, i))->getDataPtr());
+                                                     list[i].getDataPtr());
 
         if (doc.IsEmpty()) {
           error = true;
@@ -1541,9 +1542,6 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
       }
     }
   }
-
-  // free data allocated by hash index result
-  TRI_DestroyVectorPointer(&list);
 
   result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, (double) total));
   result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, (double) count));

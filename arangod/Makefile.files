@@ -79,7 +79,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/FulltextIndex/fulltext-result.cpp \
 	arangod/FulltextIndex/fulltext-wordlist.cpp \
 	arangod/GeoIndex/GeoIndex.cpp \
-	arangod/HashIndex/hash-array.cpp \
 	arangod/HttpServer/ApplicationEndpointServer.cpp \
 	arangod/HttpServer/AsyncJobManager.cpp \
 	arangod/HttpServer/HttpCommTask.cpp \
