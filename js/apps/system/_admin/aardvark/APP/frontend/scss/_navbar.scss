@@ -6,6 +6,14 @@
   padding-top: 6px;
   top: 0;
 
+  .no-left-margin {
+    border: 0;
+    margin-left: 0;
+
+    &.hover {
+      background-color: transparent;
+    }
+  }
 
   .arangodbLogo {
     height: auto;
@@ -61,19 +69,28 @@
 .navlist {
   list-style: none;
 
+  > li {
+    height: 39px;
+  }
+
   li {
     @extend %pull-left;
     border-left: 1px solid transparent;
     border-right: 1px solid transparent;
     border-top: 1px solid transparent;
-    margin-left: 1px;
+    margin-left: 7px;
 
     &.dropdown:hover {
+      background-color: $c-white;
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;
       border-left: 1px solid rgba(0, 0, 0, .2);
       border-right: 1px solid rgba(0, 0, 0, .2);
       border-top: 1px solid rgba(0, 0, 0, .2);
+
+      a {
+        border-bottom: 2px solid $c-white;
+      }
     }
 
     &.navbar-spacer,
@@ -123,7 +140,7 @@
   }
 
   > .active:hover {
-    background-color: $c-transp;
+    background-color: $c-white;
 
     a {
       color: $c-black;
@@ -164,8 +181,8 @@
   font-weight: 100;
   padding: {
     bottom: 10px;
-    left: 10px;
-    right: 10px;
+    left: 5px;
+    right: 5px;
     top: 9px;
   }
 
@@ -190,10 +207,11 @@
   margin-right: -1px;
   margin-top: 7px;
   z-index: -10;
-}
 
-.user-dropdown-menu {
-  margin-top: 6px;
+  .dropdown-item {
+    border-left: 0;
+    border-right: 0;
+  }
 }
 
 .script-dropdown-menu {

@@ -1,25 +1,6 @@
 <script id="queryView.ejs" type="text/template">
   <div class="headerBar">
     <a class="arangoHeader">AQL Editor</a>
-
-    <div id="queryToolbar" class="headerButtonBar">
-      <ul class="headerButtonList">
-        <li class="enabled">
-          <a id="importQueriesToggle" class="headerButton">
-            <span class="icon_arangodb_import" title="Upload queries from JSON file"></span>
-          </a>
-        </li>
-      </ul>
-    </div>
-
-  </div>
-
-  <div id="importHeader" class="dropdownImport queryImport">
-    <div class="queryline">
-      <input id="importQueries" name="importQueries" type="file"/>
-      <button id="confirmQueryImport" class="button-success" style="float:right">Import</button>
-      <button id="confirmQueryExport" class="button-success" style="float:right">Export</button>
-    </div>
   </div>
 
   <div id="queryContent" class="innerContent">
@@ -34,6 +15,9 @@
         <div id="customsDiv" class="query-div">
         </div>
         <div class="queryMethods">
+          <input id="importQueries" name="importQueries" type="file"/>
+          <button id="confirmQueryImport" class="button-success disabled" style="float:right">Import</button>
+          <button id="confirmQueryExport" class="button-success" style="float:right">Export</button>
         </div>
       </div>
     </div>

@@ -255,7 +255,7 @@
           buttons.push(lastBtn);
         }
       } else {
-        buttons.push(self.createCloseButton('Dismiss'));
+        buttons.push(self.createCloseButton('Close'));
       }
       $(this.el).html(this.baseTemplate.render({
         title: title,

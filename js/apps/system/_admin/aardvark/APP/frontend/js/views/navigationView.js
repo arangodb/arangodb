@@ -9,7 +9,7 @@
     events: {
       "change #arangoCollectionSelect": "navigateBySelect",
       "click .tab": "navigateByTab",
-      "mouseenter .dropdown": "showDropdown",
+      "mouseenter .dropdown > *": "showDropdown",
       "mouseleave .dropdown": "hideDropdown"
     },
 
@@ -72,18 +72,16 @@
       if (navigateTo === "") {
         navigateTo = $(tab).attr("class");
       }
-      if (navigateTo === "links") {
-        $("#link_dropdown").slideToggle(200);
+      else if (navigateTo === "links") {
+        $("#link_dropdown").slideToggle(1);
         e.preventDefault();
-        return;
       }
-      if (navigateTo === "tools") {
-        $("#tools_dropdown").slideToggle(200);
+      else if (navigateTo === "tools") {
+        $("#tools_dropdown").slideToggle(1);
         e.preventDefault();
-        return;
       }
-      if (navigateTo === "dbselection") {
-        $("#dbs_dropdown").slideToggle(200);
+      else if (navigateTo === "dbselection") {
+        $("#dbs_dropdown").slideToggle(1);
         e.preventDefault();
         return;
       }
@@ -108,36 +106,23 @@
     showDropdown: function (e) {
       var tab = e.target || e.srcElement;
       var navigateTo = tab.id;
-      if (navigateTo === "links" || navigateTo === "link_dropdown") {
-        $("#link_dropdown").show(200);
-        return;
+      if (navigateTo === "links" || navigateTo === "link_dropdown" || e.currentTarget.id === 'links') {
+        $("#link_dropdown").fadeIn(1);
       }
-      if (navigateTo === "tools" || navigateTo === "tools_dropdown") {
-        $("#tools_dropdown").show(200);
-        return;
+      else if (navigateTo === "tools" || navigateTo === "tools_dropdown" || e.currentTarget.id === 'tools') {
+        $("#tools_dropdown").fadeIn(1);
       }
-      if (navigateTo === "dbselection" || navigateTo === "dbs_dropdown") {
-        $("#dbs_dropdown").show(200);
-        return;
+      else if (navigateTo === "dbselection" || navigateTo === "dbs_dropdown" || e.currentTarget.id === 'dbselection') {
+        $("#dbs_dropdown").fadeIn(1);
       }
     },
 
     hideDropdown: function (e) {
       var tab = e.target || e.srcElement;
-      tab = $(tab).closest(".dropdown");
-      var navigateTo = tab.attr("id");
-      if (navigateTo === "linkDropdown") {
-        $("#link_dropdown").hide();
-        return;
-      }
-      if (navigateTo === "toolsDropdown") {
-        $("#tools_dropdown").hide();
-        return;
-      }
-      if (navigateTo === "dbSelect") {
-        $("#dbs_dropdown").hide();
-        return;
-      }
+      tab = $(tab).parent();
+      $("#link_dropdown").fadeOut(1);
+      $("#tools_dropdown").fadeOut(1);
+      $("#dbs_dropdown").fadeOut(1);
     }
 
   });
