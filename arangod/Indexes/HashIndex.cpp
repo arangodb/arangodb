@@ -103,6 +103,33 @@ static bool isEqualKeyElement (TRI_index_search_value_t const* left,
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fills the index search from hash index element
+////////////////////////////////////////////////////////////////////////////////
+
+static int FillIndexSearchValueByHashIndexElement (HashIndex const* hashIndex,
+                                                   TRI_index_search_value_t* key,
+                                                   TRI_index_element_t const* element) {
+  key->_values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, hashIndex->keyEntrySize(), false));
+
+  if (key->_values == nullptr) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  char const* ptr = element->document()->getShapedJsonPtr();  // ONLY IN INDEX
+  size_t const n = hashIndex->paths().size();
+
+  for (size_t i = 0;  i < n;  ++i) {
+    auto sid = element->subObjects()[i]._sid;
+    key->_values[i]._sid = sid;
+
+    TRI_InspectShapedSub(&element->subObjects()[i], ptr, key->_values[i]);
+  }
+  key->_length = n;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Index
 // -----------------------------------------------------------------------------
@@ -386,7 +413,22 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
     TRI_IF_FAILURE("InsertHashIndex") {
       return TRI_ERROR_DEBUG;
     }
-    return _uniqueArray._hashArray->insert(element, isRollback);
+
+    TRI_index_search_value_t key;
+    int res = FillIndexSearchValueByHashIndexElement(this, &key, element);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // out of memory
+      return res;
+    }
+
+    res = _uniqueArray._hashArray->insert(&key, element, isRollback);
+
+    if (key._values != nullptr) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
+    }
+
+    return res;
   };
 
   size_t count = elements.size();
