@@ -99,6 +99,7 @@ function ReplicationSuite () {
 
     connectToSlave();
     replication.applier.stop();
+    replication.applier.forget();
 
     internal.wait(1, false);
 
@@ -208,6 +209,85 @@ function ReplicationSuite () {
       replication.applier.stop();
       db._drop(cn);
       db._drop(cn2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test require from present
+////////////////////////////////////////////////////////////////////////////////
+
+    testRequireFromPresentFalse : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          db._create(cn);
+        },
+
+        function (state) {
+          // flush the wal logs on the master so the start tick is not available
+          // anymore when we start replicating
+          for (var i = 0; i < 25; ++i) {
+            db._collection(cn).save({ value: i });
+            internal.wal.flush(); //true, true);
+          }
+          internal.wait(5, false);
+        },
+
+        function (state) {
+          return true;
+        },
+
+        function (state) {
+          // data loss on slave!
+          assertTrue(db._collection(cn).count() < 20);
+        },
+        { 
+          requireFromPresent: false 
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test require from present
+////////////////////////////////////////////////////////////////////////////////
+
+    testRequireFromPresentTrue : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          db._create(cn);
+        },
+
+        function (state) {
+          // flush the wal logs on the master so the start tick is not available
+          // anymore when we start replicating
+          for (var i = 0; i < 25; ++i) {
+            db._collection(cn).save({ value: i });
+            internal.wal.flush(); //true, true);
+          }
+          internal.wait(5, false);
+        },
+
+        function (state) {
+          // wait for slave applier to have started and detect the mess
+          internal.wait(2, false);
+
+          // slave should have stopped
+          assertFalse(replication.applier.state().state.running);
+          assertEqual(errors.ERROR_REPLICATION_START_TICK_NOT_PRESENT.code, 
+                      replication.applier.state().state.lastError.errorNum);
+          return true;
+        },
+
+        function (state) {
+          // data loss on slave!
+          assertTrue(db._collection(cn).count() < 20);
+        },
+        { 
+          requireFromPresent: true 
+        }
+      );
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -3597,6 +3597,17 @@ void RestReplicationHandler::handleCommandServerId () {
 ///
 /// - *includeSystem*: whether or not system collection operations will be applied
 ///
+/// - *requireFromPresent*: if set to *true*, then the replication applier will check
+///   at start whether the start tick from which it starts or resumes replication is
+///   still present on the master. If not, then there would be data loss. If 
+///   *requireFromPresent* is *true*, the replication applier will abort with an
+///   appropriate error message. If set to *false*, then the replication applier will
+///   still start, and ignore the data loss.
+///
+/// - *verbose*: if set to *true*, then a log line will be emitted for all operations 
+///   performed by the replication applier. This should be used for debugging replication
+///   problems only.
+///
 /// - *restrictType*: the configuration for *restrictCollections*
 ///
 /// - *restrictCollections*: the optional array of collections to include or exclude,
@@ -3706,6 +3717,17 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// - *includeSystem*: whether or not system collection operations will be applied
 ///
+/// - *requireFromPresent*: if set to *true*, then the replication applier will check
+///   at start whether the start tick from which it starts or resumes replication is
+///   still present on the master. If not, then there would be data loss. If 
+///   *requireFromPresent* is *true*, the replication applier will abort with an
+///   appropriate error message. If set to *false*, then the replication applier will
+///   still start, and ignore the data loss.
+///
+/// - *verbose*: if set to *true*, then a log line will be emitted for all operations 
+///   performed by the replication applier. This should be used for debugging replication
+///   problems only.
+///
 /// - *restrictType*: the configuration for *restrictCollections*
 ///
 /// - *restrictCollections*: the optional array of collections to include or exclude,
@@ -3810,18 +3832,21 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
     config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
   }
 
-  config._requestTimeout    = JsonHelper::getNumericValue<double>(json.get(), "requestTimeout", config._requestTimeout);
-  config._connectTimeout    = JsonHelper::getNumericValue<double>(json.get(), "connectTimeout", config._connectTimeout);
-  config._ignoreErrors      = JsonHelper::getNumericValue<uint64_t>(json.get(), "ignoreErrors", config._ignoreErrors);
-  config._maxConnectRetries = JsonHelper::getNumericValue<uint64_t>(json.get(), "maxConnectRetries", config._maxConnectRetries);
-  config._sslProtocol       = JsonHelper::getNumericValue<uint32_t>(json.get(), "sslProtocol", config._sslProtocol);
-  config._chunkSize         = JsonHelper::getNumericValue<uint64_t>(json.get(), "chunkSize", config._chunkSize);
-  config._autoStart         = JsonHelper::getBooleanValue(json.get(), "autoStart", config._autoStart);
-  config._adaptivePolling   = JsonHelper::getBooleanValue(json.get(), "adaptivePolling", config._adaptivePolling);
-  config._includeSystem     = JsonHelper::getBooleanValue(json.get(), "includeSystem", config._includeSystem);
-  config._restrictType      = JsonHelper::getStringValue(json.get(), "restrictType", config._restrictType);
+  config._requestTimeout     = JsonHelper::getNumericValue<double>(json.get(), "requestTimeout", config._requestTimeout);
+  config._connectTimeout     = JsonHelper::getNumericValue<double>(json.get(), "connectTimeout", config._connectTimeout);
+  config._ignoreErrors       = JsonHelper::getNumericValue<uint64_t>(json.get(), "ignoreErrors", config._ignoreErrors);
+  config._maxConnectRetries  = JsonHelper::getNumericValue<uint64_t>(json.get(), "maxConnectRetries", config._maxConnectRetries);
+  config._sslProtocol        = JsonHelper::getNumericValue<uint32_t>(json.get(), "sslProtocol", config._sslProtocol);
+  config._chunkSize          = JsonHelper::getNumericValue<uint64_t>(json.get(), "chunkSize", config._chunkSize);
+  config._autoStart          = JsonHelper::getBooleanValue(json.get(), "autoStart", config._autoStart);
+  config._adaptivePolling    = JsonHelper::getBooleanValue(json.get(), "adaptivePolling", config._adaptivePolling);
+  config._includeSystem      = JsonHelper::getBooleanValue(json.get(), "includeSystem", config._includeSystem);
+  config._verbose            = JsonHelper::getBooleanValue(json.get(), "verbose", config._verbose);
+  config._requireFromPresent = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", config._requireFromPresent);
+  config._restrictType       = JsonHelper::getStringValue(json.get(), "restrictType", config._restrictType);
 
   value = JsonHelper::getObjectElement(json.get(), "restrictCollections");
+
   if (TRI_IsArrayJson(value)) {
     config._restrictCollections.clear();
     size_t const n = TRI_LengthArrayJson(value);

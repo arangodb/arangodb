@@ -1070,10 +1070,10 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
-                                                url,
-                                                nullptr,
-                                                0,
-                                                headers));
+                                                              url,
+                                                              nullptr,
+                                                              0,
+                                                              headers));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
@@ -1100,10 +1100,13 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
   if (found) {
     fromIncluded = StringUtils::boolean(header);
   }
-  
+ 
   if (! fromIncluded && 
-      _requireFromPresent) {
-    errorMsg = "required tick value '" + StringUtils::itoa(fromTick) + "' is not present on master at " + string(_masterInfo._endpoint);
+      _requireFromPresent && 
+      fromTick > 0) {
+    errorMsg = "required tick value '" + StringUtils::itoa(fromTick) + 
+               "' is not present (anymore?) on master at " + string(_masterInfo._endpoint) +
+               ". It may be required to do a full resync and increase the number of historic logfiles on the master.";
 
     return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
   }
@@ -1161,9 +1164,8 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   map<string, string> headers;
   worked = false;
 
-  string const tickString = StringUtils::itoa(fetchTick);
   string const url = baseUrl + 
-                     "&from=" + tickString + 
+                     "&from=" + StringUtils::itoa(fetchTick) +
                      "&firstRegular=" + StringUtils::itoa(firstRegularTick) + 
                      "&serverId=" + _localServerIdString + 
                      "&includeSystem=" + (_includeSystem ? "true" : "false");
@@ -1174,7 +1176,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
             url.c_str());
 
   // send request
-  string const progress = "fetching master log from tick " + tickString;
+  string const progress = "fetching master log from tick " + StringUtils::itoa(fetchTick);
   setProgress(progress);
 
   std::string body;
@@ -1278,9 +1280,12 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
 
   if (res == TRI_ERROR_NO_ERROR &&
       ! fromIncluded && 
-      _requireFromPresent) {
+      _requireFromPresent &&
+      fetchTick > 0) {
     res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
-    errorMsg = "required tick value '" + tickString + "' is not present on master at " + string(_masterInfo._endpoint);
+    errorMsg = "required tick value '" + StringUtils::itoa(fetchTick) + 
+               "' is not present (anymore?) on master at " + string(_masterInfo._endpoint) +
+               ". It may be required to do a full resync and increase the number of historic logfiles on the master.";
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
