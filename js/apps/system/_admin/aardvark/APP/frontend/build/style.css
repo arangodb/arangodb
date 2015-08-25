@@ -1855,6 +1855,23 @@ a.headerButton.disabled {
   a.headerButton.disabled:hover, a.headerButton.disabled:focus {
     color: #d3d3d3; }
 
+input.search-input, .modal-body .select2-choices input, .modal-body input, .modal-body select, .modal-body textarea, .login-window .login-input {
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
+  background-color: #fff !important;
+  border: 1px solid rgba(140, 138, 137, 0.25);
+  box-shadow: none;
+  outline: none;
+  outline-color: transparent;
+  outline-style: none; }
+  input.search-input:focus, .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus, .login-window .login-input:focus {
+    border-color: #999;
+    box-shadow: none;
+    outline: none;
+    outline-color: transparent;
+    outline-style: none; }
+
 .link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu {
   background-color: #f5f8f0;
   border-color: #666;
@@ -2447,6 +2464,10 @@ a.button-gui {
   margin-right: -6px; }
   .tileList legend {
     padding-left: 5px; }
+  .tileList .tile:first-child a {
+    opacity: .5; }
+    .tileList .tile:first-child a:hover {
+      opacity: 1; }
 
 div .tile, div .bigtile {
   -webkit-box-shadow: none;
@@ -2489,9 +2510,13 @@ div .tile, div .bigtile {
     margin-top: 12pt; }
   div .tile .collection-type-icon:hover, div .bigtile .collection-type-icon:hover {
     cursor: pointer; }
-  div .tile img.icon, div .bigtile img.icon {
-    height: 50px;
-    width: 50px; }
+  div .tile img, div .bigtile img {
+    position: relative; }
+    div .tile img.icon, div .bigtile img.icon {
+      height: 50px;
+      width: 50px; }
+    div .tile img:hover, div .bigtile img:hover {
+      cursor: pointer; }
   div .tile a span.add-Icon, div .bigtile a span.add-Icon {
     font-size: 22px;
     margin-left: 22px;
@@ -2560,7 +2585,7 @@ div .tile, div .bigtile {
     top: 5px; }
     div .tile .iconSet span, div .bigtile .iconSet span {
       border-radius: 3px;
-      color: #000;
+      color: #666;
       font-size: 18px;
       padding-bottom: 2px;
       padding-left: 3px;
@@ -4701,35 +4726,20 @@ span.gv_caret {
   margin-top: 2px !important; }
 
 input.search-input {
-  -moz-border-radius: 3px;
-  -webkit-border-radius: 3px;
-  border-radius: 3px;
-  background-color: #fff !important;
-  border: 1px solid rgba(140, 138, 137, 0.25);
-  box-shadow: none;
   height: 14px;
   line-height: 18px;
   margin-right: -1px;
   margin-top: 6px;
-  outline: none;
-  outline-color: transparent;
-  outline-style: none;
   width: 120px; }
-  input.search-input:focus {
-    border-color: #999;
-    box-shadow: none;
-    outline: none;
-    outline-color: transparent;
-    outline-style: none; }
 
 .search-field {
   margin-left: 10px; }
   .search-field .fa-search {
     color: #c2c2c2;
-    font-size: 13pt;
+    font-size: 12pt;
     opacity: .5;
     position: absolute;
-    right: 7px;
+    right: 9px;
     top: 9px; }
     .search-field .fa-search:hover {
       cursor: pointer;
@@ -4883,17 +4893,14 @@ div.headerBar {
   color: #736b68;
   font-family: 'Open Sans', sans-serif !important;
   font-size: 14px;
-  font-weight: 300; }
+  font-weight: 300;
+  max-height: 410px; }
   .modal-body .select2-choices {
     background-image: none !important;
     border: 1px solid #999;
     border-radius: 3px;
     -webkit-box-shadow: none;
     box-shadow: none; }
-    .modal-body .select2-choices input {
-      -webkit-box-shadow: none;
-      box-shadow: none;
-      outline: transparent !important; }
     .modal-body .select2-choices input:active {
       -webkit-box-shadow: none;
       box-shadow: none;
@@ -4915,8 +4922,6 @@ div.headerBar {
   .modal-body .nav-tabs {
     margin-top: 15px; }
   .modal-body input, .modal-body select, .modal-body textarea {
-    border-radius: 3px;
-    box-shadow: none;
     margin-top: 10px; }
   .modal-body input[type='checkbox'] {
     margin-bottom: 10px; }
@@ -5427,7 +5432,7 @@ div.headerBar {
   margin: 0 12px; }
 
 .headerBar.dashboard-headerbar {
-  margin: 15px 0 10px; }
+  margin: 20px 0; }
 
 .modal-chart-detail .modal-dashboard-legend .dashboard-legend-inner {
   padding-left: 20px; }
@@ -5537,27 +5542,29 @@ div.headerBar {
     padding-left: 0; }
 
 .loginFixedWindow {
-  background: #dee8d0;
+  background: #f5f8f0;
   height: 100%;
   left: 0;
   position: fixed;
   top: 0;
-  width: 100%; }
+  width: 100%;
+  z-index: 9999; }
+  .loginFixedWindow img {
+    height: 40px;
+    margin: 10px; }
 
 .login-window {
   background-color: #fff;
-  border-radius: 5px;
-  height: 280px;
+  border: 1px solid rgba(140, 138, 137, 0.25);
+  border-radius: 3px;
+  height: auto;
   left: 50%;
   margin-left: -220px !important;
   margin-top: -150px;
-  padding-left: 10px;
-  padding-right: 10px;
+  padding: 10px;
   position: absolute;
   top: 50%;
   width: 400px; }
-  .login-window img {
-    margin-left: 12px; }
   .login-window .fa {
     color: rgba(0, 0, 0, 0.4);
     float: right;
@@ -5568,15 +5575,12 @@ div.headerBar {
     color: #da4f49;
     margin-top: -30px;
     text-align: center; }
-
-.login-space {
-  height: 50px; }
-
-.login-input {
-  width: 387px; }
-
-.form-error {
-  border: 1px solid #da4f49 !important; }
+  .login-window .login-space {
+    height: 50px; }
+  .login-window .login-input {
+    width: 387px; }
+  .login-window .form-error {
+    border: 1px solid #da4f49 !important; }
 
 toolbar {
   background-color: #f0f0f0;
@@ -5794,7 +5798,8 @@ toolbar {
 #queryContent {
   margin-top: 18px; }
   #queryContent .arango-tab a {
-    border-bottom-color: #ddd; }
+    border-bottom-color: #ddd;
+    font-weight: 100; }
   #queryContent .arango-tab .active {
     border-bottom-color: #fff !important; }
 
@@ -6158,6 +6163,9 @@ toolbar {
 
 .form-actions:after {
   clear: both; }
+
+.swagger-section #swagger-ui-container {
+  margin: .3em 1em !important; }
 
 .alert {
   padding: 15px 35px 15px 14px; }
@@ -6862,17 +6870,20 @@ input.gv-radio-button {
     margin-bottom: 10px;
     position: relative; }
     .application-detail-view section.info .header div.header-icon-container {
+      border-radius: 3px;
       height: 160px;
       left: 0;
       margin: 0 0 4px;
       position: absolute;
       width: 160px; }
       .application-detail-view section.info .header div.header-icon-container img.icon {
+        background-color: #fff;
         border: 1px solid rgba(140, 138, 137, 0.25);
         border-radius: 3px;
         height: auto;
         max-height: 160px;
         max-width: 160px;
+        padding: 5px;
         width: auto; }
     .application-detail-view section.info .header .header_left {
       left: 170px;
@@ -6880,25 +6891,29 @@ input.gv-radio-button {
       position: absolute;
       width: 120px; }
       .application-detail-view section.info .header .header_left input.delete, .application-detail-view section.info .header .header_left input.upgrade, .application-detail-view section.info .header .header_left input.switch-mode {
-        margin-top: 13.3333333333px; }
+        margin-top: 16.6666666667px; }
       .application-detail-view section.info .header .header_left input {
         width: 90px; }
     .application-detail-view section.info .header .header_right {
       margin-left: 300px;
       padding: 5px; }
       .application-detail-view section.info .header .header_right input {
-        margin-left: 0; }
+        margin-left: 0;
+        margin-top: -4px; }
       .application-detail-view section.info .header .header_right .header_line h3 {
         float: left;
         padding-right: 5px; }
+      .application-detail-view section.info .header .header_right .header_line .license {
+        margin-left: 20px; }
       .application-detail-view section.info .header .header_right .header_line .license, .application-detail-view section.info .header .header_right .header_line .version {
         -moz-border-radius: 3px;
         -webkit-border-radius: 3px;
         border-radius: 3px;
         background-color: #fff;
-        border: 1px solid #a0a0a0;
+        border: 1px solid rgba(140, 138, 137, 0.25);
         color: #a0a0a0;
         font-size: .6em;
+        font-weight: 400;
         padding: 0 8px 2px;
         position: relative;
         top: -2px; }
@@ -6935,7 +6950,10 @@ input.gv-radio-button {
   border-radius: 3px;
   clear: right;
   float: left;
-  width: 198px; }
+  margin-top: 12px;
+  position: relative;
+  right: -10px;
+  width: 188px; }
   .application-detail-view aside.meta dl {
     margin-top: 0;
     padding-left: 7px;
@@ -7026,6 +7044,7 @@ input.gv-radio-button {
     border-top-right-radius: 3px;
     color: #fff;
     float: right;
+    font-weight: 100;
     height: 27px;
     margin-right: 5px;
     width: 82px; }

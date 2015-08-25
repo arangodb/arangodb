@@ -40,6 +40,7 @@
   font-family: 'Open Sans', sans-serif !important;
   font-size: 14px;
   font-weight: 300;
+  max-height: 410px;
 
   .select2-choices {
     background-image: none !important;
@@ -49,9 +50,7 @@
     box-shadow: none;
 
     input {
-      -webkit-box-shadow: none;
-      box-shadow: none;
-      outline: transparent !important;
+      @extend %inputs;
     }
 
     input:active {
@@ -91,8 +90,7 @@
   input,
   select,
   textarea {
-    border-radius: 3px;
-    box-shadow: none;
+    @extend %inputs;
     margin-top: 10px;
   }
 

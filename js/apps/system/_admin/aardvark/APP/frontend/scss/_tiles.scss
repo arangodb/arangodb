@@ -6,6 +6,16 @@
   legend {
     padding-left: 5px;
   }
+
+  .tile:first-child {
+    a {
+      opacity: .5;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+  }
 }
 
 $iconsize: 50px;
@@ -68,9 +78,15 @@ $iconsize: 50px;
   }
 
   img {
+    position: relative;
+
     &.icon {
       height: $iconsize;
       width: $iconsize;
+    }
+
+    &:hover {
+      cursor: pointer;
     }
   }
 
@@ -179,7 +195,7 @@ $iconsize: 50px;
       @extend %clickable;
       @extend %pull-right;
       border-radius: 3px;
-      color: $c-black;
+      color: $c-darker-grey;
       font-size: 18px;
       padding-bottom: 2px;
       padding-left: 3px;

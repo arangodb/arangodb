@@ -256,7 +256,7 @@
 
 <script id="arangoTable.ejs" type="text/template">
 <table class="arango-table" id="<%=content.id%>">
-
+<% console.log(content) %>
   <thead>
     <tr>
       <% var hcounter = 0; %>
@@ -265,7 +265,6 @@
       <% hcounter++; });%>
     </tr>
   </thead>
-
   <tbody>
     <% _.each(content.rows, function(k) { var counter=0;%>
       <tr>
@@ -274,6 +273,12 @@
         <% counter++;});%>
       </tr>
     <%});%>
+
+    <% if (content.rows.length === 0) { %>
+      <tr>
+        <td>No content.</td><td></td><td></td>
+      </tr>
+    <% }; %>
   </tbody>
 </table>
 </script>
@@ -1482,10 +1487,8 @@ if (list.length > 0) {
 
 <script id="loginView.ejs" type="text/template">
 <div class="loginFixedWindow">
+  <img id="loginLogo" src="img/logo_arangodb_transp.png"/>
   <div id="loginWindow" class="login-window">
-    <div id="loginSpace" class="login-space"/>
-    <img id="loginLogo" src="img/logo_arangodb_transp.png"/>
-    <div id="loginSpace" class="login-space"/>
     <p class="wrong-credentials" style="display:none" >Wrong credentials!</p>
     <form id="loginForm">
       <input class="login-input" placeholder="Username" id="loginUsername" type="text" name="username"><i class="fa fa-user"></i>
@@ -2873,7 +2876,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1440485681022"></script>
+<script src="app.js?version=1440500497330"></script>
 
   </body>
 </html>
