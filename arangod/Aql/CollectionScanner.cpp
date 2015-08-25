@@ -72,7 +72,7 @@ int RandomCollectionScanner::scan (std::vector<TRI_doc_mptr_copy_t>& docs,
                          docs,
                          initialPosition,
                          position,
-                         static_cast<TRI_voc_size_t>(batchSize),
+                         static_cast<uint64_t>(batchSize),
                          &step,
                          &totalCount);
 }
@@ -106,9 +106,9 @@ int LinearCollectionScanner::scan (std::vector<TRI_doc_mptr_copy_t>& docs,
   return trx->readIncremental(trxCollection,
                               docs,
                               position,
-                              static_cast<TRI_voc_size_t>(batchSize),
+                              static_cast<uint64_t>(batchSize),
                               0,
-                              TRI_QRY_NO_LIMIT,
+                              UINT64_MAX,
                               &totalCount);
 }
 

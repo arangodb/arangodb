@@ -443,8 +443,9 @@ public:
   int (*beginReadTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
   int (*beginWriteTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
 
-  TRI_doc_collection_info_t* (*figures) (struct TRI_document_collection_t* collection);
-  TRI_voc_size_t (*size) (struct TRI_document_collection_t* collection);
+  TRI_doc_collection_info_t* figures ();
+
+  uint64_t size ();
 
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_t*);
