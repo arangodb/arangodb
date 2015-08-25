@@ -81,7 +81,13 @@ triagens::httpclient::SimpleHttpClient* Client = nullptr;
 /// @brief chunk size
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t ChunkSize = 1024 * 1024 * 8;
+static uint64_t ChunkSize = 1024 * 1024 * 2;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief max chunk size
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t MaxChunkSize = 1024 * 1024 * 12;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collections
@@ -173,7 +179,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   description
     ("collection", &Collections, "restrict to collection name (can be specified multiple times)")
-    ("batch-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
+    ("initial-batch-size", &ChunkSize, "initial size for individual data batches (in bytes)")
+    ("batch-size", &MaxChunkSize, "maximum size for individual data batches (in bytes)")
     ("dump-data", &DumpData, "dump collection data")
     ("force", &Force, "continue dumping even in the face of some server-side errors")
     ("include-system-collections", &IncludeSystemCollections, "include system collections")
@@ -515,19 +522,21 @@ static int DumpCollection (int fd,
                            const string& cid,
                            const string& name,
                            TRI_json_t const* parameters,
-                           const uint64_t maxTick,
+                           uint64_t maxTick,
                            string& errorMsg) {
 
+  uint64_t chunkSize = ChunkSize;
+
   const string baseUrl = "/_api/replication/dump?collection=" + cid +
-                         "&chunkSize=" + StringUtils::itoa(ChunkSize) +
                          "&ticks=false&translateIds=true&flush=false";
 
   map<string, string> headers;
 
   uint64_t fromTick = TickStart;
 
-  while (1) {
-    string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
+  while (true) {
+    string url = baseUrl + "&from=" + StringUtils::itoa(fromTick)
+                         + "&chunkSize=" + StringUtils::itoa(chunkSize);
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
@@ -613,6 +622,14 @@ static int DumpCollection (int fd,
     if (! checkMore || fromTick == 0) {
       // done
       return res;
+    }
+
+    if (chunkSize < MaxChunkSize) {
+      // adaptively increase chunksize
+      chunkSize = static_cast<uint64_t>(chunkSize * 1.5);
+      if (chunkSize > MaxChunkSize) {
+        chunkSize = MaxChunkSize;
+      }
     }
   }
 
@@ -1269,6 +1286,9 @@ int main (int argc, char* argv[]) {
   // use a minimum value for batches
   if (ChunkSize < 1024 * 128) {
     ChunkSize = 1024 * 128;
+  }
+  if (MaxChunkSize < ChunkSize) {
+    MaxChunkSize = ChunkSize;
   }
 
   if (TickStart < TickEnd) {

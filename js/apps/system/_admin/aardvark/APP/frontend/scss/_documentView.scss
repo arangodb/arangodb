@@ -13,7 +13,7 @@
 
 .document-info {
 
-  background-color: #fff;
+  background-color: $c-white;
   border-radius: 3px;
   margin-bottom: 8px;
   margin-top: -13px;
@@ -47,7 +47,7 @@
   }
 
   .document-thin-font {
-    color: #008000;
+    color: $c-positive;
     font-family: droid sans mono, monospace, courier new, courier, sans-serif;
     font-size: 11pt;
   }

@@ -1,4 +1,5 @@
 <script id="foxxActiveView.ejs" type="text/template">
+  <div class="borderBox"></div>
   <img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for Service" class="icon">
     <% if (model.needsAttention()) { %>
       <span class="warning-icons">

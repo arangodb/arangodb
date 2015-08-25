@@ -54,6 +54,12 @@
       $('.innerDropdownInnerUL').html(this.notificationItem.render({
         notifications : this.collection
       }));
+      $('.notificationInfoIcon').tooltip({
+        position: {
+          my: "left top",
+          at: "right+55 top-1"
+        }
+      });
     },
 
     render: function () {
@@ -63,6 +69,7 @@
 
       this.renderNotifications();
       this.delegateEvents();
+
       return this.el;
     }
 

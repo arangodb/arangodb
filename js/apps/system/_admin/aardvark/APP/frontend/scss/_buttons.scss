@@ -90,12 +90,127 @@
 }
 
 
-button.large-distance {
-  margin-left: 12px;
-}
+button {
+  font-family: 'Open Sans', sans-serif !important;
 
-button.short-distance {
-  margin-left: 6px;
+  &.btn-server {
+    width: 120px;
+  }
+
+
+  &.gv-zoom-btn {
+    background-size: 14px 14px;
+    height: 14px;
+    vertical-align: baseline;
+    width: 14px;
+
+    &.btn-zoom-right {
+      border: 0;
+      box-shadow: none;
+      right: 0;
+      top: 13px;
+    }
+
+    &.pan-right {
+      background-image: url('../img/gv_arrow_right.png');
+    }
+
+    &.pan-left {
+      background-image: url('../img/gv_arrow_left.png');
+    }
+
+    &.pan-top {
+      background-image: url('../img/gv_arrow_top.png');
+    }
+
+    &.pan-bottom {
+      background-image: url('../img/gv_arrow_bottom.png');
+    }
+
+    &.btn-zoom:hover {
+      background: inherit;
+    }
+
+    &.btn-zoom {
+      height: 14px;
+      margin: 0;
+      padding: 0;
+      position: absolute;
+      width: 16px;
+    }
+
+    &.btn-zoom-top {
+      border: 0;
+      box-shadow: none;
+      left: 13px;
+      top: 1;
+    }
+
+    &.btn-zoom-left {
+      border: 0;
+      box-shadow: none;
+      left: 0;
+      top: 13px;
+    }
+
+    &.btn-zoom-bottom {
+      border: 0;
+      box-shadow: none;
+      left: 13px;
+      top: 25px;
+    }
+
+  }
+
+  &.gv-icon-btn {
+    @include border-radius(0 !important);
+    background-size: 36px 36px;
+    height: 36px;
+    width: 36px;
+
+    &.active {
+      background-color: $c-positive;
+    }
+  }
+
+  &.gv_dropdown_entry {
+    height: 30px;
+    margin: 4px 4px 4px 30px;
+    width: 160px;
+  }
+
+  &.gv_context_button {
+    width: 65px;
+  }
+
+  &.large-distance {
+    margin-left: 12px;
+  }
+
+  &.short-distance {
+    margin-left: 6px;
+  }
+
+  &.shutdown {
+    margin-top: 6px;
+    padding: 3px 14px;
+  }
+
+  &.graphViewer-icon-button {
+    background-color: transparent;
+    border: 0;
+    height: 20px;
+    margin-left: 5px;
+    margin-top: -2px;
+    padding: 0;
+    width: 20px;
+
+    img {
+      height: 20px;
+      padding-bottom: 10px;
+      width: 20px;
+    }
+  }
 }
 
 ul.headerButtonList {
@@ -110,10 +225,6 @@ ul.headerButtonList {
   }
 }
 
-button.shutdown {
-  margin-top: 6px;
-  padding: 3px 14px;
-}
 
 %header-button {
   @extend %clickable;
@@ -154,8 +265,8 @@ a.headerButton {
 
   &.activated {
     background-color: $c-positive-hover;
-    color: $c-white;
     border: 1px solid $c-positive-hover;
+    color: $c-white;
 
     &:hover {
       background-color: $c-white;
@@ -175,17 +286,17 @@ a.headerButton {
 div.toolbox {
   @include border-radius(3px);
   background-color: $c-white;
-  border: 1px solid rgba(104, 103, 102, 0.1);
+  border: 1px solid rgba(104, 103, 102, .1);
   margin-right: 5px;
   margin-top: -3px;
-  padding-top: 5px;
   padding-bottom: 5px;
+  padding-top: 5px;
   position: absolute;
 
   div.gv_action_button {
     @extend %clickable;
-    background-color: $c-white;
     @include border-radius(3px);
+    background-color: $c-white;
     color: $c-black;
     height: 50px;
     margin: 5px;
@@ -229,126 +340,27 @@ h6 {
   }
 }
 
-button.graphViewer-icon-button {
-  background-color: transparent;
-  border: 0;
-  height: 20px;
-  margin-left: 5px;
-  margin-top: -2px;
-  padding: 0;
-  width: 20px;
-}
-
-button.graphViewer-icon-button > img {
-  height: 20px;
-  padding-bottom: 10px;
-  width: 20px;
-}
-
-button.gv_dropdown_entry {
-  height: 30px;
-  margin: 4px 4px 4px 30px;
-  width: 160px;
-}
-
-button.gv_context_button {
-  width: 65px;
-}
 
 .btn-icon {
   background-color: rgb(56, 52, 52);
   padding: 4px;
 }
 
-button.gv-icon-small {
+&.gv-icon-small {
   background-size: 16px 16px;
   height: 16px;
   width: 16px;
-}
 
-button.gv-icon-small.delete {
-  background-image: url('../img/icon_delete.png');
-}
-
-button.gv-icon-small.add {
-  background-image: url('../img/plus_icon.png');
-}
-
-
-button.gv-icon-btn {
-  @include border-radius(0 !important);
-  background-size: 36px 36px;
-  height: 36px;
-  width: 36px;
-}
-
-button.gv-icon-btn.active {
-  background-color: $c-positive;
-}
-
-button.btn-zoom:hover {
-  background: inherit;
-}
-
-button.btn-zoom {
-  background: none;
-  height: 16px;
-  margin: 0;
-  padding: 0;
-  position: absolute;
-  width: 16px;
-}
-
-button.btn-zoom-top {
-  border: 0;
-  box-shadow: none;
-  left: 13px;
-  top: 1;
-}
-
-button.btn-zoom-left {
-  border: 0;
-  box-shadow: none;
-  left: 0;
-  top: 13px;
-}
-
-button.btn-zoom-bottom {
-  border: 0;
-  box-shadow: none;
-  left: 13px;
-  top: 25px;
-}
-
-button.btn-zoom-right {
-  border: 0;
-  box-shadow: none;
-  right: 0;
-  top: 13px;
-}
-
-button.gv-zoom-btn {
-  background-size: 14px 14px;
-  height: 14px;
-  vertical-align: baseline;
-  width: 14px;
-
-  &.pan-right {
-    background-image: url('../img/gv_arrow_right.png');
+  &.delete {
+    background-image: url('../img/icon_delete.png');
   }
 
-  &.pan-left {
-    background-image: url('../img/gv_arrow_left.png');
-  }
-
-  &.pan-top {
-    background-image: url('../img/gv_arrow_top.png');
-  }
-
-  &.pan-bottom {
-    background-image: url('../img/gv_arrow_bottom.png');
+  &.add {
+    background-image: url('../img/plus_icon.png');
   }
 }
+
+
 
 a.pagination-button,
 ul.arango-pagination a {
@@ -371,10 +383,6 @@ ul.arango-pagination a {
   margin-top: -12px;
 }
 
-button {
-  font-family: 'Open Sans', sans-serif !important;
-}
-
 .btn-old-padding {
   padding-bottom: 4px !important;
   padding-top: 4px !important;
@@ -387,10 +395,6 @@ button.btn-server {
   margin: 5px;
 }
 
-button.btn-server {
-  width: 120px;
-}
-
 a.button-gui {
   @extend %header-button;
   height: auto;
@@ -399,8 +403,8 @@ a.button-gui {
     top: 0;
   }
   padding: {
-    top: 1px;
     bottom: 1px;
+    top: 1px;
   }
   position: absolute;
   right: 2px;
@@ -458,8 +462,8 @@ a.button-gui {
 }
 
 .bottomButtonBar {
-  border-top: 1px solid rgba(104, 103, 102, 0.1);
   background-color: $c-white;
+  border-top: 1px solid rgba(104, 103, 102, .1);
   height: 30px;
   padding: 10px;
 }

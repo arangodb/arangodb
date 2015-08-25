@@ -14732,7 +14732,7 @@ nv.models.stackedAreaChart = function() {
                $(element).find('i').addClass('fa-dot-circle-o');
              }
              else {
-               $(element).find('i').addClass('fa-check-circle-o');
+               $(element).find('i').addClass('fa-check-square-o');
              }
            }
            else {
@@ -14740,7 +14740,7 @@ nv.models.stackedAreaChart = function() {
                $(element).find('i').addClass('fa-circle-o');
              }
              else {
-               $(element).find('i').addClass('fa-circle-o');
+               $(element).find('i').addClass('fa-square-o');
              }
            }
          }
@@ -14889,12 +14889,12 @@ nv.models.stackedAreaChart = function() {
       return returnVal;
     },
 
-    arangoNotification: function (title, content) {
-      window.App.notificationList.add({title:title, content: content});
+    arangoNotification: function (title, content, info) {
+      window.App.notificationList.add({title:title, content: content, info: info});
     },
 
-    arangoError: function (title, content) {
-      window.App.notificationList.add({title:title, content: content});
+    arangoError: function (title, content, info) {
+      window.App.notificationList.add({title:title, content: content, info: info});
     },
 
     getRandomToken: function () {

@@ -10,9 +10,6 @@
 
     searchTimeout: null,
 
-    initialize: function () {
-    },
-
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
     render: function () {
@@ -213,7 +210,7 @@
       searchOptions.searchPhrase = null;
     },
 
-    restrictToSearchPhraseKey: function (e) {
+    restrictToSearchPhraseKey: function () {
       // key pressed in search box
       var self = this;
 
@@ -287,8 +284,8 @@
       var returnobj = this.collection.newCollection(
         collName, wfs, isSystem, collSize, collType, shards, shardBy
       );
-      if (returnobj.status !== true) {
-        arangoHelper.arangoError(returnobj.errorMessage);
+      if (returnobj.status !== true) {console.log(returnobj);
+        arangoHelper.arangoError("Collection error", returnobj.errorMessage);
       }
       this.updateCollectionsView();
       window.modalView.hide();

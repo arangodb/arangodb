@@ -42,25 +42,28 @@
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="userManagementThumbnailsIn" class="tileList">
       <div class="tile">
-        <a href="#" id="createDatabase" class="add">
-          <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
-          Add Database
-        </a>
+        <div class="fullBorderBox">
+          <a href="#" id="createDatabase" class="add">
+            <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            Add Database
+          </a>
+        </div>
       </div>
       <% collection.forEach(function(db) {
           var name = db.get("name");
       %>
 
       <div class="tile">
-      <div class="iconSet">
-        <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+        <div class="borderBox"></div>
+        <div class="iconSet">
+          <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+        </div>
+        <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
+        <div class="tileBadge">
+        </div>
+        <h5 class="collectionName"><%=name %></h5>
       </div>
-      <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
-      <div class="tileBadge">
-    </div>
 
-      <h5 class="collectionName"><%=name %></h5>
-    </div>
       <%});%>
      </div>
   </div>

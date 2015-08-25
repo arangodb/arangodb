@@ -1,28 +1,31 @@
 .loginFixedWindow {
-  background: #dee8d0;
+  background: $c-lightgreen-2-bg;
   height: 100%;
   left: 0;
   position: fixed;
   top: 0;
   width: 100%;
+  z-index: 9999;
+
+  img {
+    height: 40px;
+    margin: 10px;
+  }
+
 }
 
 .login-window {
-  background-color: #fff;
-  border-radius: 5px;
-  height: 280px;
+  background-color: $c-white;
+  border: 1px solid $c-content-border;
+  border-radius: 3px;
+  height: auto;
   left: 50%;
   margin-left: -220px !important;
   margin-top: -150px;
-  padding-left: 10px;
-  padding-right: 10px;
+  padding: 10px;
   position: absolute;
   top: 50%;
   width: 400px;
-
-  img {
-    margin-left: 12px;
-  }
 
   .fa {
     color: rgba(0, 0, 0, .4);
@@ -31,12 +34,25 @@
     margin-right: 5px;
     margin-top: -34px;
   }
+
+  .wrong-credentials {
+    color: $c-negative;
+    margin-top: -30px;
+    text-align: center;
+  }
+
+  .login-space {
+    height: 50px;
+  }
+
+  .login-input {
+    @extend %inputs;
+    width: 387px;
+  }
+
+  .form-error {
+    border: 1px solid $c-negative !important;
+  }
+
 }
 
-.login-space {
-  height: 50px;
-}
-
-.login-input {
-  width: 387px;
-}
