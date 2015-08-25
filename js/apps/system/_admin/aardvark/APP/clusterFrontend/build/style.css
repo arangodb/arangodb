@@ -1,10 +1,3 @@
-@charset "UTF-8";
-/*
-$c-lightgreen-2-bg: #e4ecd9;;
-$c-lightgreen-transp-bg: rgba(222, 233, 207, 0.8);
-$c-lightgreen-2-transp-bg: rgba(228, 236, 217, 0.8);
-*/
-/*$c-content-border: rgba(104, 103, 102, 0.1);*/
 body, input, textarea, .page-title span, .pingback a.url {
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400; }
@@ -1762,13 +1755,13 @@ body, input, textarea, .page-title span, .pingback a.url {
 .fa-medium:before {
   content: "\f23a"; }
 
-.link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu, .navlogo, .navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .machineClass, .scenarioMachine, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .dashboard-sub-bar, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar {
+.link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu, .navlogo, .navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .machineClass, .scenarioMachine, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar {
   float: left; }
 
-.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet span, div .bigtile .iconSet span, .search-field, div.headerBar > div.headerButtonBar, .dashboard-sub-bar-menu {
+.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet span, div .bigtile .iconSet span, .search-field, .headerBar > div.headerButtonBar, .dashboard-sub-bar-menu {
   float: right; }
 
-.tileList:after, .resizecontainer:after, div.headerBar > div.headerButtonBar:after, .machineClass:after, .scenarioSingleMachine:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after {
+.tileList:after, .resizecontainer:after, .headerBar > div.headerButtonBar:after, .machineClass:after, .scenarioSingleMachine:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after {
   clear: both;
   content: '.';
   display: block;
@@ -1776,7 +1769,7 @@ body, input, textarea, .page-title span, .pingback a.url {
   height: 0;
   visibility: hidden; }
 
-.script-dropdown-menu .dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
+.script-dropdown-menu .dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
   cursor: pointer; }
 
 .navbar, footer.footer {
@@ -1853,8 +1846,8 @@ a.warning.coordinator, a.warning.dbserver {
   border: 1px solid #fff;
   color: #555; }
   .button-header:hover, a.headerButton:hover, a.button-gui:hover, .button-header:focus, a.headerButton:focus, a.button-gui:focus {
-    border: 1px solid #8aa051;
     background-color: #8aa051;
+    border: 1px solid #8aa051;
     color: #fff; }
 
 .button-notification {
@@ -1878,11 +1871,11 @@ a.inactive.coordinator, a.inactive.dbserver {
     fill: #d3d3d3; }
 
 .link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu {
-  background-color: #F5F8F0;
+  background-color: #f5f8f0;
   border-color: #666;
+  border-radius: 3px;
   border-style: solid;
   border-width: 1px;
-  border-radius: 3px;
   display: none;
   list-style: none;
   margin: 5px 0 0;
@@ -1895,18 +1888,18 @@ a.inactive.coordinator, a.inactive.dbserver {
     line-height: 23px;
     white-space: nowrap;
     width: 100%; }
-  .link-dropdown-menu li.dropdown-header, .user-dropdown-menu li.dropdown-header, .script-dropdown-menu li.dropdown-header, .gv-dropdown-menu li.dropdown-header {
+  .link-dropdown-menu .dropdown-header, .user-dropdown-menu .dropdown-header, .script-dropdown-menu .dropdown-header, .gv-dropdown-menu .dropdown-header {
     color: #999;
     font-size: 15px;
     font-weight: 600;
     font-variant: small-caps;
     padding: 0 15px; }
-  .link-dropdown-menu li.dropdown-header:hover, .user-dropdown-menu li.dropdown-header:hover, .script-dropdown-menu li.dropdown-header:hover, .gv-dropdown-menu li.dropdown-header:hover {
+  .link-dropdown-menu .dropdown-header:hover, .user-dropdown-menu .dropdown-header:hover, .script-dropdown-menu .dropdown-header:hover, .gv-dropdown-menu .dropdown-header:hover {
     cursor: default; }
-  .link-dropdown-menu li.divider, .user-dropdown-menu li.divider, .script-dropdown-menu li.divider, .gv-dropdown-menu li.divider {
+  .link-dropdown-menu .divider, .user-dropdown-menu .divider, .script-dropdown-menu .divider, .gv-dropdown-menu .divider {
     background-color: #666;
     height: 1px;
-    margin: 10px 0px; }
+    margin: 10px 0; }
   .link-dropdown-menu a, .user-dropdown-menu a, .script-dropdown-menu a, .gv-dropdown-menu a {
     color: #fff;
     padding: 0 20px; }
@@ -2094,11 +2087,11 @@ footer.footer {
   bottom: 0;
   height: 40px; }
   footer.footer p {
+    font-size: 10pt;
+    font-weight: 100;
     margin-bottom: 0;
     padding-bottom: 10px;
-    padding-top: 10px;
-    font-weight: 100;
-    font-size: 10pt; }
+    padding-top: 10px; }
 
 div.footer-left {
   background: none repeat scroll 0 0 transparent;
@@ -2107,35 +2100,34 @@ div.footer-left {
   div.footer-left .social-icons {
     margin-top: 5px; }
     div.footer-left .social-icons a {
-      width: 25px;
       display: block;
+      float: left;
       height: 25px;
-      float: left; }
+      width: 25px; }
     div.footer-left .social-icons p {
-      font-size: 12pt;
       background: #fff;
       border: 1px solid rgba(104, 103, 102, 0.1);
       border-radius: 20px;
       height: 25px;
-      width: 25px;
+      margin-right: 10px;
       padding: 0;
-      margin-right: 10px; }
+      width: 25px; }
     div.footer-left .social-icons p:hover {
-      cursor: pointer;
-      background: #8c8a89; }
-      div.footer-left .social-icons p:hover i  {
+      background: #8c8a89;
+      cursor: pointer; }
+      div.footer-left .social-icons p:hover i {
         color: #fff; }
     div.footer-left .social-icons i {
       color: #000;
-      position: absolute;
-      margin-top: 4px; }
+      margin-top: 4px;
+      position: absolute; }
       div.footer-left .social-icons i.fa-twitter {
         margin-left: -7px; }
       div.footer-left .social-icons i.fa-envelope {
         margin-left: -20px; }
       div.footer-left .social-icons i.fa-google {
-        margin-top: 6px;
-        margin-left: -18px; }
+        margin-left: -18px;
+        margin-top: 6px; }
       div.footer-left .social-icons i.fa-stack-overflow {
         margin-left: -18px; }
 
@@ -2145,13 +2137,13 @@ div.footer-center {
   width: 10%; }
   div.footer-center i {
     background-color: #fff;
-    border-radius: 20px;
     border: 1px solid rgba(104, 103, 102, 0.1);
-    width: 20px;
-    padding: 6px 3px 6px 2px; }
+    border-radius: 20px;
+    padding: 6px 3px 6px 2px;
+    width: 20px; }
   div.footer-center i:hover {
-    color: #fff;
-    background-color: #8c8a89; }
+    background-color: #8c8a89;
+    color: #fff; }
   div.footer-center p {
     padding-top: 5px; }
   div.footer-center p:hover {
@@ -2211,11 +2203,85 @@ div.footer-right {
 #closeBtnInfoView {
   margin-left: 0 !important; }
 
-button.large-distance {
-  margin-left: 12px; }
-
-button.short-distance {
-  margin-left: 6px; }
+button {
+  font-family: 'Open Sans', sans-serif !important; }
+  button.btn-server {
+    width: 120px; }
+  button.gv-zoom-btn {
+    background-size: 14px 14px;
+    height: 14px;
+    vertical-align: baseline;
+    width: 14px; }
+    button.gv-zoom-btn.btn-zoom-right {
+      border: 0;
+      box-shadow: none;
+      right: 0;
+      top: 13px; }
+    button.gv-zoom-btn.pan-right {
+      background-image: url('../img/gv_arrow_right.png'); }
+    button.gv-zoom-btn.pan-left {
+      background-image: url('../img/gv_arrow_left.png'); }
+    button.gv-zoom-btn.pan-top {
+      background-image: url('../img/gv_arrow_top.png'); }
+    button.gv-zoom-btn.pan-bottom {
+      background-image: url('../img/gv_arrow_bottom.png'); }
+    button.gv-zoom-btn.btn-zoom:hover {
+      background: inherit; }
+    button.gv-zoom-btn.btn-zoom {
+      height: 14px;
+      margin: 0;
+      padding: 0;
+      position: absolute;
+      width: 16px; }
+    button.gv-zoom-btn.btn-zoom-top {
+      border: 0;
+      box-shadow: none;
+      left: 13px;
+      top: 1; }
+    button.gv-zoom-btn.btn-zoom-left {
+      border: 0;
+      box-shadow: none;
+      left: 0;
+      top: 13px; }
+    button.gv-zoom-btn.btn-zoom-bottom {
+      border: 0;
+      box-shadow: none;
+      left: 13px;
+      top: 25px; }
+  button.gv-icon-btn {
+    -moz-border-radius: 0 !important;
+    -webkit-border-radius: 0 !important;
+    border-radius: 0 !important;
+    background-size: 36px 36px;
+    height: 36px;
+    width: 36px; }
+    button.gv-icon-btn.active {
+      background-color: #8aa051; }
+  button.gv_dropdown_entry {
+    height: 30px;
+    margin: 4px 4px 4px 30px;
+    width: 160px; }
+  button.gv_context_button {
+    width: 65px; }
+  button.large-distance {
+    margin-left: 12px; }
+  button.short-distance {
+    margin-left: 6px; }
+  button.shutdown {
+    margin-top: 6px;
+    padding: 3px 14px; }
+  button.graphViewer-icon-button {
+    background-color: transparent;
+    border: 0;
+    height: 20px;
+    margin-left: 5px;
+    margin-top: -2px;
+    padding: 0;
+    width: 20px; }
+    button.graphViewer-icon-button img {
+      height: 20px;
+      padding-bottom: 10px;
+      width: 20px; }
 
 ul.headerButtonList {
   display: inline-block;
@@ -2224,10 +2290,6 @@ ul.headerButtonList {
   padding-left: 0 !important; }
   ul.headerButtonList li {
     display: inline; }
-
-button.shutdown {
-  margin-top: 6px;
-  padding: 3px 14px; }
 
 a.headerButton, a.button-gui {
   -moz-border-radius: 2px;
@@ -2255,8 +2317,8 @@ a.headerButton {
     font-weight: bold; }
   a.headerButton.activated {
     background-color: #788f3d;
-    color: #fff;
-    border: 1px solid #788f3d; }
+    border: 1px solid #788f3d;
+    color: #fff; }
     a.headerButton.activated:hover {
       background-color: #fff;
       color: #788f3d; }
@@ -2271,14 +2333,14 @@ div.toolbox {
   border: 1px solid rgba(104, 103, 102, 0.1);
   margin-right: 5px;
   margin-top: -3px;
-  padding-top: 5px;
   padding-bottom: 5px;
+  padding-top: 5px;
   position: absolute; }
   div.toolbox div.gv_action_button {
-    background-color: #fff;
     -moz-border-radius: 3px;
     -webkit-border-radius: 3px;
     border-radius: 3px;
+    background-color: #fff;
     color: #000;
     height: 50px;
     margin: 5px;
@@ -2305,102 +2367,18 @@ h6.gv_icon_icon {
 h6.gv_button_title {
   bottom: 1px; }
 
-button.graphViewer-icon-button {
-  background-color: transparent;
-  border: 0;
-  height: 20px;
-  margin-left: 5px;
-  margin-top: -2px;
-  padding: 0;
-  width: 20px; }
-
-button.graphViewer-icon-button > img {
-  height: 20px;
-  padding-bottom: 10px;
-  width: 20px; }
-
-button.gv_dropdown_entry {
-  height: 30px;
-  margin: 4px 4px 4px 30px;
-  width: 160px; }
-
-button.gv_context_button {
-  width: 65px; }
-
 .btn-icon {
   background-color: #383434;
   padding: 4px; }
 
-button.gv-icon-small {
+.gv-icon-small {
   background-size: 16px 16px;
   height: 16px;
   width: 16px; }
-
-button.gv-icon-small.delete {
-  background-image: url('../img/icon_delete.png'); }
-
-button.gv-icon-small.add {
-  background-image: url('../img/plus_icon.png'); }
-
-button.gv-icon-btn {
-  -moz-border-radius: 0 !important;
-  -webkit-border-radius: 0 !important;
-  border-radius: 0 !important;
-  background-size: 36px 36px;
-  height: 36px;
-  width: 36px; }
-
-button.gv-icon-btn.active {
-  background-color: #8aa051; }
-
-button.btn-zoom:hover {
-  background: inherit; }
-
-button.btn-zoom {
-  background: none;
-  height: 16px;
-  margin: 0;
-  padding: 0;
-  position: absolute;
-  width: 16px; }
-
-button.btn-zoom-top {
-  border: 0;
-  box-shadow: none;
-  left: 13px;
-  top: 1; }
-
-button.btn-zoom-left {
-  border: 0;
-  box-shadow: none;
-  left: 0;
-  top: 13px; }
-
-button.btn-zoom-bottom {
-  border: 0;
-  box-shadow: none;
-  left: 13px;
-  top: 25px; }
-
-button.btn-zoom-right {
-  border: 0;
-  box-shadow: none;
-  right: 0;
-  top: 13px; }
-
-button.gv-zoom-btn {
-  background-size: 14px 14px;
-  height: 14px;
-  vertical-align: baseline;
-  width: 14px; }
-  button.gv-zoom-btn.pan-right {
-    background-image: url('../img/gv_arrow_right.png'); }
-  button.gv-zoom-btn.pan-left {
-    background-image: url('../img/gv_arrow_left.png'); }
-  button.gv-zoom-btn.pan-top {
-    background-image: url('../img/gv_arrow_top.png'); }
-  button.gv-zoom-btn.pan-bottom {
-    background-image: url('../img/gv_arrow_bottom.png'); }
+  .gv-icon-small.delete {
+    background-image: url('../img/icon_delete.png'); }
+  .gv-icon-small.add {
+    background-image: url('../img/plus_icon.png'); }
 
 a.pagination-button, ul.arango-pagination a {
   -moz-border-radius: 3px;
@@ -2421,9 +2399,6 @@ a.pagination-button, ul.arango-pagination a {
 .modal-body th.actionCell > button {
   margin-top: -12px; }
 
-button {
-  font-family: 'Open Sans', sans-serif !important; }
-
 .btn-old-padding {
   padding-bottom: 4px !important;
   padding-top: 4px !important; }
@@ -2431,15 +2406,12 @@ button {
 button.btn-overview, button.btn-server {
   margin: 5px; }
 
-button.btn-server {
-  width: 120px; }
-
 a.button-gui {
   height: auto;
   margin-bottom: 0;
   margin-top: 0;
-  padding-top: 1px;
   padding-bottom: 1px;
+  padding-top: 1px;
   position: absolute;
   right: 2px;
   text-decoration: none !important;
@@ -2480,8 +2452,8 @@ a.button-gui {
       background-color: #8ba142; }
 
 .bottomButtonBar {
-  border-top: 1px solid rgba(104, 103, 102, 0.1);
   background-color: #fff;
+  border-top: 1px solid rgba(104, 103, 102, 0.1);
   height: 30px;
   padding: 10px; }
 
@@ -2496,7 +2468,7 @@ div .tile, div .bigtile {
   -moz-box-shadow: none;
   box-shadow: none;
   background-color: #fff;
-  border: 1px solid #F5F8F0;
+  border: 1px solid #f5f8f0;
   border-radius: 3px;
   font-size: 14px;
   list-style: none;
@@ -2731,8 +2703,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 185px;
       width: 96px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 10px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 10px; }
   .dashboard-small-chart {
     width: 66px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -2902,8 +2874,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 185px;
       width: 216px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 10px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 10px; }
   .dashboard-small-chart {
     width: 146px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3073,8 +3045,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 185px;
       width: 336px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 10px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 10px; }
   .dashboard-small-chart {
     width: 226px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3242,8 +3214,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 220px;
       width: 456px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 11px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 11px; }
   .dashboard-small-chart {
     width: 306px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3408,8 +3380,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 255px;
       width: 576px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 12px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 12px; }
   .dashboard-small-chart {
     width: 386px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3574,8 +3546,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 696px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 13px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 13px; }
   .dashboard-small-chart {
     width: 466px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3740,8 +3712,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 325px;
       width: 816px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 14px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 14px; }
   .dashboard-small-chart {
     width: 546px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3906,8 +3878,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 385px;
       width: 936px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 626px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -4072,8 +4044,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 1056px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 706px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -4238,8 +4210,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 1176px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 786px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -4404,8 +4376,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 1296px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 866px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -4541,8 +4513,8 @@ div .bigtile {
     width: 2428px; } }
 
 div.centralRow {
-  margin-top: 40px;
-  margin-bottom: 40px; }
+  margin-bottom: 40px;
+  margin-top: 40px; }
 
 div.centralContent {
   background-color: transparent;
@@ -4614,7 +4586,7 @@ div.headerDropdown {
   width: auto; }
   div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox {
     display: none; }
-    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox + label.css-label {
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label {
       background-position: 0 0;
       background-repeat: no-repeat;
       display: inline-block;
@@ -4654,14 +4626,14 @@ div.dropdownInner {
     div.dropdownInner ul label {
       color: #000;
       padding-left: 35px; }
-  div.dropdownInner ul li .fa {
-    margin-right: 5px;
-    color: #8c8a89; }
-    div.dropdownInner ul li .fa.fa-square-o {
-      margin-left: 1px;
-      margin-right: 6px; }
-    div.dropdownInner ul li .fa.fa-check-circle-o, div.dropdownInner ul li .fa.fa-check-square-o, div.dropdownInner ul li .fa.fa-dot-circle-o {
-      color: #8aa051; }
+    div.dropdownInner ul li .fa {
+      color: #999;
+      margin-right: 5px; }
+      div.dropdownInner ul li .fa.fa-square-o {
+        margin-left: 1px;
+        margin-right: 6px; }
+      div.dropdownInner ul li .fa.fa-check-circle-o, div.dropdownInner ul li .fa.fa-check-square-o, div.dropdownInner ul li .fa.fa-dot-circle-o {
+        color: #8aa051; }
 
 div.queryline {
   color: #000;
@@ -4699,10 +4671,10 @@ div.dropdownImport {
   background-color: #fff;
   border-radius: 3px;
   display: none;
-  padding-top: 10px;
+  padding-bottom: 5px;
   padding-left: 10px;
   padding-right: 10px;
-  padding-bottom: 5px;
+  padding-top: 10px;
   position: relative; }
   div.dropdownImport input {
     line-height: 0;
@@ -4748,18 +4720,18 @@ input.search-input {
   -webkit-border-radius: 3px;
   border-radius: 3px;
   background-color: #fff !important;
-  border: 1px solid #eeeeee;
+  border: 1px solid rgba(140, 138, 137, 0.25);
   box-shadow: none;
   height: 14px;
   line-height: 18px;
-  margin-top: 6px;
   margin-right: -1px;
-  width: 120px;
+  margin-top: 6px;
   outline: none;
   outline-color: transparent;
-  outline-style: none; }
+  outline-style: none;
+  width: 120px; }
   input.search-input:focus {
-    border-color: #999999;
+    border-color: #999;
     box-shadow: none;
     outline: none;
     outline-color: transparent;
@@ -4768,15 +4740,15 @@ input.search-input {
 .search-field {
   margin-left: 10px; }
   .search-field .fa-search {
-    color: #D2D2D2;
+    color: #c2c2c2;
     font-size: 13pt;
-    opacity: 0.5;
+    opacity: .5;
     position: absolute;
     right: 7px;
     top: 9px; }
     .search-field .fa-search:hover {
-      opacity: 1;
-      cursor: pointer; }
+      cursor: pointer;
+      opacity: 1; }
 
 .search-submit-icon, .gv-search-submit-icon {
   background-image: url('../img/enter_icon.png');
@@ -4797,25 +4769,25 @@ input.search-input {
 
 div.headerBar {
   background-color: #fff;
-  border-radius: 3px;
   border: 1px solid rgba(140, 138, 137, 0.25);
+  border-radius: 3px;
   color: #fff;
   font-size: 16px;
   height: 36px;
-  margin-top: 15px;
   margin-bottom: 5px;
+  margin-top: 15px;
   padding-left: 5px;
   padding-right: 5px;
   position: relative; }
   div.headerBar .infoField {
-    background-color: #f5f8f0;
-    border: 1px solid lightgrey;
+    background-color: #fff;
+    border: 1px solid rgba(140, 138, 137, 0.25);
     border-radius: 3px !important;
-    color: black;
+    color: #000;
     float: right;
     font-size: 12px;
-    margin-top: 7px;
     margin-right: 7px;
+    margin-top: 7px;
     padding-left: 5px;
     padding-right: 5px; }
     div.headerBar .infoField .fa {
@@ -4823,7 +4795,7 @@ div.headerBar {
       margin-left: 5px; }
   div.headerBar input[type=checkbox].css-checkbox {
     display: none; }
-    div.headerBar input[type=checkbox].css-checkbox + label.css-label {
+    div.headerBar input[type=checkbox].css-checkbox label.css-label {
       background-position: 0 0;
       background-repeat: no-repeat;
       cursor: pointer;
@@ -4837,7 +4809,7 @@ div.headerBar {
     background-position: 0 -15px; }
   div.headerBar input[type="radio"] {
     display: none; }
-    div.headerBar input[type="radio"] + label span {
+    div.headerBar input[type="radio"] label span {
       background: url('../img/check_radio_sheet.png') -38px top no-repeat;
       cursor: pointer;
       display: inline-block;
@@ -4848,15 +4820,15 @@ div.headerBar {
   div.headerBar input[type="radio"]:checked + label span {
     background: url('../img/check_radio_sheet.png') -57px top no-repeat; }
 
-div.headerBar a.arangoHeader {
+.headerBar a.arangoHeader {
   color: #000;
   font-size: 13pt;
   font-weight: 100;
-  left: 0px;
+  left: 0;
   position: relative;
   top: 7px; }
 
-div.headerBar > div.headerButtonBar {
+.headerBar > div.headerButtonBar {
   margin: 4px 0;
   margin-bottom: 0 !important; }
 
@@ -4866,20 +4838,20 @@ div.headerBar > div.headerButtonBar {
   border-radius: 0;
   padding: 7px 0; }
   .breadcrumb .disabledBread {
-    font-size: 13pt;
-    font-weight: 100;
     color: #666;
     float: left;
+    font-size: 13pt;
+    font-weight: 100;
     padding-right: 5px;
     position: relative; }
     .breadcrumb .disabledBread i {
       font-size: 10pt;
       margin-left: 10px; }
   .breadcrumb .activeBread {
-    font-size: 13pt;
-    font-weight: 100;
     color: #7da817;
-    float: left; }
+    float: left;
+    font-size: 13pt;
+    font-weight: 100; }
 
 .arangoHeader {
   font-weight: 400; }
@@ -5160,8 +5132,8 @@ svg.clusterChart {
     border: 1px solid #808080; }
   .lineGraph .many .dygraph-legend > span {
     display: none; }
-  .lineGraph .many .dygraph-legend > span.highlight {
-    display: inline; }
+    .lineGraph .many .dygraph-legend > span.highlight {
+      display: inline; }
 
 a.coordinator, a.dbserver {
   color: #000;
@@ -5282,7 +5254,7 @@ div .tile, div .bigtile {
   -moz-box-shadow: none;
   box-shadow: none;
   background-color: #fff;
-  border: 1px solid #F5F8F0;
+  border: 1px solid #f5f8f0;
   border-radius: 3px;
   font-size: 14px;
   list-style: none;
@@ -5484,17 +5456,27 @@ div .bigtile {
   right: 9px;
   top: 6px; }
 
+.dashboard-sub-bar {
+  background-color: #686766;
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
+  color: #fff;
+  height: 24px;
+  line-height: 24px;
+  margin: 0;
+  padding: 0 6px; }
+
 .dashboard-large-chart {
-  margin-right: 12px;
   border: 1px solid rgba(104, 103, 102, 0.1);
-  border-radius: 3px; }
+  border-radius: 3px;
+  margin-right: 12px; }
   .dashboard-large-chart .dashboard-large-chart-inner {
     background-color: #fff;
     border-left: 5px solid #fff;
     border-right: 5px solid #fff;
     border-top: 5px solid #fff;
-    padding-top: 12px;
-    padding-bottom: 10px; }
+    padding-bottom: 10px;
+    padding-top: 12px; }
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       margin-bottom: 0; }
 
@@ -5510,8 +5492,8 @@ div .bigtile {
     padding-top: 5px; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-bar rect {
       fill-opacity: .15;
-      stroke-opacity: 0.8;
-      stroke-width: 0.5px; }
+      stroke-opacity: .8;
+      stroke-width: .5px; }
 
 .dashboard-medium-chart-outer {
   border: 1px solid rgba(104, 103, 102, 0.1);
@@ -5524,8 +5506,8 @@ div .bigtile {
   border-left: 5px solid #fff;
   border-right: 5px solid #fff;
   border-top: 5px solid #fff;
-  padding-top: 10px;
-  margin-bottom: 0; }
+  margin-bottom: 0;
+  padding-top: 10px; }
   .dashboard-medium-chart:first-child {
     margin-right: 12px; }
   .dashboard-medium-chart .dashboard-interior-chart {
@@ -5557,12 +5539,11 @@ div .bigtile {
   border-radius: 3px; }
   .dashboard-tendency-container .dashboard-tendency-chart {
     background-color: #fff;
-    border-top-left-radius: 3px;
-    border-top-right-radius: 3px;
-    border-top: 5px solid #fff;
     border-left: 5px solid #fff;
     border-right: 5px solid #fff;
     border-top: 5px solid #fff;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
     padding-bottom: 5px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency {
       background-color: #fff;
@@ -5597,20 +5578,10 @@ div .bigtile {
     .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart .nv-bar rect {
       fill-opacity: .15;
       stroke-opacity: .8;
-      stroke-width: 0.5px; }
+      stroke-width: .5px; }
 
 .dashboard-legend .dashboard-legend-inner {
   padding: 0 5px 5px 0; }
-
-.dashboard-sub-bar {
-  background-color: #686766;
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
-  color: #fff;
-  height: 24px;
-  line-height: 24px;
-  margin: 0;
-  padding: 0 6px; }
 
 .dashboard-spacer {
   margin: 0 12px; }
@@ -5698,8 +5669,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 185px;
       width: 96px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 10px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 10px; }
   .dashboard-small-chart {
     width: 66px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -5869,8 +5840,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 185px;
       width: 216px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 10px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 10px; }
   .dashboard-small-chart {
     width: 146px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -6040,8 +6011,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 185px;
       width: 336px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 10px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 10px; }
   .dashboard-small-chart {
     width: 226px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -6209,8 +6180,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 220px;
       width: 456px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 11px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 11px; }
   .dashboard-small-chart {
     width: 306px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -6375,8 +6346,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 255px;
       width: 576px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 12px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 12px; }
   .dashboard-small-chart {
     width: 386px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -6541,8 +6512,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 696px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 13px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 13px; }
   .dashboard-small-chart {
     width: 466px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -6707,8 +6678,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 325px;
       width: 816px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 14px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 14px; }
   .dashboard-small-chart {
     width: 546px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -6873,8 +6844,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 385px;
       width: 936px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 626px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -7039,8 +7010,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 1056px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 706px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -7205,8 +7176,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 1176px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 786px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -7371,8 +7342,8 @@ div .bigtile {
     .dashboard-medium-chart #clusterGraphs svg {
       height: 285px;
       width: 1296px; }
-    .dashboard-medium-chart #clusterGraphs svg text {
-      font-size: 15px; }
+      .dashboard-medium-chart #clusterGraphs svg text {
+        font-size: 15px; }
   .dashboard-small-chart {
     width: 866px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -7508,8 +7479,8 @@ div .bigtile {
     width: 2428px; } }
 
 div.centralRow {
-  margin-top: 40px;
-  margin-bottom: 40px; }
+  margin-bottom: 40px;
+  margin-top: 40px; }
 
 div.centralContent {
   background-color: transparent;

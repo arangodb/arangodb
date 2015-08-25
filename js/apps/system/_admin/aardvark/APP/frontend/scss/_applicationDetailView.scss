@@ -28,9 +28,9 @@
 
       .header_left {
         left: 170px;
+        padding-top: 1px;
         position: absolute;
         width: 120px;
-        padding-top: 1px;
 
         input.delete,
         input.upgrade,
@@ -71,26 +71,27 @@
           }
 
           &:after {
+            clear: both;
             content: '';
             display: table;
-            clear: both;
           }
         }
       }
 
       .app-warning {
-        position: absolute;
-        top: 0;
-        right: 20px;
         @include border-radius(6px);
+        background: $c-negative-bg;
         border: 1px solid $c-negative-hover;
         color: $c-negative;
-        background: $c-negative-bg;
         padding: 4px 8px;
+        position: absolute;
+        right: 20px;
+        top: 0;
 
-        h4, p {
-          margin: 0;
+        h4,
+        p {
           font-size: 1em;
+          margin: 0;
         }
       }
     }
@@ -105,14 +106,14 @@
     }
 
     .readme {
-      border: 1px solid black;
-      background: white;
+      background: $c-white;
+      border: 1px solid $c-black;
       padding: 1em 2em;
     }
   }
 
   aside.meta {
-    background-color: #fff; 
+    background-color: $c-white;
     border: 1px solid $c-content-border;
     border-radius: 3px;
     clear: right;
@@ -120,9 +121,9 @@
     width: 198px;
 
     dl {
+      margin-top: 0;
       padding-left: 7px;
       padding-top: 5px;
-      margin-top: 0;
     }
   }
 }
@@ -130,12 +131,13 @@
 
 .tests-result {
   .stack {
-    border-color: #f04;
-    margin: 5px 0;
-    line-height: 1.5;
+    border-color: $c-negative;
+    color: $c-negative;
     font-size: 12px;
-    color: #802;
+    line-height: 1.5;
+    margin: 5px 0;
   }
+
   &-stats {
     .pass,
     .fail,
@@ -143,6 +145,7 @@
       padding: 0 2px;
     }
   }
+
   &-spec {
     margin-bottom: 0;
 
@@ -150,25 +153,29 @@
       & & {
         margin-left: 20px;
       }
+
       dd {
-        margin-left: 0;
         margin-bottom: 20px;
+        margin-left: 0;
       }
     }
+
     &-tests {
       margin-left: 20px;
     }
+
     &-test {
       &-title {
         padding-left: 20px;
 
         .fa {
-          position: absolute;
+          line-height: 18px;
           margin-left: -20px;
           margin-top: 2px;
-          line-height: 18px;
+          position: absolute;
 
         }
+
         .fa-circle {
           font-size: 50%;
           margin-left: -16px;
@@ -176,13 +183,17 @@
       }
     }
   }
+
   .pass {
-    color: #4c0;
+    color: $c-positive;
   }
+
   .fail {
-    color: #f04;
+    color: $c-negative;
   }
+
   .pending {
-    color: #888;
+    color: $c-darker-grey;
   }
+
 }

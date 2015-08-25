@@ -14737,7 +14737,7 @@ nv.models.stackedAreaChart = function() {
            }
            else {
              if ($(element).find('i').hasClass('css-round-label')) {
-               $(element).find('i').addClass('fa-square-o');
+               $(element).find('i').addClass('fa-circle-o');
              }
              else {
                $(element).find('i').addClass('fa-square-o');

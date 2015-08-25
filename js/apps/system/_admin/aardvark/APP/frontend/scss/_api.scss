@@ -1,61 +1,78 @@
 .swagger-ui-wrap {
   background-color: $c-white;
   border-radius: 3px;
-}
 
-.swagger-ui-wrap #resources li.resource {
-  background-color: $c-api-docs-bg;
+  #resources li.resource {
+    background-color: $c-api-docs-bg;
+  }
 }
 
 .centralContent {
   .api-actions {
     margin: 0 !important;
     padding: 0;
-  }
 
-  .api-actions .container {
-    margin-bottom: 0 !important;
-    margin-left: 5px !important;
-    margin-right: 5px !important;
-    margin-top: 0 !important;
-    padding-bottom: 10px !important;
-    padding-top: 13px !important;
-  }
+    .container {
+      margin-bottom: 0 !important;
+      margin-left: 5px !important;
+      margin-right: 5px !important;
+      margin-top: 0 !important;
+      padding-bottom: 10px !important;
+      padding-top: 13px !important;
+    }
 
-  .api-actions .resource {
-    border-bottom: 0 !important;
-    padding-left: 5px !important;
-  }
+    .resource {
+      border-bottom: 0 !important;
+      padding-left: 5px !important;
 
-  .api-actions .resource .heading h2 a {
-    color: $c-black !important;
-    font-weight: 300 !important;
-  }
+      .heading > .options {
+        margin: 11px 10px 0 0 !important;
+      }
 
-  .api-actions .active .heading h2 a {
-    color: $c-black !important;
-  }
+      .heading h2 a {
+        color: $c-black !important;
+        font-weight: 300 !important;
+      }
+    }
 
-  .api-actions .endpoints {
-    margin-right: 5px !important;
-  }
+    .active .heading h2 a {
+      color: $c-black !important;
+    }
 
-  .api-actions .endpoints .endpoint:last-child {
-    padding-bottom: 5px !important;
+    .endpoint .operations .content {
+      margin: 0 !important;
+
+      h4 {
+        font-weight: 700 !important;
+      }
+    }
+
+    .endpoints {
+      margin-right: 5px !important;
+
+      .endpoint:last-child {
+        padding-bottom: 5px !important;
+      }
+    }
+
+    input[type="button"] {
+      background: none repeat scroll 0 0 $c-api-docs-bg-input !important;
+      border: medium none !important;
+      box-shadow: none !important;
+      color: $c-white !important;
+      float: right !important;
+      font-size: 14px !important;
+      font-weight: 300 !important;
+      margin-top: 10px !important;
+      padding: 8px 16px !important;
+    }
+
   }
 
   .api-actions .endpoint .operations .heading,
   .api-actions .endpoint .operations .content {
     border-radius: 0 !important;
     font-weight: 300 !important;
-  }
-
-  .api-actions .endpoint .operations .content {
-    margin: 0 !important;
-  }
-
-  .api-actions .endpoint .operations .content h4 {
-    font-weight: 700 !important;
   }
 
   .api-actions .toggleOperation,
@@ -67,22 +84,6 @@
   .api-actions em,
   .api-actions strong {
     font-weight: 400 !important;
-  }
-
-  .api-actions input[type="button"] {
-    background: none repeat scroll 0 0 $c-api-docs-bg-input !important;
-    border: medium none !important;
-    box-shadow: none !important;
-    color: $c-white !important;
-    float: right !important;
-    font-size: 14px !important;
-    font-weight: 300 !important;
-    margin-top: 10px !important;
-    padding: 8px 16px !important;
-  }
-
-  .api-actions .resource > .heading > .options {
-    margin: 11px 10px 0 0 !important;
   }
 }
 

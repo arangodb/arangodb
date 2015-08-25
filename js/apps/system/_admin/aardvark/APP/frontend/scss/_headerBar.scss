@@ -1,19 +1,19 @@
 input.search-input {
   @include border-radius(3px);
   background-color: $c-white !important;
-  border: 1px solid #eeeeee;
+  border: 1px solid $c-content-border;
   box-shadow: none;
   height: 14px;
   line-height: 18px;
-  margin-top: 6px;
   margin-right: -1px;
-  width: 120px;
+  margin-top: 6px;
   outline: none;
-    outline-color: $c-transp;
-    outline-style: none;
+  outline-color: $c-transp;
+  outline-style: none;
+  width: 120px;
 
   &:focus {
-    border-color: #999999;
+    border-color: $c-dark-grey;
     box-shadow: none;
     outline: none;
     outline-color: $c-transp;
@@ -27,16 +27,16 @@ input.search-input {
   margin-left: 10px;
 
   .fa-search {
-    color: #D2D2D2;
+    color: $c-c2grey;
     font-size: 13pt;
-    opacity: 0.5;
+    opacity: .5;
     position: absolute;
     right: 7px;
     top: 9px;
 
     &:hover {
-      opacity: 1;
       cursor: pointer;
+      opacity: 1;
     }
   }
 
@@ -72,26 +72,26 @@ input.search-input {
 // The bar on top of each page
 div.headerBar {
   background-color: $c-white;
+  border: 1px solid rgba(140, 138, 137, .25);
   border-radius: 3px;
-  border: 1px solid rgba(140, 138, 137, 0.25);
   color: $c-white;
   font-size: 16px;
   height: 36px;
-  margin-top: 15px;
   margin-bottom: 5px;
+  margin-top: 15px;
   padding-left: 5px;
   padding-right: 5px;
   position: relative;
 
   .infoField {
-    background-color: #f5f8f0;
-    border: 1px solid lightgrey;
+    background-color: $c-white;
+    border: 1px solid rgba(140, 138, 137, .25);
     border-radius: 3px !important;
-    color: black;
+    color: $c-black;
     float: right;
     font-size: 12px;
-    margin-top: 7px;
     margin-right: 7px;
+    margin-top: 7px;
     padding-left: 5px;
     padding-right: 5px;
 
@@ -105,7 +105,7 @@ div.headerBar {
   input[type=checkbox].css-checkbox {
     display: none;
 
-    & + label.css-label {
+    label.css-label {
       background-position: 0 0;
       background-repeat: no-repeat;
       cursor: pointer;
@@ -125,7 +125,7 @@ div.headerBar {
   input[type="radio"] {
     display: none;
 
-    & + label span {
+    label span {
       background: url('../img/check_radio_sheet.png') -38px top no-repeat;
       cursor: pointer;
       display: inline-block;
@@ -145,26 +145,23 @@ div.headerBar {
 
 // The title of the page
 
-div.headerBar a.arangoHeader {
+.headerBar a.arangoHeader {
   color: $c-black;
   font-size: 13pt;
   font-weight: 100;
-  left: 0px;
+  left: 0;
   position: relative;
   top: 7px;
 }
 
 // The buttons on the right side
 
-div.headerBar > div.headerButtonBar {
+.headerBar > div.headerButtonBar {
   @extend %clear-float;
   @extend %pull-right;
   margin: 4px 0;
   margin-bottom: 0 !important;
 }
-
-// Breadcrumbs on the left side 
-
 
 .breadcrumb {
   background: transparent;
@@ -174,10 +171,10 @@ div.headerBar > div.headerButtonBar {
 
   // Disabled breadcrumb
   .disabledBread {
-    font-size: 13pt;
-    font-weight: 100;
     color: $c-darker-grey;
     float: left;
+    font-size: 13pt;
+    font-weight: 100;
     padding-right: 5px;
     position: relative;
 
@@ -189,10 +186,10 @@ div.headerBar > div.headerButtonBar {
   }
 
   .activeBread {
-    font-size: 13pt;
-    font-weight: 100;
     color: $c-breadcrumb-a-active-bread;
     float: left;
+    font-size: 13pt;
+    font-weight: 100;
   }
 }
 

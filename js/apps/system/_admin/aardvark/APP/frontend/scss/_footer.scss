@@ -14,11 +14,11 @@ footer.footer {
   height: 40px;
 
   p {
+    font-size: 10pt;
+    font-weight: 100;
     margin-bottom: 0;
     padding-bottom: 10px;
     padding-top: 10px;
-    font-weight: 100;
-    font-size: 10pt;
   }
 }
 
@@ -37,47 +37,49 @@ div.footer-left {
     margin-top: 5px;
 
     a {
-      width: 25px;
       display: block;
-      height: 25px;
       float: left;
+      height: 25px;
+      width: 25px;
     }
 
     p {
-      font-size: 12pt;
       background: $c-white;
-      border: 1px solid rgba(104, 103, 102, 0.1);
+      border: 1px solid rgba(104, 103, 102, .1);
       border-radius: 20px;
       height: 25px;
-      width: 25px;
-      padding: 0;
       margin-right: 10px;
+      padding: 0;
+      width: 25px;
     }
 
     p:hover {
-      cursor: pointer;
       background: $c-new-grey;
+      cursor: pointer;
 
-      i {
+      i {
         color: $c-white;
       }
     }
 
     i {
       color: $c-black;
-      position: absolute;
       margin-top: 4px;
+      position: absolute;
 
       &.fa-twitter {
         margin-left: -7px;
       }
+
       &.fa-envelope {
         margin-left: -20px;
       }
+
       &.fa-google {
-        margin-top: 6px;
         margin-left: -18px;
+        margin-top: 6px;
       }
+
       &.fa-stack-overflow {
         margin-left: -18px;
       }
@@ -95,15 +97,15 @@ div.footer-center {
 
   i {
     background-color: $c-white;
+    border: 1px solid rgba(104, 103, 102, .1);
     border-radius: 20px;
-    border: 1px solid rgba(104, 103, 102, 0.1);
-    width: 20px;
     padding: 6px 3px 6px 2px;
+    width: 20px;
   }
 
   i:hover {
-    color: $c-white;
     background-color: $c-new-grey;
+    color: $c-white;
   }
 
   p {

@@ -11,10 +11,10 @@ div.demo-dropdown-menu {
 }
 
 #flightQuerySelect.query-select {
-  height: 25px;
-  margin-top: 6px;
   font-size: 13px;
+  height: 25px;
   line-height: 1.1em;
+  margin-top: 6px;
 }
 
 #demo-mapdiv {
@@ -22,17 +22,17 @@ div.demo-dropdown-menu {
 }
 
 #demo-mapdiv-info {
+  background-color: rgba(255, 255, 255, .75);
+  border: 1.5px solid $c-darker-grey;
+  border-radius: 3px;
+  bottom: 20px;
+  font-size: 11px;
+  height: 150px;
+  line-height: 1.3em;
+  padding: 6px 6px 3px;
   position: absolute;
   right: 20px;
   width: 225px;
-  height: 150px;
-  bottom: 20px;
-  border: 1.5px solid #222;
-  border-radius: 3px;
-  background-color: rgba(255,255,255, 0.75);
-  padding: 6px 6px 3px 6px;
-  font-size: 11px;
-  line-height: 1.3em;
 }
 
 .amcharts-balloon-div {
