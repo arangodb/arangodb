@@ -2904,7 +2904,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   auto primaryIndex = document->primaryIndex()->internals();
 
   if ((n > 1) && (primaryIndex->_nrUsed > NotificationSizeThreshold)) {
-    LOG_ACTION("fill-indexes-document-collection { collection: %s/%s }, n: %d", 
+    LOG_ACTION("fill-indexes-document-collection { collection: %s/%s }, indexes: %d", 
                document->_vocbase->_name,
                document->_info._name,
                (int) (n - 1));
@@ -2974,7 +2974,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   }
     
   LOG_TIMER((TRI_microtime() - start),
-            "fill-indexes-document-collection { collection: %s/%s }, n: %d", 
+            "fill-indexes-document-collection { collection: %s/%s }, indexes: %d", 
             document->_vocbase->_name,
             document->_info._name, 
             (int) (n - 1)); 
