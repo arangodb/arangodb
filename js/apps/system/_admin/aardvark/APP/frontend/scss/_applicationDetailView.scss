@@ -9,6 +9,7 @@
       position: relative;
 
       div.header-icon-container {
+        border-radius: 3px;
         height: 160px;
         left: 0;
         margin: 0 0 4px;
@@ -16,11 +17,13 @@
         width: 160px;
 
         img.icon {
+          background-color: $c-white;
           border: 1px solid $c-content-border;
           border-radius: 3px;
           height: auto;
           max-height: 160px;
           max-width: 160px;
+          padding: 5px;
           width: auto;
         }
 
@@ -35,7 +38,7 @@
         input.delete,
         input.upgrade,
         input.switch-mode {
-          margin-top: (160px - 4 * 30px) / 3;
+          margin-top: (170px - 4 * 30px) / 3;
         }
 
         input {
@@ -49,6 +52,7 @@
 
         input {
           margin-left: 0;
+          margin-top: -4px;
         }
 
         .header_line {
@@ -57,14 +61,19 @@
             padding-right: 5px;
           }
 
+          .license {
+            margin-left: 20px;
+          }
+
           .license,
           .version {
             @include border-radius(3px);
 
             background-color: $c-white;
-            border: 1px solid $c-editor-toolbar;
+            border: 1px solid $c-content-border;
             color: $c-editor-toolbar;
             font-size: .6em;
+            font-weight: 400;
             padding: 0 8px 2px;
             position: relative;
             top: -2px;
@@ -102,6 +111,7 @@
         border-radius: 3px;
         height: 600px;
         width: 100%;
+
       }
     }
 
@@ -118,7 +128,10 @@
     border-radius: 3px;
     clear: right;
     float: left;
-    width: 198px;
+    margin-top: 12px;
+    position: relative;
+    right: -10px;
+    width: 188px;
 
     dl {
       margin-top: 0;
