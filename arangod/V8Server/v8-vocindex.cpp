@@ -339,7 +339,7 @@ static int EnhanceJsonIndexCap (v8::Isolate* isolate,
   if (obj->Has(TRI_V8_ASCII_STRING("size")) && obj->Get(TRI_V8_ASCII_STRING("size"))->IsNumber()) {
     int64_t value = TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("size")));
 
-    if (value < 0 || value > UINT32_MAX) {
+    if (value < 0 || value > INT64_MAX) {
       return TRI_ERROR_BAD_PARAMETER;
     }
     count = (size_t) value;

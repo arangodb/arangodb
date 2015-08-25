@@ -1680,7 +1680,7 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
   trx.lockRead();
 
   TRI_document_collection_t* document = collection->_collection;
-  TRI_doc_collection_info_t* info = document->figures(document);
+  TRI_doc_collection_info_t* info = document->figures();
 
   trx.finish(res);
   // READ-LOCK end
@@ -4247,12 +4247,12 @@ static void JS_CountVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args)
   // READ-LOCK start
   trx.lockRead();
 
-  const TRI_voc_size_t s = document->size(document);
+  uint64_t const s = document->size();
 
   trx.finish(res);
   // READ-LOCK end
 
-  TRI_V8_RETURN(v8::Number::New(isolate, (double) s));
+  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(s)));
   TRI_V8_TRY_CATCH_END
 }
 

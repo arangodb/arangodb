@@ -434,17 +434,16 @@ public:
   // the collection's indexes that support cleanup
   size_t                                 _cleanupIndexes;
 
-  int (*beginRead) (struct TRI_document_collection_t*);
-  int (*endRead) (struct TRI_document_collection_t*);
+  int beginRead ();
+  int endRead ();
+  int beginWrite ();
+  int endWrite ();
+  int beginReadTimed (uint64_t, uint64_t);
+  int beginWriteTimed (uint64_t, uint64_t);
 
-  int (*beginWrite) (struct TRI_document_collection_t*);
-  int (*endWrite) (struct TRI_document_collection_t*);
+  TRI_doc_collection_info_t* figures ();
 
-  int (*beginReadTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
-  int (*beginWriteTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
-
-  TRI_doc_collection_info_t* (*figures) (struct TRI_document_collection_t* collection);
-  TRI_voc_size_t (*size) (struct TRI_document_collection_t* collection);
+  uint64_t size ();
 
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_t*);

@@ -400,10 +400,10 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
             "read-locking collection %llu",
             (unsigned long long) trxCollection->_cid);
     if (trx->_timeout == 0) {
-      res = document->beginRead(document);
+      res = document->beginRead();
     }
     else {
-      res = document->beginReadTimed(document, trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+      res = document->beginReadTimed(trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
     }
   }
   else {
@@ -412,10 +412,10 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
             "write-locking collection %llu",
             (unsigned long long) trxCollection->_cid);
     if (trx->_timeout == 0) {
-      res = document->beginWrite(document);
+      res = document->beginWrite();
     }
     else {
-      res = document->beginWriteTimed(document, trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+      res = document->beginWriteTimed(trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
     }
   }
 
@@ -482,14 +482,14 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
             nestingLevel,
             "read-unlocking collection %llu",
             (unsigned long long) trxCollection->_cid);
-    document->endRead(document);
+    document->endRead();
   }
   else {
     LOG_TRX(trxCollection->_transaction,
             nestingLevel,
             "write-unlocking collection %llu",
             (unsigned long long) trxCollection->_cid);
-    document->endWrite(document);
+    document->endWrite();
   }
 
   trxCollection->_lockType = TRI_TRANSACTION_NONE;

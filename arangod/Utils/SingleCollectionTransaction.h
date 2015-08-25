@@ -250,9 +250,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int read (std::vector<TRI_doc_mptr_copy_t>& docs,
-                  TRI_voc_ssize_t skip,
-                  TRI_voc_size_t limit,
-                  uint32_t* total) {
+                  int64_t skip,
+                  uint64_t limit,
+                  uint64_t* total) {
 
           return this->readSlice(this->trxCollection(), docs, skip, limit, total);
         }
@@ -272,11 +272,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readOffset (std::vector<TRI_doc_mptr_copy_t>& docs,
-                  TRI_voc_size_t& internalSkip,
-                  TRI_voc_size_t batchSize,
-                  TRI_voc_ssize_t skip,
-                  TRI_voc_size_t limit,
-                  uint32_t* total) {
+                  uint64_t& internalSkip,
+                  uint64_t batchSize,
+                  int64_t skip,
+                  uint64_t limit,
+                  uint64_t* total) {
 
           return this->readIncremental(this->trxCollection(), docs, internalSkip, batchSize, skip, limit, total);
         }
@@ -289,7 +289,7 @@ namespace triagens {
         int readPartition (std::vector<TRI_doc_mptr_copy_t>& docs,
                   uint64_t partitionId,
                   uint64_t numberOfPartitions,
-                  uint32_t* total) {
+                  uint64_t* total) {
 
           return this->readNth(this->trxCollection(), docs, partitionId, numberOfPartitions, total);
         }
