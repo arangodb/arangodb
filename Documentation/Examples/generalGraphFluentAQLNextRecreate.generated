@@ -5,7 +5,7 @@ arangosh&gt; query.next();
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1467400156"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1467816710"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
 }
 arangosh&gt; query.edges();
@@ -16,7 +16,7 @@ arangosh&gt; query.next();
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/charlyAndDiana"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlyAndDiana"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1468186588"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1468603142"</span>, 
   <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
   <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 

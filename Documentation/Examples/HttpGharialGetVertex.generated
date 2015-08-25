@@ -2,7 +2,7 @@ shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/gh
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json
-etag: <span class="hljs-number">550748124</span>
+etag: <span class="hljs-number">554375942</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -10,7 +10,7 @@ etag: <span class="hljs-number">550748124</span>
   <span class="hljs-string">"vertex"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"550748124"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"554375942"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   } 
 }

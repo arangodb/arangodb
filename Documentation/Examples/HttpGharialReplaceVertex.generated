@@ -7,15 +7,15 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json
-etag: <span class="hljs-number">603242460</span>
+etag: <span class="hljs-number">603200262</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span>, 
   <span class="hljs-string">"vertex"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"603242460"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"601079772"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"603200262"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"601037574"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span> 
   } 
 }

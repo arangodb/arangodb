@@ -10,7 +10,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"lastProcessedContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"lastAvailableContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"progress"</span> : { 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-08-23T11:16:10Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-08-25T17:56:15Z"</span>, 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"fetching master state information"</span>, 
       <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">1</span> 
     }, 
@@ -19,15 +19,15 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"totalOperationsExcluded"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"lastError"</span> : { 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-08-23T11:16:10Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-08-25T17:56:15Z"</span>, 
       <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"could not connect to master at tcp://127.0.0.1:8529: Could not connect to 'tcp://127.0.0.1:8529' 'connect() failed with #61 - Connection refused'"</span>, 
       <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1412</span> 
     }, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-08-23T11:16:10Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-08-25T17:56:15Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.6.6"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"268202028473735"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.6.7"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"91326619926244"</span> 
   }, 
   <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:8529"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 

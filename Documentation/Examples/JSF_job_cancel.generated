@@ -6,7 +6,7 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: text/plain; charset=utf-<span class="hljs-number">8</span>
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">605536220</span>
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">605494022</span>
 
 shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/pending</span>
 
@@ -14,9 +14,9 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> O
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 [ 
-  <span class="hljs-string">"605536220"</span> 
+  <span class="hljs-string">"605494022"</span> 
 ]
-shell&gt; curl -X PUT --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/605536220/cancel</span>
+shell&gt; curl -X PUT --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/605494022/cancel</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
@@ -30,5 +30,5 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> O
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 [ 
-  <span class="hljs-string">"605536220"</span> 
+  <span class="hljs-string">"605494022"</span> 
 ]

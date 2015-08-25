@@ -1,10 +1,10 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-follow?from=842711004&amp;chunkSize=400</span>
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-follow?from=840899334&amp;chunkSize=400</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/x-arango-dump; charset=utf-<span class="hljs-number">8</span>
 x-arango-replication-active: <span class="hljs-literal">true</span>
 x-arango-replication-checkmore: <span class="hljs-literal">true</span>
-x-arango-replication-lastincluded: <span class="hljs-number">843300828</span>
-x-arango-replication-lasttick: <span class="hljs-number">844087260</span>
+x-arango-replication-lastincluded: <span class="hljs-number">841751302</span>
+x-arango-replication-lasttick: <span class="hljs-number">844045062</span>
 
-<span class="hljs-string">"{\"tick\":\"842776540\",\"type\":2001,\"database\":\"114652\",\"cid\":\"840875996\"}\n{\"tick\":\"842842076\",\"type\":2001,\"database\":\"114652\",\"cid\":\"841859036\"}\n{\"tick\":\"842973148\",\"type\":2000,\"database\":\"114652\",\"cid\":\"842907612\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"842907612\",\"indexBuckets\":1,\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"843300828\",\"type\":2300,\"database\":\"114652\",\"cid\":\"842907612\",\"tid\":\"0\",\"key\":\"p1\",\"rev\":\"843235292\",\"data\":{\"_key\":\"p1\",\"_rev\":\"843235292\",\"name\":\"flux compensator\"}}\n"</span>
+<span class="hljs-string">"{\"tick\":\"841161478\",\"type\":2100,\"database\":\"72454\",\"cid\":\"840833798\",\"id\":\"841095942\",\"index\":{\"id\":\"841095942\",\"type\":\"hash\",\"fields\":[\"name\"],\"selectivityEstimate\":1,\"unique\":false,\"sparse\":false}}\n{\"tick\":\"841489158\",\"type\":2100,\"database\":\"72454\",\"cid\":\"840833798\",\"id\":\"841423622\",\"index\":{\"id\":\"841423622\",\"type\":\"skiplist\",\"fields\":[\"a\",\"b\"],\"unique\":true,\"sparse\":false}}\n{\"tick\":\"841751302\",\"type\":2100,\"database\":\"72454\",\"cid\":\"840833798\",\"id\":\"841620230\",\"index\":{\"id\":\"841620230\",\"type\":\"cap\",\"size\":500,\"byteSize\":0,\"unique\":false}}\n"</span>
