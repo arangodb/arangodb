@@ -79,7 +79,6 @@
     "ERROR_ARANGO_ILLEGAL_NAME"    : { "code" : 1208, "message" : "illegal name" },
     "ERROR_ARANGO_NO_INDEX"        : { "code" : 1209, "message" : "no suitable index known" },
     "ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED" : { "code" : 1210, "message" : "unique constraint violated" },
-    "ERROR_ARANGO_GEO_INDEX_VIOLATED" : { "code" : 1211, "message" : "geo index violated" },
     "ERROR_ARANGO_INDEX_NOT_FOUND" : { "code" : 1212, "message" : "index not found" },
     "ERROR_ARANGO_CROSS_COLLECTION_REQUEST" : { "code" : 1213, "message" : "cross collection request not allowed" },
     "ERROR_ARANGO_INDEX_HANDLE_BAD" : { "code" : 1214, "message" : "illegal index handle" },
