@@ -135,6 +135,258 @@ TRI_document_collection_t::~TRI_document_collection_t () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read locks a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::beginRead () {
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_info._name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginRead blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // LOCKING-DEBUG
+  // std::cout << "BeginRead: " << document->_info._name << std::endl;
+  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read unlocks a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::endRead () {
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_info._name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "EndRead blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // LOCKING-DEBUG
+  // std::cout << "EndRead: " << document->_info._name << std::endl;
+  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write locks a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::beginWrite () {
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_info._name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginWrite blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // LOCKING_DEBUG
+  // std::cout << "BeginWrite: " << document->_info._name << std::endl;
+  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write unlocks a collection
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::endWrite () {
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_info._name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "EndWrite blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // LOCKING-DEBUG
+  // std::cout << "EndWrite: " << document->_info._name << std::endl;
+  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read locks a collection, with a timeout (in µseconds)
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
+                                               uint64_t sleepPeriod) {
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_info._name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginReadTimed blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  uint64_t waited = 0;
+
+  // LOCKING-DEBUG
+  // std::cout << "BeginReadTimed: " << document->_info._name << std::endl;
+  while (! TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this)) {
+#ifdef _WIN32
+    usleep((unsigned long) sleepPeriod);
+#else
+    usleep((useconds_t) sleepPeriod);
+#endif
+
+    waited += sleepPeriod;
+
+    if (waited > timeout) {
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write locks a collection, with a timeout
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
+                                                uint64_t sleepPeriod) {
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(_info._name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginWriteTimed blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  uint64_t waited = 0;
+
+  // LOCKING-DEBUG
+  // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
+  while (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this)) {
+#ifdef _WIN32
+    usleep((unsigned long) sleepPeriod);
+#else
+    usleep((useconds_t) sleepPeriod);
+#endif
+
+    waited += sleepPeriod;
+
+    if (waited > timeout) {
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of documents in collection
+///
+/// the caller must have read-locked the collection!
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_document_collection_t::size () {
+  return static_cast<uint64_t>(_numberDocuments);
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the collection
+/// note: the collection lock must be held when calling this function
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_doc_collection_info_t* TRI_document_collection_t::figures () {
+  // prefill with 0's to init counters
+  TRI_doc_collection_info_t* info = static_cast<TRI_doc_collection_info_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true));
+
+  if (info == nullptr) {
+    return nullptr;
+  }
+
+  for (size_t i = 0;  i < _datafileInfo._nrAlloc;  ++i) {
+    auto d = static_cast<TRI_doc_datafile_info_t const*>(_datafileInfo._table[i]);
+
+    if (d != nullptr) {
+      info->_numberAlive        += d->_numberAlive;
+      info->_numberDead         += d->_numberDead;
+      info->_numberDeletion     += d->_numberDeletion;
+      info->_numberShapes       += d->_numberShapes;
+      info->_numberAttributes   += d->_numberAttributes;
+      info->_numberTransactions += d->_numberTransactions;
+
+      info->_sizeAlive          += d->_sizeAlive;
+      info->_sizeDead           += d->_sizeDead;
+      info->_sizeShapes         += d->_sizeShapes;
+      info->_sizeAttributes     += d->_sizeAttributes;
+      info->_sizeTransactions   += d->_sizeTransactions;
+    }
+  }
+
+  // add the file sizes for datafiles and journals
+  TRI_collection_t* base = this;
+
+  for (size_t i = 0; i < base->_datafiles._length; ++i) {
+    auto df = static_cast<TRI_datafile_t const*>(base->_datafiles._buffer[i]);
+
+    info->_datafileSize += (int64_t) df->_maximalSize;
+    ++info->_numberDatafiles;
+  }
+
+  for (size_t i = 0; i < base->_journals._length; ++i) {
+    auto df = static_cast<TRI_datafile_t const*>(base->_journals._buffer[i]);
+
+    info->_journalfileSize += (int64_t) df->_maximalSize;
+    ++info->_numberJournalfiles;
+  }
+
+  for (size_t i = 0; i < base->_compactors._length; ++i) {
+    auto df = static_cast<TRI_datafile_t const*>(base->_compactors._buffer[i]);
+
+    info->_compactorfileSize += (int64_t) df->_maximalSize;
+    ++info->_numberCompactorfiles;
+  }
+
+  // add index information
+  info->_numberIndexes = 0;
+  info->_sizeIndexes   = 0;
+
+  if (_headersPtr != nullptr) {
+    info->_sizeIndexes += static_cast<int64_t>(_headersPtr->memory());
+  }
+
+  for (auto& idx : allIndexes()) {
+    info->_sizeIndexes += idx->memory();
+    info->_numberIndexes++;
+  }
+
+  // get information about shape files (DEPRECATED, thus hard-coded to 0)
+  info->_shapefileSize    = 0;
+  info->_numberShapefiles = 0;
+
+  info->_uncollectedLogfileEntries = _uncollectedLogfileEntries;
+  info->_tickMax = _tickMax;
+
+  return info;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add an index to the collection
 /// note: this may throw. it's the caller's responsibility to catch and clean up
 ////////////////////////////////////////////////////////////////////////////////
@@ -341,16 +593,6 @@ static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void co
 
 static void FreeDatafileInfo (TRI_doc_datafile_info_t* dfi) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, dfi);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief size of a primary collection
-///
-/// the caller must have read-locked the collection!
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_voc_size_t Count (TRI_document_collection_t* document) {
-  return (TRI_voc_size_t) document->_numberDocuments;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -967,174 +1209,6 @@ static int CloneMarkerNoLegend (triagens::wal::Marker*& marker,
   // invalid marker type
   return TRI_ERROR_INTERNAL;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read locks a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int BeginRead (TRI_document_collection_t* document) {
-  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(document->_info._name);
-    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
-    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginRead blocked: " << document->_info._name << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  // LOCKING-DEBUG
-  // std::cout << "BeginRead: " << document->_info._name << std::endl;
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read unlocks a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int EndRead (TRI_document_collection_t* document) {
-  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(document->_info._name);
-    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
-    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "EndRead blocked: " << document->_info._name << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  // LOCKING-DEBUG
-  // std::cout << "EndRead: " << document->_info._name << std::endl;
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write locks a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int BeginWrite (TRI_document_collection_t* document) {
-  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(document->_info._name);
-    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
-    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginWrite blocked: " << document->_info._name << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  // LOCKING_DEBUG
-  // std::cout << "BeginWrite: " << document->_info._name << std::endl;
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write unlocks a collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int EndWrite (TRI_document_collection_t* document) {
-  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(document->_info._name);
-    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
-    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "EndWrite blocked: " << document->_info._name << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  // LOCKING-DEBUG
-  // std::cout << "EndWrite: " << document->_info._name << std::endl;
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read locks a collection, with a timeout (in µseconds)
-////////////////////////////////////////////////////////////////////////////////
-
-static int BeginReadTimed (TRI_document_collection_t* document,
-                           uint64_t timeout,
-                           uint64_t sleepPeriod) {
-  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(document->_info._name);
-    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
-    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginReadTimed blocked: " << document->_info._name << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  uint64_t waited = 0;
-
-  // LOCKING-DEBUG
-  // std::cout << "BeginReadTimed: " << document->_info._name << std::endl;
-  while (! TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document)) {
-#ifdef _WIN32
-    usleep((unsigned long) sleepPeriod);
-#else
-    usleep((useconds_t) sleepPeriod);
-#endif
-
-    waited += sleepPeriod;
-
-    if (waited > timeout) {
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write locks a collection, with a timeout
-////////////////////////////////////////////////////////////////////////////////
-
-static int BeginWriteTimed (TRI_document_collection_t* document,
-                            uint64_t timeout,
-                            uint64_t sleepPeriod) {
-  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(document->_info._name);
-    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
-    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginWriteTimed blocked: " << document->_info._name << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-  uint64_t waited = 0;
-
-  // LOCKING-DEBUG
-  // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
-  while (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document)) {
-#ifdef _WIN32
-    usleep((unsigned long) sleepPeriod);
-#else
-    usleep((useconds_t) sleepPeriod);
-#endif
-
-    waited += sleepPeriod;
-
-    if (waited > timeout) {
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               DOCUMENT COLLECTION
-// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     Open iterator
@@ -1963,85 +2037,6 @@ static bool OpenIndexIterator (char const* filename,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about the collection
-/// note: the collection lock must be held when calling this function
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_doc_collection_info_t* Figures (TRI_document_collection_t* document) {
-  // prefill with 0's to init counters
-  TRI_doc_collection_info_t* info = static_cast<TRI_doc_collection_info_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true));
-
-  if (info == nullptr) {
-    return nullptr;
-  }
-
-  for (size_t i = 0;  i < document->_datafileInfo._nrAlloc;  ++i) {
-    TRI_doc_datafile_info_t* d = static_cast<TRI_doc_datafile_info_t*>(document->_datafileInfo._table[i]);
-
-    if (d != nullptr) {
-      info->_numberAlive        += d->_numberAlive;
-      info->_numberDead         += d->_numberDead;
-      info->_numberDeletion     += d->_numberDeletion;
-      info->_numberShapes       += d->_numberShapes;
-      info->_numberAttributes   += d->_numberAttributes;
-      info->_numberTransactions += d->_numberTransactions;
-
-      info->_sizeAlive          += d->_sizeAlive;
-      info->_sizeDead           += d->_sizeDead;
-      info->_sizeShapes         += d->_sizeShapes;
-      info->_sizeAttributes     += d->_sizeAttributes;
-      info->_sizeTransactions   += d->_sizeTransactions;
-    }
-  }
-
-  // add the file sizes for datafiles and journals
-  TRI_collection_t* base = document;
-
-  for (size_t i = 0; i < base->_datafiles._length; ++i) {
-    TRI_datafile_t* df = (TRI_datafile_t*) base->_datafiles._buffer[i];
-
-    info->_datafileSize += (int64_t) df->_maximalSize;
-    ++info->_numberDatafiles;
-  }
-
-  for (size_t i = 0; i < base->_journals._length; ++i) {
-    TRI_datafile_t* df = (TRI_datafile_t*) base->_journals._buffer[i];
-
-    info->_journalfileSize += (int64_t) df->_maximalSize;
-    ++info->_numberJournalfiles;
-  }
-
-  for (size_t i = 0; i < base->_compactors._length; ++i) {
-    TRI_datafile_t* df = (TRI_datafile_t*) base->_compactors._buffer[i];
-
-    info->_compactorfileSize += (int64_t) df->_maximalSize;
-    ++info->_numberCompactorfiles;
-  }
-
-  // add index information
-  info->_numberIndexes = 0;
-  info->_sizeIndexes   = 0;
-
-  if (document->_headersPtr != nullptr) {
-    info->_sizeIndexes += static_cast<int64_t>(document->_headersPtr->memory());
-  }
-
-  for (auto& idx : document->allIndexes()) {
-    info->_sizeIndexes += idx->memory();
-    info->_numberIndexes++;
-  }
-
-  // get information about shape files (DEPRECATED, thus hard-coded to 0)
-  info->_shapefileSize    = 0;
-  info->_numberShapefiles = 0;
-
-  info->_uncollectedLogfileEntries = document->_uncollectedLogfileEntries;
-  info->_tickMax = document->_tickMax;
-
-  return info;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2052,9 +2047,6 @@ static int InitBaseDocumentCollection (TRI_document_collection_t* document,
   document->setShaper(shaper);
   document->_numberDocuments    = 0;
   document->_lastCompaction     = 0.0;
-
-  document->size                = Count;
-
 
   int res = TRI_InitAssociativePointer(&document->_datafileInfo,
                                        TRI_UNKNOWN_MEM_ZONE,
@@ -2178,18 +2170,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   }
 
   TRI_InitCondition(&document->_journalsCondition);
-
-  // setup methods
-  document->beginRead         = BeginRead;
-  document->endRead           = EndRead;
-
-  document->beginWrite        = BeginWrite;
-  document->endWrite          = EndWrite;
-
-  document->beginReadTimed    = BeginReadTimed;
-  document->beginWriteTimed   = BeginWriteTimed;
-
-  document->figures           = Figures;
 
   // crud methods
   document->cleanupIndexes    = CleanupIndexes;
