@@ -126,6 +126,7 @@ OPTION_NORMAL = 0
 OPTION_ARANGOSH_SETUP = 1
 OPTION_OUTPUT_DIR = 2
 OPTION_FILTER = 3
+OPTION_OUTPUT_FILE = 4
 
 fstate = OPTION_NORMAL
 
@@ -445,16 +446,18 @@ def loopDirectories():
     filenames = []
     
     for filename in argv:
-        if filename == "--arangosh-setup":
+        if filename == "--arangoshSetup":
             fstate = OPTION_ARANGOSH_SETUP
             continue
-        if filename == "--only-thisone": 
+        if filename == "--onlyThisOne": 
             fstate = OPTION_FILTER
             continue
-        if filename == "--output-dir":
+        if filename == "--outputDir":
             fstate = OPTION_OUTPUT_DIR
             continue
-    
+        if filename == "--outputFile":
+            fstate = OPTION_OUTPUT_FILE
+            continue
         if fstate == OPTION_NORMAL:
             if os.path.isdir(filename):
                 for root, dirs, files in os.walk(filename):
@@ -481,6 +484,10 @@ def loopDirectories():
         elif fstate == OPTION_OUTPUT_DIR:
             fstate = OPTION_NORMAL
             OutputDir = filename
+        elif fstate == OPTION_OUTPUT_FILE:
+            fstate = OPTION_NORMAL
+            sys.stdout = open(filename, 'w')
+
     for filename in filenames:
         if (filename.find("#") < 0):
             f = open(filename, "r")
