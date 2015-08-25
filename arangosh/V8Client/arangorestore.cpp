@@ -709,7 +709,7 @@ static int ProcessInputDirectory (string& errorMsg) {
         }
       }
 
-      if (! restrictList.empty() > 0 &&
+      if (! restrictList.empty() &&
           restrictList.find(cname) == restrictList.end()) {
         // collection name not in list
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);

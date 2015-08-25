@@ -62,7 +62,7 @@ namespace triagens {
             _doLock(false) {
 
           if (doLock) {
-            _document->beginRead(_document);
+            _document->beginRead();
             _doLock = true;
           }
         }
@@ -85,7 +85,7 @@ namespace triagens {
 
         inline void unlock () {
           if (_doLock) {
-            _document->endRead(_document);
+            _document->endRead();
             _doLock = false;
           }
         }

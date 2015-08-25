@@ -119,18 +119,18 @@ static v8::Handle<v8::Value> EmptyResult (v8::Isolate* isolate) {
 
 static void ExtractSkipAndLimit (const v8::FunctionCallbackInfo<v8::Value>& args,
                                  size_t pos,
-                                 TRI_voc_ssize_t& skip,
-                                 TRI_voc_size_t& limit) {
+                                 int64_t& skip,
+                                 uint64_t& limit) {
 
-  skip = TRI_QRY_NO_SKIP;
-  limit = TRI_QRY_NO_LIMIT;
+  skip = 0;
+  limit = UINT64_MAX;
 
   if (pos < (size_t) args.Length() && ! args[(int) pos]->IsNull() && ! args[(int) pos]->IsUndefined()) {
-    skip = (TRI_voc_ssize_t) TRI_ObjectToDouble(args[(int) pos]);
+    skip = TRI_ObjectToInt64(args[(int) pos]);
   }
 
   if (pos + 1 < (size_t) args.Length() && ! args[(int) pos + 1]->IsNull() && ! args[(int) pos + 1]->IsUndefined()) {
-    limit = (TRI_voc_size_t) TRI_ObjectToDouble(args[(int) pos + 1]);
+    limit = TRI_ObjectToUInt64(args[(int) pos + 1], false);
   }
 }
 
@@ -139,19 +139,19 @@ static void ExtractSkipAndLimit (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CalculateSkipLimitSlice (size_t length,
-                                     TRI_voc_ssize_t skip,
-                                     TRI_voc_size_t limit,
-                                     size_t& s,
-                                     size_t& e) {
+                                     int64_t skip,
+                                     uint64_t limit,
+                                     uint64_t& s,
+                                     uint64_t& e) {
   s = 0;
-  e = length;
+  e = static_cast<uint64_t>(length);
 
   // skip from the beginning
   if (0 < skip) {
-    s = (size_t) skip;
+    s = static_cast<uint64_t>(skip);
 
     if (e < s) {
-      s = (size_t) e;
+      s = e;
     }
   }
 
@@ -159,20 +159,23 @@ static void CalculateSkipLimitSlice (size_t length,
   else if (skip < 0) {
     skip = -skip;
 
-    if ((size_t) skip < e) {
+    if (skip < static_cast<decltype(skip)>(e)) {
       s = e - skip;
     }
   }
 
   // apply limit
-  if (s + limit < e) {
-    int64_t sum = (int64_t) s + (int64_t) limit;
-    if (sum < (int64_t) e) {
-      if (sum >= (int64_t) TRI_QRY_NO_LIMIT) {
-        e = TRI_QRY_NO_LIMIT;
-      }
-      else {
-        e = (size_t) sum;
+  if (limit < UINT64_MAX && static_cast<int64_t>(limit) < INT64_MAX) {
+    if (s + limit < e) {
+      int64_t sum = static_cast<int64_t>(s) + static_cast<int64_t>(limit);
+
+      if (sum < static_cast<int64_t>(e)) {
+        if (sum >= INT64_MAX) {
+          e = static_cast<uint64_t>(INT64_MAX);
+        }
+        else {
+          e = static_cast<uint64_t>(sum);
+        }
       }
     }
   }
@@ -546,8 +549,7 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
     reverse = TRI_ObjectToBoolean(args[4]);
   }
 
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -567,9 +569,8 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
   auto shaper = document->getShaper();  // PROTECTED by trx here
 
   // extract skip and limit
-  TRI_voc_ssize_t skip;
-  TRI_voc_size_t limit;
-
+  int64_t skip;
+  uint64_t limit;
   ExtractSkipAndLimit(args, 2, skip, limit);
 
   // setup result
@@ -583,7 +584,6 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
   // .............................................................................
 
   trx.lockRead();
-
 
   // extract the index
   auto idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), col, args[0], false);
@@ -620,8 +620,8 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  TRI_voc_ssize_t total = 0;
-  TRI_voc_size_t count = 0;
+  int64_t total = 0;
+  uint64_t count = 0;
   bool error = false;
 
   if (trx.orderDitch(trx.trxCollection()) == nullptr) {
@@ -648,7 +648,7 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
         break;
       }
       else {
-        documents->Set((uint32_t) count, doc);
+        documents->Set(static_cast<uint32_t>(count), doc);
 
         if (++count >= limit) {
           break;
@@ -667,8 +667,8 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
   // free data allocated by skiplist index result
   TRI_FreeSkiplistIterator(skiplistIterator);
 
-  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, (double) total));
-  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, count));
+  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
+  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(count)));
 
   if (error) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -687,12 +687,7 @@ static int StoreGeoResult (v8::Isolate* isolate,
                            GeoCoordinates* cors,
                            v8::Handle<v8::Array>& documents,
                            v8::Handle<v8::Array>& distances) {
-  GeoCoordinate* end;
-  GeoCoordinate* ptr;
-  double* dtr;
-  geo_coordinate_distance_t* gtr;
   geo_coordinate_distance_t* tmp;
-  uint32_t i;
 
   if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     GeoIndex_CoordinatesFree(cors);
@@ -707,7 +702,7 @@ static int StoreGeoResult (v8::Isolate* isolate,
     return TRI_ERROR_NO_ERROR;
   }
 
-  gtr = (tmp = (geo_coordinate_distance_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(geo_coordinate_distance_t) * n, false));
+  geo_coordinate_distance_t* gtr = (tmp = (geo_coordinate_distance_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(geo_coordinate_distance_t) * n, false));
 
   if (gtr == nullptr) {
     GeoIndex_CoordinatesFree(cors);
@@ -717,10 +712,10 @@ static int StoreGeoResult (v8::Isolate* isolate,
 
   geo_coordinate_distance_t* gnd = tmp + n;
 
-  ptr = cors->coordinates;
-  end = cors->coordinates + n;
+  GeoCoordinate* ptr = cors->coordinates;
+  GeoCoordinate* end = cors->coordinates + n;
 
-  dtr = cors->distances;
+  double* dtr = cors->distances;
 
   for (;  ptr < end;  ++ptr, ++dtr, ++gtr) {
     gtr->_distance = *dtr;
@@ -737,6 +732,7 @@ static int StoreGeoResult (v8::Isolate* isolate,
 
   // copy the documents
   bool error = false;
+  uint32_t i;
   for (gtr = tmp, i = 0;  gtr < gnd;  ++gtr, ++i) {
     v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, ((TRI_doc_mptr_t const*) gtr->_data)->getDataPtr());
 
@@ -775,8 +771,7 @@ static void EdgesQuery (TRI_edge_direction_e direction,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -834,14 +829,13 @@ static void EdgesQuery (TRI_edge_direction_e direction,
     documents = v8::Array::New(isolate);
     v8::Handle<v8::Array> vertices = v8::Handle<v8::Array>::Cast(args[0]);
     uint32_t count = 0;
-    const uint32_t len = vertices->Length();
+    uint32_t const len = vertices->Length();
 
     for (uint32_t i = 0;  i < len; ++i) {
       TRI_voc_cid_t cid;
       std::unique_ptr<char[]> key;
 
-      res = TRI_ParseVertex(args, trx.resolver(), cid, key,
-                            vertices->Get(i));
+      res = TRI_ParseVertex(args, trx.resolver(), cid, key, vertices->Get(i));
 
       if (res != TRI_ERROR_NO_ERROR) {
         // error is just ignored
@@ -887,17 +881,18 @@ static void EdgesQuery (TRI_edge_direction_e direction,
 
     trx.finish(res);
 
-    uint32_t const n = static_cast<uint32_t>(edges.size());
+    size_t const n = edges.size();
     documents = v8::Array::New(isolate, static_cast<int>(n));
-    for (size_t j = 0;  j < n;  ++j) {
-      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, edges[j].getDataPtr());
+
+    for (size_t i = 0;  i < n;  ++i) {
+      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, edges[i].getDataPtr());
 
       if (doc.IsEmpty()) {
         error = true;
         break;
       }
       else {
-        documents->Set(static_cast<uint32_t>(j), doc);
+        documents->Set(static_cast<uint32_t>(i), doc);
       }
     }
   }
@@ -940,11 +935,11 @@ static void JS_AllQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
   // extract skip and limit
-  TRI_voc_ssize_t skip;
-  TRI_voc_size_t limit;
+  int64_t skip;
+  uint64_t limit;
   ExtractSkipAndLimit(args, 0, skip, limit);
 
-  uint32_t total = 0;
+  uint64_t total = 0;
   vector<TRI_doc_mptr_copy_t> docs;
 
   SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
@@ -964,28 +959,27 @@ static void JS_AllQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  size_t const n = docs.size();
-  uint32_t count = 0;
+  uint64_t const n = static_cast<uint64_t>(docs.size());
 
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  v8::Handle<v8::Array> documents = v8::Array::New(isolate, (int) n);
+  v8::Handle<v8::Array> documents = v8::Array::New(isolate, static_cast<int>(n));
   // reserve full capacity in one go
   result->Set(TRI_V8_ASCII_STRING("documents"), documents);
 
-  for (size_t i = 0; i < n; ++i) {
+  for (uint64_t i = 0; i < n; ++i) {
     v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, docs[i].getDataPtr());
 
     if (doc.IsEmpty()) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
     else {
-      documents->Set(count++, doc);
+      documents->Set(static_cast<uint32_t>(i), doc);
     }
   }
 
-  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, total));
-  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, count));
+  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
+  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(n)));
  
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1005,8 +999,7 @@ static void JS_NthQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("NTH(<partitionId>, <numberOfPartitions>)");
   }
 
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -1021,7 +1014,7 @@ static void JS_NthQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <partitionId> or <numberOfPartitions>");
   }
   
-  uint32_t total = 0;
+  uint64_t total = 0;
   vector<TRI_doc_mptr_copy_t> docs;
 
   SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
@@ -1042,7 +1035,6 @@ static void JS_NthQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   size_t const n = docs.size();
-  uint32_t count = 0;
 
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -1057,12 +1049,12 @@ static void JS_NthQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
     else {
-      documents->Set(count++, doc);
+      documents->Set(static_cast<uint32_t>(i), doc);
     }
   }
 
-  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, total));
-  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, count));
+  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
+  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(n)));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1082,8 +1074,7 @@ static void JS_Nth2Query (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("NTH2(<partitionId>, <numberOfPartitions>)");
   }
 
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -1098,7 +1089,7 @@ static void JS_Nth2Query (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <partitionId> or <numberOfPartitions>");
   }
   
-  uint32_t total = 0;
+  uint64_t total = 0;
   vector<TRI_doc_mptr_copy_t> docs;
 
   SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
@@ -1119,7 +1110,6 @@ static void JS_Nth2Query (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   size_t const n = docs.size();
-  uint32_t count = 0;
 
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -1129,39 +1119,13 @@ static void JS_Nth2Query (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   for (size_t i = 0; i < n; ++i) {
     char const* key = TRI_EXTRACT_MARKER_KEY(static_cast<TRI_df_marker_t const*>(docs[i].getDataPtr()));
-    documents->Set(count++, TRI_V8_STRING(key));
+    documents->Set(static_cast<uint32_t>(i), TRI_V8_STRING(key));
   }
 
-  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, total));
-  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, count));
+  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
+  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(n)));
 
   TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief @mchacki
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_Nth3Query (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // expecting two arguments
-  if (args.Length() != 2 || ! args[0]->IsString() || ! args[1]->IsNumber()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("NTH3(<key>, <numberOfPartitions>)");
-  }
-
-  std::string const key(TRI_ObjectToString(args[0]));
-  uint64_t const numberOfPartitions = TRI_ObjectToUInt64(args[1], false);
-
-  if (numberOfPartitions == 0) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <numberOfPartitions>");
-  }
-  
-  uint64_t hash = TRI_FnvHashPointer(static_cast<void const*>(key.c_str()), key.size());
-
-  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<int>(hash % numberOfPartitions)));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1179,8 +1143,7 @@ static void JS_OffsetQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("OFFSET(<internalSkip>, <batchSize>, <skip>, <limit>)");
   }
 
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -1188,15 +1151,15 @@ static void JS_OffsetQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
-  TRI_voc_size_t internalSkip = (TRI_voc_size_t) TRI_ObjectToDouble(args[0]);
-  TRI_voc_size_t batchSize = (TRI_voc_size_t) TRI_ObjectToDouble(args[1]);
+  uint64_t internalSkip = TRI_ObjectToUInt64(args[0], false);
+  uint64_t batchSize    = TRI_ObjectToUInt64(args[1], false);
 
   // extract skip and limit
-  TRI_voc_ssize_t skip;
-  TRI_voc_size_t limit;
+  int64_t skip;
+  uint64_t limit;
   ExtractSkipAndLimit(args, 2, skip, limit);
 
-  uint32_t total = 0;
+  uint64_t total = 0;
   vector<TRI_doc_mptr_copy_t> docs;
 
   SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
@@ -1217,11 +1180,10 @@ static void JS_OffsetQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   size_t const n = docs.size();
-  uint32_t count = 0;
 
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  v8::Handle<v8::Array> documents = v8::Array::New(isolate, (int) n);
+  v8::Handle<v8::Array> documents = v8::Array::New(isolate, static_cast<int>(n));
   // reserve full capacity in one go
   result->Set(TRI_V8_ASCII_STRING("documents"), documents);
 
@@ -1232,13 +1194,13 @@ static void JS_OffsetQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
     else {
-      documents->Set(count++, document);
+      documents->Set(static_cast<uint32_t>(i), document);
     }
   }
 
-  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, total));
-  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, count));
-  result->Set(TRI_V8_ASCII_STRING("skip"), v8::Number::New(isolate, internalSkip));
+  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
+  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(n)));
+  result->Set(TRI_V8_ASCII_STRING("skip"), v8::Number::New(isolate, static_cast<double>(internalSkip)));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1264,8 +1226,7 @@ static void JS_AnyQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -1322,9 +1283,7 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
     TRI_V8_THROW_TYPE_ERROR("<example> must be an object");
   }
 
-
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -1346,8 +1305,8 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
   v8::Handle<v8::Object> example = args[0]->ToObject();
 
   // extract skip and limit
-  TRI_voc_ssize_t skip;
-  TRI_voc_size_t limit;
+  int64_t skip;
+  uint64_t limit;
   ExtractSkipAndLimit(args, 1, skip, limit);
 
   // extract sub-documents
@@ -1400,18 +1359,16 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
   // ...........................................................................
 
   // convert to list of shaped jsons
-  size_t total = filtered.size();
-  size_t count = 0;
+  uint64_t const total = static_cast<uint64_t>(filtered.size());
+  uint64_t count = 0;
   bool error = false;
 
   if (0 < total) {
-    size_t s;
-    size_t e;
-
+    uint64_t s, e;
     CalculateSkipLimitSlice(filtered.size(), skip, limit, s, e);
 
     if (s < e) {
-      for (size_t j = s; j < e; ++j) {
+      for (uint64_t j = s; j < e; ++j) {
         v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, filtered[j].getDataPtr());
 
         if (doc.IsEmpty()) {
@@ -1419,14 +1376,14 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
           break;
         }
         else {
-          documents->Set((uint32_t) count++, doc);
+          documents->Set(static_cast<uint32_t>(count++), doc);
         }
       }
     }
   }
 
-  result->Set(TRI_V8_ASCII_STRING("total"), v8::Integer::New(isolate, (int32_t) total));
-  result->Set(TRI_V8_ASCII_STRING("count"), v8::Integer::New(isolate, (int32_t) count));
+  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
+  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(count)));
 
   if (error) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -1465,9 +1422,8 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   }
 
   // extract skip and limit
-  TRI_voc_ssize_t skip;
-  TRI_voc_size_t limit;
-
+  int64_t skip;
+  uint64_t limit;
   ExtractSkipAndLimit(args, 2, skip, limit);
 
   // setup result
@@ -1511,28 +1467,26 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   DestroySearchValue(shaper->memoryZone(), searchValue);
 
   // convert result
-  size_t total = TRI_LengthVectorPointer(&list);
-  size_t count = 0;
+  uint64_t total = static_cast<size_t>(TRI_LengthVectorPointer(&list));
+  uint64_t count = 0;
   bool error = false;
 
   if (0 < total) {
-    size_t s;
-    size_t e;
-
+    uint64_t s, e;
     CalculateSkipLimitSlice(total, skip, limit, s, e);
 
     if (s < e) {
-      for (size_t i = s;  i < e;  ++i) {
+      for (uint64_t i = s;  i < e;  ++i) {
         v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx,
                                                      collection->_cid,
-                                                     static_cast<TRI_doc_mptr_t*>(TRI_AtVectorPointer(&list, i))->getDataPtr());
+                                                     static_cast<TRI_doc_mptr_t*>(TRI_AtVectorPointer(&list, static_cast<size_t>(i)))->getDataPtr());
 
         if (doc.IsEmpty()) {
           error = true;
           break;
         }
         else {
-          documents->Set((uint32_t) count++, doc);
+          documents->Set(static_cast<uint32_t>(count++), doc);
         }
       }
     }
@@ -1541,8 +1495,8 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   // free data allocated by hash index result
   TRI_DestroyVectorPointer(&list);
 
-  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, (double) total));
-  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, (double) count));
+  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
+  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(count)));
 
   if (error) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -1559,8 +1513,7 @@ static void JS_ByExampleHashIndex (const v8::FunctionCallbackInfo<v8::Value>& ar
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -1726,8 +1679,7 @@ static void JS_ChecksumCollection (const v8::FunctionCallbackInfo<v8::Value>& ar
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_UNSUPPORTED);
   }
 
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -1962,9 +1914,7 @@ static void JS_FirstQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   size_t const n = documents.size();
 
   if (returnList) {
-    v8::Handle<v8::Array> result = v8::Array::New(isolate, (int) n);
-
-    uint32_t j = 0;
+    v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
 
     for (size_t i = 0; i < n; ++i) {
       v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, documents[i].getDataPtr());
@@ -1974,7 +1924,7 @@ static void JS_FirstQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
         TRI_V8_THROW_EXCEPTION_MEMORY();
       }
 
-      result->Set(j++, doc);
+      result->Set(static_cast<uint32_t>(i), doc);
     }
 
     TRI_V8_RETURN(result);
@@ -2128,8 +2078,7 @@ static void JS_FulltextQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -2189,8 +2138,7 @@ static void JS_LastQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <count>");
   }
 
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -2210,14 +2158,12 @@ static void JS_LastQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   res = trx.readPositional(documents, -1, count);
   trx.finish(res);
 
-  size_t const n = documents.size();
+  uint64_t const n = static_cast<uint64_t>(documents.size());
 
   if (returnList) {
-    v8::Handle<v8::Array> result = v8::Array::New(isolate, (int) n);
+    v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
 
-    uint32_t j = 0;
-
-    for (size_t i = 0; i < n; ++i) {
+    for (uint64_t i = 0; i < n; ++i) {
       v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, documents[i].getDataPtr());
 
       if (doc.IsEmpty()) {
@@ -2225,7 +2171,7 @@ static void JS_LastQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
         TRI_V8_THROW_EXCEPTION_MEMORY();
       }
 
-      result->Set(j++, doc);
+      result->Set(static_cast<uint32_t>(i), doc);
     }
 
     TRI_V8_RETURN(result);
@@ -2277,7 +2223,7 @@ static void NearQuery (SingleCollectionReadOnlyTransaction& trx,
   double longitude = TRI_ObjectToDouble(args[2]);
 
   // extract the limit
-  TRI_voc_ssize_t limit = (TRI_voc_ssize_t) TRI_ObjectToDouble(args[3]);
+  int64_t limit = TRI_ObjectToInt64(args[3]);
 
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -2309,8 +2255,7 @@ static void JS_NearQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -2406,8 +2351,7 @@ static void JS_WithinQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_col_t const* col;
-  col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
+  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -2657,7 +2601,6 @@ void TRI_InitV8Queries (v8::Isolate* isolate,
   // internal methods. not intended to be used by end-users
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NTH"), JS_NthQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NTH2"), JS_Nth2Query, true);
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("NTH3"), JS_Nth3Query, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("OFFSET"), JS_OffsetQuery, true);
 }
 

@@ -398,11 +398,11 @@ namespace triagens {
 
         int readIncremental (TRI_transaction_collection_t* trxCollection,
                              std::vector<TRI_doc_mptr_copy_t>& docs,
-                             TRI_voc_size_t& internalSkip,
-                             TRI_voc_size_t batchSize,
-                             TRI_voc_ssize_t skip,
-                             TRI_voc_size_t limit,
-                             uint32_t* total) {
+                             uint64_t& internalSkip,
+                             uint64_t batchSize,
+                             int64_t skip,
+                             uint64_t limit,
+                             uint64_t* total) {
 
           TRI_document_collection_t* document = documentCollection(trxCollection);
 
@@ -436,8 +436,8 @@ namespace triagens {
           }
 
           void** ptr = beg;
-          uint32_t count = 0;
-          *total = (uint32_t) primaryIndex->_nrUsed;
+          uint64_t count = 0;
+          *total = primaryIndex->_nrUsed;
 
           try {
             if (batchSize > 2048) {
@@ -483,11 +483,11 @@ namespace triagens {
 
         int readRandom (TRI_transaction_collection_t* trxCollection,
                         std::vector<TRI_doc_mptr_copy_t>& docs,
-                        uint32_t& initialPosition,
-                        uint32_t& position,
-                        TRI_voc_size_t batchSize,
-                        uint32_t* step,
-                        uint32_t* total) {
+                        uint64_t& initialPosition,
+                        uint64_t& position,
+                        uint64_t batchSize,
+                        uint64_t* step,
+                        uint64_t* total) {
           if (initialPosition > 0 && position == initialPosition) {
             // already read all documents
             return TRI_ERROR_NO_ERROR;
@@ -516,14 +516,14 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          *total = (uint32_t) primaryIndex->_nrAlloc;
+          *total = primaryIndex->_nrAlloc;
           if (*step == 0) {
             TRI_ASSERT(initialPosition == 0);
 
             // find a co-prime for total
             while (true) {
               *step = TRI_UInt32Random() % *total;
-              if (*step > 10 && triagens::basics::binaryGcd<uint32_t>(*total, *step) == 1) {
+              if (*step > 10 && triagens::basics::binaryGcd<uint64_t>(*total, *step) == 1) {
                 while (initialPosition == 0) {
                   initialPosition = TRI_UInt32Random() % *total;
                 }
@@ -533,7 +533,7 @@ namespace triagens {
             }
           }
 
-          TRI_voc_size_t numRead = 0;
+          uint64_t numRead = 0;
           do {
             auto d = static_cast<TRI_doc_mptr_t*>(primaryIndex->_table[position]);
 
@@ -876,8 +876,8 @@ namespace triagens {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
-            uint32_t total = (uint32_t) primaryIndex->_nrAlloc;
-            uint32_t pos = TRI_UInt32Random() % total;
+            uint64_t total = primaryIndex->_nrAlloc;
+            uint64_t pos = TRI_UInt32Random() % total;
             void** beg = primaryIndex->_table;
 
             while (beg[pos] == nullptr) {
@@ -1010,9 +1010,9 @@ namespace triagens {
 
         int readSlice (TRI_transaction_collection_t* trxCollection,
                        std::vector<TRI_doc_mptr_copy_t>& docs,
-                       TRI_voc_ssize_t skip,
-                       TRI_voc_size_t limit,
-                       uint32_t* total) {
+                       int64_t skip,
+                       uint64_t limit,
+                       uint64_t* total) {
 
           TRI_document_collection_t* document = documentCollection(trxCollection);
 
@@ -1044,9 +1044,9 @@ namespace triagens {
           void** beg = primaryIndex->_table;
           void** ptr = beg;
           void** end = ptr + primaryIndex->_nrAlloc;
-          uint32_t count = 0;
+          uint64_t count = 0;
 
-          *total = (uint32_t) primaryIndex->_nrUsed;
+          *total = primaryIndex->_nrUsed;
 
           // apply skip
           if (skip > 0) {
@@ -1147,7 +1147,7 @@ namespace triagens {
                      std::vector<TRI_doc_mptr_copy_t>& docs,
                      uint64_t partitionId,
                      uint64_t numberOfPartitions,
-                     uint32_t* total) {
+                     uint64_t* total) {
 
           TRI_document_collection_t* document = documentCollection(trxCollection);
 
@@ -1169,7 +1169,7 @@ namespace triagens {
           
             void** ptr = primaryIndex->_table;
             void** end = ptr + primaryIndex->_nrAlloc;
-            *total = (uint32_t) primaryIndex->_nrUsed;
+            *total = primaryIndex->_nrUsed;
 
             // fetch documents, taking partition into account
             for (; ptr < end; ++ptr) {
