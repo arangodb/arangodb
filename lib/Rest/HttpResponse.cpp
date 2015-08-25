@@ -227,6 +227,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (int code) {
 
     case TRI_ERROR_ARANGO_CONFLICT:
     case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
+    case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
     case TRI_ERROR_CURSOR_BUSY:
       return CONFLICT;
 
