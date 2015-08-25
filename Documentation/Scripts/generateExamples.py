@@ -363,7 +363,7 @@ def generateArangoshOutput(testName):
 
   print("[" + (time () - startTime) + "s] done with  " + testName);
   output = highlight("js", output);
-  fs.write(outputDir + '/' + testName + '.generated', output);
+  fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
 '''
@@ -419,7 +419,7 @@ def generateArangoshRun(testName):
   }
   print("[" + (time () - startTime) + "s] " + rc);
   output = highlight("js", output);
-  fs.write(outputDir + '/' + testName + '.generated', output);
+  fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
 '''
