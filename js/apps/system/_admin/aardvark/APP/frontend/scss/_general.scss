@@ -10,10 +10,10 @@
 }
 
 .innerContent {
-  min-height: 200px;
   background-color: $c-white;
-  border-radius: 3px;
   border: 1px solid $c-content-border;
+  border-radius: 3px;
+  min-height: 200px;
   padding-top: 13px;
 }
 

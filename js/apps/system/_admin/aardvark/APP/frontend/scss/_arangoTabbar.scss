@@ -4,14 +4,14 @@
 
   button {
     background-color: $c-new-grey;
-    color: $c-white;
     border: 0;
-    float: right;
-    height: 27px;
-    width: 82px;
-    margin-right: 5px;
     border-top-left-radius: 3px;
     border-top-right-radius: 3px;
+    color: $c-white;
+    float: right;
+    height: 27px;
+    margin-right: 5px;
+    width: 82px;
   }
 
   button:first-child {
@@ -20,12 +20,12 @@
 
   .arango-active-tab {
     background-color: $c-white;
-    color: $c-black;
+    border-bottom: 1px solid $c-white;
     border-left: 1px solid $c-c2grey;
     border-right: 1px solid $c-c2grey;
     border-top: 1px solid $c-c2grey;
-    border-bottom: 1px solid #fff;
-    margin-bottom: -1px;
+    color: $c-black;
     height: 28px;
+    margin-bottom: -1px;
   }
 }

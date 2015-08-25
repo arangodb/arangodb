@@ -15,16 +15,16 @@ div.gv_zoom_widget {
 
   div.gv_zoom_slider {
     background: $c-nav-bg;
+    border-radius: 3px;
     height: 200px;
     margin: 0 17px;
     width: 4px;
-    border-radius: 3px;
   }
 
 
   a.ui-slider-handle {
-    border: 1px solid rgba(104, 103, 102, 0.1);
     background-color: $c-black;
+    border: 1px solid rgba(104, 103, 102, .1);
     height: .5em;
     left: -.55em;
     outline: none;
@@ -63,8 +63,8 @@ div.gv_colour_list {
 
 svg.graph-viewer {
   background-color: $c-white;
+  border: 1px solid rgba(104, 103, 102, .1);
   border-radius: 3px;
-  border: 1px solid rgba(104, 103, 102, 0.1);
   left: 74px;
   position: absolute;
   top: 10px;
@@ -91,15 +91,15 @@ div.gv-background {
 
 div.gv-colour-list {
   border-radius: 3px;
+  max-height: 350px;
+  max-width: 130px;
+  overflow-x: none;
+  overflow-y: auto;
   position: absolute;
   right: 8px;
   text-align: right;
   top: 20px;
   z-index: 1;
-  max-height: 350px;
-  overflow-y: auto;
-  overflow-x: none;
-  max-width: 130px;
 
   li {
     float: none;
@@ -109,24 +109,24 @@ div.gv-colour-list {
   ul {
 
     ul {
-      border-left: 1px solid rgba(104, 103, 102, 0.1);
-      border-right: 1px solid rgba(104, 103, 102, 0.1);
+      border-left: 1px solid rgba(104, 103, 102, .1);
+      border-right: 1px solid rgba(104, 103, 102, .1);
     }
 
     ul:first-child {
-      border-top: 1px solid rgba(104, 103, 102, 0.1);
-      border-left: 1px solid rgba(104, 103, 102, 0.1);
-      border-right: 1px solid rgba(104, 103, 102, 0.1);
+      border-left: 1px solid rgba(104, 103, 102, .1);
+      border-right: 1px solid rgba(104, 103, 102, .1);
+      border-top: 1px solid rgba(104, 103, 102, .1);
       border-top-left-radius: 3px;
       border-top-right-radius: 3px;
     }
 
     ul:last-child {
+      border-bottom: 1px solid rgba(104, 103, 102, .1);
       border-bottom-left-radius: 3px;
       border-bottom-right-radius: 3px;
-      border-bottom: 1px solid rgba(104, 103, 102, 0.1);
-      border-left: 1px solid rgba(104, 103, 102, 0.1);
-      border-right: 1px solid rgba(104, 103, 102, 0.1);
+      border-left: 1px solid rgba(104, 103, 102, .1);
+      border-right: 1px solid rgba(104, 103, 102, .1);
     }
 
   }

@@ -2,19 +2,14 @@ $c-body-color: #333;
 $c-login-bg: #dee8d0;
 
 $c-lightgreen-bg: rgba(222, 233, 207, 1);
-/*
-$c-lightgreen-2-bg: #e4ecd9;;
-$c-lightgreen-transp-bg: rgba(222, 233, 207, 0.8);
-$c-lightgreen-2-transp-bg: rgba(228, 236, 217, 0.8);
-*/
-$c-lightgreen-2-bg: #F5F8F0;
-$c-lightgreen-transp-bg: #F5F8F0;
-$c-lightgreen-2-transp-bg: rgba(245, 248, 240, 0.95);
+$c-lightgreen-2-bg: #f5f8f0;
+$c-lightgreen-transp-bg: #f5f8f0;
+$c-lightgreen-2-transp-bg: rgba(245, 248, 240, .95);
 
 $c-positive: #8aa051;
 $c-positive-hover: #788f3d;
 
-$c-table-odd-color: rgba(104, 103, 102, 0.05);
+$c-table-odd-color: rgba(104, 103, 102, .05);
 
 $c-negative: #da4f49;
 $c-negative-hover: #be342e;
@@ -54,9 +49,8 @@ $c-dark-grey: #999;
 $c-darker-grey: #666;
 
 $c-new-grey: #8c8a89;
-/*$c-content-border: rgba(104, 103, 102, 0.1);*/
-$c-content-border: rgba(140, 138, 137, 0.25);
-$c-tile-border: rgba(140, 138, 137, 0.25);
+$c-content-border: rgba(140, 138, 137, .25);
+$c-tile-border: rgba(140, 138, 137, .25);
 
 $c-transp: transparent;
 $c-low-transp: rgba(0, 0, 0, .7);
@@ -70,17 +64,17 @@ $c-arangodb-locked: rgba(0, 0, 0, .5);
 
 $c-content-row-active: #bdcc92;
 
-$c-odd : #d9d9d9;
-$c-even : #fff;
+$c-odd: #d9d9d9;
+$c-even: #fff;
 
-$c-navbar-spacer : #a0a0a0;
-$c-navbar-spacer-shadow : #c8c8c8;
+$c-navbar-spacer: #a0a0a0;
+$c-navbar-spacer-shadow: #c8c8c8;
 
-$c-btn-inverse : #736b68;
+$c-btn-inverse: #736b68;
 
-$c-shell-error : #f06;
-$c-shell-success : #6f0;
-$c-shell-bg : #808080;
+$c-shell-error: #f06;
+$c-shell-success: #6f0;
+$c-shell-bg: #808080;
 $c-shell-losing-focus: #c4cccc;
 
 $c-shell-prompt: #b91;
@@ -135,7 +129,7 @@ $c-api-docs-bg-input: #8f8d8c;
 
 $c-breadcrumb-bg: #f5f5f5;
 $c-breadcrumb-a-active-bread: #7da817;
-$c-breadcrumb-a-active-bread-transp: rgba(185, 211, 117, 0.2);
+$c-breadcrumb-a-active-bread-transp: rgba(185, 211, 117, .2);
 
 $c-logs-table-id-thead-bg: #f9f9f9;
 
