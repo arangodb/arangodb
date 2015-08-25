@@ -93,6 +93,8 @@ namespace triagens {
         int remove (struct TRI_doc_mptr_t const*, bool) override final;
         
         int sizeHint (size_t) override final;
+
+        int sizeHint () override final;
         
         std::vector<TRI_shape_pid_t> const& paths () const {
           return _paths;
