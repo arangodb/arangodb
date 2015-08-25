@@ -210,6 +210,17 @@ HttpHandler::status_t RestReplicationHandler::execute () {
 
       handleCommandSync();
     }
+    else if (command == "make-slave") {
+      if (type != HttpRequest::HTTP_REQUEST_PUT) {
+        goto BAD_CALL;
+      }
+
+      if (isCoordinatorError()) {
+        return status_t(HttpHandler::HANDLER_DONE);
+      }
+    
+      handleCommandMakeSlave();
+    }
     else if (command == "server-id") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
@@ -1357,6 +1368,13 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
     generateError(HttpResponse::SERVER_ERROR, res);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run the command that determines which transactions were open at
+/// a given tick value
+/// this is an internal method use by ArangoDB's replication and that should not 
+/// be called by client drivers directly
+////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
   // determine start and end tick
@@ -3313,6 +3331,304 @@ void RestReplicationHandler::handleCommandDump () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_replication_makeSlave
+/// @RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a slave of another}
+///
+/// @RESTBODYPARAM{configuration,json,required}
+/// A JSON representation of the configuration.
+///
+/// @RESTDESCRIPTION
+/// Starts a full data synchronization from a remote endpoint into the local ArangoDB
+/// database and afterwards starts the continuous replication.
+/// The operation works on a per-database level.
+///
+/// All local database data will be removed prior to the synchronization.
+///
+/// The body of the request must be JSON object with the configuration. The
+/// following attributes are allowed for the configuration:
+///
+/// - *endpoint*: the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
+///
+/// - *database*: the database name on the master (if not specified, defaults to the
+///   name of the local current database).
+///
+/// - *username*: an optional ArangoDB username to use when connecting to the master.
+///
+/// - *password*: the password to use when connecting to the master.
+///
+/// - *includeSystem*: whether or not system collection operations will be applied
+///
+/// - *restrictType*: an optional string value for collection filtering. When
+///    specified, the allowed values are *include* or *exclude*.
+///
+/// - *restrictCollections*: an optional array of collections for use with
+///   *restrictType*. If *restrictType* is *include*, only the specified collections
+///    will be sychronised. If *restrictType* is *exclude*, all but the specified
+///    collections will be synchronized.
+///
+/// - *maxConnectRetries*: the maximum number of connection attempts the applier
+///   will make in a row. If the applier cannot establish a connection to the
+///   endpoint in this number of attempts, it will stop itself.
+///
+/// - *connectTimeout*: the timeout (in seconds) when attempting to connect to the
+///   endpoint. This value is used for each connection attempt.
+///
+/// - *requestTimeout*: the timeout (in seconds) for individual requests to the endpoint.
+///
+/// - *chunkSize*: the requested maximum size for log transfer packets that
+///   is used when the endpoint is contacted.
+///
+/// - *adaptivePolling*: whether or not the replication applier will use
+///   adaptive polling.
+///
+/// - *requireFromPresent*: if set to *true*, then the replication applier will check
+///   at start of its continuous replication if the start tick from the dump phase
+///   is still present on the master. If not, then there would be data loss. If 
+///   *requireFromPresent* is *true*, the replication applier will abort with an
+///   appropriate error message. If set to *false*, then the replication applier will
+///   still start, and ignore the data loss.
+///
+/// - *verbose*: if set to *true*, then a log line will be emitted for all operations 
+///   performed by the replication applier. This should be used for debugging replication
+///   problems only.
+///
+/// In case of success, the body of the response is a JSON object with the following
+/// attributes:
+///
+/// - *state*: a JSON object with the following sub-attributes:
+///
+///   - *running*: whether or not the applier is active and running
+///
+///   - *lastAppliedContinuousTick*: the last tick value from the continuous
+///     replication log the applier has applied.
+///
+///   - *lastProcessedContinuousTick*: the last tick value from the continuous
+///     replication log the applier has processed.
+///
+///     Regularly, the last applied and last processed tick values should be
+///     identical. For transactional operations, the replication applier will first
+///     process incoming log events before applying them, so the processed tick
+///     value might be higher than the applied tick value. This will be the case
+///     until the applier encounters the *transaction commit* log event for the
+///     transaction.
+///
+///   - *lastAvailableContinuousTick*: the last tick value the logger server can
+///     provide.
+///
+///   - *time*: the time on the applier server.
+///
+///   - *totalRequests*: the total number of requests the applier has made to the
+///     endpoint.
+///
+///   - *totalFailedConnects*: the total number of failed connection attempts the
+///     applier has made.
+///
+///   - *totalEvents*: the total number of log events the applier has processed.
+///
+///   - *totalOperationsExcluded*: the total number of log events excluded because
+///     of *restrictCollections*.
+///
+///   - *progress*: a JSON object with details about the replication applier progress.
+///     It contains the following sub-attributes if there is progress to report:
+///
+///     - *message*: a textual description of the progress
+///
+///     - *time*: the date and time the progress was logged
+///
+///     - *failedConnects*: the current number of failed connection attempts
+///
+///   - *lastError*: a JSON object with details about the last error that happened on
+///     the applier. It contains the following sub-attributes if there was an error:
+///
+///     - *errorNum*: a numerical error code
+///
+///     - *errorMessage*: a textual error description
+///
+///     - *time*: the date and time the error occurred
+///
+///     In case no error has occurred, *lastError* will be empty.
+///
+/// - *server*: a JSON object with the following sub-attributes:
+///
+///   - *version*: the applier server's version
+///
+///   - *serverId*: the applier server's id
+///
+/// - *endpoint*: the endpoint the applier is connected to (if applier is
+///   active) or will connect to (if applier is currently inactive)
+///
+/// - *database*: the name of the database the applier is connected to (if applier is
+///   active) or will connect to (if applier is currently inactive)
+///
+/// WARNING: calling this method will sychronize data from the collections found
+/// on the remote master to the local ArangoDB database. All data in the local
+/// collections will be purged and replaced with data from the master.
+///
+/// Use with caution!
+///
+/// Please also keep in mind that this command may take a long time to complete
+/// and return. This is because it will first do a full data synchronization with
+/// the master, which will take time roughly proportional to the amount of data.
+///
+/// **Note**: this method is not supported on a coordinator in a cluster.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the request was executed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the configuration is incomplete or malformed.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+///
+/// @RESTRETURNCODE{500}
+/// is returned if an error occurred during sychronisation or when starting the
+/// continuous replication.
+///
+/// @RESTRETURNCODE{501}
+/// is returned when this operation is called on a coordinator in a cluster.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandMakeSlave () {
+  std::unique_ptr<TRI_json_t> json(parseJsonBody());
+
+  if (json == nullptr) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    return;
+  }
+
+  std::string const endpoint = JsonHelper::getStringValue(json.get(), "endpoint", "");
+  std::string const database = JsonHelper::getStringValue(json.get(), "database", _vocbase->_name);
+  std::string const username = JsonHelper::getStringValue(json.get(), "username", "");
+  std::string const password = JsonHelper::getStringValue(json.get(), "password", "");
+
+  if (endpoint.empty()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "<endpoint> must be a valid endpoint");
+    return;
+  }
+
+  std::string const restrictType = JsonHelper::getStringValue(json.get(), "restrictType", "");
+
+  // initialize some defaults to copy from
+  TRI_replication_applier_configuration_t defaults;
+  TRI_InitConfigurationReplicationApplier(&defaults);
+  
+  // initialize target configuration
+  TRI_replication_applier_configuration_t config;
+  TRI_InitConfigurationReplicationApplier(&config);
+
+  config._endpoint           = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._database           = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
+  config._username           = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
+  config._password           = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+  config._includeSystem      = JsonHelper::getBooleanValue(json.get(), "includeSystem", true);
+  config._autoStart          = true;
+  config._requestTimeout     = JsonHelper::getNumericValue<double>(json.get(), "requestTimeout", defaults._requestTimeout);
+  config._connectTimeout     = JsonHelper::getNumericValue<double>(json.get(), "connectTimeout", defaults._connectTimeout);
+  config._ignoreErrors       = JsonHelper::getNumericValue<uint64_t>(json.get(), "ignoreErrors", defaults._ignoreErrors);
+  config._maxConnectRetries  = JsonHelper::getNumericValue<uint64_t>(json.get(), "maxConnectRetries", defaults._maxConnectRetries);
+  config._sslProtocol        = JsonHelper::getNumericValue<uint32_t>(json.get(), "sslProtocol", defaults._sslProtocol);
+  config._chunkSize          = JsonHelper::getNumericValue<uint64_t>(json.get(), "chunkSize", defaults._chunkSize);
+  config._adaptivePolling    = JsonHelper::getBooleanValue(json.get(), "adaptivePolling", defaults._adaptivePolling);
+  config._verbose            = JsonHelper::getBooleanValue(json.get(), "verbose", defaults._verbose);
+  config._requireFromPresent = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", defaults._requireFromPresent);
+  config._restrictType       = JsonHelper::getStringValue(json.get(), "restrictType", defaults._restrictType);
+  
+  TRI_json_t* restriction = JsonHelper::getObjectElement(json.get(), "restrictCollections");
+
+  if (TRI_IsArrayJson(restriction)) {
+    size_t const n = TRI_LengthArrayJson(restriction);
+
+    for (size_t i = 0; i < n; ++i) {
+      auto cname = static_cast<TRI_json_t const*>(TRI_AtVector(&restriction->_value._objects, i));
+
+      if (JsonHelper::isString(cname)) {
+        config._restrictCollections.emplace(std::string(cname->_value._string.data, cname->_value._string.length - 1), true);
+      }
+    }
+  }
+
+  // now the configuration is complete
+
+  // destroy now unneeded default values
+  TRI_DestroyConfigurationReplicationApplier(&defaults);
+  
+  
+  if ((restrictType.empty() && ! config._restrictCollections.empty()) ||
+      (! restrictType.empty() && config._restrictCollections.empty()) ||
+      (! restrictType.empty() && restrictType != "include" && restrictType != "exclude")) {
+    TRI_DestroyConfigurationReplicationApplier(&config);
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid value for <restrictCollections> or <restrictType>");
+    return;
+  }
+
+  // forget about any existing replication applier configuration  
+  int res = _vocbase->_replicationApplier->forget();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyConfigurationReplicationApplier(&config);
+    generateError(HttpResponse::SERVER_ERROR, res);
+    return;
+  }
+  
+
+  // start initial synchronization
+  TRI_voc_tick_t lastLogTick = 0;
+  string errorMsg = "";
+  {
+    InitialSyncer syncer(_vocbase, &config, config._restrictCollections, restrictType, false);
+
+    res = TRI_ERROR_NO_ERROR;
+
+    try {
+      res = syncer.run(errorMsg);
+    }
+    catch (...) {
+      errorMsg = "caught an exception";
+      res = TRI_ERROR_INTERNAL;
+    }
+
+    lastLogTick = syncer.getLastLogTick();
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyConfigurationReplicationApplier(&config);
+    generateError(HttpResponse::SERVER_ERROR, res, errorMsg);
+    return;
+  }
+  
+  res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyConfigurationReplicationApplier(&config);
+    generateError(HttpResponse::SERVER_ERROR, res);
+    return;
+  }
+    
+  TRI_DestroyConfigurationReplicationApplier(&config);
+  
+  res =_vocbase->_replicationApplier->start(lastLogTick, true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+    return;
+  }
+
+  TRI_json_t* result = TRI_JsonReplicationApplier(_vocbase->_replicationApplier);
+
+  if (result == nullptr) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    return;
+  }
+
+  generateResult(result);
+  TRI_FreeJson(TRI_CORE_MEM_ZONE, result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_api_replication_synchronize
 /// @brief start a replication
 ///
@@ -3339,7 +3655,7 @@ void RestReplicationHandler::handleCommandDump () {
 /// The body of the request must be JSON object with the configuration. The
 /// following attributes are allowed for the configuration:
 ///
-/// - *endpoint*: the endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
+/// - *endpoint*: the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
 ///
 /// - *database*: the database name on the master (if not specified, defaults to the
 ///   name of the local current database).
