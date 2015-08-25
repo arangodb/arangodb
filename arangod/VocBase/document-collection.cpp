@@ -2929,7 +2929,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   auto primaryIndex = document->primaryIndex()->internals();
 
   if ((n > 1) && (primaryIndex->_nrUsed > NotificationSizeThreshold)) {
-    LOG_ACTION("fill-indexes-document-collection { collection: %s/%s }, n: %d", 
+    LOG_ACTION("fill-indexes-document-collection { collection: %s/%s }, indexes: %d", 
                document->_vocbase->_name,
                document->_info._name,
                (int) (n - 1));
@@ -2999,7 +2999,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   }
     
   LOG_TIMER((TRI_microtime() - start),
-            "fill-indexes-document-collection { collection: %s/%s }, n: %d", 
+            "fill-indexes-document-collection { collection: %s/%s }, indexes: %d", 
             document->_vocbase->_name,
             document->_info._name, 
             (int) (n - 1)); 
@@ -3221,6 +3221,14 @@ static int FillIndex (TRI_document_collection_t* document,
   auto primaryIndex = document->primaryIndex()->internals();
   void** ptr = primaryIndex->_table;
   void** end = ptr + primaryIndex->_nrAlloc;
+  
+  double start = TRI_microtime();
+  
+  LOG_ACTION("fill-index-sequential { collection: %s/%s }, %s, buckets: %d", 
+            document->_vocbase->_name,
+            document->_info._name, 
+            idx->context().c_str(),
+            (int) document->_info._indexBuckets);
 
   try {
 
@@ -3259,6 +3267,13 @@ static int FillIndex (TRI_document_collection_t* document,
 
     // give the index a hint for the initial resize
     idx->sizeHint();
+  
+    LOG_TIMER((TRI_microtime() - start),
+              "fill-index-sequential { collection: %s/%s }, %s, buckets: %d", 
+              document->_vocbase->_name,
+              document->_info._name, 
+              idx->context().c_str(),
+              (int) document->_info._indexBuckets);
 
     return TRI_ERROR_NO_ERROR;
   }

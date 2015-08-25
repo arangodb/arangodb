@@ -333,6 +333,7 @@ bool PrimaryIndex::resize (uint64_t targetSize,
     return true;
   }
 
+  uint64_t oldSize = _primaryIndex._nrAlloc;
   void** oldTable = _primaryIndex._table;
   
   // only log performance infos for indexes with more than this number of entries
@@ -340,8 +341,9 @@ bool PrimaryIndex::resize (uint64_t targetSize,
 
   double start = TRI_microtime();
   if (targetSize > NotificationSizeThreshold) {
-    LOG_ACTION("index-resize %s, target size: %llu", 
+    LOG_ACTION("index-resize %s, old size: %llu, target size: %llu", 
                context().c_str(),
+               (unsigned long long) oldSize,
                (unsigned long long) targetSize);
   }
 
@@ -382,8 +384,9 @@ bool PrimaryIndex::resize (uint64_t targetSize,
   _primaryIndex._nrAlloc = targetSize;
 
   LOG_TIMER((TRI_microtime() - start),
-            "index-resize, %s, target size: %llu", 
+            "index-resize, %s, old size: %llu, target size: %llu", 
             context().c_str(),
+            (unsigned long long) oldSize,
             (unsigned long long) targetSize);
 
   return true;

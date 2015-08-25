@@ -265,17 +265,19 @@ static int ResizeHashArray (triagens::arango::HashIndex* hashIndex,
   
   // only log performance infos for indexes with more than this number of entries
   static uint64_t const NotificationSizeThreshold = 131072; 
+  
+  uint64_t oldAlloc = array->_nrAlloc;
 
   double start = TRI_microtime();
   if (targetSize > NotificationSizeThreshold) {
-    LOG_ACTION("index-resize %s, target size %llu", 
+    LOG_ACTION("index-resize %s, old size: %llu, target size %llu", 
                hashIndex->context().c_str(),
+               (unsigned long long) oldAlloc,
                (unsigned long long) targetSize);
   }
 
   TRI_hash_index_element_multi_t* oldTable    = array->_table;
   TRI_hash_index_element_multi_t* oldTablePtr = array->_tablePtr;
-  uint64_t oldAlloc = array->_nrAlloc;
 
   TRI_ASSERT(targetSize > 0);
 
@@ -315,8 +317,9 @@ static int ResizeHashArray (triagens::arango::HashIndex* hashIndex,
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTablePtr);
 
   LOG_TIMER((TRI_microtime() - start),
-            "index-resize, %s, target size: %llu", 
+            "index-resize, %s, old size: %llu, target size: %llu", 
             hashIndex->context().c_str(),
+            (unsigned long long) oldAlloc,
             (unsigned long long) targetSize);
 
   return TRI_ERROR_NO_ERROR;
