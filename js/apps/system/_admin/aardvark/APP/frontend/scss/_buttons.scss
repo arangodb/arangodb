@@ -12,6 +12,7 @@
   color: $c-white;
   margin-left: 10px;
   padding: 5px 16px;
+
 }
 
 .button-neutral {
@@ -41,6 +42,7 @@
 }
 
 [class^='button-']:disabled,
+button.disabled,
 [class*=' button-']:disabled {
   @extend %inactive;
 
@@ -346,10 +348,10 @@ h6 {
   padding: 4px;
 }
 
-&.gv-icon-small {
+.gv-icon-small {
   background-size: 16px 16px;
-  height: 16px;
-  width: 16px;
+  height: 16px !important;
+  width: 16px !important;
 
   &.delete {
     background-image: url('../img/icon_delete.png');

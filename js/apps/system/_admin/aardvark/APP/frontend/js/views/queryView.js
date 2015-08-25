@@ -42,13 +42,7 @@
       'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
       'click #confirmQueryImport': 'importCustomQueries',
       'click #confirmQueryExport': 'exportCustomQueries',
-      'click #downloadQueryResult': 'downloadQueryResult',
-      'click #importQueriesToggle': 'showImportMenu'
-    },
-
-    showImportMenu: function(e) {
-      $('#importQueriesToggle').toggleClass('activated');
-      $('#importHeader').slideToggle(200);
+      'click #downloadQueryResult': 'downloadQueryResult'
     },
 
     createCustomQueryModal: function(){
@@ -200,12 +194,12 @@
       outputEditor.setReadOnly(true);
       outputEditor.setHighlightActiveLine(false);
       outputEditor.getSession().setMode("ace/mode/json");
-      outputEditor.setFontSize("16px");
+      outputEditor.setFontSize("13px");
       outputEditor.setValue('');
 
       var inputEditor = ace.edit("aqlEditor");
       inputEditor.getSession().setMode("ace/mode/aql");
-      inputEditor.setFontSize("16px");
+      inputEditor.setFontSize("13px");
       inputEditor.commands.addCommand({
         name: "togglecomment",
         bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
@@ -303,6 +297,7 @@
         self.file = self.files[0];
 
         self.allowUpload = true;
+        $('#confirmQueryImport').removeClass('disabled');
       });
     },
 
@@ -320,6 +315,7 @@
         };
 
         self.collection.saveImportQueries(self.file, callback.bind(this));
+        $('#confirmQueryImport').addClass('disabled');
       }
     },
 
