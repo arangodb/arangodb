@@ -308,7 +308,10 @@ struct TRI_vocbase_t {
 
   std::set<TRI_voc_tid_t>*                _oldTransactions;
 
-  class TRI_replication_applier_t*       _replicationApplier;
+  class TRI_replication_applier_t*        _replicationApplier;
+
+  triagens::basics::ReadWriteLock         _replicationClientsLock;
+  std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>> _replicationClients;
 
   // state of the database
   // 0 = inactive
@@ -330,6 +333,10 @@ struct TRI_vocbase_t {
 
   TRI_condition_t                         _compactorCondition;
   TRI_condition_t                         _cleanupCondition;
+      
+  public:
+    void updateReplicationClient (TRI_server_id_t, TRI_voc_tick_t);
+    std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> getReplicationClients();
 };
 
 ////////////////////////////////////////////////////////////////////////////////

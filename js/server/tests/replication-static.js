@@ -152,7 +152,7 @@ function ReplicationSuite () {
 
     var printed = false;
 
-    while (1) {
+    while (true) {
       var slaveState = replication.applier.state();
 
       if (! slaveState.state.running || slaveState.state.lastError.errorNum > 0) {
@@ -833,6 +833,47 @@ function ReplicationSuite () {
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(40000, state.count);
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        {
+          chunkSize: 2048
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test delayed transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactionDelayed : function () {
+      compare(
+        function (state) {
+          db._create(cn);
+
+          db._executeTransaction({
+            collections: {
+              write: cn
+            },
+            action: function (params) {
+              var c = require("internal").db._collection(params.cn), i;
+              var wait = require("internal").wait;
+
+              for (i = 0; i < 10; ++i) {
+                c.save({ "_key" : "test" + i, value : i });
+                c.update("test" + i, { value : i + 1 });
+
+                wait(1, false);
+              }
+            },
+            params: { "cn" : cn },
+          });
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(10, state.count);
         },
         function (state) {
           assertEqual(state.count, collectionCount(cn));

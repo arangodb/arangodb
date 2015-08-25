@@ -52,6 +52,7 @@
 #include "VocBase/Ditch.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
+#include "VocBase/headers.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/server.h"
 #include "VocBase/shape-accessor.h"
@@ -2020,6 +2021,10 @@ static TRI_doc_collection_info_t* Figures (TRI_document_collection_t* document) 
   // add index information
   info->_numberIndexes = 0;
   info->_sizeIndexes   = 0;
+
+  if (document->_headersPtr != nullptr) {
+    info->_sizeIndexes += static_cast<int64_t>(document->_headersPtr->memory());
+  }
 
   for (auto& idx : document->allIndexes()) {
     info->_sizeIndexes += idx->memory();

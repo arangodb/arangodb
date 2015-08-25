@@ -215,6 +215,55 @@ function ReplicationLoggerSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test first tick
+////////////////////////////////////////////////////////////////////////////////
+
+    testFirstTick : function () {
+      var state = replication.logger.state().state;
+      assertTrue(state.running);
+      var tick = state.lastLogTick;
+      assertTrue(typeof tick === 'string');
+      assertMatch(/^\d+$/, tick);
+      
+      var firstTick = replication.logger.firstTick();
+      assertTrue(typeof firstTick === 'string');
+      assertMatch(/^\d+$/, firstTick);
+      assertEqual(-1, compareTicks(firstTick, tick));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test tick ranges
+////////////////////////////////////////////////////////////////////////////////
+
+    testTickRanges : function () {
+      var state = replication.logger.state().state;
+      assertTrue(state.running);
+      var tick = state.lastLogTick;
+      assertTrue(typeof tick === 'string');
+      assertMatch(/^\d+$/, tick);
+ 
+      var ranges = replication.logger.tickRanges();
+      assertTrue(Array.isArray(ranges));
+      assertTrue(ranges.length > 0);
+
+      for (var i = 0; i < ranges.length; ++i) {
+        var df = ranges[i];
+        assertTrue(typeof df === 'object');
+        assertTrue(df.hasOwnProperty('datafile'));
+        assertTrue(df.hasOwnProperty('state'));
+        assertTrue(df.hasOwnProperty('tickMin'));
+        assertTrue(df.hasOwnProperty('tickMax'));
+
+        assertTrue(typeof df.datafile === 'string');
+        assertTrue(typeof df.state === 'string');
+        assertTrue(typeof df.tickMin === 'string');
+        assertMatch(/^\d+$/, df.tickMin);
+        assertTrue(typeof df.tickMax === 'string');
+        assertMatch(/^\d+$/, df.tickMax);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -72,7 +72,7 @@ static inline TRI_doc_datafile_info_t& createDfi (CollectorCache* cache,
 
   TRI_doc_datafile_info_t dfi;
   memset(&dfi, 0, sizeof(TRI_doc_datafile_info_t));
-  cache->dfi.emplace(std::make_pair(fid, dfi));
+  cache->dfi.emplace(fid, dfi);
 
   return getDfi(cache, fid);
 }
@@ -1133,7 +1133,7 @@ int CollectorThread::queueOperations (triagens::wal::Logfile* logfile,
         if (it == _operationsQueue.end()) {
           std::vector<CollectorCache*> ops;
           ops.push_back(cache);
-          _operationsQueue.emplace(std::make_pair(cid, ops));
+          _operationsQueue.emplace(cid, ops);
           _logfileManager->increaseCollectQueueSize(logfile);
         }
         else {
