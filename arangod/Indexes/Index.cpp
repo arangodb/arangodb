@@ -389,6 +389,15 @@ int Index::sizeHint (size_t) {
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default implementation for sizeHint
+////////////////////////////////////////////////////////////////////////////////
+
+int Index::sizeHint () {
+  // do nothing
+  return TRI_ERROR_NO_ERROR;
+}
+
 namespace triagens {
   namespace arango {
 

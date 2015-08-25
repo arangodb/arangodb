@@ -28,9 +28,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EdgeIndex.h"
+
 #include "Basics/Exceptions.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
+#include "RestServer/ArangoServer.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/transaction.h"
@@ -331,6 +333,8 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
     return this->context();
   };
   
+  auto marks = ArangoServer::defaultWatermarks();
+
   _edgesFrom = new TRI_EdgeIndexHash_t(HashElementKey,
                                        HashElementEdgeFrom,
                                        IsEqualKeyEdgeFrom,
@@ -340,6 +344,8 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                                        64,
                                        context);
 
+  _edgesFrom->setWatermarks(marks[0], marks[1], marks[2]);
+
   _edgesTo = new TRI_EdgeIndexHash_t(HashElementKey,
                                      HashElementEdgeTo,
                                      IsEqualKeyEdgeTo,
@@ -348,6 +354,8 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                                      indexBuckets,
                                      64,
                                      context);
+
+  _edgesTo->setWatermarks(marks[0], marks[1], marks[2]);
 }
 
 EdgeIndex::~EdgeIndex () {
@@ -473,14 +481,29 @@ void EdgeIndex::lookup (TRI_edge_index_iterator_t const* edgeIndexIterator,
 /// @brief provides a size hint for the edge index
 ////////////////////////////////////////////////////////////////////////////////
         
+int EdgeIndex::sizeHint () {
+  int err = _edgesFrom->initialResize();
+
+  if (err != TRI_ERROR_NO_ERROR) {
+    return err;
+  }
+
+  return _edgesTo->initialResize();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief provides a size hint for the edge index
+////////////////////////////////////////////////////////////////////////////////
+        
 int EdgeIndex::sizeHint (size_t size) {
+
   // we assume this is called when setting up the index and the index
   // is still empty
   TRI_ASSERT(_edgesFrom->size() == 0);
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  int err = _edgesFrom->resize(static_cast<uint32_t>(size + 2049));
+  int err = _edgesFrom->initialSize(static_cast<uint32_t>(size));
 
   if (err != TRI_ERROR_NO_ERROR) {
     return err;
@@ -492,7 +515,7 @@ int EdgeIndex::sizeHint (size_t size) {
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  return _edgesTo->resize(static_cast<uint32_t>(size + 2049));
+  return _edgesTo->initialSize(static_cast<uint32_t>(size));
 }
 
 // -----------------------------------------------------------------------------

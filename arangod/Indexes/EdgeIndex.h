@@ -110,6 +110,7 @@ namespace triagens {
                      size_t);
 
         int sizeHint (size_t) override final;
+        int sizeHint () override final;
 
         TRI_EdgeIndexHash_t* from () {
           return _edgesFrom;

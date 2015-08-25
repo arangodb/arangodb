@@ -160,6 +160,10 @@ namespace triagens {
         
         std::function<std::string()> _contextCallback;
 
+        double _lowWaterMark; // currently 0.00
+        double _highWaterMark; // currently 0.66
+        double _initialFillRatio; // currently 0.10
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -188,6 +192,11 @@ namespace triagens {
             _isEqualElementElement(isEqualElementElement),
             _isEqualElementElementByKey(isEqualElementElementByKey),
             _contextCallback(contextCallback) {
+
+          // set the water marks
+          _initialFillRatio = 0.50;
+          _lowWaterMark = 0.00;
+          _highWaterMark = 0.66;
 
           // Make the number of buckets a power of two:
           size_t ex = 0;
@@ -243,6 +252,45 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the watermarks
+////////////////////////////////////////////////////////////////////////////////
+
+        void setWatermarks (double initial, double low, double high) {
+          if (initial < 0.01) {
+            initial = 0.01;
+          }
+
+          if (1.0 <= initial) {
+            initial = 1.0;
+          }
+
+          _initialFillRatio = initial;
+         
+          if (low < 0.0) {
+            low = 0.0;
+          }
+
+          if (0.99 < low) {
+            low = 0.99;
+          }
+
+          _lowWaterMark = low;
+
+          if (high < low) {
+            high = low + 0.01;
+          }
+
+          if (1.0 <= high) {
+            high = 1.0;
+          }
+
+          _highWaterMark = high;
+
+          LOG_DEBUG("using watermarks for AssocMulti: initial = %0.2f, low = %0.2f, high = %0.2f",
+                    initial, low, high);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the memory used by the hash table
@@ -315,9 +363,15 @@ namespace triagens {
           uint64_t hashByKey = _hashElement(element, true);
           Bucket& b = _buckets[hashByKey & _bucketsMask];
 
-          // if we were adding and the table is more than 2/3 full, extend it
-          if (2 * b._nrAlloc < 3 * b._nrUsed) {
-            resizeInternal(b, 2 * b._nrAlloc + 1);
+          // if we were adding and reached the high water mark, extend it
+          if (_highWaterMark * b._nrAlloc < 1.0 * b._nrUsed) {
+            IndexType newSize = 2 * b._nrAlloc + 1;
+
+            while (_highWaterMark * newSize < 1.0 * b._nrUsed) {
+              newSize *= 2;
+            }
+
+            resizeInternal(b, newSize);
           }
 
 #ifdef TRI_INTERNAL_STATS
@@ -791,23 +845,75 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resize the array
+/// @brief sets a suitable initial size for the array
 ////////////////////////////////////////////////////////////////////////////////
 
-        int resize (IndexType size) throw() {
+        int initialSize (IndexType size) throw() {
           size /= static_cast<IndexType>(_buckets.size());
+
+          LOG_DEBUG("number of buckets in AssocMulti = %lu, average size per bucket = %lu",
+                    (unsigned long) _buckets.size(),
+                    (unsigned long) size);
+
+          int n = -1;
+
           for (auto& b : _buckets) {
-            if (2 * (2 * size + 1) < 3 * b._nrUsed) {
-              return TRI_ERROR_BAD_PARAMETER;
+            ++n;
+            IndexType newSize = size / _initialFillRatio;
+
+            if (newSize < 2048) {
+              newSize = 2048;
             }
 
             try {
-              resizeInternal(b, 2 * size + 1);
+              LOG_DEBUG("initial size of bucket %d in AssocMulti: %lu",
+                        n, (unsigned long) newSize);
+
+              resizeInternal(b, newSize);
             }
             catch (...) {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
           }
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resize the array to match the initial fill ratio
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialResize () throw() {
+          int n = -1;
+
+          for (auto& b : _buckets) {
+            ++n;
+            IndexType newSize = b._nrUsed / _initialFillRatio;
+
+            if (newSize < b._nrUsed + 2048) {
+              newSize = b._nrUsed + 2048;
+            }
+
+            while (_highWaterMark * newSize < 1.0 * b._nrUsed) {
+              newSize *= 2;
+            }
+
+            try {
+              if (b._nrAlloc < newSize) {
+                LOG_DEBUG("initial resize of bucket %d in AssocMulti: %lu entries, size %lu -> %lu",
+                          n, 
+                          (unsigned long) b._nrUsed,
+                          (unsigned long) b._nrAlloc,
+                          (unsigned long) newSize);
+
+                resizeInternal(b, newSize);
+              }
+            }
+            catch (...) {
+              return TRI_ERROR_OUT_OF_MEMORY;
+            }
+          }
+
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -1192,8 +1298,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

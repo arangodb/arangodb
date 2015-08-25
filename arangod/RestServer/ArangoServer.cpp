@@ -306,6 +306,30 @@ static bool SetRequestContext (triagens::rest::HttpRequest* request,
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default watermarks
+////////////////////////////////////////////////////////////////////////////////
+
+extern AnyServer* ArangoInstance;
+
+vector<double> ArangoServer::defaultWatermarks () {
+  ArangoServer* singleton = dynamic_cast<ArangoServer*>(ArangoInstance);
+
+  if (singleton == nullptr) {
+    return { 0.50, 0.00, 0.66 };
+  }
+
+  return {
+    singleton->_hashInitialFillRatio,
+    singleton->_hashLowWatermark,
+    singleton->_hashHighWatermark
+  };
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -345,7 +369,10 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _queryRegistry(nullptr),
     _pairForAql(nullptr),
     _indexPool(nullptr),
-    _threadAffinity(0) {
+    _threadAffinity(0),
+    _hashInitialFillRatio(0.50),
+    _hashLowWatermark(0.00),
+    _hashHighWatermark(0.66) {
 
   TRI_SetApplicationName("arangod");
 
@@ -536,6 +563,9 @@ void ArangoServer::buildApplicationServer () {
     ("start-service", "used to start as windows service")
     ("no-server", "do not start the server, if console is requested")
     ("use-thread-affinity", &_threadAffinity, "try to set thread affinity (0=disable, 1=disjunct, 2=overlap, 3=scheduler, 4=dispatcher)")
+    ("indexes.initial-fill-factor", &_hashInitialFillRatio, "the initial fill ratio of hash and edge indexes")
+    ("indexes.low-watermark", &_hashLowWatermark, "low watermark for hash and edge indexes")
+    ("indexes.high-watermark", &_hashHighWatermark, "high watermark for hash and edge indexes")
   ;
 
   // .............................................................................

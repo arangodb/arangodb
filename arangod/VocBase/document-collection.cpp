@@ -3223,7 +3223,8 @@ static int FillIndex (TRI_document_collection_t* document,
   void** end = ptr + primaryIndex->_nrAlloc;
 
   try {
-    // give the index a size hint
+
+    // give the index a size hint for the initial size
     idx->sizeHint(static_cast<size_t>(primaryIndex->_nrUsed));
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -3255,6 +3256,9 @@ static int FillIndex (TRI_document_collection_t* document,
 
       }
     }
+
+    // give the index a hint for the initial resize
+    idx->sizeHint();
 
     return TRI_ERROR_NO_ERROR;
   }

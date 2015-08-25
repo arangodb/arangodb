@@ -191,6 +191,9 @@ namespace triagens {
         // give index a hint about the expected size
         virtual int sizeHint (size_t);
 
+        // give index a hint, that initial loading is done
+        virtual int sizeHint ();
+
         friend std::ostream& operator<< (std::ostream&, Index const*);
         friend std::ostream& operator<< (std::ostream&, Index const&);
 
@@ -216,8 +219,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
