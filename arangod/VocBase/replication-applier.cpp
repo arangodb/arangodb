@@ -1180,12 +1180,14 @@ int TRI_replication_applier_t::stop (bool resetError) {
     setTermination(true);
     setProgress("applier shut down", false);
 
-    if (_state._lastError._msg != nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, _state._lastError._msg);
-      _state._lastError._msg = nullptr;
-    }
+    if (resetError) {
+      if (_state._lastError._msg != nullptr) {
+        TRI_FreeString(TRI_CORE_MEM_ZONE, _state._lastError._msg);
+        _state._lastError._msg = nullptr;
+      }
 
-    _state._lastError._code = TRI_ERROR_NO_ERROR;
+      _state._lastError._code = TRI_ERROR_NO_ERROR;
+    }
 
     TRI_GetTimeStampReplication(_state._lastError._time, sizeof(_state._lastError._time) - 1);
   }
