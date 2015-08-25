@@ -69,7 +69,7 @@ namespace triagens {
 /// @brief typedef for hash tables
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef triagens::basics::AssocMulti<void, void, uint32_t> TRI_EdgeIndexHash_t;
+        typedef triagens::basics::AssocMulti<void, void, uint32_t, true> TRI_EdgeIndexHash_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods

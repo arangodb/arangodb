@@ -266,7 +266,7 @@ namespace triagens {
   
         typedef triagens::basics::AssocMulti<TRI_index_search_value_t,
                                              TRI_index_element_t,
-                                             uint32_t>
+                                             uint32_t, true>
                 TRI_HashArrayMulti_t;
 
         union {

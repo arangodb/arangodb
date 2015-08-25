@@ -42,7 +42,7 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 #define INIT_MULTI \
-  triagens::basics::AssocMulti<void, void, uint32_t, true> a1( \
+  triagens::basics::AssocMulti<void, void, uint32_t, false> a1( \
       HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElementByKey);
 
 #define DESTROY_MULTI ;
@@ -105,12 +105,12 @@ static bool IsEqualElementElementByKey (void const* l, void const* r) {
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct CMultiPointerSetup {
-  CMultiPointerSetup () {
+struct CMultiPointerNoHashCacheSetup {
+  CMultiPointerNoHashCacheSetup () {
     BOOST_TEST_MESSAGE("setup AssocMulti_t");
   }
 
-  ~CMultiPointerSetup () {
+  ~CMultiPointerNoHashCacheSetup () {
     BOOST_TEST_MESSAGE("tear-down AssocMulti_t");
   }
 };
@@ -123,7 +123,7 @@ struct CMultiPointerSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_FIXTURE_TEST_SUITE(CMultiPointerTest, CMultiPointerSetup)
+BOOST_FIXTURE_TEST_SUITE(CMultiPointerNoHashCacheTest, CMultiPointerNoHashCacheSetup)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test initialisation
