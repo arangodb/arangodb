@@ -447,7 +447,13 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       instanceInfo.pid.pid,
       fs.join(tmpDataDir, 'core.dmp')
     ];
-    instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+    try {
+      instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+    }
+    catch (x) {
+      print("failed to start procdump - is it installed?");
+      throw x;
+    }
   }
   return instanceInfo;
 }
