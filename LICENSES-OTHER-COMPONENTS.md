@@ -17,17 +17,16 @@
 * http://software.schmorp.de/pkg/libev.html
 * [free as-is license](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
 
-### mruby
-
-* only used for the shell
-* https://github.com/mruby/mruby
-* [MIT License](https://github.com/mruby/mruby/blob/master/LEGAL)
-
 ### zlib
 
 * free as-is license
 
-### readlib
+### boost
+
+* http://www.boost.org/
+* [boost software license](http://www.boost.org/LICENSE_1_0.txt)
+
+### readline
 
 * http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html
 * GNU GPL
