@@ -178,7 +178,8 @@ namespace triagens {
         virtual bool hasSelectivityEstimate () const = 0;
         virtual double selectivityEstimate () const;
         virtual size_t memory () const = 0;
-        virtual triagens::basics::Json toJson (TRI_memory_zone_t*) const;
+        virtual triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const;
+        virtual triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const;
         virtual bool dumpFields () const = 0;
   
         virtual int insert (struct TRI_doc_mptr_t const*, bool) = 0;
