@@ -47,6 +47,7 @@ add_library(
     ${LIB_ARANGO_POSIX}
     Basics/application-exit.cpp
     Basics/associative.cpp
+    Basics/AttributeNameParser.cpp
     Basics/Barrier.cpp
     Basics/ConditionLocker.cpp
     Basics/ConditionVariable.cpp

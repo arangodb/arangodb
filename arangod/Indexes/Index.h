@@ -319,7 +319,7 @@ namespace triagens {
                          std::vector<TRI_index_element_t*>& elements,
                          TRI_doc_mptr_t const* document,
                          std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths,
-                         bool const sparse);
+                         bool sparse);
     };
 
   }

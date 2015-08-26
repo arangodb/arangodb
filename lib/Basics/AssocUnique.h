@@ -35,8 +35,6 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
 
-using Json = triagens::basics::Json;
-
 namespace triagens {
   namespace basics {
     // -----------------------------------------------------------------------------
@@ -305,17 +303,17 @@ namespace triagens {
           /// @brief Appends information about statistics in the given json.
           ////////////////////////////////////////////////////////////////////////////////
           
-          void appendToJson (TRI_memory_zone_t* zone, Json& json) {
-            Json bkts(zone, Json::Array);
+          void appendToJson (TRI_memory_zone_t* zone, triagens::basics::Json& json) {
+            triagens::basics::Json bkts(zone, triagens::basics::Json::Array);
             for (auto& b : _buckets) {
-              Json bucketInfo(zone, Json::Object);
-              bucketInfo("nrAlloc", Json(static_cast<double>(b._nrAlloc)));
-              bucketInfo("nrUsed", Json(static_cast<double>(b._nrUsed)));
+              triagens::basics::Json bucketInfo(zone, triagens::basics::Json::Object);
+              bucketInfo("nrAlloc", triagens::basics::Json(static_cast<double>(b._nrAlloc)));
+              bucketInfo("nrUsed", triagens::basics::Json(static_cast<double>(b._nrUsed)));
               bkts.add(bucketInfo);
             }
             json("buckets", bkts);
-            json("nrBuckets", Json(static_cast<double>(_buckets.size())));
-            json("size", Json(static_cast<double>(size())));
+            json("nrBuckets", triagens::basics::Json(static_cast<double>(_buckets.size())));
+            json("size", triagens::basics::Json(static_cast<double>(size())));
           }
 
           ////////////////////////////////////////////////////////////////////////////////

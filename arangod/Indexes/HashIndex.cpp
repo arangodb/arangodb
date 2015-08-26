@@ -484,8 +484,8 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
     }
   
     TRI_index_element_t* found = _multi._hashArray->insert(element,
-                                                                false,
-                                                                true);
+                                                           false,
+                                                           true);
     if (found != nullptr) {   // bad, can only happen if we are in a rollback
       if (isRollback) {       // in which case we silently ignore it
         return TRI_ERROR_NO_ERROR;
@@ -497,7 +497,7 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
     return TRI_ERROR_NO_ERROR;
   };
   
-  size_t count = elements.size();
+  size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
     auto hashElement = elements[i];
     res = work(hashElement, isRollback);
