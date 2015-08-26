@@ -32,8 +32,8 @@
 
 #include "Basics/Common.h"
 #include "Indexes/PathBasedIndex.h"
+#include "Indexes/skiplist-helper.h"
 #include "IndexOperators/index-operator.h"
-#include "SkipLists/skiplistIndex.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"

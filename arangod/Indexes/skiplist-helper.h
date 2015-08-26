@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SKIP_LISTS_SKIPLIST_INDEX_H
-#define ARANGODB_SKIP_LISTS_SKIPLIST_INDEX_H 1
+#ifndef ARANGODB_INDEXES_SKIPLIST_HELPER_H
+#define ARANGODB_INDEXES_SKIPLIST_HELPER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/SkipList.h"

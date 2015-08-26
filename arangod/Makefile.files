@@ -99,6 +99,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Indexes/PathBasedIndex.cpp \
 	arangod/Indexes/PrimaryIndex.cpp \
 	arangod/Indexes/SkiplistIndex2.cpp \
+	arangod/Indexes/skiplist-helper.cpp \
 	arangod/IndexOperators/index-operator.cpp \
 	arangod/Replication/ContinuousSyncer.cpp \
 	arangod/Replication/InitialSyncer.cpp \
@@ -140,7 +141,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Scheduler/Task.cpp \
 	arangod/Scheduler/TaskManager.cpp \
 	arangod/Scheduler/TimerTask.cpp \
-	arangod/SkipLists/skiplistIndex.cpp \
 	arangod/Statistics/statistics.cpp \
 	arangod/Utils/CollectionExport.cpp \
 	arangod/Utils/Cursor.cpp \
