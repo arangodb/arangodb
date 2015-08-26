@@ -4113,31 +4113,30 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Isolate* isolate,
   if (result.IsEmpty()) {
     return scope.Escape<v8::Value>(result);
   }
-  else {
-    // if all went well and the result wasn't undefined then print the returned value
-    if (printResult && ! result->IsUndefined()) {
-      v8::TryCatch tryCatch;
+    
+  // if all went well and the result wasn't undefined then print the returned value
+  if (printResult && ! result->IsUndefined()) {
+    v8::TryCatch tryCatch;
 
-      v8::Handle<v8::String> printFuncName = TRI_V8_ASCII_STRING("print");
-      v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(context->Global()->Get(printFuncName));
+    v8::Handle<v8::String> printFuncName = TRI_V8_ASCII_STRING("print");
+    v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(context->Global()->Get(printFuncName));
 
-      v8::Handle<v8::Value> arguments[] = { result };
-      print->Call(print, 1, arguments);
+    v8::Handle<v8::Value> arguments[] = { result };
+    print->Call(print, 1, arguments);
 
-      if (tryCatch.HasCaught()) {
-        if (tryCatch.CanContinue()) {
-          TRI_LogV8Exception(isolate, &tryCatch);
-        }
-        else {
-          TRI_GET_GLOBALS();
-          v8g->_canceled = true;
-          return scope.Escape<v8::Value>(v8::Undefined(isolate));
-        }
+    if (tryCatch.HasCaught()) {
+      if (tryCatch.CanContinue()) {
+        TRI_LogV8Exception(isolate, &tryCatch);
+      }
+      else {
+        TRI_GET_GLOBALS();
+        v8g->_canceled = true;
+        return scope.Escape<v8::Value>(v8::Undefined(isolate));
       }
     }
-
-    return scope.Escape<v8::Value>(result);
   }
+
+  return scope.Escape<v8::Value>(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

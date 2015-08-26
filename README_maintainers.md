@@ -355,6 +355,12 @@ generate
  - make examples FILTER_EXAMPLE='MOD.*' will only produce the examples matching that regex
  - make examples server.endpoint=tcp://127.0.0.1:8529 will utilize an existing arangod instead of starting anown.
    this does seriously cut down the execution time.
+ - alternatively you can use generateExamples (i.e. on windows since the make taregt is not portable) like that:
+    ./scripts/generateExamples
+       --server.endpoint 'tcp://127.0.0.1:8529'
+       --withPython 3rdParty/V8-4.3.61/third_party/python_26/python26.exe 
+       --onlyThisOne 'MOD.*'
+
  - make swagger - on toplevel to generate the documentation interactively with the server
  - cd Documentation/Books; make - to generate the HTML documentation
 
