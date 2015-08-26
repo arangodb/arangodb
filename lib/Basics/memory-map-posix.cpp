@@ -159,12 +159,13 @@ int TRI_MMFileAdvise (void* memoryAddress, size_t numOfBytes, int advice) {
 #ifdef __linux__
   LOG_DEBUG("Doing madvise %d for %lu length %lu", advice,
             (uint64_t) memoryAddress, numOfBytes);
-  char buffer[256];
   int res = madvise(memoryAddress, numOfBytes, advice);
+
   if (res == 0) {
     return TRI_ERROR_NO_ERROR;
   }
   else {
+    char buffer[256];
     char* p = strerror_r(errno, buffer, 256);
     LOG_INFO("madvise %d for %lu length %lu failed with: %s ",
              advice, (uint64_t) memoryAddress, numOfBytes, p);
