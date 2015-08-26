@@ -166,7 +166,8 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
                                                *_uniqueArray._hashElement,
                                                isEqualKeyElement,
                                                isEqualElementElement,
-                                               indexBuckets
+                                               indexBuckets,
+                                               [] () -> std::string { return "Unique Hash-Array"; }
       );
     }
     catch (...) {
@@ -185,7 +186,10 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
                                                  isEqualKeyElement,
                                                  isEqualElementElement,
                                                  *_multi._isEqualElElByKey,
-                                                 indexBuckets);
+                                                 indexBuckets,
+                                                 64,
+                                                 [] () -> std::string { return "Multi Hash-Array"; }
+          );
     }
     catch (...) {
       delete _multi._hashElement;
@@ -440,10 +444,7 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
         // Free all elements that are not yet in the index
         freeElement(elements[j]);
       }
-      for (size_t j = 0; j < i; ++j) {
-        // Remove all allready indexed elements and free them
-        removeUniqueElement(elements[j], isRollback);
-      }
+      // Allready indexed elements will be removed by the rollback
       return res;
     }
   }
@@ -502,8 +503,8 @@ int HashIndex::removeUniqueElement (TRI_index_element_t* element, bool isRollbac
   TRI_IF_FAILURE("RemoveHashIndex") {
     return TRI_ERROR_DEBUG;
   }
-
   TRI_index_element_t* old = _uniqueArray._hashArray->remove(element);
+
   // this might happen when rolling back
   if (old == nullptr) {
     if (isRollback) {
@@ -513,6 +514,7 @@ int HashIndex::removeUniqueElement (TRI_index_element_t* element, bool isRollbac
       return TRI_ERROR_INTERNAL;
     }
   }
+
   freeElement(old);
 
   return TRI_ERROR_NO_ERROR;
