@@ -378,12 +378,23 @@ size_t EdgeIndex::memory () const {
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
       
-triagens::basics::Json EdgeIndex::toJson (TRI_memory_zone_t* zone) const {
-  auto json = Index::toJson(zone);
+triagens::basics::Json EdgeIndex::toJson (TRI_memory_zone_t* zone,
+                                          bool withFigures) const {
+  auto json = Index::toJson(zone, withFigures);
   
   // hard-coded
   json("unique", triagens::basics::Json(false))
       ("sparse", triagens::basics::Json(false));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the index figures
+////////////////////////////////////////////////////////////////////////////////
+      
+triagens::basics::Json EdgeIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
+  triagens::basics::Json json(triagens::basics::Json::Object);
 
   return json;
 }

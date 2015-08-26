@@ -856,7 +856,8 @@ int TRI_SaveIndex (TRI_document_collection_t*,
 /// the caller must have read-locked the underyling collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection (TRI_document_collection_t*);
+std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection (TRI_document_collection_t*,
+                                                                   bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index, including index file removal and replication

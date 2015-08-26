@@ -114,7 +114,8 @@ size_t GeoIndex2::memory () const {
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json GeoIndex2::toJson (TRI_memory_zone_t* zone) const {
+triagens::basics::Json GeoIndex2::toJson (TRI_memory_zone_t* zone, 
+                                          bool withDetails) const {
   std::vector<std::string> f;
 
   auto shaper = _collection->getShaper();
@@ -150,7 +151,7 @@ triagens::basics::Json GeoIndex2::toJson (TRI_memory_zone_t* zone) const {
   }
 
   // create json
-  auto json = Index::toJson(zone);
+  auto json = Index::toJson(zone, withDetails);
 
   if (_variant == INDEX_GEO_COMBINED_LAT_LON || 
       _variant == INDEX_GEO_COMBINED_LON_LAT) {
@@ -165,6 +166,16 @@ triagens::basics::Json GeoIndex2::toJson (TRI_memory_zone_t* zone) const {
       ("unique",     triagens::basics::Json(zone, false))
       ("ignoreNull", triagens::basics::Json(zone, true))
       ("sparse",     triagens::basics::Json(zone, true));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the index figures
+////////////////////////////////////////////////////////////////////////////////
+        
+triagens::basics::Json GeoIndex2::toJsonFigures (TRI_memory_zone_t* zone) const {
+  triagens::basics::Json json(triagens::basics::Json::Object);
 
   return json;
 }

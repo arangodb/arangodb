@@ -2213,7 +2213,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   {
     std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(new triagens::arango::PrimaryIndex(nullptr));
 
-    auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE);
+    auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
   }
@@ -2232,7 +2232,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     // create a dummy edge index
     std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(new_id_tick, nullptr));
 
-    auto idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE);
+    auto idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
   }
