@@ -33,7 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/AssocMulti.h"
 #include "Basics/AssocUnique.h"
-#include "Indexes/Index.h"
+#include "Indexes/PathBasedIndex.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -47,7 +47,7 @@
 namespace triagens {
   namespace arango {
 
-    class HashIndex : public Index {
+    class HashIndex : public PathBasedIndex {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -81,10 +81,6 @@ namespace triagens {
 
         double selectivityEstimate () const override final;
 
-        bool dumpFields () const override final {
-          return true;
-        }
-        
         size_t memory () const override final;
 
         triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
@@ -99,32 +95,6 @@ namespace triagens {
         std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths () const {
           return _paths;
         }
-
-        struct TRI_document_collection_t* collection () const {
-          return _collection;
-        }
-
-        bool sparse () const {
-          return _sparse;
-        }
-        
-        bool unique () const {
-          return _unique;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the memory needed for an index key entry
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t keyEntrySize () const {
-          return _paths.size() * (sizeof(TRI_shaped_sub_t) + sizeof(TRI_doc_mptr_t*));
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locates entries in the hash index given shaped json objects
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_vector_pointer_t lookup (TRI_index_search_value_t*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
@@ -256,47 +226,47 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the attribute paths
-////////////////////////////////////////////////////////////////////////////////
-        
-        std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const  _paths;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual hash index
+/// @brief the actual hash index (unique type)
 ////////////////////////////////////////////////////////////////////////////////
   
+        typedef triagens::basics::AssocUnique<TRI_index_search_value_t,
+                                              TRI_index_element_t>
+                TRI_HashArray_t;
+          
+        struct UniqueArray {
+          UniqueArray () = delete;
+          UniqueArray (TRI_HashArray_t*, HashElementFunc*);
+          ~UniqueArray ();
+
+          TRI_HashArray_t*      _hashArray;   // the hash array itself, unique values
+          HashElementFunc*      _hashElement; // hash function for elements
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the actual hash index (multi type)
+////////////////////////////////////////////////////////////////////////////////
+        
         typedef triagens::basics::AssocMulti<TRI_index_search_value_t,
                                              TRI_index_element_t,
                                              uint32_t, true>
                 TRI_HashArrayMulti_t;
 
-        typedef triagens::basics::AssocUnique<TRI_index_search_value_t,
-                                              TRI_index_element_t>
-                TRI_HashArray_t;
 
-        union {
-          struct {
-            TRI_HashArray_t*       _hashArray;   // the hash array itself, unique values
-            HashElementFunc*      _hashElement; // hash function for elements
-          } _uniqueArray;
-          struct {
-            TRI_HashArrayMulti_t* _hashArray;   // the hash array itself, non-unique values
-            HashElementFunc*      _hashElement; // hash function for elements
-            IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
-          } _multi;
+        struct MultiArray {
+          MultiArray () = delete;
+          MultiArray (TRI_HashArrayMulti_t*, HashElementFunc*, IsEqualElementElementByKey*);
+          ~MultiArray ();
+
+          TRI_HashArrayMulti_t*       _hashArray;   // the hash array itself, non-unique values
+          HashElementFunc*            _hashElement; // hash function for elements
+          IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
         };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether the index is unique
-////////////////////////////////////////////////////////////////////////////////
+        union {
+          UniqueArray* _uniqueArray;
+          MultiArray* _multiArray;
+        };
 
-        bool const _unique;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether the index is sparse
-////////////////////////////////////////////////////////////////////////////////
-
-        bool const _sparse;
     };
 
   }
