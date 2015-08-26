@@ -181,6 +181,7 @@ triagens::basics::Json FulltextIndex::toJson (TRI_memory_zone_t* zone,
         
 triagens::basics::Json FulltextIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
   triagens::basics::Json json(triagens::basics::Json::Object);
+  json("memory", triagens::basics::Json(static_cast<double>(memory())));
 
   return json;
 }

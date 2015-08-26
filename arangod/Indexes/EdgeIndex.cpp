@@ -396,6 +396,7 @@ triagens::basics::Json EdgeIndex::toJson (TRI_memory_zone_t* zone,
 triagens::basics::Json EdgeIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
   triagens::basics::Json json(triagens::basics::Json::Object);
   
+  json("memory", triagens::basics::Json(static_cast<double>(memory())));
   json("buckets", triagens::basics::Json(static_cast<double>(_numBuckets)));
 
   return json;
