@@ -80,7 +80,7 @@ namespace triagens {
 /// @brief number of queues
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const size_t SIZE_QUEUE = 2;
+        static const size_t SYSTEM_QUEUE_SIZE = 2;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -129,6 +129,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void addAQLQueue (size_t nrThreads, size_t maxSize);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts a new named queue
+////////////////////////////////////////////////////////////////////////////////
+
+	int addExtraQueue (size_t identifier,
+			   size_t nrThreads,
+			   size_t maxSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new job
@@ -193,7 +201,7 @@ namespace triagens {
 /// @brief dispatcher queues
 ////////////////////////////////////////////////////////////////////////////////
 
-        DispatcherQueue* _queues[SIZE_QUEUE];
+	std::vector<DispatcherQueue*> _queues;
     };
   }
 }
@@ -203,8 +211,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
