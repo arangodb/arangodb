@@ -1322,12 +1322,11 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-
   string const databaseName(collection->_dbName);
   string const cid = StringUtils::itoa(collection->_cid);
   string const collectionName(collection->_name);
 
-  shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, cid);
+  std::shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, cid);
 
   if ((*c).empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1336,6 +1335,7 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
   v8::Handle<v8::Array> ret = v8::Array::New(isolate);
 
   TRI_json_t const* json = (*c).getIndexes();
+
   if (TRI_IsArrayJson(json)) {
     uint32_t j = 0;
     size_t const n = TRI_LengthArrayJson(json);
