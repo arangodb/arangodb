@@ -212,7 +212,7 @@ int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc,
   };
   std::vector<TRI_index_element_t*> elements;
 
-  int res = fillElement(allocate, elements, doc, _paths, _sparse);
+  int res = fillElement(allocate, elements, doc);
 
   // insert into the index. the memory for the element will be owned or freed
   // by the index
@@ -249,7 +249,7 @@ int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc,
   };
 
   std::vector<TRI_index_element_t*> elements;
-  int res = fillElement(allocate, elements, doc, _paths, _sparse);
+  int res = fillElement(allocate, elements, doc);
 
   // attempt the removal for skiplist indexes
   // ownership for the index element is transferred to the index

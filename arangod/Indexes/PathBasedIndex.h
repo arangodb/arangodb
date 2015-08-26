@@ -37,6 +37,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
 
+class VocShaper;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class PathBasedIndex
 // -----------------------------------------------------------------------------
@@ -109,10 +111,54 @@ namespace triagens {
         }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
       protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to insert a document into any index type
+////////////////////////////////////////////////////////////////////////////////
+
+        int fillElement (std::function<TRI_index_element_t* ()> allocate,
+                         std::vector<TRI_index_element_t*>& elements,
+                         TRI_doc_mptr_t const* document);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to transform AttributeNames into pid lists
+/// This will create PIDs for all indexed Attributes
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> fillPidPaths ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to create a set of index combinations to insert
+////////////////////////////////////////////////////////////////////////////////
+
+        void insertIntoIndex (TRI_shaped_json_t const*, 
+                              TRI_shaped_json_t const*,
+                              size_t,
+                              size_t, 
+                              std::unordered_set<std::vector<TRI_shaped_json_t>>&,
+                              std::vector<TRI_shaped_json_t>&);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               protected variables
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the shaper for the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        VocShaper* _shaper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the attribute paths
