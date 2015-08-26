@@ -121,7 +121,6 @@ add_executable(
     FulltextIndex/fulltext-result.cpp
     FulltextIndex/fulltext-wordlist.cpp
     GeoIndex/GeoIndex.cpp
-    HashIndex/hash-array.cpp
     HttpServer/ApplicationEndpointServer.cpp
     HttpServer/AsyncJobManager.cpp
     HttpServer/HttpCommTask.cpp
