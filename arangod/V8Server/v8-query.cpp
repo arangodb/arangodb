@@ -463,7 +463,7 @@ static void DestroySearchValue (TRI_memory_zone_t* zone,
 /// @brief sets up the example object for a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SetupSearchValue (std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const paths,
+static int SetupSearchValue (std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths,
                              v8::Handle<v8::Object> example,
                              VocShaper* shaper,
                              TRI_index_search_value_t& result,

@@ -50,32 +50,32 @@ namespace triagens {
       std::string name;
       bool shouldExpand;
 
-      AttributeName (std::string const& pName)
-        : name(pName), shouldExpand(false) { 
+      AttributeName (std::string const& name)
+        : AttributeName(name, false) {
       }
 
       AttributeName (std::string const& pName, bool pExpand)
-        : name(pName), shouldExpand(pExpand) { 
+        : name(pName), 
+          shouldExpand(pExpand) { 
       }
 
-      AttributeName (const AttributeName& b) 
-        : name(b.name), shouldExpand(b.shouldExpand) {
+      AttributeName (AttributeName const& other) 
+        : name(other.name), 
+          shouldExpand(other.shouldExpand) {
       }
 
-      bool operator== (const AttributeName& b) const {
-        return name == b.name && shouldExpand == b.shouldExpand;
+      bool operator== (AttributeName const& other) const {
+        return name == other.name && shouldExpand == other.shouldExpand;
       }
 
-      bool operator!= (const AttributeName& b) const {
-        return name != b.name || shouldExpand != b.shouldExpand;
+      bool operator!= (AttributeName const& other) const {
+        return name != other.name || shouldExpand != other.shouldExpand;
       }
 
     };
 
     std::ostream& operator<< (std::ostream&, AttributeName const*);
     std::ostream& operator<< (std::ostream&, AttributeName const&);
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -85,28 +85,22 @@ namespace triagens {
 /// @brief Parse an input string into attribute names and expansion flags
 ////////////////////////////////////////////////////////////////////////////////
 
-    void TRI_ParseAttributeString (
-        std::string const& input,
-        std::vector<AttributeName>& result
-      );
+    void TRI_ParseAttributeString (std::string const& input,
+                                   std::vector<AttributeName>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transform a vector of AttributeNames back into a string
 ////////////////////////////////////////////////////////////////////////////////
 
-    void TRI_AttributeNamesToString (
-        std::vector<AttributeName> const& input,
-        std::string& result,
-        bool excludeExpansion = false
-      );
+    void TRI_AttributeNamesToString (std::vector<AttributeName> const& input,
+                                     std::string& result,
+                                     bool excludeExpansion = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Tests if this AttributeName uses an expansion operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool TRI_AttributeNamesHaveExpansion (
-        std::vector<AttributeName> const& input
-      );
+    bool TRI_AttributeNamesHaveExpansion (std::vector<AttributeName> const& input);
 
   }
 }
