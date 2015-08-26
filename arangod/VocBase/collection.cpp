@@ -37,6 +37,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
+#include "Basics/memory-map.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -737,6 +738,11 @@ static bool IterateDatafilesVector (const TRI_vector_pointer_t* const files,
 
     if (! TRI_IterateDatafile(datafile, iterator, data)) {
       return false;
+    }
+
+    if (datafile->isPhysical(datafile) && datafile->_isSealed) {
+      TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
+                       TRI_MADVISE_RANDOM);
     }
   }
 
