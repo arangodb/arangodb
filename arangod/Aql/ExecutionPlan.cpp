@@ -111,7 +111,7 @@ void ExecutionPlan::getCollectionsFromJson (Ast* ast,
                                             triagens::basics::Json const& json) {
   TRI_ASSERT(ast != nullptr);
 
-  Json jsonCollections = json.get("collections");
+  triagens::basics::Json jsonCollections = json.get("collections");
 
   if (! jsonCollections.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node \"collections\" not found or not an array");
@@ -120,7 +120,7 @@ void ExecutionPlan::getCollectionsFromJson (Ast* ast,
   auto const size = jsonCollections.size();
     
   for (size_t i = 0; i < size; i++) {
-    Json oneJsonCollection = jsonCollections.at(static_cast<int>(i));
+    triagens::basics::Json oneJsonCollection = jsonCollections.at(static_cast<int>(i));
     auto typeStr = triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type");
       
     ast->query()->collections()->add(
@@ -227,7 +227,7 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
 
   // set up rules 
   auto const&& appliedRules = Optimizer::translateRules(_appliedRules);
-  triagens::basics::Json rules(Json::Array, appliedRules.size());
+  triagens::basics::Json rules(triagens::basics::Json::Array, appliedRules.size());
 
   for (auto const& r : appliedRules) {
     rules.add(triagens::basics::Json(r));
@@ -235,13 +235,13 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
   result.set("rules", rules);
 
   auto usedCollections = *ast->query()->collections()->collections();
-  triagens::basics::Json jsonCollectionList(Json::Array, usedCollections.size());
+  triagens::basics::Json jsonCollectionList(triagens::basics::Json::Array, usedCollections.size());
 
   for (auto const& c : usedCollections) {
-    Json json(Json::Object);
+    triagens::basics::Json json(triagens::basics::Json::Object);
 
-    jsonCollectionList(json("name", Json(c.first))
-                           ("type", Json(TRI_TransactionTypeGetStr(c.second->accessType))));
+    jsonCollectionList(json("name", triagens::basics::Json(c.first))
+                           ("type", triagens::basics::Json(TRI_TransactionTypeGetStr(c.second->accessType))));
   }
 
   result.set("collections", jsonCollectionList);
@@ -1756,9 +1756,9 @@ void ExecutionPlan::insertDependency (ExecutionNode* oldNode,
 /// @brief create a plan from the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
+ExecutionNode* ExecutionPlan::fromJson (triagens::basics::Json const& json) {
   ExecutionNode* ret = nullptr;
-  Json nodes = json.get("nodes");
+  triagens::basics::Json nodes = json.get("nodes");
   //std::cout << nodes.toString() << "\n";
 
   if (! nodes.isArray()) {
@@ -1770,7 +1770,7 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
   auto const size = nodes.size();
 
   for (size_t i = 0; i < size; i++) {
-    Json oneJsonNode = nodes.at(static_cast<int>(i));
+    triagens::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
 
     if (! oneJsonNode.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an object");
@@ -1783,7 +1783,7 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
 
     if (ret->getType() == triagens::aql::ExecutionNode::SUBQUERY) {
       // found a subquery node. now do magick here
-      Json subquery = oneJsonNode.get("subquery");
+      triagens::basics::Json subquery = oneJsonNode.get("subquery");
       // create the subquery nodes from the "subquery" sub-node
       auto subqueryNode = fromJson(subquery);
     
@@ -1795,7 +1795,7 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
   // all nodes have been created. now add the dependencies
 
   for (size_t i = 0; i < size; i++) {
-    Json oneJsonNode = nodes.at(static_cast<int>(i));
+    triagens::basics::Json oneJsonNode = nodes.at(static_cast<int>(i));
 
     if (! oneJsonNode.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an object");
@@ -1806,7 +1806,7 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
     auto thisNode = getNodeById(thisId);
 
     // now re-link the dependencies
-    Json dependencies = oneJsonNode.get("dependencies");
+    triagens::basics::Json dependencies = oneJsonNode.get("dependencies");
     if (triagens::basics::JsonHelper::isArray(dependencies.json())) {
       size_t const nDependencies = dependencies.size();
 
