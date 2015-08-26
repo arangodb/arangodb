@@ -143,15 +143,6 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*,
                                              TRI_index_operator_t const*,
                                              bool);
 
-bool SkiplistIndex_update (SkiplistIndex*, const TRI_index_element_t*,
-                           const TRI_index_element_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the number of elements in the index
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t SkiplistIndex_getNrUsed (SkiplistIndex*);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the memory used by the index
 ////////////////////////////////////////////////////////////////////////////////
