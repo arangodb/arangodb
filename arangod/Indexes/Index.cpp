@@ -367,8 +367,9 @@ triagens::basics::Json Index::toJson (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::basics::Json Index::toJsonFigures (TRI_memory_zone_t* zone) const {
-  // intentionally empty
-  return triagens::basics::Json(zone, triagens::basics::Json::Object);
+  triagens::basics::Json json(zone, triagens::basics::Json::Object);
+  json("memory", triagens::basics::Json(static_cast<double>(memory())));
+  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

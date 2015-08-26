@@ -264,7 +264,13 @@ triagens::basics::Json HashIndex::toJson (TRI_memory_zone_t* zone,
 
 triagens::basics::Json HashIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
   triagens::basics::Json json(zone, triagens::basics::Json::Object);
-
+  json("memory", triagens::basics::Json(static_cast<double>(memory())));
+  if (_unique) {
+    _uniqueArray._hashArray->appendToJson(zone, json);
+  }
+  else {
+    _multi._hashArray->appendToJson(zone, json);
+  }
   return json;
 }
   

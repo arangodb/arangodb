@@ -32,7 +32,10 @@
 #define ARANGODB_HASH_INDEX_HASH__ARRAY_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
+
+using Json = triagens::basics::Json;
 
 namespace triagens {
   namespace basics {
@@ -296,6 +299,23 @@ namespace triagens {
               }
             }
             return TRI_ERROR_NO_ERROR;
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief Appends information about statistics in the given json.
+          ////////////////////////////////////////////////////////////////////////////////
+          
+          void appendToJson (TRI_memory_zone_t* zone, Json& json) {
+            Json bkts(zone, Json::Array);
+            for (auto& b : _buckets) {
+              Json bucketInfo(zone, Json::Object);
+              bucketInfo("nrAlloc", Json(static_cast<double>(b._nrAlloc)));
+              bucketInfo("nrUsed", Json(static_cast<double>(b._nrUsed)));
+              bkts.add(bucketInfo);
+            }
+            json("buckets", bkts);
+            json("nrBuckets", Json(static_cast<double>(_buckets.size())));
+            json("size", Json(static_cast<double>(size())));
           }
 
           ////////////////////////////////////////////////////////////////////////////////
