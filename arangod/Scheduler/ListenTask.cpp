@@ -230,9 +230,11 @@ bool ListenTask::handleEvent (EventToken token,
     }
     else {
       Endpoint::DomainType type = _endpoint->getDomainType();
+
       if (type == Endpoint::DOMAIN_IPV4) {
         char buf[INET_ADDRSTRLEN + 1];
         char const* p = inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf) - 1);
+
         if (p != nullptr) {
           buf[INET_ADDRSTRLEN] = '\0';
           info.clientAddress = p;
@@ -242,6 +244,7 @@ bool ListenTask::handleEvent (EventToken token,
       else if (type == Endpoint::DOMAIN_IPV6) {
         char buf[INET6_ADDRSTRLEN + 1];
         char const* p = inet_ntop(AF_INET6, &addrmem.sin6_addr, buf, sizeof(buf) - 1);
+
         if (p != nullptr) {
           buf[INET6_ADDRSTRLEN] = '\0';
           info.clientAddress = p;

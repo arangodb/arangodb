@@ -53,8 +53,8 @@ namespace triagens {
 
     class Job : public RequestStatisticsAgent {
       private:
-        Job (Job const&);
-        Job& operator= (Job const&);
+        Job (Job const&) = delete;
+        Job& operator= (Job const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -79,12 +79,13 @@ namespace triagens {
         class status_t {
           public:
             status_t ()
-              : status(JOB_FAILED) {
+              : status_t(JOB_FAILED) {
             }
 
             explicit
             status_t (status_e status)
-              : status(status) {
+              : status(status),
+                sleep(0.0) {
             }
 
             status_e status;

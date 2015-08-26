@@ -104,12 +104,13 @@ namespace triagens {
         class status_t {
           public:
             status_t ()
-              : status(HANDLER_FAILED) {
+              : status_t(HANDLER_FAILED) {
             }
 
             explicit
             status_t (status_e status)
-              : status(status) {
+              : status(status),
+                sleep(0.0) {
             }
 
             Job::status_t jobStatus () {

@@ -34,6 +34,7 @@ using AttributeName = triagens::basics::AttributeName;
 
 namespace triagens {
   namespace basics {
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the index description to an output stream
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,20 +58,20 @@ namespace triagens {
   } // namespace basics
 } // namespace triagens
 
-void triagens::basics::TRI_ParseAttributeString (
-    std::string const& input,
-    std::vector<AttributeName>& result
-  ) {
+void triagens::basics::TRI_ParseAttributeString (std::string const& input,
+                                                 std::vector<AttributeName>& result) {
   size_t parsedUntil = 0;
-  size_t length = input.length();
+  size_t const length = input.length();
+
   for (size_t pos = 0; pos < length; ++pos) {
-    auto token = input.at(pos);
+    auto token = input[pos];
+
     if (token == '[') {
       // We only allow attr[*] and attr[*].attr2 as valid patterns
       if (   length - pos < 3
-          || input.at(pos + 1) != '*'
-          || input.at(pos + 2) != ']'
-          || (length - pos > 3 && input.at(pos + 3) != '.')) {
+          || input[pos + 1] != '*'
+          || input[pos + 2] != ']'
+          || (length - pos > 3 && input[pos + 3] != '.')) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_PARSER_FAILED);
       }
       result.emplace_back(input.substr(parsedUntil, pos - parsedUntil), true);
@@ -83,12 +84,11 @@ void triagens::basics::TRI_ParseAttributeString (
   }
 }
 
-void triagens::basics::TRI_AttributeNamesToString (
-    std::vector<AttributeName> const& input,
-    std::string& result,
-    bool excludeExpansion
-  ) {
-  TRI_ASSERT(result.size() == 0);
+void triagens::basics::TRI_AttributeNamesToString (std::vector<AttributeName> const& input,
+                                                   std::string& result,
+                                                   bool excludeExpansion) {
+  TRI_ASSERT(result.empty());
+
   bool isFirst = true;
   for (auto& it : input) {
     if (! isFirst) {
@@ -102,9 +102,7 @@ void triagens::basics::TRI_AttributeNamesToString (
   }
 }
 
-bool triagens::basics::TRI_AttributeNamesHaveExpansion (
-    std::vector<AttributeName> const& input
-  ) {
+bool triagens::basics::TRI_AttributeNamesHaveExpansion (std::vector<AttributeName> const& input) {
   for (auto& it : input) {
     if (it.shouldExpand) {
       return true;
