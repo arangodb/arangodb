@@ -2904,7 +2904,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   auto primaryIndex = document->primaryIndex()->internals();
 
   if ((n > 1) && (primaryIndex->_nrUsed > NotificationSizeThreshold)) {
-    LOG_ACTION("fill-indexes-document-collection { collection: %s/%s }, n: %d", 
+    LOG_ACTION("fill-indexes-document-collection { collection: %s/%s }, indexes: %d", 
                document->_vocbase->_name,
                document->_info._name,
                (int) (n - 1));
@@ -2974,7 +2974,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   }
     
   LOG_TIMER((TRI_microtime() - start),
-            "fill-indexes-document-collection { collection: %s/%s }, n: %d", 
+            "fill-indexes-document-collection { collection: %s/%s }, indexes: %d", 
             document->_vocbase->_name,
             document->_info._name, 
             (int) (n - 1)); 
@@ -3605,7 +3605,7 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
                    triagens::arango::Index* idx,
                    bool writeMarker) {
   // convert into JSON
-  auto json = idx->toJson(TRI_UNKNOWN_MEM_ZONE);
+  auto json = idx->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
   // construct filename
   char* number   = TRI_StringUInt64(idx->id());
@@ -3661,14 +3661,15 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
 /// the caller must have read-locked the underlying collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection (TRI_document_collection_t* document) {
+std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection (TRI_document_collection_t* document,
+                                                                   bool withFigures) {
   auto const& indexes = document->allIndexes();
 
   std::vector<triagens::basics::Json> result;
   result.reserve(indexes.size());
 
   for (auto const& idx : indexes) {
-    auto json = idx->toJson(TRI_UNKNOWN_MEM_ZONE);
+    auto json = idx->toJson(TRI_UNKNOWN_MEM_ZONE, withFigures);
 
     // shouldn't fail because of reserve
     result.emplace_back(json);

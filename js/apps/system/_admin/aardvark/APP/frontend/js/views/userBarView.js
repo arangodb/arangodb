@@ -40,20 +40,15 @@
       e.preventDefault();
     },
 
-    showDropdown: function (e) {
-      var tab = e.target || e.srcElement;
-      var navigateTo = tab.id;
-      if (navigateTo === "user") {
-        $("#user_dropdown").show(200);
-        return;
-      }
+    showDropdown: function () {
+      $("#user_dropdown").fadeIn(1);
     },
 
-    hideDropdown: function (e) {
-      $("#user_dropdown").hide();
+    hideDropdown: function () {
+      $("#user_dropdown").fadeOut(1);
     },
 
-    render: function (el) {
+    render: function () {
       var username = this.userCollection.whoAmI(),
         img = null,
         name = null,
@@ -67,7 +62,7 @@
         active = currentUser.get("active");
       }
       if (! img) {
-        img = "img/arangodb_logo_small.png";
+        img = "img/default_user.png";
       } 
       else {
         img = "https://s.gravatar.com/avatar/" + img + "?s=24";

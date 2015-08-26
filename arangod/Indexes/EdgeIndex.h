@@ -93,7 +93,8 @@ namespace triagens {
         
         size_t memory () const override final;
 
-        triagens::basics::Json toJson (TRI_memory_zone_t*) const override final;
+        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
+        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
         int insert (struct TRI_doc_mptr_t const*, bool) override final;
          
@@ -143,6 +144,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_EdgeIndexHash_t* _edgesTo;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of buckets effectively used by the index
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _numBuckets;
 
     };
 

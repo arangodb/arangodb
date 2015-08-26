@@ -171,11 +171,22 @@ size_t SkiplistIndex2::memory () const {
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
         
-triagens::basics::Json SkiplistIndex2::toJson (TRI_memory_zone_t* zone) const {
-  auto json = Index::toJson(zone);
+triagens::basics::Json SkiplistIndex2::toJson (TRI_memory_zone_t* zone,
+                                               bool withFigures) const {
+  auto json = Index::toJson(zone, withFigures);
 
   json("unique", triagens::basics::Json(zone, _unique))
       ("sparse", triagens::basics::Json(zone, _sparse));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the index figures
+////////////////////////////////////////////////////////////////////////////////
+        
+triagens::basics::Json SkiplistIndex2::toJsonFigures (TRI_memory_zone_t* zone) const {
+  triagens::basics::Json json(triagens::basics::Json::Object);
 
   return json;
 }
