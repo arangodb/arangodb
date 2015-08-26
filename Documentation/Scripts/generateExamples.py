@@ -130,6 +130,8 @@ OPTION_OUTPUT_FILE = 4
 
 fstate = OPTION_NORMAL
 
+escapeBS = re.compile("\\\\")
+doubleBS = "\\\\\\\\"
 
 ################################################################################
 ### @brief generate arangosh example headers with functions etc. needed later
@@ -326,8 +328,8 @@ def generateArangoshOutput(testName):
         testName,
         testName,
         value[TESTLINES][0][2],
-        OutputDir,
-        MapSourceFiles[testName]
+        escapeBS.sub(doubleBS, OutputDir),
+        escapeBS.sub(doubleBS, MapSourceFiles[testName])
         )
     except Exception as x:
         print x
@@ -404,8 +406,8 @@ def generateArangoshRun(testName):
         testName,
         testName,
         startLineNo,
-        OutputDir,
-        MapSourceFiles[testName],
+        escapeBS.sub(doubleBS, OutputDir),
+        escapeBS.sub(doubleBS, MapSourceFiles[testName]),
         value[STRING].lstrip().rstrip())
 
     if testName in ArangoshExpect:

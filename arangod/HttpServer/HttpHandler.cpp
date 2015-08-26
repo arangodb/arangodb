@@ -28,11 +28,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpHandler.h"
+
+#include "Basics/StringUtils.h"
 #include "Basics/logging.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/HttpServerJob.h"
 #include "Rest/HttpRequest.h"
 
+using namespace triagens::basics;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
@@ -72,6 +75,19 @@ HttpHandler::~HttpHandler () {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t HttpHandler::queue () const {
+  bool found;
+  const char* queue = _request->header("x-arango-queue", found);
+
+  if (found) {
+    uint32_t n = StringUtils::uint32(queue);
+
+    if (n == 0) {
+      return Dispatcher::STANDARD_QUEUE;
+    }
+
+    return n + (Dispatcher::SYSTEM_QUEUE_SIZE - 1);
+  }
+
   return Dispatcher::STANDARD_QUEUE;
 }
 

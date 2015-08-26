@@ -1637,7 +1637,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
       // command failed
       string exception;
 
-      if (! tryCatch.CanContinue()) {
+      if (! tryCatch.CanContinue() || tryCatch.HasTerminated()) {
         exception = "command locally aborted";
       }
       else {

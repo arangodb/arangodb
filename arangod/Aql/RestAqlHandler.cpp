@@ -43,6 +43,7 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
 using namespace triagens::aql;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -64,6 +65,18 @@ RestAqlHandler::RestAqlHandler (triagens::rest::HttpRequest* request,
 
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_queryRegistry != nullptr);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               HttpHandler methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the queue name
+////////////////////////////////////////////////////////////////////////////////
+
+size_t RestAqlHandler::queue () const {
+  return Dispatcher::AQL_QUEUE;
 }
 
 // -----------------------------------------------------------------------------

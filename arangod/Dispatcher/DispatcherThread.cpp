@@ -72,7 +72,8 @@ DispatcherThread::DispatcherThread (DispatcherQueue* queue)
   : Thread("dispat"+ 
            (queue->_id == Dispatcher::STANDARD_QUEUE 
             ? std::string("_std")
-            : std::string("_aql"))),
+            : (queue->_id == Dispatcher::AQL_QUEUE 
+               ? std::string("_aql") : ("_" + to_string(queue->_id))))),
     _queue(queue) {
 
   allowAsynchronousCancelation();

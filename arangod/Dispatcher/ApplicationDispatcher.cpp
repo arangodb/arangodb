@@ -158,6 +158,25 @@ void ApplicationDispatcher::buildAQLQueue (size_t nrThreads,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief builds an additional dispatcher queue
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationDispatcher::buildExtraQueue (size_t identifier,
+					     size_t nrThreads,
+					     size_t maxSize) {
+  if (_dispatcher == nullptr) {
+    LOG_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
+  }
+
+  LOG_TRACE("setting up a standard queue with %d threads", (int) nrThreads);
+
+  TRI_ASSERT(_dispatcher != nullptr);
+  _dispatcher->addExtraQueue(identifier, nrThreads, maxSize);
+
+  _nrStandardThreads = nrThreads;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of used threads
 ////////////////////////////////////////////////////////////////////////////////
 
