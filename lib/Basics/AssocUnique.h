@@ -313,7 +313,7 @@ namespace triagens {
             }
             json("buckets", bkts);
             json("nrBuckets", triagens::basics::Json(static_cast<double>(_buckets.size())));
-            json("size", triagens::basics::Json(static_cast<double>(size())));
+            json("totalUsed", triagens::basics::Json(static_cast<double>(size())));
           }
 
           ////////////////////////////////////////////////////////////////////////////////

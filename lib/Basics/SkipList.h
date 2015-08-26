@@ -31,6 +31,7 @@
 #define ARANGODB_BASICS_C_SKIP__LIST_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 
 // We will probably never see more than 2^48 documents in a skip list
 #define TRI_SKIPLIST_MAX_HEIGHT 48
@@ -241,6 +242,14 @@ namespace triagens {
 
         bool isArray () const {
           return _isArray;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Appends information about statistics in the given json.
+////////////////////////////////////////////////////////////////////////////////
+          
+        void appendToJson (TRI_memory_zone_t* zone, Json& json) {
+          json("nrUsed", Json(static_cast<double>(_nrUsed)));
         }
 
 ////////////////////////////////////////////////////////////////////////////////

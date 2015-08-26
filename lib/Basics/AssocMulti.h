@@ -317,7 +317,7 @@ namespace triagens {
           }
           json("buckets", bkts);
           json("nrBuckets", Json(static_cast<double>(_buckets.size())));
-          json("size", Json(static_cast<double>(size())));
+          json("totalUsed", Json(static_cast<double>(size())));
         }
 
 ////////////////////////////////////////////////////////////////////////////////
