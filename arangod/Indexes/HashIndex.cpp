@@ -38,27 +38,27 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determines if two elements are equal
-////////////////////////////////////////////////////////////////////////////////
-
-static bool isEqualElementElement (TRI_index_element_t const* left,
-                                   TRI_index_element_t const* right) {
-  return left->document() == right->document();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Frees an index element
 ////////////////////////////////////////////////////////////////////////////////
 
-static void freeElement(TRI_index_element_t* element) {
+static void FreeElement(TRI_index_element_t* element) {
   TRI_index_element_t::free(element);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines if two elements are equal
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEqualElementElement (TRI_index_element_t const* left,
+                                   TRI_index_element_t const* right) {
+  return left->document() == right->document();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief given a key generates a hash integer
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t hashKey (TRI_index_search_value_t const* key) {
+static uint64_t HashKey (TRI_index_search_value_t const* key) {
   uint64_t hash = 0x0123456789abcdef;
 
   for (size_t j = 0;  j < key->_length;  ++j) {
@@ -73,7 +73,7 @@ static uint64_t hashKey (TRI_index_search_value_t const* key) {
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool isEqualKeyElement (TRI_index_search_value_t const* left,
+static bool IsEqualKeyElement (TRI_index_search_value_t const* left,
                                TRI_index_element_t const* right) {
   TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
 
@@ -153,7 +153,7 @@ HashIndex::UniqueArray::UniqueArray (TRI_HashArray_t* hashArray,
            
 HashIndex::UniqueArray::~UniqueArray () {
   if (_hashArray != nullptr) {
-    _hashArray->invokeOnAllElements(freeElement);
+    _hashArray->invokeOnAllElements(FreeElement);
   }
 
   delete _hashArray;
@@ -186,7 +186,7 @@ HashIndex::MultiArray::MultiArray (TRI_HashArrayMulti_t* hashArray,
            
 HashIndex::MultiArray::~MultiArray () {
   if (_hashArray != nullptr) {
-    _hashArray->invokeOnAllElements(freeElement);
+    _hashArray->invokeOnAllElements(FreeElement);
   }
 
   delete _hashArray;
@@ -224,10 +224,10 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
   std::unique_ptr<HashElementFunc> func(new HashElementFunc(_paths.size()));
 
   if (unique) {
-    std::unique_ptr<TRI_HashArray_t> array(new TRI_HashArray_t(hashKey,
+    std::unique_ptr<TRI_HashArray_t> array(new TRI_HashArray_t(HashKey,
                                                                *(func.get()),
-                                                               isEqualKeyElement,
-                                                               isEqualElementElement,
+                                                               IsEqualKeyElement,
+                                                               IsEqualElementElement,
                                                                indexBuckets,
                                                                [] () -> std::string { return "unique hash-array"; }));
 
@@ -239,10 +239,10 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
       
     std::unique_ptr<IsEqualElementElementByKey> compare(new IsEqualElementElementByKey(_paths.size()));
 
-    std::unique_ptr<TRI_HashArrayMulti_t> array(new TRI_HashArrayMulti_t(hashKey, 
+    std::unique_ptr<TRI_HashArrayMulti_t> array(new TRI_HashArrayMulti_t(HashKey, 
                                                                          *(func.get()),
-                                                                         isEqualKeyElement,
-                                                                         isEqualElementElement,
+                                                                         IsEqualKeyElement,
+                                                                         IsEqualElementElement,
                                                                          *(compare.get()),
                                                                          indexBuckets,
                                                                          64,
@@ -518,7 +518,7 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
     if (res != TRI_ERROR_NO_ERROR) {
       for (size_t j = i; j < count; ++j) {
         // Free all elements that are not yet in the index
-        freeElement(elements[j]);
+        FreeElement(elements[j]);
       }
       // Allready indexed elements will be removed by the rollback
       return res;
@@ -562,7 +562,7 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
     if (res != TRI_ERROR_NO_ERROR) {
       for (size_t j = i; j < count; ++j) {
         // Free all elements that are not yet in the index
-        freeElement(elements[j]);
+        FreeElement(elements[j]);
       }
       for (size_t j = 0; j < i; ++j) {
         // Remove all allready indexed elements and free them
@@ -590,7 +590,7 @@ int HashIndex::removeUniqueElement (TRI_index_element_t* element, bool isRollbac
     }
   }
 
-  freeElement(old);
+  FreeElement(old);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -604,14 +604,14 @@ int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& hashElement : elements) {
-      freeElement(hashElement);
+      FreeElement(hashElement);
     }
     return res;
   }
 
   for (auto& hashElement : elements) {
     res = removeUniqueElement(hashElement, isRollback);
-    freeElement(hashElement);
+    FreeElement(hashElement);
   }
   return res;
 }
@@ -632,7 +632,7 @@ int HashIndex::removeMultiElement (TRI_index_element_t* element, bool isRollback
         return TRI_ERROR_INTERNAL;
       }
     }
-    freeElement(old);
+    FreeElement(old);
     return TRI_ERROR_NO_ERROR;
 }
 
@@ -646,7 +646,7 @@ int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
 
   for (auto& hashElement : elements) {
     res = removeMultiElement(hashElement, isRollback);
-    freeElement(hashElement);
+    FreeElement(hashElement);
   }
                  
   return res;
