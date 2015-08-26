@@ -231,8 +231,11 @@ start_pretty_print();
         TRI_ExecuteJavaScriptString(isolate, localContext, TRI_V8_STRING(input.c_str()), name, true);
         console.isExecutingCommand(false);
 
-        if (tryCatch.HasCaught()) {
-          if (! tryCatch.CanContinue()) {
+        if (_userAborted) {
+          std::cout << "command aborted" << std::endl;
+        }
+        else if (tryCatch.HasCaught()) {
+          if (! tryCatch.CanContinue() || tryCatch.HasTerminated()) {
            std::cout << "command aborted" << std::endl;
           }
           else {
