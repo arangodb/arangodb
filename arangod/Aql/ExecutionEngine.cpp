@@ -28,15 +28,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ExecutionEngine.h"
+#include "Aql/AggregateBlock.h"
 #include "Aql/AggregationOptions.h"
+#include "Aql/BasicBlocks.h"
+#include "Aql/CalculationBlock.h"
+#include "Aql/ClusterBlocks.h"
+#include "Aql/EnumerateCollectionBlock.h"
+#include "Aql/EnumerateListBlock.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/IndexRangeBlock.h"
+#include "Aql/ModificationBlock.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/SortBlock.h"
+#include "Aql/SubqueryBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/logging.h"
 #include "Cluster/ClusterComm.h"
+#include "VocBase/server.h"
 
 using namespace triagens::aql;
 using namespace triagens::arango;

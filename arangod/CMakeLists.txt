@@ -60,6 +60,7 @@ add_executable(
     Admin/ApplicationAdminServer.cpp
     ApplicationServer/ApplicationFeature.cpp
     ApplicationServer/ApplicationServer.cpp
+    Aql/AggregateBlock.cpp
     Aql/AggregationOptions.cpp
     Aql/AqlItemBlock.cpp
     Aql/AqlItemBlockManager.cpp
@@ -67,9 +68,14 @@ add_executable(
     Aql/Ast.cpp
     Aql/AstNode.cpp
     Aql/AttributeAccessor.cpp
+    Aql/BasicBlocks.cpp
     Aql/BindParameters.cpp
+    Aql/CalculationBlock.cpp
+    Aql/ClusterBlocks.cpp
     Aql/Collection.cpp
     Aql/CollectionScanner.cpp
+    Aql/EnumerateCollectionBlock.cpp
+    Aql/EnumerateListBlock.cpp
     Aql/ExecutionBlock.cpp
     Aql/ExecutionEngine.cpp
     Aql/ExecutionNode.cpp
@@ -80,6 +86,8 @@ add_executable(
     Aql/Function.cpp
     Aql/Functions.cpp
     Aql/grammar.cpp
+    Aql/IndexRangeBlock.cpp
+    Aql/ModificationBlock.cpp
     Aql/NodeFinder.cpp
     Aql/Optimizer.cpp
     Aql/OptimizerRules.cpp
@@ -93,6 +101,8 @@ add_executable(
     Aql/RestAqlHandler.cpp
     Aql/Scopes.cpp
     Aql/ShortStringStorage.cpp
+    Aql/SortBlock.cpp
+    Aql/SubqueryBlock.cpp
     Aql/tokens.cpp
     Aql/V8Expression.cpp
     Aql/Variable.cpp

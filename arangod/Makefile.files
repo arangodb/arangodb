@@ -18,6 +18,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Admin/ApplicationAdminServer.cpp \
 	arangod/ApplicationServer/ApplicationFeature.cpp \
 	arangod/ApplicationServer/ApplicationServer.cpp \
+	arangod/Aql/AggregateBlock.cpp \
 	arangod/Aql/AggregationOptions.cpp \
 	arangod/Aql/AqlItemBlock.cpp \
 	arangod/Aql/AqlItemBlockManager.cpp \
@@ -25,9 +26,14 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Ast.cpp \
 	arangod/Aql/AstNode.cpp \
 	arangod/Aql/AttributeAccessor.cpp \
+	arangod/Aql/BasicBlocks.cpp \
 	arangod/Aql/BindParameters.cpp \
+	arangod/Aql/CalculationBlock.cpp \
 	arangod/Aql/Collection.cpp \
 	arangod/Aql/CollectionScanner.cpp \
+	arangod/Aql/ClusterBlocks.cpp \
+	arangod/Aql/EnumerateCollectionBlock.cpp \
+	arangod/Aql/EnumerateListBlock.cpp \
 	arangod/Aql/ExecutionBlock.cpp \
 	arangod/Aql/ExecutionEngine.cpp \
 	arangod/Aql/ExecutionNode.cpp \
@@ -38,6 +44,8 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Function.cpp \
 	arangod/Aql/Functions.cpp \
 	arangod/Aql/grammar.cpp \
+	arangod/Aql/IndexRangeBlock.cpp \
+	arangod/Aql/ModificationBlock.cpp \
 	arangod/Aql/NodeFinder.cpp \
 	arangod/Aql/Optimizer.cpp \
 	arangod/Aql/OptimizerRules.cpp \
@@ -51,6 +59,8 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/RestAqlHandler.cpp \
 	arangod/Aql/Scopes.cpp \
 	arangod/Aql/ShortStringStorage.cpp \
+	arangod/Aql/SortBlock.cpp \
+	arangod/Aql/SubqueryBlock.cpp \
 	arangod/Aql/tokens.cpp \
 	arangod/Aql/V8Expression.cpp \
 	arangod/Aql/Variable.cpp \
