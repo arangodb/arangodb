@@ -31,7 +31,6 @@
 #include "Basics/random.h"
 #include "Basics/Exceptions.h"
 
-#include <iostream>
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
