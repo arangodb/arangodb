@@ -33,7 +33,7 @@ function main (argv) {
   var test = argv[1];
   var options = {};
   var serverEndpoint = '';
-  var runLocaly = true;
+  var runLocally = true;
 
   try {
     options = internal.parseArgv(argv, 1);
@@ -48,11 +48,11 @@ function main (argv) {
   }
 
   if (options.hasOwnProperty('onlyThisOne')) {
-    scriptArguments['onlyThisOne'] = options.onlyThisOne;
+    scriptArguments.onlyThisOne = options.onlyThisOne;
   }
 
   if (options.hasOwnProperty('server.endpoint')) {
-    runLocaly = false;
+    runLocally = false;
     serverEndpoint = options['server.endpoint'];
   }
   var args = [theScript].concat(internal.toArgv(scriptArguments));
