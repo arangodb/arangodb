@@ -1874,6 +1874,8 @@ var benchTodo = [
 ];
 
 testFuncs.arangob = function (options) {
+  print(options);
+  print(options.skipArangoB);
   if (options.skipArangoB === true) {
     print("skipping Benchmark tests!");
     return {};
@@ -2178,7 +2180,7 @@ function UnitTest (which, options) {
   if (which === "all") {
     var n;
     for (n = 0; n < allTests.length; n++) {
-      print("Doing test",allTests[n],"with options",options);
+      print("Doing test", allTests[n], "with options", options);
       results[allTests[n]] = r = testFuncs[allTests[n]](options);
       ok = true;
       for (i in r) {
