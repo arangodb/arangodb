@@ -309,12 +309,10 @@ double HashIndex::selectivityEstimate () const {
         
 size_t HashIndex::memory () const {
   if (_unique) {
-    return static_cast<size_t>(keyEntrySize() * _hashArray._nrUsed + 
-                               TRI_MemoryUsageHashArray(&_hashArray));
+    return static_cast<size_t>(TRI_MemoryUsageHashArray(&_hashArray));
   }
 
-  return static_cast<size_t>(keyEntrySize() * _hashArrayMulti._nrUsed + 
-                             TRI_MemoryUsageHashArrayMulti(&_hashArrayMulti));
+  return static_cast<size_t>(TRI_MemoryUsageHashArrayMulti(&_hashArrayMulti));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
