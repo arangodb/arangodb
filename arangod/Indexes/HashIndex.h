@@ -117,7 +117,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t keyEntrySize () const {
-          return _paths.size() * sizeof(TRI_shaped_json_t);
+          return _paths.size() * sizeof(TRI_shaped_sub_t) + sizeof(TRI_doc_mptr_t*);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -37,6 +37,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/prime-numbers.h"
+#include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -300,6 +301,23 @@ namespace triagens {
             res += static_cast<size_t>(b._nrUsed);
           }
           return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Appends information about statistics in the given json.
+////////////////////////////////////////////////////////////////////////////////
+          
+        void appendToJson (TRI_memory_zone_t* zone, Json& json) {
+          Json bkts(zone, Json::Array);
+          for (auto& b : _buckets) {
+            Json bucketInfo(zone, Json::Object);
+            bucketInfo("nrAlloc", Json(static_cast<double>(b._nrAlloc)));
+            bucketInfo("nrUsed", Json(static_cast<double>(b._nrUsed)));
+            bkts.add(bucketInfo);
+          }
+          json("buckets", bkts);
+          json("nrBuckets", Json(static_cast<double>(_buckets.size())));
+          json("size", Json(static_cast<double>(size())));
         }
 
 ////////////////////////////////////////////////////////////////////////////////
