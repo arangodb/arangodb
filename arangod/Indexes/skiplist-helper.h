@@ -123,8 +123,6 @@ void SkiplistIndex_destroy (SkiplistIndex*);
 
 void SkiplistIndex_free (SkiplistIndex*);
 
-int SkiplistIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
-
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 // Skiplist indices, both unique and non-unique
