@@ -317,14 +317,16 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                       TRI_document_collection_t* collection) 
   : Index(iid, collection, std::vector<std::vector<triagens::basics::AttributeName>>({ { { TRI_VOC_ATTRIBUTE_FROM, false } }, { { TRI_VOC_ATTRIBUTE_TO , false } } })),
     _edgesFrom(nullptr),
-    _edgesTo(nullptr) {
+    _edgesTo(nullptr),
+    _numBuckets(1) {
   
   TRI_ASSERT(iid != 0);
 
   uint32_t indexBuckets = 1;
+
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    indexBuckets = collection->_info._indexBuckets;
+    _numBuckets = static_cast<size_t>(collection->_info._indexBuckets);
   }
 
   auto context = [this] () -> std::string {
@@ -336,7 +338,7 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                                        IsEqualKeyEdgeFrom,
                                        IsEqualElementEdge,
                                        IsEqualElementEdgeFromByKey,
-                                       indexBuckets, 
+                                       _numBuckets, 
                                        64,
                                        context);
 
@@ -345,7 +347,7 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                                      IsEqualKeyEdgeTo,
                                      IsEqualElementEdge,
                                      IsEqualElementEdgeToByKey,
-                                     indexBuckets,
+                                     _numBuckets,
                                      64,
                                      context);
 }
@@ -378,12 +380,25 @@ size_t EdgeIndex::memory () const {
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
       
-triagens::basics::Json EdgeIndex::toJson (TRI_memory_zone_t* zone) const {
-  auto json = Index::toJson(zone);
+triagens::basics::Json EdgeIndex::toJson (TRI_memory_zone_t* zone,
+                                          bool withFigures) const {
+  auto json = Index::toJson(zone, withFigures);
   
   // hard-coded
   json("unique", triagens::basics::Json(false))
       ("sparse", triagens::basics::Json(false));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the index figures
+////////////////////////////////////////////////////////////////////////////////
+      
+triagens::basics::Json EdgeIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
+  triagens::basics::Json json(triagens::basics::Json::Object);
+  
+  json("buckets", triagens::basics::Json(static_cast<double>(_numBuckets)));
 
   return json;
 }

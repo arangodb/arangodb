@@ -75,7 +75,6 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
   REG_ERROR(ERROR_ARANGO_NO_INDEX, "no suitable index known");
   REG_ERROR(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
-  REG_ERROR(ERROR_ARANGO_GEO_INDEX_VIOLATED, "geo index violated");
   REG_ERROR(ERROR_ARANGO_INDEX_NOT_FOUND, "index not found");
   REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
   REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");

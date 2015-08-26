@@ -140,7 +140,7 @@ static void ExtractSkipAndLimit (const v8::FunctionCallbackInfo<v8::Value>& args
 
 static void CalculateSkipLimitSlice (size_t length,
                                      int64_t skip,
-                                     int64_t limit,
+                                     uint64_t limit,
                                      uint64_t& s,
                                      uint64_t& e) {
   s = 0;
@@ -165,15 +165,17 @@ static void CalculateSkipLimitSlice (size_t length,
   }
 
   // apply limit
-  if (s + limit < e) {
-    int64_t sum = static_cast<int64_t>(s) + static_cast<int64_t>(limit);
+  if (limit < UINT64_MAX && static_cast<int64_t>(limit) < INT64_MAX) {
+    if (s + limit < e) {
+      int64_t sum = static_cast<int64_t>(s) + static_cast<int64_t>(limit);
 
-    if (sum < static_cast<int64_t>(e)) {
-      if (sum >= INT64_MAX) {
-        e = UINT64_MAX;
-      }
-      else {
-        e = static_cast<uint64_t>(sum);
+      if (sum < static_cast<int64_t>(e)) {
+        if (sum >= INT64_MAX) {
+          e = static_cast<uint64_t>(INT64_MAX);
+        }
+        else {
+          e = static_cast<uint64_t>(sum);
+        }
       }
     }
   }
@@ -1202,7 +1204,7 @@ static void JS_OffsetQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
   result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(n)));
-  result->Set(TRI_V8_ASCII_STRING("skip"), v8::Number::New(isolate, internalSkip));
+  result->Set(TRI_V8_ASCII_STRING("skip"), v8::Number::New(isolate, static_cast<double>(internalSkip)));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1384,8 +1386,8 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
     }
   }
 
-  result->Set(TRI_V8_ASCII_STRING("total"), v8::Integer::New(isolate, static_cast<double>(total)));
-  result->Set(TRI_V8_ASCII_STRING("count"), v8::Integer::New(isolate, static_cast<double>(count)));
+  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
+  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(count)));
 
   if (error) {
     TRI_V8_THROW_EXCEPTION_MEMORY();

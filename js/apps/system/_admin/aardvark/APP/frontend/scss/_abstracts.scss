@@ -266,7 +266,7 @@
       weight: 600;
     }
     font-variant: small-caps;
-    padding: 0 15px;
+    padding: 0;
   }
 
   .dropdown-header:hover {
@@ -276,7 +276,7 @@
   .divider {
     background-color: $c-darker-grey;
     height: 1px;
-    margin: 10px 0;
+    margin: 10px 0 5px;
   }
 
   a {

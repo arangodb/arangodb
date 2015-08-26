@@ -248,11 +248,22 @@ size_t HashIndex::memory () const {
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json HashIndex::toJson (TRI_memory_zone_t* zone) const {
-  auto json = Index::toJson(zone);
+triagens::basics::Json HashIndex::toJson (TRI_memory_zone_t* zone,
+                                          bool withFigures) const {
+  auto json = Index::toJson(zone, withFigures);
 
   json("unique", triagens::basics::Json(zone, _unique))
       ("sparse", triagens::basics::Json(zone, _sparse));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the index figures
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json HashIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
+  triagens::basics::Json json(zone, triagens::basics::Json::Object);
 
   return json;
 }

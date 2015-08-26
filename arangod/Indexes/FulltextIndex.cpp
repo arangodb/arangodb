@@ -158,14 +158,29 @@ size_t FulltextIndex::memory () const {
   return TRI_MemoryFulltextIndex(_fulltextIndex);
 }
 
-triagens::basics::Json FulltextIndex::toJson (TRI_memory_zone_t* zone) const {
-  auto json = Index::toJson(zone);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the index
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json FulltextIndex::toJson (TRI_memory_zone_t* zone,
+                                              bool withFigures) const {
+  auto json = Index::toJson(zone, withFigures);
 
   // hard-coded
   json("unique", triagens::basics::Json(false))
       ("sparse", triagens::basics::Json(true));
 
   json("minLength", triagens::basics::Json(zone, static_cast<double>(_minWordLength)));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the index figures
+////////////////////////////////////////////////////////////////////////////////
+        
+triagens::basics::Json FulltextIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
+  triagens::basics::Json json(triagens::basics::Json::Object);
 
   return json;
 }

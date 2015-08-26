@@ -104,12 +104,26 @@ size_t PrimaryIndex::memory () const {
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json PrimaryIndex::toJson (TRI_memory_zone_t* zone) const {
-  auto json = Index::toJson(zone);
+triagens::basics::Json PrimaryIndex::toJson (TRI_memory_zone_t* zone,
+                                             bool withFigures) const {
+  auto json = Index::toJson(zone, withFigures);
 
   // hard-coded
   json("unique", triagens::basics::Json(true))
       ("sparse", triagens::basics::Json(false));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the index figures
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json PrimaryIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
+  triagens::basics::Json json(zone, triagens::basics::Json::Object);
+  
+  json("nrAlloc", triagens::basics::Json(static_cast<double>(_primaryIndex._nrAlloc)));
+  json("nrUsed", triagens::basics::Json(static_cast<double>(_primaryIndex._nrUsed)));
 
   return json;
 }

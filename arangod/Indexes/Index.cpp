@@ -331,7 +331,8 @@ std::string Index::context () const {
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json Index::toJson (TRI_memory_zone_t* zone) const {
+triagens::basics::Json Index::toJson (TRI_memory_zone_t* zone,
+                                      bool withFigures) const {
   triagens::basics::Json json(zone, triagens::basics::Json::Object, 4);
 
   json("id", triagens::basics::Json(zone, std::to_string(_iid)))
@@ -353,7 +354,21 @@ triagens::basics::Json Index::toJson (TRI_memory_zone_t* zone) const {
     json("selectivityEstimate", triagens::basics::Json(selectivityEstimate()));
   }
 
+  if (withFigures) {
+    json("figures", toJsonFigures(zone));
+  }
+
   return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a JSON representation of the index figures
+/// base functionality (called from derived classes)
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json Index::toJsonFigures (TRI_memory_zone_t* zone) const {
+  // intentionally empty
+  return triagens::basics::Json(zone, triagens::basics::Json::Object);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
