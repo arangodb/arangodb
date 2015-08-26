@@ -141,10 +141,15 @@ namespace triagens {
       private:
 
         class HashElementFunc {
+
             size_t _numFields;
+
           public:
-            HashElementFunc (size_t s) : _numFields(s) {
+
+            HashElementFunc (size_t s) 
+              : _numFields(s) {
             }
+
             uint64_t operator() (TRI_index_element_t const* element,
                                  bool byKey = true) {
               uint64_t hash = 0x0123456789abcdef;
@@ -179,7 +184,8 @@ namespace triagens {
 
           public:
 
-            IsEqualElementElementByKey (size_t n) : _numFields(n) {
+            IsEqualElementElementByKey (size_t n) 
+              : _numFields(n) {
             }
 
             bool operator() (TRI_index_element_t const* left,

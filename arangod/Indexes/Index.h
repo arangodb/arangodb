@@ -304,30 +304,6 @@ namespace triagens {
 
         std::vector<std::vector<triagens::basics::AttributeName>> const        _fields;
                
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function to transform AttributeNames into pid lists
-/// This will create PIDs for all indexed Attributes
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const fillPidPaths ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function to insert a document into any index type
-////////////////////////////////////////////////////////////////////////////////
-
-        int fillElement (std::function<TRI_index_element_t* ()> allocate,
-                         std::vector<TRI_index_element_t*>& elements,
-                         TRI_doc_mptr_t const* document,
-                         std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths,
-                         bool sparse);
     };
 
   }

@@ -487,7 +487,7 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
   };
 
   std::vector<TRI_index_element_t*> elements;
-  int res = fillElement(allocate, elements, doc, paths(), sparse());
+  int res = fillElement(allocate, elements, doc);
   
   auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
     TRI_IF_FAILURE("InsertHashIndex") {
@@ -535,16 +535,15 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
   };
 
   std::vector<TRI_index_element_t*> elements;
-  int res = fillElement(allocate, elements, doc, paths(), sparse());
+  int res = fillElement(allocate, elements, doc);
 
   auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
     TRI_IF_FAILURE("InsertHashIndex") {
       return TRI_ERROR_DEBUG;
     }
   
-    TRI_index_element_t* found = _multiArray->_hashArray->insert(element,
-                                                            false,
-                                                            true);
+    TRI_index_element_t* found = _multiArray->_hashArray->insert(element, false, true);
+
     if (found != nullptr) {   // bad, can only happen if we are in a rollback
       if (isRollback) {       // in which case we silently ignore it
         return TRI_ERROR_NO_ERROR;
@@ -601,7 +600,7 @@ int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
     return TRI_index_element_t::allocate(keyEntrySize(), false);
   };
   std::vector<TRI_index_element_t*> elements;
-  int res = fillElement(allocate, elements, doc, paths(), sparse());
+  int res = fillElement(allocate, elements, doc);
 
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& hashElement : elements) {
@@ -617,7 +616,7 @@ int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
   return res;
 }
 
-int HashIndex::removeMultiElement(TRI_index_element_t* element, bool isRollback) {
+int HashIndex::removeMultiElement (TRI_index_element_t* element, bool isRollback) {
     TRI_IF_FAILURE("RemoveHashIndex") {
       return TRI_ERROR_DEBUG;
     }
@@ -643,7 +642,7 @@ int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
     return TRI_index_element_t::allocate(keyEntrySize(), false);
   };
   std::vector<TRI_index_element_t*> elements;
-  int res = fillElement(allocate, elements, doc, paths(), sparse());
+  int res = fillElement(allocate, elements, doc);
 
   for (auto& hashElement : elements) {
     res = removeMultiElement(hashElement, isRollback);
