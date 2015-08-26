@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief skiplist index
+/// @brief skiplist index helper
 ///
 /// @file
 ///
@@ -27,7 +27,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "skiplistIndex.h"
+#include "skiplist-helper.h"
 #include "Basics/Utf8Helper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shaped-json.h"
