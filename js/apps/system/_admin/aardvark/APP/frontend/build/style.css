@@ -5561,9 +5561,13 @@ div.headerBar {
   top: 0;
   width: 100%;
   z-index: 9999; }
-  .loginFixedWindow img {
-    height: 40px;
-    margin: 10px; }
+  .loginFixedWindow .resizecontainer {
+    position: relative;
+    top: 0; }
+    .loginFixedWindow .resizecontainer img {
+      height: 33px;
+      margin-left: -6px;
+      margin-top: 9px; }
 
 .login-window {
   background-color: #fff;

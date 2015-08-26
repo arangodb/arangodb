@@ -7,10 +7,17 @@
   width: 100%;
   z-index: 9999;
 
-  img {
-    height: 40px;
-    margin: 10px;
+  .resizecontainer {
+    position: relative;
+    top: 0;
+
+    img {
+      height: 33px;
+      margin-left: -6px;
+      margin-top: 9px;
+    }
   }
+
 
 }
 
