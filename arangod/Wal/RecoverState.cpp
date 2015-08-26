@@ -32,6 +32,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/Exceptions.h"
+#include "Basics/memory-map.h"
 #include "VocBase/collection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/VocShaper.h"
@@ -1355,10 +1356,20 @@ int RecoverState::replayLogfile (Logfile* logfile,
   LOG_INFO("replaying WAL logfile '%s' (%d of %d)", 
            logfile->filename().c_str(), number + 1, n);
 
+  // Advise on sequential use:
+  TRI_MMFileAdvise(logfile->df()->_data, logfile->df()->_maximalSize,
+                   TRI_MADVISE_SEQUENTIAL);
+  TRI_MMFileAdvise(logfile->df()->_data, logfile->df()->_maximalSize,
+                   TRI_MADVISE_WILLNEED);
+
   if (! TRI_IterateDatafile(logfile->df(), &RecoverState::ReplayMarker, static_cast<void*>(this))) {
     LOG_WARNING("WAL inspection failed when scanning logfile '%s'", logfile->filename().c_str());
     return TRI_ERROR_ARANGO_RECOVERY;
   }
+
+  // Advise on random access use:
+  TRI_MMFileAdvise(logfile->df()->_data, logfile->df()->_maximalSize,
+                   TRI_MADVISE_RANDOM);
 
   return TRI_ERROR_NO_ERROR;
 }

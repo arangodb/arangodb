@@ -103,6 +103,12 @@ int TRI_ProtectMMFile (void* memoryAddress,
                        int fileDescriptor,
                        void** mmHandle);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gives hints about upcoming memory usage
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_MMFileAdvise (void* memoryAddress, size_t numOfBytes, int advice);
+
 #endif
 
 // -----------------------------------------------------------------------------
