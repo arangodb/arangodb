@@ -122,6 +122,7 @@ triagens::basics::Json PrimaryIndex::toJson (TRI_memory_zone_t* zone,
 triagens::basics::Json PrimaryIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
   triagens::basics::Json json(zone, triagens::basics::Json::Object);
   
+  json("memory", triagens::basics::Json(static_cast<double>(memory())));
   json("nrAlloc", triagens::basics::Json(static_cast<double>(_primaryIndex._nrAlloc)));
   json("nrUsed", triagens::basics::Json(static_cast<double>(_primaryIndex._nrUsed)));
 

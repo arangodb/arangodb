@@ -176,6 +176,7 @@ triagens::basics::Json GeoIndex2::toJson (TRI_memory_zone_t* zone,
         
 triagens::basics::Json GeoIndex2::toJsonFigures (TRI_memory_zone_t* zone) const {
   triagens::basics::Json json(triagens::basics::Json::Object);
+  json("memory", triagens::basics::Json(static_cast<double>(memory())));
 
   return json;
 }
