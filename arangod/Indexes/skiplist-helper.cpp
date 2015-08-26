@@ -125,7 +125,7 @@ static int CmpElmElm (void* sli,
 
   SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
   if (leftElement == rightElement ||
-      (!skiplistindex->skiplist->isArray() && leftElement->document() == rightElement->document())) {
+      (! skiplistindex->skiplist->isArray() && leftElement->document() == rightElement->document())) {
     return 0;
   }
 
@@ -971,14 +971,6 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex* skiplistIndex,
   }
 
   return results;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of elements in the skip list index
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t SkiplistIndex_getNrUsed (SkiplistIndex* skiplistIndex) {
-  return skiplistIndex->skiplist->getNrUsed();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
