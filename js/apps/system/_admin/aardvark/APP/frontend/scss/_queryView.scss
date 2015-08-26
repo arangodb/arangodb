@@ -93,6 +93,18 @@ toolbar {
 }
 
 .queryMethods {
+
+  border-top: 1px solid $c-content-border;
+  padding-bottom: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 10px;
+
+  input {
+    line-height: 0;
+    margin-top: 5px;
+  }
+
   button {
     a {
       color: $c-white;
@@ -315,6 +327,10 @@ toolbar {
   display: none;
   min-height: 360px;
 
+  .ace-tm .ace_comment {
+    color: $c-positive;
+  }
+
   > * {
     border: 0 !important;
   }
@@ -388,3 +404,4 @@ toolbar {
     stroke-width: 1.5px;
   }
 }
+
