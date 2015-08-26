@@ -131,88 +131,142 @@ static int FillIndexSearchValueByHashIndexElement (HashIndex const* hashIndex,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       class Index
+// --SECTION--                                      class HashIndex::UniqueArray
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the unique array
+////////////////////////////////////////////////////////////////////////////////
+          
+HashIndex::UniqueArray::UniqueArray (TRI_HashArray_t* hashArray,
+                                     HashElementFunc* hashElement)
+  : _hashArray(hashArray),
+    _hashElement(hashElement) {
+
+  TRI_ASSERT(_hashArray != nullptr);
+  TRI_ASSERT(_hashElement != nullptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the unique array
+////////////////////////////////////////////////////////////////////////////////
+           
+HashIndex::UniqueArray::~UniqueArray () {
+  if (_hashArray != nullptr) {
+    _hashArray->invokeOnAllElements(freeElement);
+  }
+
+  delete _hashArray;
+  delete _hashElement;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                       class HashIndex::MultiArray
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the multi array
+////////////////////////////////////////////////////////////////////////////////
+
+HashIndex::MultiArray::MultiArray (TRI_HashArrayMulti_t* hashArray, 
+                                   HashElementFunc* hashElement, 
+                                   IsEqualElementElementByKey* isEqualElElByKey)
+  : _hashArray(hashArray),
+    _hashElement(hashElement),
+    _isEqualElElByKey(isEqualElElByKey) {
+
+  TRI_ASSERT(_hashArray != nullptr);
+  TRI_ASSERT(_hashElement != nullptr);
+  TRI_ASSERT(_isEqualElElByKey != nullptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the multi array
+////////////////////////////////////////////////////////////////////////////////
+           
+HashIndex::MultiArray::~MultiArray () {
+  if (_hashArray != nullptr) {
+    _hashArray->invokeOnAllElements(freeElement);
+  }
+
+  delete _hashArray;
+  delete _hashElement;
+  delete _isEqualElElByKey;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   class HashIndex
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the index
+////////////////////////////////////////////////////////////////////////////////
+
 HashIndex::HashIndex (TRI_idx_iid_t iid,
                       TRI_document_collection_t* collection,
                       std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
                       bool unique,
                       bool sparse) 
-  : Index(iid, collection, fields),
-    _paths(fillPidPaths()),
-    _unique(unique),
-    _sparse(sparse) {
-
-  TRI_ASSERT(! fields.empty());
-
-  TRI_ASSERT(iid != 0);
+  : PathBasedIndex(iid, collection, fields, unique, sparse),
+    _uniqueArray(nullptr) {
 
   uint32_t indexBuckets = 1;
+
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
     indexBuckets = collection->_info._indexBuckets;
   }
+    
+  std::unique_ptr<HashElementFunc> func(new HashElementFunc(_paths.size()));
 
   if (unique) {
-    _uniqueArray._hashArray = nullptr;
-    try {
-      _uniqueArray._hashElement = new HashElementFunc(_paths.size());
-      _uniqueArray._hashArray = new TRI_HashArray_t(hashKey,
-                                               *_uniqueArray._hashElement,
-                                               isEqualKeyElement,
-                                               isEqualElementElement,
-                                               indexBuckets,
-                                               [] () -> std::string { return "Unique Hash-Array"; }
-      );
-    }
-    catch (...) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
+    std::unique_ptr<TRI_HashArray_t> array(new TRI_HashArray_t(hashKey,
+                                                               *(func.get()),
+                                                               isEqualKeyElement,
+                                                               isEqualElementElement,
+                                                               indexBuckets,
+                                                               [] () -> std::string { return "unique hash-array"; }));
+
+    _uniqueArray = new HashIndex::UniqueArray(array.get(), func.get());
+    array.release();
   }
   else {
-    _multi._hashArray = nullptr;
-    _multi._isEqualElElByKey = nullptr;
-    _multi._hashElement = nullptr;
-    try {
-      _multi._hashElement = new HashElementFunc(_paths.size());
-      _multi._isEqualElElByKey = new IsEqualElementElementByKey(_paths.size());
-      _multi._hashArray = new TRI_HashArrayMulti_t(hashKey, 
-                                                 *_multi._hashElement,
-                                                 isEqualKeyElement,
-                                                 isEqualElementElement,
-                                                 *_multi._isEqualElElByKey,
-                                                 indexBuckets,
-                                                 64,
-                                                 [] () -> std::string { return "Multi Hash-Array"; }
-          );
-    }
-    catch (...) {
-      delete _multi._hashElement;
-      _multi._hashElement = nullptr;
-      delete _multi._isEqualElElByKey;
-      _multi._isEqualElElByKey = nullptr;
-      _multi._hashArray = nullptr;
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
+    _multiArray = nullptr;
+      
+    std::unique_ptr<IsEqualElementElementByKey> compare(new IsEqualElementElementByKey(_paths.size()));
+
+    std::unique_ptr<TRI_HashArrayMulti_t> array(new TRI_HashArrayMulti_t(hashKey, 
+                                                                         *(func.get()),
+                                                                         isEqualKeyElement,
+                                                                         isEqualElementElement,
+                                                                         *(compare.get()),
+                                                                         indexBuckets,
+                                                                         64,
+                                                                         [] () -> std::string { return "multi hash-array"; }));
+      
+    _multiArray = new HashIndex::MultiArray(array.get(), func.get(), compare.get());
+
+    compare.release();
+    array.release();
   }
+
+  func.release();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys the index
+////////////////////////////////////////////////////////////////////////////////
 
 HashIndex::~HashIndex () {
   if (_unique) {
-    _uniqueArray._hashArray->invokeOnAllElements(freeElement);
-    delete _uniqueArray._hashElement;
-    delete _uniqueArray._hashArray;
+    delete _uniqueArray;
   }
   else {
-    _multi._hashArray->invokeOnAllElements(freeElement);
-    delete _multi._hashElement;
-    delete _multi._isEqualElElByKey;
-    delete _multi._hashArray;
+    delete _multiArray;
   }
 }
 
@@ -229,19 +283,23 @@ double HashIndex::selectivityEstimate () const {
     return 1.0; 
   }
 
-  double estimate = _multi._hashArray->selectivity();
+  double estimate = _multiArray->_hashArray->selectivity();
   TRI_ASSERT(estimate >= 0.0 && estimate <= 1.00001); // floating-point tolerance 
   return estimate;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the index memory usage
+////////////////////////////////////////////////////////////////////////////////
         
 size_t HashIndex::memory () const {
   if (_unique) {
-    return static_cast<size_t>(keyEntrySize() * _uniqueArray._hashArray->size() + 
-                               _uniqueArray._hashArray->memoryUsage());
+    return static_cast<size_t>(keyEntrySize() * _uniqueArray->_hashArray->size() + 
+                               _uniqueArray->_hashArray->memoryUsage());
   }
 
-  return static_cast<size_t>(keyEntrySize() * _multi._hashArray->size() +
-                             _multi._hashArray->memoryUsage());
+  return static_cast<size_t>(keyEntrySize() * _multiArray->_hashArray->size() +
+                             _multiArray->_hashArray->memoryUsage());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,10 +325,10 @@ triagens::basics::Json HashIndex::toJsonFigures (TRI_memory_zone_t* zone) const 
   json("memory", triagens::basics::Json(static_cast<double>(memory())));
 
   if (_unique) {
-    _uniqueArray._hashArray->appendToJson(zone, json);
+    _uniqueArray->_hashArray->appendToJson(zone, json);
   }
   else {
-    _multi._hashArray->appendToJson(zone, json);
+    _multiArray->_hashArray->appendToJson(zone, json);
   }
   return json;
 }
@@ -308,10 +366,10 @@ int HashIndex::sizeHint (size_t size) {
   }
 
   if (_unique) {
-    return _uniqueArray._hashArray->resize(size);
+    return _uniqueArray->_hashArray->resize(size);
   }
   else {
-    return _multi._hashArray->resize(size);
+    return _multiArray->_hashArray->resize(size);
   }
 }
 
@@ -323,7 +381,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_copy_t>& documents) const {
 
   if (_unique) {
-    TRI_index_element_t* found = _uniqueArray._hashArray->findByKey(searchValue);
+    TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(searchValue);
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
@@ -334,7 +392,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
 
   std::vector<TRI_index_element_t*>* results = nullptr;
   try {
-    results = _multi._hashArray->lookupByKey(searchValue);
+    results = _multiArray->_hashArray->lookupByKey(searchValue);
   }
   catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -365,7 +423,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
 
   if (_unique) {
     next = nullptr;
-    TRI_index_element_t* found = _uniqueArray._hashArray->findByKey(searchValue);
+    TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(searchValue);
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
@@ -378,7 +436,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
 
   if (next == nullptr) {
     try {
-      results = _multi._hashArray->lookupByKey(searchValue, batchSize);
+      results = _multiArray->_hashArray->lookupByKey(searchValue, batchSize);
     }
     catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -386,7 +444,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
   }
   else {
     try {
-      results = _multi._hashArray->lookupByKeyContinue(next, batchSize);
+      results = _multiArray->_hashArray->lookupByKeyContinue(next, batchSize);
     }
     catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -444,7 +502,7 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
       return res;
     }
 
-    res = _uniqueArray._hashArray->insert(&key, element, isRollback);
+    res = _uniqueArray->_hashArray->insert(&key, element, isRollback);
 
     if (key._values != nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
@@ -484,9 +542,9 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
       return TRI_ERROR_DEBUG;
     }
   
-    TRI_index_element_t* found = _multi._hashArray->insert(element,
-                                                           false,
-                                                           true);
+    TRI_index_element_t* found = _multiArray->_hashArray->insert(element,
+                                                            false,
+                                                            true);
     if (found != nullptr) {   // bad, can only happen if we are in a rollback
       if (isRollback) {       // in which case we silently ignore it
         return TRI_ERROR_NO_ERROR;
@@ -521,7 +579,7 @@ int HashIndex::removeUniqueElement (TRI_index_element_t* element, bool isRollbac
   TRI_IF_FAILURE("RemoveHashIndex") {
     return TRI_ERROR_DEBUG;
   }
-  TRI_index_element_t* old = _uniqueArray._hashArray->remove(element);
+  TRI_index_element_t* old = _uniqueArray->_hashArray->remove(element);
 
   // this might happen when rolling back
   if (old == nullptr) {
@@ -564,7 +622,7 @@ int HashIndex::removeMultiElement(TRI_index_element_t* element, bool isRollback)
       return TRI_ERROR_DEBUG;
     }
 
-    TRI_index_element_t* old = _multi._hashArray->remove(element);
+    TRI_index_element_t* old = _multiArray->_hashArray->remove(element);
        
     if (old == nullptr) {
       // not found

@@ -125,21 +125,20 @@ static int FillLookupOperator (TRI_index_operator_t* slOperator,
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
 SkiplistIndex2::SkiplistIndex2 (TRI_idx_iid_t iid,
                                 TRI_document_collection_t* collection,
                                 std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
                                 bool unique,
                                 bool sparse) 
-  : Index(iid, collection, fields),
-    _paths(fillPidPaths()),
-    _skiplistIndex(nullptr),
-    _unique(unique),
-    _sparse(sparse) {
+  : PathBasedIndex(iid, collection, fields, unique, sparse),
+    _skiplistIndex(nullptr) {
 
-  TRI_ASSERT(! fields.empty());
-
-  TRI_ASSERT(iid != 0);
   bool useExpansion = false;
+
   for (auto& list: fields) {
     if (TRI_AttributeNamesHaveExpansion(list)) {
       useExpansion = true;
@@ -151,7 +150,15 @@ SkiplistIndex2::SkiplistIndex2 (TRI_idx_iid_t iid,
                                      _paths.size(),
                                      unique,
                                      useExpansion);
+
+  if (_skiplistIndex == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the skiplist index
+////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIndex2::~SkiplistIndex2 () {
   if (_skiplistIndex != nullptr) {
@@ -189,6 +196,7 @@ triagens::basics::Json SkiplistIndex2::toJsonFigures (TRI_memory_zone_t* zone) c
   triagens::basics::Json json(triagens::basics::Json::Object);
   json("memory", triagens::basics::Json(static_cast<double>(memory())));
   _skiplistIndex->skiplist->appendToJson(zone, json);
+
   return json;
 }
 

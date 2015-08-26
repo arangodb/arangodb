@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief skiplist index
+/// @brief path-based index
 ///
 /// @file
 ///
@@ -22,30 +22,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_SKIPLIST_INDEX_H
-#define ARANGODB_INDEXES_SKIPLIST_INDEX_H 1
+#ifndef ARANGODB_INDEXES_PATH_BASED_INDEX_H
+#define ARANGODB_INDEXES_PATH_BASED_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "Indexes/PathBasedIndex.h"
-#include "IndexOperators/index-operator.h"
-#include "SkipLists/skiplistIndex.h"
+#include "Indexes/Index.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class SkiplistIndex
+// --SECTION--                                              class PathBasedIndex
 // -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace arango {
 
-    class SkiplistIndex2 : public PathBasedIndex {
+    class PathBasedIndex : public Index {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -53,62 +52,85 @@ namespace triagens {
 
       public:
 
-        SkiplistIndex2 () = delete;
+        PathBasedIndex () = delete;
 
-        SkiplistIndex2 (TRI_idx_iid_t,
+        PathBasedIndex (TRI_idx_iid_t,
                         struct TRI_document_collection_t*,
                         std::vector<std::vector<triagens::basics::AttributeName>> const&,
-                        bool,
-                        bool);
+                        bool unique,
+                        bool sparse);
 
-        ~SkiplistIndex2 ();
+        ~PathBasedIndex ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
       public:
-        
-        IndexType type () const override final {
-          return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
-        }
-
-        bool hasSelectivityEstimate () const override final {
-          return false;
-        }
-        
-        size_t memory () const override final;
-
-        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
-        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
-  
-        int insert (struct TRI_doc_mptr_t const*, bool) override final;
-         
-        int remove (struct TRI_doc_mptr_t const*, bool) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief attempts to locate an entry in the skip list index
-///
-/// Note: this function will not destroy the passed slOperator before it returns
-/// Warning: who ever calls this function is responsible for destroying
-/// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
+/// @brief whether or not the index should reveal its fields
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool dumpFields () const override final {
+          return true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the attribute paths
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths () const {
+          return _paths;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the index is sparse
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_skiplist_iterator_t* lookup (TRI_index_operator_t*,
-                                         bool);
+        inline bool sparse () const {
+          return _sparse;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the index is unique
+////////////////////////////////////////////////////////////////////////////////
         
+        inline bool unique () const {
+          return _unique;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the memory needed for an index key entry
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t keyEntrySize () const {
+          return _paths.size() * (sizeof(TRI_shaped_sub_t) + sizeof(TRI_doc_mptr_t*));
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-      private:
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual skiplist index
+/// @brief the attribute paths
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const  _paths;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether the index is unique
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkiplistIndex* _skiplistIndex;
+        bool const _unique;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether the index is sparse
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _sparse;
     };
 
   }
