@@ -1283,6 +1283,8 @@ namespace triagens {
           if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
+          
+          TRI_ASSERT(isLocked(trxCollection, TRI_TRANSACTION_WRITE));
 
           int res = readAll(trxCollection, ids, false);
 
