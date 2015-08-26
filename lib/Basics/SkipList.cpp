@@ -45,7 +45,7 @@ using namespace triagens::basics;
 /// @brief randomHeight, select a node height randomly
 ////////////////////////////////////////////////////////////////////////////////
 
-static int randomHeight (void) {
+static int RandomHeight (void) {
   int height = 1;
   int count;
   while (true) {   // will be left by return when the right height is found
@@ -67,7 +67,7 @@ static int randomHeight (void) {
 
 SkipListNode* SkipList::allocNode (int height) {
   if (0 == height) {
-    height = randomHeight();
+    height = RandomHeight();
   }
 
   // allocate enough memory for skiplist node plus all the next nodes in one go
@@ -359,9 +359,9 @@ int SkipList::insert (void* doc) {
   // Uniqueness test if wanted:
   if (_unique) {
     if ((pos[0] != _start &&
-         0 == _cmp_elm_elm(_cmpdata,doc,pos[0]->_doc,SKIPLIST_CMP_PREORDER)) ||
+         0 == _cmp_elm_elm(_cmpdata, doc,pos[0]->_doc, SKIPLIST_CMP_PREORDER)) ||
         (nullptr != next &&
-         0 == _cmp_elm_elm(_cmpdata,doc,next->_doc,SKIPLIST_CMP_PREORDER))) {
+         0 == _cmp_elm_elm(_cmpdata, doc,next->_doc, SKIPLIST_CMP_PREORDER))) {
       return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
     }
   }

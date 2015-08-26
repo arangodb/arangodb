@@ -55,15 +55,6 @@ typedef struct {
 }
 SkiplistIndex;
 
-typedef struct {
-  TRI_shaped_json_t* _fields;   // list of shaped json objects which the
-                                // collection should know about
-  size_t _numFields;   // Note that the number of fields coming from
-                       // a query can be smaller than the number of
-                       // fields indexed
-}
-TRI_skiplist_index_key_t;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for skip list. We require a start and stop node
 ///
@@ -73,12 +64,6 @@ TRI_skiplist_index_key_t;
 /// can be NULL. Note that it is ensured that all intervals in an iterator
 /// are non-empty.
 ////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skiplist_iterator_interval_s {
-  triagens::basics::SkipListNode* _leftEndPoint;
-  triagens::basics::SkipListNode* _rightEndPoint;
-}
-TRI_skiplist_iterator_interval_t;
 
 typedef struct TRI_skiplist_iterator_s {
   SkiplistIndex* _index;
@@ -112,12 +97,6 @@ TRI_skiplist_iterator_t;
 void TRI_FreeSkiplistIterator (TRI_skiplist_iterator_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a skip list index , but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void SkiplistIndex_destroy (SkiplistIndex*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a skip list index and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -131,11 +110,6 @@ void SkiplistIndex_free (SkiplistIndex*);
 
 SkiplistIndex* SkiplistIndex_new (struct TRI_document_collection_t*,
                                   size_t, bool, bool);
-
-TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, 
-                                             TRI_vector_t const*,
-                                             TRI_index_operator_t const*,
-                                             bool);
 
 TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, 
                                              TRI_index_operator_t const*,
@@ -153,22 +127,6 @@ size_t SkiplistIndex_memoryUsage (SkiplistIndex const*);
 
 inline size_t SkiplistIndex_ElementSize (SkiplistIndex const* idx) {
   return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * idx->_numFields);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the base address for the shaped subs inside an element
-////////////////////////////////////////////////////////////////////////////////
-  
-inline TRI_shaped_sub_t const* SkiplistIndex_Subobjects (TRI_index_element_t const* element) {
-  return reinterpret_cast<TRI_shaped_sub_t const*>(reinterpret_cast<char const*>(element) + sizeof(TRI_doc_mptr_t*));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the base address for the shaped subs inside an element
-////////////////////////////////////////////////////////////////////////////////
-  
-inline TRI_shaped_sub_t* SkiplistIndex_Subobjects (TRI_index_element_t* element) {
-  return reinterpret_cast<TRI_shaped_sub_t*>(reinterpret_cast<char*>(element) + sizeof(TRI_doc_mptr_t*));
 }
 
 #endif
