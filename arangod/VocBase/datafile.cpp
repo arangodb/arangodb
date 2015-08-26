@@ -1404,6 +1404,10 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
                fid,
                static_cast<char*>(data));
 
+  // Advise OS that sequential access is going to happen:
+  TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
+                   TRI_MADVISE_SEQUENTIAL);
+
   return datafile;
 }
 
@@ -1893,6 +1897,12 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename,
     TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &datafile->_mmHandle);
   }
 
+  // Advise on sequential use:
+  TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
+                   TRI_MADVISE_SEQUENTIAL);
+  TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
+                   TRI_MADVISE_WILLNEED);
+
   return datafile;
 }
 
@@ -2059,6 +2069,12 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 
   if (! ok) {
     return datafile->_lastError;
+  }
+
+  if (datafile->isPhysical(datafile)) {
+    // From now on we predict random access (until collection or compaction):
+    TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
+                     TRI_MADVISE_RANDOM);
   }
 
   return TRI_ERROR_NO_ERROR;

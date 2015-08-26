@@ -32,6 +32,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/hashes.h"
 #include "Basics/logging.h"
+#include "Basics/memory-map.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Utils/CollectionGuard.h"
@@ -738,6 +739,12 @@ int CollectorThread::collect (Logfile* logfile) {
   TRI_datafile_t* df = logfile->df();
 
   TRI_ASSERT(df != nullptr);
+
+  // We will sequentially scan the logfile for collection:
+  TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_SEQUENTIAL);
+  TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_WILLNEED);
+  TRI_DEFER (TRI_MMFileAdvise(df->_data, df->_maximalSize,
+                              TRI_MADVISE_RANDOM));
 
   // create a state for the collector, beginning with the list of failed transactions
   CollectorState state;

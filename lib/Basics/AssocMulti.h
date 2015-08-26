@@ -41,6 +41,7 @@
 #include "Basics/logging.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/memory-map.h"
 
 namespace triagens {
   namespace basics {
@@ -242,6 +243,17 @@ namespace triagens {
 
               // may fail...
               b._table = new EntryType[b._nrAlloc];
+
+#ifdef __linux__
+              if (b._nrAlloc > 1000000) {
+                uintptr_t mem = reinterpret_cast<uintptr_t>(b._table);
+                uintptr_t pageSize = getpagesize();
+                mem = (mem / pageSize) * pageSize;
+                void* memptr = reinterpret_cast<void*>(mem);
+                TRI_MMFileAdvise(memptr, b._nrAlloc * sizeof(EntryType),
+                                 TRI_MADVISE_RANDOM);
+              }
+#endif
 
               for (IndexType i = 0; i < b._nrAlloc; i++) {
                 invalidateEntry(b, i);
@@ -1032,8 +1044,8 @@ namespace triagens {
 /// @brief resize the array
 ////////////////////////////////////////////////////////////////////////////////
 
-        int resize (IndexType size) throw() {
-          size /= static_cast<IndexType>(_buckets.size());
+        int resize (size_t size) throw() {
+          size /= _buckets.size();
           for (auto& b : _buckets) {
             if (2 * (2 * size + 1) < 3 * b._nrUsed) {
               return TRI_ERROR_BAD_PARAMETER;
@@ -1103,7 +1115,7 @@ namespace triagens {
 /// @brief resize the array, internal method
 ////////////////////////////////////////////////////////////////////////////////
 
-        void resizeInternal (Bucket& b, IndexType size) {
+        void resizeInternal (Bucket& b, size_t size) {
           LOG_ACTION("index-resize %s, target size: %llu",
                      _contextCallback().c_str(),
                      (unsigned long long) size);
@@ -1112,9 +1124,20 @@ namespace triagens {
           EntryType* oldTable = b._table;
           IndexType oldAlloc = b._nrAlloc;
 
-          b._nrAlloc = static_cast<IndexType>(TRI_NearPrime(size));
+          b._nrAlloc = static_cast<IndexType>(TRI_NearPrime(static_cast<uint64_t>(size)));
           try {
             b._table = new EntryType[b._nrAlloc];
+#ifdef __linux__
+            if (b._nrAlloc > 1000000) {
+              uintptr_t mem = reinterpret_cast<uintptr_t>(b._table);
+              uintptr_t pageSize = getpagesize();
+              mem = (mem / pageSize) * pageSize;
+              void* memptr = reinterpret_cast<void*>(mem);
+              TRI_MMFileAdvise(memptr, b._nrAlloc * sizeof(EntryType),
+                               TRI_MADVISE_RANDOM);
+            }
+#endif
+
             IndexType i;
             for (i = 0; i < b._nrAlloc; i++) {
               invalidateEntry(b, i);
