@@ -37,6 +37,7 @@
 #include "Basics/files.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
+#include "Basics/memory-map.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -763,6 +764,12 @@ static compaction_initial_context_t InitCompaction (TRI_document_collection_t* d
     compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
     TRI_datafile_t* df = compaction->_datafile;
 
+    // We will sequentially scan the logfile for collection:
+    if (df->isPhysical(df)) {
+      TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_SEQUENTIAL);
+      TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_WILLNEED);
+    }
+
     if (i == 0) {
       // extract and store fid
       context._fid = compaction->_datafile->_fid;
@@ -771,6 +778,10 @@ static compaction_initial_context_t InitCompaction (TRI_document_collection_t* d
     context._keepDeletions = compaction->_keepDeletions;
 
     bool ok = TRI_IterateDatafile(df, CalculateSize, &context);
+
+    if (df->isPhysical(df)) {
+      TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_RANDOM);
+    }
 
     if (! ok) {
       context._failed = true;
