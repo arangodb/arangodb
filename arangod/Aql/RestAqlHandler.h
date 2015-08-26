@@ -87,9 +87,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t queue () const override {
-          return triagens::rest::Dispatcher::AQL_QUEUE;
-        }
+        size_t queue () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the handler
