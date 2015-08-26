@@ -335,6 +335,15 @@ int TRI_ProtectMMFile (void* memoryAddress,
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gives hints about upcoming sequential memory usage
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_MMFileAdvise (void*, size_t, int) {
+  // Not on Windows
+  return TRI_ERROR_NO_ERROR;
+}
+
 
 #endif
 

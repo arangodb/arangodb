@@ -47,14 +47,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     struct AttributeName {
-      std::string const name;
-      bool const shouldExpand;
+      std::string name;
+      bool shouldExpand;
 
       AttributeName (std::string const& pName)
-        : name(pName), shouldExpand(false) { };
+        : name(pName), shouldExpand(false) { 
+      }
 
       AttributeName (std::string const& pName, bool pExpand)
-        : name(pName), shouldExpand(pExpand) { };
+        : name(pName), shouldExpand(pExpand) { 
+      }
+
+      AttributeName (const AttributeName& b) 
+        : name(b.name), shouldExpand(b.shouldExpand) {
+      }
 
       bool operator== (const AttributeName& b) const {
         return name == b.name && shouldExpand == b.shouldExpand;

@@ -39,6 +39,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/memory-map.h"
 #include "VocBase/server.h"
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
@@ -2063,6 +2064,12 @@ int LogfileManager::inspectLogfiles () {
               logfile->statusText().c_str(),
               (unsigned long long) logfile->df()->_tickMin, 
               (unsigned long long) logfile->df()->_tickMax);
+
+    if (logfile->status() == Logfile::StatusType::SEALED) {
+      // If it is sealed, switch to random access:
+      TRI_datafile_t* df = logfile->df();
+      TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_RANDOM);
+    }
 
     {
       MUTEX_LOCKER(_idLock);

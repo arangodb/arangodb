@@ -49,6 +49,22 @@
 #define TRI_MMAP_ANONYMOUS MAP_ANON
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constants for TRI_MMFileAdvise
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __linux__
+#define TRI_MADVISE_SEQUENTIAL MADV_SEQUENTIAL
+#define TRI_MADVISE_RANDOM     MADV_RANDOM
+#define TRI_MADVISE_WILLNEED   MADV_WILLNEED
+#define TRI_MADVISE_DONTNEED   MADV_DONTNEED
+#else
+#define TRI_MADVISE_SEQUENTIAL 0
+#define TRI_MADVISE_RANDOM     0
+#define TRI_MADVISE_WILLNEED   0
+#define TRI_MADVISE_DONTNEED   0
+#endif
+
 #endif
 
 #endif
