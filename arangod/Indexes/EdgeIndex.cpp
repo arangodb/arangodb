@@ -322,8 +322,6 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
   
   TRI_ASSERT(iid != 0);
 
-  uint32_t indexBuckets = 1;
-
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
     _numBuckets = static_cast<size_t>(collection->_info._indexBuckets);

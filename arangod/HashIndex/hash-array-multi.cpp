@@ -423,7 +423,7 @@ size_t TRI_MemoryUsageHashArrayMulti (TRI_hash_array_multi_t const* array) {
   }
 
   size_t tableSize     = (size_t) (array->_nrAlloc * TableEntrySize() + 64);
-  size_t memberSize    = (size_t) (array->_nrUsed * array->_numFields * sizeof(TRI_shaped_sub_t));
+  size_t memberSize    = (size_t) ((array->_nrUsed + array->_nrOverflowUsed) * array->_numFields * sizeof(TRI_shaped_sub_t));
   size_t overflowAlloc = (size_t) (array->_nrOverflowAlloc * OverflowEntrySize());
 
   return (size_t) (tableSize + memberSize + overflowAlloc);
