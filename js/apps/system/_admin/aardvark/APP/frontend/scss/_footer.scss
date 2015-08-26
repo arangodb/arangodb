@@ -54,7 +54,7 @@ div.footer-left {
     }
 
     p:hover {
-      background: $c-new-grey;
+      background: $c-positive;
       cursor: pointer;
 
       i {
@@ -64,24 +64,24 @@ div.footer-left {
 
     i {
       color: $c-black;
-      margin-top: 4px;
+      margin-top: 6px;
       position: absolute;
 
       &.fa-twitter {
-        margin-left: -7px;
+        margin-left: -5px;
       }
 
       &.fa-envelope {
-        margin-left: -20px;
+        margin-left: -18.5px;
       }
 
       &.fa-google {
-        margin-left: -18px;
-        margin-top: 6px;
+        margin-left: -17px;
+        margin-top: 7px;
       }
 
       &.fa-stack-overflow {
-        margin-left: -18px;
+        margin-left: -17px;
       }
     }
 
@@ -99,12 +99,12 @@ div.footer-center {
     background-color: $c-white;
     border: 1px solid rgba(104, 103, 102, .1);
     border-radius: 20px;
-    padding: 6px 3px 6px 2px;
+    padding: 6px 2px;
     width: 20px;
   }
 
   i:hover {
-    background-color: $c-new-grey;
+    background-color: $c-positive;
     color: $c-white;
   }
 

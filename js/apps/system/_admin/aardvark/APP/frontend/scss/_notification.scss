@@ -102,7 +102,7 @@
 
 #stat_hd {
   @include border-radius(3px);
-  background-color: $c-nav-bg;
+  background-color: $c-white;
   border: 1px solid $c-content-border;
   height: 25px;
   margin-top: 3px;
@@ -111,8 +111,8 @@
 
   #stat_hd_counter {
     color: $c-c2grey;
-    line-height: 24px;
-    margin-left: 1px;
+    line-height: 25px;
+    text-align: center;
   }
 }
 
