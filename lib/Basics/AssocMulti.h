@@ -346,8 +346,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Element* insert (Element* element,
-                         bool const overwrite,
-                         bool const checkEquality) {
+                         bool overwrite,
+                         bool checkEquality) {
 
           // if the checkEquality flag is not set, we do not check for element
           // equality we use this flag to speed up initial insertion into the
