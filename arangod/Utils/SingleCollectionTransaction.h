@@ -261,7 +261,7 @@ namespace triagens {
 /// @brief read all documents within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (std::vector<TRI_doc_mptr_t*>& docs) {
+        int read (std::vector<TRI_doc_mptr_t const*>& docs) {
           return this->readSlice(this->trxCollection(), docs);
         }
 
@@ -279,19 +279,6 @@ namespace triagens {
                   uint64_t* total) {
 
           return this->readIncremental(this->trxCollection(), docs, internalSkip, batchSize, skip, limit, total);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief selects documents from a collection, hashing the document key and
-/// only returning these documents which fall into a specific partition
-////////////////////////////////////////////////////////////////////////////////
-
-        int readPartition (std::vector<TRI_doc_mptr_copy_t>& docs,
-                  uint64_t partitionId,
-                  uint64_t numberOfPartitions,
-                  uint64_t* total) {
-
-          return this->readNth(this->trxCollection(), docs, partitionId, numberOfPartitions, total);
         }
 
 // -----------------------------------------------------------------------------
