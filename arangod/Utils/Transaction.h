@@ -427,7 +427,7 @@ namespace triagens {
               docs.reserve(batchSize);
             }
             TRI_ASSERT(batchSize > 0);
-            TRI_doc_mptr_t* ptr = nullptr; 
+            TRI_doc_mptr_t const* ptr = nullptr; 
             do {
               ptr = document->primaryIndex()->lookupSequential(internalSkip, total);
               if (skip > 0) {
@@ -808,12 +808,12 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          auto primaryIndex = document->primaryIndex();
+          auto idx = document->primaryIndex();
           uint64_t intPos = 0;
           uint64_t pos = 0;
           uint64_t step = 0;
           uint64_t total = 0;
-          mptr = document->primaryIndex()->lookupRandom(intPos, pos, step, total);
+          *mptr = *(idx->lookupRandom(intPos, pos, &step, &total));
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
           return TRI_ERROR_NO_ERROR;
         }
@@ -837,23 +837,21 @@ namespace triagens {
             }
           }
 
-          auto primaryIndex = document->primaryIndex()->internals();
-
-          if (primaryIndex->_nrUsed > 0) {
-            if (orderDitch(trxCollection) == nullptr) {
-              return TRI_ERROR_OUT_OF_MEMORY;
-            }
-
-            ids.reserve((size_t) primaryIndex->_nrUsed);
-
-            void** ptr = primaryIndex->_table;
-            void** end = ptr + primaryIndex->_nrAlloc;
-
-            for (;  ptr < end;  ++ptr) {
-              if (*ptr) {
-                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-                ids.push_back(TRI_EXTRACT_MARKER_KEY(d));  // PROTECTED by trx in trxCollection
+          if (orderDitch(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+          auto idx = document->primaryIndex();
+          size_t used = idx->size();
+          if (used > 0) {
+            uint64_t step = 0;
+            uint64_t total = 0;
+            TRI_doc_mptr_t const* d = nullptr;
+            while (true) {
+              d = idx->lookupSequential(step, &total);
+              if (d == nullptr) {
+                break;
               }
+              ids.emplace_back(TRI_EXTRACT_MARKER_KEY(d));
             }
           }
 
@@ -953,67 +951,60 @@ namespace triagens {
             return res;
           }
 
-          auto primaryIndex = document->primaryIndex()->internals();
-
-          if (primaryIndex->_nrUsed == 0) {
-            // nothing to do
-            this->unlock(trxCollection, TRI_TRANSACTION_READ);
-            // READ-LOCK END
-            return TRI_ERROR_NO_ERROR;
-          }
-
           if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          void** beg = primaryIndex->_table;
-          void** ptr = beg;
-          void** end = ptr + primaryIndex->_nrAlloc;
           uint64_t count = 0;
+          auto idx = document->primaryIndex();
+          TRI_doc_mptr_t const* ptr = nullptr; 
 
-          *total = primaryIndex->_nrUsed;
-
-          // apply skip
-          if (skip > 0) {
-            // skip from the beginning
-            for (;  ptr < end && 0 < skip;  ++ptr) {
-              if (*ptr) {
-                --skip;
+          if (skip < 0) {
+            uint64_t position = UINT64_MAX;
+            do {
+              ptr = idx->lookupSequentialReverse(position);
+              ++skip;
+            }
+            while (skip < 0 && ptr != nullptr);
+            if (ptr == nullptr) {
+              this->unlock(trxCollection, TRI_TRANSACTION_READ);
+              // To few elements, skipped all
+              return TRI_ERROR_NO_ERROR;
+            }
+            do {
+              ptr = idx->lookupSequentialReverse(position);
+              if (ptr == nullptr) {
+                break;
               }
-            }
-          }
-          else if (skip < 0) {
-            // skip from the end
-            ptr = end - 1;
-
-            for (; beg <= ptr; --ptr) {
-              if (*ptr) {
-                ++skip;
-
-                if (skip == 0) {
-                  break;
-                }
-              }
-            }
-
-            if (ptr < beg) {
-              ptr = beg;
-            }
-          }
-
-          // fetch documents, taking limit into account
-          for (; ptr < end && count < limit; ++ptr) {
-            if (*ptr) {
-              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
-
-              docs.emplace_back(*d);
               ++count;
+              docs.emplace_back(*ptr);
+            }
+            while (count < limit);
+
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+            return TRI_ERROR_NO_ERROR;
+          }
+          uint64_t position = 0;
+
+          while (skip > 0) {
+            ptr = idx->lookupSequential(position, total);
+            ++skip;
+            if (ptr == nullptr) {
+              // To few elements, skipped all
+              this->unlock(trxCollection, TRI_TRANSACTION_READ);
+              return TRI_ERROR_NO_ERROR;
             }
           }
-
+          do {
+            ptr = idx->lookupSequential(position, total);
+            if (ptr == nullptr) {
+              break;
+            }
+            ++count;
+            docs.emplace_back(*ptr);
+          }
+          while (count < limit);
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          // READ-LOCK END
-
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -1022,103 +1013,32 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readSlice (TRI_transaction_collection_t* trxCollection,
-                       std::vector<TRI_doc_mptr_t*>& docs) {
-
+                       std::vector<TRI_doc_mptr_t const*>& docs) {
           TRI_document_collection_t* document = documentCollection(trxCollection);
-
           // READ-LOCK START
           int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
 
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
-          }
-
-          auto primaryIndex = document->primaryIndex()->internals();
-
-          if (primaryIndex->_nrUsed == 0) {
-            // nothing to do
-            this->unlock(trxCollection, TRI_TRANSACTION_READ);
-            // READ-LOCK END
-            return TRI_ERROR_NO_ERROR;
           }
 
           if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          void** ptr = primaryIndex->_table;
-          void** end = ptr + primaryIndex->_nrAlloc;
-
-          // fetch documents, taking limit into account
-          for (; ptr < end; ++ptr) {
-            if (*ptr) {
-              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
-              docs.push_back(d);
+          uint64_t position = 0;
+          uint64_t total = 0;
+          auto idx = document->primaryIndex();
+          TRI_doc_mptr_t const* ptr = nullptr; 
+          docs.reserve(idx->size());
+          while (true) {
+            ptr = idx->lookupSequential(position, &total);
+            if (ptr == nullptr) {
+              break;
             }
+            docs.emplace_back(ptr);
           }
-
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          // READ-LOCK END
-
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief selects documents from a collection, hashing the document key and
-/// only returning these documents which fall into a specific partition
-////////////////////////////////////////////////////////////////////////////////
-
-        int readNth (TRI_transaction_collection_t* trxCollection,
-                     std::vector<TRI_doc_mptr_copy_t>& docs,
-                     uint64_t partitionId,
-                     uint64_t numberOfPartitions,
-                     uint64_t* total) {
-
-          TRI_document_collection_t* document = documentCollection(trxCollection);
-
-          // READ-LOCK START
-          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
-
-          auto primaryIndex = document->primaryIndex()->internals();
-
-          if (primaryIndex->_nrUsed > 0) {
-            if (orderDitch(trxCollection) == nullptr) {
-              return TRI_ERROR_OUT_OF_MEMORY;
-            }
-            
-            docs.reserve(static_cast<size_t>(primaryIndex->_nrUsed) % static_cast<size_t>(numberOfPartitions));
-          
-            void** ptr = primaryIndex->_table;
-            void** end = ptr + primaryIndex->_nrAlloc;
-            *total = primaryIndex->_nrUsed;
-
-            // fetch documents, taking partition into account
-            for (; ptr < end; ++ptr) {
-              if (*ptr) {
-                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-
-                if (d->_hash % numberOfPartitions == partitionId) {
-                  // correct partition
-                  docs.emplace_back(*d);
-                }
-              }
-            }
-
-            for (;  ptr < end;  ++ptr) {
-              if (*ptr) {
-                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
-                docs.push_back(*d);  // PROTECTED by trx in trxCollection
-              }
-            }
-          }
-
-          this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          // READ-LOCK END
-
           return TRI_ERROR_NO_ERROR;
         }
 
