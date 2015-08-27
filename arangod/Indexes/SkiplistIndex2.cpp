@@ -137,19 +137,10 @@ SkiplistIndex2::SkiplistIndex2 (TRI_idx_iid_t iid,
   : PathBasedIndex(iid, collection, fields, unique, sparse),
     _skiplistIndex(nullptr) {
 
-  bool useExpansion = false;
-
-  for (auto& list: fields) {
-    if (TRI_AttributeNamesHaveExpansion(list)) {
-      useExpansion = true;
-      break;
-    }
-  }
-  
   _skiplistIndex = SkiplistIndex_new(collection,
                                      _paths.size(),
                                      unique,
-                                     useExpansion);
+                                     _useExpansion);
 
   if (_skiplistIndex == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
