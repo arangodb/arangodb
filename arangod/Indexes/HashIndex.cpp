@@ -489,6 +489,15 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(allocate, elements, doc);
   
+  if (res != TRI_ERROR_NO_ERROR) {
+    for (auto& it : elements) {
+      // free all elements to prevent leak
+      FreeElement(it);
+    }
+
+    return res;
+  }
+  
   auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
     TRI_IF_FAILURE("InsertHashIndex") {
       return TRI_ERROR_DEBUG;
@@ -515,13 +524,14 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
   for (size_t i = 0; i < count; ++i) {
     auto hashElement = elements[i];
     res = work(hashElement, isRollback);
+
     if (res != TRI_ERROR_NO_ERROR) {
       for (size_t j = i; j < count; ++j) {
         // Free all elements that are not yet in the index
         FreeElement(elements[j]);
       }
-      // Allready indexed elements will be removed by the rollback
-      return res;
+      // Already indexed elements will be removed by the rollback
+      break;
     }
   }
   return res;

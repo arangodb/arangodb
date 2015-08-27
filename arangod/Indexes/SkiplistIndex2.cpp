@@ -205,6 +205,15 @@ int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc,
 
   int res = fillElement(allocate, elements, doc);
 
+  if (res != TRI_ERROR_NO_ERROR) {
+    for (auto& it : elements) {
+      // free all elements to prevent leak
+      TRI_index_element_t::free(it);
+    }
+
+    return res;
+  }
+
   // insert into the index. the memory for the element will be owned or freed
   // by the index
 
@@ -219,10 +228,11 @@ int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc,
         TRI_index_element_t::free(elements[j]);
       }
       for (size_t j = 0; j < i; ++j) {
-         _skiplistIndex->skiplist->remove(elements[j]);
+        _skiplistIndex->skiplist->remove(elements[j]);
         // No need to free elements[j] skiplist has taken over already
       }
-      return res;
+
+      break;
     }
   }
   return res;
