@@ -52,11 +52,19 @@ PathBasedIndex::PathBasedIndex (TRI_idx_iid_t iid,
     _shaper(_collection->getShaper()),
     _paths(fillPidPaths()),
     _unique(unique),
-    _sparse(sparse) {
+    _sparse(sparse),
+    _useExpansion(false) {
 
   TRI_ASSERT(! fields.empty());
 
   TRI_ASSERT(iid != 0);
+  
+  for (auto const& list : fields) {
+    if (TRI_AttributeNamesHaveExpansion(list)) {
+      _useExpansion = true;
+      break;
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,34 +97,63 @@ int PathBasedIndex::fillElement (std::function<TRI_index_element_t* ()> allocate
 
     return TRI_ERROR_INTERNAL;
   }
-
+  
   size_t const n = _paths.size();
-
-  std::unordered_set<std::vector<TRI_shaped_json_t>> toInsert;
-
   std::vector<TRI_shaped_json_t> shapes;
-  shapes.reserve(n);
 
-  insertIntoIndex(&shapedJson, &shapedJson, 0, 0, toInsert, shapes);
-  char const* ptr = document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  if (! _useExpansion) {
+    // fast path for inserts... no array elements used
+    buildIndexValue(&shapedJson, shapes);
 
-  elements.reserve(toInsert.size());
+    if (shapes.size() == n) {
+      // if shapes.size() != n, then the value is not inserted into the index because of
+      // index sparsity!
+      char const* ptr = document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-  for (auto& info : toInsert) {
-    TRI_ASSERT(info.size() == n);
-    TRI_index_element_t* element = allocate();
+      TRI_index_element_t* element = allocate();
 
-    if (element == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
+      if (element == nullptr) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+
+      element->document(const_cast<TRI_doc_mptr_t*>(document));
+      TRI_shaped_sub_t* subObjects = element->subObjects();
+
+      for (size_t i = 0; i < n; ++i) {
+        TRI_FillShapedSub(&subObjects[i], &shapes[i], ptr);
+      }
+
+      elements.emplace_back(element);
     }
+  }
+  else {
+    // other path for handling array elements, too
+    std::unordered_set<std::vector<TRI_shaped_json_t>> toInsert;
 
-    element->document(const_cast<TRI_doc_mptr_t*>(document));
-    TRI_shaped_sub_t* subObjects = element->subObjects();
+    buildIndexValues(&shapedJson, &shapedJson, 0, 0, toInsert, shapes);
 
-    for (size_t j = 0; j < n; ++j) {
-      TRI_FillShapedSub(&subObjects[j], &info[j], ptr);
+    if (! toInsert.empty()) {
+      char const* ptr = document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+      elements.reserve(toInsert.size());
+
+      for (auto& info : toInsert) {
+        TRI_ASSERT(info.size() == n);
+        TRI_index_element_t* element = allocate();
+
+        if (element == nullptr) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+
+        element->document(const_cast<TRI_doc_mptr_t*>(document));
+        TRI_shaped_sub_t* subObjects = element->subObjects();
+
+        for (size_t j = 0; j < n; ++j) {
+          TRI_FillShapedSub(&subObjects[j], &info[j], ptr);
+        }
+        elements.emplace_back(element);
+      }
     }
-    elements.emplace_back(element);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -127,15 +164,50 @@ int PathBasedIndex::fillElement (std::function<TRI_index_element_t* ()> allocate
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to create the sole index value insert
+////////////////////////////////////////////////////////////////////////////////
+
+void PathBasedIndex::buildIndexValue (TRI_shaped_json_t const* documentShape, 
+                                      std::vector<TRI_shaped_json_t>& shapes) {
+  TRI_shape_t const* shape = nullptr;
+
+  size_t const n = _paths.size();
+
+  for (size_t i = 0; i < n; ++i) {
+    TRI_ASSERT(_paths[i].size() == 1);
+
+    TRI_shaped_json_t shapedJson;
+    TRI_shape_pid_t pid = _paths[i][0].first;
+
+    bool check = _shaper->extractShapedJson(documentShape, 0, pid, &shapedJson, &shape);
+
+    if (! check || shape == nullptr || shapedJson._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
+      // attribute not, found
+      if (_sparse) {
+        // If sparse we do not have to index
+        return;
+      }
+      
+      // If not sparse we insert null here
+      shapedJson._sid = BasicShapes::TRI_SHAPE_SID_NULL;
+      shapedJson._data.data = nullptr;
+      shapedJson._data.length = 0;
+    }
+
+    shapes.emplace_back(shapedJson);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to create a set of index combinations to insert
 ////////////////////////////////////////////////////////////////////////////////
 
-void PathBasedIndex::insertIntoIndex (TRI_shaped_json_t const* documentShape, 
-                                      TRI_shaped_json_t const* subShape,
-                                      size_t subShapeLevel,
-                                      size_t level, 
-                                      std::unordered_set<std::vector<TRI_shaped_json_t>>& toInsert,
-                                      std::vector<TRI_shaped_json_t>& shapes) {
+void PathBasedIndex::buildIndexValues (TRI_shaped_json_t const* documentShape, 
+                                       TRI_shaped_json_t const* subShape,
+                                       size_t subShapeLevel,
+                                       size_t level, 
+                                       std::unordered_set<std::vector<TRI_shaped_json_t>>& toInsert,
+                                       std::vector<TRI_shaped_json_t>& shapes) {
   TRI_ASSERT(level < _paths.size());
   TRI_shaped_json_t currentShape = *subShape;
   TRI_shape_t const* shape = nullptr;
@@ -175,7 +247,7 @@ void PathBasedIndex::insertIntoIndex (TRI_shaped_json_t const* documentShape,
           for (size_t index = 0; index < len; ++index) {
             ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
             if (ok) {
-              insertIntoIndex(documentShape, &shapedArrayElement, i + 1, level, toInsert, shapes);
+              buildIndexValues(documentShape, &shapedArrayElement, i + 1, level, toInsert, shapes);
             }
             else {
               TRI_ASSERT(false);
@@ -187,7 +259,7 @@ void PathBasedIndex::insertIntoIndex (TRI_shaped_json_t const* documentShape,
           for (size_t index = 0; index < len; ++index) {
             ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
             if (ok) {
-              insertIntoIndex(documentShape, &shapedArrayElement, i + 1, level, toInsert, shapes);
+              buildIndexValues(documentShape, &shapedArrayElement, i + 1, level, toInsert, shapes);
             }
             else {
               TRI_ASSERT(false);
@@ -199,7 +271,7 @@ void PathBasedIndex::insertIntoIndex (TRI_shaped_json_t const* documentShape,
           for (size_t index = 0; index < len; ++index) {
             ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
             if (ok) {
-              insertIntoIndex(documentShape, &shapedArrayElement, i + 1, level, toInsert, shapes);
+              buildIndexValues(documentShape, &shapedArrayElement, i + 1, level, toInsert, shapes);
             }
             else {
               TRI_ASSERT(false);
@@ -238,7 +310,7 @@ void PathBasedIndex::insertIntoIndex (TRI_shaped_json_t const* documentShape,
     return;
   }
 
-  insertIntoIndex(documentShape, documentShape, 0, level + 1, toInsert, shapes);
+  buildIndexValues(documentShape, documentShape, 0, level + 1, toInsert, shapes);
   shapes.pop_back();
 }
 

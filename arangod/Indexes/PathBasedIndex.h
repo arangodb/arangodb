@@ -141,12 +141,19 @@ namespace triagens {
 /// @brief helper function to create a set of index combinations to insert
 ////////////////////////////////////////////////////////////////////////////////
 
-        void insertIntoIndex (TRI_shaped_json_t const*, 
-                              TRI_shaped_json_t const*,
-                              size_t,
-                              size_t, 
-                              std::unordered_set<std::vector<TRI_shaped_json_t>>&,
+        void buildIndexValue (TRI_shaped_json_t const*, 
                               std::vector<TRI_shaped_json_t>&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to create a set of index combinations to insert
+////////////////////////////////////////////////////////////////////////////////
+
+        void buildIndexValues (TRI_shaped_json_t const*, 
+                               TRI_shaped_json_t const*,
+                               size_t,
+                               size_t, 
+                               std::unordered_set<std::vector<TRI_shaped_json_t>>&,
+                               std::vector<TRI_shaped_json_t>&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -177,6 +184,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool const _sparse;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not at least one attribute is expanded
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool _useExpansion;
     };
 
   }
