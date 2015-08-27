@@ -624,7 +624,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         wal::document_marker_t const* m = reinterpret_cast<wal::document_marker_t const*>(walMarker);
         char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
 
-        auto found = static_cast<TRI_doc_mptr_t*>(primaryIndex->lookupKey(key));
+        auto found = primaryIndex->lookupKey(key);
 
         if (found == nullptr || found->_rid != m->_revisionId || found->getDataPtr() != walMarker) {
           // somebody inserted a new revision of the document or the revision was already moved by the compactor
@@ -648,7 +648,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         wal::edge_marker_t const* m = reinterpret_cast<wal::edge_marker_t const*>(walMarker);
         char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
 
-        auto found = static_cast<TRI_doc_mptr_t*>(primaryIndex->lookupKey(key));
+        auto found = primaryIndex->lookupKey(key);
 
         if (found == nullptr || found->_rid != m->_revisionId || found->getDataPtr() != walMarker) {
           // somebody inserted a new revision of the document or the revision was already moved by the compactor
@@ -672,7 +672,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         wal::remove_marker_t const* m = reinterpret_cast<wal::remove_marker_t const*>(walMarker);
         char const* key = reinterpret_cast<char const*>(m) + sizeof(wal::remove_marker_t);
 
-        auto found = static_cast<TRI_doc_mptr_t*>(primaryIndex->lookupKey(key));
+        auto found = primaryIndex->lookupKey(key);
 
         if (found != nullptr && found->_rid > m->_revisionId) {
           // somebody re-created the document with a newer revision

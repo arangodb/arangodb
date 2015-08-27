@@ -32,8 +32,10 @@
 #define ARANGODB_HASH_INDEX_HASH__ARRAY_H 1
 
 #include "Basics/Common.h"
+#include "Basics/gcd.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
+#include "Basics/random.h"
 
 namespace triagens {
   namespace basics {
@@ -589,6 +591,35 @@ namespace triagens {
             } while (position < *total && res == nullptr);
             return res;
           }
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief a method to iterate over all elements in the index in
+          ///        reversed sequential order.
+          ///        Returns nullptr if all documents have been returned.
+          ///        Convention: position === UINT64_MAX indicates a new start.
+          ////////////////////////////////////////////////////////////////////////////////
+
+          Element* findSequentialReverse (uint64_t& position) {
+            if (position == UINT64_MAX) {
+              if (isEmpty()) {
+                return nullptr;
+              }
+              // Fill Total
+              uint64_t position = 0;
+              for (auto& b : _buckets) {
+                position += b._nrAlloc;
+              }
+              TRI_ASSERT(position > 0);
+            }
+            Element* res = nullptr;
+            do {
+              res = findElementSequentialBucktes(position);
+              position--;
+            } while (position > 0 && res == nullptr);
+            return res;
+          }
+
+
 
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief a method to iterate over all elements in the index in
