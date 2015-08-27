@@ -251,13 +251,44 @@ namespace triagens {
             return true;
           }
 
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief Finds the element at the given position in concatenated buckets.
+          ///        Say we have 2 Buckets each of size 5. Position 7 would be in
+          ///        the second bucket at Position 2 (7 - Bucket1.size())
+          ////////////////////////////////////////////////////////////////////////////////
+
+          Element* findElementSequentialBucktes (uint64_t position) {
+            for (auto& b : _buckets) {
+              if (position >= b._nrAlloc) {
+                position -= b._nrAlloc;
+              }
+              else {
+                return b._table[position];
+              }
+            }
+            return nullptr;
+          }
+
           // -----------------------------------------------------------------------------
           // --SECTION--                                                  public functions
           // -----------------------------------------------------------------------------
 
         public:
 
+
+          /////////////////////////////////////////////////////////////////////////////
+          /// @brief Checks if this index is empty
           ////////////////////////////////////////////////////////////////////////////////
+          bool isEmpty () {
+            for (auto& b : _buckets) {
+              if (b._nrUsed > 0) {
+                return false;
+              }
+            }
+            return true;
+          }
+
+          /////////////////////////////////////////////////////////////////////////////
           /// @brief get the hash array's memory usage
           ////////////////////////////////////////////////////////////////////////////////
 
@@ -480,10 +511,6 @@ namespace triagens {
 
             Element* old = b._table[i];
 
-            // ...........................................................................
-            // if we did not find such an item return nullptr
-            // ...........................................................................
-
             if (old != nullptr) {
               healHole(b, i);
             }
@@ -512,10 +539,6 @@ namespace triagens {
 
             Element* old = b._table[i];
 
-            // ...........................................................................
-            // if we did not find such an item return nullptr
-            // ...........................................................................
-
             if (old != nullptr) {
               healHole(b, i);
             }
@@ -537,6 +560,82 @@ namespace triagens {
                 }
               }
             }
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief a method to iterate over all elements in the index in
+          ///        a sequential order.
+          ///        Returns nullptr if all documents have been returned.
+          ///        Convention: position === 0 indicates a new start.
+          ////////////////////////////////////////////////////////////////////////////////
+
+          Element* findSequential (uint64_t& position,
+                                   uint64_t* total) {
+            if (position == 0) {
+              if (isEmpty()) {
+                return nullptr;
+              }
+              // Fill Total
+              *total = 0;
+              for (auto& b : _buckets) {
+                total += b._nrAlloc;
+              }
+              TRI_ASSERT(*total > 0);
+            }
+            Element* res = nullptr;
+            do {
+              res = findElementSequentialBucktes(position);
+              position++;
+            } while (position < total && res == nullptr)
+            return res;
+          }
+
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief a method to iterate over all elements in the index in
+          ///        a random order.
+          ///        Returns nullptr if all documents have been returned.
+          ///        Convention: step === 0 indicates a new start.
+          ////////////////////////////////////////////////////////////////////////////////
+
+          Element* findRandom (uint64_t& initialPosition,
+                               uint64_t& position,
+                               uint64_t* step,
+                               uint64_t* total) {
+            if (step != 0 && position == initialPosition) {
+              // already read all documents
+              return nullptr;
+            }
+            if (step == 0) {
+              // Initialize
+              if (isEmpty()) {
+                return nullptr;
+              }
+              *total = 0;
+              for (auto& b : _buckets) {
+                total += b._nrAlloc;
+              }
+              TRI_ASSERT(*total > 0);
+
+              // find a co-prime for total
+              while (true) {
+                *step = TRI_UInt32Random() % *total;
+                if (*step > 10 && triagens::basics::binaryGcd<uint64_t>(*total, *step) == 1) {
+                  while (initialPosition == 0) {
+                    initialPosition = TRI_UInt32Random() % *total;
+                  }
+                  position = initialPosition;
+                  break;
+                }
+              }
+            }
+            // Find documents
+            Element* res = nullptr; 
+            do {
+              res = findElementSequentialBucktes(position);
+              position += *step;
+              position = position % *total;
+            } while (initialPosition != position && res == nullptr);
+            return res;
           }
 
       };
