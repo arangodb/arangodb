@@ -954,7 +954,7 @@ static void JS_AllQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
  
-  res = trx.read(docs, skip, limit, &total);
+  res = trx.read(docs, skip, limit, total);
   TRI_ASSERT(docs.empty() || trx.hasDitch());
   
   res = trx.finish(res);
@@ -1030,7 +1030,7 @@ static void JS_OffsetQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  res = trx.readOffset(docs, internalSkip, batchSize, skip, limit, &total);
+  res = trx.readOffset(docs, internalSkip, batchSize, skip, limit, total);
   TRI_ASSERT(docs.empty() || trx.hasDitch());
 
   res = trx.finish(res);

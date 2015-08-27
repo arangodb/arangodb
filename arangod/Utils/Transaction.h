@@ -402,7 +402,7 @@ namespace triagens {
                              uint64_t batchSize,
                              int64_t skip,
                              uint64_t limit,
-                             uint64_t* total) {
+                             uint64_t& total) {
 
           TRI_document_collection_t* document = documentCollection(trxCollection);
 
@@ -466,8 +466,8 @@ namespace triagens {
                         uint64_t& initialPosition,
                         uint64_t& position,
                         uint64_t batchSize,
-                        uint64_t* step,
-                        uint64_t* total) {
+                        uint64_t& step,
+                        uint64_t& total) {
           TRI_document_collection_t* document = documentCollection(trxCollection);
           // READ-LOCK START
           int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
@@ -815,7 +815,10 @@ namespace triagens {
           uint64_t pos = 0;
           uint64_t step = 0;
           uint64_t total = 0;
-          *mptr = *(idx->lookupRandom(intPos, pos, &step, &total));
+          TRI_doc_mptr_t* found = idx->lookupRandom(intPos, pos, step, total);
+          if (found != nullptr) {
+            *mptr = *found;
+          }
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
           return TRI_ERROR_NO_ERROR;
         }
@@ -849,7 +852,7 @@ namespace triagens {
             uint64_t total = 0;
             TRI_doc_mptr_t const* d = nullptr;
             while (true) {
-              d = idx->lookupSequential(step, &total);
+              d = idx->lookupSequential(step, total);
               if (d == nullptr) {
                 break;
               }
@@ -937,7 +940,7 @@ namespace triagens {
                        std::vector<TRI_doc_mptr_copy_t>& docs,
                        int64_t skip,
                        uint64_t limit,
-                       uint64_t* total) {
+                       uint64_t& total) {
 
           TRI_document_collection_t* document = documentCollection(trxCollection);
 
@@ -1034,7 +1037,7 @@ namespace triagens {
           TRI_doc_mptr_t const* ptr = nullptr; 
           docs.reserve(idx->size());
           while (true) {
-            ptr = idx->lookupSequential(position, &total);
+            ptr = idx->lookupSequential(position, total);
             if (ptr == nullptr) {
               break;
             }

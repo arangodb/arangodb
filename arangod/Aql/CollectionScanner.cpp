@@ -73,8 +73,8 @@ int RandomCollectionScanner::scan (std::vector<TRI_doc_mptr_copy_t>& docs,
                          initialPosition,
                          position,
                          static_cast<uint64_t>(batchSize),
-                         &step,
-                         &totalCount);
+                         step,
+                         totalCount);
 }
 
 // -----------------------------------------------------------------------------
@@ -109,7 +109,7 @@ int LinearCollectionScanner::scan (std::vector<TRI_doc_mptr_copy_t>& docs,
                               static_cast<uint64_t>(batchSize),
                               0,
                               UINT64_MAX,
-                              &totalCount);
+                              totalCount);
 }
 
 // -----------------------------------------------------------------------------

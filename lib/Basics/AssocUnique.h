@@ -572,23 +572,23 @@ namespace triagens {
           ////////////////////////////////////////////////////////////////////////////////
 
           Element* findSequential (uint64_t& position,
-                                   uint64_t* total) {
+                                   uint64_t& total) {
             if (position == 0) {
               if (isEmpty()) {
                 return nullptr;
               }
               // Fill Total
-              *total = 0;
+              total = 0;
               for (auto& b : _buckets) {
-                *total += b._nrAlloc;
+                total += b._nrAlloc;
               }
-              TRI_ASSERT(*total > 0);
+              TRI_ASSERT(total > 0);
             }
             Element* res = nullptr;
             do {
               res = findElementSequentialBucktes(position);
               position++;
-            } while (position < *total && res == nullptr);
+            } while (position < total && res == nullptr);
             return res;
           }
 
@@ -625,13 +625,13 @@ namespace triagens {
           /// @brief a method to iterate over all elements in the index in
           ///        a random order.
           ///        Returns nullptr if all documents have been returned.
-          ///        Convention: step === 0 indicates a new start.
+          ///        Convention: *step === 0 indicates a new start.
           ////////////////////////////////////////////////////////////////////////////////
 
           Element* findRandom (uint64_t& initialPosition,
                                uint64_t& position,
-                               uint64_t* step,
-                               uint64_t* total) {
+                               uint64_t& step,
+                               uint64_t& total) {
             if (step != 0 && position == initialPosition) {
               // already read all documents
               return nullptr;
@@ -641,18 +641,18 @@ namespace triagens {
               if (isEmpty()) {
                 return nullptr;
               }
-              *total = 0;
+              total = 0;
               for (auto& b : _buckets) {
                 total += b._nrAlloc;
               }
-              TRI_ASSERT(*total > 0);
+              TRI_ASSERT(total > 0);
 
               // find a co-prime for total
               while (true) {
-                *step = TRI_UInt32Random() % *total;
-                if (*step > 10 && triagens::basics::binaryGcd<uint64_t>(*total, *step) == 1) {
+                step = TRI_UInt32Random() % total;
+                if (step > 10 && triagens::basics::binaryGcd<uint64_t>(total, step) == 1) {
                   while (initialPosition == 0) {
-                    initialPosition = TRI_UInt32Random() % *total;
+                    initialPosition = TRI_UInt32Random() % total;
                   }
                   position = initialPosition;
                   break;
@@ -663,8 +663,8 @@ namespace triagens {
             Element* res = nullptr; 
             do {
               res = findElementSequentialBucktes(position);
-              position += *step;
-              position = position % *total;
+              position += step;
+              position = position % total;
             } while (initialPosition != position && res == nullptr);
             return res;
           }

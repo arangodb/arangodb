@@ -117,9 +117,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_doc_mptr_t* lookupRandom (uint64_t& initialPosition,
-                                            uint64_t& position,
-                                            uint64_t* step,
-                                            uint64_t* total);
+                                      uint64_t& position,
+                                      uint64_t& step,
+                                      uint64_t& total);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in
@@ -129,7 +129,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_doc_mptr_t* lookupSequential (uint64_t& position,
-                                                uint64_t* total);
+                                          uint64_t& total);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in

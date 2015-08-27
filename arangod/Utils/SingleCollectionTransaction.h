@@ -252,7 +252,7 @@ namespace triagens {
         int read (std::vector<TRI_doc_mptr_copy_t>& docs,
                   int64_t skip,
                   uint64_t limit,
-                  uint64_t* total) {
+                  uint64_t& total) {
 
           return this->readSlice(this->trxCollection(), docs, skip, limit, total);
         }
@@ -276,7 +276,7 @@ namespace triagens {
                   uint64_t batchSize,
                   int64_t skip,
                   uint64_t limit,
-                  uint64_t* total) {
+                  uint64_t& total) {
 
           return this->readIncremental(this->trxCollection(), docs, internalSkip, batchSize, skip, limit, total);
         }

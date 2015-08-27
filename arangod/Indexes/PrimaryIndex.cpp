@@ -190,9 +190,9 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupRandom(uint64_t& initialPosition,
-                                                 uint64_t& position,
-                                                 uint64_t* step,
-                                                 uint64_t* total) {
+                                           uint64_t& position,
+                                           uint64_t& step,
+                                           uint64_t& total) {
   return _primaryIndex->findRandom(initialPosition, position, step, total);
 }
 
@@ -204,7 +204,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupRandom(uint64_t& initialPosition,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupSequential(uint64_t& position,
-                                                     uint64_t* total) {
+                                               uint64_t& total) {
   return _primaryIndex->findSequential(position, total);
 }
 
