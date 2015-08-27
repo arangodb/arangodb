@@ -63,8 +63,8 @@ namespace triagens {
         
       private:
 
-        typedef triagens::basics::AssocUnique<char,
-                TRI_doc_mptr_t> TRI_PrimaryIndex_t;
+        typedef triagens::basics::AssocUnique<char const,
+                TRI_doc_mptr_t const> TRI_PrimaryIndex_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -88,6 +88,8 @@ namespace triagens {
           return true;
         }
         
+        size_t size () const;
+
         size_t memory () const override final;
 
         triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
@@ -97,7 +99,7 @@ namespace triagens {
 
         int remove (TRI_doc_mptr_t const*, bool) override final;
 
-        TRI_doc_mptr_t* lookupKey (char const*) const;
+        TRI_doc_mptr_t const* lookupKey (char const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
@@ -105,7 +107,7 @@ namespace triagens {
 /// parameter. sets position to UINT64_MAX if the position cannot be determined
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupKey (char const*, uint64_t&) const;
+        TRI_doc_mptr_t const* lookupKey (char const*, uint64_t&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in
@@ -114,10 +116,10 @@ namespace triagens {
 ///        Convention: step === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupRandom (uint64_t& initialPosition,
-                                      uint64_t& position,
-                                      uint64_t* step,
-                                      uint64_t* total);
+        TRI_doc_mptr_t const* lookupRandom (uint64_t& initialPosition,
+                                            uint64_t& position,
+                                            uint64_t* step,
+                                            uint64_t* total);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in
@@ -126,8 +128,17 @@ namespace triagens {
 ///        Convention: position === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupSequential (uint64_t& position,
-                                          uint64_t* total);
+        TRI_doc_mptr_t const* lookupSequential (uint64_t& position,
+                                                uint64_t* total);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the index in
+///        reversed sequential order. 
+///        Returns nullptr if all documents have been returned.
+///        Convention: position === UINT64_MAX indicates a new start.
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_doc_mptr_t const* lookupSequentialReverse(uint64_t& position);
 
         int insertKey (TRI_doc_mptr_t const*, void const**);
         void insertKey (TRI_doc_mptr_t const*);
@@ -140,29 +151,20 @@ namespace triagens {
 
         void insertKey (struct TRI_doc_mptr_t const*, uint64_t);
 
-        TRI_doc_mptr_t* removeKey (char const*);
+        TRI_doc_mptr_t const* removeKey (char const*);
 
         int resize (size_t);
-        int resize ();
 
         static uint64_t calculateHash (char const*); 
         
         static uint64_t calculateHash (char const*, size_t);
+
+        void invokeOnAllElements (std::function<void(TRI_doc_mptr_t const*)>);
         
         // Do we need this?
         TRI_PrimaryIndex_t* internals () {
-          return &_primaryIndex;
+          return _primaryIndex;
         } 
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-        bool shouldResize () const;
-
-        bool resize (uint64_t, bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -174,7 +176,7 @@ namespace triagens {
 /// @brief the actual index
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_PrimaryIndex_t _primaryIndex;
+        TRI_PrimaryIndex_t* _primaryIndex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array of pointers

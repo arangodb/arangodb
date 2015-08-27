@@ -40,6 +40,10 @@ using namespace triagens::arango;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
+static void FreeElement (TRI_doc_mptr_t const* element) {
+  // TODO implement
+}
+
 static uint64_t HashKey (char const* key) {
   return TRI_FnvHashString(key);
 }
@@ -53,7 +57,7 @@ static uint64_t HashElement (TRI_doc_mptr_t const* element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsEqualKeyElement (char const* key,
-                               TRI_doc_mptr_t const element) {
+                               TRI_doc_mptr_t const* element) {
 
   // Performance?
   // uint64_t hash = HashKey(key);
@@ -69,28 +73,6 @@ static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
                                    TRI_doc_mptr_t const* right) {
   return left->_hash == right->_hash
          && strcmp(TRI_EXTRACT_MARKER_KEY(left), TRI_EXTRACT_MARKER_KEY(right)) == 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief comparison function, compares a master pointer to another
-////////////////////////////////////////////////////////////////////////////////
-
-static inline bool IsDifferentKeyElement (TRI_doc_mptr_t const* header,
-                                          void const* element) {
-  TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
-
-  // only after that compare actual keys
-  return (header->_hash != e->_hash || strcmp(TRI_EXTRACT_MARKER_KEY(header), TRI_EXTRACT_MARKER_KEY(e)) != 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief comparison function, compares a hash/key to a master pointer
-////////////////////////////////////////////////////////////////////////////////
-
-static inline bool IsDifferentHashElement (char const* key, uint64_t hash, void const* element) {
-  TRI_doc_mptr_t const* e = static_cast<TRI_doc_mptr_t const*>(element);
-
-  return (hash != e->_hash || strcmp(key, TRI_EXTRACT_MARKER_KEY(e)) != 0);  // ONLY IN INDEX, PROTECTED by RUNTIME
 }
 
 // -----------------------------------------------------------------------------
@@ -130,8 +112,15 @@ PrimaryIndex::~PrimaryIndex () {
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
         
+size_t PrimaryIndex::size () const {
+  return _primaryIndex->size();
+}
+
 size_t PrimaryIndex::memory () const {
-  return static_cast<size_t>(_primaryIndex._nrAlloc * sizeof(void*));
+  return static_cast<size_t>(
+      _primaryIndex->size() * sizeof(TRI_doc_mptr_t*) +
+      _primaryIndex->memoryUsage()
+  );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,8 +146,7 @@ triagens::basics::Json PrimaryIndex::toJsonFigures (TRI_memory_zone_t* zone) con
   triagens::basics::Json json(zone, triagens::basics::Json::Object);
   
   json("memory", triagens::basics::Json(static_cast<double>(memory())));
-  json("nrAlloc", triagens::basics::Json(static_cast<double>(_primaryIndex._nrAlloc)));
-  json("nrUsed", triagens::basics::Json(static_cast<double>(_primaryIndex._nrUsed)));
+  _primaryIndex->appendToJson(zone, json);
 
   return json;
 }
@@ -177,7 +165,7 @@ int PrimaryIndex::remove (TRI_doc_mptr_t const*,
 /// @brief looks up an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key) const {
+TRI_doc_mptr_t const* PrimaryIndex::lookupKey (char const* key) const {
   return _primaryIndex->findByKey(key);
 }
 
@@ -187,33 +175,11 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key) const {
 /// parameter. sets position to UINT64_MAX if the position cannot be determined
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key,
-                               uint64_t& position) const {
-  if (_primaryIndex._nrUsed == 0) {
-    position = UINT64_MAX;
-    return nullptr;
-  }
-
-  // compute the hash
-  uint64_t const hash = calculateHash(key);
-  uint64_t const n = _primaryIndex._nrAlloc;
-  uint64_t i, k;
-
-  i = k = hash % n;
-
-  TRI_ASSERT_EXPENSIVE(n > 0);
-
-  // search the table
-  for (; i < n && _primaryIndex._table[i] != nullptr && IsDifferentHashElement(key, hash, _primaryIndex._table[i]); ++i);
-  if (i == n) {
-    for (i = 0; i < k && _primaryIndex._table[i] != nullptr && IsDifferentHashElement(key, hash, _primaryIndex._table[i]); ++i);
-  }
-
-  TRI_ASSERT_EXPENSIVE(i < n);
-  position = i;
-
-  // return whatever we found
-  return _primaryIndex._table[i];
+TRI_doc_mptr_t const* PrimaryIndex::lookupKey (char const* key,
+                                               uint64_t& position) const {
+  // TODO we ignore the position right now. It should be the position it would fit into
+  position = 0;
+  return lookupKey(key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,10 +189,10 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key,
 ///        Convention: step === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupRandom(uint64_t& initialPosition,
-                                           uint64_t& position,
-                                           uint64_t* step,
-                                           uint64_t* total) {
+TRI_doc_mptr_t const* PrimaryIndex::lookupRandom(uint64_t& initialPosition,
+                                                 uint64_t& position,
+                                                 uint64_t* step,
+                                                 uint64_t* total) {
   return _primaryIndex->findRandom(initialPosition, position, step, total);
 }
 
@@ -237,9 +203,20 @@ TRI_doc_mptr_t* PrimaryIndex::lookupRandom(uint64_t& initialPosition,
 ///        Convention: position === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupSequential(uint64_t& position,
-                                             uint64_t* total) {
+TRI_doc_mptr_t const* PrimaryIndex::lookupSequential(uint64_t& position,
+                                                     uint64_t* total) {
   return _primaryIndex->findSequential(position, total);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the index in
+///        reversed sequential order. 
+///        Returns nullptr if all documents have been returned.
+///        Convention: position === UINT64_MAX indicates a new start.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_doc_mptr_t const* PrimaryIndex::lookupSequentialReverse(uint64_t& position) {
+  return _primaryIndex->findSequentialReverse(position);
 }
 
 
@@ -252,7 +229,7 @@ int PrimaryIndex::insertKey (TRI_doc_mptr_t const* header,
                              void const** found) {
   *found = nullptr;
   int res = _primaryIndex->insert(TRI_EXTRACT_MARKER_KEY(header), header, false);
-  if (res === TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
     *found = _primaryIndex->find(header);
   }
   return res;
@@ -292,8 +269,8 @@ void PrimaryIndex::insertKey (TRI_doc_mptr_t const* header,
 /// @brief removes an key/element from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-void* PrimaryIndex::removeKey (char const* key) {
-  return _primaryIndex->remove(key);
+TRI_doc_mptr_t const* PrimaryIndex::removeKey (char const* key) {
+  return _primaryIndex->removeByKey(key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -304,18 +281,6 @@ int PrimaryIndex::resize (size_t targetSize) {
   return _primaryIndex->resize(targetSize);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resize the index to a good size if too small
-////////////////////////////////////////////////////////////////////////////////
-
-int PrimaryIndex::resize () {
-  if (shouldResize() &&
-      ! resize(static_cast<uint64_t>(2 * _primaryIndex._nrAlloc + 1), false)) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  return TRI_ERROR_NO_ERROR;
-}
-  
 uint64_t PrimaryIndex::calculateHash (char const* key) {
   return HashKey(key);
 }
@@ -325,84 +290,8 @@ uint64_t PrimaryIndex::calculateHash (char const* key,
   return TRI_FnvHashPointer(static_cast<void const*>(key), length);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the index must be resized
-////////////////////////////////////////////////////////////////////////////////
-
-bool PrimaryIndex::shouldResize () const {
-  return _primaryIndex._nrAlloc < _primaryIndex._nrUsed + _primaryIndex._nrUsed;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resizes the index
-////////////////////////////////////////////////////////////////////////////////
-
-bool PrimaryIndex::resize (uint64_t targetSize,
-                           bool allowShrink) {
-  TRI_ASSERT(targetSize > 0);
-
-  if (_primaryIndex._nrAlloc >= targetSize && ! allowShrink) {
-    return true;
-  }
-
-  void** oldTable = _primaryIndex._table;
-  
-  // only log performance infos for indexes with more than this number of entries
-  static uint64_t const NotificationSizeThreshold = 131072; 
-
-  double start = TRI_microtime();
-  if (targetSize > NotificationSizeThreshold) {
-    LOG_ACTION("index-resize %s, target size: %llu", 
-               context().c_str(),
-               (unsigned long long) targetSize);
-  }
-
-  _primaryIndex._table = static_cast<void**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t) (targetSize * sizeof(void*)), true));
-
-  if (_primaryIndex._table == nullptr) {
-    _primaryIndex._table = oldTable;
-
-    return false;
-  }
-
-  if (_primaryIndex._nrUsed > 0) {
-    uint64_t const oldAlloc = _primaryIndex._nrAlloc;
-
-    // table is already cleared by allocate, now copy old data
-    for (uint64_t j = 0; j < oldAlloc; j++) {
-      TRI_doc_mptr_t const* element = static_cast<TRI_doc_mptr_t const*>(oldTable[j]);
-
-      if (element != nullptr) {
-        uint64_t const hash = element->_hash;
-        uint64_t i, k;
-
-        i = k = hash % targetSize;
-
-        for (; i < targetSize && _primaryIndex._table[i] != nullptr; ++i);
-        if (i == targetSize) {
-          for (i = 0; i < k && _primaryIndex._table[i] != nullptr; ++i);
-        }
-
-        TRI_ASSERT_EXPENSIVE(i < targetSize);
-
-        _primaryIndex._table[i] = (void*) element;
-      }
-    }
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, oldTable);
-  _primaryIndex._nrAlloc = targetSize;
-
-  LOG_TIMER((TRI_microtime() - start),
-            "index-resize, %s, target size: %llu", 
-            context().c_str(),
-            (unsigned long long) targetSize);
-
-  return true;
+void PrimaryIndex::invokeOnAllElements (std::function<void(TRI_doc_mptr_t const*)> work) {
+  _primaryIndex->invokeOnAllElements(work);
 }
 
 // -----------------------------------------------------------------------------
