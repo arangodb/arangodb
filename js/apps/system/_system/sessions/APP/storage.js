@@ -10,12 +10,12 @@ const errors = require('./errors');
 const Session = Foxx.Model.extend({
   schema: {
     _key: joi.string().required(),
-    uid: joi.string().allow(null).required().default(null),
-    sessionData: joi.object().required().default('Empty object', Object),
-    userData: joi.object().required().default('Empty object', Object),
-    created: joi.number().integer().required().default('Current date', Date.now),
-    lastAccess: joi.number().integer().required('Current date', Date.now),
-    lastUpdate: joi.number().integer().required('Current date', Date.now)
+    uid: joi.string().allow(null).default(null),
+    userData: joi.object().default(Object, 'Empty object'),
+    sessionData: joi.object().default(Object, 'Empty object'),
+    created: joi.number().integer().default(Date.now, 'Current date'),
+    lastAccess: joi.number().integer().default(Date.now, 'Current date'),
+    lastUpdate: joi.number().integer().default(Date.now, 'Current date')
   }
 });
 
