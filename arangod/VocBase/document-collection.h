@@ -1067,13 +1067,6 @@ struct ShapedJsonEq {
   }
 };
 
-typedef std::unordered_map<TRI_shaped_json_t, size_t, 
-                           ShapedJsonHash, ShapedJsonEq> CountingAggregation;
-
-CountingAggregation* TRI_AggregateBySingleAttribute (
-                          TRI_transaction_collection_t* trxCollection,
-                          TRI_shape_pid_t pid );
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a documet given by a master pointer
 ////////////////////////////////////////////////////////////////////////////////
