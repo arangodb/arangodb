@@ -1006,7 +1006,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 static int LookupDocument (TRI_document_collection_t* document,
                            TRI_voc_key_t key,
                            TRI_doc_update_policy_t const* policy,
-                           TRI_doc_mptr_t const*& header) {
+                           TRI_doc_mptr_t*& header) {
   auto primaryIndex = document->primaryIndex();
   header = primaryIndex->lookupKey(key);
 
@@ -1361,7 +1361,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
       if (state->_documents % 128 == 0) {
         // to be on the safe size, we still need to check if the index will burst from time to time
-        res = primaryIndex->resize();
+        res = primaryIndex->resize(42);
       
         if (res != TRI_ERROR_NO_ERROR) {
           // insertion failed
@@ -3275,8 +3275,9 @@ static int FillIndexSequential (TRI_document_collection_t* document,
   if (nrUsed > 0) {
     uint64_t position = 0;
     uint64_t total = 0;
-    TRI_doc_mptr_t const* mptr;
+    TRI_doc_mptr_t const* mptr = nullptr;
     do {
+      mptr = primaryIndex->lookupSequential(position, &total);
       int res = idx->insert(mptr, false);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -4903,7 +4904,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
   // use filtered to hold copies of the master pointer
   std::vector<TRI_doc_mptr_copy_t> filtered;
 
-  auto work = [matcher, filtered] (TRI_doc_mptr_t const* ptr) -> void {
+  auto work = [&] (TRI_doc_mptr_t const* ptr) -> void {
     if (matcher.matches(0, ptr)) {
       filtered.emplace_back(*ptr);
     }
@@ -5024,7 +5025,7 @@ int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t* trxColle
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
     triagens::arango::CollectionReadLocker collectionLocker(document, lock);
 
-    TRI_doc_mptr_t const* header;
+    TRI_doc_mptr_t* header;
     int res = LookupDocument(document, key, nullptr, header);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -5080,7 +5081,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
   TRI_ASSERT(marker != nullptr);
 
-  TRI_doc_mptr_t const* header;
+  TRI_doc_mptr_t* header;
   int res;
   TRI_voc_tick_t markerTick = 0;
   {
@@ -5320,7 +5321,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
 
     // get the header pointer of the previous revision
-    TRI_doc_mptr_t const* oldHeader;
+    TRI_doc_mptr_t* oldHeader;
     res = LookupDocument(document, key, policy, oldHeader);
 
     if (res != TRI_ERROR_NO_ERROR) {
