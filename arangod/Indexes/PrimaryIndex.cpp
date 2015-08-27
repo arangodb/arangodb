@@ -40,15 +40,23 @@ using namespace triagens::arango;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
+static uint64_t HashKey (char const* key) {
+  return TRI_FnvHashString(key);
+}
+
+static uint64_t HashElement (TRI_doc_mptr_t const* element) {
+  return element->_hash;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool isEqualKeyElement (char const* key,
+static bool IsEqualKeyElement (char const* key,
                                TRI_doc_mptr_t const element) {
 
   // Performance?
-  // uint64_t hash = hashKey(key);
+  // uint64_t hash = HashKey(key);
   // return (hash == element->_hash &&
   return strcmp(key, TRI_EXTRACT_MARKER_KEY(element)) == 0;
 }
@@ -57,7 +65,7 @@ static bool isEqualKeyElement (char const* key,
 /// @brief determines if two elements are equal
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool isEqualElementElement (TRI_doc_mptr_t const* left,
+static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
                                    TRI_doc_mptr_t const* right) {
   return left->_hash == right->_hash
          && strcmp(TRI_EXTRACT_MARKER_KEY(left), TRI_EXTRACT_MARKER_KEY(right)) == 0;
@@ -97,22 +105,25 @@ uint64_t const PrimaryIndex::InitialSize = 251;
 
 PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection) 
   : Index(0, collection, std::vector<std::vector<triagens::basics::AttributeName>>( { { { TRI_VOC_ATTRIBUTE_KEY, false } } } )) {
-
-  _primaryIndex._nrAlloc = 0;
-  _primaryIndex._nrUsed  = 0;
-  _primaryIndex._table   = static_cast<void**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, static_cast<size_t>(InitialSize * sizeof(void*)), true));
-
-  if (_primaryIndex._table == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  uint32_t indexBuckets = 1;
+  if (collection != nullptr) {
+    // document is a nullptr in the coordinator case
+    indexBuckets = collection->_info._indexBuckets;
   }
-
-  _primaryIndex._nrAlloc = InitialSize;
+  _primaryIndex = new TRI_PrimaryIndex_t(HashKey,
+                                         HashElement,
+                                         IsEqualKeyElement,
+                                         IsEqualElementElement,
+                                         indexBuckets,
+                                         [] () -> std::string { return "primary"; }
+  );
 }
 
 PrimaryIndex::~PrimaryIndex () {
-  if (_primaryIndex._table != nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _primaryIndex._table);
+  if (_primaryIndex != nullptr) {
+    _primaryIndex->invokeOnAllElements(FreeElement);
   }
+  delete _primaryIndex;
 }
 
 // -----------------------------------------------------------------------------
@@ -405,7 +416,7 @@ int PrimaryIndex::resize () {
 }
   
 uint64_t PrimaryIndex::calculateHash (char const* key) {
-  return TRI_FnvHashString(key);
+  return HashKey(key);
 }
 
 uint64_t PrimaryIndex::calculateHash (char const* key,
