@@ -484,7 +484,7 @@ namespace triagens {
             // if we did not find such an item return nullptr
             // ...........................................................................
 
-            if (old == nullptr) {
+            if (old != nullptr) {
               healHole(b, i);
             }
             return old;
