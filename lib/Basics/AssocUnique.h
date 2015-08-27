@@ -580,7 +580,7 @@ namespace triagens {
               // Fill Total
               *total = 0;
               for (auto& b : _buckets) {
-                total += b._nrAlloc;
+                *total += b._nrAlloc;
               }
               TRI_ASSERT(*total > 0);
             }
