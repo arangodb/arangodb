@@ -85,6 +85,10 @@
 
   .nav-tabs {
     margin-top: 15px;
+
+    > li > a:hover {
+      border-color: $c-new-grey; 
+    }
   }
 
   input,

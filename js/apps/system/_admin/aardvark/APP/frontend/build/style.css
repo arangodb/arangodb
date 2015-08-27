@@ -49,15 +49,15 @@ body, input, textarea, .page-title span, .pingback a.url {
   src: local('Open Sans Bold Italic'), local('OpenSans-BoldItalic'), url('../fonts/opensans/OpenSansBoldItalic.woff') format('woff'); }
 
 /*!
- *  Font Awesome 4.3.0 by @davegandy - http://fontawesome.io - @fontawesome
+ *  Font Awesome 4.4.0 by @davegandy - http://fontawesome.io - @fontawesome
  *  License - http://fontawesome.io/license (Font: SIL OFL 1.1, CSS: MIT License)
  */
 /* FONT PATH
  * -------------------------- */
 @font-face {
   font-family: 'FontAwesome';
-  src: url('../fonts/fontawesome/fontawesome-webfont.eot?v=4.3.0');
-  src: url('../fonts/fontawesome/fontawesome-webfont.eot?#iefix&v=4.3.0') format('embedded-opentype'), url('../fonts/fontawesome/fontawesome-webfont.woff2?v=4.3.0') format('woff2'), url('../fonts/fontawesome/fontawesome-webfont.woff?v=4.3.0') format('woff'), url('../fonts/fontawesome/fontawesome-webfont.ttf?v=4.3.0') format('truetype'), url('../fonts/fontawesome/fontawesome-webfont.svg?v=4.3.0#fontawesomeregular') format('svg');
+  src: url('../fonts/fontawesome/fontawesome-webfont.eot?v=4.4.0');
+  src: url('../fonts/fontawesome/fontawesome-webfont.eot?#iefix&v=4.4.0') format('embedded-opentype'), url('../fonts/fontawesome/fontawesome-webfont.woff2?v=4.4.0') format('woff2'), url('../fonts/fontawesome/fontawesome-webfont.woff?v=4.4.0') format('woff'), url('../fonts/fontawesome/fontawesome-webfont.ttf?v=4.4.0') format('truetype'), url('../fonts/fontawesome/fontawesome-webfont.svg?v=4.4.0#fontawesomeregular') format('svg');
   font-weight: normal;
   font-style: normal; }
 
@@ -67,8 +67,7 @@ body, input, textarea, .page-title span, .pingback a.url {
   font-size: inherit;
   text-rendering: auto;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transform: translate(0, 0); }
+  -moz-osx-font-smoothing: grayscale; }
 
 /* makes the font 33% larger relative to the icon container */
 .fa-lg {
@@ -113,6 +112,18 @@ body, input, textarea, .page-title span, .pingback a.url {
   border: solid .08em #eee;
   border-radius: .1em; }
 
+.fa-pull-left {
+  float: left; }
+
+.fa-pull-right {
+  float: right; }
+
+.fa.fa-pull-left {
+  margin-right: .3em; }
+.fa.fa-pull-right {
+  margin-left: .3em; }
+
+/* Deprecated as of 4.4.0 */
 .pull-right {
   float: right; }
 
@@ -655,7 +666,7 @@ body, input, textarea, .page-title span, .pingback a.url {
 .fa-credit-card:before {
   content: "\f09d"; }
 
-.fa-rss:before {
+.fa-feed:before, .fa-rss:before {
   content: "\f09e"; }
 
 .fa-hdd-o:before {
@@ -1483,7 +1494,7 @@ body, input, textarea, .page-title span, .pingback a.url {
 .fa-git:before {
   content: "\f1d3"; }
 
-.fa-hacker-news:before {
+.fa-y-combinator-square:before, .fa-yc-square:before, .fa-hacker-news:before {
   content: "\f1d4"; }
 
 .fa-tencent-weibo:before {
@@ -1504,7 +1515,7 @@ body, input, textarea, .page-title span, .pingback a.url {
 .fa-history:before {
   content: "\f1da"; }
 
-.fa-genderless:before, .fa-circle-thin:before {
+.fa-circle-thin:before {
   content: "\f1db"; }
 
 .fa-header:before {
@@ -1705,7 +1716,7 @@ body, input, textarea, .page-title span, .pingback a.url {
 .fa-mercury:before {
   content: "\f223"; }
 
-.fa-transgender:before {
+.fa-intersex:before, .fa-transgender:before {
   content: "\f224"; }
 
 .fa-transgender-alt:before {
@@ -1731,6 +1742,9 @@ body, input, textarea, .page-title span, .pingback a.url {
 
 .fa-neuter:before {
   content: "\f22c"; }
+
+.fa-genderless:before {
+  content: "\f22d"; }
 
 .fa-facebook-official:before {
   content: "\f230"; }
@@ -1764,6 +1778,201 @@ body, input, textarea, .page-title span, .pingback a.url {
 
 .fa-medium:before {
   content: "\f23a"; }
+
+.fa-yc:before, .fa-y-combinator:before {
+  content: "\f23b"; }
+
+.fa-optin-monster:before {
+  content: "\f23c"; }
+
+.fa-opencart:before {
+  content: "\f23d"; }
+
+.fa-expeditedssl:before {
+  content: "\f23e"; }
+
+.fa-battery-4:before, .fa-battery-full:before {
+  content: "\f240"; }
+
+.fa-battery-3:before, .fa-battery-three-quarters:before {
+  content: "\f241"; }
+
+.fa-battery-2:before, .fa-battery-half:before {
+  content: "\f242"; }
+
+.fa-battery-1:before, .fa-battery-quarter:before {
+  content: "\f243"; }
+
+.fa-battery-0:before, .fa-battery-empty:before {
+  content: "\f244"; }
+
+.fa-mouse-pointer:before {
+  content: "\f245"; }
+
+.fa-i-cursor:before {
+  content: "\f246"; }
+
+.fa-object-group:before {
+  content: "\f247"; }
+
+.fa-object-ungroup:before {
+  content: "\f248"; }
+
+.fa-sticky-note:before {
+  content: "\f249"; }
+
+.fa-sticky-note-o:before {
+  content: "\f24a"; }
+
+.fa-cc-jcb:before {
+  content: "\f24b"; }
+
+.fa-cc-diners-club:before {
+  content: "\f24c"; }
+
+.fa-clone:before {
+  content: "\f24d"; }
+
+.fa-balance-scale:before {
+  content: "\f24e"; }
+
+.fa-hourglass-o:before {
+  content: "\f250"; }
+
+.fa-hourglass-1:before, .fa-hourglass-start:before {
+  content: "\f251"; }
+
+.fa-hourglass-2:before, .fa-hourglass-half:before {
+  content: "\f252"; }
+
+.fa-hourglass-3:before, .fa-hourglass-end:before {
+  content: "\f253"; }
+
+.fa-hourglass:before {
+  content: "\f254"; }
+
+.fa-hand-grab-o:before, .fa-hand-rock-o:before {
+  content: "\f255"; }
+
+.fa-hand-stop-o:before, .fa-hand-paper-o:before {
+  content: "\f256"; }
+
+.fa-hand-scissors-o:before {
+  content: "\f257"; }
+
+.fa-hand-lizard-o:before {
+  content: "\f258"; }
+
+.fa-hand-spock-o:before {
+  content: "\f259"; }
+
+.fa-hand-pointer-o:before {
+  content: "\f25a"; }
+
+.fa-hand-peace-o:before {
+  content: "\f25b"; }
+
+.fa-trademark:before {
+  content: "\f25c"; }
+
+.fa-registered:before {
+  content: "\f25d"; }
+
+.fa-creative-commons:before {
+  content: "\f25e"; }
+
+.fa-gg:before {
+  content: "\f260"; }
+
+.fa-gg-circle:before {
+  content: "\f261"; }
+
+.fa-tripadvisor:before {
+  content: "\f262"; }
+
+.fa-odnoklassniki:before {
+  content: "\f263"; }
+
+.fa-odnoklassniki-square:before {
+  content: "\f264"; }
+
+.fa-get-pocket:before {
+  content: "\f265"; }
+
+.fa-wikipedia-w:before {
+  content: "\f266"; }
+
+.fa-safari:before {
+  content: "\f267"; }
+
+.fa-chrome:before {
+  content: "\f268"; }
+
+.fa-firefox:before {
+  content: "\f269"; }
+
+.fa-opera:before {
+  content: "\f26a"; }
+
+.fa-internet-explorer:before {
+  content: "\f26b"; }
+
+.fa-tv:before, .fa-television:before {
+  content: "\f26c"; }
+
+.fa-contao:before {
+  content: "\f26d"; }
+
+.fa-500px:before {
+  content: "\f26e"; }
+
+.fa-amazon:before {
+  content: "\f270"; }
+
+.fa-calendar-plus-o:before {
+  content: "\f271"; }
+
+.fa-calendar-minus-o:before {
+  content: "\f272"; }
+
+.fa-calendar-times-o:before {
+  content: "\f273"; }
+
+.fa-calendar-check-o:before {
+  content: "\f274"; }
+
+.fa-industry:before {
+  content: "\f275"; }
+
+.fa-map-pin:before {
+  content: "\f276"; }
+
+.fa-map-signs:before {
+  content: "\f277"; }
+
+.fa-map-o:before {
+  content: "\f278"; }
+
+.fa-map:before {
+  content: "\f279"; }
+
+.fa-commenting:before {
+  content: "\f27a"; }
+
+.fa-commenting-o:before {
+  content: "\f27b"; }
+
+.fa-houzz:before {
+  content: "\f27c"; }
+
+.fa-vimeo:before {
+  content: "\f27d"; }
+
+.fa-black-tie:before {
+  content: "\f27e"; }
+
+.fa-fonticons:before {
+  content: "\f280"; }
 
 .dropdown-toolbar, .link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu, .navlogo, .navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
   float: left; }
@@ -2243,14 +2452,24 @@ button {
       top: 13px; }
     button.gv-zoom-btn.pan-right {
       background-image: url('../img/gv_arrow_right.png'); }
+      button.gv-zoom-btn.pan-right:hover {
+        background: inherit;
+        background-image: url('../img/gv_arrow_right.png'); }
     button.gv-zoom-btn.pan-left {
       background-image: url('../img/gv_arrow_left.png'); }
+      button.gv-zoom-btn.pan-left:hover {
+        background: inherit;
+        background-image: url('../img/gv_arrow_left.png'); }
     button.gv-zoom-btn.pan-top {
       background-image: url('../img/gv_arrow_top.png'); }
+      button.gv-zoom-btn.pan-top:hover {
+        background: inherit;
+        background-image: url('../img/gv_arrow_top.png'); }
     button.gv-zoom-btn.pan-bottom {
       background-image: url('../img/gv_arrow_bottom.png'); }
-    button.gv-zoom-btn.btn-zoom:hover {
-      background: inherit; }
+      button.gv-zoom-btn.pan-bottom:hover {
+        background: inherit;
+        background-image: url('../img/gv_arrow_bottom.png'); }
     button.gv-zoom-btn.btn-zoom {
       height: 14px;
       margin: 0;
@@ -2354,7 +2573,7 @@ div.toolbox {
   -webkit-border-radius: 3px;
   border-radius: 3px;
   background-color: #fff;
-  border: 1px solid rgba(104, 103, 102, 0.1);
+  border: 1px solid rgba(140, 138, 137, 0.25);
   margin-right: 5px;
   margin-top: -3px;
   padding-bottom: 5px;
@@ -2366,11 +2585,11 @@ div.toolbox {
     border-radius: 3px;
     background-color: #fff;
     color: #000;
-    height: 50px;
+    height: 30px;
     margin: 5px;
     position: relative;
     text-align: center;
-    width: 50px; }
+    width: 30px; }
     div.toolbox div.gv_action_button.active {
       background-color: #8aa051;
       color: #fff; }
@@ -2387,9 +2606,11 @@ h6.gv_icon_icon, h6.gv_button_title {
 
 h6.gv_icon_icon {
   font-size: 22px;
-  top: 6px; }
+  left: 1px;
+  top: 4px; }
 h6.gv_button_title {
-  bottom: 1px; }
+  bottom: 1px;
+  display: none; }
 
 .btn-icon {
   background-color: #383434;
@@ -4608,8 +4829,9 @@ li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
 
 div.headerDropdown {
   background-color: #fff;
-  border: 1px solid rgba(104, 103, 102, 0.1);
+  border: 1px solid rgba(140, 138, 137, 0.25);
   border-radius: 3px;
+  clear: both;
   display: none;
   padding: 10px;
   position: relative;
@@ -4950,6 +5172,8 @@ div.headerBar {
     outline: transparent !important; }
   .modal-body .nav-tabs {
     margin-top: 15px; }
+    .modal-body .nav-tabs > li > a:hover {
+      border-color: #8c8a89; }
   .modal-body input, .modal-body select, .modal-body textarea {
     margin-top: 10px; }
   .modal-body input[type='checkbox'] {
@@ -6299,7 +6523,7 @@ textarea, .alert {
 
 div.gv_zoom_widget {
   height: 300px;
-  left: 82px;
+  left: 64px;
   position: absolute;
   top: 20px;
   width: 40px;
@@ -6343,9 +6567,9 @@ div.gv_colour_list {
 
 svg.graph-viewer {
   background-color: #fff;
-  border: 1px solid rgba(104, 103, 102, 0.1);
+  border: 1px solid rgba(140, 138, 137, 0.25);
   border-radius: 3px;
-  left: 74px;
+  left: 54px;
   position: absolute;
   top: 10px;
   z-index: 0; }
@@ -7296,6 +7520,7 @@ table .sorting {
   padding-right: 10px; }
 
 .documentsDropdown .dropdownImport, .documentsDropdown .headerDropdown {
+  clear: both;
   margin-bottom: 5px; }
 
 .documents-size {
