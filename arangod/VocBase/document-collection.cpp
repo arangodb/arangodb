@@ -628,7 +628,7 @@ static void EnsureErrorCode (int code) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InsertPrimaryIndex (TRI_document_collection_t* document,
-                               TRI_doc_mptr_t const* header,
+                               TRI_doc_mptr_t* header,
                                bool isRollback) {
   TRI_IF_FAILURE("InsertPrimaryIndex") {
     return TRI_ERROR_DEBUG;
@@ -715,7 +715,7 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
   }
 
   auto primaryIndex = document->primaryIndex();
-  auto found = static_cast<TRI_doc_mptr_t*>(primaryIndex->removeKey(TRI_EXTRACT_MARKER_KEY(header))); // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto found = primaryIndex->removeKey(TRI_EXTRACT_MARKER_KEY(header)); // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (found == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1006,9 +1006,9 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 static int LookupDocument (TRI_document_collection_t* document,
                            TRI_voc_key_t key,
                            TRI_doc_update_policy_t const* policy,
-                           TRI_doc_mptr_t*& header) {
+                           TRI_doc_mptr_t const*& header) {
   auto primaryIndex = document->primaryIndex();
-  header = static_cast<TRI_doc_mptr_t*>(primaryIndex->lookupKey(key));
+  header = primaryIndex->lookupKey(key);
 
   if (header == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -2596,22 +2596,20 @@ size_t TRI_DocumentIteratorDocumentCollection (TransactionBase const*,
   // master pointers and their data pointers in the callback are
   // protected.
 
-  auto primaryIndex = document->primaryIndex()->internals();
-  size_t const nrUsed = static_cast<size_t>(primaryIndex->_nrUsed);
+  auto idx = document->primaryIndex();
+  size_t const nrUsed = idx->size();
 
   if (nrUsed > 0) {
-    void** ptr = primaryIndex->_table;
-    void** end = ptr + primaryIndex->_nrAlloc;
-
-    for (;  ptr < end;  ++ptr) {
-      if (*ptr) {
-        auto d = (TRI_doc_mptr_t const*) *ptr;
-
-        if (! callback(d, document, data)) {
-          break;
-        }
+    uint64_t position = 0;
+    uint64_t total = 0;
+    TRI_doc_mptr_t const* ptr = nullptr;
+    do {
+      ptr = idx->lookupSequential(position, &total);
+      if (! callback(ptr, document, data)) {
+        break;
       }
     }
+    while (ptr != nullptr);
   }
 
   return nrUsed;
@@ -2901,9 +2899,9 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
 
   // only log performance infos for indexes with more than this number of entries
   static size_t const NotificationSizeThreshold = 131072; 
-  auto primaryIndex = document->primaryIndex()->internals();
+  auto primaryIndex = document->primaryIndex();
 
-  if ((n > 1) && (primaryIndex->_nrUsed > NotificationSizeThreshold)) {
+  if ((n > 1) && (primaryIndex->size() > NotificationSizeThreshold)) {
     LOG_ACTION("fill-indexes-document-collection { collection: %s/%s }, indexes: %d", 
                document->_vocbase->_name,
                document->_info._name,
@@ -3096,12 +3094,13 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 
 int TRI_CloseDocumentCollection (TRI_document_collection_t* document,
                                  bool updateStats) {
-  auto primaryIndex = document->primaryIndex()->internals();
+  auto primaryIndex = document->primaryIndex();
+  auto idxSize = primaryIndex->size();
 
   if (! document->_info._deleted &&
-      document->_info._initialCount != static_cast<int64_t>(primaryIndex->_nrUsed)) {
+      document->_info._initialCount != static_cast<int64_t>(idxSize)) {
     // update the document count
-    document->_info._initialCount = primaryIndex->_nrUsed;
+    document->_info._initialCount = idxSize;
     
     bool doSync = document->_vocbase->_settings.forceSyncProperties;
     TRI_SaveCollectionInfo(document->_directory, &document->_info, doSync);
@@ -3190,18 +3189,17 @@ static int FillIndexBatch (TRI_document_collection_t* document,
             (int) document->_info._indexBuckets);
 
   // give the index a size hint
-  auto primaryIndex = document->primaryIndex()->internals();
+  auto primaryIndex = document->primaryIndex();
 
-  void** ptr = primaryIndex->_table;
-  void** end = ptr + primaryIndex->_nrAlloc;
+  auto nrUsed = primaryIndex->size();
 
-  idx->sizeHint(static_cast<size_t>(primaryIndex->_nrUsed));
+  idx->sizeHint(nrUsed);
 
   // process documents a million at a time
   size_t blockSize = 1024 * 1024; 
 
-  if (primaryIndex->_nrUsed < blockSize) {
-    blockSize = primaryIndex->_nrUsed;
+  if (nrUsed < blockSize) {
+    blockSize = nrUsed;
   }
   if (blockSize == 0) {
     blockSize = 1;
@@ -3211,13 +3209,13 @@ static int FillIndexBatch (TRI_document_collection_t* document,
         
   std::vector<TRI_doc_mptr_t const*> documents;
   documents.reserve(blockSize);
-
-  for (;  ptr < end;  ++ptr) {
-    auto mptr = static_cast<TRI_doc_mptr_t const*>(*ptr);
-
-    if (mptr != nullptr) {
+  if (nrUsed > 0) {
+    uint64_t position = 0;
+    uint64_t total = 0;
+    TRI_doc_mptr_t const* mptr;
+    do {
+      mptr = primaryIndex->lookupSequential(position, &total);
       documents.emplace_back(mptr);
-
       if (documents.size() == blockSize) {
         res = idx->batchInsert(&documents, indexPool->numThreads());
         documents.clear();
@@ -3228,6 +3226,7 @@ static int FillIndexBatch (TRI_document_collection_t* document,
         }
       }
     }
+    while (mptr != nullptr);
   }
 
   // process the remainder of the documents
@@ -3262,12 +3261,10 @@ static int FillIndexSequential (TRI_document_collection_t* document,
             (int) document->_info._indexBuckets);
 
   // give the index a size hint
-  auto primaryIndex = document->primaryIndex()->internals();
+  auto primaryIndex = document->primaryIndex();
+  size_t nrUsed = primaryIndex->size();
 
-  void** ptr = primaryIndex->_table;
-  void** end = ptr + primaryIndex->_nrAlloc;
-  
-  idx->sizeHint(static_cast<size_t>(primaryIndex->_nrUsed));
+  idx->sizeHint(nrUsed);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   static const int LoopSize = 10000;
@@ -3275,16 +3272,15 @@ static int FillIndexSequential (TRI_document_collection_t* document,
   int loops = 0;
 #endif
 
-  for (;  ptr < end;  ++ptr) {
-    auto mptr = static_cast<TRI_doc_mptr_t const*>(*ptr);
-
-    if (mptr != nullptr) {
+  if (nrUsed > 0) {
+    uint64_t position = 0;
+    uint64_t total = 0;
+    TRI_doc_mptr_t const* mptr;
+    do {
       int res = idx->insert(mptr, false);
-
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
-
 #ifdef TRI_ENABLE_MAINTAINER_MODE
       if (++counter == LoopSize) {
         counter = 0;
@@ -3294,8 +3290,8 @@ static int FillIndexSequential (TRI_document_collection_t* document,
                   (unsigned long long) document->_info._cid);
       }
 #endif
-
     }
+    while (mptr != nullptr);
   }
   
   LOG_TIMER((TRI_microtime() - start),
@@ -3320,14 +3316,14 @@ static int FillIndex (TRI_document_collection_t* document,
   }
 
   try {
-    auto primaryIndex = document->primaryIndex()->internals();
+    size_t nrUsed = document->primaryIndex()->size();
     auto indexPool = document->_vocbase->_server->_indexPool;
  
     int res;
 
     if (indexPool != nullptr && 
         idx->hasBatchInsert() && 
-        primaryIndex->_nrUsed > 256 * 1024 &&
+        nrUsed > 256 * 1024 &&
         document->_info._indexBuckets > 1) {
       // use batch insert if there is an index pool,
       // the collection has more than one index bucket
@@ -4907,18 +4903,12 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
   // use filtered to hold copies of the master pointer
   std::vector<TRI_doc_mptr_copy_t> filtered;
 
-  // do a full scan
-  auto primaryIndex = document->primaryIndex()->internals();
-  TRI_doc_mptr_t** ptr = (TRI_doc_mptr_t**) primaryIndex->_table;
-  TRI_doc_mptr_t** end = (TRI_doc_mptr_t**) ptr + primaryIndex->_nrAlloc;
-
-  // TODO Right now this space is protected by JS for internal Attributes.
-  // cid is not required here. But this is subject to change in the future
-  for (;  ptr < end;  ++ptr) {
-    if (matcher.matches(0, *ptr)) {
-      filtered.emplace_back(**ptr);
+  auto work = [matcher, filtered] (TRI_doc_mptr_t const* ptr) -> void {
+    if (matcher.matches(0, ptr)) {
+      filtered.emplace_back(*ptr);
     }
-  }
+  };
+  document->primaryIndex()->invokeOnAllElements(work);
   return filtered;
 }
 
@@ -5034,7 +5024,7 @@ int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t* trxColle
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
     triagens::arango::CollectionReadLocker collectionLocker(document, lock);
 
-    TRI_doc_mptr_t* header;
+    TRI_doc_mptr_t const* header;
     int res = LookupDocument(document, key, nullptr, header);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -5090,7 +5080,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
   TRI_ASSERT(marker != nullptr);
 
-  TRI_doc_mptr_t* header;
+  TRI_doc_mptr_t const* header;
   int res;
   TRI_voc_tick_t markerTick = 0;
   {
@@ -5330,7 +5320,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
 
     // get the header pointer of the previous revision
-    TRI_doc_mptr_t* oldHeader;
+    TRI_doc_mptr_t const* oldHeader;
     res = LookupDocument(document, key, policy, oldHeader);
 
     if (res != TRI_ERROR_NO_ERROR) {
