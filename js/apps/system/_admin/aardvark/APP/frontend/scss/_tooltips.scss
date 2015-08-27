@@ -1,3 +1,14 @@
+.ui-tooltip {
+  background-color: $c-positive !important;
+  border: 0 !important;
+  border-radius: 3px !important;
+  box-shadow: none !important;
+  color: $c-white !important;
+  font-family: 'Open Sans',sans-serif !important;
+  font-size: 10pt !important;
+  font-weight: 100 !important;
+}
+
 .tooltip-inner {
   max-width: 300px !important;
   white-space: normal !important;

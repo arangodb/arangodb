@@ -17264,13 +17264,13 @@ window.StatisticsCollection = Backbone.Collection.extend({
     createModalHotkeys: function() {
       //submit modal
       $(this.el).bind('keydown', 'return', function(){
-        $('.modal-footer .button-success').click();
+        $('.createModalDialog .modal-footer .button-success').click();
       });
       $("input", $(this.el)).bind('keydown', 'return', function(){
-        $('.modal-footer .button-success').click();
+        $('.createModalDialog .modal-footer .button-success').click();
       });
       $("select", $(this.el)).bind('keydown', 'return', function(){
-        $('.modal-footer .button-success').click();
+        $('.createModalDialog .modal-footer .button-success').click();
       });
     },
 
@@ -17289,13 +17289,13 @@ window.StatisticsCollection = Backbone.Collection.extend({
     },
 
     navigateThroughButtons: function(direction) {
-      var hasFocus = $('.modal-footer button').is(':focus');
+      var hasFocus = $('.createModalDialog .modal-footer button').is(':focus');
       if (hasFocus === false) {
         if (direction === 'left') {
-          $('.modal-footer button').first().focus();
+          $('.createModalDialog .modal-footer button').first().focus();
         }
         else if (direction === 'right') {
-          $('.modal-footer button').last().focus();
+          $('..createModalDialog .modal-footer button').last().focus();
         }
       }
       else if (hasFocus === true) {
@@ -17450,12 +17450,12 @@ window.StatisticsCollection = Backbone.Collection.extend({
       });
 
       var template = templateEngine.createTemplate(templateName);
-      $(".modal-body").html(template.render({
+      $(".createModalDialog .modal-body").html(template.render({
         content: tableContent,
         advancedContent: advancedContent,
         info: extraInfo
       }));
-      $('.modalTooltips').tooltip({
+      $('.createModalDialog .modalTooltips').tooltip({
         position: {
           my: "left top",
           at: "right+55 top-1"
@@ -17561,7 +17561,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
               //error element not available
               $el.after('<p class="errorMessage">' + msg+ '</p>');
             }
-            $('.modal-footer .button-success')
+            $('.createModalDialog .modal-footer .button-success')
               .prop('disabled', true)
               .addClass('disabled');
           } else {
@@ -17584,11 +17584,11 @@ window.StatisticsCollection = Backbone.Collection.extend({
       });
       var invalid = _.any(tests);
       if (invalid) {
-        $('.modal-footer .button-success')
+        $('.createModalDialog .modal-footer .button-success')
           .prop('disabled', true)
           .addClass('disabled');
       } else {
-        $('.modal-footer .button-success')
+        $('.createModalDialog .modal-footer .button-success')
           .prop('disabled', false)
           .removeClass('disabled');
       }

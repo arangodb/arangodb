@@ -42,7 +42,18 @@
       'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
       'click #confirmQueryImport': 'importCustomQueries',
       'click #confirmQueryExport': 'exportCustomQueries',
+      'click #export-query': 'exportCustomQueries',
+      'click #import-query': 'openExportDialog',
+      'click #closeQueryModal': 'closeExportDialog',
       'click #downloadQueryResult': 'downloadQueryResult'
+    },
+
+    openExportDialog: function() {
+      $('#queryImportDialog').modal('show'); 
+    },
+
+    closeExportDialog: function() {
+      $('#queryImportDialog').modal('hide'); 
     },
 
     createCustomQueryModal: function(){
@@ -215,7 +226,7 @@
         inputEditor.setValue(query);
       }
 
-      inputEditor.getSession().selection.on('changeCursor', function (e) {
+      inputEditor.getSession().selection.on('changeCursor', function () {
         var inputEditor = ace.edit("aqlEditor");
         var session = inputEditor.getSession();
         var cursor = inputEditor.getCursorPosition();
@@ -302,7 +313,7 @@
     },
 
     importCustomQueries: function () {
-      var result, self = this;
+      var self = this;
       if (this.allowUpload === true) {
 
         var callback = function() {
@@ -316,6 +327,7 @@
 
         self.collection.saveImportQueries(self.file, callback.bind(this));
         $('#confirmQueryImport').addClass('disabled');
+        $('#queryImportDialog').modal('hide'); 
       }
     },
 
@@ -947,6 +959,7 @@
         outputEditor.resize();
         var inputEditor = ace.edit("aqlEditor");
         this.deselect(inputEditor);
+        $('#downloadQueryResult').show();
       },
 
       explainQuery: function() {

@@ -37,32 +37,28 @@ $iconsize: 50px;
   position: relative;
   text-align: center;
 
+  &:hover {
+    cursor: pointer;
+  }
+
   .warning-icons {
     background-color: $c-negative;
+    border-radius: 3px;
     color: $c-white;
     font-size: 11px;
     height: 17px;
     left: 0;
     line-height: 13px;
+    margin-left: 5px;
+    margin-top: 5px;
     padding-left: 9px;
-    padding-right: 4px;
+    padding-right: 9px;
     position: absolute;
     top: 0;
 
-    &:before {
-      border-right: 17px solid transparent;
-      border-top: 17px solid $c-negative;
-      content: '';
-      position: absolute;
-      right: -17px;
-    }
-
     .fa {
+      font-size: 11pt;
       margin-left: 1px;
-
-      &:before {
-        font-size: 8px;
-      }
     }
 
   }

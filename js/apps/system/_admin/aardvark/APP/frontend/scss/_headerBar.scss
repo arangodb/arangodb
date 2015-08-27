@@ -127,6 +127,19 @@ div.headerBar {
 }
 
 
+.headerButtonList {
+  a {
+    &.error {
+      color: $c-negative;
+
+      &:hover {
+        background-color: $c-negative;
+        border-color: $c-negative;
+        color: $c-white;
+      }
+    }
+  }
+}
 
 // The title of the page
 
