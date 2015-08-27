@@ -177,30 +177,8 @@ int PrimaryIndex::remove (TRI_doc_mptr_t const*,
 /// @brief looks up an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void* PrimaryIndex::lookupKey (char const* key) const {
-  if (_primaryIndex._nrUsed == 0) {
-    return nullptr;
-  }
-
-  // compute the hash
-  uint64_t const hash = calculateHash(key);
-  uint64_t const n = _primaryIndex._nrAlloc;
-  uint64_t i, k;
-
-  i = k = hash % n;
-
-  TRI_ASSERT_EXPENSIVE(n > 0);
-
-  // search the table
-  for (; i < n && _primaryIndex._table[i] != nullptr && IsDifferentHashElement(key, hash, _primaryIndex._table[i]); ++i);
-  if (i == n) {
-    for (i = 0; i < k && _primaryIndex._table[i] != nullptr && IsDifferentHashElement(key, hash, _primaryIndex._table[i]); ++i);
-  }
-
-  TRI_ASSERT_EXPENSIVE(i < n);
-
-  // return whatever we found
-  return _primaryIndex._table[i];
+TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key) const {
+  return _primaryIndex->findByKey(key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,7 +187,7 @@ void* PrimaryIndex::lookupKey (char const* key) const {
 /// parameter. sets position to UINT64_MAX if the position cannot be determined
 ////////////////////////////////////////////////////////////////////////////////
 
-void* PrimaryIndex::lookupKey (char const* key,
+TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key,
                                uint64_t& position) const {
   if (_primaryIndex._nrUsed == 0) {
     position = UINT64_MAX;
@@ -239,6 +217,33 @@ void* PrimaryIndex::lookupKey (char const* key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the index in
+///        a random order. 
+///        Returns nullptr if all documents have been returned.
+///        Convention: step === 0 indicates a new start.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_doc_mptr_t* PrimaryIndex::lookupRandom(uint64_t& initialPosition,
+                                           uint64_t& position,
+                                           uint64_t* step,
+                                           uint64_t* total) {
+  return _primaryIndex->findRandom(initialPosition, position, step, total);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the index in
+///        a sequential order. 
+///        Returns nullptr if all documents have been returned.
+///        Convention: position === 0 indicates a new start.
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_doc_mptr_t* PrimaryIndex::findSequential(uint64_t& position,
+                                             uint64_t* total) {
+  return _primaryIndex->findSequential(position, total);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a key/element to the index
 /// returns a status code, and *found will contain a found element (if any)
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,42 +251,11 @@ void* PrimaryIndex::lookupKey (char const* key,
 int PrimaryIndex::insertKey (TRI_doc_mptr_t const* header,
                              void const** found) {
   *found = nullptr;
-
-  if (shouldResize()) {
-    // check for out-of-memory
-    if (! resize(static_cast<uint64_t>(2 * _primaryIndex._nrAlloc + 1), false)) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
+  int res = _primaryIndex->insert(TRI_EXTRACT_MARKER_KEY(header), header, false);
+  if (res === TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+    *found = _primaryIndex->find(header);
   }
-
-  uint64_t const n = _primaryIndex._nrAlloc;
-  uint64_t i, k;
-
-  TRI_ASSERT_EXPENSIVE(n > 0);
-
-  i = k = header->_hash % n;
-
-  for (; i < n && _primaryIndex._table[i] != nullptr && IsDifferentKeyElement(header, _primaryIndex._table[i]); ++i);
-  if (i == n) {
-    for (i = 0; i < k && _primaryIndex._table[i] != nullptr && IsDifferentKeyElement(header, _primaryIndex._table[i]); ++i);
-  }
-
-  TRI_ASSERT_EXPENSIVE(i < n);
-
-  void* old = _primaryIndex._table[i];
-
-  // if we found an element, return
-  if (old != nullptr) {
-    *found = old;
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // add a new element to the associative idx
-  _primaryIndex._table[i] = (void*) header;
-  ++_primaryIndex._nrUsed;
-
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,22 +265,7 @@ int PrimaryIndex::insertKey (TRI_doc_mptr_t const* header,
 ////////////////////////////////////////////////////////////////////////////////
 
 void PrimaryIndex::insertKey (TRI_doc_mptr_t const* header) {
-  uint64_t const n = _primaryIndex._nrAlloc;
-  uint64_t i, k;
-
-  i = k = header->_hash % n;
-
-  for (; i < n && _primaryIndex._table[i] != nullptr && IsDifferentKeyElement(header, _primaryIndex._table[i]); ++i);
-  if (i == n) {
-    for (i = 0; i < k && _primaryIndex._table[i] != nullptr && IsDifferentKeyElement(header, _primaryIndex._table[i]); ++i);
-  }
-
-  TRI_ASSERT_EXPENSIVE(i < n);
-
-  TRI_ASSERT_EXPENSIVE(_primaryIndex._table[i] == nullptr);
-
-  _primaryIndex._table[i] = const_cast<void*>(static_cast<void const*>(header));
-  ++_primaryIndex._nrUsed;
+  _primaryIndex->insert(TRI_EXTRACT_MARKER_KEY(header), header, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,27 +276,16 @@ void PrimaryIndex::insertKey (TRI_doc_mptr_t const* header) {
 
 void PrimaryIndex::insertKey (TRI_doc_mptr_t const* header,
                               uint64_t slot) {
-  uint64_t const n = _primaryIndex._nrAlloc;
-  uint64_t i, k;
-
-  if (slot != UINT64_MAX) {
-    i = k = slot;
-  }
-  else {
-    i = k = header->_hash % n;
-  }
-
-  for (; i < n && _primaryIndex._table[i] != nullptr && IsDifferentKeyElement(header, _primaryIndex._table[i]); ++i);
-  if (i == n) {
-    for (i = 0; i < k && _primaryIndex._table[i] != nullptr && IsDifferentKeyElement(header, _primaryIndex._table[i]); ++i);
-  }
-
-  TRI_ASSERT_EXPENSIVE(i < n);
-
-  TRI_ASSERT_EXPENSIVE(_primaryIndex._table[i] == nullptr);
-
-  _primaryIndex._table[i] = const_cast<void*>(static_cast<void const*>(header));
-  ++_primaryIndex._nrUsed;
+  _primaryIndex->insert(TRI_EXTRACT_MARKER_KEY(header), header, false);
+  // TODO slot is hint where to insert the element. It is not yet used
+  //
+  // if (slot != UINT64_MAX) {
+  //   i = k = slot;
+  // }
+  // else {
+  //   i = k = header->_hash % n;
+  // }
+  //
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -345,51 +293,7 @@ void PrimaryIndex::insertKey (TRI_doc_mptr_t const* header,
 ////////////////////////////////////////////////////////////////////////////////
 
 void* PrimaryIndex::removeKey (char const* key) {
-  uint64_t const hash = calculateHash(key);
-  uint64_t const n = _primaryIndex._nrAlloc;
-  uint64_t i, k;
-
-  i = k = hash % n;
-
-  // search the table
-  for (; i < n && _primaryIndex._table[i] != nullptr && IsDifferentHashElement(key, hash, _primaryIndex._table[i]); ++i);
-  if (i == n) {
-    for (i = 0; i < k && _primaryIndex._table[i] != nullptr && IsDifferentHashElement(key, hash, _primaryIndex._table[i]); ++i);
-  }
-
-  TRI_ASSERT_EXPENSIVE(i < n);
-
-  // if we did not find such an item return false
-  if (_primaryIndex._table[i] == nullptr) {
-    return nullptr;
-  }
-
-  // remove item
-  void* old = _primaryIndex._table[i];
-  _primaryIndex._table[i] = nullptr;
-  _primaryIndex._nrUsed--;
-
-  // and now check the following places for items to move here
-  k = TRI_IncModU64(i, n);
-
-  while (_primaryIndex._table[k] != nullptr) {
-    uint64_t j = (static_cast<TRI_doc_mptr_t const*>(_primaryIndex._table[k])->_hash) % n;
-
-    if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
-      _primaryIndex._table[i] = _primaryIndex._table[k];
-      _primaryIndex._table[k] = nullptr;
-      i = k;
-    }
-
-    k = TRI_IncModU64(k, n);
-  }
-
-  if (_primaryIndex._nrUsed == 0) {
-    resize(InitialSize, true);
-  }
-
-  // return success
-  return old;
+  return _primaryIndex->remove(key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -397,10 +301,7 @@ void* PrimaryIndex::removeKey (char const* key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int PrimaryIndex::resize (size_t targetSize) {
-  if (! resize(static_cast<uint64_t>(2 * targetSize + 1), false)) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  return TRI_ERROR_NO_ERROR;
+  return _primaryIndex->resize(targetSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

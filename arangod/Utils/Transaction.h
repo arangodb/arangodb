@@ -488,68 +488,30 @@ namespace triagens {
                         uint64_t batchSize,
                         uint64_t* step,
                         uint64_t* total) {
-          if (initialPosition > 0 && position == initialPosition) {
-            // already read all documents
-            return TRI_ERROR_NO_ERROR;
-          }
-
           TRI_document_collection_t* document = documentCollection(trxCollection);
-
           // READ-LOCK START
           int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
 
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
-
-          auto primaryIndex = document->primaryIndex()->internals();
-          if (primaryIndex->_nrUsed == 0) {
-            // nothing to do
-            this->unlock(trxCollection, TRI_TRANSACTION_READ);
-
-            // READ-LOCK END
-            *total = 0;
-            return TRI_ERROR_NO_ERROR;
-          }
-
           if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          *total = primaryIndex->_nrAlloc;
-          if (*step == 0) {
-            TRI_ASSERT(initialPosition == 0);
-
-            // find a co-prime for total
-            while (true) {
-              *step = TRI_UInt32Random() % *total;
-              if (*step > 10 && triagens::basics::binaryGcd<uint64_t>(*total, *step) == 1) {
-                while (initialPosition == 0) {
-                  initialPosition = TRI_UInt32Random() % *total;
-                }
-                position = initialPosition;
-                break;
-              }
-            }
-          }
-
           uint64_t numRead = 0;
-          do {
-            auto d = static_cast<TRI_doc_mptr_t*>(primaryIndex->_table[position]);
-
-            if (d != nullptr) {
-              docs.emplace_back(*d);
-              ++numRead;
+          TRI_ASSERT(batchSize > 0);
+          while (numRead < batchSize) { 
+            auto d = document->primaryIndex()->lookupRandom(initialPosition, position, step, total);
+            if (d == nullptr) {
+              // Read all documents randomly
+              break;
             }
-
-            position += *step;
-            position = position % *total;
+            docs.emplace_back(*d);
+            ++numRead;
           }
-          while (numRead < batchSize && position != initialPosition);
-
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
           // READ-LOCK END
-
           return TRI_ERROR_NO_ERROR;
         }
 

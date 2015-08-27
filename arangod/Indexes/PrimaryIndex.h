@@ -31,6 +31,7 @@
 #define ARANGODB_INDEXES_PRIMARY_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Basics/AssocUnique.h"
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -92,11 +93,11 @@ namespace triagens {
         triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
         triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
-        int insert (struct TRI_doc_mptr_t const*, bool) override final;
-         
-        int remove (struct TRI_doc_mptr_t const*, bool) override final;
+        int insert (TRI_doc_mptr_t const*, bool) override final;
 
-        void* lookupKey (char const*) const;
+        int remove (TRI_doc_mptr_t const*, bool) override final;
+
+        TRI_doc_mptr_t* lookupKey (char const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
@@ -104,10 +105,32 @@ namespace triagens {
 /// parameter. sets position to UINT64_MAX if the position cannot be determined
 ////////////////////////////////////////////////////////////////////////////////
 
-        void* lookupKey (char const*, uint64_t&) const;
+        TRI_doc_mptr_t* lookupKey (char const*, uint64_t&) const;
 
-        int insertKey (struct TRI_doc_mptr_t const*, void const**);
-        void insertKey (struct TRI_doc_mptr_t const*);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the index in
+///        a random order. 
+///        Returns nullptr if all documents have been returned.
+///        Convention: step === 0 indicates a new start.
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_doc_mptr_t* lookupRandom(uint64_t& initialPosition,
+                                     uint64_t& position,
+                                     uint64_t* step,
+                                     uint64_t* total);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the index in
+///        a sequential order. 
+///        Returns nullptr if all documents have been returned.
+///        Convention: position === 0 indicates a new start.
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_doc_mptr_t* findSequential(uint64_t& position,
+                                       uint64_t* total);
+
+        int insertKey (TRI_doc_mptr_t const*, void const**);
+        void insertKey (TRI_doc_mptr_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a key/element to the index
@@ -117,7 +140,7 @@ namespace triagens {
 
         void insertKey (struct TRI_doc_mptr_t const*, uint64_t);
 
-        void* removeKey (char const*);
+        TRI_doc_mptr_t* removeKey (char const*);
 
         int resize (size_t);
         int resize ();
