@@ -123,12 +123,8 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-
-    auto primaryIndex = _document->primaryIndex()->internals();
-    size_t const n = static_cast<size_t>(primaryIndex->_nrAlloc);
-
-    size_t maxDocuments = static_cast<size_t>(primaryIndex->_nrUsed);
-
+    auto idx = _document->primaryIndex();
+    size_t maxDocuments = idx->size();
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
     }
@@ -136,22 +132,19 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
       limit = maxDocuments;
     }
     _documents->reserve(maxDocuments);
- 
+
     if (maxDocuments > 0) { 
-      for (size_t i = 0; i < n; ++i) {
-        auto ptr = primaryIndex->_table[i];
-
-        if (ptr != nullptr) {
-          void const* marker = static_cast<TRI_doc_mptr_t const*>(ptr)->getDataPtr();
-
-          // it is only safe to use the markers from the datafiles, not the WAL
-          if (! TRI_IsWalDataMarkerDatafile(marker)) {
-            _documents->emplace_back(marker);
-
-            if (--limit == 0) {
-              break;
-            }
-          }
+      uint64_t position = 0;
+      uint64_t total = 0;
+      while (limit > 0) {
+        auto ptr = idx->lookupSequential(position, &total);
+        if (ptr == nullptr) {
+          break;
+        }
+        void const* marker = ptr->getDataPtr();
+        if (! TRI_IsWalDataMarkerDatafile(marker)) {
+          _documents->emplace_back(marker);
+          --limit;
         }
       }
     }
