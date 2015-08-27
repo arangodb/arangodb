@@ -428,8 +428,11 @@ namespace triagens {
             }
             TRI_ASSERT(batchSize > 0);
             TRI_doc_mptr_t const* ptr = nullptr; 
-            do {
+            while (count < batchSize) {
               ptr = document->primaryIndex()->lookupSequential(internalSkip, total);
+              if (ptr == nullptr) {
+                break;
+              }
               if (skip > 0) {
                 --skip;
               }
@@ -440,7 +443,6 @@ namespace triagens {
                 }
               }
             }
-            while (ptr != nullptr && count < batchSize);
           }
           catch (...) {
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
