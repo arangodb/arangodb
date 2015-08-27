@@ -120,7 +120,7 @@ function NodeShaperControls(list, shaper) {
   this.addControlOpticLabel = function() {
     var prefix = "control_node_label",
       idprefix = prefix + "_";
-    uiComponentsHelper.createButton(list, "Label", prefix, function() {
+    uiComponentsHelper.createButton(list, "Configure Label", prefix, function() {
       modalDialogHelper.createModalChangeDialog("Change label attribute",
         idprefix, [{
           type: "text",
@@ -219,7 +219,7 @@ function NodeShaperControls(list, shaper) {
   this.addControlOpticLabelAndColour = function(adapter) {
     var prefix = "control_node_labelandcolour",
       idprefix = prefix + "_";
-    uiComponentsHelper.createButton(list, "Label", prefix, function() {
+    uiComponentsHelper.createButton(list, "Configure Label", prefix, function() {
       modalDialogHelper.createModalChangeDialog("Change label attribute",
         idprefix, [{
           type: "text",
@@ -272,7 +272,7 @@ function NodeShaperControls(list, shaper) {
   this.addControlOpticLabelAndColourList = function(adapter) {
     var prefix = "control_node_labelandcolourlist",
       idprefix = prefix + "_";
-    uiComponentsHelper.createButton(list, "Label", prefix, function() {
+    uiComponentsHelper.createButton(list, "Configure Label", prefix, function() {
       modalDialogHelper.createModalChangeDialog("Change label attribute",
         idprefix, [{
           type: "extendable",

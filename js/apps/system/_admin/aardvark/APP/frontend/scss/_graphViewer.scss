@@ -1,6 +1,7 @@
 div.gv_zoom_widget {
   height: 300px;
   left: 64px;
+  opacity: 0.7;
   position: absolute;
   top: 20px;
   width: 40px;
@@ -14,7 +15,7 @@ div.gv_zoom_widget {
   }
 
   div.gv_zoom_slider {
-    background: $c-nav-bg;
+    background: $c-lightgreen-2-bg;
     border-radius: 3px;
     height: 200px;
     margin: 0 17px;
@@ -23,8 +24,8 @@ div.gv_zoom_widget {
 
 
   a.ui-slider-handle {
-    background-color: $c-black;
-    border: 1px solid rgba(104, 103, 102, .1);
+    background-color: $c-header-btn-fg;
+    border: 1px solid $c-content-border;
     height: .5em;
     left: -.55em;
     outline: none;

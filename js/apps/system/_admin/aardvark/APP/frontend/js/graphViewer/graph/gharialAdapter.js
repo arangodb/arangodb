@@ -379,6 +379,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
     }, function(res) {
 
       if (res[0][0] === undefined) {
+        arangoHelper.arangoError("Graph error", "no nodes found");
         throw "No suitable nodes have been found.";
       }
       else {

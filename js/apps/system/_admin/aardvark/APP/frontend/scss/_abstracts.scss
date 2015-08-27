@@ -216,6 +216,24 @@
   }
 }
 
+%search-icon {
+  .fa {
+    &.fa-search {
+      color: $c-c2grey;
+      font-size: 12pt;
+      opacity: .5;
+      position: relative;
+      right: 21px;
+      top: -1px;
+    }
+
+    &.fa-search:hover {
+      cursor: pointer;
+      opacity: 1;
+    }
+  }
+}
+
 %inputs {
   @include border-radius(3px);
   background-color: $c-white !important;
