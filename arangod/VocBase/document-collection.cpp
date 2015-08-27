@@ -2603,13 +2603,12 @@ size_t TRI_DocumentIteratorDocumentCollection (TransactionBase const*,
     uint64_t position = 0;
     uint64_t total = 0;
     TRI_doc_mptr_t const* ptr = nullptr;
-    do {
-      ptr = idx->lookupSequential(position, &total);
-      if (! callback(ptr, document, data)) {
+    while (true) {
+      ptr = idx->lookupSequential(position, total);
+      if (ptr == nullptr || ! callback(ptr, document, data)) {
         break;
       }
     }
-    while (ptr != nullptr);
   }
 
   return nrUsed;
@@ -3214,7 +3213,7 @@ static int FillIndexBatch (TRI_document_collection_t* document,
     uint64_t total = 0;
     TRI_doc_mptr_t const* mptr;
     do {
-      mptr = primaryIndex->lookupSequential(position, &total);
+      mptr = primaryIndex->lookupSequential(position, total);
       documents.emplace_back(mptr);
       if (documents.size() == blockSize) {
         res = idx->batchInsert(&documents, indexPool->numThreads());
@@ -3277,7 +3276,7 @@ static int FillIndexSequential (TRI_document_collection_t* document,
     uint64_t total = 0;
     TRI_doc_mptr_t const* mptr = nullptr;
     while (true) {
-      mptr = primaryIndex->lookupSequential(position, &total);
+      mptr = primaryIndex->lookupSequential(position, total);
       if (mptr == nullptr) {
         break;
       }

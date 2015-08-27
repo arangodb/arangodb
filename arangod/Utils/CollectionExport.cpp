@@ -137,7 +137,7 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
       uint64_t position = 0;
       uint64_t total = 0;
       while (limit > 0) {
-        auto ptr = idx->lookupSequential(position, &total);
+        auto ptr = idx->lookupSequential(position, total);
         if (ptr == nullptr) {
           break;
         }
