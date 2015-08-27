@@ -632,7 +632,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
   this.changeWidth = function(w) {
     graphViewer.changeWidth(w);
-    var reducedW = w - 75;
+    var reducedW = w - 55;
     svg.attr("width", reducedW)
       .style("width", reducedW + "px");
   };

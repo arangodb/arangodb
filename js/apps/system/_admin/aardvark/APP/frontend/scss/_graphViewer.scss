@@ -1,6 +1,6 @@
 div.gv_zoom_widget {
   height: 300px;
-  left: 82px;
+  left: 64px;
   position: absolute;
   top: 20px;
   width: 40px;
@@ -63,9 +63,9 @@ div.gv_colour_list {
 
 svg.graph-viewer {
   background-color: $c-white;
-  border: 1px solid rgba(104, 103, 102, .1);
+  border: 1px solid $c-content-border;
   border-radius: 3px;
-  left: 74px;
+  left: 54px;
   position: absolute;
   top: 10px;
   z-index: 0;

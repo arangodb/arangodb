@@ -1,7 +1,8 @@
 div.headerDropdown {
   background-color: $c-white;
-  border: 1px solid rgba(104, 103, 102, .1);
+  border: 1px solid $c-content-border;
   border-radius: 3px;
+  clear: both;
   display: none;
   padding: 10px;
   position: relative;
