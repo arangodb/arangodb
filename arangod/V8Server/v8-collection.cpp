@@ -3583,23 +3583,15 @@ static void JS_CheckPointersVocbaseCol (const v8::FunctionCallbackInfo<v8::Value
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-
-  // iterate over the primary index and de-reference all the pointers to data
-  auto primaryIndex = document->primaryIndex()->internals();
-  void** ptr = primaryIndex->_table;
-  void** end = ptr + primaryIndex->_nrAlloc;
-
-  for (;  ptr < end;  ++ptr) {
-    if (*ptr) {
-      char const* key = TRI_EXTRACT_MARKER_KEY((TRI_doc_mptr_t const*) *ptr);
-
-      TRI_ASSERT(key != nullptr);
-      // dereference the key
-      if (*key == '\0') {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
+  auto work = [&] (TRI_doc_mptr_t const* ptr) -> void {
+    char const* key = TRI_EXTRACT_MARKER_KEY(ptr);
+    TRI_ASSERT(key != nullptr);
+    // dereference the key
+    if (*key == '\0') {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
-  }
+  };
+  document->primaryIndex()->invokeOnAllElements(work);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
