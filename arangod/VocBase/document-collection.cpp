@@ -3276,8 +3276,11 @@ static int FillIndexSequential (TRI_document_collection_t* document,
     uint64_t position = 0;
     uint64_t total = 0;
     TRI_doc_mptr_t const* mptr = nullptr;
-    do {
+    while (true) {
       mptr = primaryIndex->lookupSequential(position, &total);
+      if (mptr == nullptr) {
+        break;
+      }
       int res = idx->insert(mptr, false);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -3292,7 +3295,6 @@ static int FillIndexSequential (TRI_document_collection_t* document,
       }
 #endif
     }
-    while (mptr != nullptr);
   }
   
   LOG_TIMER((TRI_microtime() - start),
