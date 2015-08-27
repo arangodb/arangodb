@@ -33,7 +33,6 @@
 #include "Basics/files.h"
 #include "Basics/logging.h"
 #include "Basics/messages.h"
-//#include "Basics/tri-strings.h"
 #include "Rest/InitialiseRest.h"
 #include "RestServer/ArangoServer.h"
 #include "Statistics/statistics.h"
