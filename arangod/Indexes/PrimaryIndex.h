@@ -64,7 +64,7 @@ namespace triagens {
       private:
 
         typedef triagens::basics::AssocUnique<char const,
-                TRI_doc_mptr_t const> TRI_PrimaryIndex_t;
+                TRI_doc_mptr_t> TRI_PrimaryIndex_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -99,7 +99,7 @@ namespace triagens {
 
         int remove (TRI_doc_mptr_t const*, bool) override final;
 
-        TRI_doc_mptr_t const* lookupKey (char const*) const;
+        TRI_doc_mptr_t* lookupKey (char const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
@@ -107,7 +107,7 @@ namespace triagens {
 /// parameter. sets position to UINT64_MAX if the position cannot be determined
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t const* lookupKey (char const*, uint64_t&) const;
+        TRI_doc_mptr_t* lookupKey (char const*, uint64_t&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in
@@ -116,7 +116,7 @@ namespace triagens {
 ///        Convention: step === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t const* lookupRandom (uint64_t& initialPosition,
+        TRI_doc_mptr_t* lookupRandom (uint64_t& initialPosition,
                                             uint64_t& position,
                                             uint64_t* step,
                                             uint64_t* total);
@@ -128,7 +128,7 @@ namespace triagens {
 ///        Convention: position === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t const* lookupSequential (uint64_t& position,
+        TRI_doc_mptr_t* lookupSequential (uint64_t& position,
                                                 uint64_t* total);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,10 +138,10 @@ namespace triagens {
 ///        Convention: position === UINT64_MAX indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t const* lookupSequentialReverse(uint64_t& position);
+        TRI_doc_mptr_t* lookupSequentialReverse(uint64_t& position);
 
-        int insertKey (TRI_doc_mptr_t const*, void const**);
-        void insertKey (TRI_doc_mptr_t const*);
+        int insertKey (TRI_doc_mptr_t*, void const**);
+        void insertKey (TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a key/element to the index
@@ -149,9 +149,9 @@ namespace triagens {
 /// from a previous lookupKey call
 ////////////////////////////////////////////////////////////////////////////////
 
-        void insertKey (struct TRI_doc_mptr_t const*, uint64_t);
+        void insertKey (struct TRI_doc_mptr_t*, uint64_t);
 
-        TRI_doc_mptr_t const* removeKey (char const*);
+        TRI_doc_mptr_t* removeKey (char const*);
 
         int resize (size_t);
 
@@ -159,7 +159,7 @@ namespace triagens {
         
         static uint64_t calculateHash (char const*, size_t);
 
-        void invokeOnAllElements (std::function<void(TRI_doc_mptr_t const*)>);
+        void invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)>);
         
         // Do we need this?
         TRI_PrimaryIndex_t* internals () {
