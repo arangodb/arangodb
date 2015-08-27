@@ -1,6 +1,6 @@
 // Bootstrap Buttons
 %bare-btn {
-  @include border-radius(4px);
+  @include border-radius(3px);
   @include box-shadow(0);
   font-size: 14px;
   font-weight: 300 !important;
@@ -232,7 +232,7 @@ ul.headerButtonList {
   @extend %clickable;
   @extend %header;
   @extend %pull-left;
-  @include border-radius(2px);
+  @include border-radius(3px);
   @include box-shadow(none);
 
   margin: {

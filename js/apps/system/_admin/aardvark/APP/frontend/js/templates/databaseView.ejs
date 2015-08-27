@@ -53,16 +53,18 @@
           var name = db.get("name");
       %>
 
-      <div class="tile">
-        <div class="borderBox"></div>
-        <div class="iconSet">
-          <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+      <% if (name !== '_system') { %>
+        <div class="tile">
+          <div class="borderBox"></div>
+          <div class="iconSet">
+            <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+          </div>
+          <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
+          <div class="tileBadge">
+          </div>
+          <h5 class="collectionName"><%=name %></h5>
         </div>
-        <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
-        <div class="tileBadge">
-        </div>
-        <h5 class="collectionName"><%=name %></h5>
-      </div>
+      <%};%>
 
       <%});%>
      </div>

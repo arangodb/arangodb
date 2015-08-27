@@ -10,20 +10,20 @@
       <div class="headerButtonBar">
         <ul class="headerButtonList">
           <li>
-            <a id="app-config" class="headerButton <%= _.isEmpty(app.get('config')) ? 'disabled' : '' %>">
+            <a id="app-config" class="headerButton <%= _.isEmpty(app.get('config')) ? 'disabled' : '' %> <%= app.needsConfiguration() ? 'error' : '' %>">
               <span class="icon_arangodb_settings2" title="Configure"></span>
             </a>
           </li>
           <li>
-            <a id="app-deps" class="headerButton <%= _.isEmpty(app.get('deps')) ? 'disabled' : '' %>">
+            <a id="app-deps" class="headerButton <%= _.isEmpty(app.get('deps')) ? 'disabled' : '' %> <%= app.hasUnconfiguredDependencies() ? 'error' : '' %>">
               <span class="fa fa-cubes" title="Dependencies"></span>
             </a>
           </li>
           <li id="app-scripts" class="dropdown">
             <a class="headerButton <%= _.isEmpty(app.get('scripts')) ? 'disabled' : '' %>" title="Scripts">
-              <i class="fa fa-cogs"></i>
+              <i class="fa fa-code"></i>
             </a>
-            <ul class="script-dropdown-menu dropdown-menu" id="scripts_dropdown">
+            <ul class="script-dropdown-menu dropdown-toolbar dropdown-menu" id="scripts_dropdown">
             <% _.each(app.get('scripts'), function (title, name) { %>
               <li class="dropdown-item">
                 <a class="tab" data-script="<%= name %>"><%= title %></a>
@@ -62,13 +62,28 @@
         <div class="header-icon-container">
           <img src="foxxes/thumbnail?mount=<%= app.encodedMount() %>" alt="Icon for Service" class="icon" />
         </div>
-        <div class="header_left">
-          <input type="button" class="open button-success" disabled="true" value="Open" />
-          <input id="app-upgrade" type="button" class="upgrade button-warning" value="Upgrade" <%=app.isSystem()?"disabled":"" %>/>
-          <input id="app-switch-mode" type="button" class="switch-mode button-warning" value="<%=app.get('development')?'Set Pro':'Set Dev'%>" />
-          <input type="button" class="delete button-danger" value="Delete" <%=app.isSystem()?"disabled":""%> />
-        </div>
         <div class="header_right">
+          <input type="button" class="open button-success" disabled="true" value="Open" />
+          <input id="app-replace" type="button" class="upgrade button-warning" value="Replace" <%=app.isSystem()?"disabled":"" %>/>
+          <input id="app-switch-mode" type="button" class="switch-mode button-warning" value="<%=app.get('development')?'Set Production':'Set Development'%>" />
+          <input type="button" class="delete button-danger" value="Delete" <%=app.isSystem()?"disabled":""%> />
+          <% if (mode !== 'swagger') { %>
+            <input id="app-show-swagger" type="button" class="switch-docu button-success" value="Show API" />
+          <% } %>
+          <% if (mode !== 'readme' && app.attributes.readme) { %>
+            <input id="app-show-readme" type="button" class="switch-docu button-success" value="Show README" />
+          <% } %>
+          <% if (mode !== 'readme' && !app.attributes.readme) { %>
+            <input id="app-show-readme" type="button" class="switch-docu button-success" disabled value="Show README" />
+          <% } %>
+        </div>
+        <div class="header_left">
+          <div id="app-warning" class="app-warning" style="display:<%=app.needsAttention()?'block':'none' %>;">
+            <h4>Out of order</h4>
+            <p id="app-warning-broken" style="display:<%=app.isBroken()?'block':'none' %>;">This service has failed to mount due to an error.</p>
+            <p id="app-warning-config" style="display:<%=app.needsConfiguration()?'block':'none' %>;">This service has not yet been configured properly.</p>
+            <p id="app-warning-deps" style="display:<%=app.hasUnconfiguredDependencies()?'block':'block' %>;">Some dependencies have not yet been set up.</p>
+          </div>
           <div class="header_line">
             <h3>
               <%= app.attributes.name %>
@@ -83,33 +98,8 @@
             </h3>
           </div>
           <p class="description"><%= app.attributes.description %></p>
-          <% if (mode !== 'swagger') { %>
-            <input id="app-show-swagger" type="button" class="button-success" value="Show API" />
-          <% } %>
-          <% if (mode !== 'readme' && app.attributes.readme) { %>
-            <input id="app-show-readme" type="button" class="button-success" value="Show README" />
-          <% } %>
-        </div>
-        <div id="app-warning" class="app-warning" style="display:<%=app.needsAttention()?'block':'none' %>;">
-          <h4>Out of order</h4>
-          <p id="app-warning-broken" style="display:<%=app.isBroken()?'block':'none' %>;">This app has failed to mount due to an error.</p>
-          <p id="app-warning-config" style="display:<%=app.needsConfiguration()?'block':'none' %>;">This app has not yet been configured properly.</p>
-          <p id="app-warning-deps" style="display:<%=app.hasUnconfiguredDependencies()?'block':'block' %>;">Some dependencies have not yet been set up.</p>
         </div>
       </div>
-      <% if (mode === 'swagger') { %>
-      <div class="swagger">
-        <iframe src="/_db/<%= db%>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
-      </div>
-      <% } else if (mode === 'readme') { %>
-      <div class="readme">
-        <% if (app.get('readme')) { %>
-        <%= app.get('readme') %>
-        <% } else { %>
-        <p>ERROR: No README data found!</p>
-        <% } %>
-      </div>
-      <% } %>
     </section>
     <aside class="meta">
       <dl>
@@ -147,6 +137,25 @@
         </dd>
       </dl>
     </aside>
+    <main>
+      <div id="app-info" class="app-info" style="display: none;">
+        <h4>Info</h4>
+        <p id="app-info-swagger">Documentation for this service is not yet configured.</p>
+      </div>
+      <% if (mode === 'swagger') { %>
+      <div class="swagger">
+        <iframe src="/_db/<%= db%>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
+      </div>
+      <% } else if (mode === 'readme') { %>
+      <div class="readme">
+        <% if (app.get('readme')) { %>
+        <%= app.get('readme') %>
+        <% } else { %>
+        <p>ERROR: No README data found!</p>
+        <% } %>
+      </div>
+      <% } %>
+    </main>
   </div></script><script id="applicationListView.ejs" type="text/template"><tr class="foxx-store-row">
     <td class="foxx-store-main">
       <div class="foxx-name"><%=name%></div>
@@ -565,16 +574,18 @@
           var name = db.get("name");
       %>
 
-      <div class="tile">
-        <div class="borderBox"></div>
-        <div class="iconSet">
-          <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+      <% if (name !== '_system') { %>
+        <div class="tile">
+          <div class="borderBox"></div>
+          <div class="iconSet">
+            <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+          </div>
+          <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
+          <div class="tileBadge">
+          </div>
+          <h5 class="collectionName"><%=name %></h5>
         </div>
-        <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
-        <div class="tileBadge">
-        </div>
-        <h5 class="collectionName"><%=name %></h5>
-      </div>
+      <%};%>
 
       <%});%>
      </div>
@@ -1143,7 +1154,7 @@ if (list.length > 0) {
           <span class="fa fa-warning" title="Mount error"></span>
         <% } %>
         <% if (model.needsConfiguration()) { %>
-          <span class="fa fa-cog" title="Needs configuration">!</span>
+          <span class="fa fa-cog" title="Needs configuration"></span>
         <% } %>
         <% if (model.hasUnconfiguredDependencies()) { %>
           <span class="fa fa-cubes" title="Unconfigured dependencies">!</span>
@@ -1408,8 +1419,8 @@ if (list.length > 0) {
   </table>
 
   <ul id="infoTab" class="nav nav-tabs">
-    <li class="active"><a href="#newApp" data-toggle="tab" id="tab-new">New Service</a></li>
-    <li><a href="#appstore" data-toggle="tab" id="tab-store"><img src="img/arangodb_logo_small.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
+    <li><a href="#newApp" data-toggle="tab" id="tab-new">New Service</a></li>
+    <li class="active"><a href="#appstore" data-toggle="tab" id="tab-store"><img src="img/arangodb_logo_small.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
     <li><a href="#github" data-toggle="tab" id="tab-git">Github</a></li>
     <li><a href="#zip" data-toggle="tab" id="tab-zip">Zip</a></li>
   </ul>
@@ -2295,12 +2306,11 @@ if (list.length > 0) {
     </ul>
     <div class="tab-content" id="tabContentCustoms">
       <div class="tab-pane" id="customs">
-        <div id="customsDiv" class="query-div">
+        <div id="editorToolbar" class="query-toolbar editor-toolbar">
+          <span class="icon_arangodb" title="Upload your queries." id="import-query"><i class="fa fa-upload"></i></span>
+          <span class="icon_arangodb" title="Download your listed queries." id="export-query"><i class="fa fa-download"></i></span>
         </div>
-        <div class="queryMethods">
-          <input id="importQueries" name="importQueries" type="file"/>
-          <button id="confirmQueryImport" class="button-success disabled" style="float:right">Import</button>
-          <button id="confirmQueryExport" class="button-success" style="float:right">Export</button>
+        <div id="customsDiv" class="query-div">
         </div>
       </div>
     </div>
@@ -2369,10 +2379,45 @@ if (list.length > 0) {
         </div>
         <div class="pull-left queryExecutionTime"></div>
         <div class="queryBottomActions">
-          <button id="downloadQueryResult" style="margin-bottom: 5px" class="button-success query-button">Download</button>
+          <button id="downloadQueryResult" style="margin-bottom: 10px; display: none" class="button-success query-button">Download</button>
         </div>
       </div>
 
+    </div>
+
+  </div>
+
+  <div id="queryImportDialog" class="modal hide fade in" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false" style="display: none;">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Import custom queries</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tbody>
+          <tr class="tableRow" id="row_new-query-name">
+            <th class="collectionTh">Format:</th>
+            <th class="collectionTh" colspan="2">
+              <p>[{</p>
+              <p style="margin-left: 10px">"name": "Your Query Name",</p>
+              <p style="margin-left: 10px">"value": "Your Query Definition"</p>
+              <p>}]</p>
+            </th>
+          </tr>
+          <tr class="tableRow" id="row_new-query-name">
+            <th class="collectionTh">File:</th>
+            <th class="collectionTh" colspan="2">
+              <input id="importQueries" name="importQueries" type="file" style="border: 0" />
+            </th>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="modal-footer">
+      <button id="confirmQueryImport" class="button-success disabled" style="float:right">Import</button>
+      <button id="closeQueryModal" class="button-close">Cancel</button>
     </div>
 
   </div></script><script id="shellView.ejs" type="text/template"><div class="headerBar">
@@ -2470,9 +2515,6 @@ var cutByResolution = function (str) {
         <% } else {%>
         <%=_.escape(username)%>
         <% } %>
-      <li class="dropdown-item">
-        <a id="userManagement" class="tab" href="#userManagement">User Management</a>
-      </li>
       <li class="dropdown-item">
         <a id="userProfile" class="tab" href="#user">User Profile</a>
       </li>

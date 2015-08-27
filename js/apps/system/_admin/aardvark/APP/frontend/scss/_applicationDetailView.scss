@@ -5,16 +5,16 @@
 
     .header {
       height: 200px;
-      margin-bottom: 10px;
+      margin-bottom: 0;
       position: relative;
 
       div.header-icon-container {
         border-radius: 3px;
-        height: 160px;
+        height: 182px;
         left: 0;
         margin: 0 0 4px;
         position: absolute;
-        width: 160px;
+        width: 182px;
 
         img.icon {
           background-color: $c-white;
@@ -23,32 +23,37 @@
           height: auto;
           max-height: 160px;
           max-width: 160px;
-          padding: 5px;
+          padding: 10px;
           width: auto;
         }
 
       }
 
-      .header_left {
-        left: 170px;
+      .header_right {
         padding-top: 1px;
         position: absolute;
-        width: 120px;
+        right: -10px;
+        width: 150px;
 
         input.delete,
         input.upgrade,
+        input.switch-docu,
         input.switch-mode {
-          margin-top: (170px - 4 * 30px) / 3;
+          margin-top: (173.5px - 5 * 30px) / 3;
+          padding-left: 10px;
+          padding-right: 10px;
         }
 
         input {
-          width: 90px;
+          width: 130px;
         }
       }
 
-      .header_right {
-        margin-left: 300px;
-        padding: 5px;
+      .header_left {
+        margin-left: 190px;
+        margin-right: 145px;
+        padding-left: 10px;
+        padding-top: 1px;
 
         input {
           margin-left: 0;
@@ -58,11 +63,9 @@
         .header_line {
           h3 {
             float: left;
+            margin-bottom: 0;
+            margin-top: 0;
             padding-right: 5px;
-          }
-
-          .license {
-            margin-left: 20px;
           }
 
           .license,
@@ -76,7 +79,7 @@
             font-weight: 400;
             padding: 0 8px 2px;
             position: relative;
-            top: -2px;
+            top: -3px;
           }
 
           &:after {
@@ -88,14 +91,10 @@
       }
 
       .app-warning {
-        @include border-radius(6px);
-        background: $c-negative-bg;
-        border: 1px solid $c-negative-hover;
-        color: $c-negative;
-        padding: 4px 8px;
-        position: absolute;
-        right: 20px;
-        top: 0;
+        @include border-radius(3px);
+        background: $c-negative;
+        color: $c-white;
+        padding: 6px 8px;
 
         h4,
         p {
@@ -105,21 +104,6 @@
       }
     }
 
-    .swagger {
-      iframe {
-        border: 1px solid $c-content-border;
-        border-radius: 3px;
-        height: 600px;
-        width: 100%;
-
-      }
-    }
-
-    .readme {
-      background: $c-white;
-      border: 1px solid $c-black;
-      padding: 1em 2em;
-    }
   }
 
   aside.meta {
@@ -128,12 +112,17 @@
     border-radius: 3px;
     clear: right;
     float: left;
+    height: 182px;
     margin-top: 12px;
+    max-height: 182px;
+    max-width: 182px;
+    overflow-x: hidden;
     position: relative;
-    right: -10px;
-    width: 188px;
+    right: -16px;
+    width: 182px;
 
     dl {
+      margin-bottom: 0;
       margin-top: 0;
       padding-left: 7px;
       padding-top: 5px;
@@ -141,6 +130,41 @@
   }
 }
 
+main {
+  background-color: $c-white;
+  border: 1px solid $c-content-border;
+  border-radius: 3px;
+  margin-top: 220px;
+
+  .app-info {
+    @include border-radius(3px);
+    background: $c-info-blue;
+    color: $c-white;
+    margin: 10px;
+    padding: 6px 8px;
+
+    h4,
+    p {
+      font-size: 1em;
+      margin: 0;
+    }
+  }
+
+  .swagger {
+    iframe {
+      border: 0;
+      border-radius: 3px;
+      height: 600px;
+      width: 100%;
+    }
+  }
+
+  .readme {
+    background: $c-white;
+    padding: 1em 2em;
+  }
+
+}
 
 .tests-result {
   .stack {

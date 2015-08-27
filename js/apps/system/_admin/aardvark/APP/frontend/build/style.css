@@ -1765,7 +1765,7 @@ body, input, textarea, .page-title span, .pingback a.url {
 .fa-medium:before {
   content: "\f23a"; }
 
-.link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu, .navlogo, .navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
+.dropdown-toolbar, .link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu, .navlogo, .navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .fixedDropdown .notificationItem i, .innerDropdownInnerUL, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
   float: left; }
 
 .navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet span, div .bigtile .iconSet span, .search-field, .headerBar > div.headerButtonBar, .fixedDropdown button, .dashboard-sub-bar-menu, .query-button, .arango-tab li, div.gv_colour_list, .docsThirdCol {
@@ -1872,12 +1872,13 @@ input.search-input, .modal-body .select2-choices input, .modal-body input, .moda
     outline-color: transparent;
     outline-style: none; }
 
-.link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu {
+.dropdown-toolbar, .link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu {
   background-color: #f5f8f0;
   border-color: #666;
   border-radius: 3px;
   border-style: solid;
   border-width: 1px;
+  box-shadow: none;
   display: none;
   list-style: none;
   margin: 5px 0 0;
@@ -1886,23 +1887,23 @@ input.search-input, .modal-body .select2-choices input, .modal-body input, .moda
   right: 0;
   top: 80%;
   z-index: 1000; }
-  .link-dropdown-menu li, .user-dropdown-menu li, .script-dropdown-menu li, .gv-dropdown-menu li {
+  .dropdown-toolbar li, .link-dropdown-menu li, .user-dropdown-menu li, .script-dropdown-menu li, .gv-dropdown-menu li {
     line-height: 23px;
     white-space: nowrap;
     width: 100%; }
-  .link-dropdown-menu .dropdown-header, .user-dropdown-menu .dropdown-header, .script-dropdown-menu .dropdown-header, .gv-dropdown-menu .dropdown-header {
+  .dropdown-toolbar .dropdown-header, .link-dropdown-menu .dropdown-header, .user-dropdown-menu .dropdown-header, .script-dropdown-menu .dropdown-header, .gv-dropdown-menu .dropdown-header {
     color: #999;
     font-size: 15px;
     font-weight: 600;
     font-variant: small-caps;
     padding: 0; }
-  .link-dropdown-menu .dropdown-header:hover, .user-dropdown-menu .dropdown-header:hover, .script-dropdown-menu .dropdown-header:hover, .gv-dropdown-menu .dropdown-header:hover {
+  .dropdown-toolbar .dropdown-header:hover, .link-dropdown-menu .dropdown-header:hover, .user-dropdown-menu .dropdown-header:hover, .script-dropdown-menu .dropdown-header:hover, .gv-dropdown-menu .dropdown-header:hover {
     cursor: default; }
-  .link-dropdown-menu .divider, .user-dropdown-menu .divider, .script-dropdown-menu .divider, .gv-dropdown-menu .divider {
+  .dropdown-toolbar .divider, .link-dropdown-menu .divider, .user-dropdown-menu .divider, .script-dropdown-menu .divider, .gv-dropdown-menu .divider {
     background-color: #666;
     height: 1px;
     margin: 10px 0 5px; }
-  .link-dropdown-menu a, .user-dropdown-menu a, .script-dropdown-menu a, .gv-dropdown-menu a {
+  .dropdown-toolbar a, .link-dropdown-menu a, .user-dropdown-menu a, .script-dropdown-menu a, .gv-dropdown-menu a {
     color: #fff;
     padding: 0 20px; }
 
@@ -2017,6 +2018,16 @@ input.search-input, .modal-body .select2-choices input, .modal-body input, .moda
 .dropdown-item a {
   border-bottom: 0 !important;
   font-weight: 300; }
+
+.dropdown-toolbar {
+  background-color: #fff !important;
+  border: 1px solid rgba(140, 138, 137, 0.25); }
+  .dropdown-toolbar li a {
+    font-weight: 100; }
+    .dropdown-toolbar li a:hover {
+      background: none;
+      background-color: #dee9cf !important;
+      color: #000 !important; }
 
 .link-dropdown-menu, .user-dropdown-menu {
   background-color: #fff;
@@ -2136,7 +2147,7 @@ div.footer-left {
       div.footer-left .social-icons i.fa-twitter {
         margin-left: -5px; }
       div.footer-left .social-icons i.fa-envelope {
-        margin-left: -18.5px; }
+        margin-left: -19px; }
       div.footer-left .social-icons i.fa-google {
         margin-left: -17px;
         margin-top: 7px; }
@@ -2151,6 +2162,7 @@ div.footer-center {
     background-color: #fff;
     border: 1px solid rgba(104, 103, 102, 0.1);
     border-radius: 20px;
+    margin-left: 1px;
     padding: 6px 2px;
     width: 20px; }
   div.footer-center i:hover {
@@ -2179,9 +2191,9 @@ div.footer-right {
     color: #8aa051 !important; }
 
 .button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close, .ajax-file-upload-red, .ajax-file-upload, .button-header {
-  -moz-border-radius: 4px;
-  -webkit-border-radius: 4px;
-  border-radius: 4px;
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
   -webkit-box-shadow: 0;
   -moz-box-shadow: 0;
   box-shadow: 0;
@@ -2304,9 +2316,9 @@ ul.headerButtonList {
     display: inline; }
 
 a.headerButton, a.button-gui {
-  -moz-border-radius: 2px;
-  -webkit-border-radius: 2px;
-  border-radius: 2px;
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
@@ -2493,27 +2505,25 @@ div .tile, div .bigtile {
   margin-right: 6px;
   position: relative;
   text-align: center; }
+  div .tile:hover, div .bigtile:hover {
+    cursor: pointer; }
   div .tile .warning-icons, div .bigtile .warning-icons {
     background-color: #da4f49;
+    border-radius: 3px;
     color: #fff;
     font-size: 11px;
     height: 17px;
     left: 0;
     line-height: 13px;
+    margin-left: 5px;
+    margin-top: 5px;
     padding-left: 9px;
-    padding-right: 4px;
+    padding-right: 9px;
     position: absolute;
     top: 0; }
-    div .tile .warning-icons:before, div .bigtile .warning-icons:before {
-      border-right: 17px solid transparent;
-      border-top: 17px solid #da4f49;
-      content: '';
-      position: absolute;
-      right: -17px; }
     div .tile .warning-icons .fa, div .bigtile .warning-icons .fa {
+      font-size: 11pt;
       margin-left: 1px; }
-      div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
-        font-size: 8px; }
   div .tile .collection-type-icon, div .bigtile .collection-type-icon {
     color: #666;
     font-size: 30pt;
@@ -4827,6 +4837,13 @@ div.headerBar {
   div.headerBar input[type="radio"]:checked + label span {
     background: url('../img/check_radio_sheet.png') -57px top no-repeat; }
 
+.headerButtonList a.error {
+  color: #da4f49; }
+  .headerButtonList a.error:hover {
+    background-color: #da4f49;
+    border-color: #da4f49;
+    color: #fff; }
+
 .headerBar a.arangoHeader {
   color: #000;
   font-size: 13pt;
@@ -5140,7 +5157,7 @@ div.headerBar {
   background: #fff !important;
   border-color: rgba(140, 138, 137, 0.25) !important;
   border-radius: 3px !important;
-  margin: 37px 0 0 !important;
+  margin: 10px -3px 0 !important;
   right: -1px !important;
   width: 210px; }
   .fixedDropdown:after {
@@ -5192,7 +5209,7 @@ div.headerBar {
   height: 220px !important;
   min-height: 220px;
   overflow-x: hidden;
-  overflow-y: scroll;
+  overflow-y: auto;
   width: 100%; }
   .innerDropdownInnerUL .dropdown-item:hover {
     background-color: #e1e1e1 !important; }
@@ -5217,7 +5234,7 @@ div.headerBar {
 .fullNotification {
   background-color: #da4f49 !important;
   border: 1px solid #da4f49 !important; }
-  .fullNotification a {
+  .fullNotification p {
     color: #fff !important; }
 
 .contentButtons {
@@ -5272,6 +5289,16 @@ div.headerBar {
   border: 1px solid rgba(140, 138, 137, 0.25);
   height: 25px;
   margin-top: -4px; }
+
+.ui-tooltip {
+  background-color: #8aa051 !important;
+  border: 0 !important;
+  border-radius: 3px !important;
+  box-shadow: none !important;
+  color: #fff !important;
+  font-family: 'Open Sans',sans-serif !important;
+  font-size: 10pt !important;
+  font-weight: 100 !important; }
 
 .tooltip-inner {
   max-width: 300px !important;
@@ -5612,8 +5639,12 @@ toolbar {
     color: #fff; }
 
 .queryBottomActions {
-  border-top: 1px solid #c2c2c2;
+  border-top: 1px solid rgba(140, 138, 137, 0.25);
   padding: 10px; }
+
+.queryExecutionTime {
+  margin-left: 10px;
+  margin-top: 15px; }
 
 #queryManagementContent {
   margin-top: 18px; }
@@ -5628,42 +5659,6 @@ toolbar {
   padding-top: 10px; }
   .queryManagementBottomActions button {
     margin-right: 10px; }
-
-.editor-toolbar {
-  border-color: #a0a0a0;
-  margin-top: 3px; }
-  .editor-toolbar span {
-    border-radius: 3px;
-    float: right;
-    height: 18px;
-    margin-left: 3px;
-    padding-bottom: 6px;
-    padding-left: 5px;
-    padding-right: 0;
-    padding-top: 3px;
-    position: relative;
-    top: 0;
-    width: 25px; }
-  .editor-toolbar span:hover {
-    background-color: #8aa051;
-    color: #fff; }
-  .editor-toolbar i {
-    margin-right: 5px;
-    margin-top: 3px; }
-    .editor-toolbar i:hover {
-      cursor: pointer; }
-  .editor-toolbar .icon_arangodb {
-    font-size: 14pt; }
-  .editor-toolbar .icon_arangodb_trash {
-    margin-left: 5px;
-    margin-right: 10px; }
-  .editor-toolbar .fa-comment, .editor-toolbar .fa-comment-o {
-    font-size: 15px;
-    position: relative;
-    right: -2px;
-    top: -2px; }
-  .editor-toolbar .arango-icon-disk {
-    margin-top: 1px; }
 
 .queryMethods {
   border-top: 1px solid rgba(140, 138, 137, 0.25);
@@ -5680,7 +5675,7 @@ toolbar {
 .aql-editor {
   border-color: #a0a0a0;
   border-left: 0 !important;
-  border-top: 0 !important;
+  border-top: 1px solid rgba(140, 138, 137, 0.25) !important;
   height: 200px;
   margin-bottom: 5px;
   min-height: 100px;
@@ -5833,12 +5828,11 @@ toolbar {
   min-height: 360px; }
   .query-div .ace-tm .ace_comment {
     color: #8aa051; }
-  .query-div > * {
-    border: 0 !important; }
   .query-div .icon_arangodb {
     cursor: pointer;
     margin-bottom: 5px; }
   .query-div .arango-table {
+    border-top: 1px solid rgba(140, 138, 137, 0.25);
     max-width: 100%;
     table-layout: fixed;
     width: 100%; }
@@ -5883,6 +5877,47 @@ toolbar {
     fill: none;
     stroke: #ccc;
     stroke-width: 1.5px; }
+
+.editor-toolbar {
+  border-color: #a0a0a0;
+  height: 33px;
+  margin-top: 5px; }
+  .editor-toolbar span {
+    border-radius: 3px;
+    float: right;
+    height: 18px;
+    margin-left: 3px;
+    padding-bottom: 6px;
+    padding-left: 5px;
+    padding-right: 0;
+    padding-top: 3px;
+    position: relative;
+    top: 0;
+    width: 25px; }
+  .editor-toolbar span:hover {
+    background-color: #8aa051;
+    color: #fff; }
+  .editor-toolbar i {
+    margin-right: 5px;
+    margin-top: 3px; }
+    .editor-toolbar i:hover {
+      cursor: pointer; }
+  .editor-toolbar .fa {
+    margin-left: 1px;
+    margin-top: 2px; }
+    .editor-toolbar .fa.fa-upload {
+      margin-top: 1px; }
+  .editor-toolbar .icon_arangodb {
+    font-size: 14pt; }
+    .editor-toolbar .icon_arangodb:first-child {
+      margin-right: 10px; }
+  .editor-toolbar .fa-comment, .editor-toolbar .fa-comment-o {
+    font-size: 15px;
+    position: relative;
+    right: -2px;
+    top: -2px; }
+  .editor-toolbar .arango-icon-disk {
+    margin-top: 1px; }
 
 .display-none {
   display: none; }
@@ -6894,15 +6929,15 @@ input.gv-radio-button {
   padding: 13px 0 0; }
   .application-detail-view section.info .header {
     height: 200px;
-    margin-bottom: 10px;
+    margin-bottom: 0;
     position: relative; }
     .application-detail-view section.info .header div.header-icon-container {
       border-radius: 3px;
-      height: 160px;
+      height: 182px;
       left: 0;
       margin: 0 0 4px;
       position: absolute;
-      width: 160px; }
+      width: 182px; }
       .application-detail-view section.info .header div.header-icon-container img.icon {
         background-color: #fff;
         border: 1px solid rgba(140, 138, 137, 0.25);
@@ -6910,29 +6945,33 @@ input.gv-radio-button {
         height: auto;
         max-height: 160px;
         max-width: 160px;
-        padding: 5px;
+        padding: 10px;
         width: auto; }
-    .application-detail-view section.info .header .header_left {
-      left: 170px;
+    .application-detail-view section.info .header .header_right {
       padding-top: 1px;
       position: absolute;
-      width: 120px; }
-      .application-detail-view section.info .header .header_left input.delete, .application-detail-view section.info .header .header_left input.upgrade, .application-detail-view section.info .header .header_left input.switch-mode {
-        margin-top: 16.6666666667px; }
-      .application-detail-view section.info .header .header_left input {
-        width: 90px; }
-    .application-detail-view section.info .header .header_right {
-      margin-left: 300px;
-      padding: 5px; }
+      right: -10px;
+      width: 150px; }
+      .application-detail-view section.info .header .header_right input.delete, .application-detail-view section.info .header .header_right input.upgrade, .application-detail-view section.info .header .header_right input.switch-docu, .application-detail-view section.info .header .header_right input.switch-mode {
+        margin-top: 7.8333333333px;
+        padding-left: 10px;
+        padding-right: 10px; }
       .application-detail-view section.info .header .header_right input {
+        width: 130px; }
+    .application-detail-view section.info .header .header_left {
+      margin-left: 190px;
+      margin-right: 145px;
+      padding-left: 10px;
+      padding-top: 1px; }
+      .application-detail-view section.info .header .header_left input {
         margin-left: 0;
         margin-top: -4px; }
-      .application-detail-view section.info .header .header_right .header_line h3 {
+      .application-detail-view section.info .header .header_left .header_line h3 {
         float: left;
+        margin-bottom: 0;
+        margin-top: 0;
         padding-right: 5px; }
-      .application-detail-view section.info .header .header_right .header_line .license {
-        margin-left: 20px; }
-      .application-detail-view section.info .header .header_right .header_line .license, .application-detail-view section.info .header .header_right .header_line .version {
+      .application-detail-view section.info .header .header_left .header_line .license, .application-detail-view section.info .header .header_left .header_line .version {
         -moz-border-radius: 3px;
         -webkit-border-radius: 3px;
         border-radius: 3px;
@@ -6943,48 +6982,65 @@ input.gv-radio-button {
         font-weight: 400;
         padding: 0 8px 2px;
         position: relative;
-        top: -2px; }
-      .application-detail-view section.info .header .header_right .header_line:after {
+        top: -3px; }
+      .application-detail-view section.info .header .header_left .header_line:after {
         clear: both;
         content: '';
         display: table; }
     .application-detail-view section.info .header .app-warning {
-      -moz-border-radius: 6px;
-      -webkit-border-radius: 6px;
-      border-radius: 6px;
-      background: #e0d8d8;
-      border: 1px solid #be342e;
-      color: #da4f49;
-      padding: 4px 8px;
-      position: absolute;
-      right: 20px;
-      top: 0; }
+      -moz-border-radius: 3px;
+      -webkit-border-radius: 3px;
+      border-radius: 3px;
+      background: #da4f49;
+      color: #fff;
+      padding: 6px 8px; }
       .application-detail-view section.info .header .app-warning h4, .application-detail-view section.info .header .app-warning p {
         font-size: 1em;
         margin: 0; }
-  .application-detail-view section.info .swagger iframe {
-    border: 1px solid rgba(140, 138, 137, 0.25);
-    border-radius: 3px;
-    height: 600px;
-    width: 100%; }
-  .application-detail-view section.info .readme {
-    background: #fff;
-    border: 1px solid #000;
-    padding: 1em 2em; }
 .application-detail-view aside.meta {
   background-color: #fff;
   border: 1px solid rgba(140, 138, 137, 0.25);
   border-radius: 3px;
   clear: right;
   float: left;
+  height: 182px;
   margin-top: 12px;
+  max-height: 182px;
+  max-width: 182px;
+  overflow-x: hidden;
   position: relative;
-  right: -10px;
-  width: 188px; }
+  right: -16px;
+  width: 182px; }
   .application-detail-view aside.meta dl {
+    margin-bottom: 0;
     margin-top: 0;
     padding-left: 7px;
     padding-top: 5px; }
+
+main {
+  background-color: #fff;
+  border: 1px solid rgba(140, 138, 137, 0.25);
+  border-radius: 3px;
+  margin-top: 220px; }
+  main .app-info {
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+    background: #5bc0de;
+    color: #fff;
+    margin: 10px;
+    padding: 6px 8px; }
+    main .app-info h4, main .app-info p {
+      font-size: 1em;
+      margin: 0; }
+  main .swagger iframe {
+    border: 0;
+    border-radius: 3px;
+    height: 600px;
+    width: 100%; }
+  main .readme {
+    background: #fff;
+    padding: 1em 2em; }
 
 .tests-result .stack {
   border-color: #da4f49;

@@ -275,7 +275,7 @@
       }
       window.modalView.show(
         "modalTable.ejs",
-        "Edit database",
+        "Delete database",
         buttons,
         tableContent
       );

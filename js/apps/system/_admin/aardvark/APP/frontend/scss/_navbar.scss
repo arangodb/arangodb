@@ -198,6 +198,25 @@
   }
 }
 
+.dropdown-toolbar {
+  @extend %dropdown-menu;
+  background-color: $c-white !important;
+  border: 1px solid $c-content-border;
+
+  li {
+
+    a {
+      font-weight: 100;
+
+      &:hover {
+        background: none;
+        background-color: $c-lightgreen-bg !important;
+        color: $c-black !important;
+      }
+    }
+  }
+}
+
 .link-dropdown-menu,
 .user-dropdown-menu {
   @extend %dropdown-menu;
