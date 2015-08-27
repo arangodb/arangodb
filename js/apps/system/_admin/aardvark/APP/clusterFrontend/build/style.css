@@ -2079,7 +2079,18 @@ a.inactive.coordinator, a.inactive.dbserver {
   a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
     fill: #d3d3d3; }
 
-input.search-input, .modal-body .select2-choices input, .modal-body input, .modal-body select, .modal-body textarea {
+div.queryline .fa.fa-search {
+  color: #c2c2c2;
+  font-size: 12pt;
+  opacity: .5;
+  position: relative;
+  right: 21px;
+  top: -1px; }
+div.queryline .fa.fa-search:hover {
+  cursor: pointer;
+  opacity: 1; }
+
+div.queryline select, div.queryline input, input.search-input, .modal-body .select2-choices input, .modal-body input, .modal-body select, .modal-body textarea {
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -2089,7 +2100,7 @@ input.search-input, .modal-body .select2-choices input, .modal-body input, .moda
   outline: none;
   outline-color: transparent;
   outline-style: none; }
-  input.search-input:focus, .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus {
+  div.queryline select:focus, div.queryline input:focus, input.search-input:focus, .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus {
     border-color: #999;
     box-shadow: none;
     outline: none;
@@ -2599,7 +2610,7 @@ div.toolbox {
     -webkit-border-radius: 3px;
     border-radius: 3px;
     background-color: #fff;
-    color: #000;
+    color: #555;
     height: 30px;
     margin: 5px;
     position: relative;
@@ -4851,6 +4862,8 @@ div.headerDropdown {
   padding: 10px;
   position: relative;
   width: auto; }
+  div.headerDropdown.smallDropdown .dropdownInner {
+    min-height: 20px; }
   div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox {
     display: none; }
     div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label {
@@ -4912,6 +4925,8 @@ div.queryline {
     margin-top: 4px; }
   div.queryline select, div.queryline input {
     margin-bottom: 5px; }
+  div.queryline input[type='file'] {
+    border: 0; }
   div.queryline.querylineAdd span {
     color: #fff;
     padding-left: 10px;
@@ -4982,6 +4997,7 @@ img.gv-throbber {
   background-image: url('../img/swagger/throbber.gif'); }
 
 span.gv_caret {
+  border-top: 5px solid #fff;
   margin-top: 2px !important; }
 
 input.search-input {

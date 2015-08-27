@@ -43,7 +43,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   }
 
   var graphViewer,
-    width = (optWidth || container.offsetWidth - 81),
+    width = (optWidth + 20 || container.offsetWidth - 81 + 20),
     height = optHeight || container.offsetHeight,
     menubar = document.createElement("ul"),
     background = document.createElement("div"),
@@ -75,7 +75,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         searchAttrExampleToggle = document.createElement("button"),
         searchAttrExampleCaret = document.createElement("span"),
         searchValueField = document.createElement("input"),
-        searchStart = document.createElement("img"),
+        searchStart = document.createElement("i"),
         equalsField = document.createElement("span"),
         searchAttrField,
 
@@ -94,7 +94,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         resultCB = function(res) {
           hideSpinner();
           if (res && res.errorCode && res.errorCode === 404) {
-            alertError("Sorry could not find a matching node.");
+            arangoHelper.arangoError("Graph error", "could not find a matching node.");
             return;
           }
           return;
@@ -118,7 +118,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         };
 
       div.id = "filterDropdown";
-      div.className = "headerDropdown";
+      div.className = "headerDropdown smallDropdown";
       innerDiv.className = "dropdownInner";
       queryLine.className = "queryline";
 
@@ -139,7 +139,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchValueField.type = "text";
       searchValueField.placeholder = "Attribute value";
       searchStart.id = "loadnode";
-      searchStart.className = "gv-search-submit-icon";
+      searchStart.className = "fa fa-search";
       equalsField.className = "searchEqualsLabel";
       equalsField.appendChild(document.createTextNode("=="));
 
@@ -184,7 +184,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         searchAttrExampleToggle2 = document.createElement("button"),
         searchAttrExampleCaret2 = document.createElement("span"),
         searchValueField2 = document.createElement("input"),
-        searchStart2 = document.createElement("img"),
+        searchStart2 = document.createElement("i"),
         equalsField2 = document.createElement("span"),
         searchAttrField2,
 
@@ -203,7 +203,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         resultCB2 = function(res) {
           hideSpinner();
           if (res && res.errorCode && res.errorCode === 404) {
-            alertError("Sorry could not find a matching node.");
+            arangoHelper.arangoError("Graph error", "could not find a matching node.");
             return;
           }
           return;
@@ -221,7 +221,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         };
 
       div2.id = "nodeDropdown";
-      div2.className = "headerDropdown";
+      div2.className = "headerDropdown smallDropdown";
       innerDiv2.className = "dropdownInner";
       queryLine2.className = "queryline";
 
@@ -242,7 +242,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       searchValueField2.type = "text";
       searchValueField2.placeholder = "Attribute value";
       searchStart2.id = "loadnode";
-      searchStart2.className = "gv-search-submit-icon";
+      searchStart2.className = "fa fa-search";
       equalsField2.className = "searchEqualsLabel";
       equalsField2.appendChild(document.createTextNode("=="));
 

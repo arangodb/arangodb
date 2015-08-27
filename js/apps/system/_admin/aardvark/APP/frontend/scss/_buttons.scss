@@ -316,7 +316,7 @@ div.toolbox {
     @extend %clickable;
     @include border-radius(3px);
     background-color: $c-white;
-    color: $c-black;
+    color: $c-header-btn-fg;
     height: 30px;
     margin: 5px;
     position: relative;

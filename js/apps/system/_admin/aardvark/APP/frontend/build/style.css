@@ -2064,7 +2064,18 @@ a.headerButton.disabled {
   a.headerButton.disabled:hover, a.headerButton.disabled:focus {
     color: #d3d3d3; }
 
-input.search-input, .modal-body .select2-choices input, .modal-body input, .modal-body select, .modal-body textarea, .login-window .login-input {
+div.queryline .fa.fa-search {
+  color: #c2c2c2;
+  font-size: 12pt;
+  opacity: .5;
+  position: relative;
+  right: 21px;
+  top: -1px; }
+div.queryline .fa.fa-search:hover {
+  cursor: pointer;
+  opacity: 1; }
+
+div.queryline select, div.queryline input, input.search-input, .modal-body .select2-choices input, .modal-body input, .modal-body select, .modal-body textarea, .login-window .login-input {
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -2074,7 +2085,7 @@ input.search-input, .modal-body .select2-choices input, .modal-body input, .moda
   outline: none;
   outline-color: transparent;
   outline-style: none; }
-  input.search-input:focus, .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus, .login-window .login-input:focus {
+  div.queryline select:focus, div.queryline input:focus, input.search-input:focus, .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus, .login-window .login-input:focus {
     border-color: #999;
     box-shadow: none;
     outline: none;
@@ -2584,7 +2595,7 @@ div.toolbox {
     -webkit-border-radius: 3px;
     border-radius: 3px;
     background-color: #fff;
-    color: #000;
+    color: #555;
     height: 30px;
     margin: 5px;
     position: relative;
@@ -4836,6 +4847,8 @@ div.headerDropdown {
   padding: 10px;
   position: relative;
   width: auto; }
+  div.headerDropdown.smallDropdown .dropdownInner {
+    min-height: 20px; }
   div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox {
     display: none; }
     div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label {
@@ -4897,6 +4910,8 @@ div.queryline {
     margin-top: 4px; }
   div.queryline select, div.queryline input {
     margin-bottom: 5px; }
+  div.queryline input[type='file'] {
+    border: 0; }
   div.queryline.querylineAdd span {
     color: #fff;
     padding-left: 10px;
@@ -4967,6 +4982,7 @@ img.gv-throbber {
   background-image: url('../img/swagger/throbber.gif'); }
 
 span.gv_caret {
+  border-top: 5px solid #fff;
   margin-top: 2px !important; }
 
 input.search-input {
@@ -6524,6 +6540,7 @@ textarea, .alert {
 div.gv_zoom_widget {
   height: 300px;
   left: 64px;
+  opacity: 0.7;
   position: absolute;
   top: 20px;
   width: 40px;
@@ -6534,14 +6551,14 @@ div.gv_zoom_widget {
     height: 40px;
     margin-bottom: 20px; }
   div.gv_zoom_widget div.gv_zoom_slider {
-    background: #fff;
+    background: #f5f8f0;
     border-radius: 3px;
     height: 200px;
     margin: 0 17px;
     width: 4px; }
   div.gv_zoom_widget a.ui-slider-handle {
-    background-color: #000;
-    border: 1px solid rgba(104, 103, 102, 0.1);
+    background-color: #555;
+    border: 1px solid rgba(140, 138, 137, 0.25);
     height: .5em;
     left: -.55em;
     outline: none; }
@@ -7482,8 +7499,6 @@ table .sorting {
     font-size: 20px;
     margin-left: 10px; }
 
-.contentIn > div {
-  padding: 10px; }
 .contentIn .arangoicon {
   font-size: 25px;
   position: relative;
