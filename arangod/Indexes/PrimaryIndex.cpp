@@ -40,7 +40,7 @@ using namespace triagens::arango;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-static void FreeElement (TRI_doc_mptr_t const* element) {
+static void FreeElement (TRI_doc_mptr_t* element) {
   // TODO implement
 }
 
@@ -165,7 +165,7 @@ int PrimaryIndex::remove (TRI_doc_mptr_t const*,
 /// @brief looks up an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t const* PrimaryIndex::lookupKey (char const* key) const {
+TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key) const {
   return _primaryIndex->findByKey(key);
 }
 
@@ -175,7 +175,7 @@ TRI_doc_mptr_t const* PrimaryIndex::lookupKey (char const* key) const {
 /// parameter. sets position to UINT64_MAX if the position cannot be determined
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t const* PrimaryIndex::lookupKey (char const* key,
+TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key,
                                                uint64_t& position) const {
   // TODO we ignore the position right now. It should be the position it would fit into
   position = 0;
@@ -189,7 +189,7 @@ TRI_doc_mptr_t const* PrimaryIndex::lookupKey (char const* key,
 ///        Convention: step === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t const* PrimaryIndex::lookupRandom(uint64_t& initialPosition,
+TRI_doc_mptr_t* PrimaryIndex::lookupRandom(uint64_t& initialPosition,
                                                  uint64_t& position,
                                                  uint64_t* step,
                                                  uint64_t* total) {
@@ -203,7 +203,7 @@ TRI_doc_mptr_t const* PrimaryIndex::lookupRandom(uint64_t& initialPosition,
 ///        Convention: position === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t const* PrimaryIndex::lookupSequential(uint64_t& position,
+TRI_doc_mptr_t* PrimaryIndex::lookupSequential(uint64_t& position,
                                                      uint64_t* total) {
   return _primaryIndex->findSequential(position, total);
 }
@@ -215,7 +215,7 @@ TRI_doc_mptr_t const* PrimaryIndex::lookupSequential(uint64_t& position,
 ///        Convention: position === UINT64_MAX indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t const* PrimaryIndex::lookupSequentialReverse(uint64_t& position) {
+TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse(uint64_t& position) {
   return _primaryIndex->findSequentialReverse(position);
 }
 
@@ -225,7 +225,7 @@ TRI_doc_mptr_t const* PrimaryIndex::lookupSequentialReverse(uint64_t& position) 
 /// returns a status code, and *found will contain a found element (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::insertKey (TRI_doc_mptr_t const* header,
+int PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
                              void const** found) {
   *found = nullptr;
   int res = _primaryIndex->insert(TRI_EXTRACT_MARKER_KEY(header), header, false);
@@ -241,7 +241,7 @@ int PrimaryIndex::insertKey (TRI_doc_mptr_t const* header,
 /// function 
 ////////////////////////////////////////////////////////////////////////////////
 
-void PrimaryIndex::insertKey (TRI_doc_mptr_t const* header) {
+void PrimaryIndex::insertKey (TRI_doc_mptr_t* header) {
   _primaryIndex->insert(TRI_EXTRACT_MARKER_KEY(header), header, false);
 }
 
@@ -251,7 +251,7 @@ void PrimaryIndex::insertKey (TRI_doc_mptr_t const* header) {
 /// from a previous lookupKey call
 ////////////////////////////////////////////////////////////////////////////////
 
-void PrimaryIndex::insertKey (TRI_doc_mptr_t const* header,
+void PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
                               uint64_t slot) {
   _primaryIndex->insert(TRI_EXTRACT_MARKER_KEY(header), header, false);
   // TODO slot is hint where to insert the element. It is not yet used
@@ -269,7 +269,7 @@ void PrimaryIndex::insertKey (TRI_doc_mptr_t const* header,
 /// @brief removes an key/element from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t const* PrimaryIndex::removeKey (char const* key) {
+TRI_doc_mptr_t* PrimaryIndex::removeKey (char const* key) {
   return _primaryIndex->removeByKey(key);
 }
 
@@ -290,7 +290,7 @@ uint64_t PrimaryIndex::calculateHash (char const* key,
   return TRI_FnvHashPointer(static_cast<void const*>(key), length);
 }
 
-void PrimaryIndex::invokeOnAllElements (std::function<void(TRI_doc_mptr_t const*)> work) {
+void PrimaryIndex::invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)> work) {
   _primaryIndex->invokeOnAllElements(work);
 }
 
