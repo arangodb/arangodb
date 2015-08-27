@@ -413,31 +413,11 @@ namespace triagens {
             return res;
           }
 
-          auto primaryIndex = document->primaryIndex()->internals();
-
-          if (primaryIndex->_nrUsed == 0) {
-            // nothing to do
-            this->unlock(trxCollection, TRI_TRANSACTION_READ);
-
-            // READ-LOCK END
-            *total = 0;
-            return TRI_ERROR_NO_ERROR;
-          }
-
           if (orderDitch(trxCollection) == nullptr) {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          void** beg = primaryIndex->_table;
-          void** end = beg + primaryIndex->_nrAlloc;
-
-          if (internalSkip > 0) {
-            beg += internalSkip;
-          }
-
-          void** ptr = beg;
           uint64_t count = 0;
-          *total = primaryIndex->_nrUsed;
 
           try {
             if (batchSize > 2048) {
@@ -446,23 +426,21 @@ namespace triagens {
             else if (batchSize > 0) {
               docs.reserve(batchSize);
             }
-
-            // fetch documents, taking limit into account
-            for (; ptr < end && count < batchSize; ++ptr, ++internalSkip) {
-              if (*ptr) {
-                TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
-
-                if (skip > 0) {
-                  --skip;
-                }
-                else {
-                  docs.emplace_back(*d);
-                  if (++count >= limit) {
-                    break;
-                  }
+            TRI_ASSERT(batchSize > 0);
+            TRI_doc_mptr_t* ptr = nullptr; 
+            do {
+              ptr = document->primaryIndex()->lookupSequential(internalSkip, total);
+              if (skip > 0) {
+                --skip;
+              }
+              else {
+                docs.emplace_back(*ptr);
+                if (++count >= limit) {
+                  break;
                 }
               }
             }
+            while (ptr != nullptr && count < batchSize);
           }
           catch (...) {
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
@@ -826,32 +804,17 @@ namespace triagens {
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
-
-          auto primaryIndex = document->primaryIndex()->internals();
-
-          if (primaryIndex->_nrUsed == 0) {
-            // no document found
-            mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
-          }
-          else {
-            if (orderDitch(trxCollection) == nullptr) {
-              return TRI_ERROR_OUT_OF_MEMORY;
-            }
-
-            uint64_t total = primaryIndex->_nrAlloc;
-            uint64_t pos = TRI_UInt32Random() % total;
-            void** beg = primaryIndex->_table;
-
-            while (beg[pos] == nullptr) {
-              pos = TRI_UInt32Random() % total;
-            }
-
-            *mptr = *((TRI_doc_mptr_t*) beg[pos]);
+          if (orderDitch(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
           }
 
+          auto primaryIndex = document->primaryIndex();
+          uint64_t intPos = 0;
+          uint64_t pos = 0;
+          uint64_t step = 0;
+          uint64_t total = 0;
+          mptr = document->primaryIndex()->lookupRandom(intPos, pos, step, total);
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          // READ-LOCK END
-
           return TRI_ERROR_NO_ERROR;
         }
 

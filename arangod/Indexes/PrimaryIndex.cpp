@@ -237,7 +237,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupRandom(uint64_t& initialPosition,
 ///        Convention: position === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::findSequential(uint64_t& position,
+TRI_doc_mptr_t* PrimaryIndex::lookupSequential(uint64_t& position,
                                              uint64_t* total) {
   return _primaryIndex->findSequential(position, total);
 }

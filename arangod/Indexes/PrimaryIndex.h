@@ -114,10 +114,10 @@ namespace triagens {
 ///        Convention: step === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupRandom(uint64_t& initialPosition,
-                                     uint64_t& position,
-                                     uint64_t* step,
-                                     uint64_t* total);
+        TRI_doc_mptr_t* lookupRandom (uint64_t& initialPosition,
+                                      uint64_t& position,
+                                      uint64_t* step,
+                                      uint64_t* total);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in
@@ -126,8 +126,8 @@ namespace triagens {
 ///        Convention: position === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* findSequential(uint64_t& position,
-                                       uint64_t* total);
+        TRI_doc_mptr_t* lookupSequential (uint64_t& position,
+                                          uint64_t* total);
 
         int insertKey (TRI_doc_mptr_t const*, void const**);
         void insertKey (TRI_doc_mptr_t const*);
