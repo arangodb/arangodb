@@ -586,7 +586,7 @@ namespace triagens {
             do {
               res = findElementSequentialBucktes(position);
               position++;
-            } while (position < total && res == nullptr)
+            } while (position < *total && res == nullptr);
             return res;
           }
 
