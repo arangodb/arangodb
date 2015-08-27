@@ -611,7 +611,6 @@ namespace triagens {
 
 
     void SimpleHttpClient::processBody () {
-
       // HEAD requests may be responded to without a body...
       if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
         _result->setResultType(SimpleHttpResult::COMPLETE);
@@ -754,9 +753,14 @@ namespace triagens {
 
           return;
         }
-
-        _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
-                                      (size_t) _nextChunkedSize);
+      
+        if (_result->isDeflated()) {
+          _readBuffer.inflate(_result->getBody(), 16384, _readBufferOffset);
+        }
+        else {
+          _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
+                                        (size_t) _nextChunkedSize);
+        }
 
         _readBufferOffset += (size_t) _nextChunkedSize + 2;
         _state = IN_READ_CHUNKED_HEADER;
