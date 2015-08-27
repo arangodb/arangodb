@@ -60,13 +60,10 @@ namespace triagens {
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
         
-      public:
+      private:
 
-        struct PrimaryIndexType {
-          uint64_t  _nrAlloc;     // the size of the table
-          uint64_t  _nrUsed;      // the number of used entries
-          void**    _table;       // the table itself
-        };
+        typedef triagens::basics::AssocUnique<char,
+                TRI_doc_mptr_t> TRI_PrimaryIndex_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -129,7 +126,8 @@ namespace triagens {
         
         static uint64_t calculateHash (char const*, size_t);
         
-        PrimaryIndexType* internals () {
+        // Do we need this?
+        TRI_PrimaryIndex_t* internals () {
           return &_primaryIndex;
         } 
 
@@ -153,7 +151,7 @@ namespace triagens {
 /// @brief the actual index
 ////////////////////////////////////////////////////////////////////////////////
 
-        PrimaryIndexType _primaryIndex;
+        TRI_PrimaryIndex_t _primaryIndex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array of pointers
