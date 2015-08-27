@@ -12,12 +12,11 @@
     </ul>
     <div class="tab-content" id="tabContentCustoms">
       <div class="tab-pane" id="customs">
-        <div id="customsDiv" class="query-div">
+        <div id="editorToolbar" class="query-toolbar editor-toolbar">
+          <span class="icon_arangodb" title="Upload your queries." id="import-query"><i class="fa fa-upload"></i></span>
+          <span class="icon_arangodb" title="Download your listed queries." id="export-query"><i class="fa fa-download"></i></span>
         </div>
-        <div class="queryMethods">
-          <input id="importQueries" name="importQueries" type="file"/>
-          <button id="confirmQueryImport" class="button-success disabled" style="float:right">Import</button>
-          <button id="confirmQueryExport" class="button-success" style="float:right">Export</button>
+        <div id="customsDiv" class="query-div">
         </div>
       </div>
     </div>
@@ -86,10 +85,45 @@
         </div>
         <div class="pull-left queryExecutionTime"></div>
         <div class="queryBottomActions">
-          <button id="downloadQueryResult" style="margin-bottom: 5px" class="button-success query-button">Download</button>
+          <button id="downloadQueryResult" style="margin-bottom: 10px; display: none" class="button-success query-button">Download</button>
         </div>
       </div>
 
+    </div>
+
+  </div>
+
+  <div id="queryImportDialog" class="modal hide fade in" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false" style="display: none;">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Import custom queries</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tbody>
+          <tr class="tableRow" id="row_new-query-name">
+            <th class="collectionTh">Format:</th>
+            <th class="collectionTh" colspan="2">
+              <p>[{</p>
+              <p style="margin-left: 10px">"name": "Your Query Name",</p>
+              <p style="margin-left: 10px">"value": "Your Query Definition"</p>
+              <p>}]</p>
+            </th>
+          </tr>
+          <tr class="tableRow" id="row_new-query-name">
+            <th class="collectionTh">File:</th>
+            <th class="collectionTh" colspan="2">
+              <input id="importQueries" name="importQueries" type="file" style="border: 0" />
+            </th>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="modal-footer">
+      <button id="confirmQueryImport" class="button-success disabled" style="float:right">Import</button>
+      <button id="closeQueryModal" class="button-close">Cancel</button>
     </div>
 
   </div>

@@ -2,7 +2,7 @@
   background: $c-white !important;
   border-color: $c-content-border !important;
   border-radius: 3px !important;
-  margin: 37px 0 0 !important;
+  margin: 10px -3px 0 !important;
   right: -1px !important;
   width: 210px;
 
@@ -87,7 +87,7 @@
   height: 220px !important;
   min-height: 220px;
   overflow-x: hidden;
-  overflow-y: scroll;
+  overflow-y: auto;
   width: 100%;
 
   .dropdown-item:hover {
@@ -120,7 +120,7 @@
   background-color: $c-notification-red !important;
   border: 1px solid $c-notification-red !important;
 
-  a {
+  p {
     color: $c-white !important;
   }
 

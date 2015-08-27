@@ -16,8 +16,13 @@ toolbar {
 }
 
 .queryBottomActions {
-  border-top: 1px solid $c-c2grey;
+  border-top: 1px solid $c-content-border;
   padding: 10px;
+}
+
+.queryExecutionTime {
+  margin-left: 10px;
+  margin-top: 15px;
 }
 
 #queryManagementContent {
@@ -38,59 +43,6 @@ toolbar {
   }
 }
 
-.editor-toolbar {
-  border-color: $c-editor-toolbar;
-  margin-top: 3px;
-
-  span {
-    border-radius: 3px;
-    float: right;
-    height: 18px;
-    margin-left: 3px;
-    padding-bottom: 6px;
-    padding-left: 5px;
-    padding-right: 0;
-    padding-top: 3px;
-    position: relative;
-    top: 0;
-    width: 25px;
-  }
-
-  span:hover {
-    background-color: $c-positive;
-    color: $c-white;
-  }
-
-  i {
-    margin-right: 5px;
-    margin-top: 3px;
-
-    &:hover {
-      cursor: pointer;
-    }
-  }
-
-  .icon_arangodb {
-    font-size: 14pt;
-  }
-
-  .icon_arangodb_trash {
-    margin-left: 5px;
-    margin-right: 10px;
-  }
-
-  .fa-comment,
-  .fa-comment-o {
-    font-size: 15px;
-    position: relative;
-    right: -2px;
-    top: -2px;
-  }
-
-  .arango-icon-disk {
-    margin-top: 1px;
-  }
-}
 
 .queryMethods {
 
@@ -120,7 +72,7 @@ toolbar {
   @extend %toolbar;
   border-color: $c-editor-toolbar;
   border-left: 0 !important;
-  border-top: 0 !important;
+  border-top: 1px solid $c-content-border !important;
   height: 200px;
   margin-bottom: 5px;
   min-height: 100px;
@@ -313,13 +265,16 @@ toolbar {
 
   margin-top: 18px;
 
-  .arango-tab a {
-    border-bottom-color: $c-tab-bottom-border;
-    font-weight: 100;
-  }
+  .arango-tab {
 
-  .arango-tab .active {
-    border-bottom-color: $c-white !important;
+    a {
+      border-bottom-color: $c-tab-bottom-border;
+      font-weight: 100;
+    }
+
+    .active {
+      border-bottom-color: $c-white !important;
+    }
   }
 }
 
@@ -331,16 +286,13 @@ toolbar {
     color: $c-positive;
   }
 
-  > * {
-    border: 0 !important;
-  }
-
   .icon_arangodb {
     cursor: pointer;
     margin-bottom: 5px;
   }
 
   .arango-table {
+    border-top: 1px solid $c-content-border;
     max-width: 100%;
     table-layout: fixed;
     width: 100%;
@@ -405,3 +357,65 @@ toolbar {
   }
 }
 
+.editor-toolbar {
+  border-color: $c-editor-toolbar;
+  height: 33px;
+  margin-top: 5px;
+
+  span {
+    border-radius: 3px;
+    float: right;
+    height: 18px;
+    margin-left: 3px;
+    padding-bottom: 6px;
+    padding-left: 5px;
+    padding-right: 0;
+    padding-top: 3px;
+    position: relative;
+    top: 0;
+    width: 25px;
+  }
+
+  span:hover {
+    background-color: $c-positive;
+    color: $c-white;
+  }
+
+  i {
+    margin-right: 5px;
+    margin-top: 3px;
+
+    &:hover {
+      cursor: pointer;
+    }
+  }
+
+  .fa {
+    margin-left: 1px;
+    margin-top: 2px;
+
+    &.fa-upload {
+      margin-top: 1px;
+    }
+  }
+
+  .icon_arangodb {
+    font-size: 14pt;
+
+    &:first-child {
+      margin-right: 10px;
+    }
+  }
+
+  .fa-comment,
+  .fa-comment-o {
+    font-size: 15px;
+    position: relative;
+    right: -2px;
+    top: -2px;
+  }
+
+  .arango-icon-disk {
+    margin-top: 1px;
+  }
+}

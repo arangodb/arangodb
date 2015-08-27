@@ -1755,7 +1755,7 @@ body, input, textarea, .page-title span, .pingback a.url {
 .fa-medium:before {
   content: "\f23a"; }
 
-.link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu, .navlogo, .navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .machineClass, .scenarioMachine, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar {
+.dropdown-toolbar, .link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu, .navlogo, .navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .machineClass, .scenarioMachine, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .dashboard-legend, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar {
   float: left; }
 
 .navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet span, div .bigtile .iconSet span, .search-field, .headerBar > div.headerButtonBar, .dashboard-sub-bar-menu {
@@ -1887,12 +1887,13 @@ input.search-input, .modal-body .select2-choices input, .modal-body input, .moda
     outline-color: transparent;
     outline-style: none; }
 
-.link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu {
+.dropdown-toolbar, .link-dropdown-menu, .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu {
   background-color: #f5f8f0;
   border-color: #666;
   border-radius: 3px;
   border-style: solid;
   border-width: 1px;
+  box-shadow: none;
   display: none;
   list-style: none;
   margin: 5px 0 0;
@@ -1901,23 +1902,23 @@ input.search-input, .modal-body .select2-choices input, .modal-body input, .moda
   right: 0;
   top: 80%;
   z-index: 1000; }
-  .link-dropdown-menu li, .user-dropdown-menu li, .script-dropdown-menu li, .gv-dropdown-menu li {
+  .dropdown-toolbar li, .link-dropdown-menu li, .user-dropdown-menu li, .script-dropdown-menu li, .gv-dropdown-menu li {
     line-height: 23px;
     white-space: nowrap;
     width: 100%; }
-  .link-dropdown-menu .dropdown-header, .user-dropdown-menu .dropdown-header, .script-dropdown-menu .dropdown-header, .gv-dropdown-menu .dropdown-header {
+  .dropdown-toolbar .dropdown-header, .link-dropdown-menu .dropdown-header, .user-dropdown-menu .dropdown-header, .script-dropdown-menu .dropdown-header, .gv-dropdown-menu .dropdown-header {
     color: #999;
     font-size: 15px;
     font-weight: 600;
     font-variant: small-caps;
     padding: 0; }
-  .link-dropdown-menu .dropdown-header:hover, .user-dropdown-menu .dropdown-header:hover, .script-dropdown-menu .dropdown-header:hover, .gv-dropdown-menu .dropdown-header:hover {
+  .dropdown-toolbar .dropdown-header:hover, .link-dropdown-menu .dropdown-header:hover, .user-dropdown-menu .dropdown-header:hover, .script-dropdown-menu .dropdown-header:hover, .gv-dropdown-menu .dropdown-header:hover {
     cursor: default; }
-  .link-dropdown-menu .divider, .user-dropdown-menu .divider, .script-dropdown-menu .divider, .gv-dropdown-menu .divider {
+  .dropdown-toolbar .divider, .link-dropdown-menu .divider, .user-dropdown-menu .divider, .script-dropdown-menu .divider, .gv-dropdown-menu .divider {
     background-color: #666;
     height: 1px;
     margin: 10px 0 5px; }
-  .link-dropdown-menu a, .user-dropdown-menu a, .script-dropdown-menu a, .gv-dropdown-menu a {
+  .dropdown-toolbar a, .link-dropdown-menu a, .user-dropdown-menu a, .script-dropdown-menu a, .gv-dropdown-menu a {
     color: #fff;
     padding: 0 20px; }
 
@@ -2032,6 +2033,16 @@ input.search-input, .modal-body .select2-choices input, .modal-body input, .moda
 .dropdown-item a {
   border-bottom: 0 !important;
   font-weight: 300; }
+
+.dropdown-toolbar {
+  background-color: #fff !important;
+  border: 1px solid rgba(140, 138, 137, 0.25); }
+  .dropdown-toolbar li a {
+    font-weight: 100; }
+    .dropdown-toolbar li a:hover {
+      background: none;
+      background-color: #dee9cf !important;
+      color: #000 !important; }
 
 .link-dropdown-menu, .user-dropdown-menu {
   background-color: #fff;
@@ -2151,7 +2162,7 @@ div.footer-left {
       div.footer-left .social-icons i.fa-twitter {
         margin-left: -5px; }
       div.footer-left .social-icons i.fa-envelope {
-        margin-left: -18.5px; }
+        margin-left: -19px; }
       div.footer-left .social-icons i.fa-google {
         margin-left: -17px;
         margin-top: 7px; }
@@ -2166,6 +2177,7 @@ div.footer-center {
     background-color: #fff;
     border: 1px solid rgba(104, 103, 102, 0.1);
     border-radius: 20px;
+    margin-left: 1px;
     padding: 6px 2px;
     width: 20px; }
   div.footer-center i:hover {
@@ -2194,9 +2206,9 @@ div.footer-right {
     color: #8aa051 !important; }
 
 .button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close, .button-header {
-  -moz-border-radius: 4px;
-  -webkit-border-radius: 4px;
-  border-radius: 4px;
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
   -webkit-box-shadow: 0;
   -moz-box-shadow: 0;
   box-shadow: 0;
@@ -2319,9 +2331,9 @@ ul.headerButtonList {
     display: inline; }
 
 a.headerButton, a.button-gui {
-  -moz-border-radius: 2px;
-  -webkit-border-radius: 2px;
-  border-radius: 2px;
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  border-radius: 3px;
   -webkit-box-shadow: none;
   -moz-box-shadow: none;
   box-shadow: none;
@@ -2508,27 +2520,25 @@ div .tile, div .bigtile {
   margin-right: 6px;
   position: relative;
   text-align: center; }
+  div .tile:hover, div .bigtile:hover {
+    cursor: pointer; }
   div .tile .warning-icons, div .bigtile .warning-icons {
     background-color: #da4f49;
+    border-radius: 3px;
     color: #fff;
     font-size: 11px;
     height: 17px;
     left: 0;
     line-height: 13px;
+    margin-left: 5px;
+    margin-top: 5px;
     padding-left: 9px;
-    padding-right: 4px;
+    padding-right: 9px;
     position: absolute;
     top: 0; }
-    div .tile .warning-icons:before, div .bigtile .warning-icons:before {
-      border-right: 17px solid transparent;
-      border-top: 17px solid #da4f49;
-      content: '';
-      position: absolute;
-      right: -17px; }
     div .tile .warning-icons .fa, div .bigtile .warning-icons .fa {
+      font-size: 11pt;
       margin-left: 1px; }
-      div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
-        font-size: 8px; }
   div .tile .collection-type-icon, div .bigtile .collection-type-icon {
     color: #666;
     font-size: 30pt;
@@ -4842,6 +4852,13 @@ div.headerBar {
   div.headerBar input[type="radio"]:checked + label span {
     background: url('../img/check_radio_sheet.png') -57px top no-repeat; }
 
+.headerButtonList a.error {
+  color: #da4f49; }
+  .headerButtonList a.error:hover {
+    background-color: #da4f49;
+    border-color: #da4f49;
+    color: #fff; }
+
 .headerBar a.arangoHeader {
   color: #000;
   font-size: 13pt;
@@ -5284,27 +5301,25 @@ div .tile, div .bigtile {
   margin-right: 6px;
   position: relative;
   text-align: center; }
+  div .tile:hover, div .bigtile:hover {
+    cursor: pointer; }
   div .tile .warning-icons, div .bigtile .warning-icons {
     background-color: #da4f49;
+    border-radius: 3px;
     color: #fff;
     font-size: 11px;
     height: 17px;
     left: 0;
     line-height: 13px;
+    margin-left: 5px;
+    margin-top: 5px;
     padding-left: 9px;
-    padding-right: 4px;
+    padding-right: 9px;
     position: absolute;
     top: 0; }
-    div .tile .warning-icons:before, div .bigtile .warning-icons:before {
-      border-right: 17px solid transparent;
-      border-top: 17px solid #da4f49;
-      content: '';
-      position: absolute;
-      right: -17px; }
     div .tile .warning-icons .fa, div .bigtile .warning-icons .fa {
+      font-size: 11pt;
       margin-left: 1px; }
-      div .tile .warning-icons .fa:before, div .bigtile .warning-icons .fa:before {
-        font-size: 8px; }
   div .tile .collection-type-icon, div .bigtile .collection-type-icon {
     color: #666;
     font-size: 30pt;
