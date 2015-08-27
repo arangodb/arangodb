@@ -41,6 +41,29 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief determines if a key corresponds to an element
+////////////////////////////////////////////////////////////////////////////////
+
+static bool isEqualKeyElement (char const* key,
+                               TRI_doc_mptr_t const element) {
+
+  // Performance?
+  // uint64_t hash = hashKey(key);
+  // return (hash == element->_hash &&
+  return strcmp(key, TRI_EXTRACT_MARKER_KEY(element)) == 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines if two elements are equal
+////////////////////////////////////////////////////////////////////////////////
+
+static bool isEqualElementElement (TRI_doc_mptr_t const* left,
+                                   TRI_doc_mptr_t const* right) {
+  return left->_hash == right->_hash
+         && strcmp(TRI_EXTRACT_MARKER_KEY(left), TRI_EXTRACT_MARKER_KEY(right)) == 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief comparison function, compares a master pointer to another
 ////////////////////////////////////////////////////////////////////////////////
 
