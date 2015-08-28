@@ -2666,9 +2666,13 @@ function GeneralGraphCommonNeighborsSuite() {
     testCommonPropertiesWithFilters: function () {
       actual = testGraph._commonProperties({ageing : true} , {harald : 'meier'},  {});
       assertEqual(actual[0][v5][0]._id  , v6);
-      assertEqual(actual[1][v6][0]._id  , v4);
-      assertEqual(actual[1][v6][1]._id  , v8);
-      assertEqual(actual[1][v6][2]._id  , v7);
+      var proV6 = actual[1][v6];
+      proV6.sort(function(a, b) {
+        return a._id < b._id;
+      });
+      assertEqual(proV6[0], v4);
+      assertEqual(proV6[1], v7);
+      assertEqual(proV6[2], v8);
 
       actual = testGraph._countCommonProperties({ageing : true} , {harald : 'meier'},  {});
       assertEqual(actual, [
