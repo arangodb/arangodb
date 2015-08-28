@@ -40,10 +40,6 @@ using namespace triagens::arango;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-static void FreeElement (TRI_doc_mptr_t* element) {
-  // TODO implement
-}
-
 static uint64_t HashKey (char const* key) {
   return TRI_FnvHashString(key);
 }
@@ -102,9 +98,6 @@ PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection)
 }
 
 PrimaryIndex::~PrimaryIndex () {
-  if (_primaryIndex != nullptr) {
-    _primaryIndex->invokeOnAllElements(FreeElement);
-  }
   delete _primaryIndex;
 }
 
