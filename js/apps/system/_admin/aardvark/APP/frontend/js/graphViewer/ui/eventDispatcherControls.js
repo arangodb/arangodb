@@ -68,7 +68,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       },
       trash: {
         icon: "minus-square",
-        title: "Remove a node."
+        title: "Remove a node/edge."
       },
       drag: {
         icon: "hand-rock-o",
