@@ -1353,25 +1353,8 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     }
 
     TRI_ASSERT(header != nullptr);
-
     // insert into primary index
     if (state->_initialCount != -1) {
-      // we know how many documents there will be, at least approximately...
-      // the index was likely already allocated to be big enough for this number of documents
-
-      if (state->_documents % 128 == 0) {
-        // to be on the safe size, we still need to check if the index will burst from time to time
-        res = primaryIndex->resize(42);
-      
-        if (res != TRI_ERROR_NO_ERROR) {
-          // insertion failed
-          LOG_ERROR("inserting document into indexes failed");
-          document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
-
-          return res;
-        }
-      }
-     
       // we can now use an optimized insert method
       primaryIndex->insertKey(header, slot);
     }
