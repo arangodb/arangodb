@@ -161,11 +161,6 @@ namespace triagens {
 
         void invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)>);
         
-        // Do we need this?
-        TRI_PrimaryIndex_t* internals () {
-          return _primaryIndex;
-        } 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
