@@ -96,35 +96,6 @@ static int CompareKeyElement (TRI_shaped_json_t const* left,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compares a key with an element in a skip list, generic callback
-////////////////////////////////////////////////////////////////////////////////
-
-static int CmpKeyElm (void* sli,
-                      TRI_skiplist_index_key_t const* leftKey,
-                      TRI_index_element_t const* rightElement) {
-
-  TRI_ASSERT(nullptr != left);
-  TRI_ASSERT(nullptr != right);
-
-  triagens::arango::SkiplistIndex2* skiplistindex = static_cast<triagens::arango::SkiplistIndex2*>(sli);
-  auto shaper = skiplistindex->collection()->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  // Note that the key might contain fewer fields than there are indexed
-  // attributes, therefore we only run the following loop to
-  // leftKey->_numFields.
-  for (size_t j = 0;  j < leftKey->_numFields;  j++) {
-    int compareResult = CompareKeyElement(&leftKey->_fields[j], rightElement, j, shaper);
-
-    if (compareResult != 0) {
-      return compareResult;
-    }
-  }
-
-  return 0;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compares elements, version with proper types
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -149,66 +120,6 @@ static int CompareElementElement (TRI_index_element_t const* left,
                                shaper);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares two elements in a skip list, this is the generic callback
-////////////////////////////////////////////////////////////////////////////////
-
-static int CmpElmElm (void* sli,
-                      TRI_index_element_t const* leftElement,
-                      TRI_index_element_t const* rightElement,
-                      triagens::basics::SkipListCmpType cmptype) {
-
-  TRI_ASSERT(nullptr != leftElement);
-  TRI_ASSERT(nullptr != rightElement);
-
-  // ..........................................................................
-  // The document could be the same -- so no further comparison is required.
-  // ..........................................................................
-
-  SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
-
-  if (leftElement == rightElement ||
-      (! skiplistindex->skiplist->isArray() && leftElement->document() == rightElement->document())) {
-    return 0;
-  }
-
-  auto shaper = skiplistindex->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  for (size_t j = 0;  j < skiplistindex->_numFields;  j++) {
-    int compareResult = CompareElementElement(leftElement,
-                                              j,
-                                              rightElement,
-                                              j,
-                                              shaper);
-
-    if (compareResult != 0) {
-      return compareResult;
-    }
-  }
-
-  // ...........................................................................
-  // This is where the difference between the preorder and the proper total
-  // order comes into play. Here if the 'keys' are the same,
-  // but the doc ptr is different (which it is since we are here), then
-  // we return 0 if we use the preorder and look at the _key attribute
-  // otherwise.
-  // ...........................................................................
-
-  if (triagens::basics::SKIPLIST_CMP_PREORDER == cmptype) {
-    return 0;
-  }
-
-  // We break this tie in the key comparison by looking at the key:
-  int compareResult = strcmp(TRI_EXTRACT_MARKER_KEY(leftElement->document()),    // ONLY IN INDEX, PROTECTED by RUNTIME
-                             TRI_EXTRACT_MARKER_KEY(rightElement->document()));  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  if (compareResult < 0) {
-    return -1;
-  }
-  else if (compareResult > 0) {
-    return 1;
-  }
-  return 0;
-}
 
 static int FillLookupOperator (TRI_index_operator_t* slOperator,
                                TRI_document_collection_t* document) {
@@ -301,7 +212,7 @@ size_t SkiplistIterator::size () {
 }
 
 void SkiplistIterator::initCursor () {
-  size_t const n =  _intervals.size();
+  size_t const n = size();
   if (0 < n) {
     if (_reverse) {
       // start at last interval, right endpoint
@@ -315,7 +226,7 @@ void SkiplistIterator::initCursor () {
     }
   }
   else {
-    cursor = nullptr;
+    _cursor = nullptr;
   }
 }
 
@@ -326,7 +237,7 @@ bool SkiplistIterator::hasNext () {
   return hasNextIteration();
 }
 
-bool SkiplistIterator::next () {
+TRI_index_element_t* SkiplistIterator::next () {
   if (_reverse) {
     return prevIteration();
   }
@@ -396,7 +307,7 @@ bool SkiplistIterator::hasNextIteration () {
 TRI_index_element_t* SkiplistIterator::prevIteration () {
   static const int64_t jumpSize = 1;
 
-  TRI_skiplist_iterator_interval_t* interval = _intervals[_currentInterval];
+  SkiplistIteratorInterval* interval = _intervals[_currentInterval];
 
   if (interval == nullptr) {
     return nullptr;
@@ -418,7 +329,7 @@ TRI_index_element_t* SkiplistIterator::prevIteration () {
     --_currentInterval;
     interval = _intervals[_currentInterval];
     TRI_ASSERT(interval != nullptr);
-    _cursor = _rightEndPoint;
+    _cursor = interval->_rightEndPoint;
     result = _index->prevNode(_cursor);
   }
   _cursor = result;
@@ -438,7 +349,7 @@ TRI_index_element_t* SkiplistIterator::nextIteration () {
     return nullptr;
   }
   
-  TRI_skiplist_iterator_interval_t* interval = _intervals[_currentInterval];
+  SkiplistIteratorInterval* interval = _intervals[_currentInterval];
 
   if (interval == nullptr) {
     return nullptr;
@@ -446,7 +357,7 @@ TRI_index_element_t* SkiplistIterator::nextIteration () {
 
   while (true) {   // will be left by break
     _cursor = _cursor->nextNode();
-    if (_cursor != _rightEndPoint) {
+    if (_cursor != interval->_rightEndPoint) {
       // Note that _cursor can be nullptr here!
       break;   // we found a next one
     }
@@ -535,7 +446,7 @@ triagens::basics::Json SkiplistIndex2::toJson (TRI_memory_zone_t* zone,
 triagens::basics::Json SkiplistIndex2::toJsonFigures (TRI_memory_zone_t* zone) const {
   triagens::basics::Json json(triagens::basics::Json::Object);
   json("memory", triagens::basics::Json(static_cast<double>(memory())));
-  _skiplistIndex->skiplist->appendToJson(zone, json);
+  _skiplistIndex->appendToJson(zone, json);
 
   return json;
 }
@@ -548,7 +459,7 @@ int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc,
                             bool) {
 
   auto allocate = [this] () -> TRI_index_element_t* {
-    return TRI_index_element_t::allocate(SkiplistIndex_ElementSize(_skiplistIndex), false);
+    return TRI_index_element_t::allocate(elementSize(), false);
   };
   std::vector<TRI_index_element_t*> elements;
 
@@ -568,7 +479,7 @@ int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc,
 
   size_t count = elements.size();
   for (size_t i = 0; i < count; ++i) {
-    res = _skiplistIndex->skiplist->insert(elements[i]);
+    res = _skiplistIndex->insert(elements[i]);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_index_element_t::free(elements[i]);
@@ -577,7 +488,7 @@ int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc,
         TRI_index_element_t::free(elements[j]);
       }
       for (size_t j = 0; j < i; ++j) {
-        _skiplistIndex->skiplist->remove(elements[j]);
+        _skiplistIndex->remove(elements[j]);
         // No need to free elements[j] skiplist has taken over already
       }
 
@@ -595,7 +506,7 @@ int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc,
                             bool) {
 
   auto allocate = [this] () -> TRI_index_element_t* {
-    return TRI_index_element_t::allocate(SkiplistIndex_ElementSize(_skiplistIndex), false);
+    return TRI_index_element_t::allocate(elementSize(), false);
   };
 
   std::vector<TRI_index_element_t*> elements;
@@ -606,7 +517,7 @@ int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc,
 
   size_t count = elements.size();
   for (size_t i = 0; i < count; ++i) {
-    res = _skiplistIndex->skiplist->remove(elements[i]);
+    res = _skiplistIndex->remove(elements[i]);
     TRI_index_element_t::free(elements[i]);
   }
   return res;
@@ -639,14 +550,14 @@ SkiplistIterator* SkiplistIndex2::lookup (TRI_index_operator_t* slOperator,
 
     return nullptr;
   }
-  std::unique_ptr<SkiplistIterator> results = new SkiplistIterator(_skiplistIndex, reverse);
+  std::unique_ptr<SkiplistIterator> results(new SkiplistIterator(_skiplistIndex, reverse));
 
   if (!results) {
     // Check if we could not get an iterator.
     return nullptr; // calling procedure needs to care when the iterator is null
   }
 
-  result->findHelper(slOperator, &(results->_intervals));
+  results->findHelper(slOperator, &(results->_intervals));
 
   results->initCursor();
 
@@ -658,11 +569,94 @@ SkiplistIterator* SkiplistIndex2::lookup (TRI_index_operator_t* slOperator,
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-size_t SkiplistIndex::elementSize () const {
+size_t SkiplistIndex2::elementSize () const {
   return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numFields());
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a key with an element in a skip list, generic callback
+////////////////////////////////////////////////////////////////////////////////
 
+int SkiplistIndex2::CmpKeyElm (TRI_skiplist_index_key_t const* leftKey,
+                               TRI_index_element_t const* rightElement) {
+
+  TRI_ASSERT(nullptr != leftKey);
+  TRI_ASSERT(nullptr != rightElement);
+
+  auto shaper = collection()->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+  // Note that the key might contain fewer fields than there are indexed
+  // attributes, therefore we only run the following loop to
+  // leftKey->_numFields.
+  for (size_t j = 0;  j < leftKey->_numFields;  j++) {
+    int compareResult = CompareKeyElement(&leftKey->_fields[j], rightElement, j, shaper);
+
+    if (compareResult != 0) {
+      return compareResult;
+    }
+  }
+
+  return 0;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares two elements in a skip list, this is the generic callback
+////////////////////////////////////////////////////////////////////////////////
+
+int SkiplistIndex2::CmpElmElm (TRI_index_element_t const* leftElement,
+                               TRI_index_element_t const* rightElement,
+                               triagens::basics::SkipListCmpType cmptype) {
+
+  TRI_ASSERT(nullptr != leftElement);
+  TRI_ASSERT(nullptr != rightElement);
+
+  // ..........................................................................
+  // The document could be the same -- so no further comparison is required.
+  // ..........................................................................
+  if (leftElement == rightElement ||
+      (! _skiplistIndex->isArray() && leftElement->document() == rightElement->document())) {
+    return 0;
+  }
+
+  auto shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  for (size_t j = 0;  j < numFields();  j++) {
+    int compareResult = CompareElementElement(leftElement,
+                                              j,
+                                              rightElement,
+                                              j,
+                                              shaper);
+
+    if (compareResult != 0) {
+      return compareResult;
+    }
+  }
+
+  // ...........................................................................
+  // This is where the difference between the preorder and the proper total
+  // order comes into play. Here if the 'keys' are the same,
+  // but the doc ptr is different (which it is since we are here), then
+  // we return 0 if we use the preorder and look at the _key attribute
+  // otherwise.
+  // ...........................................................................
+
+  if (triagens::basics::SKIPLIST_CMP_PREORDER == cmptype) {
+    return 0;
+  }
+
+  // We break this tie in the key comparison by looking at the key:
+  int compareResult = strcmp(TRI_EXTRACT_MARKER_KEY(leftElement->document()),    // ONLY IN INDEX, PROTECTED by RUNTIME
+                             TRI_EXTRACT_MARKER_KEY(rightElement->document()));  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+  if (compareResult < 0) {
+    return -1;
+  }
+  else if (compareResult > 0) {
+    return 1;
+  }
+  return 0;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

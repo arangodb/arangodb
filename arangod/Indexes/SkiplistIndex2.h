@@ -72,6 +72,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
         // Shorthand for the skiplist node
         typedef triagens::basics::SkipListNode<TRI_skiplist_index_key_t, TRI_index_element_t> Node;
+        typedef triagens::basics::SkipList<TRI_skiplist_index_key_t, TRI_index_element_t> TRI_Skiplist;
 
         struct SkiplistIteratorInterval {
           Node* _leftEndPoint;
@@ -81,8 +82,8 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-        triagens::arango::SkiplistIndex2 const* _index;
-        std::vector<SkiplistIteratorInterval*> _invervals;
+        TRI_Skiplist* const _index;
+        std::vector<SkiplistIteratorInterval*> _intervals;
         size_t _currentInterval; // starts with 0, current interval used
         bool _reverse;
         Node* _cursor;
@@ -94,7 +95,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
         SkiplistIterator (
-          triagens::arango::SkiplistIndex2 const* idx,
+          triagens::basics::SkipList<TRI_skiplist_index_key_t, TRI_index_element_t>* const idx,
           bool reverse
         ) : _index(idx) {
           _currentInterval = 0;
@@ -144,6 +145,7 @@ namespace triagens {
 
     class SkiplistIndex2 : public PathBasedIndex {
 
+      typedef triagens::basics::SkipList<TRI_skiplist_index_key_t, TRI_index_element_t> TRI_Skiplist;
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -202,6 +204,12 @@ namespace triagens {
       private:
         size_t elementSize () const;
 
+        int CmpElmElm (TRI_index_element_t const* leftElement,
+                       TRI_index_element_t const* rightElement,
+                       triagens::basics::SkipListCmpType cmptype);
+
+        int CmpKeyElm (TRI_skiplist_index_key_t const* leftKey,
+                       TRI_index_element_t const* rightElement);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -213,7 +221,7 @@ namespace triagens {
 /// @brief the actual skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::SkipList<TRI_skiplist_index_key_t, TRI_index_element_t>* _skiplistIndex;
+        TRI_Skiplist* _skiplistIndex;
 
     };
 
