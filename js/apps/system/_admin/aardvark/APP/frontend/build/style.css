@@ -6591,7 +6591,7 @@ svg.graph-viewer {
   top: 10px;
   z-index: 0; }
   svg.graph-viewer text {
-    font-size: 16px;
+    max-width: 90px;
     pointer-events: none; }
 
 div.gv-background {
@@ -6604,7 +6604,7 @@ div.gv-colour-list {
   border-radius: 3px;
   max-height: 350px;
   max-width: 130px;
-  overflow-x: none;
+  overflow-x: none !important;
   overflow-y: auto;
   position: absolute;
   right: 8px;
@@ -6613,7 +6613,10 @@ div.gv-colour-list {
   z-index: 1; }
   div.gv-colour-list li {
     float: none;
-    padding: 2px 6px; }
+    padding: 2px 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap; }
   div.gv-colour-list ul ul {
     border-left: 1px solid rgba(104, 103, 102, 0.1);
     border-right: 1px solid rgba(104, 103, 102, 0.1); }

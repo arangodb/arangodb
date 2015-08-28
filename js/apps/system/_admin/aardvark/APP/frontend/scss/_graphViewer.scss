@@ -72,7 +72,7 @@ svg.graph-viewer {
   z-index: 0;
 
   text {
-    font-size: 16px;
+    max-width: 90px;
     pointer-events: none;
   }
 }
@@ -94,7 +94,7 @@ div.gv-colour-list {
   border-radius: 3px;
   max-height: 350px;
   max-width: 130px;
-  overflow-x: none;
+  overflow-x: none !important;
   overflow-y: auto;
   position: absolute;
   right: 8px;
@@ -105,6 +105,9 @@ div.gv-colour-list {
   li {
     float: none;
     padding: 2px 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   ul {
