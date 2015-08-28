@@ -101,12 +101,13 @@ function NodeShaper(parent, flags, idfunc) {
       chunks[0] = $.trim(chunks[0]);
       chunks[1] = $.trim(chunks[1]);
       if (chunks[0].length > 12) {
-        chunks[0] = $.trim(label.substring(0,10)) + "-";
+        //chunks[0] = $.trim(label.substring(0,10)) + "-";
+        chunks[0] = $.trim(label.substring(0,10));
         chunks[1] = $.trim(label.substring(10));
         if (chunks[1].length > 12) {
           chunks[1] = chunks[1].split(/\W/)[0];
-          if (chunks[1].length > 12) {
-            chunks[1] = chunks[1].substring(0,10) + "...";
+          if (chunks[1].length > 2) {
+            chunks[1] = chunks[1].substring(0,5) + "...";
           }
         }
         chunks.length = 2;
@@ -338,6 +339,25 @@ function NodeShaper(parent, flags, idfunc) {
       }
     },
 
+    adjustLabelFontSize = function (nodes) {
+      var texts = [], childText = '';
+
+      _.each(nodes, function(node) {
+        texts = $(node).find('text');
+
+        $(node).css("width", "90px");
+        $(node).css("height", "36px");
+
+         $(node).textfill({
+           innerTag: 'text',
+           maxFontPixels: 16,
+           minFontPixels: 10,
+           explicitWidth: 90,
+           explicitHeight: 36,
+         });
+      });
+    },
+
     parseLabelFlag = function (label) {
       if (_.isFunction(label)) {
         addLabel = function (node) {
@@ -347,17 +367,28 @@ function NodeShaper(parent, flags, idfunc) {
             .attr("stroke", "none"); // Make it readable
             textN.each(function(d) {
               var chunks = splitLabel(label(d));
+              var title = chunks[0];
+              if (chunks.length === 2) {
+                title = title + chunks[1];
+              }
+              if (title.length > 15) {
+                title = title.substring(0, 13) + "...";
+              }
+              if (title === undefined || title === '') {
+                title = "ATTR NOT SET";
+              }
               d3.select(this).append("tspan")
                 .attr("x", "0")
                 .attr("dy", "5")
-                .text(chunks[0]);
-              if (chunks.length === 2) {
+                .text(title);
+              /*if (chunks.length === 2) {
                 d3.select(this).append("tspan")
                   .attr("x", "0")
                   .attr("dy", "16")
                   .text(chunks[1]);
-              }
+              }*/
             });
+          adjustLabelFontSize(node);
         };
       } else {
         addLabel = function (node) {
@@ -367,17 +398,28 @@ function NodeShaper(parent, flags, idfunc) {
             .attr("stroke", "none"); // Make it readable
           textN.each(function(d) {
             var chunks = splitLabel(findFirstValue(label, d._data));
+            var title = chunks[0];
+            if (chunks.length === 2) {
+              title = title + chunks[1];
+            }
+            if (title.length > 15) {
+              title = title.substring(0, 13) + "...";
+            }
+            if (title === undefined || title === '') {
+              title = "ATTR NOT SET";
+            }
             d3.select(this).append("tspan")
               .attr("x", "0")
               .attr("dy", "5")
-              .text(chunks[0]);
-            if (chunks.length === 2) {
+              .text(title);
+            /*if (chunks.length === 2) {
               d3.select(this).append("tspan")
                 .attr("x", "0")
                 .attr("dy", "16")
                 .text(chunks[1]);
-            }
+            }*/
           });
+          adjustLabelFontSize(node);
         };
       }
     },
