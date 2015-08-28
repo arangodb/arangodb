@@ -33,7 +33,8 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
 #include "Aql/types.h"
-#include "VocBase/document-collection.h"
+
+struct TRI_document_collection_t;
 
 namespace triagens {
   namespace aql {
