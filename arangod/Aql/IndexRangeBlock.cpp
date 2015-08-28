@@ -123,10 +123,7 @@ IndexRangeBlock::~IndexRangeBlock () {
     delete _condition;
   }
     
-  if (_skiplistIterator != nullptr) {
-    TRI_FreeSkiplistIterator(_skiplistIterator);
-  }
- 
+  delete _skiplistIterator;
   delete _edgeIndexIterator; 
 }
 
@@ -1432,9 +1429,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
     }
   }
   
-  if (_skiplistIterator != nullptr) {
-    TRI_FreeSkiplistIterator(_skiplistIterator);
-  }
+  delete _skiplistIterator;
 
   _skiplistIterator = static_cast<triagens::arango::SkiplistIndex2*>(idx)->lookup(skiplistOperator, en->_reverse);
 
@@ -1467,10 +1462,10 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
   try {
     size_t nrSent = 0;
     while (nrSent < atMost && _skiplistIterator !=nullptr) { 
-      TRI_index_element_t* indexElement = _skiplistIterator->next(_skiplistIterator);
+      TRI_index_element_t* indexElement = _skiplistIterator->next();
 
       if (indexElement == nullptr) {
-        TRI_FreeSkiplistIterator(_skiplistIterator);
+        delete _skiplistIterator;
         _skiplistIterator = nullptr;
         if (++_posInRanges < _condition->size()) {
           getSkiplistIterator(_condition->at(_sortCoords[_posInRanges]));
@@ -1489,7 +1484,7 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
   }
   catch (...) {
     if (_skiplistIterator != nullptr) {
-      TRI_FreeSkiplistIterator(_skiplistIterator);
+      delete _skiplistIterator;
       _skiplistIterator = nullptr;
     }
     throw;
