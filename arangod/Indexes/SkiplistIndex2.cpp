@@ -39,6 +39,177 @@ using namespace triagens::arango;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees an element in the skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeElm (void* e) {
+  auto element = static_cast<TRI_index_element_t*>(e);
+  TRI_index_element_t::free(element);
+}
+
+
+// .............................................................................
+// recall for all of the following comparison functions:
+//
+// left < right  return -1
+// left > right  return  1
+// left == right return  0
+//
+// furthermore:
+//
+// the following order is currently defined for placing an order on documents
+// undef < null < boolean < number < strings < lists < hash arrays
+// note: undefined will be treated as NULL pointer not NULL JSON OBJECT
+// within each type class we have the following order
+// boolean: false < true
+// number: natural order
+// strings: lexicographical
+// lists: lexicographically and within each slot according to these rules.
+// ...........................................................................
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a key with an element, version with proper types
+////////////////////////////////////////////////////////////////////////////////
+
+static int CompareKeyElement (TRI_shaped_json_t const* left,
+                              TRI_index_element_t const* right,
+                              size_t rightPosition,
+                              VocShaper* shaper) {
+  TRI_ASSERT(nullptr != left);
+  TRI_ASSERT(nullptr != right);
+
+  auto rightSubobjects = right->subObjects();
+
+  return TRI_CompareShapeTypes(nullptr,
+                               nullptr,
+                               left,
+                               shaper,
+                               right->document()->getShapedJsonPtr(),
+                               &rightSubobjects[rightPosition],
+                               nullptr,
+                               shaper);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares a key with an element in a skip list, generic callback
+////////////////////////////////////////////////////////////////////////////////
+
+static int CmpKeyElm (void* sli,
+                      TRI_skiplist_index_key_t const* leftKey,
+                      TRI_index_element_t const* rightElement) {
+
+  TRI_ASSERT(nullptr != left);
+  TRI_ASSERT(nullptr != right);
+
+  triagens::arango::SkiplistIndex2* skiplistindex = static_cast<triagens::arango::SkiplistIndex2*>(sli);
+  auto shaper = skiplistindex->collection()->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+  // Note that the key might contain fewer fields than there are indexed
+  // attributes, therefore we only run the following loop to
+  // leftKey->_numFields.
+  for (size_t j = 0;  j < leftKey->_numFields;  j++) {
+    int compareResult = CompareKeyElement(&leftKey->_fields[j], rightElement, j, shaper);
+
+    if (compareResult != 0) {
+      return compareResult;
+    }
+  }
+
+  return 0;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares elements, version with proper types
+////////////////////////////////////////////////////////////////////////////////
+
+static int CompareElementElement (TRI_index_element_t const* left,
+                                  size_t leftPosition,
+                                  TRI_index_element_t const* right,
+                                  size_t rightPosition,
+                                  VocShaper* shaper) {
+  TRI_ASSERT(nullptr != left);
+  TRI_ASSERT(nullptr != right);
+  
+  auto leftSubobjects = left->subObjects();
+  auto rightSubobjects = right->subObjects();
+
+  return TRI_CompareShapeTypes(left->document()->getShapedJsonPtr(),
+                               &leftSubobjects[leftPosition],
+                               nullptr,
+                               shaper,
+                               right->document()->getShapedJsonPtr(),
+                               &rightSubobjects[rightPosition],
+                               nullptr,
+                               shaper);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares two elements in a skip list, this is the generic callback
+////////////////////////////////////////////////////////////////////////////////
+
+static int CmpElmElm (void* sli,
+                      TRI_index_element_t const* leftElement,
+                      TRI_index_element_t const* rightElement,
+                      triagens::basics::SkipListCmpType cmptype) {
+
+  TRI_ASSERT(nullptr != leftElement);
+  TRI_ASSERT(nullptr != rightElement);
+
+  // ..........................................................................
+  // The document could be the same -- so no further comparison is required.
+  // ..........................................................................
+
+  SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
+
+  if (leftElement == rightElement ||
+      (! skiplistindex->skiplist->isArray() && leftElement->document() == rightElement->document())) {
+    return 0;
+  }
+
+  auto shaper = skiplistindex->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  for (size_t j = 0;  j < skiplistindex->_numFields;  j++) {
+    int compareResult = CompareElementElement(leftElement,
+                                              j,
+                                              rightElement,
+                                              j,
+                                              shaper);
+
+    if (compareResult != 0) {
+      return compareResult;
+    }
+  }
+
+  // ...........................................................................
+  // This is where the difference between the preorder and the proper total
+  // order comes into play. Here if the 'keys' are the same,
+  // but the doc ptr is different (which it is since we are here), then
+  // we return 0 if we use the preorder and look at the _key attribute
+  // otherwise.
+  // ...........................................................................
+
+  if (triagens::basics::SKIPLIST_CMP_PREORDER == cmptype) {
+    return 0;
+  }
+
+  // We break this tie in the key comparison by looking at the key:
+  int compareResult = strcmp(TRI_EXTRACT_MARKER_KEY(leftElement->document()),    // ONLY IN INDEX, PROTECTED by RUNTIME
+                             TRI_EXTRACT_MARKER_KEY(rightElement->document()));  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+  if (compareResult < 0) {
+    return -1;
+  }
+  else if (compareResult > 0) {
+    return 1;
+  }
+  return 0;
+}
+
 static int FillLookupOperator (TRI_index_operator_t* slOperator,
                                TRI_document_collection_t* document) {
   if (slOperator == nullptr) {
@@ -118,6 +289,181 @@ static int FillLookupOperator (TRI_index_operator_t* slOperator,
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                            class SkiplistIterator
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+size_t SkiplistIterator::size () {
+  return _intervals.size();
+}
+
+void SkiplistIterator::initCursor () {
+  size_t const n =  _intervals.size();
+  if (0 < n) {
+    if (_reverse) {
+      // start at last interval, right endpoint
+      _currentInterval = n - 1;
+      _cursor = _intervals[n -1]->_rightEndPoint;
+    }
+    else {
+      // start at first interval, left endpoint
+      _currentInterval = 0;
+      _cursor = _intervals[0]->_leftEndPoint;
+    }
+  }
+  else {
+    cursor = nullptr;
+  }
+}
+
+bool SkiplistIterator::hasNext () {
+  if (_reverse) {
+    return hasPrevIteration();
+  }
+  return hasNextIteration();
+}
+
+bool SkiplistIterator::next () {
+  if (_reverse) {
+    return prevIteration();
+  }
+  return nextIteration();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Attempts to determine if there is a previous document within an
+/// interval or before it - without advancing the iterator.
+////////////////////////////////////////////////////////////////////////////////
+
+bool SkiplistIterator::hasPrevIteration () {
+  // ...........................................................................
+  // if we have more intervals than the one we are currently working
+  // on then of course we have a previous doc, because intervals are nonempty.
+  // ...........................................................................
+  if (_currentInterval > 0) {
+    return true;
+  }
+
+  Node const* leftNode = _index->prevNode(_cursor);
+
+  // Note that leftNode can be nullptr here!
+  // ...........................................................................
+  // If the leftNode == left end point AND there are no more intervals
+  // then we have no next.
+  // ...........................................................................
+  return leftNode != _intervals[_currentInterval]->_leftEndPoint;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Attempts to determine if there is a next document within an
+/// interval - without advancing the iterator.
+////////////////////////////////////////////////////////////////////////////////
+
+bool SkiplistIterator::hasNextIteration () {
+  if (_cursor == nullptr) {
+    return false;
+  }
+
+  // ...........................................................................
+  // if we have more intervals than the one we are currently working
+  // on then of course we have a next doc, since intervals are nonempty.
+  // ...........................................................................
+  if (_intervals.size() - 1 > _currentInterval) {
+    return true;
+  }
+
+  Node const* leftNode = _cursor->nextNode();
+
+  // Note that leftNode can be nullptr here!
+  // ...........................................................................
+  // If the left == right end point AND there are no more intervals then we have
+  // no next.
+  // ...........................................................................
+  return leftNode != _intervals[_currentInterval]->_rightEndPoint;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Jumps backwards by jumpSize and returns the document
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_element_t* SkiplistIterator::prevIteration () {
+  static const int64_t jumpSize = 1;
+
+  TRI_skiplist_iterator_interval_t* interval = _intervals[_currentInterval];
+
+  if (interval == nullptr) {
+    return nullptr;
+  }
+
+  // ...........................................................................
+  // use the current cursor and move jumpSize backward
+  // ...........................................................................
+
+  Node* result = nullptr; 
+
+  result = _index->prevNode(_cursor);
+
+  if (result == interval->_leftEndPoint) {
+    if (_currentInterval == 0) {
+      _cursor = nullptr;  // exhausted
+      return nullptr;
+    }
+    --_currentInterval;
+    interval = _intervals[_currentInterval];
+    TRI_ASSERT(interval != nullptr);
+    _cursor = _rightEndPoint;
+    result = _index->prevNode(_cursor);
+  }
+  _cursor = result;
+
+  TRI_ASSERT(result != nullptr);
+  return result->document();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Jumps forwards by jumpSize and returns the document
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_index_element_t* SkiplistIterator::nextIteration () {
+
+  if (_cursor == nullptr) {
+    // In this case the iterator is exhausted or does not even have intervals.
+    return nullptr;
+  }
+  
+  TRI_skiplist_iterator_interval_t* interval = _intervals[_currentInterval];
+
+  if (interval == nullptr) {
+    return nullptr;
+  }
+
+  while (true) {   // will be left by break
+    _cursor = _cursor->nextNode();
+    if (_cursor != _rightEndPoint) {
+      // Note that _cursor can be nullptr here!
+      break;   // we found a next one
+    }
+    if (_currentInterval == _intervals.size() - 1) {
+      _cursor = nullptr;  // exhausted
+      return nullptr;
+    }
+    ++_currentInterval;
+    interval = _intervals[_currentInterval];
+    TRI_ASSERT(interval != nullptr);
+    _cursor = interval->_leftEndPoint;
+  }
+
+  return _cursor->document();
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                               class SkiplistIndex
 // -----------------------------------------------------------------------------
 
@@ -137,11 +483,9 @@ SkiplistIndex2::SkiplistIndex2 (TRI_idx_iid_t iid,
   : PathBasedIndex(iid, collection, fields, unique, sparse),
     _skiplistIndex(nullptr) {
 
-  _skiplistIndex = SkiplistIndex_new(collection,
-                                     _paths.size(),
-                                     unique,
-                                     _useExpansion);
-
+  _skiplistIndex = new triagens::basics::SkipList(
+                                           CmpElmElm, CmpKeyElm, skiplistIndex,
+                                           FreeElm, unique, _useExpansion);
   if (_skiplistIndex == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -153,7 +497,7 @@ SkiplistIndex2::SkiplistIndex2 (TRI_idx_iid_t iid,
 
 SkiplistIndex2::~SkiplistIndex2 () {
   if (_skiplistIndex != nullptr) {
-    SkiplistIndex_free(_skiplistIndex);
+    delete _skiplistIndex;
   }
 }
 
@@ -162,7 +506,12 @@ SkiplistIndex2::~SkiplistIndex2 () {
 // -----------------------------------------------------------------------------
         
 size_t SkiplistIndex2::memory () const {
-  return SkiplistIndex_memoryUsage(_skiplistIndex);
+  return _skiplistIndex->memoryUsage() +
+         static_cast<size_t>(_skiplistIndex->getNrUsed()) * elementSize();
+}
+
+size_t SkiplistIndex2::numFields () const {
+  return _fields.size();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,7 +620,7 @@ int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc,
 /// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_iterator_t* SkiplistIndex2::lookup (TRI_index_operator_t* slOperator,
+SkiplistIterator* SkiplistIndex2::lookup (TRI_index_operator_t* slOperator,
                                                  bool reverse) {
   if (slOperator == nullptr) {
     return nullptr;
@@ -290,11 +639,30 @@ TRI_skiplist_iterator_t* SkiplistIndex2::lookup (TRI_index_operator_t* slOperato
 
     return nullptr;
   }
+  std::unique_ptr<SkiplistIterator> results = new SkiplistIterator(_skiplistIndex, reverse);
 
-  return SkiplistIndex_find(_skiplistIndex,
-                            slOperator, 
-                            reverse);
+  if (!results) {
+    // Check if we could not get an iterator.
+    return nullptr; // calling procedure needs to care when the iterator is null
+  }
+
+  result->findHelper(slOperator, &(results->_intervals));
+
+  results->initCursor();
+
+  // Finally initialise _cursor if the result is not empty:
+  return results;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+size_t SkiplistIndex::elementSize () const {
+  return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numFields());
+}
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
