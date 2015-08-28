@@ -317,6 +317,7 @@
     });
     $.get("foxxes/fishbowl", function(list) {
       var table = $("#appstore-content");
+      table.html('');
       _.each(_.sortBy(list, "name"), function(app) {
         table.append(appStoreTemplate.render(app));
       });
