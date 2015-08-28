@@ -110,10 +110,7 @@ size_t PrimaryIndex::size () const {
 }
 
 size_t PrimaryIndex::memory () const {
-  return static_cast<size_t>(
-      _primaryIndex->size() * sizeof(TRI_doc_mptr_t*) +
-      _primaryIndex->memoryUsage()
-  );
+  return _primaryIndex->memoryUsage();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
