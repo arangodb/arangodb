@@ -993,7 +993,7 @@ namespace triagens {
 
           while (skip > 0) {
             ptr = idx->lookupSequential(position, total);
-            ++skip;
+            --skip;
             if (ptr == nullptr) {
               // To few elements, skipped all
               this->unlock(trxCollection, TRI_TRANSACTION_READ);
