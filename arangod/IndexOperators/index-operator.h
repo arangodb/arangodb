@@ -120,7 +120,7 @@ struct TRI_logical_index_operator_t : public TRI_index_operator_t {
 // Storage for relation operator, e.g. <, <=, >, >=, ==, in
 //................................................................................
 
-struct TRI_relation_index_operator_s : public TRI_index_operator_t {
+struct TRI_relation_index_operator_t : public TRI_index_operator_t {
   TRI_json_t* _parameters;    // parameters with which this relation was called with
   TRI_shaped_json_t* _fields; // actual data from the parameters converted from
                               // a json array to a shaped json array
