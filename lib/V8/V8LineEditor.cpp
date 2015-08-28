@@ -115,7 +115,7 @@ bool V8Completer::isComplete (std::string const& source, size_t lineno, size_t c
     else if (state == SINGLE_COMMENT) {
       ++ptr;
 
-      if (ptr == end) {
+      if (ptr == end || *ptr == '\n') {
         state = NORMAL;
         --openComments;
       }
