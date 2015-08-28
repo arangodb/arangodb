@@ -43,91 +43,22 @@
 struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        skiplistIndex public types
-// -----------------------------------------------------------------------------
-
-typedef struct {
-  triagens::basics::SkipList* skiplist;
-  bool unique;
-  struct TRI_document_collection_t* _collection;
-  size_t _numFields;
-}
-SkiplistIndex;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Iterator structure for skip list. We require a start and stop node
-///
-/// Intervals are open in the sense that both end points are not members
-/// of the interval. This means that one has to use SkipList::nextNode
-/// on the start node to get the first element and that the stop node
-/// can be NULL. Note that it is ensured that all intervals in an iterator
-/// are non-empty.
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_skiplist_iterator_s {
-  SkiplistIndex* _index;
-  TRI_vector_t _intervals;
-  size_t _currentInterval; // starts with 0, current interval used
-  triagens::basics::SkipListNode* _cursor;
-                 // always holds the last node returned, initially equal to
-                 // the _leftEndPoint of the first interval (or the 
-                 // _rightEndPoint of the last interval in the reverse
-                 // case), can be nullptr if there are no intervals
-                 // (yet), or, in the reverse case, if the cursor is
-                 // at the end of the last interval. Additionally
-                 // in the non-reverse case _cursor is set to nullptr
-                 // if the cursor is exhausted.
-                 // See SkiplistNextIterationCallback and
-                 // SkiplistPrevIterationCallback for the exact
-                 // condition for the iterator to be exhausted.
-  bool  (*hasNext) (struct TRI_skiplist_iterator_s const*);
-  TRI_index_element_t* (*next)(struct TRI_skiplist_iterator_s*);
-}
-TRI_skiplist_iterator_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                     skiplistIndex  public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Free a skiplist iterator
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeSkiplistIterator (TRI_skiplist_iterator_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a skip list index and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void SkiplistIndex_free (SkiplistIndex*);
-
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-// Skiplist indices, both unique and non-unique
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
-
-SkiplistIndex* SkiplistIndex_new (struct TRI_document_collection_t*,
-                                  size_t, bool, bool);
-
-TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, 
-                                             TRI_index_operator_t const*,
-                                             bool);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the memory used by the index
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t SkiplistIndex_memoryUsage (SkiplistIndex const*);
+size_t SkiplistIndex_memoryUsage (triagens::arango::SkiplistIndex2 const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the memory size of a skiplist index element
 ////////////////////////////////////////////////////////////////////////////////
 
-inline size_t SkiplistIndex_ElementSize (SkiplistIndex const* idx) {
-  return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * idx->_numFields);
-}
+size_t SkiplistIndex_ElementSize (triagens::arango::SkiplistIndex2 const* idx);
 
 #endif
 

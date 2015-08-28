@@ -42,8 +42,105 @@
 // --SECTION--                                               class SkiplistIndex
 // -----------------------------------------------------------------------------
 
+typedef struct {
+  TRI_shaped_json_t* _fields;   // list of shaped json objects which the
+                                // collection should know about
+  size_t _numFields;   // Note that the number of fields coming from
+                       // a query can be smaller than the number of
+                       // fields indexed
+}
+TRI_skiplist_index_key_t;
+
 namespace triagens {
   namespace arango {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Iterator structure for skip list. We require a start and stop node
+///
+/// Intervals are open in the sense that both end points are not members
+/// of the interval. This means that one has to use SkipList::nextNode
+/// on the start node to get the first element and that the stop node
+/// can be NULL. Note that it is ensured that all intervals in an iterator
+/// are non-empty.
+////////////////////////////////////////////////////////////////////////////////
+
+    class SkiplistIterator {
+      private:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private structs
+// -----------------------------------------------------------------------------
+        // Shorthand for the skiplist node
+        typedef triagens::basics::SkipListNode<TRI_skiplist_index_key_t, TRI_index_element_t> Node;
+
+        struct SkiplistIteratorInterval {
+          Node* _leftEndPoint;
+          Node* _rightEndPoint;
+        };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+        triagens::arango::SkiplistIndex2 const* _index;
+        std::vector<SkiplistIteratorInterval*> _invervals;
+        size_t _currentInterval; // starts with 0, current interval used
+        bool _reverse;
+        Node* _cursor;
+
+      public:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+        SkiplistIterator (
+          triagens::arango::SkiplistIndex2 const* idx,
+          bool reverse
+        ) : _index(idx) {
+          _currentInterval = 0;
+          _cursor = nullptr;
+        };
+
+        ~SkiplistIterator () {};
+
+        // always holds the last node returned, initially equal to
+        // the _leftEndPoint of the first interval (or the 
+        // _rightEndPoint of the last interval in the reverse
+        // case), can be nullptr if there are no intervals
+        // (yet), or, in the reverse case, if the cursor is
+        // at the end of the last interval. Additionally
+        // in the non-reverse case _cursor is set to nullptr
+        // if the cursor is exhausted.
+        // See SkiplistNextIterationCallback and
+        // SkiplistPrevIterationCallback for the exact
+        // condition for the iterator to be exhausted.
+        
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+        
+        size_t size ();
+
+        bool hasNext ();
+
+        TRI_index_element_t* next ();
+
+        void initCursor ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+
+      private:
+        bool hasPrevIteration ();
+        TRI_index_element_t* prevIteration ();
+
+        bool hasNextIteration ();
+        TRI_index_element_t* nextIteration ();
+
+
+    };
 
     class SkiplistIndex2 : public PathBasedIndex {
 
@@ -86,6 +183,8 @@ namespace triagens {
          
         int remove (struct TRI_doc_mptr_t const*, bool) override final;
 
+        size_t numFields () const;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attempts to locate an entry in the skip list index
 ///
@@ -94,9 +193,16 @@ namespace triagens {
 /// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_skiplist_iterator_t* lookup (TRI_index_operator_t*,
-                                         bool);
+        SkiplistIterator* lookup (TRI_index_operator_t*, bool);
         
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+        size_t elementSize () const;
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -107,7 +213,7 @@ namespace triagens {
 /// @brief the actual skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkiplistIndex* _skiplistIndex;
+        triagens::basics::SkipList<TRI_skiplist_index_key_t, TRI_index_element_t>* _skiplistIndex;
 
     };
 
