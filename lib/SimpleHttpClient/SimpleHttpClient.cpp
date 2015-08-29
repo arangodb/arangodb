@@ -48,22 +48,24 @@ namespace triagens {
 
     SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection,
                                         double requestTimeout,
-                                        bool warn) :
-      _connection(connection),
-      _keepConnectionOnDestruction(false),
-      _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
-      _readBuffer(TRI_UNKNOWN_MEM_ZONE),
-      _readBufferOffset(0),
-      _requestTimeout(requestTimeout),
-      _warn(warn),
-      _state(IN_CONNECT),
-      _written(0),
-      _errorMessage(""),
-      _locationRewriter({nullptr, nullptr}),
-      _nextChunkedSize(0),
-      _result(nullptr),
-      _maxPacketSize(128 * 1024 * 1024),
-      _keepAlive(true) {
+                                        bool warn) 
+      : _connection(connection),
+        _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
+        _readBuffer(TRI_UNKNOWN_MEM_ZONE),
+        _readBufferOffset(0),
+        _requestTimeout(requestTimeout),
+        _state(IN_CONNECT),
+        _written(0),
+        _errorMessage(""),
+        _locationRewriter({nullptr, nullptr}),
+        _nextChunkedSize(0),
+        _result(nullptr),
+        _maxPacketSize(128 * 1024 * 1024),
+        _keepConnectionOnDestruction(false),
+        _warn(warn),
+        _keepAlive(true),
+        _exposeArangoDB(true),
+        _supportDeflate(true) {
 
       TRI_ASSERT(connection != nullptr);
 
@@ -82,7 +84,7 @@ namespace triagens {
     }
 
 // -----------------------------------------------------------------------------
-    // public methods
+// public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,12 +105,11 @@ namespace triagens {
 /// @brief send out a request, creating a new HttpResult object
 ////////////////////////////////////////////////////////////////////////////////
 
-    SimpleHttpResult* SimpleHttpClient::request (
-      rest::HttpRequest::HttpRequestType method,
-      std::string const& location,
-      char const* body,
-      size_t bodyLength,
-      std::map<std::string, std::string> const& headerFields) {
+    SimpleHttpResult* SimpleHttpClient::request (rest::HttpRequest::HttpRequestType method,
+                                                 std::string const& location,
+                                                 char const* body,
+                                                 size_t bodyLength,
+                                                 std::map<std::string, std::string> const& headerFields) {
       
       // ensure connection has not yet been invalidated
       TRI_ASSERT(_connection != nullptr);
@@ -418,8 +419,15 @@ namespace triagens {
       else {
         _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
       }
-      _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("User-Agent: ArangoDB\r\n"));
-      _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Accept-Encoding: deflate\r\n"));
+
+      if (_exposeArangoDB) {
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("User-Agent: ArangoDB\r\n"));
+      }
+
+      // do not automatically advertise deflate support
+      if (_supportDeflate) {
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Accept-Encoding: deflate\r\n"));
+      }
 
       // do basic authorization
       if (! _pathToBasicAuth.empty()) {
@@ -455,8 +463,7 @@ namespace triagens {
       }
 
       if (method != HttpRequest::HTTP_REQUEST_GET) {
-        static char const* ContentLengthHeader = "Content-Length: ";
-        _writeBuffer.appendText(ContentLengthHeader, strlen(ContentLengthHeader));
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
         _writeBuffer.appendInteger(bodyLength);
         _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
       }
