@@ -809,6 +809,8 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
 
     SimpleHttpClient client(connection.get(), timeout, false);
+    client.setSupportDeflate(false);
+    client.setExposeArangoDB(false);
 
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
