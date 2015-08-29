@@ -39,13 +39,14 @@
 
 namespace triagens {
   namespace basics {
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                       UNIQUE ASSOCIATIVE POINTERS
-    // -----------------------------------------------------------------------------
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief associative array
-    ////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                       UNIQUE ASSOCIATIVE POINTERS
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief associative array
+////////////////////////////////////////////////////////////////////////////////
 
     template <class Key, class Element>
       class AssocUnique {
@@ -80,26 +81,27 @@ namespace triagens {
 
           std::function<std::string()> _contextCallback;
 
-          // -----------------------------------------------------------------------------
-          // --SECTION--                                      constructors and destructors
-          // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief constructor
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
 
         public:
+
           AssocUnique (HashKeyFuncType hashKey,
               HashElementFuncType hashElement,
               IsEqualKeyElementFuncType isEqualKeyElement,
               IsEqualElementElementFuncType isEqualElementElement,
               size_t numberBuckets = 1,
-              std::function<std::string()> contextCallback = [] () -> std::string { return ""; }) :
-            _hashKey(hashKey), 
-            _hashElement(hashElement),
-            _isEqualKeyElement(isEqualKeyElement),
-            _isEqualElementElement(isEqualElementElement),
-            _contextCallback(contextCallback) {
+              std::function<std::string()> contextCallback = [] () -> std::string { return ""; }) 
+            : _hashKey(hashKey), 
+              _hashElement(hashElement),
+              _isEqualKeyElement(isEqualKeyElement),
+              _isEqualElementElement(isEqualElementElement),
+              _contextCallback(contextCallback) {
 
               // Make the number of buckets a power of two:
               size_t ex = 0;
@@ -138,9 +140,9 @@ namespace triagens {
               }
             }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief destructor
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
           ~AssocUnique () {
             for (auto& b : _buckets) {
@@ -150,21 +152,21 @@ namespace triagens {
             }
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief adhere to the rule of five
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adhere to the rule of five
+////////////////////////////////////////////////////////////////////////////////
 
           AssocUnique (AssocUnique const&) = delete;  // copy constructor
           AssocUnique (AssocUnique&&) = delete;       // move constructor
           AssocUnique& operator= (AssocUnique const&) = delete;  // op =
           AssocUnique& operator= (AssocUnique&&) = delete;       // op =
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief initial preallocation size of the hash table when the table is
-          /// first created
-          /// setting this to a high value will waste memory but reduce the number of
-          /// reallocations/repositionings necessary when the table grows
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initial preallocation size of the hash table when the table is
+/// first created
+/// setting this to a high value will waste memory but reduce the number of
+/// reallocations/repositionings necessary when the table grows
+////////////////////////////////////////////////////////////////////////////////
 
         private:
 
@@ -172,13 +174,13 @@ namespace triagens {
             return 251;
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief resizes the array
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resizes the array
+////////////////////////////////////////////////////////////////////////////////
 
           void resizeInternal (Bucket& b,
-              uint64_t targetSize,
-              bool allowShrink) {
+                               uint64_t targetSize,
+                               bool allowShrink) {
 
             if (b._nrAlloc >= targetSize && ! allowShrink) {
               return;
@@ -236,10 +238,9 @@ namespace triagens {
                 (unsigned long long) targetSize);
           }
 
-
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief check a resize of the hash array
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check a resize of the hash array
+////////////////////////////////////////////////////////////////////////////////
 
           bool checkResize (Bucket& b) {
             if (2 * b._nrAlloc < 3 * b._nrUsed) {
@@ -253,13 +254,13 @@ namespace triagens {
             return true;
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief Finds the element at the given position in concatenated buckets.
-          ///        Say we have 2 Buckets each of size 5. Position 7 would be in
-          ///        the second bucket at Position 2 (7 - Bucket1.size())
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Finds the element at the given position in concatenated buckets.
+///        Say we have 2 Buckets each of size 5. Position 7 would be in
+///        the second bucket at Position 2 (7 - Bucket1.size())
+////////////////////////////////////////////////////////////////////////////////
 
-          Element* findElementSequentialBucktes (uint64_t position) {
+          Element* findElementSequentialBucktes (uint64_t position) const {
             for (auto& b : _buckets) {
               if (position >= b._nrAlloc) {
                 position -= b._nrAlloc;
@@ -271,17 +272,17 @@ namespace triagens {
             return nullptr;
           }
 
-          // -----------------------------------------------------------------------------
-          // --SECTION--                                                  public functions
-          // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
 
         public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if this index is empty
+////////////////////////////////////////////////////////////////////////////////
 
-          /////////////////////////////////////////////////////////////////////////////
-          /// @brief Checks if this index is empty
-          ////////////////////////////////////////////////////////////////////////////////
-          bool isEmpty () {
+          bool isEmpty () const {
             for (auto& b : _buckets) {
               if (b._nrUsed > 0) {
                 return false;
@@ -290,23 +291,23 @@ namespace triagens {
             return true;
           }
 
-          /////////////////////////////////////////////////////////////////////////////
-          /// @brief get the hash array's memory usage
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the hash array's memory usage
+////////////////////////////////////////////////////////////////////////////////
 
-          size_t memoryUsage () {
+          size_t memoryUsage () const {
             size_t sum = 0;
             for (auto& b : _buckets) {
-              sum += (size_t) (b._nrAlloc * sizeof(Element*));
+              sum += static_cast<size_t>(b._nrAlloc * sizeof(Element*));
             }
             return sum;
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief get the number of elements in the hash
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the number of elements in the hash
+////////////////////////////////////////////////////////////////////////////////
 
-          size_t size () {
+          size_t size () const {
             size_t sum = 0;
             for (auto& b : _buckets) {
               sum += static_cast<size_t>(b._nrUsed);
@@ -314,9 +315,9 @@ namespace triagens {
             return sum;
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief resizes the hash table
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resizes the hash table
+////////////////////////////////////////////////////////////////////////////////
 
           int resize (size_t size) {
             for (auto& b : _buckets) {
@@ -332,9 +333,9 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief Appends information about statistics in the given json.
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Appends information about statistics in the given json.
+////////////////////////////////////////////////////////////////////////////////
           
           void appendToJson (TRI_memory_zone_t* zone, triagens::basics::Json& json) {
             triagens::basics::Json bkts(zone, triagens::basics::Json::Array);
@@ -349,11 +350,11 @@ namespace triagens {
             json("totalUsed", triagens::basics::Json(static_cast<double>(size())));
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief finds an element equal to the given element.
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an element equal to the given element.
+////////////////////////////////////////////////////////////////////////////////
 
-          Element* find (Element* element) const {
+          Element* find (Element const* element) const {
             uint64_t i = _hashElement(element);
             Bucket const& b = _buckets[i & _bucketsMask];
 
@@ -376,11 +377,11 @@ namespace triagens {
             return b._table[i];
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief finds an element given a key, returns NULL if not found
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an element given a key, returns NULL if not found
+////////////////////////////////////////////////////////////////////////////////
 
-          Element* findByKey (Key* key) const {
+          Element* findByKey (Key const* key) const {
             uint64_t i = _hashKey(key);
             Bucket const& b = _buckets[i & _bucketsMask];
 
@@ -403,16 +404,13 @@ namespace triagens {
             return b._table[i];
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief adds an key/element to the array
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an key/element to the array
+////////////////////////////////////////////////////////////////////////////////
 
           int insert (Key const* key,
-              Element* element,
-              bool isRollback) {
-            // ...........................................................................
-            // we are adding and the table is more than half full, extend it
-            // ...........................................................................
+                      Element* element,
+                      bool isRollback) {
 
             uint64_t i = _hashKey(key);
             Bucket& b = _buckets[i & _bucketsMask];
@@ -434,10 +432,6 @@ namespace triagens {
 
             Element* arrayElement = b._table[i];
 
-            // ...........................................................................
-            // if we found an element, return
-            // ...........................................................................
-
             if (arrayElement != nullptr) {
               return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
             }
@@ -449,9 +443,9 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief helper to heal a hole where we deleted something
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper to heal a hole where we deleted something
+////////////////////////////////////////////////////////////////////////////////
 
           void healHole (Bucket& b, uint64_t i) {
 
@@ -490,11 +484,11 @@ namespace triagens {
 
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief removes an element from the array based on its key,
-          /// returns nullptr if the element
-          /// was not found and the old value, if it was successfully removed
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an element from the array based on its key,
+/// returns nullptr if the element
+/// was not found and the old value, if it was successfully removed
+////////////////////////////////////////////////////////////////////////////////
 
           Element* removeByKey (Key const* key) {
             uint64_t i = _hashKey(key);
@@ -519,10 +513,10 @@ namespace triagens {
             return old;
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief removes an element from the array, returns nullptr if the element
-          /// was not found and the old value, if it was successfully removed
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an element from the array, returns nullptr if the element
+/// was not found and the old value, if it was successfully removed
+////////////////////////////////////////////////////////////////////////////////
 
           Element* remove (Element const* element) {
             uint64_t i = _hashElement(element);
@@ -548,9 +542,9 @@ namespace triagens {
             return old;
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief a method to iterate over all elements in the hash
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the hash
+////////////////////////////////////////////////////////////////////////////////
 
           void invokeOnAllElements (CallbackElementFuncType callback) {
             for (auto& b : _buckets) {
@@ -564,15 +558,15 @@ namespace triagens {
             }
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief a method to iterate over all elements in the index in
-          ///        a sequential order.
-          ///        Returns nullptr if all documents have been returned.
-          ///        Convention: position === 0 indicates a new start.
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the index in
+///        a sequential order.
+///        Returns nullptr if all documents have been returned.
+///        Convention: position === 0 indicates a new start.
+////////////////////////////////////////////////////////////////////////////////
 
           Element* findSequential (uint64_t& position,
-                                   uint64_t& total) {
+                                   uint64_t& total) const {
             if (position == 0) {
               if (isEmpty()) {
                 return nullptr;
@@ -584,26 +578,30 @@ namespace triagens {
               }
               TRI_ASSERT(total > 0);
             }
+
             Element* res = nullptr;
             do {
               res = findElementSequentialBucktes(position);
               position++;
-            } while (position < total && res == nullptr);
+            } 
+            while (position < total && res == nullptr);
+
             return res;
           }
 
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief a method to iterate over all elements in the index in
-          ///        reversed sequential order.
-          ///        Returns nullptr if all documents have been returned.
-          ///        Convention: position === UINT64_MAX indicates a new start.
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the index in
+///        reversed sequential order.
+///        Returns nullptr if all documents have been returned.
+///        Convention: position === UINT64_MAX indicates a new start.
+////////////////////////////////////////////////////////////////////////////////
 
-          Element* findSequentialReverse (uint64_t& position) {
+          Element* findSequentialReverse (uint64_t& position) const {
             if (position == UINT64_MAX) {
               if (isEmpty()) {
                 return nullptr;
               }
+
               // Fill Total
               uint64_t position = 0;
               for (auto& b : _buckets) {
@@ -611,27 +609,28 @@ namespace triagens {
               }
               TRI_ASSERT(position > 0);
             }
+
             Element* res = nullptr;
             do {
               res = findElementSequentialBucktes(position);
               position--;
-            } while (position > 0 && res == nullptr);
+            } 
+            while (position > 0 && res == nullptr);
+
             return res;
           }
 
-
-
-          ////////////////////////////////////////////////////////////////////////////////
-          /// @brief a method to iterate over all elements in the index in
-          ///        a random order.
-          ///        Returns nullptr if all documents have been returned.
-          ///        Convention: *step === 0 indicates a new start.
-          ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the index in
+///        a random order.
+///        Returns nullptr if all documents have been returned.
+///        Convention: *step === 0 indicates a new start.
+////////////////////////////////////////////////////////////////////////////////
 
           Element* findRandom (uint64_t& initialPosition,
                                uint64_t& position,
                                uint64_t& step,
-                               uint64_t& total) {
+                               uint64_t& total) const {
             if (step != 0 && position == initialPosition) {
               // already read all documents
               return nullptr;
@@ -659,13 +658,16 @@ namespace triagens {
                 }
               }
             }
+
             // Find documents
             Element* res = nullptr; 
             do {
               res = findElementSequentialBucktes(position);
               position += step;
               position = position % total;
-            } while (initialPosition != position && res == nullptr);
+            } 
+            while (initialPosition != position && res == nullptr);
+
             return res;
           }
 
