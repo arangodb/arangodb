@@ -29,14 +29,14 @@
 #define ARANGODB_AQL_AGGREGATE_BLOCK_H 1
 
 #include "Basics/Common.h"
-#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/types.h"
-#include "Utils/AqlTransaction.h"
-#include "VocBase/shaped-json.h"
 
 namespace triagens {
+  namespace utils {
+    class AqlTransaction;
+  }
+
   namespace aql {
 
     class AqlItemBlock;
