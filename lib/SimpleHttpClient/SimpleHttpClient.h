@@ -111,8 +111,20 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief make a http request, creating a new HttpResult object
+/// @brief make an http request, creating a new HttpResult object
 /// the caller has to delete the result object
+/// this version does not allow specifying custom headers
+////////////////////////////////////////////////////////////////////////////////
+
+      SimpleHttpResult* request (rest::HttpRequest::HttpRequestType,
+                                 std::string const&,
+                                 char const*,
+                                 size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief make an http request, actual worker function
+/// the caller has to delete the result object
+/// this version allows specifying custom headers
 ////////////////////////////////////////////////////////////////////////////////
 
       SimpleHttpResult* request (rest::HttpRequest::HttpRequestType,
@@ -223,6 +235,18 @@ namespace triagens {
       std::string getHttpErrorMessage (SimpleHttpResult*);
 
     private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief make a http request, creating a new HttpResult object
+/// the caller has to delete the result object
+/// this version allows specifying custom headers
+////////////////////////////////////////////////////////////////////////////////
+
+      SimpleHttpResult* doRequest (rest::HttpRequest::HttpRequestType,
+                                   std::string const&,
+                                   char const*,
+                                   size_t,
+                                   std::map<std::string, std::string> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise the connection
@@ -396,6 +420,12 @@ namespace triagens {
       bool _exposeArangoDB;
 
       bool _supportDeflate;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief empty map, used for headers
+////////////////////////////////////////////////////////////////////////////////
+
+      static std::map<std::string, std::string> const NoHeaders;
 
     };
   }

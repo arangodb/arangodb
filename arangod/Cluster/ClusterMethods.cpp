@@ -802,7 +802,6 @@ int truncateCollectionOnCoordinator ( string const& dbname,
   }
 
   // Some stuff to prepare cluster-intern requests:
-  map<string, string> headers;
   ClusterCommResult* res;
 
   // We have to contact everybody:
@@ -810,7 +809,7 @@ int truncateCollectionOnCoordinator ( string const& dbname,
   map<ShardID, ServerID>::iterator it;
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (it = shards.begin(); it != shards.end(); ++it) {
-    map<string, string>* headersCopy = new map<string, string>(headers);
+    map<string, string>* headersCopy = new map<string, string>();
 
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,

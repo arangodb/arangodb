@@ -3092,10 +3092,9 @@ static void ListDatabasesCoordinator (const v8::FunctionCallbackInfo<v8::Value>&
       if (! DBServers.empty()) {
         ServerID sid = DBServers[0];
         ClusterComm* cc = ClusterComm::instance();
-        ClusterCommResult* res;
         map<string, string> headers;
         headers["Authentication"] = TRI_ObjectToString(args[2]);
-        res = cc->syncRequest("", 0, "server:" + sid,
+        ClusterCommResult* res = cc->syncRequest("", 0, "server:" + sid,
                               triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                               "/_api/database/user", string(""), headers, 0.0);
 
@@ -3149,7 +3148,7 @@ static void JS_ListDatabases (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  const uint32_t argc = args.Length();
+  uint32_t const argc = args.Length();
   if (argc > 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._listDatabases()");
   }
@@ -3192,7 +3191,7 @@ static void JS_ListDatabases (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  v8::Handle<v8::Array> result = v8::Array::New(isolate);
+  v8::Handle<v8::Array> result = v8::Array::New(isolate, (int) names.size());
   for (size_t i = 0;  i < names.size();  ++i) {
     result->Set((uint32_t) i, TRI_V8_STD_STRING(names[i]));
   }
@@ -3222,38 +3221,37 @@ static void CreateDatabaseCoordinator (const v8::FunctionCallbackInfo<v8::Value>
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+  std::unique_ptr<TRI_json_t> json(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
 
-  if (nullptr == json) {
+  if (json == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
   uint64_t const id = ClusterInfo::instance()->uniqid();
   std::string const idString(StringUtils::itoa(id));
 
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id",
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "id",
       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
                                idString.c_str(), idString.size()));
 
   std::string const valueString(TRI_ObjectToString(args[0]));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name",
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "name",
       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
                                valueString.c_str(), valueString.size()));
 
   if (args.Length() > 1) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "options",
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "options",
                          TRI_ObjectToJson(isolate, args[1]));
   }
 
   std::string const serverId(ServerState::instance()->getId());
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "coordinator",
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "coordinator",
       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverId.c_str(), serverId.size()));
 
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;
 
-  int res = ci->createDatabaseCoordinator( name, json, errorMsg, 120.0);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  int res = ci->createDatabaseCoordinator(name, json.get(), errorMsg, 120.0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMsg);

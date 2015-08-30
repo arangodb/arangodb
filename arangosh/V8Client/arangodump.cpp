@@ -306,19 +306,12 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static string GetArangoVersion () {
-  map<string, string> headers;
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                "/_api/version",
                                                nullptr,
-                                               0,
-                                               headers);
+                                               0));
 
   if (response == nullptr || ! response->isComplete()) {
-    if (response != nullptr) {
-      delete response;
-    }
-
     return "";
   }
 
@@ -333,7 +326,7 @@ static string GetArangoVersion () {
 
     if (json != nullptr) {
       // look up "server" value
-      const string server = JsonHelper::getStringValue(json.get(), "server", "");
+      std::string const server = JsonHelper::getStringValue(json.get(), "server", "");
 
       // "server" value is a string and content is "arango"
       if (server == "arango") {
@@ -344,13 +337,11 @@ static string GetArangoVersion () {
   }
   else {
     if (response->wasHttpError()) {
-      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+      Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
     }
 
     Connection->disconnect();
   }
-
-  delete response;
 
   return version;
 }
@@ -360,18 +351,12 @@ static string GetArangoVersion () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool GetArangoIsCluster () {
-  map<string, string> headers;
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                         "/_admin/server/role",
                                         "",
-                                        0,
-                                        headers);
+                                        0));
 
   if (response == nullptr || ! response->isComplete()) {
-    if (response != nullptr) {
-      delete response;
-    }
-
     return false;
   }
 
@@ -388,13 +373,11 @@ static bool GetArangoIsCluster () {
   }
   else {
     if (response->wasHttpError()) {
-      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+      Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
     }
 
     Connection->disconnect();
   }
-
-  delete response;
 
   return role == "COORDINATOR";
 }
@@ -404,27 +387,21 @@ static bool GetArangoIsCluster () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int StartBatch (string DBserver, string& errorMsg) {
-  map<string, string> headers;
+  std::string const url = "/_api/replication/batch";
+  std::string const body = "{\"ttl\":300}";
 
-  const string url = "/_api/replication/batch";
-  const string body = "{\"ttl\":300}";
   string urlExt;
   if (! DBserver.empty()) {
     urlExt = "?DBserver="+DBserver;
   }
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_POST,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_POST,
                                                url + urlExt,
                                                body.c_str(),
-                                               body.size(),
-                                               headers);
+                                               body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     if (Force) {
       return TRI_ERROR_NO_ERROR;
@@ -436,14 +413,12 @@ static int StartBatch (string DBserver, string& errorMsg) {
     errorMsg = "got invalid response from server: HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
-    delete response;
 
     return TRI_ERROR_INTERNAL;
   }
 
   // convert response body to json
   std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
-  delete response;
 
   if (json == nullptr) {
     errorMsg = "got malformed JSON";
@@ -452,7 +427,7 @@ static int StartBatch (string DBserver, string& errorMsg) {
   }
 
   // look up "id" value
-  const string id = JsonHelper::getStringValue(json.get(), "id", "");
+  std::string const id = JsonHelper::getStringValue(json.get(), "id", "");
 
   BatchId = StringUtils::uint64(id);
 
@@ -466,24 +441,19 @@ static int StartBatch (string DBserver, string& errorMsg) {
 static void ExtendBatch (string DBserver) {
   TRI_ASSERT(BatchId > 0);
 
-  map<string, string> headers;
   const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
   const string body = "{\"ttl\":300}";
   string urlExt;
   if (! DBserver.empty()) {
-    urlExt = "?DBserver="+DBserver;
+    urlExt = "?DBserver=" + DBserver;
   }
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url + urlExt,
                                                body.c_str(),
-                                               body.size(),
-                                               headers);
+                                               body.size()));
 
   // ignore any return value
-  if (response != nullptr) {
-    delete response;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -493,8 +463,7 @@ static void ExtendBatch (string DBserver) {
 static void EndBatch (string DBserver) {
   TRI_ASSERT(BatchId > 0);
 
-  map<string, string> headers;
-  const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
+  std::string const url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
   string urlExt;
   if (! DBserver.empty()) {
     urlExt = "?DBserver=" + DBserver;
@@ -502,16 +471,12 @@ static void EndBatch (string DBserver) {
 
   BatchId = 0;
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_DELETE,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_DELETE,
                                                url + urlExt,
                                                nullptr,
-                                               0,
-                                               headers);
+                                               0));
 
   // ignore any return value
-  if (response != nullptr) {
-    delete response;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -527,16 +492,14 @@ static int DumpCollection (int fd,
 
   uint64_t chunkSize = ChunkSize;
 
-  const string baseUrl = "/_api/replication/dump?collection=" + cid +
+  std::string const baseUrl = "/_api/replication/dump?collection=" + cid +
                          "&ticks=false&translateIds=true&flush=false";
-
-  map<string, string> headers;
 
   uint64_t fromTick = TickStart;
 
   while (true) {
-    string url = baseUrl + "&from=" + StringUtils::itoa(fromTick)
-                         + "&chunkSize=" + StringUtils::itoa(chunkSize);
+    std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick)
+                              + "&chunkSize=" + StringUtils::itoa(chunkSize);
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
@@ -544,25 +507,19 @@ static int DumpCollection (int fd,
 
     Stats._totalBatches++;
 
-    SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+    std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                  url,
                                                  nullptr,
-                                                 0,
-                                                 headers);
+                                                 0));
 
     if (response == nullptr || ! response->isComplete()) {
       errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-      if (response != nullptr) {
-        delete response;
-      }
 
       return TRI_ERROR_INTERNAL;
     }
 
     if (response->wasHttpError()) {
-      errorMsg = GetHttpErrorMessage(response);
-      delete response;
+      errorMsg = GetHttpErrorMessage(response.get());
 
       return TRI_ERROR_INTERNAL;
     }
@@ -613,8 +570,6 @@ static int DumpCollection (int fd,
       }
     }
 
-    delete response;
-
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -627,6 +582,7 @@ static int DumpCollection (int fd,
     if (chunkSize < MaxChunkSize) {
       // adaptively increase chunksize
       chunkSize = static_cast<uint64_t>(chunkSize * 1.5);
+
       if (chunkSize > MaxChunkSize) {
         chunkSize = MaxChunkSize;
       }
@@ -642,21 +598,15 @@ static int DumpCollection (int fd,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FlushWal () {
-  map<string, string> headers;
-  const string url = "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
+  std::string const url = "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
                                                nullptr,
-                                               0,
-                                               headers);
+                                               0));
 
   if (response == nullptr || ! response->isComplete() || response->wasHttpError()) {
     cerr << "got invalid response from server: " + Client->getErrorMessage() << endl;
-  }
-
-  if (response != nullptr) {
-    delete response;
   }
 }
 
@@ -665,23 +615,16 @@ static void FlushWal () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int RunDump (string& errorMsg) {
-  map<string, string> headers;
+  std::string const url = "/_api/replication/inventory?includeSystem=" +
+                          string(IncludeSystemCollections ? "true" : "false");
 
-  const string url = "/_api/replication/inventory?includeSystem=" +
-                     string(IncludeSystemCollections ? "true" : "false");
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                url,
                                                nullptr,
-                                               0,
-                                               headers);
+                                               0));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     return TRI_ERROR_INTERNAL;
   }
@@ -690,8 +633,6 @@ static int RunDump (string& errorMsg) {
     errorMsg = "got invalid response from server: HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
-    delete response;
-
     return TRI_ERROR_INTERNAL;
   }
 
@@ -701,8 +642,6 @@ static int RunDump (string& errorMsg) {
 
 
   std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str()));
-
-  delete response;
 
   if (! JsonHelper::isObject(json.get())) {
     errorMsg = "got malformed JSON response from server";
@@ -920,12 +859,10 @@ static int DumpShard (int fd,
                       const string& name,
                       string& errorMsg) {
 
-  const string baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
-                         "&collection=" + name +
-                         "&chunkSize=" + StringUtils::itoa(ChunkSize) +
-                         "&ticks=false&translateIds=true";
-
-  map<string, string> headers;
+  std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
+                              "&collection=" + name +
+                              "&chunkSize=" + StringUtils::itoa(ChunkSize) +
+                              "&ticks=false&translateIds=true";
 
   uint64_t fromTick = 0;
   uint64_t maxTick = UINT64_MAX;
@@ -939,25 +876,19 @@ static int DumpShard (int fd,
 
     Stats._totalBatches++;
 
-    SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+    std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                  url,
                                                  nullptr,
-                                                 0,
-                                                 headers);
+                                                 0));
 
     if (response == nullptr || ! response->isComplete()) {
       errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-      if (response != nullptr) {
-        delete response;
-      }
 
       return TRI_ERROR_INTERNAL;
     }
 
     if (response->wasHttpError()) {
-      errorMsg = GetHttpErrorMessage(response);
-      delete response;
+      errorMsg = GetHttpErrorMessage(response.get());
 
       return TRI_ERROR_INTERNAL;
     }
@@ -968,7 +899,7 @@ static int DumpShard (int fd,
     uint64_t tick;
 
     // TODO: fix hard-coded headers
-    string header = response->getHeaderField("x-arango-replication-checkmore", found);
+    std::string header = response->getHeaderField("x-arango-replication-checkmore", found);
 
     if (found) {
       checkMore = StringUtils::boolean(header);
@@ -1008,8 +939,6 @@ static int DumpShard (int fd,
       }
     }
 
-    delete response;
-
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -1032,23 +961,16 @@ static int DumpShard (int fd,
 static int RunClusterDump (string& errorMsg) {
   int res;
 
-  map<string, string> headers;
+  std::string const url = "/_api/replication/clusterInventory?includeSystem=" +
+                          std::string(IncludeSystemCollections ? "true" : "false");
 
-  const string url = "/_api/replication/clusterInventory?includeSystem=" +
-                     string(IncludeSystemCollections ? "true" : "false");
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                url,
                                                nullptr,
-                                               0,
-                                               headers);
+                                               0));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     return TRI_ERROR_INTERNAL;
   }
@@ -1057,7 +979,6 @@ static int RunClusterDump (string& errorMsg) {
     errorMsg = "got invalid response from server: HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
-    delete response;
 
     return TRI_ERROR_INTERNAL;
   }
@@ -1065,10 +986,7 @@ static int RunClusterDump (string& errorMsg) {
 
   StringBuffer const& data = response->getBody();
 
-
   std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str()));
-
-  delete response;
 
   if (! JsonHelper::isObject(json.get())) {
     errorMsg = "got malformed JSON response from server";

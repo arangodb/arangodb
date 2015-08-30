@@ -324,18 +324,12 @@ static int TryCreateDatabase (std::string const& name) {
                                                
   std::string const body(triagens::basics::JsonHelper::toString(json.json()));
 
-  map<string, string> headers;
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_POST,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_POST,
                                                "/_api/database",
                                                body.c_str(),
-                                               body.size(),
-                                               headers);
+                                               body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
-    if (response != nullptr) {
-      delete response;
-    }
-
     return TRI_ERROR_INTERNAL;
   }
 
@@ -344,20 +338,17 @@ static int TryCreateDatabase (std::string const& name) {
   if (returnCode == HttpResponse::OK ||
       returnCode == HttpResponse::CREATED) {
     // all ok
-    delete response;
     return TRI_ERROR_NO_ERROR;
   }
   else if (returnCode == HttpResponse::UNAUTHORIZED ||
            returnCode == HttpResponse::FORBIDDEN) {
     // invalid authorization
-    Client->setErrorMessage(GetHttpErrorMessage(response), false);
-    delete response;
+    Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
     return TRI_ERROR_FORBIDDEN;
   }
 
   // any other error
-  Client->setErrorMessage(GetHttpErrorMessage(response), false);
-  delete response;
+  Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
   return TRI_ERROR_INTERNAL;
 }
 
@@ -366,19 +357,12 @@ static int TryCreateDatabase (std::string const& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static string GetArangoVersion () {
-  map<string, string> headers;
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                "/_api/version",
                                                nullptr,
-                                               0,
-                                               headers);
+                                               0));
 
   if (response == nullptr || ! response->isComplete()) {
-    if (response != nullptr) {
-      delete response;
-    }
-
     return "";
   }
 
@@ -407,13 +391,11 @@ static string GetArangoVersion () {
   }
   else {
     if (response->wasHttpError()) {
-      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+      Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
     }
 
     Connection->disconnect();
   }
-
-  delete response;
 
   return version;
 }
@@ -423,18 +405,12 @@ static string GetArangoVersion () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool GetArangoIsCluster () {
-  map<string, string> headers;
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                         "/_admin/server/role",
                                         "",
-                                        0,
-                                        headers);
+                                        0));
 
   if (response == nullptr || ! response->isComplete()) {
-    if (response != nullptr) {
-      delete response;
-    }
-
     return false;
   }
 
@@ -454,13 +430,11 @@ static bool GetArangoIsCluster () {
   }
   else {
     if (response->wasHttpError()) {
-      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+      Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
     }
 
     Connection->disconnect();
   }
-
-  delete response;
 
   return role == "COORDINATOR";
 }
@@ -471,39 +445,29 @@ static bool GetArangoIsCluster () {
 
 static int SendRestoreCollection (TRI_json_t const* json,
                                   string& errorMsg) {
-  map<string, string> headers;
+  std::string const url = "/_api/replication/restore-collection"
+                          "?overwrite=" + string(Overwrite ? "true" : "false") +
+                          "&recycleIds=" + string(RecycleIds ? "true" : "false") +
+                          "&force=" + string(Force ? "true" : "false");
 
-  const string url = "/_api/replication/restore-collection"
-                     "?overwrite=" + string(Overwrite ? "true" : "false") +
-                     "&recycleIds=" + string(RecycleIds ? "true" : "false") +
-                     "&force=" + string(Force ? "true" : "false");
+  std::string const body = JsonHelper::toString(json);
 
-  const string body = JsonHelper::toString(json);
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
                                                body.c_str(),
-                                               body.size(),
-                                               headers);
+                                               body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     return TRI_ERROR_INTERNAL;
   }
 
   if (response->wasHttpError()) {
-    errorMsg = GetHttpErrorMessage(response);
-    delete response;
+    errorMsg = GetHttpErrorMessage(response.get());
 
     return TRI_ERROR_INTERNAL;
   }
-
-  delete response;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -514,35 +478,25 @@ static int SendRestoreCollection (TRI_json_t const* json,
 
 static int SendRestoreIndexes (TRI_json_t const* json,
                                string& errorMsg) {
-  map<string, string> headers;
+  std::string const url = "/_api/replication/restore-indexes?force=" + string(Force ? "true" : "false");
+  std::string const body = JsonHelper::toString(json);
 
-  const string url = "/_api/replication/restore-indexes?force=" + string(Force ? "true" : "false");
-  const string body = JsonHelper::toString(json);
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
                                                body.c_str(),
-                                               body.size(),
-                                               headers);
+                                               body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     return TRI_ERROR_INTERNAL;
   }
 
   if (response->wasHttpError()) {
-    errorMsg = GetHttpErrorMessage(response);
-    delete response;
+    errorMsg = GetHttpErrorMessage(response.get());
 
     return TRI_ERROR_INTERNAL;
   }
-
-  delete response;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -555,38 +509,27 @@ static int SendRestoreData (string const& cname,
                             char const* buffer,
                             size_t bufferSize,
                             string& errorMsg) {
-  map<string, string> headers;
+  std::string const url = "/_api/replication/restore-data?collection=" +
+                          StringUtils::urlEncode(cname) +
+                          "&recycleIds=" + (RecycleIds ? "true" : "false") +
+                          "&force=" + (Force ? "true" : "false");
 
-  const string url = "/_api/replication/restore-data?collection=" +
-                     StringUtils::urlEncode(cname) +
-                     "&recycleIds=" + (RecycleIds ? "true" : "false") +
-                     "&force=" + (Force ? "true" : "false");
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
                                                buffer,
-                                               bufferSize,
-                                               headers);
-
+                                               bufferSize));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     return TRI_ERROR_INTERNAL;
   }
 
   if (response->wasHttpError()) {
-    errorMsg = GetHttpErrorMessage(response);
-    delete response;
+    errorMsg = GetHttpErrorMessage(response.get());
 
     return TRI_ERROR_INTERNAL;
   }
-
-  delete response;
 
   return TRI_ERROR_NO_ERROR;
 }
