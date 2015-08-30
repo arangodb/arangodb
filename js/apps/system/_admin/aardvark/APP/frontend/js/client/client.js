@@ -49,6 +49,25 @@ global.setTimeout = global.setTimeout || function () {};
 global.clearTimeout = global.clearTimeout || function () {};
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief template string generator for building an AQL query
+////////////////////////////////////////////////////////////////////////////////
+
+global.aqlQuery = function () {
+  var query = '', 
+      bindVars = { }, 
+      n = arguments[0].length;
+
+  for (var i = 0; i < n; ++i) {
+    query += arguments[0][i];
+    if (i < n - 1) {
+      query += '@value' + i;
+      bindVars['value' + i] = arguments[i + 1]; 
+    }
+  }
+  return { query: query, bindVars: bindVars };
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief start paging
 ////////////////////////////////////////////////////////////////////////////////
 

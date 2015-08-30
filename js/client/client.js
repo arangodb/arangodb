@@ -64,7 +64,7 @@ global.aqlQuery = function () {
       bindVars['value' + i] = arguments[i + 1]; 
     }
   }
-  return { query, bindVars };
+  return { query: query, bindVars: bindVars };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
