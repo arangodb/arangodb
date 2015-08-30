@@ -140,12 +140,10 @@ int InitialSyncer::run (string& errorMsg) {
   string const progress = "fetching master inventory from " + url;
   setProgress(progress);
 
-  map<string, string> headers;
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
                                                               url,
                                                               nullptr,
-                                                              0,
-                                                              headers));
+                                                              0));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -202,12 +200,10 @@ int InitialSyncer::sendStartBatch (string& errorMsg) {
   string const progress = "send batch start command to url " + url;
   setProgress(progress);
 
-  map<string, string> const headers;
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_POST,
                                                               url,
                                                               body.c_str(),
-                                                              body.size(),
-                                                              headers));
+                                                              body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -273,12 +269,10 @@ int InitialSyncer::sendExtendBatch () {
   string const progress = "send batch start command to url " + url;
   setProgress(progress);
 
-  map<string, string> const headers;
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                               url,
                                                               body.c_str(),
-                                                              body.size(),
-                                                              headers));
+                                                              body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -313,12 +307,10 @@ int InitialSyncer::sendFinishBatch () {
   string const progress = "send batch finish command to url " + url;
   setProgress(progress);
 
-  map<string, string> const headers;
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_DELETE,
                                                               url,
                                                               nullptr,
-                                                              0,
-                                                              headers));
+                                                              0));
 
   if (response == nullptr || ! response->isComplete()) {
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -472,15 +464,13 @@ int InitialSyncer::handleCollectionDump (string const& cid,
                          "/dump?collection=" + cid +
                          appendix;
 
-  map<string, string> headers;
-
   TRI_voc_tick_t fromTick = 0;
   int batch = 1;
 
   while (true) {
     sendExtendBatch();
 
-    string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
+    std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
@@ -500,8 +490,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
                                                                 url,
                                                                 nullptr,
-                                                                0,
-                                                                headers));
+                                                                0));
 
     if (response == nullptr || ! response->isComplete()) {
       errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +

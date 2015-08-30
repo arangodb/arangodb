@@ -1051,9 +1051,6 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
                                         TRI_voc_tick_t toTick,
                                         TRI_voc_tick_t& startTick) {
   string const baseUrl = BaseUrl + "/determine-open-transactions";
-
-  map<string, string> headers;
-
   string const url = baseUrl + 
                      "?serverId=" + _localServerIdString +
                      "&from=" + StringUtils::itoa(fromTick) +
@@ -1072,8 +1069,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
                                                               url,
                                                               nullptr,
-                                                              0,
-                                                              headers));
+                                                              0));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
@@ -1161,7 +1157,6 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
                                        bool& masterActive) {
   string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" + _chunkSize;
 
-  map<string, string> headers;
   worked = false;
 
   string const url = baseUrl + 
@@ -1205,8 +1200,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                 url,
                                                 body.c_str(),
-                                                body.size(),
-                                                headers));
+                                                body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +

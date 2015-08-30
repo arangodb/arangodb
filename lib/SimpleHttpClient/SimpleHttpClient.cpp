@@ -42,6 +42,12 @@ using namespace std;
 namespace triagens {
   namespace httpclient {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief empty map, used for headers
+////////////////////////////////////////////////////////////////////////////////
+
+    std::map<std::string, std::string> const SimpleHttpClient::NoHeaders;
+
 // -----------------------------------------------------------------------------
 // constructors and destructors
 // -----------------------------------------------------------------------------
@@ -103,13 +109,38 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send out a request, creating a new HttpResult object
+/// this version does not allow specifying custom headers
+////////////////////////////////////////////////////////////////////////////////
+
+    SimpleHttpResult* SimpleHttpClient::request (rest::HttpRequest::HttpRequestType method,
+                                                 std::string const& location,
+                                                 char const* body,
+                                                 size_t bodyLength) {
+      return doRequest(method, location, body, bodyLength, NoHeaders);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send out a request, creating a new HttpResult object
+/// this version allows specifying custom headers
 ////////////////////////////////////////////////////////////////////////////////
 
     SimpleHttpResult* SimpleHttpClient::request (rest::HttpRequest::HttpRequestType method,
                                                  std::string const& location,
                                                  char const* body,
                                                  size_t bodyLength,
-                                                 std::map<std::string, std::string> const& headerFields) {
+                                                 std::map<std::string, std::string> const& headers) {
+      return doRequest(method, location, body, bodyLength, headers);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send out a request, worker function
+////////////////////////////////////////////////////////////////////////////////
+
+    SimpleHttpResult* SimpleHttpClient::doRequest (rest::HttpRequest::HttpRequestType method,
+                                                   std::string const& location,
+                                                   char const* body,
+                                                   size_t bodyLength,
+                                                   std::map<std::string, std::string> const& headers) {
       
       // ensure connection has not yet been invalidated
       TRI_ASSERT(_connection != nullptr);
@@ -124,7 +155,7 @@ namespace triagens {
       _errorMessage = "";
 
       // set body
-      setRequest(method, rewriteLocation(location), body, bodyLength, headerFields);
+      setRequest(method, rewriteLocation(location), body, bodyLength, headers);
 
       // ensure state
       TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
@@ -381,7 +412,7 @@ namespace triagens {
                                        std::string const& location,
                                        char const* body,
                                        size_t bodyLength,
-                                       std::map<std::string, std::string> const& headerFields) {
+                                       std::map<std::string, std::string> const& headers) {
       // clear read-buffer (no pipeling!)
       _readBufferOffset = 0;
       _readBuffer.reset();
@@ -454,8 +485,7 @@ namespace triagens {
         }
       }
 
-      for (auto const& header : headerFields) {
-        // TODO: check Header name and value
+      for (auto const& header : headers) {
         _writeBuffer.appendText(header.first);
         _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(": "));
         _writeBuffer.appendText(header.second);
@@ -805,13 +835,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     std::string SimpleHttpClient::getServerVersion () {
-      std::map<string, string> headers;
-
       std::unique_ptr<SimpleHttpResult> response(request(HttpRequest::HTTP_REQUEST_GET,
                                                           "/_api/version",
                                                           nullptr,
-                                                          0,
-                                                          headers));
+                                                          0));
 
       if (response == nullptr || ! response->isComplete()) {
         return "";
