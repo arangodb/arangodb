@@ -1,6 +1,16 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* added template string generator function `aqlQuery` for generating AQL queries
+
+  This can be used to generate safe AQL queries with JavaScript parameter
+  variables or expressions easily:
+
+      var name = 'test';
+      var attributeName = '_key';
+      var query = aqlQuery`FOR u IN users FILTER u.name == ${name} RETURN u.${attributeName}`;
+      db._query(query);
+
 * report memory usage for document header data (revision id, pointer to data etc.)
   in `db.collection.figures()`. The memory used for document headers will now
   show up in the already existing attribute `indexes.size`. Due to that, the index
