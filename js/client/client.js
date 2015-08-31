@@ -53,18 +53,21 @@ global.clearTimeout = global.clearTimeout || function () {};
 ////////////////////////////////////////////////////////////////////////////////
 
 global.aqlQuery = function () {
-  var query = '', 
-      bindVars = { }, 
-      n = arguments[0].length;
-
-  for (var i = 0; i < n; ++i) {
-    query += arguments[0][i];
-    if (i < n - 1) {
-      query += '@value' + i;
-      bindVars['value' + i] = arguments[i + 1]; 
+  var strings = arguments[0];
+  var bindVars = {};
+  var query = strings[0];
+  var name, value, i;
+  for (i = 1; i < arguments.length; i++) {
+    value = arguments[i];
+    name = 'value' + (i - 1);
+    if (value.constructor && value.constructor.name === 'ArangoCollection') {
+      name = '@' + name;
+      value = value.name();
     }
+    bindVars[name] = value;
+    query += '@' + name + strings[i];
   }
-  return { query: query, bindVars: bindVars };
+  return {query: query, bindVars: bindVars};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
