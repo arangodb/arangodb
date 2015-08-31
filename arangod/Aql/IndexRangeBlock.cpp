@@ -1434,7 +1434,8 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   _skiplistIterator = static_cast<triagens::arango::SkiplistIndex2*>(idx)->lookup(skiplistOperator, en->_reverse);
 
   if (skiplistOperator != nullptr) {
-    TRI_FreeIndexOperator(skiplistOperator);
+    delete skiplistOperator;
+    skiplistOperator = nullptr;
   }
 
   if (_skiplistIterator == nullptr) {
