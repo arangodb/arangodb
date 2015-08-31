@@ -1084,9 +1084,13 @@ bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t co
 /// @brief prints a TRI_shape_t for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef DEBUG_JSON_SHAPER
+
 void TRI_PrintShape (VocShaper*,
                      TRI_shape_t const* shape,
                      int indent);
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string value encoded in a shaped json
