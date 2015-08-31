@@ -103,7 +103,8 @@ namespace triagens {
         SkiplistIterator (
           SkiplistIndex2* const idx,
           bool reverse
-        ) : _index(idx) {
+        ) : _index(idx) ,
+            _reverse(reverse) {
           _currentInterval = 0;
           _cursor = nullptr;
         };
@@ -136,7 +137,7 @@ namespace triagens {
 
         void findHelper (
           TRI_index_operator_t const* indexOperator,
-          std::vector<SkiplistIteratorInterval*> intervals
+          std::vector<SkiplistIteratorInterval*>& intervals
         );
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

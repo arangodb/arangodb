@@ -365,7 +365,7 @@ bool SkiplistIterator::findHelperIntervalIntersectionValid (
 
 void SkiplistIterator::findHelper (
     TRI_index_operator_t const* indexOperator,
-    std::vector<SkiplistIteratorInterval*> intervals
+    std::vector<SkiplistIteratorInterval*>& intervals
   ) {
   TRI_skiplist_index_key_t               values;
   std::vector<SkiplistIteratorInterval*> leftResult;
@@ -523,7 +523,7 @@ bool SkiplistIterator::hasPrevIteration () {
   // If the leftNode == left end point AND there are no more intervals
   // then we have no next.
   // ...........................................................................
-  return leftNode != _intervals[_currentInterval]->_leftEndPoint;
+  return leftNode != _intervals.at(_currentInterval)->_leftEndPoint;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -551,7 +551,7 @@ bool SkiplistIterator::hasNextIteration () {
   // If the left == right end point AND there are no more intervals then we have
   // no next.
   // ...........................................................................
-  return leftNode != _intervals[_currentInterval]->_rightEndPoint;
+  return leftNode != _intervals.at(_currentInterval)->_rightEndPoint;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -559,11 +559,10 @@ bool SkiplistIterator::hasNextIteration () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_element_t* SkiplistIterator::prevIteration () {
-  SkiplistIteratorInterval* interval = _intervals[_currentInterval];
-
-  if (interval == nullptr) {
+  if (_currentInterval >= _intervals.size()) {
     return nullptr;
   }
+  SkiplistIteratorInterval* interval = _intervals.at(_currentInterval);
 
   // ...........................................................................
   // use the current cursor and move 1 backward
@@ -579,7 +578,7 @@ TRI_index_element_t* SkiplistIterator::prevIteration () {
       return nullptr;
     }
     --_currentInterval;
-    interval = _intervals[_currentInterval];
+    interval = _intervals.at(_currentInterval);
     TRI_ASSERT(interval != nullptr);
     _cursor = interval->_rightEndPoint;
     result = _index->_skiplistIndex->prevNode(_cursor);
@@ -601,11 +600,10 @@ TRI_index_element_t* SkiplistIterator::nextIteration () {
     return nullptr;
   }
   
-  SkiplistIteratorInterval* interval = _intervals[_currentInterval];
-
-  if (interval == nullptr) {
+  if (_currentInterval >= _intervals.size()) {
     return nullptr;
   }
+  SkiplistIteratorInterval* interval = _intervals.at(_currentInterval);
 
   while (true) {   // will be left by break
     _cursor = _cursor->nextNode();
@@ -618,7 +616,7 @@ TRI_index_element_t* SkiplistIterator::nextIteration () {
       return nullptr;
     }
     ++_currentInterval;
-    interval = _intervals[_currentInterval];
+    interval = _intervals.at(_currentInterval);
     TRI_ASSERT(interval != nullptr);
     _cursor = interval->_leftEndPoint;
   }
