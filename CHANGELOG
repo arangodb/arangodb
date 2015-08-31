@@ -244,6 +244,11 @@ v2.7.0 (XXXX-XX-XX)
 
 * the `skip()` function for simple queries does not accept negative input any longer. 
   This feature was deprecated in 2.6.0.
+
+* fix exeption handling
+
+  In some cases javascript execptions would re-throw without information of the original problem.
+  Now the original exception is logged for failure analysis.
  
 * based REST API method PUT `/_api/simple/all` on the cursor API and make its use AQL internally.
 
