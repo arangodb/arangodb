@@ -53,12 +53,12 @@ static uint64_t HashElement (TRI_doc_mptr_t const* element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsEqualKeyElement (char const* key,
+                               uint64_t const hash,
                                TRI_doc_mptr_t const* element) {
 
   // Performance?
-  // uint64_t hash = HashKey(key);
-  // return (hash == element->_hash &&
-  return strcmp(key, TRI_EXTRACT_MARKER_KEY(element)) == 0;
+  return (hash == element->_hash &&
+          strcmp(key, TRI_EXTRACT_MARKER_KEY(element)) == 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

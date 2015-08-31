@@ -103,6 +103,12 @@ static bool IsEqualKeyElement (TRI_index_search_value_t const* left,
   return true;
 }
 
+static bool IsEqualKeyElementHash (TRI_index_search_value_t const* left,
+                               uint64_t const hash, // Has been computed but is not used here
+                               TRI_index_element_t const* right) {
+  return IsEqualKeyElement(left, right);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fills the index search from hash index element
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,7 +232,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
   if (unique) {
     std::unique_ptr<TRI_HashArray_t> array(new TRI_HashArray_t(HashKey,
                                                                *(func.get()),
-                                                               IsEqualKeyElement,
+                                                               IsEqualKeyElementHash,
                                                                IsEqualElementElement,
                                                                indexBuckets,
                                                                [] () -> std::string { return "unique hash-array"; }));
