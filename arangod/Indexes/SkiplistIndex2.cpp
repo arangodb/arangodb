@@ -608,7 +608,9 @@ TRI_index_element_t* SkiplistIterator::nextIteration () {
   while (true) {   // will be left by break
     _cursor = _cursor->nextNode();
     if (_cursor != interval->_rightEndPoint) {
-      // Note that _cursor can be nullptr here!
+      if (_cursor == nullptr) {
+        return nullptr;
+      }
       break;   // we found a next one
     }
     if (_currentInterval == _intervals.size() - 1) {
