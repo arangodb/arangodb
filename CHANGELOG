@@ -1,6 +1,18 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* the `internal.download()` function and the module `org/arangodb/request` used some 
+  internal library function that handled the sending of HTTP requests from inside of
+  ArangoDB. This library unconditionally set an HTTP header `Accept-Encoding: gzip`
+  in all outgoing HTTP requests. 
+
+  This has been fixed in 2.7, so `Accept-Encoding: gzip` is not set automatically anymore.
+  Additionally, the header `User-Agent: ArangoDB` is not set automatically either. If
+  client applications desire to send these headers, they are free to add it when
+  constructing the requests using the `download` function or the request module.
+  
+* fixed issue #1436: org/arangodb/request advertises deflate without supporting it 
+
 * added template string generator function `aqlQuery` for generating AQL queries
 
   This can be used to generate safe AQL queries with JavaScript parameter
