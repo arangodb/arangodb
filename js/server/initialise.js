@@ -64,18 +64,20 @@ global.clearTimeout = function () {};
 ////////////////////////////////////////////////////////////////////////////////
 
 global.aqlQuery = function () {
-  var query = '', 
-      bindVars = { }, 
-      n = arguments[0].length;
-
-  for (var i = 0; i < n; ++i) {
-    query += arguments[0][i];
-    if (i < n - 1) {
-      query += '@value' + i;
-      bindVars['value' + i] = arguments[i + 1]; 
+  let strings = arguments[0];
+  const bindVars = {};
+  let query = strings[0];
+  for (let i = 1; i < arguments.length; i++) {
+    let value = arguments[i];
+    let name = `value${i - 1}`;
+    if (value.constructor && value.constructor.name === 'ArangoCollection') {
+      name = `@${name}`;
+      value = value.name();
     }
+    bindVars[name] = value;
+    query += `@${name}${strings[i]}`;
   }
-  return { query, bindVars };
+  return {query, bindVars};
 };
 
 // extend prototypes for internally defined classes
