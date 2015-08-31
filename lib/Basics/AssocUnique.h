@@ -55,7 +55,7 @@ namespace triagens {
 
           typedef std::function<uint64_t(Key const*)> HashKeyFuncType;
           typedef std::function<uint64_t(Element const*)> HashElementFuncType;
-          typedef std::function<bool(Key const*, Element const*)> 
+          typedef std::function<bool(Key const*, uint64_t hash, Element const*)> 
             IsEqualKeyElementFuncType;
           typedef std::function<bool(Element const*, Element const*)> 
             IsEqualElementElementFuncType;
@@ -382,7 +382,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           Element* findByKey (Key const* key) const {
-            uint64_t i = _hashKey(key);
+            uint64_t hash = _hashKey(key);
+            uint64_t i = hash;
             Bucket const& b = _buckets[i & _bucketsMask];
 
             uint64_t const n = b._nrAlloc;
@@ -390,10 +391,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualKeyElement(key, b._table[i]); ++i);
+                ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualKeyElement(key, b._table[i]); ++i);
+                  ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
             }
 
             // ...........................................................................
@@ -412,7 +413,8 @@ namespace triagens {
                       Element* element,
                       bool isRollback) {
 
-            uint64_t i = _hashKey(key);
+            uint64_t hash = _hashKey(key);
+            uint64_t i = hash;
             Bucket& b = _buckets[i & _bucketsMask];
 
             if (! checkResize(b)) {
@@ -424,10 +426,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualKeyElement(key, b._table[i]); ++i);
+                ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualKeyElement(key, b._table[i]); ++i);
+                  ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
             }
 
             Element* arrayElement = b._table[i];
@@ -491,7 +493,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           Element* removeByKey (Key const* key) {
-            uint64_t i = _hashKey(key);
+            uint64_t hash = _hashKey(key);
+            uint64_t i = hash;
             Bucket& b = _buckets[i & _bucketsMask];
 
             uint64_t const n = b._nrAlloc;
@@ -499,10 +502,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualKeyElement(key, b._table[i]); ++i);
+                ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualKeyElement(key, b._table[i]); ++i);
+                  ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
             }
 
             Element* old = b._table[i];
