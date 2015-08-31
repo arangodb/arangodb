@@ -254,7 +254,7 @@ namespace triagens {
 /// total order. In the latter two cases nothing is inserted.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int insert (Element const* doc) {
+        int insert (Element* doc) {
           int lev;
           Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
           Node* next = nullptr;  // to please the compiler
@@ -333,7 +333,7 @@ namespace triagens {
 /// In the latter two cases nothing is removed.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int remove (void* doc) {
+        int remove (Element* doc) {
           int lev;
           Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
           Node* next = nullptr;  // to please the compiler
