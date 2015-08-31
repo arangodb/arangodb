@@ -1462,7 +1462,7 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
 
   try {
     size_t nrSent = 0;
-    while (nrSent < atMost && _skiplistIterator !=nullptr) { 
+    while (nrSent < atMost && _skiplistIterator != nullptr) {
       TRI_index_element_t* indexElement = _skiplistIterator->next();
 
       if (indexElement == nullptr) {
