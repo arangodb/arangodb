@@ -70,7 +70,7 @@ TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e operato
     case TRI_AND_INDEX_OPERATOR:
     case TRI_NOT_INDEX_OPERATOR:
     case TRI_OR_INDEX_OPERATOR: {
-      std::unique_ptr<TRI_logical_index_operator_t> newLogicalOperator(operatorType, shaper, leftOperand, rightOperand);
+      std::unique_ptr<TRI_logical_index_operator_t> newLogicalOperator(new TRI_logical_index_operator_t(operatorType, shaper, leftOperand, rightOperand));
       if (! newLogicalOperator) { // out of memory
         return nullptr;
       }
@@ -83,7 +83,7 @@ TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e operato
     case TRI_NE_INDEX_OPERATOR:
     case TRI_LE_INDEX_OPERATOR:
     case TRI_LT_INDEX_OPERATOR: {
-      std::unique_ptr<TRI_relation_index_operator_t> newRelationOperator(operatorType, shaper, parameters, nullptr, numFields);
+      std::unique_ptr<TRI_relation_index_operator_t> newRelationOperator(new TRI_relation_index_operator_t(operatorType, shaper, parameters, nullptr, numFields));
       if (! newRelationOperator) { // out of memory
         return nullptr;
       }

@@ -244,6 +244,260 @@ TRI_index_element_t* SkiplistIterator::next () {
   return nextIteration();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Locates one or more ranges within the skiplist and returns iterator
+////////////////////////////////////////////////////////////////////////////////
+
+// .............................................................................
+// Tests whether the LeftEndPoint is < than RightEndPoint (-1)
+// Tests whether the LeftEndPoint is == to RightEndPoint (0)    [empty]
+// Tests whether the LeftEndPoint is > than RightEndPoint (1)   [undefined]
+// .............................................................................
+
+bool SkiplistIterator::findHelperIntervalValid (
+  SkiplistIteratorInterval const* interval) {
+  Node* lNode = interval->_leftEndPoint;
+
+  if (lNode == nullptr) {
+    return false;
+  }
+  // Note that the right end point can be nullptr to indicate the end of
+  // the index.
+
+  Node* rNode = interval->_rightEndPoint;
+
+  if (lNode == rNode) {
+    return false;
+  }
+
+  if (lNode->nextNode() == rNode) {
+    // Interval empty, nothing to do with it.
+    return false;
+  }
+
+  if (nullptr != rNode && rNode->nextNode() == lNode) {
+    // Interval empty, nothing to do with it.
+    return false;
+  }
+
+  if (_index->_skiplistIndex->getNrUsed() == 0) {
+    return false;
+  }
+
+  if ( lNode == _index->_skiplistIndex->startNode() ||
+       nullptr == rNode ) {
+    // The index is not empty, the nodes are not neighbours, one of them
+    // is at the boundary, so the interval is valid and not empty.
+    return true;
+  }
+
+  int compareResult = _index->CmpElmElm(lNode->document(), 
+                                        rNode->document(), 
+                                        triagens::basics::SKIPLIST_CMP_TOTORDER);
+  return (compareResult == -1);
+  // Since we know that the nodes are not neighbours, we can guarantee
+  // at least one document in the interval.
+}
+
+bool SkiplistIterator::findHelperIntervalIntersectionValid (
+  SkiplistIteratorInterval* lInterval,
+  SkiplistIteratorInterval* rInterval,
+  SkiplistIteratorInterval* interval) {
+
+  Node* lNode = lInterval->_leftEndPoint;
+  Node* rNode = rInterval->_leftEndPoint;
+
+  if (nullptr == lNode || nullptr == rNode) {
+    // At least one left boundary is the end, intersection is empty.
+    return false;
+  }
+
+  int compareResult;
+  // Now find the larger of the two start nodes:
+  if (lNode == _index->_skiplistIndex->startNode()) {
+    // We take rNode, even if it is the start node as well.
+    compareResult = -1;
+  }
+  else if (rNode == _index->_skiplistIndex->startNode()) {
+    // We take lNode
+    compareResult = 1;
+  }
+  else {
+    compareResult = _index->CmpElmElm(lNode->document(), 
+                              rNode->document(), 
+                              triagens::basics::SKIPLIST_CMP_TOTORDER);
+  }
+
+  if (compareResult < 1) {
+    interval->_leftEndPoint = rNode;
+  }
+  else {
+    interval->_leftEndPoint = lNode;
+  }
+
+  lNode = lInterval->_rightEndPoint;
+  rNode = rInterval->_rightEndPoint;
+
+  // Now find the smaller of the two end nodes:
+  if (nullptr == lNode) {
+    // We take rNode, even is this also the end node.
+    compareResult = 1;
+  }
+  else if (nullptr == rNode) {
+    // We take lNode.
+    compareResult = -1;
+  }
+  else {
+    compareResult = _index->CmpElmElm(lNode->document(), 
+                              rNode->document(),
+                              triagens::basics::SKIPLIST_CMP_TOTORDER);
+  }
+
+  if (compareResult < 1) {
+    interval->_rightEndPoint = lNode;
+  }
+  else {
+    interval->_rightEndPoint = rNode;
+  }
+
+  return findHelperIntervalValid(interval);
+}
+
+void SkiplistIterator::findHelper (
+    TRI_index_operator_t const* indexOperator,
+    std::vector<SkiplistIteratorInterval*> intervals
+  ) {
+  TRI_skiplist_index_key_t               values;
+  std::vector<SkiplistIteratorInterval*> leftResult;
+  std::vector<SkiplistIteratorInterval*> rightResult;
+  SkiplistIteratorInterval               interval;
+  Node*                                  temp;
+
+  TRI_relation_index_operator_t* relationOperator  = (TRI_relation_index_operator_t*) indexOperator;
+  TRI_logical_index_operator_t*  logicalOperator   = (TRI_logical_index_operator_t*) indexOperator;
+
+  switch (indexOperator->_type) {
+    case TRI_EQ_INDEX_OPERATOR:
+    case TRI_LE_INDEX_OPERATOR:
+    case TRI_LT_INDEX_OPERATOR:
+    case TRI_GE_INDEX_OPERATOR:
+    case TRI_GT_INDEX_OPERATOR:
+
+      values._fields     = relationOperator->_fields;
+      values._numFields  = relationOperator->_numFields;
+      break;   // this is to silence a compiler warning
+
+    default: {
+      // must not access relationOperator->xxx if the operator is not a
+      // relational one otherwise we'll get invalid reads and the prog
+      // might crash
+    }
+  }
+
+  switch (indexOperator->_type) {
+    case TRI_AND_INDEX_OPERATOR: {
+      findHelper(logicalOperator->_left, leftResult);
+      findHelper(logicalOperator->_right, rightResult);
+
+      size_t nl = leftResult.size();
+      size_t nr = rightResult.size();
+      for (size_t i = 0; i < nl; ++i) {
+        for (size_t j = 0; j < nr; ++j) {
+          auto tempLeftInterval  = leftResult[i];
+          auto tempRightInterval = rightResult[j];
+
+          if (findHelperIntervalIntersectionValid(
+                            tempLeftInterval,
+                            tempRightInterval,
+                            &interval)) {
+            intervals.emplace_back(&interval);
+          }
+        }
+      }
+      return;
+    }
+
+
+    case TRI_EQ_INDEX_OPERATOR: {
+      temp = _index->_skiplistIndex->leftKeyLookup(&values);
+      TRI_ASSERT(nullptr != temp);
+      interval._leftEndPoint = temp;
+
+      bool const allAttributesCoveredByCondition = (values._numFields == _index->numFields());
+
+      if (_index->unique() && allAttributesCoveredByCondition) {
+        // At most one hit:
+        temp = temp->nextNode();
+        if (nullptr != temp) {
+          if (0 == _index->CmpKeyElm(&values, temp->document())) {
+            interval._rightEndPoint = temp->nextNode();
+            if (findHelperIntervalValid(&interval)) {
+              intervals.emplace_back(&interval);
+            }
+          }
+        }
+      }
+      else {
+        temp = _index->_skiplistIndex->rightKeyLookup(&values);
+        interval._rightEndPoint = temp->nextNode();
+        if (findHelperIntervalValid(&interval)) {
+          intervals.emplace_back(&interval);
+        }
+      }
+      return;
+    }
+
+    case TRI_LE_INDEX_OPERATOR: {
+      interval._leftEndPoint  = _index->_skiplistIndex->startNode();
+      temp = _index->_skiplistIndex->rightKeyLookup(&values);
+      interval._rightEndPoint = temp->nextNode();
+
+      if (findHelperIntervalValid(&interval)) {
+        intervals.emplace_back(&interval);
+      }
+      return;
+    }
+
+    case TRI_LT_INDEX_OPERATOR: {
+      interval._leftEndPoint  = _index->_skiplistIndex->startNode();
+      temp = _index->_skiplistIndex->leftKeyLookup(&values);
+      interval._rightEndPoint = temp->nextNode();
+
+      if (findHelperIntervalValid(&interval)) {
+        intervals.emplace_back(&interval);
+      }
+      return;
+    }
+
+    case TRI_GE_INDEX_OPERATOR: {
+      temp = _index->_skiplistIndex->leftKeyLookup(&values);
+      interval._leftEndPoint = temp;
+      interval._rightEndPoint = _index->_skiplistIndex->endNode();
+
+      if (findHelperIntervalValid(&interval)) {
+        intervals.emplace_back(&interval);
+      }
+      return;
+    }
+
+    case TRI_GT_INDEX_OPERATOR: {
+      temp = _index->_skiplistIndex->rightKeyLookup(&values);
+      interval._leftEndPoint = temp;
+      interval._rightEndPoint = _index->_skiplistIndex->endNode();
+
+      if (findHelperIntervalValid(&interval)) {
+        intervals.emplace_back(&interval);
+      }
+      return;
+    }
+
+    default: {
+      TRI_ASSERT(false);
+    }
+
+  } // end of switch statement
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -262,7 +516,7 @@ bool SkiplistIterator::hasPrevIteration () {
     return true;
   }
 
-  Node const* leftNode = _index->prevNode(_cursor);
+  Node const* leftNode = _index->_skiplistIndex->prevNode(_cursor);
 
   // Note that leftNode can be nullptr here!
   // ...........................................................................
@@ -301,12 +555,10 @@ bool SkiplistIterator::hasNextIteration () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Jumps backwards by jumpSize and returns the document
+/// @brief Jumps backwards by 1 and returns the document
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_element_t* SkiplistIterator::prevIteration () {
-  static const int64_t jumpSize = 1;
-
   SkiplistIteratorInterval* interval = _intervals[_currentInterval];
 
   if (interval == nullptr) {
@@ -314,12 +566,12 @@ TRI_index_element_t* SkiplistIterator::prevIteration () {
   }
 
   // ...........................................................................
-  // use the current cursor and move jumpSize backward
+  // use the current cursor and move 1 backward
   // ...........................................................................
 
   Node* result = nullptr; 
 
-  result = _index->prevNode(_cursor);
+  result = _index->_skiplistIndex->prevNode(_cursor);
 
   if (result == interval->_leftEndPoint) {
     if (_currentInterval == 0) {
@@ -330,7 +582,7 @@ TRI_index_element_t* SkiplistIterator::prevIteration () {
     interval = _intervals[_currentInterval];
     TRI_ASSERT(interval != nullptr);
     _cursor = interval->_rightEndPoint;
-    result = _index->prevNode(_cursor);
+    result = _index->_skiplistIndex->prevNode(_cursor);
   }
   _cursor = result;
 
@@ -392,14 +644,15 @@ SkiplistIndex2::SkiplistIndex2 (TRI_idx_iid_t iid,
                                 bool unique,
                                 bool sparse) 
   : PathBasedIndex(iid, collection, fields, unique, sparse),
+    CmpElmElm(this),
+    CmpKeyElm(this),
     _skiplistIndex(nullptr) {
-
-  _skiplistIndex = new triagens::basics::SkipList(
-                                           CmpElmElm, CmpKeyElm, skiplistIndex,
-                                           FreeElm, unique, _useExpansion);
+  _skiplistIndex = new TRI_Skiplist(CmpElmElm, CmpKeyElm,
+                                    FreeElm, unique, _useExpansion);
   if (_skiplistIndex == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -528,7 +781,7 @@ int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc,
 ///
 /// Note: this function will not destroy the passed slOperator before it returns
 /// Warning: who ever calls this function is responsible for destroying
-/// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
+/// the TRI_index_operator_t* and the SkiplistIterator* results
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIterator* SkiplistIndex2::lookup (TRI_index_operator_t* slOperator,
@@ -550,19 +803,19 @@ SkiplistIterator* SkiplistIndex2::lookup (TRI_index_operator_t* slOperator,
 
     return nullptr;
   }
-  std::unique_ptr<SkiplistIterator> results(new SkiplistIterator(_skiplistIndex, reverse));
+  std::unique_ptr<SkiplistIterator> results(new SkiplistIterator(this, reverse));
 
   if (!results) {
     // Check if we could not get an iterator.
     return nullptr; // calling procedure needs to care when the iterator is null
   }
 
-  results->findHelper(slOperator, &(results->_intervals));
+  results->findHelper(slOperator, results->_intervals);
 
   results->initCursor();
 
   // Finally initialise _cursor if the result is not empty:
-  return results;
+  return results.release();
 }
 
 // -----------------------------------------------------------------------------
@@ -577,20 +830,19 @@ size_t SkiplistIndex2::elementSize () const {
 /// @brief compares a key with an element in a skip list, generic callback
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex2::CmpKeyElm (TRI_skiplist_index_key_t const* leftKey,
-                               TRI_index_element_t const* rightElement) {
+int SkiplistIndex2::KeyElementComparator::operator() (TRI_skiplist_index_key_t const* leftKey,
+                                      TRI_index_element_t const* rightElement) {
 
   TRI_ASSERT(nullptr != leftKey);
   TRI_ASSERT(nullptr != rightElement);
 
-  auto shaper = collection()->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto shaper = _idx->collection()->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   // Note that the key might contain fewer fields than there are indexed
   // attributes, therefore we only run the following loop to
   // leftKey->_numFields.
   for (size_t j = 0;  j < leftKey->_numFields;  j++) {
     int compareResult = CompareKeyElement(&leftKey->_fields[j], rightElement, j, shaper);
-
     if (compareResult != 0) {
       return compareResult;
     }
@@ -605,9 +857,9 @@ int SkiplistIndex2::CmpKeyElm (TRI_skiplist_index_key_t const* leftKey,
 /// @brief compares two elements in a skip list, this is the generic callback
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex2::CmpElmElm (TRI_index_element_t const* leftElement,
-                               TRI_index_element_t const* rightElement,
-                               triagens::basics::SkipListCmpType cmptype) {
+int SkiplistIndex2::ElementElementComparator::operator() (TRI_index_element_t const* leftElement,
+                                          TRI_index_element_t const* rightElement,
+                                          triagens::basics::SkipListCmpType cmptype) {
 
   TRI_ASSERT(nullptr != leftElement);
   TRI_ASSERT(nullptr != rightElement);
@@ -616,12 +868,12 @@ int SkiplistIndex2::CmpElmElm (TRI_index_element_t const* leftElement,
   // The document could be the same -- so no further comparison is required.
   // ..........................................................................
   if (leftElement == rightElement ||
-      (! _skiplistIndex->isArray() && leftElement->document() == rightElement->document())) {
+      (! _idx->_skiplistIndex->isArray() && leftElement->document() == rightElement->document())) {
     return 0;
   }
 
-  auto shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  for (size_t j = 0;  j < numFields();  j++) {
+  auto shaper = _idx->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  for (size_t j = 0;  j < _idx->numFields();  j++) {
     int compareResult = CompareElementElement(leftElement,
                                               j,
                                               rightElement,

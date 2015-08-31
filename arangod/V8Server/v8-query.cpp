@@ -345,7 +345,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
                                                                       2);
 
           if (newOperator == nullptr) {
-            TRI_FreeIndexOperator(current);
+            delete current;
             goto MEM_ERROR;
           }
           else {
@@ -385,7 +385,8 @@ MEM_ERROR:
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
 
   if (lastOperator != nullptr) {
-    TRI_FreeIndexOperator(lastOperator);
+    delete lastOperator;
+    lastOperator = nullptr;
   }
 
   return nullptr;
@@ -611,10 +612,11 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  TRI_skiplist_iterator_t* skiplistIterator = static_cast<triagens::arango::SkiplistIndex2*>(idx)->lookup(skiplistOperator, reverse);
-  TRI_FreeIndexOperator(skiplistOperator);
+  std::unique_ptr<SkiplistIterator> skiplistIterator(static_cast<triagens::arango::SkiplistIndex2*>(idx)->lookup(skiplistOperator, reverse));
+  delete skiplistOperator;
+  skiplistOperator = nullptr;
 
-  if (skiplistIterator == nullptr) {
+  if (! skiplistIterator) {
     int res = TRI_errno();
 
     if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
@@ -629,12 +631,11 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
   bool error = false;
 
   if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-    TRI_FreeSkiplistIterator(skiplistIterator);
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
   while (limit > 0) {
-    TRI_index_element_t* indexElement = skiplistIterator->next(skiplistIterator);
+    TRI_index_element_t* indexElement = skiplistIterator->next();
 
     if (indexElement == nullptr) {
       break;
@@ -667,9 +668,6 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
   // .............................................................................
   // outside a write transaction
   // .............................................................................
-
-  // free data allocated by skiplist index result
-  TRI_FreeSkiplistIterator(skiplistIterator);
 
   result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
   result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(count)));

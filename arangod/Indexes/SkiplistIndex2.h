@@ -72,7 +72,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
         // Shorthand for the skiplist node
         typedef triagens::basics::SkipListNode<TRI_skiplist_index_key_t, TRI_index_element_t> Node;
-        typedef triagens::basics::SkipList<TRI_skiplist_index_key_t, TRI_index_element_t> TRI_Skiplist;
 
         struct SkiplistIteratorInterval {
           Node* _leftEndPoint;
@@ -82,11 +81,18 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-        TRI_Skiplist* const _index;
-        std::vector<SkiplistIteratorInterval*> _intervals;
+        SkiplistIndex2* const _index;
         size_t _currentInterval; // starts with 0, current interval used
         bool _reverse;
         Node* _cursor;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+      public:
+
+        std::vector<SkiplistIteratorInterval*> _intervals;
 
       public:
 
@@ -95,7 +101,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
         SkiplistIterator (
-          triagens::basics::SkipList<TRI_skiplist_index_key_t, TRI_index_element_t>* const idx,
+          SkiplistIndex2* const idx,
           bool reverse
         ) : _index(idx) {
           _currentInterval = 0;
@@ -128,22 +134,66 @@ namespace triagens {
 
         void initCursor ();
 
+        void findHelper (
+          TRI_index_operator_t const* indexOperator,
+          std::vector<SkiplistIteratorInterval*> intervals
+        );
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-
       private:
+
         bool hasPrevIteration ();
         TRI_index_element_t* prevIteration ();
 
         bool hasNextIteration ();
         TRI_index_element_t* nextIteration ();
 
+        bool findHelperIntervalIntersectionValid (
+          SkiplistIteratorInterval* lInterval,
+          SkiplistIteratorInterval* rInterval,
+          SkiplistIteratorInterval* interval
+        );
 
+        bool findHelperIntervalValid (
+          SkiplistIteratorInterval const* interval
+        );
     };
 
     class SkiplistIndex2 : public PathBasedIndex {
+
+      struct KeyElementComparator {
+        int operator() (TRI_skiplist_index_key_t const* leftKey,
+                        TRI_index_element_t const* rightElement);
+
+        KeyElementComparator (SkiplistIndex2* idx) {
+          _idx = idx;
+        }
+
+        private:
+          SkiplistIndex2* _idx;
+
+      };
+
+      struct ElementElementComparator {
+        int operator() (TRI_index_element_t const* leftElement,
+                        TRI_index_element_t const* rightElement,
+                       triagens::basics::SkipListCmpType cmptype);
+
+        ElementElementComparator (SkiplistIndex2* idx) {
+          _idx = idx;
+        }
+
+        private:
+          SkiplistIndex2* _idx;
+
+      };
+
+      friend class SkiplistIterator;
+      friend struct KeyElementComparator;
+      friend struct ElementElementComparator;
+
 
       typedef triagens::basics::SkipList<TRI_skiplist_index_key_t, TRI_index_element_t> TRI_Skiplist;
 // -----------------------------------------------------------------------------
@@ -196,26 +246,33 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SkiplistIterator* lookup (TRI_index_operator_t*, bool);
-        
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
       private:
-        size_t elementSize () const;
 
-        int CmpElmElm (TRI_index_element_t const* leftElement,
+        size_t elementSize () const;
+       
+
+        int _CmpElmElm (TRI_index_element_t const* leftElement,
                        TRI_index_element_t const* rightElement,
                        triagens::basics::SkipListCmpType cmptype);
 
-        int CmpKeyElm (TRI_skiplist_index_key_t const* leftKey,
+        int _CmpKeyElm (TRI_skiplist_index_key_t const* leftKey,
                        TRI_index_element_t const* rightElement);
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
       private:
+
+        ElementElementComparator CmpElmElm;
+        KeyElementComparator CmpKeyElm;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual skiplist index
