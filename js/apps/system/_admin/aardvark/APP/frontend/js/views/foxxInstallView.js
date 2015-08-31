@@ -11,7 +11,6 @@
   };
 
   var installCallback = function(result) {
-    window.hass = result;
     if (result.error === false) {
       this.collection.fetch({ async: false });
       window.modalView.hide();
@@ -72,7 +71,7 @@
         return [
           {
             rule: Joi.string().required().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/),
-            msg: "No valid github account and repository."
+            msg: "No valid Github account and repository."
           }
         ];
       }
@@ -129,9 +128,8 @@
     window.modalView.modalTestAll();
   };
 
-  var switchModalButton = function(event) {
+  var switchTab = function(openTab) {
     window.modalView.clearValidators();
-    var openTab = $(event.currentTarget).attr("href").substr(1);
     var button = $("#modalButton1");
     if (!this._upgrade) {
       setMountpointValidators();
@@ -164,7 +162,13 @@
     }
   };
 
+  var switchModalButton = function(event) {
+    var openTab = $(event.currentTarget).attr("href").substr(1);
+    switchTab.call(this, openTab);
+  };
+
   var installFoxxFromStore = function(e) {
+    switchTab.call(this, "appstore");
     if (window.modalView.modalTestAll()) {
       var mount, flag;
       if (this._upgrade) {
@@ -206,7 +210,6 @@
     }
   };
 
-
   var installFoxxFromGithub = function() {
     if (window.modalView.modalTestAll()) {
       var url, version, mount, flag;
@@ -237,7 +240,6 @@
         this.collection.installFromGithub(info, mount, installCallback.bind(this), flag);
       } else {
         this.collection.installFromGithub(info, mount, installCallback.bind(this));
-
       }
     }
   };
@@ -336,7 +338,6 @@
     window.modalView.clearValidators();
     setMountpointValidators();
     setNewAppValidators();
-
   };
 
   FoxxInstallView.prototype.upgrade = function(mount, callback) {
