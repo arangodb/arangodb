@@ -54,7 +54,7 @@ build-book:
 		cd $${WD}/ppbooks; \
 		echo cd $${WD}/ppbooks; \
 		echo cp $${WD}/$${pic} $${pic}; \
-		ln -s $${WD}/$${pic} $${pic}; \
+		cp $${WD}/$${pic} $${pic}; \
 	done
 	python generateMdFiles.py $(NAME) ppbooks/
 
