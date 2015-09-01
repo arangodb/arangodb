@@ -62,13 +62,31 @@ namespace triagens {
         SkipListNode<Key, Element>* _prev;
         Element* _doc;
         int _height;
+
       public:
+
+        SkipListNode<Key, Element> (int height, char* ptr) 
+          : _next(reinterpret_cast<SkipListNode<Key, Element>**>(ptr + sizeof(SkipListNode<Key, Element>))),
+            _prev(nullptr),
+            _doc(nullptr),
+            _height(height) {
+              for (int i = 0; i < _height; i++) {
+                _next[i] = nullptr;
+              }
+            }
+
         Element* document () const {
           return _doc;
         }
+
         SkipListNode<Key, Element>* nextNode () const {
+          if (_height == 0) {
+            // _next[0] is uninitialized
+            return nullptr;
+          }
           return _next[0];
         }
+
         // Note that the prevNode of the first data node is the artificial
         // _start node not containing data. This is contrary to the prevNode
         // method of the SkipList class, which returns nullptr in that case.
@@ -537,23 +555,15 @@ namespace triagens {
 
           Node* newNode;
 
+      printf("SL Alloc %p", ptr); 
           try {
             // use placement new
-            newNode = new(ptr) Node();
+            newNode = new(ptr) Node(height, static_cast<char*>(ptr));
           }
           catch (...) {
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, ptr);
             throw;
           }
-
-          newNode->_doc = nullptr;
-          newNode->_height = height;
-          newNode->_next = reinterpret_cast<Node**>(static_cast<char*>(ptr) + sizeof(Node));
-
-          for (int i = 0; i < newNode->_height; i++) {
-            newNode->_next[i] = nullptr;
-          }
-          newNode->_prev = nullptr;
 
           _memoryUsed += sizeof(Node) +
             sizeof(Node*) * newNode->_height;
