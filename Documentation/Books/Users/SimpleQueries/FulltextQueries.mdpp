@@ -52,7 +52,7 @@ Complete match and prefix search options can be combined with the logical
 operators.
 
 Please note that only words with a minimum length will get indexed. This minimum
-length can be defined when creating the fulltext index. For words tokenisation,
+length can be defined when creating the fulltext index. For words tokenization,
 the libicu text boundary analysis is used, which takes into account the default
 as defined at server startup (*--server.default-language* startup
 option). Generally, the word boundary analysis will filter out punctuation but

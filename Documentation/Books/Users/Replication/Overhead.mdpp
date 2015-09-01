@@ -20,7 +20,7 @@ needs to process the incoming HTTP requests, return the requested data from its 
 send the response. 
 
 In ArangoDB versions prior to 2.2, transactions were logged on the master as an uninterrupted 
-sequence, restricting their maxmial size considerably. While a transaction was written to the
+sequence, restricting their maximal size considerably. While a transaction was written to the
 master's replication log, any other replication logging activity was blocked.
 
 This is not the case since ArangoDB 2.2. Transactions are now written to the write-ahead log

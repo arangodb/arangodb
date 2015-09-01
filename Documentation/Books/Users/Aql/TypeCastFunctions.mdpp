@@ -14,7 +14,7 @@ task. Each of the these functions takes an operand of any data type and returns
 a result value of type corresponding to the function name (e.g. *TO_NUMBER()*
 will return a number value):
 
-- *TO_BOOL(value)*: Takes an input *valu*e of any type and converts it 
+- *TO_BOOL(value)*: Takes an input *value* of any type and converts it
   into the appropriate boolean value as follows:
   - *null* is converted to *false*.
   - Numbers are converted to *true* if they are unequal to 0, and to *false* otherwise. 

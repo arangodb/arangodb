@@ -44,7 +44,7 @@ There are currently several applications installed, all of them are system appli
 You can safely ignore system applications.  
 
 We are now going to install the _hello world_ application. It is called 
-"hello-foxx" - no suprise there.
+"hello-foxx" - no surprise there.
 
     unix> foxx-manager install hello-foxx /example
     Application hello-foxx version 1.5.0 installed successfully at mount point /example
@@ -177,7 +177,7 @@ But in most cases you will install you own application that is probably not publ
 
 The Application identifier supports several input formats:
 * `appname:version` Install an App from the ArangoDB store [Read More](Store.md)
-* `git:user/repository:tag` Install an App from github [Read More](Github.md)
+* `git:user/repository:tag` Install an App from Github [Read More](Github.md)
 * `http(s)://example.com/app.zip` Install an App from an URL [Read More](Remote.md)
 * `/usr/tmp/app.zip` Install an App from local file system [Read More](Local.md)
 * `EMPTY` Generate a new Application [Read More](Generate.md)

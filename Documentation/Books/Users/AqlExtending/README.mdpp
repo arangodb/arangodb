@@ -5,7 +5,7 @@ fully-featured programming language.
 
 To add missing functionality or to simplify queries, users
 may add their own functions to AQL. These functions can be written
-in Javascript, and must be registered via the API; 
+in JavaScript, and must be registered via the API; 
 see [Registering Functions](../AqlExtending/Functions.html).
 
 In order to avoid conflicts with existing or future built-in 

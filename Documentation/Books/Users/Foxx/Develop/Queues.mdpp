@@ -136,7 +136,7 @@ Returns the job id.
 
 Note that if you pass a function for the **backOff** calculation, **success** callback or **failure** callback options the function will be serialized to the database as a string and therefore must not rely on any external scope or external variables.
 
-When the job is set to automatically repeat, the **failure** callback will only be executed when a run of the job has failured more than **maxFailures** times. Note that if the job fails and **maxFailures** is set, it will be rescheduled according to the **backOff** until it has either failed too many times or completed successfully before being scheduled according to the **repeatDelay** again. Recovery attempts by **maxFailures** do not count towards **repeatTimes**.
+When the job is set to automatically repeat, the **failure** callback will only be executed when a run of the job has failed more than **maxFailures** times. Note that if the job fails and **maxFailures** is set, it will be rescheduled according to the **backOff** until it has either failed too many times or completed successfully before being scheduled according to the **repeatDelay** again. Recovery attempts by **maxFailures** do not count towards **repeatTimes**.
 
 The **success** and **failure** callbacks receive the following arguments:
 

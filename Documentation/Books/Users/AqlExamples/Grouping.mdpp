@@ -273,4 +273,4 @@ FOR u IN users
 ```
 
 To increase readability, the repeated expression *LENGTH(group)* was put into a variable
-*numUsers*. The *FILTER* on *numUsers* is the equivalent an SQL *HAVING* caluse.
+*numUsers*. The *FILTER* on *numUsers* is the equivalent an SQL *HAVING* clause.

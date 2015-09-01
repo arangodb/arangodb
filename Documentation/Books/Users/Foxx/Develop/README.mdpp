@@ -35,4 +35,4 @@ The tools contain:
   * [Console API](../Develop/Console.md)
 
 Finally we want to apply some meta information to the Foxx.
-How this is done is described in the [Metainformation](../Develop/Manifest.md) chapter.
+How this is done is described in the [Meta information](../Develop/Manifest.md) chapter.
