@@ -80,7 +80,7 @@ If you want more control over the object other apps receive when they load your 
 }
 ```
 
-To replicate the same behaviour as in the earlier example, the file **exports.js** could look like this:
+To replicate the same behavior as in the earlier example, the file **exports.js** could look like this:
 
 ```js
 exports.doodads = require('./doodads');

@@ -7,7 +7,7 @@ modified documents. This is even the case when a document gets deleted. The
 two benefits are:
 
 * Objects can be stored coherently and compactly in the main memory.
-* Objects are preserved, wo isolated writing and reading transactions allow
+* Objects are preserved, isolated writing and reading transactions allow
   accessing these objects for parallel operations.
 
 The system collects obsolete versions as garbage, recognizing them as

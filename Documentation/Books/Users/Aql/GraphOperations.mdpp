@@ -55,7 +55,7 @@ This section describes various AQL functions which can be used to receive inform
 !SUBSECTION Shortest Paths, distances and traversals.
 <!-- js/server/modules/org/arangodb/ahuacatl.js -->
 
-This section describes AQL functions, that calculate pathes from a subset of vertices in a graph to another subset of vertices. 
+This section describes AQL functions, that calculate paths from a subset of vertices in a graph to another subset of vertices.
 
 !SUBSECTION GRAPH_PATHS
 <!-- js/server/modules/org/arangodb/ahuacatl.js -->

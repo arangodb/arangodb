@@ -87,7 +87,7 @@
 !SUBSECTION Collection type
 @startDocuBlock collectionType
 
-!SUBSECTION get the Version of Arangodb
+!SUBSECTION Get the Version of ArangoDB
 @startDocuBlock databaseVersion
 
 !SUBSECTION Misc

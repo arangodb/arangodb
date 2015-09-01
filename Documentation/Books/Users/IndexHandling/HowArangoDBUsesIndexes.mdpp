@@ -24,7 +24,7 @@ to produce correct results, regardless of whether or which index is used to sati
 If it is unsure about whether using an index will violate the policy, it will not make use of the index.
 
 
-!SUBSECTION Troubeshooting
+!SUBSECTION Troubleshooting
 
 When in doubt about whether and which indexes will be used for executing a given AQL query, use
 the `explain()` method for the statement as follows (from the ArangoShell):

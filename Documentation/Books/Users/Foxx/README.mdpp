@@ -82,7 +82,7 @@ The following table lists a mapping of microservice concepts and how they can be
     <tr>
       <td>Different Databases</td>
       <td>Multi-Model</td>
-      <td>In most setups you need different database technologies because you have several data formats. ArangoDB is a multi-model database that server many formats. However if you still need another database you can connect to it via Http.</td>
+      <td>In most setups you need different database technologies because you have several data formats. ArangoDB is a multi-model database that server many formats. However if you still need another database you can connect to it via HTTP.</td>
     </tr>
     <tr>
       <td>Asynchronous Calls</td>
@@ -107,7 +107,7 @@ The following table lists a mapping of microservice concepts and how they can be
     <tr>
       <td>Maintenance UI</td>
       <td>Built-in Web server</td>
-      <td>ArangoDB has a built-in Web server, allowing Foxxes to ship a Webpage as their UI. So you can attach a maintanance UI directly to your microservice and have it deployed with it in the same step.</td>
+      <td>ArangoDB has a built-in Web server, allowing Foxxes to ship a Webpage as their UI. So you can attach a maintenance UI directly to your microservice and have it deployed with it in the same step.</td>
     </tr>
     <tr>
       <td>Easy Setup</td>

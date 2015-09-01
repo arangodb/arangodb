@@ -23,7 +23,7 @@ These operators accept any data types for the first and second operands.
 
 Each of the comparison operators returns a boolean value if the comparison can
 be evaluated and returns *true* if the comparison evaluates to true, and *false*
-otherwise. Please note that the comparsion operators will not perform any
+otherwise. Please note that the comparison operators will not perform any
 implicit type casts if the compared operands have different types.
 
 Some examples for comparison operations in AQL:
@@ -83,7 +83,7 @@ boolean value.
 
 This behavior has changed in ArangoDB 2.3. Passing non-boolean values to a
 logical operator is now allowed. Any-non boolean operands will be casted
-to boolean implicity by the operator, without making the query abort. 
+to boolean implicitly by the operator, without making the query abort.
 
 The *conversion to a boolean value* works as follows:
 - `null` will be converted to `false`
@@ -137,7 +137,7 @@ Some example arithmetic operations:
 
 The arithmetic operators accept operands of any type. This behavior has changed in 
 ArangoDB 2.3. Passing non-numeric values to an arithmetic operator is now allow.
-Any-non numeric operands will be casted to numbers implicity by the operator, 
+Any-non numeric operands will be casted to numbers implicitly by the operator,
 without making the query abort. 
 
 The *conversion to a numeric value* works as follows:

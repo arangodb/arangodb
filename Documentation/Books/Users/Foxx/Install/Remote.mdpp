@@ -2,7 +2,7 @@
 
 In this chapter we will make use of the Foxx manager as described [before](README.md).
 This time we want to install an app hosted on a server.
-Currently the Foxx-manager supports downloads of applications via http and https protocols.
+Currently the Foxx-manager supports downloads of applications via HTTP and HTTPS protocols.
 
 !SECTION Remote file format
 The file on the remote server has to be a valid Foxx application packed in a zip archive.
@@ -57,7 +57,7 @@ Length     Date   Time    Name
   614800                   37 files
 ```
 
-Next you have to make this file publicly available over http or https on a webserver.
+Next you have to make this file publicly available over HTTP or HTTPS on a webserver.
 Assume we can download the app at **http://www.example.com/hello.zip**.
 
 !SECTION Install from remote server
@@ -71,7 +71,7 @@ Application hello-foxx version 1.5.0 installed successfully at mount point /exam
 
 ArangoDB will try to download and extract the file stored at the remote location.
 
-This http or https link can be used in all functions of the Foxx-manager that allow to install Foxx applications:
+This HTTP or HTTPS link can be used in all functions of the Foxx-manager that allow to install Foxx applications:
 
 **install**
 

@@ -230,8 +230,8 @@ separate document attributes (latitude and longitude) or a single array attribut
 contains both latitude and longitude. Latitude and longitude must be numeric values.
 
 Th geo index provides operations to find documents with coordinates nearest to a given 
-comparsion coordinate, and to find documents with coordinates that are within a specifiable
-radius around a comparsion coordinate.
+comparison coordinate, and to find documents with coordinates that are within a specifiable
+radius around a comparison coordinate.
 
 The geo index is used via dedicated functions in AQL or the simple queries, but will
 not enabled for other types of queries or conditions.
@@ -241,7 +241,7 @@ not enabled for other types of queries or conditions.
 
 A fulltext index can be used to find words, or prefixes of words inside documents. 
 A fulltext index can be created on a single attribute only, and will index all words 
-contained in documents that have a textual value in that attribute. Only words with a (specifyable) 
+contained in documents that have a textual value in that attribute. Only words with a (specifiable) 
 minimum length are indexed. Word tokenization is done using the word boundary analysis 
 provided by libicu, which is taking into account the selected language provided at 
 server start. Words are indexed in their lower-cased form. The index supports complete 

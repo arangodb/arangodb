@@ -91,7 +91,7 @@ special replication logger on the master. The replication logger caused an extra
 write operation into the *_replication* system collection for each actual write
 operation. This extra write is now superfluous. Instead, slaves can read directly
 from the master's write-ahead log to get informed about most recent data changes. 
-This removes the need to store data-modication operations in the *_replication*
+This removes the need to store data-modification operations in the *_replication*
 collection altogether. 
 
 For the configuration of the write-ahead log, please refer to [Write-ahead log options](../ConfigureArango/Wal.md).

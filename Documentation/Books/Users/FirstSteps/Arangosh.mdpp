@@ -34,9 +34,9 @@ STANDARD options:
   --use-pager                   use pager
   
 JAVASCRIPT options:
-  --javascript.check <string>                syntax check code Javascript code from file
-  --javascript.execute <string>              execute Javascript code from file
-  --javascript.execute-string <string>       execute Javascript code from string
+  --javascript.check <string>                syntax check code JavaScript code from file
+  --javascript.execute <string>              execute JavaScript code from file
+  --javascript.execute-string <string>       execute JavaScript code from string
   --javascript.startup-directory <string>    startup paths containing the JavaScript files
   --javascript.unit-tests <string>           do not start as shell, run unit tests instead
   --jslint <string>                          do not start as shell, run jslint instead

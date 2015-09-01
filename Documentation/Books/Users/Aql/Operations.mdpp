@@ -49,7 +49,7 @@ FOR u IN users
 ```
 
 In this example, there are two array iterations: an outer iteration over the array
-*users* plus an inner iteration over the arry *locations*.  The inner array is
+*users* plus an inner iteration over the array *locations*. The inner array is
 traversed as many times as there are elements in the outer array.  For each
 iteration, the current values of *users* and *locations* are made available for
 further processing in the variable *u* and *l*.
@@ -1084,7 +1084,7 @@ query option.
 by a `RETURN` statement (intermediate `LET` statements are allowed, too). These statements
 can optionally perform calculations and refer to the pseudo-values `OLD` and `NEW`.
 In case the upsert performed an insert operation, `OLD` will have a value of *null*.
-In case the upsert performed an update or replace opertion, `OLD` will contain the
+In case the upsert performed an update or replace operation, `OLD` will contain the
 previous version of the document, before update/replace.
 
 `NEW` will always be populated. It will contain the inserted document in case the

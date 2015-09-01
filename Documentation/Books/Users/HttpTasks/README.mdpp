@@ -1,6 +1,6 @@
-!CHAPTER Http tasks Interface
+!CHAPTER HTTP tasks Interface
 
-Following you have ArangoDB's Http Interface for Tasks.
+Following you have ArangoDB's HTTP Interface for Tasks.
 
 There are also some examples provided for every API action. 
 

@@ -1,6 +1,6 @@
 !CHAPTER Date functions
 
-AQL offers functionality to work with dates. Dates are no datatypes of their own in 
+AQL offers functionality to work with dates. Dates are no data types of their own in
 AQL (neither are they in JSON, which is often used as a format to ship data into and
 out of ArangoDB). Instead, dates in AQL are internally represented by either numbers 
 (timestamps) or strings. The date functions in AQL provide mechanisms to convert from 
@@ -43,7 +43,7 @@ These two above date functions accept the following input values:
   522 milliseconds, UTC / Zulu time. Another example value without time component is 
   *2014-05-07Z*.
 
-  Please note that if no timezone offset is specified in a datestring, ArangoDB will
+  Please note that if no timezone offset is specified in a date string, ArangoDB will
   assume UTC time automatically. This is done to ensure portability of queries across
   servers with different timezone settings, and because timestamps will always be
   UTC-based. 
@@ -124,8 +124,8 @@ There are two recommended ways to store timestamps in ArangoDB:
   - as string with ISO 8601 UTC timestamp
   - as [Epoch number](https://en.wikipedia.org/wiki/Epoch_%28reference_date%29)
 
-This way you can work with [skiplist incices](../IndexHandling/Skiplist.html) and use
-string comparisons (less than, greater than, in, equality) to express timeranges in your queries:
+This way you can work with [skiplist indices](../IndexHandling/Skiplist.html) and use
+string comparisons (less than, greater than, in, equality) to express time ranges in your queries:
 
     @startDocuBlockInline working_with_date_time
     @EXAMPLE_ARANGOSH_OUTPUT{working_with_date_time}

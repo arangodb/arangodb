@@ -98,7 +98,7 @@ the lookup value cannot be `null`, a sparse index may be used. When uncertain, t
 will not make use of a sparse index in a query in order to produce correct results.
 
 For example, the following queries cannot use a sparse index on `attr` because the optimizer
-will not know beforehand whether the comparsion values for `doc.attr` will include `null`:
+will not know beforehand whether the comparison values for `doc.attr` will include `null`:
 
     FOR doc In collection 
       FILTER doc.attr == SOME_FUNCTION(...) 
@@ -154,7 +154,7 @@ provided there is an index on `doc.value`):
       SORT doc.value 
       RETURN doc
 
-The AQL optimizer rule "use-index-for-sort" now also removes sort in case the sort critieria
+The AQL optimizer rule "use-index-for-sort" now also removes sort in case the sort criteria
 excludes the left-most index attributes, but the left-most index attributes are used
 by the index for equality-only lookups.
 
@@ -191,7 +191,7 @@ data-modification part can run in lockstep with the data retrieval part of the q
 or if the data retrieval part must be executed and completed first before the data-modification 
 can start.
 
-Executing both data retrieval and data-modifcation in lockstep allows using much smaller 
+Executing both data retrieval and data-modification in lockstep allows using much smaller 
 buffers for intermediate results, reducing the memory usage of queries. Not all queries are
 eligible for this optimization, and the optimizer will only apply the optimization when it can
 safely detect that the data-modification part of the query will not modify data to be found
@@ -247,7 +247,7 @@ Now the path on filesystem is identical to the URL (except the appended APP):
 
 The routing of Foxx has been exposed to major internal changes we adjusted because of user feedback.
 This allows us to set the development mode per mountpoint without having to change paths and hold
-apps at seperate locations.
+apps at separate locations.
 
 !SUBSECTION Foxx Development mode
 
