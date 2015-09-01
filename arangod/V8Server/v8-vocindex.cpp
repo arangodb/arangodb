@@ -37,7 +37,7 @@
 #include "Indexes/HashIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
-#include "Indexes/SkiplistIndex2.h"
+#include "Indexes/SkiplistIndex.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
@@ -699,7 +699,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::SkiplistIndex2*>(TRI_EnsureSkiplistIndexDocumentCollection(document,
+        idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_EnsureSkiplistIndexDocumentCollection(document,
                                                                                                        iid,
                                                                                                        attributes,
                                                                                                        sparse,
@@ -707,7 +707,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
                                                                                                        &created));
       }
       else {
-        idx = static_cast<triagens::arango::SkiplistIndex2*>(TRI_LookupSkiplistIndexDocumentCollection(document,
+        idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_LookupSkiplistIndexDocumentCollection(document,
                                                                                                        attributes,
                                                                                                        sparsity,
                                                                                                        unique));

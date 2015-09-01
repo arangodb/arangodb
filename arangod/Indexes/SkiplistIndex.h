@@ -66,7 +66,7 @@ namespace triagens {
 
     class SkiplistIterator {
       private:
-        friend class SkiplistIndex2;
+        friend class SkiplistIndex;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private structs
@@ -86,7 +86,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
-        SkiplistIndex2* const _index;
+        SkiplistIndex* const _index;
         size_t _currentInterval; // starts with 0, current interval used
         bool _reverse;
         Node* _cursor;
@@ -99,7 +99,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
         SkiplistIterator (
-          SkiplistIndex2* const idx,
+          SkiplistIndex* const idx,
           bool reverse
         ) : _index(idx) ,
             _currentInterval(0),
@@ -160,18 +160,18 @@ namespace triagens {
         );
     };
 
-    class SkiplistIndex2 : public PathBasedIndex {
+    class SkiplistIndex : public PathBasedIndex {
 
       struct KeyElementComparator {
         int operator() (TRI_skiplist_index_key_t const* leftKey,
                         TRI_index_element_t const* rightElement);
 
-        KeyElementComparator (SkiplistIndex2* idx) {
+        KeyElementComparator (SkiplistIndex* idx) {
           _idx = idx;
         }
 
         private:
-          SkiplistIndex2* _idx;
+          SkiplistIndex* _idx;
 
       };
 
@@ -180,12 +180,12 @@ namespace triagens {
                         TRI_index_element_t const* rightElement,
                        triagens::basics::SkipListCmpType cmptype);
 
-        ElementElementComparator (SkiplistIndex2* idx) {
+        ElementElementComparator (SkiplistIndex* idx) {
           _idx = idx;
         }
 
         private:
-          SkiplistIndex2* _idx;
+          SkiplistIndex* _idx;
 
       };
 
@@ -201,15 +201,15 @@ namespace triagens {
 
       public:
 
-        SkiplistIndex2 () = delete;
+        SkiplistIndex () = delete;
 
-        SkiplistIndex2 (TRI_idx_iid_t,
+        SkiplistIndex (TRI_idx_iid_t,
                         struct TRI_document_collection_t*,
                         std::vector<std::vector<triagens::basics::AttributeName>> const&,
                         bool,
                         bool);
 
-        ~SkiplistIndex2 ();
+        ~SkiplistIndex ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods

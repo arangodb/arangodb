@@ -34,7 +34,7 @@
 #include "Basics/string-buffer.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
-#include "Indexes/SkiplistIndex2.h"
+#include "Indexes/SkiplistIndex.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-result.h"
 #include "FulltextIndex/fulltext-query.h"
@@ -612,7 +612,7 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  std::unique_ptr<SkiplistIterator> skiplistIterator(static_cast<triagens::arango::SkiplistIndex2*>(idx)->lookup(skiplistOperator, reverse));
+  std::unique_ptr<SkiplistIterator> skiplistIterator(static_cast<triagens::arango::SkiplistIndex*>(idx)->lookup(skiplistOperator, reverse));
   delete skiplistOperator;
   skiplistOperator = nullptr;
 

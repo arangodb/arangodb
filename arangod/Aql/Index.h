@@ -36,7 +36,7 @@
 #include "Basics/JsonHelper.h"
 #include "Indexes/HashIndex.h"
 #include "Indexes/Index.h"
-#include "Indexes/SkiplistIndex2.h"
+#include "Indexes/SkiplistIndex.h"
 
 namespace triagens {
   namespace aql {
@@ -73,7 +73,7 @@ namespace triagens {
           unique = hashIndex->unique();
         }
         else if (type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-          auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex2 const*>(idx);
+          auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex const*>(idx);
           sparse = skiplistIndex->sparse();
           unique = skiplistIndex->unique();
         }

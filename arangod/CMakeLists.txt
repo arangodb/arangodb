@@ -150,7 +150,7 @@ add_executable(
     Indexes/Index.cpp
     Indexes/PathBasedIndex.cpp
     Indexes/PrimaryIndex.cpp
-    Indexes/SkiplistIndex2.cpp
+    Indexes/SkiplistIndex.cpp
     IndexOperators/index-operator.cpp
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp
