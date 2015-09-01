@@ -1176,7 +1176,7 @@ bool ApplicationV8::prepareV8Instance (size_t i, bool useActions) {
 
   vector<string> files;
 
-  files.push_back("server/initialise.js");
+  files.push_back("server/initialize.js");
 
   v8::Isolate* isolate = v8::Isolate::New();
   

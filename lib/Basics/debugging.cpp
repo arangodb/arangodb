@@ -288,7 +288,7 @@ void TRI_ClearFailurePointsDebugging () {
 /// @brief initialize the debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseDebugging () {
+void TRI_InitializeDebugging () {
   FailurePoints = nullptr;
   TRI_InitReadWriteLock(&FailurePointsLock);
 }

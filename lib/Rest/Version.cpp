@@ -54,7 +54,7 @@ using namespace triagens::rest;
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-void Version::initialise () {
+void Version::initialize () {
   if (! Values.empty()) {
     return;
   }

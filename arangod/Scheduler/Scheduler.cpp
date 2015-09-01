@@ -78,7 +78,7 @@ Scheduler::Scheduler (size_t nrThreads)
   }
 
   // setup signal handlers
-  initialiseSignalHandlers();
+  initializeSignalHandlers();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -530,7 +530,7 @@ int Scheduler::checkInsertTask (Task const* task) {
 /// @brief initializes the signal handlers for the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-void Scheduler::initialiseSignalHandlers () {
+void Scheduler::initializeSignalHandlers () {
 
 #ifdef _WIN32
   // Windows does not support POSIX signal handling

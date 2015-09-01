@@ -101,7 +101,7 @@ int TRI_FlushMMFile (int fileDescriptor,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MMFile (void* memoryAddress, 
-                size_t numOfBytesToInitialise, 
+                size_t numOfBytesToInitialize, 
                 int memoryProtection,
                 int flags, 
                 int fileDescriptor, 
@@ -118,7 +118,7 @@ int TRI_MMFile (void* memoryAddress,
   // Set the high and low order 32 bits for using a 64 bit integer
   // ...........................................................................
 
-  mmLength.QuadPart = numOfBytesToInitialise;
+  mmLength.QuadPart = numOfBytesToInitialize;
 
   // ...........................................................................
   // Whenever we talk to the memory map functions, we require a file handle
@@ -240,7 +240,7 @@ int TRI_MMFile (void* memoryAddress,
   // ........................................................................
 
   //TODO: fix the viewProtection above *result = MapViewOfFile(*mmHandle, viewProtection, 0, 0, 0);
-  *result = MapViewOfFile(*mmHandle, FILE_MAP_ALL_ACCESS, 0, 0, numOfBytesToInitialise);
+  *result = MapViewOfFile(*mmHandle, FILE_MAP_ALL_ACCESS, 0, 0, numOfBytesToInitialize);
 
   // ........................................................................
   // The map view of file has failed.

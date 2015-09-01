@@ -498,7 +498,7 @@ double TRI_StatisticsTime () {
 /// @brief module init function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseStatistics () {
+void TRI_InitializeStatistics () {
   TRI_ServerStatistics._startTime = TRI_microtime();
 
   // .............................................................................

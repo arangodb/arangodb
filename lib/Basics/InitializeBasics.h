@@ -27,8 +27,8 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_INITIALISE_BASICS_H
-#define ARANGODB_BASICS_INITIALISE_BASICS_H 1
+#ifndef ARANGODB_BASICS_INITIALIZE_BASICS_H
+#define ARANGODB_BASICS_INITIALIZE_BASICS_H 1
 
 #include "Basics/Common.h"
 
@@ -44,7 +44,7 @@ namespace triagens {
 /// @brief initialize function
 ////////////////////////////////////////////////////////////////////////////////
 
-    extern void InitialiseBasics (int argv, char* argc[]);
+    extern void InitializeBasics (int argv, char* argc[]);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function
@@ -58,9 +58,9 @@ namespace triagens {
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_BASICS_INITIALISE(a,b)                 \
+#define TRIAGENS_BASICS_INITIALIZE(a,b)                 \
   do {                                                  \
-    triagens::basics::InitialiseBasics((a), (b));       \
+    triagens::basics::InitializeBasics((a), (b));       \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////

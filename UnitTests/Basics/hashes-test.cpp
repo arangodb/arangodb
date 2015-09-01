@@ -41,7 +41,7 @@ struct CHashesSetup {
   CHashesSetup () {
     BOOST_TEST_MESSAGE("setup hashes");
 
-    TRI_InitialiseHashes();
+    TRI_InitializeHashes();
   }
 
   ~CHashesSetup () {

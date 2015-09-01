@@ -174,7 +174,7 @@ string const& ApplicationServer::getName () const {
 
 void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgrounded) {
   TRI_ShutdownLogging(false);
-  TRI_InitialiseLogging(threaded);
+  TRI_InitializeLogging(threaded);
 
   std::string severity("human");
 

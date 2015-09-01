@@ -40,7 +40,7 @@
 /// @brief initialize function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseC (int argc, char* argv[]);
+void TRI_InitializeC (int argc, char* argv[]);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function
@@ -52,9 +52,9 @@ void TRI_ShutdownC (void);
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_C_INITIALISE(a,b)              \
+#define TRIAGENS_C_INITIALIZE(a,b)              \
   do {                                          \
-    TRI_InitialiseC((a), (b));                  \
+    TRI_InitializeC((a), (b));                  \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////

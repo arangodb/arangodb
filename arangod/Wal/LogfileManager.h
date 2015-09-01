@@ -128,7 +128,7 @@ namespace triagens {
 /// @brief initialize the logfile manager instance
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void initialise (std::string*,
+        static void initialize (std::string*,
                                 TRI_server_t*);
 
 // -----------------------------------------------------------------------------

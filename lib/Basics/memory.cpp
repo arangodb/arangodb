@@ -110,7 +110,7 @@ static void* CoreReserve;
 /// @brief whether or not the core was initialized
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CoreInitialised = 0;
+static int CoreInitialized = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configuration parameters for memory error tests
@@ -559,8 +559,8 @@ void* TRI_WrappedReallocate (void* ptr, long size) {
 /// @brief initialize memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseMemory () {
-  if (CoreInitialised == 0) {
+void TRI_InitializeMemory () {
+  if (CoreInitialized == 0) {
     static size_t const ReserveSize = 1024 * 1024 * 10;
 
     TriCoreMemZone._zid      = 0;
@@ -583,7 +583,7 @@ void TRI_InitialiseMemory () {
               (unsigned long long) ReserveSize);
     }
     else {
-      CoreInitialised = 1;
+      CoreInitialized = 1;
     }
   }
 }
@@ -593,9 +593,9 @@ void TRI_InitialiseMemory () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownMemory () {
-  if (CoreInitialised == 1) {
+  if (CoreInitialized == 1) {
     free(CoreReserve);
-    CoreInitialised = 0;
+    CoreInitialized = 0;
   }
 }
 

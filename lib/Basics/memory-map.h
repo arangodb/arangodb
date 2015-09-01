@@ -76,7 +76,7 @@ int TRI_FlushMMFile (int fileDescriptor,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MMFile (void* memoryAddress,
-                size_t numOfBytesToInitialise,
+                size_t numOfBytesToInitialize,
                 int memoryProtection,
                 int flags,
                 int fileDescriptor,

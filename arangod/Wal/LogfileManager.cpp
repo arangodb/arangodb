@@ -222,7 +222,7 @@ LogfileManager* LogfileManager::instance () {
 /// @brief initialize the logfile manager instance
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::initialise (std::string* path,
+void LogfileManager::initialize (std::string* path,
                                  TRI_server_t* server) {
   TRI_ASSERT(Instance == nullptr);
 
