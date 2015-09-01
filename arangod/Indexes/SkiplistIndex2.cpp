@@ -217,12 +217,12 @@ void SkiplistIterator::initCursor () {
     if (_reverse) {
       // start at last interval, right endpoint
       _currentInterval = n - 1;
-      _cursor = _intervals.at(_currentInterval)->_rightEndPoint;
+      _cursor = _intervals.at(_currentInterval)._rightEndPoint;
     }
     else {
       // start at first interval, left endpoint
       _currentInterval = 0;
-      _cursor = _intervals.at(_currentInterval)->_leftEndPoint;
+      _cursor = _intervals.at(_currentInterval)._leftEndPoint;
     }
   }
   else {
@@ -255,8 +255,8 @@ TRI_index_element_t* SkiplistIterator::next () {
 // .............................................................................
 
 bool SkiplistIterator::findHelperIntervalValid (
-  SkiplistIteratorInterval const* interval) {
-  Node* lNode = interval->_leftEndPoint;
+  SkiplistIteratorInterval const& interval) {
+  Node* lNode = interval._leftEndPoint;
 
   if (lNode == nullptr) {
     return false;
@@ -264,7 +264,7 @@ bool SkiplistIterator::findHelperIntervalValid (
   // Note that the right end point can be nullptr to indicate the end of
   // the index.
 
-  Node* rNode = interval->_rightEndPoint;
+  Node* rNode = interval._rightEndPoint;
 
   if (lNode == rNode) {
     return false;
@@ -300,12 +300,12 @@ bool SkiplistIterator::findHelperIntervalValid (
 }
 
 bool SkiplistIterator::findHelperIntervalIntersectionValid (
-  SkiplistIteratorInterval* lInterval,
-  SkiplistIteratorInterval* rInterval,
-  SkiplistIteratorInterval* interval) {
+  SkiplistIteratorInterval const& lInterval,
+  SkiplistIteratorInterval const& rInterval,
+  SkiplistIteratorInterval& interval) {
 
-  Node* lNode = lInterval->_leftEndPoint;
-  Node* rNode = rInterval->_leftEndPoint;
+  Node* lNode = lInterval._leftEndPoint;
+  Node* rNode = rInterval._leftEndPoint;
 
   if (nullptr == lNode || nullptr == rNode) {
     // At least one left boundary is the end, intersection is empty.
@@ -329,14 +329,14 @@ bool SkiplistIterator::findHelperIntervalIntersectionValid (
   }
 
   if (compareResult < 1) {
-    interval->_leftEndPoint = rNode;
+    interval._leftEndPoint = rNode;
   }
   else {
-    interval->_leftEndPoint = lNode;
+    interval._leftEndPoint = lNode;
   }
 
-  lNode = lInterval->_rightEndPoint;
-  rNode = rInterval->_rightEndPoint;
+  lNode = lInterval._rightEndPoint;
+  rNode = rInterval._rightEndPoint;
 
   // Now find the smaller of the two end nodes:
   if (nullptr == lNode) {
@@ -354,10 +354,10 @@ bool SkiplistIterator::findHelperIntervalIntersectionValid (
   }
 
   if (compareResult < 1) {
-    interval->_rightEndPoint = lNode;
+    interval._rightEndPoint = lNode;
   }
   else {
-    interval->_rightEndPoint = rNode;
+    interval._rightEndPoint = rNode;
   }
 
   return findHelperIntervalValid(interval);
@@ -365,11 +365,11 @@ bool SkiplistIterator::findHelperIntervalIntersectionValid (
 
 void SkiplistIterator::findHelper (
     TRI_index_operator_t const* indexOperator,
-    std::vector<SkiplistIteratorInterval*>& intervals
+    std::vector<SkiplistIteratorInterval>& intervals
   ) {
   TRI_skiplist_index_key_t               values;
-  std::vector<SkiplistIteratorInterval*> leftResult;
-  std::vector<SkiplistIteratorInterval*> rightResult;
+  std::vector<SkiplistIteratorInterval>  leftResult;
+  std::vector<SkiplistIteratorInterval>  rightResult;
   SkiplistIteratorInterval               interval;
   Node*                                  temp;
 
@@ -409,8 +409,8 @@ void SkiplistIterator::findHelper (
           if (findHelperIntervalIntersectionValid(
                             tempLeftInterval,
                             tempRightInterval,
-                            &interval)) {
-            intervals.emplace_back(&interval);
+                            interval)) {
+            intervals.emplace_back(interval);
           }
         }
       }
@@ -431,8 +431,8 @@ void SkiplistIterator::findHelper (
         if (nullptr != temp) {
           if (0 == _index->CmpKeyElm(&values, temp->document())) {
             interval._rightEndPoint = temp->nextNode();
-            if (findHelperIntervalValid(&interval)) {
-              intervals.emplace_back(&interval);
+            if (findHelperIntervalValid(interval)) {
+              intervals.emplace_back(interval);
             }
           }
         }
@@ -440,8 +440,8 @@ void SkiplistIterator::findHelper (
       else {
         temp = _index->_skiplistIndex->rightKeyLookup(&values);
         interval._rightEndPoint = temp->nextNode();
-        if (findHelperIntervalValid(&interval)) {
-          intervals.emplace_back(&interval);
+        if (findHelperIntervalValid(interval)) {
+          intervals.emplace_back(interval);
         }
       }
       return;
@@ -452,8 +452,8 @@ void SkiplistIterator::findHelper (
       temp = _index->_skiplistIndex->rightKeyLookup(&values);
       interval._rightEndPoint = temp->nextNode();
 
-      if (findHelperIntervalValid(&interval)) {
-        intervals.emplace_back(&interval);
+      if (findHelperIntervalValid(interval)) {
+        intervals.emplace_back(interval);
       }
       return;
     }
@@ -463,8 +463,8 @@ void SkiplistIterator::findHelper (
       temp = _index->_skiplistIndex->leftKeyLookup(&values);
       interval._rightEndPoint = temp->nextNode();
 
-      if (findHelperIntervalValid(&interval)) {
-        intervals.emplace_back(&interval);
+      if (findHelperIntervalValid(interval)) {
+        intervals.emplace_back(interval);
       }
       return;
     }
@@ -474,8 +474,8 @@ void SkiplistIterator::findHelper (
       interval._leftEndPoint = temp;
       interval._rightEndPoint = _index->_skiplistIndex->endNode();
 
-      if (findHelperIntervalValid(&interval)) {
-        intervals.emplace_back(&interval);
+      if (findHelperIntervalValid(interval)) {
+        intervals.emplace_back(interval);
       }
       return;
     }
@@ -485,8 +485,8 @@ void SkiplistIterator::findHelper (
       interval._leftEndPoint = temp;
       interval._rightEndPoint = _index->_skiplistIndex->endNode();
 
-      if (findHelperIntervalValid(&interval)) {
-        intervals.emplace_back(&interval);
+      if (findHelperIntervalValid(interval)) {
+        intervals.emplace_back(interval);
       }
       return;
     }
@@ -523,7 +523,7 @@ bool SkiplistIterator::hasPrevIteration () {
   // If the leftNode == left end point AND there are no more intervals
   // then we have no next.
   // ...........................................................................
-  return leftNode != _intervals.at(_currentInterval)->_leftEndPoint;
+  return leftNode != _intervals.at(_currentInterval)._leftEndPoint;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -551,7 +551,7 @@ bool SkiplistIterator::hasNextIteration () {
   // If the left == right end point AND there are no more intervals then we have
   // no next.
   // ...........................................................................
-  return leftNode != _intervals.at(_currentInterval)->_rightEndPoint;
+  return leftNode != _intervals.at(_currentInterval)._rightEndPoint;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -562,7 +562,7 @@ TRI_index_element_t* SkiplistIterator::prevIteration () {
   if (_currentInterval >= _intervals.size()) {
     return nullptr;
   }
-  SkiplistIteratorInterval* interval = _intervals.at(_currentInterval);
+  SkiplistIteratorInterval& interval = _intervals.at(_currentInterval);
 
   // ...........................................................................
   // use the current cursor and move 1 backward
@@ -572,15 +572,14 @@ TRI_index_element_t* SkiplistIterator::prevIteration () {
 
   result = _index->_skiplistIndex->prevNode(_cursor);
 
-  if (result == interval->_leftEndPoint) {
+  if (result == interval._leftEndPoint) {
     if (_currentInterval == 0) {
       _cursor = nullptr;  // exhausted
       return nullptr;
     }
     --_currentInterval;
     interval = _intervals.at(_currentInterval);
-    TRI_ASSERT(interval != nullptr);
-    _cursor = interval->_rightEndPoint;
+    _cursor = interval._rightEndPoint;
     result = _index->_skiplistIndex->prevNode(_cursor);
   }
   _cursor = result;
@@ -603,11 +602,11 @@ TRI_index_element_t* SkiplistIterator::nextIteration () {
   if (_currentInterval >= _intervals.size()) {
     return nullptr;
   }
-  SkiplistIteratorInterval* interval = _intervals.at(_currentInterval);
+  SkiplistIteratorInterval& interval = _intervals.at(_currentInterval);
 
   while (true) {   // will be left by break
     _cursor = _cursor->nextNode();
-    if (_cursor != interval->_rightEndPoint) {
+    if (_cursor != interval._rightEndPoint) {
       if (_cursor == nullptr) {
         return nullptr;
       }
@@ -619,8 +618,7 @@ TRI_index_element_t* SkiplistIterator::nextIteration () {
     }
     ++_currentInterval;
     interval = _intervals.at(_currentInterval);
-    TRI_ASSERT(interval != nullptr);
-    _cursor = interval->_leftEndPoint;
+    _cursor = interval._leftEndPoint;
   }
 
   return _cursor->document();
@@ -785,7 +783,7 @@ int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc,
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIterator* SkiplistIndex2::lookup (TRI_index_operator_t* slOperator,
-                                                 bool reverse) {
+                                          bool reverse) {
   if (slOperator == nullptr) {
     return nullptr;
   }
@@ -805,7 +803,7 @@ SkiplistIterator* SkiplistIndex2::lookup (TRI_index_operator_t* slOperator,
   }
   std::unique_ptr<SkiplistIterator> results(new SkiplistIterator(this, reverse));
 
-  if (!results) {
+  if (! results) {
     // Check if we could not get an iterator.
     return nullptr; // calling procedure needs to care when the iterator is null
   }

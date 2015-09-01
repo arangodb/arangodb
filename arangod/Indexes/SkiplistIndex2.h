@@ -31,8 +31,8 @@
 #define ARANGODB_INDEXES_SKIPLIST_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Basics/SkipList.h"
 #include "Indexes/PathBasedIndex.h"
-#include "Indexes/skiplist-helper.h"
 #include "IndexOperators/index-operator.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
@@ -90,7 +90,7 @@ namespace triagens {
         size_t _currentInterval; // starts with 0, current interval used
         bool _reverse;
         Node* _cursor;
-        std::vector<SkiplistIteratorInterval*> _intervals;
+        std::vector<SkiplistIteratorInterval> _intervals;
 
       public:
 
@@ -105,9 +105,9 @@ namespace triagens {
             _currentInterval(0),
             _reverse(reverse),
             _cursor(nullptr) {
-        };
+        }
 
-        ~SkiplistIterator () {};
+        ~SkiplistIterator () {}
 
         // always holds the last node returned, initially equal to
         // the _leftEndPoint of the first interval (or the 
@@ -135,7 +135,7 @@ namespace triagens {
 
         void findHelper (
           TRI_index_operator_t const* indexOperator,
-          std::vector<SkiplistIteratorInterval*>& interval
+          std::vector<SkiplistIteratorInterval>& interval
         );
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -150,13 +150,13 @@ namespace triagens {
         TRI_index_element_t* nextIteration ();
 
         bool findHelperIntervalIntersectionValid (
-          SkiplistIteratorInterval* lInterval,
-          SkiplistIteratorInterval* rInterval,
-          SkiplistIteratorInterval* interval
+          SkiplistIteratorInterval const& lInterval,
+          SkiplistIteratorInterval const& rInterval,
+          SkiplistIteratorInterval& interval
         );
 
         bool findHelperIntervalValid (
-          SkiplistIteratorInterval const* interval
+          SkiplistIteratorInterval const& interval
         );
     };
 
