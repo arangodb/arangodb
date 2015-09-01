@@ -27,7 +27,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SkiplistIndex2.h"
+#include "SkiplistIndex.h"
 #include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
@@ -636,7 +636,7 @@ TRI_index_element_t* SkiplistIterator::nextIteration () {
 /// @brief create the skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIndex2::SkiplistIndex2 (TRI_idx_iid_t iid,
+SkiplistIndex::SkiplistIndex (TRI_idx_iid_t iid,
                                 TRI_document_collection_t* collection,
                                 std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
                                 bool unique,
@@ -657,7 +657,7 @@ SkiplistIndex2::SkiplistIndex2 (TRI_idx_iid_t iid,
 /// @brief destroy the skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIndex2::~SkiplistIndex2 () {
+SkiplistIndex::~SkiplistIndex () {
   if (_skiplistIndex != nullptr) {
     delete _skiplistIndex;
   }
@@ -667,12 +667,12 @@ SkiplistIndex2::~SkiplistIndex2 () {
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
         
-size_t SkiplistIndex2::memory () const {
+size_t SkiplistIndex::memory () const {
   return _skiplistIndex->memoryUsage() +
          static_cast<size_t>(_skiplistIndex->getNrUsed()) * elementSize();
 }
 
-size_t SkiplistIndex2::numFields () const {
+size_t SkiplistIndex::numFields () const {
   return _fields.size();
 }
 
@@ -680,7 +680,7 @@ size_t SkiplistIndex2::numFields () const {
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
         
-triagens::basics::Json SkiplistIndex2::toJson (TRI_memory_zone_t* zone,
+triagens::basics::Json SkiplistIndex::toJson (TRI_memory_zone_t* zone,
                                                bool withFigures) const {
   auto json = Index::toJson(zone, withFigures);
 
@@ -694,7 +694,7 @@ triagens::basics::Json SkiplistIndex2::toJson (TRI_memory_zone_t* zone,
 /// @brief return a JSON representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
         
-triagens::basics::Json SkiplistIndex2::toJsonFigures (TRI_memory_zone_t* zone) const {
+triagens::basics::Json SkiplistIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
   triagens::basics::Json json(triagens::basics::Json::Object);
   json("memory", triagens::basics::Json(static_cast<double>(memory())));
   _skiplistIndex->appendToJson(zone, json);
@@ -706,7 +706,7 @@ triagens::basics::Json SkiplistIndex2::toJsonFigures (TRI_memory_zone_t* zone) c
 /// @brief inserts a document into a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
   
-int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc, 
+int SkiplistIndex::insert (TRI_doc_mptr_t const* doc, 
                             bool) {
 
   auto allocate = [this] () -> TRI_index_element_t* {
@@ -753,7 +753,7 @@ int SkiplistIndex2::insert (TRI_doc_mptr_t const* doc,
 /// @brief removes a document from a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
          
-int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc, 
+int SkiplistIndex::remove (TRI_doc_mptr_t const* doc, 
                             bool) {
 
   auto allocate = [this] () -> TRI_index_element_t* {
@@ -782,7 +782,7 @@ int SkiplistIndex2::remove (TRI_doc_mptr_t const* doc,
 /// the TRI_index_operator_t* and the SkiplistIterator* results
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIterator* SkiplistIndex2::lookup (TRI_index_operator_t* slOperator,
+SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
                                           bool reverse) {
   if (slOperator == nullptr) {
     return nullptr;
@@ -820,7 +820,7 @@ SkiplistIterator* SkiplistIndex2::lookup (TRI_index_operator_t* slOperator,
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-size_t SkiplistIndex2::elementSize () const {
+size_t SkiplistIndex::elementSize () const {
   return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numFields());
 }
 
@@ -828,7 +828,7 @@ size_t SkiplistIndex2::elementSize () const {
 /// @brief compares a key with an element in a skip list, generic callback
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex2::KeyElementComparator::operator() (TRI_skiplist_index_key_t const* leftKey,
+int SkiplistIndex::KeyElementComparator::operator() (TRI_skiplist_index_key_t const* leftKey,
                                       TRI_index_element_t const* rightElement) {
 
   TRI_ASSERT(nullptr != leftKey);
@@ -855,7 +855,7 @@ int SkiplistIndex2::KeyElementComparator::operator() (TRI_skiplist_index_key_t c
 /// @brief compares two elements in a skip list, this is the generic callback
 ////////////////////////////////////////////////////////////////////////////////
 
-int SkiplistIndex2::ElementElementComparator::operator() (TRI_index_element_t const* leftElement,
+int SkiplistIndex::ElementElementComparator::operator() (TRI_index_element_t const* leftElement,
                                           TRI_index_element_t const* rightElement,
                                           triagens::basics::SkipListCmpType cmptype) {
 

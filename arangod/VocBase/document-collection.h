@@ -65,7 +65,7 @@ namespace triagens {
     class HashIndex;
     class Index;
     class PrimaryIndex;
-    class SkiplistIndex2;
+    class SkiplistIndex;
   }
 }
 

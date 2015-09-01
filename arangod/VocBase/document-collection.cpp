@@ -44,7 +44,7 @@
 #include "Indexes/GeoIndex2.h"
 #include "Indexes/HashIndex.h"
 #include "Indexes/PrimaryIndex.h"
-#include "Indexes/SkiplistIndex2.h"
+#include "Indexes/SkiplistIndex.h"
 #include "RestServer/ArangoServer.h"
 #include "Utils/transactions.h"
 #include "Utils/CollectionReadLocker.h"
@@ -3373,7 +3373,7 @@ static triagens::arango::Index* LookupPathIndexDocumentCollection (TRI_document_
       }
 
       case triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
-        auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex2*>(idx);
+        auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex*>(idx);
         
         if (unique != skiplistIndex->unique() ||
             (sparsity != -1 && sparsity != (skiplistIndex->sparse() ? 1 : 0 ))) {
@@ -4571,7 +4571,7 @@ static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (TRI_docum
   }
 
   // Create the skiplist index
-  std::unique_ptr<triagens::arango::SkiplistIndex2> skiplistIndex(new triagens::arango::SkiplistIndex2(iid, document, fields, unique, sparse));
+  std::unique_ptr<triagens::arango::SkiplistIndex> skiplistIndex(new triagens::arango::SkiplistIndex(iid, document, fields, unique, sparse));
   idx = static_cast<triagens::arango::Index*>(skiplistIndex.get());
 
   // initialises the index with all existing documents

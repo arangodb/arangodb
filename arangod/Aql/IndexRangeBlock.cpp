@@ -33,7 +33,7 @@
 #include "Basics/Exceptions.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/HashIndex.h"
-#include "Indexes/SkiplistIndex2.h"
+#include "Indexes/SkiplistIndex.h"
 #include "V8/v8-globals.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
@@ -1431,7 +1431,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   
   delete _skiplistIterator;
 
-  _skiplistIterator = static_cast<triagens::arango::SkiplistIndex2*>(idx)->lookup(skiplistOperator, en->_reverse);
+  _skiplistIterator = static_cast<triagens::arango::SkiplistIndex*>(idx)->lookup(skiplistOperator, en->_reverse);
 
   if (skiplistOperator != nullptr) {
     delete skiplistOperator;
