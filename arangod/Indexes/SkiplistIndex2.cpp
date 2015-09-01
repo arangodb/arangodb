@@ -217,12 +217,12 @@ void SkiplistIterator::initCursor () {
     if (_reverse) {
       // start at last interval, right endpoint
       _currentInterval = n - 1;
-      _cursor = _intervals[n -1]->_rightEndPoint;
+      _cursor = _intervals.at(_currentInterval)->_rightEndPoint;
     }
     else {
       // start at first interval, left endpoint
       _currentInterval = 0;
-      _cursor = _intervals[0]->_leftEndPoint;
+      _cursor = _intervals.at(_currentInterval)->_leftEndPoint;
     }
   }
   else {
