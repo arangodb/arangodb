@@ -614,7 +614,6 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
 
   std::unique_ptr<SkiplistIterator> skiplistIterator(static_cast<triagens::arango::SkiplistIndex*>(idx)->lookup(skiplistOperator, reverse));
   delete skiplistOperator;
-  skiplistOperator = nullptr;
 
   if (! skiplistIterator) {
     int res = TRI_errno();
