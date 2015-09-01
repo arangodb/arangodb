@@ -555,7 +555,6 @@ namespace triagens {
 
           Node* newNode;
 
-      printf("SL Alloc %p", ptr); 
           try {
             // use placement new
             newNode = new(ptr) Node(height, static_cast<char*>(ptr));
