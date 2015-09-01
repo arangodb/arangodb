@@ -57,7 +57,7 @@ mimetype_t;
 /// @brief already initialized
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Initialised = false;
+static bool Initialized = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the array of mimetypes
@@ -145,8 +145,8 @@ char* TRI_GetMimetype (const char* extension) {
 /// @brief initializes the mimetypes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseMimetypes () {
-  if (Initialised) {
+void TRI_InitializeMimetypes () {
+  if (Initialized) {
     return;
   }
 
@@ -157,8 +157,8 @@ void TRI_InitialiseMimetypes () {
                              EqualMimetype,
                              0);
 
-  TRI_InitialiseEntriesMimetypes();
-  Initialised = true;
+  TRI_InitializeEntriesMimetypes();
+  Initialized = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,7 +168,7 @@ void TRI_InitialiseMimetypes () {
 void TRI_ShutdownMimetypes () {
   size_t i;
 
-  if (! Initialised) {
+  if (! Initialized) {
     return;
   }
 
@@ -184,7 +184,7 @@ void TRI_ShutdownMimetypes () {
 
   TRI_DestroyAssociativePointer(&Mimetypes);
 
-  Initialised = false;
+  Initialized = false;
 }
 
 // -----------------------------------------------------------------------------

@@ -58,7 +58,7 @@
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/AsyncJobManager.h"
-#include "Rest/InitialiseRest.h"
+#include "Rest/InitializeRest.h"
 #include "Rest/OperationMode.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
@@ -433,7 +433,7 @@ void ArangoServer::buildApplicationServer () {
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
   // initialize the server's write ahead log
-  wal::LogfileManager::initialise(&_databasePath, _server);
+  wal::LogfileManager::initialize(&_databasePath, _server);
 
   // and add the feature to the application server
   _applicationServer->addFeature(wal::LogfileManager::instance());

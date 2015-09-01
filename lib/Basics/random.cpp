@@ -39,7 +39,7 @@
 /// @brief already initialized
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Initialised = false;
+static bool Initialized = false;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -148,14 +148,14 @@ uint32_t TRI_UInt32Random (void) {
 /// @brief initializes the random components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseRandom (void) {
-  if (Initialised) {
+void TRI_InitializeRandom (void) {
+  if (Initialized) {
     return;
   }
 
   TRI_srandom(SeedRandom());
 
-  Initialised = true;
+  Initialized = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,11 +163,11 @@ void TRI_InitialiseRandom (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownRandom (void) {
-  if (! Initialised) {
+  if (! Initialized) {
     return;
   }
 
-  Initialised = false;
+  Initialized = false;
 }
 
 // -----------------------------------------------------------------------------

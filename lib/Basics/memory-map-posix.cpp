@@ -83,7 +83,7 @@ int TRI_FlushMMFile (int fileDescriptor,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MMFile (void* memoryAddress,
-                size_t numOfBytesToInitialise,
+                size_t numOfBytesToInitialize,
                 int memoryProtection,
                 int flags,
                 int fileDescriptor,
@@ -95,7 +95,7 @@ int TRI_MMFile (void* memoryAddress,
 
   *mmHandle = nullptr; // only useful for Windows
 
-  *result = mmap(memoryAddress, numOfBytesToInitialise, memoryProtection, flags, fileDescriptor, offsetRetyped);
+  *result = mmap(memoryAddress, numOfBytesToInitialize, memoryProtection, flags, fileDescriptor, offsetRetyped);
 
   if (*result != MAP_FAILED) {
     return TRI_ERROR_NO_ERROR;

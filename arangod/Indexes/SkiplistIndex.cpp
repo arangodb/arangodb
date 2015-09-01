@@ -812,7 +812,7 @@ SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
 
   results->initCursor();
 
-  // Finally initialise _cursor if the result is not empty:
+  // Finally initialize _cursor if the result is not empty:
   return results.release();
 }
 

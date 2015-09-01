@@ -82,7 +82,7 @@ def genCHeaderFile(types):
            + "/// @brief initialize mimetypes\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "\n"\
-           + "void TRI_InitialiseEntriesMimetypes ();\n"\
+           + "void TRI_InitializeEntriesMimetypes ();\n"\
            + "\n"\
            + "#endif\n"\
            + "\n"
@@ -103,7 +103,7 @@ def genCFile(types, filename):
          + "/// @brief initialize mimetypes\n"\
          + "////////////////////////////////////////////////////////////////////////////////\n"\
          + "\n"\
-         + "void TRI_InitialiseEntriesMimetypes () {\n"
+         + "void TRI_InitializeEntriesMimetypes () {\n"
 
   # print individual types
   for t in types:

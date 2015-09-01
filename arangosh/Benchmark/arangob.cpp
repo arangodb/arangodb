@@ -44,7 +44,7 @@
 #include "Basics/terminal-utils.h"
 #include "Rest/Endpoint.h"
 #include "Rest/HttpRequest.h"
-#include "Rest/InitialiseRest.h"
+#include "Rest/InitializeRest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Benchmark/BenchmarkCounter.h"
@@ -241,19 +241,19 @@ void arangobEntryFunction () {
   // If you familiar with valgrind ... then this is not like that, however
   // you do get some similar functionality.
   // ...........................................................................
-  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
+  //res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
-  res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+  res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
   if (res != 0) {
     _exit(1);
   }
 
-  res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
   if (res != 0) {
     _exit(1);
   }
 
-  res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+  res = initializeWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
   if (res != 0) {
     _exit(1);
   }
@@ -295,10 +295,10 @@ int main (int argc, char* argv[]) {
 
   arangobEntryFunction();
 
-  TRIAGENS_C_INITIALISE(argc, argv);
-  TRIAGENS_REST_INITIALISE(argc, argv);
+  TRIAGENS_C_INITIALIZE(argc, argv);
+  TRIAGENS_REST_INITIALIZE(argc, argv);
 
-  TRI_InitialiseLogging(false);
+  TRI_InitializeLogging(false);
 
   BaseClient.setEndpointString(Endpoint::getDefaultEndpoint());
 

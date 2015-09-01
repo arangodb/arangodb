@@ -5,7 +5,7 @@
 #include "Basics/Common.h"
 #include "./lib/Basics/voc-errors.h"
 
-void TRI_InitialiseErrorMessages () {
+void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_NO_ERROR, "no error");
   REG_ERROR(ERROR_FAILED, "failed");
   REG_ERROR(ERROR_SYS_ERROR, "system error");

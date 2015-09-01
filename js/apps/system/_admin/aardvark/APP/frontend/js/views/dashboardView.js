@@ -163,7 +163,7 @@
 
     initialize: function () {
       this.dygraphConfig = this.options.dygraphConfig;
-      this.d3NotInitialised = true;
+      this.d3NotInitialized = true;
       this.events["click .dashboard-sub-bar-menu-sign"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
@@ -574,9 +574,9 @@
           "bytesSentDistributionPercent", "bytesReceivedDistributionPercent"]
       };
 
-      if (this.d3NotInitialised) {
+      if (this.d3NotInitialized) {
           update = false;
-          this.d3NotInitialised = false;
+          this.d3NotInitialized = false;
       }
 
       _.each(Object.keys(barCharts), function (k) {

@@ -199,7 +199,7 @@ int finaliseWindows (const TRI_win_finalise_e finaliseWhat,
   return -1;
 }
 
-int initialiseWindows (const TRI_win_initialise_e initialiseWhat,
+int initializeWindows (const TRI_win_initialize_e initializeWhat,
                        const char* data) {
 
   // ............................................................................
@@ -207,7 +207,7 @@ int initialiseWindows (const TRI_win_initialise_e initialiseWhat,
   // it may be NULL (and will be in most cases)
   // ............................................................................
 
-  switch (initialiseWhat) {
+  switch (initializeWhat) {
 
     case TRI_WIN_INITIAL_SET_DEBUG_FLAG: {
       _CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF)|_CRTDBG_CHECK_ALWAYS_DF);

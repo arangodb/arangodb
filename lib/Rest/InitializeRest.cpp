@@ -27,7 +27,7 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "InitialiseRest.h"
+#include "InitializeRest.h"
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -42,7 +42,7 @@
 
 #include "Basics/locks.h"
 #include "Basics/logging.h"
-#include "Basics/InitialiseBasics.h"
+#include "Basics/InitializeBasics.h"
 #include "Basics/threads.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
@@ -134,8 +134,8 @@ namespace {
 
 namespace triagens {
   namespace rest {
-    void InitialiseRest (int argc, char* argv[]) {
-      TRIAGENS_BASICS_INITIALISE(argc, argv);
+    void InitializeRest (int argc, char* argv[]) {
+      TRIAGENS_BASICS_INITIALIZE(argc, argv);
 
       SSL_library_init();
       SSL_load_error_strings();
@@ -144,7 +144,7 @@ namespace triagens {
 
       opensslSetup();
 
-      Version::initialise();
+      Version::initialize();
     }
 
 

@@ -780,7 +780,7 @@
         }
 
       ]};
-      view.d3NotInitialised = false;
+      view.d3NotInitialized = false;
       view.prepareD3Charts(true);
 
       expect(view.getCurrentSize).toHaveBeenCalledWith(

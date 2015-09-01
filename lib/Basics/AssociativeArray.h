@@ -114,7 +114,7 @@ namespace triagens {
 #else
             _table(0) {
 #endif
-          initialise(size);
+          initialize(size);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,7 +138,7 @@ namespace triagens {
 #else
             _table(0) {
 #endif
-          initialise(size);
+          initialize(size);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -247,7 +247,7 @@ namespace triagens {
 
         void clear () {
           delete[] _table;
-          initialise(_nrAlloc);
+          initialize(_nrAlloc);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +260,7 @@ namespace triagens {
           }
 
           delete[] _table;
-          initialise(_nrAlloc);
+          initialize(_nrAlloc);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -566,7 +566,7 @@ namespace triagens {
 /// @brief initialize the internal table
 ////////////////////////////////////////////////////////////////////////////////
 
-        void initialise (uint64_t size) {
+        void initialize (uint64_t size) {
           _table = new ELEMENT[static_cast<unsigned int>(size)];
 
           for (uint64_t i = 0; i < size; i++) {

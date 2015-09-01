@@ -338,7 +338,7 @@ namespace triagens {
         std::vector<bool> _doneForClient;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _ignoreInitCursor: should we really initialiseCursor? 
+/// @brief _ignoreInitCursor: should we really initializeCursor? 
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _ignoreInitCursor;

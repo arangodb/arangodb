@@ -536,7 +536,7 @@ uint32_t TRI_Crc32HashString (char const* data) {
 /// @brief already initialized
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Initialised = false;
+static bool Initialized = false;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -546,14 +546,14 @@ static bool Initialised = false;
 /// @brief initializes the hashes components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseHashes () {
-  if (Initialised) {
+void TRI_InitializeHashes () {
+  if (Initialized) {
     return;
   }
 
   GenerateCrc32Polynomial();
 
-  Initialised = true;
+  Initialized = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -561,11 +561,11 @@ void TRI_InitialiseHashes () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownHashes () {
-  if (! Initialised) {
+  if (! Initialized) {
     return;
   }
 
-  Initialised = false;
+  Initialized = false;
 }
 
 // -----------------------------------------------------------------------------

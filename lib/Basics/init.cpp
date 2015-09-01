@@ -43,16 +43,16 @@
 /// @brief initialize function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseC (int argc, char* argv[]) {
-  TRI_InitialiseMemory();
-  TRI_InitialiseDebugging();
-  TRI_InitialiseError();
-  TRI_InitialiseFiles();
-  TRI_InitialiseMimetypes();
-  TRI_InitialiseLogging(false);
-  TRI_InitialiseHashes();
-  TRI_InitialiseRandom();
-  TRI_InitialiseProcess(argc, argv);
+void TRI_InitializeC (int argc, char* argv[]) {
+  TRI_InitializeMemory();
+  TRI_InitializeDebugging();
+  TRI_InitializeError();
+  TRI_InitializeFiles();
+  TRI_InitializeMimetypes();
+  TRI_InitializeLogging(false);
+  TRI_InitializeHashes();
+  TRI_InitializeRandom();
+  TRI_InitializeProcess(argc, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

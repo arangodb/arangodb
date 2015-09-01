@@ -27,52 +27,42 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_INITIALISE_REST_H
-#define ARANGODB_REST_INITIALISE_REST_H 1
+#include "Basics/InitializeBasics.h"
 
-#include "Basics/Common.h"
+#include "Basics/init.h"
+#include "Basics/error.h"
+#include "Basics/hashes.h"
+#include "Basics/logging.h"
+#include "Basics/random.h"
+#include "Basics/RandomGenerator.h"
 
 namespace triagens {
+  namespace basics {
+    void InitializeBasics (int argv, char* argc[]) {
+      TRIAGENS_C_INITIALIZE(argv, argc);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rest server
-////////////////////////////////////////////////////////////////////////////////
+      // use the rng so the linker does not remove it from the executable
+      // we might need it later because .so files might refer to the symbols
+      Random::random_e v = Random::selectVersion(Random::RAND_MERSENNE);
+      Random::UniformInteger random(0, INT32_MAX);
+      random.random();
+      Random::selectVersion(v);
 
-  namespace rest {
+#ifdef TRI_BROKEN_CXA_GUARD
+      pthread_cond_t cond;
+      pthread_cond_init(&cond, 0);
+      pthread_cond_broadcast(&cond);
+#endif
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize function
-////////////////////////////////////////////////////////////////////////////////
 
-    extern void InitialiseRest (int argc, char* argv[]);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown function
-////////////////////////////////////////////////////////////////////////////////
-
-    extern void ShutdownRest ();
+    void ShutdownBasics () {
+      TRIAGENS_C_SHUTDOWN;
+    }
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRIAGENS_REST_INITIALISE(a,b)           \
-  do {                                          \
-    triagens::rest::InitialiseRest((a), (b));   \
-  } while (0)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRIAGENS_REST_SHUTDOWN           \
-  do {                                   \
-    triagens::rest::ShutdownRest();      \
-  } while (0)
-
-#endif
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

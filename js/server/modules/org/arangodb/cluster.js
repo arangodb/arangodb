@@ -974,7 +974,7 @@ var role = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var status = function () {
-  if (! isCluster() || ! global.ArangoServerState.initialised()) {
+  if (! isCluster() || ! global.ArangoServerState.initialized()) {
     return undefined;
   }
 
@@ -998,7 +998,7 @@ var isCoordinatorRequest = function (req) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var handlePlanChange = function () {
-  if (! isCluster() || isCoordinator() || ! global.ArangoServerState.initialised()) {
+  if (! isCluster() || isCoordinator() || ! global.ArangoServerState.initialized()) {
     return;
   }
 

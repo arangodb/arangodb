@@ -1414,7 +1414,7 @@ static uint64_t GetPhysicalMemory () {
 /// @brief initializes the process components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseProcess (int argc, char* argv[]) {
+void TRI_InitializeProcess (int argc, char* argv[]) {
   TRI_PhysicalMemory = GetPhysicalMemory();
 
   if (ProcessName != nullptr) {
