@@ -109,7 +109,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Indexes/PathBasedIndex.cpp \
 	arangod/Indexes/PrimaryIndex.cpp \
 	arangod/Indexes/SkiplistIndex2.cpp \
-	arangod/Indexes/skiplist-helper.cpp \
 	arangod/IndexOperators/index-operator.cpp \
 	arangod/Replication/ContinuousSyncer.cpp \
 	arangod/Replication/InitialSyncer.cpp \
