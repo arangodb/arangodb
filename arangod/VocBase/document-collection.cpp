@@ -2585,10 +2585,11 @@ size_t TRI_DocumentIteratorDocumentCollection (TransactionBase const*,
   if (nrUsed > 0) {
     uint64_t position = 0;
     uint64_t total = 0;
-    TRI_doc_mptr_t const* ptr = nullptr;
+
     while (true) {
-      ptr = idx->lookupSequential(position, total);
-      if (ptr == nullptr || ! callback(ptr, document, data)) {
+      TRI_doc_mptr_t const* mptr = idx->lookupSequential(position, total);
+
+      if (mptr == nullptr || ! callback(mptr, document, data)) {
         break;
       }
     }
@@ -3191,13 +3192,19 @@ static int FillIndexBatch (TRI_document_collection_t* document,
         
   std::vector<TRI_doc_mptr_t const*> documents;
   documents.reserve(blockSize);
+
   if (nrUsed > 0) {
     uint64_t position = 0;
     uint64_t total = 0;
-    TRI_doc_mptr_t const* mptr;
-    do {
-      mptr = primaryIndex->lookupSequential(position, total);
+    while (true) {
+      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(position, total);
+
+      if (mptr == nullptr) {
+        break;
+      }
+
       documents.emplace_back(mptr);
+
       if (documents.size() == blockSize) {
         res = idx->batchInsert(&documents, indexPool->numThreads());
         documents.clear();
@@ -3208,7 +3215,6 @@ static int FillIndexBatch (TRI_document_collection_t* document,
         }
       }
     }
-    while (mptr != nullptr);
   }
 
   // process the remainder of the documents
@@ -3257,13 +3263,16 @@ static int FillIndexSequential (TRI_document_collection_t* document,
   if (nrUsed > 0) {
     uint64_t position = 0;
     uint64_t total = 0;
-    TRI_doc_mptr_t const* mptr = nullptr;
+
     while (true) {
-      mptr = primaryIndex->lookupSequential(position, total);
+      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(position, total);
+
       if (mptr == nullptr) {
         break;
       }
+
       int res = idx->insert(mptr, false);
+
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }

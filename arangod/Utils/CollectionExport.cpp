@@ -138,10 +138,13 @@ void CollectionExport::run (uint64_t maxWaitTime, size_t limit) {
       uint64_t total = 0;
       while (limit > 0) {
         auto ptr = idx->lookupSequential(position, total);
+
         if (ptr == nullptr) {
           break;
         }
+
         void const* marker = ptr->getDataPtr();
+
         if (! TRI_IsWalDataMarkerDatafile(marker)) {
           _documents->emplace_back(marker);
           --limit;
