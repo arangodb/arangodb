@@ -1435,7 +1435,6 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
 
   if (skiplistOperator != nullptr) {
     delete skiplistOperator;
-    skiplistOperator = nullptr;
   }
 
   if (_skiplistIterator == nullptr) {

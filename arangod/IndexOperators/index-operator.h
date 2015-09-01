@@ -108,10 +108,11 @@ class TRI_index_operator_t {
       TRI_index_operator_type_e const type,
       VocShaper const* shaper
     ) : _type(type),
-        _shaper(shaper)
-    {};
+        _shaper(shaper) {
+    }
 
-    ~TRI_index_operator_t () {};
+    virtual ~TRI_index_operator_t () {
+    } 
 };
 
 
@@ -162,8 +163,8 @@ class TRI_relation_index_operator_t : public TRI_index_operator_t {
     ) : TRI_index_operator_t(type, shaper),
         _parameters(parameters),
         _fields(fields),
-        _numFields(numFields)
-    {};
+        _numFields(numFields) {
+    }
 
     ~TRI_relation_index_operator_t ();
 
