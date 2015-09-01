@@ -60,7 +60,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new mutex
+/// @brief initializes a new mutex
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitMutex (TRI_mutex_t* mutex) {
@@ -119,7 +119,7 @@ void TRI_UnlockMutex (TRI_mutex_t* mutex) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new spin-lock
+/// @brief initializes a new spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitSpin (TRI_spin_t* spinLock) {
@@ -184,7 +184,7 @@ void TRI_UnlockSpin (TRI_spin_t* spinLock) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new read-write lock
+/// @brief initializes a new read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock) {
@@ -320,7 +320,7 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new condition variable
+/// @brief initializes a new condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitCondition (TRI_condition_t* cond) {

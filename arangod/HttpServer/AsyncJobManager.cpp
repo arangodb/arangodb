@@ -336,7 +336,7 @@ const vector<AsyncJobResult::IdType> AsyncJobManager::byStatus (AsyncJobResult::
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises an async job
+/// @brief initializes an async job
 ////////////////////////////////////////////////////////////////////////////////
 
 void AsyncJobManager::initAsyncJob (HttpServerJob* job, uint64_t* jobId) {

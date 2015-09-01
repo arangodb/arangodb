@@ -205,14 +205,14 @@ bool ApplicationCluster::prepare () {
     ServerState::instance()->setAddress(_myAddress);
   }
 
-  // initialise ClusterComm library
+  // initialize ClusterComm library
   // must call initialize while still single-threaded
   ClusterComm::initialize();
 
   // disable error logging for a while
   ClusterComm::instance()->enableConnectionErrorLogging(false);
 
-  // perfom an initial connect to the agency
+  // perform an initial connect to the agency
   const std::string endpoints = AgencyComm::getEndpointsString();
 
   if (! AgencyComm::tryConnect()) {
@@ -294,7 +294,7 @@ bool ApplicationCluster::start () {
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
 
-  // initialise ConnectionManager library
+  // initialize ConnectionManager library
   httpclient::ConnectionManager::initialize();
 
   // the agency about our state

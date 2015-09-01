@@ -30,7 +30,7 @@
 (function() {
   "use strict";
 
-  // Initialise a new FoxxController called controller under the urlPrefix: "cluster".
+  // Initialize a new FoxxController called controller under the urlPrefix: "cluster".
   var FoxxController = require("org/arangodb/foxx").Controller,
     UnauthorizedError = require("http-errors").Unauthorized,
     internal = require("internal"),

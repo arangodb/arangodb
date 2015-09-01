@@ -156,7 +156,7 @@ global.ArangoStatement = require("org/arangodb/arango-statement").ArangoStatemen
 global.tutorial = require("org/arangodb/tutorial");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                        initialise
+// --SECTION--                                                        initialize
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

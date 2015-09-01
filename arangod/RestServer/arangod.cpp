@@ -106,7 +106,7 @@ int main (int argc, char* argv[]) {
   bool const startAsService = false;
 #endif
 
-  // initialise sub-systems
+  // initialize sub-systems
   TRI_GlobalEntryFunction();
   TRIAGENS_REST_INITIALISE(argc, argv);
       

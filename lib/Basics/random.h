@@ -62,7 +62,7 @@ uint32_t TRI_UInt32Random (void);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the random components
+/// @brief initializes the random components
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseRandom (void);

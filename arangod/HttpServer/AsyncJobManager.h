@@ -237,7 +237,7 @@ namespace triagens {
                                                             size_t maxCount);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises an async job
+/// @brief initializes an async job
 ////////////////////////////////////////////////////////////////////////////////
 
         void initAsyncJob (HttpServerJob*, AsyncJobResult::IdType* jobId);
@@ -273,7 +273,7 @@ namespace triagens {
         generate_fptr generate;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function pointer for callback registered at initialisation
+/// @brief function pointer for callback registered at initialization
 ////////////////////////////////////////////////////////////////////////////////
 
         callback_fptr callback;

@@ -511,7 +511,7 @@ int TRI_CreateLogAppenderSyslog (char const*,
 char const* TRI_GetFilenameLogging (void);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the logging components
+/// @brief initializes the logging components
 ///
 /// Warning: This function call is not thread safe. Never mix it with
 /// TRI_ShutdownLogging.

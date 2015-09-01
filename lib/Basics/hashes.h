@@ -111,7 +111,7 @@ uint32_t TRI_Crc32HashString (char const*);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the hashes components
+/// @brief initializes the hashes components
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseHashes ();

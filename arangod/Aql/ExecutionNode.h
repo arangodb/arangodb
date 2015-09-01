@@ -763,7 +763,7 @@ namespace triagens {
         std::vector<ExecutionNode*> _parents;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _estimatedCost = 0 if uninitialised and otherwise stores the result
+/// @brief _estimatedCost = 0 if uninitialized and otherwise stores the result
 /// of estimateCost(), the bool indicates if the cost has been set, it starts
 /// out as false, _estimatedNrItems is the estimated number of items coming
 /// out of this node.

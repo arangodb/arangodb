@@ -126,7 +126,7 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> const);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the V8 conversion module
+/// @brief initializes the V8 conversion module
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8Conversions (v8::Handle<v8::Context>);

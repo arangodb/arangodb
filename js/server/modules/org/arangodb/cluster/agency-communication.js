@@ -844,7 +844,7 @@ exports.Communication = function() {
 };
 ////////////////////////////////////////////////////////////////////////////////
 /// @start Docu Block JSF_agency-communication_agency
-/// @brief A wrapper around the Agency initialisation
+/// @brief A wrapper around the Agency initialization
 ///
 /// @FUN{_createAgency()}
 ///

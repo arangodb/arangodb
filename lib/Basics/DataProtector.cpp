@@ -39,7 +39,7 @@ thread_local int triagens::basics::DataProtector::_mySlot = -1;
 // std::atomic<int> triagens::basics::DataProtector<Nr>::_last(0);
 std::atomic<int> triagens::basics::DataProtector::_last(0);
 
-/// We need an explicit template initialisation for each value of the
+/// We need an explicit template initialization for each value of the
 /// template parameter, such that the compiler can allocate a thread local
 /// variable for each of them.
 

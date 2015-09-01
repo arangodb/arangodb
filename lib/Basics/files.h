@@ -360,7 +360,7 @@ char* TRI_LocateConfigDirectory (void);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the files subsystem
+/// @brief initialize the files subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseFiles (void);

@@ -2020,7 +2020,7 @@ static bool OpenIndexIterator (char const* filename,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a document collection
+/// @brief initializes a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InitBaseDocumentCollection (TRI_document_collection_t* document,
@@ -2088,7 +2088,7 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a document collection
+/// @brief initializes a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool InitDocumentCollection (TRI_document_collection_t* document,
@@ -2167,7 +2167,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 static int IterateMarkersCollection (TRI_collection_t* collection) {
   auto document = reinterpret_cast<TRI_document_collection_t*>(collection);
 
-  // initialise state for iteration
+  // initialize state for iteration
   open_iterator_state_t openState;
   openState._document       = document;
   openState._vocbase        = collection->_vocbase;
@@ -2277,7 +2277,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   // create document collection and shaper
   if (false == InitDocumentCollection(document, shaper)) {
-    LOG_ERROR("cannot initialise document collection");
+    LOG_ERROR("cannot initialize document collection");
 
     // TODO: shouldn't we free document->_headersPtr etc.?
     TRI_CloseCollection(collection);
@@ -3006,7 +3006,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   if (false == InitDocumentCollection(document, shaper)) {
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
-    LOG_ERROR("cannot initialise document collection");
+    LOG_ERROR("cannot initialize document collection");
 
     return nullptr;
   }
@@ -3529,7 +3529,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
     } 
   }
 
-  // Initialise the vector in which we store the fields on which the hashing
+  // Initialize the vector in which we store the fields on which the hashing
   // will be based.
   std::vector<std::string> attributes;
   attributes.reserve(fieldCount);
@@ -3864,7 +3864,7 @@ static triagens::arango::Index* CreateCapConstraintDocumentCollection (TRI_docum
   std::unique_ptr<triagens::arango::Index> capConstraint(new triagens::arango::CapConstraint(iid, document, count, size));
   triagens::arango::Index* idx = static_cast<triagens::arango::Index*>(capConstraint.get());
 
-  // initialises the index with all existing documents
+  // initializes the index with all existing documents
   int res = FillIndex(document, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4093,7 +4093,7 @@ static triagens::arango::Index* CreateGeoIndexDocumentCollection (TRI_document_c
     return nullptr;
   }
 
-  // initialises the index with all existing documents
+  // initializes the index with all existing documents
   int res = FillIndex(document, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4410,7 +4410,7 @@ static triagens::arango::Index* CreateHashIndexDocumentCollection (TRI_document_
   std::unique_ptr<triagens::arango::HashIndex> hashIndex(new triagens::arango::HashIndex(iid, document, fields, unique, sparse));
   idx = static_cast<triagens::arango::Index*>(hashIndex.get());
 
-  // initialises the index with all existing documents
+  // initializes the index with all existing documents
   res = FillIndex(document, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4574,7 +4574,7 @@ static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (TRI_docum
   std::unique_ptr<triagens::arango::SkiplistIndex> skiplistIndex(new triagens::arango::SkiplistIndex(iid, document, fields, unique, sparse));
   idx = static_cast<triagens::arango::Index*>(skiplistIndex.get());
 
-  // initialises the index with all existing documents
+  // initializes the index with all existing documents
   res = FillIndex(document, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4733,7 +4733,7 @@ static triagens::arango::Index* CreateFulltextIndexDocumentCollection (TRI_docum
   std::unique_ptr<triagens::arango::FulltextIndex> fulltextIndex(new triagens::arango::FulltextIndex(iid, document, attribute, minWordLength));
   idx = static_cast<triagens::arango::Index*>(fulltextIndex.get());
 
-  // initialises the index with all existing documents
+  // initializes the index with all existing documents
   int res = FillIndex(document, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -5256,7 +5256,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
   TRI_ASSERT(key != nullptr);
 
-  // initialise the result
+  // initialize the result
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 

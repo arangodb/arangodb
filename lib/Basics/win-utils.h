@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief windows utilties
+/// @brief windows utilities
 ///
 /// @file
 ///
@@ -33,8 +33,8 @@
 #include <WinSock2.h>
 
 // .............................................................................
-// Called before anything else starts - initialises whatever is required to be
-// initalised.
+// Called before anything else starts - initializes whatever is required to be
+// initialized.
 // .............................................................................
 
 typedef enum {

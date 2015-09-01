@@ -174,7 +174,7 @@
 
     });
 
-    describe("initialisation", function () {
+    describe("initialization", function () {
 
       var r;
 
