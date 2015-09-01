@@ -77,6 +77,10 @@ namespace triagens {
         struct SkiplistIteratorInterval {
           Node* _leftEndPoint;
           Node* _rightEndPoint;
+
+          SkiplistIteratorInterval ()
+            : _leftEndPoint(nullptr),
+              _rightEndPoint(nullptr) { }
         };
 
 // -----------------------------------------------------------------------------
