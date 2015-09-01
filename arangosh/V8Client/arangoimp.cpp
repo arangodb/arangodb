@@ -190,7 +190,7 @@ static void arangoimpExitFunction (int, void*);
 #ifdef _WIN32
 
 // .............................................................................
-// Call this function to do various initialistions for windows only
+// Call this function to do various initializations for windows only
 // .............................................................................
 void arangoimpEntryFunction() {
   int maxOpenFiles = 1024;

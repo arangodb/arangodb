@@ -642,7 +642,7 @@ static inline bool TRI_IsWalDataMarkerDatafile (void const* marker) {
 char const* TRI_NameMarkerDatafile (TRI_df_marker_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a marker with the most basic information
+/// @brief initializes a marker with the most basic information
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitMarkerDatafile (char*,

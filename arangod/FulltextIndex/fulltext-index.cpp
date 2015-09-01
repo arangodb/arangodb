@@ -380,7 +380,7 @@ static uint32_t NodeNumAllocated (const node_t* const node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a sub-node list with length information
+/// @brief initialize a sub-node list with length information
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InitialiseSubNodeList (void* data,
@@ -500,7 +500,7 @@ static bool ExtendSubNodeList (index_t* const idx,
       return false;
     }
 
-    // initialise the chunk of memory we just got
+    // initialize the chunk of memory we just got
     InitialiseSubNodeList(node->_followers, nextAllocated, numFollowers);
 #if TRI_FULLTEXT_DEBUG
     idx->_memoryFollowers += nextSize;
@@ -520,7 +520,7 @@ static bool ExtendSubNodeList (index_t* const idx,
       return false;
     }
 
-    // initialise the chunk of memory we just got
+    // initialize the chunk of memory we just got
     InitialiseSubNodeList(followers, nextAllocated, numFollowers);
 #if TRI_FULLTEXT_DEBUG
     idx->_memoryFollowers += nextSize;

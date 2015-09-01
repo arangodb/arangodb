@@ -7017,7 +7017,7 @@ $.ui.plugin.add("draggable", "connectToSortable", {
 					instance: sortable,
 					shouldRevert: sortable.options.revert
 				});
-				sortable.refreshPositions();	// Call the sortable's refreshPositions at drag start to refresh the containerCache since the sortable container cache is used in drag and needs to be up to date (this will ensure it's initialised as well as being kept in step with any changes that might have happened on the page).
+				sortable.refreshPositions();	// Call the sortable's refreshPositions at drag start to refresh the containerCache since the sortable container cache is used in drag and needs to be up to date (this will ensure it's initialized as well as being kept in step with any changes that might have happened on the page).
 				sortable._trigger("activate", event, uiSortable);
 			}
 		});
@@ -12707,7 +12707,7 @@ $.extend(Datepicker.prototype, {
 			inst.settings[name] : this._defaults[name];
 	},
 
-	/* Parse existing date and initialise date picker. */
+	/* Parse existing date and initialize date picker. */
 	_setDateFromField: function(inst, noDefault) {
 		if (inst.input.val() == inst.lastVal) {
 			return;
@@ -13234,7 +13234,7 @@ $.fn.datepicker = function(options){
 		return this;
 	}
 
-	/* Initialise the date picker. */
+	/* Initialize the date picker. */
 	if (!$.datepicker.initialized) {
 		$(document).mousedown($.datepicker._checkExternalClick).
 			find(document.body).append($.datepicker.dpDiv);
@@ -88967,7 +88967,7 @@ var Buffer = require("buffer").Buffer;
 var tutorial = require("org/arangodb/tutorial");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                        initialise
+// --SECTION--                                                        initialize
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

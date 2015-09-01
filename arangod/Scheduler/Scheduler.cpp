@@ -527,7 +527,7 @@ int Scheduler::checkInsertTask (Task const* task) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inialises the signal handlers for the scheduler
+/// @brief initializes the signal handlers for the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scheduler::initialiseSignalHandlers () {
@@ -545,7 +545,7 @@ void Scheduler::initialiseSignalHandlers () {
   int res = sigaction(SIGPIPE, &action, 0);
 
   if (res < 0) {
-    LOG_ERROR("cannot initialise signal handlers for pipe");
+    LOG_ERROR("cannot initialize signal handlers for pipe");
   }
 #endif
 

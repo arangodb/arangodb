@@ -203,11 +203,11 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid);
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            modules initialisation
+// --SECTION--                                            modules initialization
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the process components
+/// @brief initializes the process components
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseProcess (int argc, char* argv[]);

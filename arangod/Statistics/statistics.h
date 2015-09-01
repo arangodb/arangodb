@@ -319,7 +319,7 @@ extern TRI_server_statistics_t TRI_ServerStatistics;
 double TRI_StatisticsTime (void);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             module initialisation
+// --SECTION--                                             module initialization
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

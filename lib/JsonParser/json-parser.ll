@@ -514,7 +514,7 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
     return nullptr;
   }
   
-  // init as a JSON null object so the memory in object is initialised
+  // init as a JSON null object so the memory in object is initialized
   TRI_InitNullJson(object);
 
   yylex_init(&scanner);
@@ -592,7 +592,7 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** erro
     return nullptr;
   }
 
-  // init as a JSON null object so the memory in value is initialised
+  // init as a JSON null object so the memory in value is initialized
   TRI_InitNullJson(value);
 
   yylex_init(&scanner);

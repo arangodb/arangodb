@@ -334,7 +334,7 @@ int ContinuousSyncer::getLocalState (string& errorMsg) {
   _applier->_state._totalFailedConnects = oldTotalFailedConnects;
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
-    // no state file found, so this is the initialisation
+    // no state file found, so this is the initialization
     _applier->_state._serverId = _masterInfo._serverId;
 
     res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, true);

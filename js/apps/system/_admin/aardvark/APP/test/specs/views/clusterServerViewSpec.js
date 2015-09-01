@@ -31,7 +31,7 @@
             document.body.removeChild(div);
         });
 
-        describe("initialisation", function () {
+        describe("initialization", function () {
 
             it("should create a Cluster Database View", function () {
                 view = new window.ClusterServerView();

@@ -432,7 +432,7 @@ void ArangoServer::buildApplicationServer () {
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
-  // initialise the server's write ahead log
+  // initialize the server's write ahead log
   wal::LogfileManager::initialise(&_databasePath, _server);
 
   // and add the feature to the application server
@@ -526,7 +526,7 @@ void ArangoServer::buildApplicationServer () {
 
   if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
     char const* ICU_env = getenv("ICU_DATA");
-    LOG_FATAL_AND_EXIT("failed to initialise ICU; ICU_DATA='%s'", (ICU_env) ? ICU_env : "");
+    LOG_FATAL_AND_EXIT("failed to initialize ICU; ICU_DATA='%s'", (ICU_env) ? ICU_env : "");
   }
 
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
@@ -849,7 +849,7 @@ int ArangoServer::startupServer () {
 
   if (! wal::LogfileManager::instance()->prepare() ||
       ! wal::LogfileManager::instance()->start()) {
-    // unable to initialise & start WAL logfile manager
+    // unable to initialize & start WAL logfile manager
     LOG_FATAL_AND_EXIT("unable to start WAL logfile manager");
   }
 
@@ -887,7 +887,7 @@ int ArangoServer::startupServer () {
 
   startupProgress();
 
-  // initialise V8
+  // initialize V8
   if (! _applicationServer->programOptions().has("javascript.v8-contexts")) {
     // the option was added recently so it's not always set
     // the behavior in older ArangoDB was to create one V8 context per dispatcher thread

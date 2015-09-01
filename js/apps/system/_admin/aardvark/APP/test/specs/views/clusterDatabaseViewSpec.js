@@ -32,7 +32,7 @@
             document.body.removeChild(div);
         });
 
-        describe("initialisation", function () {
+        describe("initialization", function () {
 
             it("should create a Cluster Collection View", function () {
                 view = new window.ClusterDatabaseView({

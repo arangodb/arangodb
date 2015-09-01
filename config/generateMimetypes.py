@@ -79,7 +79,7 @@ def genCHeaderFile(types):
            + "#define TRIAGENS_BASICS_VOC_MIMETYPES_H 1\n"\
            + "\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
-           + "/// @brief initialise mimetypes\n"\
+           + "/// @brief initialize mimetypes\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "\n"\
            + "void TRI_InitialiseEntriesMimetypes ();\n"\
@@ -100,7 +100,7 @@ def genCFile(types, filename):
          + "#include \"" + headerfile + "\"\n"\
          + "\n"\
          + "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "/// @brief initialise mimetypes\n"\
+         + "/// @brief initialize mimetypes\n"\
          + "////////////////////////////////////////////////////////////////////////////////\n"\
          + "\n"\
          + "void TRI_InitialiseEntriesMimetypes () {\n"

@@ -137,7 +137,7 @@ typedef struct
 #endif
 
     ZPOS64_T pos_in_zipfile;       /* position in byte on the zipfile, for fseek*/
-    uLong stream_initialised;   /* flag set if stream structure is initialised*/
+    uLong stream_initialised;   /* flag set if stream structure is initialized*/
 
     ZPOS64_T offset_local_extrafield;/* offset of the local extra field */
     uInt  size_local_extrafield;/* size of the local extra field */

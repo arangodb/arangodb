@@ -53,30 +53,30 @@ TRI_string_buffer_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new string buffer and initialise it
+/// @brief create a new string buffer and initialize it
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new string buffer and initialise it with a specific size
+/// @brief create a new string buffer and initialize it with a specific size
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t*,
                                                   size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the string buffer
+/// @brief initializes the string buffer
 ///
-/// @warning You must call initialise before using the string buffer.
+/// @warning You must call initialize before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitStringBuffer (TRI_string_buffer_t *, TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the string buffer with a specific size
+/// @brief initializes the string buffer with a specific size
 ///
-/// @warning You must call initialise before using the string buffer.
+/// @warning You must call initialize before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitSizedStringBuffer (TRI_string_buffer_t *,
