@@ -66,6 +66,7 @@ namespace triagens {
 
     class SkiplistIterator {
       private:
+        friend class SkiplistIndex2;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private structs
@@ -85,13 +86,6 @@ namespace triagens {
         size_t _currentInterval; // starts with 0, current interval used
         bool _reverse;
         Node* _cursor;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
-
-      public:
-
         std::vector<SkiplistIteratorInterval*> _intervals;
 
       public:
@@ -104,9 +98,9 @@ namespace triagens {
           SkiplistIndex2* const idx,
           bool reverse
         ) : _index(idx) ,
-            _reverse(reverse) {
-          _currentInterval = 0;
-          _cursor = nullptr;
+            _currentInterval(0),
+            _reverse(reverse),
+            _cursor(nullptr) {
         };
 
         ~SkiplistIterator () {};
@@ -137,7 +131,7 @@ namespace triagens {
 
         void findHelper (
           TRI_index_operator_t const* indexOperator,
-          std::vector<SkiplistIteratorInterval*>& intervals
+          std::vector<SkiplistIteratorInterval*>& interval
         );
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
