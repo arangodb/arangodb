@@ -264,7 +264,6 @@ namespace triagens {
       private:
 
         size_t elementSize () const;
-       
 
         int _CmpElmElm (TRI_index_element_t const* leftElement,
                        TRI_index_element_t const* rightElement,
