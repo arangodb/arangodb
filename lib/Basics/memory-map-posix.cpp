@@ -91,7 +91,9 @@ int TRI_MMFile (void* memoryAddress,
                 int64_t offset,
                 void** result) {
 
-  off_t offsetRetyped = (off_t)(offset);
+  TRI_ASSERT(memoryAddress == nullptr);
+  off_t offsetRetyped = (off_t) offset;
+  TRI_ASSERT(offsetRetyped == 0);
 
   *mmHandle = nullptr; // only useful for Windows
 
@@ -126,6 +128,9 @@ int TRI_UNMMFile (void* memoryAddress,
 
   if (errno == ENOSPC) {
     return TRI_ERROR_ARANGO_FILESYSTEM_FULL;
+  }
+  if (errno == ENOMEM) {
+    return TRI_ERROR_OUT_OF_MEMORY_MMAP;
   }
 
   return TRI_ERROR_SYS_ERROR;

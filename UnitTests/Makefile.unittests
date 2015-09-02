@@ -214,7 +214,7 @@ if ENABLE_FAILURE_TESTS
 execute-recovery-test:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
-	@builddir@/bin/arangod "$(VOCDIR)" --no-server $(SERVER_OPT) --server.threads 1 --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup || true # the server will crash with segfault intentionally in this test
+	@builddir@/bin/arangod "$(VOCDIR)" --no-server $(SERVER_OPT) --server.threads 1 --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup --log.level warning || true # the server will crash with segfault intentionally in this test
 	@rm -f core
 	$(VALGRIND) @builddir@/bin/arangod --no-server "$(VOCDIR)" $(SERVER_OPT) --server.threads 1 --wal.ignore-logfile-errors true --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter recover || test "x$(FORCE)" == "x1"
 
@@ -225,6 +225,10 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="disk-full-logfile"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="disk-full-logfile-data"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="disk-full-datafile"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="disk-full-datafile"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-with-temp"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-collection-fail"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-database-fail"
@@ -500,8 +504,9 @@ SHELL_COMMON = \
 
 SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-readonly-noncluster-disabled.js \
-               @top_srcdir@/js/server/tests/shell-collection-not-loaded-timecritical-noncluster.js \
                @top_srcdir@/js/server/tests/shell-wal-noncluster-memoryintense.js \
+               @top_srcdir@/js/server/tests/shell-datafile-timecritical-noncluster.js \
+               @top_srcdir@/js/server/tests/shell-collection-not-loaded-timecritical-noncluster.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster-timecritical.js \
                @top_srcdir@/js/server/tests/shell-shaped-noncluster.js \

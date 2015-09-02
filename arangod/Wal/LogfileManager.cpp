@@ -971,24 +971,26 @@ int LogfileManager::flush (bool waitForSync,
 
     if (res == TRI_ERROR_NO_ERROR) {
       // we need to wait for the collector...
-      this->waitForCollector(lastOpenLogfileId, maxWaitTime);
+      // LOG_TRACE("entering waitForCollector with lastOpenLogfileId %llu", (unsigned long long) lastOpenLogfileId);
+      res = this->waitForCollector(lastOpenLogfileId, maxWaitTime);
     }
     else if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       // current logfile is empty and cannot be collected
       // we need to wait for the collector to collect the previously sealed datafile
 
       if (lastSealedLogfileId > 0) {
-        this->waitForCollector(lastSealedLogfileId, maxWaitTime);
+        res = this->waitForCollector(lastSealedLogfileId, maxWaitTime);
       }
     }
   }
 
-  if (writeShutdownFile) {
+  if (writeShutdownFile &&
+      (res == TRI_ERROR_NO_ERROR || res == TRI_ERROR_ARANGO_DATAFILE_EMPTY)) {
     // update the file with the last tick, last sealed etc.
     return writeShutdownInfo(false);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1283,16 +1285,20 @@ Logfile* LogfileManager::getLogfile (Logfile::IdType id,
 /// @brief get a logfile for writing. this may return nullptr
 ////////////////////////////////////////////////////////////////////////////////
 
-Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
-                                              Logfile::StatusType& status) {
+int LogfileManager::getWriteableLogfile (uint32_t size,
+                                         Logfile::StatusType& status,
+                                         Logfile*& result) {
   static const uint64_t SleepTime = 10 * 1000;
   static const uint64_t MaxIterations = 1500;
   size_t iterations = 0;
   bool haveSignalled = false;
 
+  // always initialize the result
+  result = nullptr;
+
   TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
     // intentionally don't return a logfile
-    return nullptr;
+    return TRI_ERROR_DEBUG;
   }
 
   while (++iterations < MaxIterations) {
@@ -1309,12 +1315,15 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
           // found a logfile, update the status variable and return the logfile
 
           {
+            // LOG_TRACE("setting lastOpenedId %llu", (unsigned long long) logfile->id());
             MUTEX_LOCKER(_idLock);
             _lastOpenedId = logfile->id();
           }
 
+          result = logfile;
           status = logfile->status();
-          return logfile;
+
+          return TRI_ERROR_NO_ERROR;
         }
 
         if (logfile->status() == Logfile::StatusType::EMPTY &&
@@ -1339,12 +1348,22 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
       _allocatorThread->signal(size);
       haveSignalled = true;
     }
-    usleep(SleepTime);
+
+    int res = _allocatorThread->waitForResult(SleepTime);
+
+    if (res != TRI_ERROR_LOCK_TIMEOUT &&
+        res != TRI_ERROR_NO_ERROR) {
+      TRI_ASSERT(result == nullptr);
+
+      // some error occurred
+      return res;
+    } 
   }
 
+  TRI_ASSERT(result == nullptr);
   LOG_WARNING("unable to acquire writeable WAL logfile after %llu ms", (unsigned long long) (MaxIterations * SleepTime) / 1000);
 
-  return nullptr;
+  return TRI_ERROR_LOCK_TIMEOUT;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1501,6 +1520,7 @@ void LogfileManager::setCollectionDone (Logfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
   Logfile::IdType id = logfile->id();
 
+  // LOG_ERROR("setCollectionDone setting lastCollectedId to %llu", (unsigned long long) id);
   {
     WRITE_LOCKER(_logfilesLock);
     logfile->setStatus(Logfile::StatusType::COLLECTED);
@@ -1605,8 +1625,8 @@ void LogfileManager::removeLogfile (Logfile* logfile) {
 /// @brief wait until a specific logfile has been collected
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::waitForCollector (Logfile::IdType logfileId,
-                                       double maxWaitTime) {
+int LogfileManager::waitForCollector (Logfile::IdType logfileId,
+                                      double maxWaitTime) {
   static const int64_t SingleWaitPeriod = 50 * 1000;
  
   int64_t maxIterations = INT64_MAX; // wait forever
@@ -1616,19 +1636,32 @@ void LogfileManager::waitForCollector (Logfile::IdType logfileId,
     LOG_TRACE("will wait for max. %f seconds for collector to finish", maxWaitTime);
   }
 
-  LOG_TRACE("waiting for collector thread to collect logfile %llu", (unsigned long long) logfileId);
+  LOG_TRACE("waiting for collector thread to collect logfile %llu", 
+            (unsigned long long) logfileId);
 
   // wait for the collector thread to finish the collection
   int64_t iterations = 0;
 
   while (++iterations < maxIterations) {
     if (_lastCollectedId >= logfileId) {
-      return;
+      return TRI_ERROR_NO_ERROR;
     }
 
-    LOG_TRACE("waiting for collector");
-    usleep(SingleWaitPeriod);
+    int res = _collectorThread->waitForResult(SingleWaitPeriod);
+
+    // LOG_TRACE("still waiting for collector. logfileId: %llu lastCollected: %llu, result: %d", (unsigned long long) logfileId, (unsigned long long) _lastCollectedId, (int) res);
+
+    if (res != TRI_ERROR_LOCK_TIMEOUT &&
+        res != TRI_ERROR_NO_ERROR) {
+      // some error occurred
+      return res;
+    } 
+
+    // try again
   }
+
+  // waited for too long
+  return TRI_ERROR_LOCK_TIMEOUT;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1763,6 +1796,7 @@ int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
 
   if (json == nullptr) {
     LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
+
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1801,7 +1835,6 @@ int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
 
   if (! ok) {
     LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
-
     return TRI_ERROR_CANNOT_WRITE_FILE;
   }
 

@@ -2426,9 +2426,9 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
     TRI_IF_FAILURE("CreateJournalDocumentCollection") {
       // simulate disk full
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-      document->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
+      document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
 
-      EnsureErrorCode(ENOSPC);
+      EnsureErrorCode(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
 
       return nullptr;
     }

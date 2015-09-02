@@ -606,8 +606,9 @@ namespace triagens {
 /// @brief get a logfile for writing. this may return nullptr
 ////////////////////////////////////////////////////////////////////////////////
 
-        Logfile* getWriteableLogfile (uint32_t,
-                                      Logfile::StatusType&);
+        int getWriteableLogfile (uint32_t,
+                                 Logfile::StatusType&,
+                                 Logfile*&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a logfile to collect. this may return nullptr
@@ -682,8 +683,8 @@ namespace triagens {
 /// @brief wait for the collector thread to collect a specific logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-        void waitForCollector (Logfile::IdType,
-                               double);
+        int waitForCollector (Logfile::IdType,
+                              double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run the recovery procedure

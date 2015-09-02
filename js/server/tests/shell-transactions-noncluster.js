@@ -5365,7 +5365,15 @@ function transactionServerFailuresSuite () {
       assertEqual(100160, fig.uncollectedLogfileEntries);
 
       internal.debugClearFailAt();
-      internal.wal.flush(true, true);
+      while (true) {
+        try {
+          internal.wal.flush(true, true);
+          break;
+        }
+        catch (err) {
+          internal.wait(0.5, false);
+        }
+      }
 
       assertEqual(100150, c.count());
 
