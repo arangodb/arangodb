@@ -1438,6 +1438,7 @@ Logfile* LogfileManager::getRemovableLogfile () {
 
   {
     uint32_t numberOfLogfiles = 0;
+    uint32_t const minHistoricLogfiles = historicLogfiles();
     Logfile* first = nullptr;
 
     WRITE_LOCKER(_logfilesLock);
@@ -1453,10 +1454,11 @@ Logfile* LogfileManager::getRemovableLogfile () {
       if (logfile->id() <= minId && 
           logfile->canBeRemoved()) {
         if (first == nullptr) {
+          // note the oldest of the logfiles (_logfiles is a map, thus sorted)
           first = logfile;
         }
 
-        if (++numberOfLogfiles > historicLogfiles()) {
+        if (++numberOfLogfiles > minHistoricLogfiles) {
           TRI_ASSERT(first != nullptr);
           _logfiles.erase(first->id());
 
