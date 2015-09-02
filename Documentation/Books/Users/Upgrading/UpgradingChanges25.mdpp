@@ -37,7 +37,7 @@ There was the option `--harmony`, which turned on almost all harmony features.
 In ArangoDB 2.5, V8 provides the following harmony-related options:
   
 * --harmony (enable all completed harmony features)
-* --harmony_shipping (enable all shipped harmony fetaures)
+* --harmony_shipping (enable all shipped harmony features)
 * --harmony_modules (enable "harmony modules (implies block scoping)" (in progress))
 * --harmony_arrays (enable "harmony array methods" (in progress))
 * --harmony_array_includes (enable "harmony Array.prototype.includes" (in progress))

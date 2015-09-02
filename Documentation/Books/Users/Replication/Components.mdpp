@@ -231,7 +231,7 @@ If the replication applier of a database has never been started before, it needs
 from the master's log from which to start fetching events.
 
 There is one caveat to consider when stopping a replication on the slave: if there are still
-ongoing replicated transactions that are neither commited or aborted, stopping the replication
+ongoing replicated transactions that are neither committed or aborted, stopping the replication
 applier will cause these operations to be lost for the slave. If these transactions commit on the
 master later and the replication is resumed, the slave will not be able to commit these transactions,
 too. Thus stopping the replication applier on the slave manually should only be done if there

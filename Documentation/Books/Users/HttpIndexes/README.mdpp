@@ -2,7 +2,7 @@
 
 !SUBSECTION Indexes
 
-This is an introduction to ArangoDB's Http interface for indexes in
+This is an introduction to ArangoDB's HTTP interface for indexes in
 general. There are special sections for various index types.
 
 !SUBSUBSECTION Index

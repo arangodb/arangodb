@@ -13,7 +13,7 @@ Installing for a single user: Select a different directory during
 installation. For example *c:\Users\&lt;Username&gt;\ArangoDB* or *c:\ArangoDB*.
 
 Installing for multiple users: Keep the default directory. After the
-installation edit the file *&lt;ROOTDIR&gt;\etc\Arangodb\arangod.conf*. Adjust the
+installation edit the file *&lt;ROOTDIR&gt;\etc\ArangoDB\arangod.conf*. Adjust the
 *directory* and *app-path* so that these paths point into your home directory.
 
        [database]

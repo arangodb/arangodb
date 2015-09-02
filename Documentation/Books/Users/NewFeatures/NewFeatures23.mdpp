@@ -66,7 +66,7 @@ the more intuitive variant:
     FOR i IN ... FILTER i NOT IN [ 23, 42 ] ...
 
 
-!SUBSUBSECTION Improvements of builtin functions
+!SUBSUBSECTION Improvements of built-in functions
 
 The following AQL string functions have been added:
 
@@ -74,7 +74,7 @@ The following AQL string functions have been added:
 - `RTRIM(value, characters)`: right-trims a string value
 - `FIND_FIRST(value, search, start, end)`: finds the first occurrence 
    of a search string
-- `FIND_LAST(value, search, start, end)`: finds the last occurence of a 
+- `FIND_LAST(value, search, start, end)`: finds the last occurrence of a 
    search string
 - `SPLIT(value, separator, limit) `: splits a string into an array, 
    using a separator
@@ -294,7 +294,7 @@ ArangoDB 2.3 provides Foxx apps for user management and salted hash-based authen
 
 Foxx now provides async workers via the Foxx Queues API. Jobs enqueued in a job queue will be executed asynchronously outside of the request/response cycle of Foxx controllers and can be used to communicate with external services or perform tasks that take a long time to complete or may require multiple attempts.
 
-Jobs can be scheduled in advance or set to be executed immediately, the number of retry attempts, the retry delay as well as sucess and failure handlers can be defined for each job individually. Job types that integrate various external services for transactional e-mails, logging and user tracking can be found in the Foxx app registry.
+Jobs can be scheduled in advance or set to be executed immediately, the number of retry attempts, the retry delay as well as success and failure handlers can be defined for each job individually. Job types that integrate various external services for transactional e-mails, logging and user tracking can be found in the Foxx app registry.
 
 !SUBSECTION Misc
 

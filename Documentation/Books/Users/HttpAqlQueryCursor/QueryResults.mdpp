@@ -25,7 +25,7 @@ result set from the server. In this case no server side cursor will be created.
 { "query" : "FOR u IN users LIMIT 2 RETURN u", "count" : true, "batchSize" : 2 }
 
 HTTP/1.1 201 Created
-content-type: application/json
+Content-type: application/json
 
 {
   "hasMore" : false,
@@ -68,7 +68,7 @@ Create and extract first batch:
 { "query" : "FOR u IN users LIMIT 5 RETURN u", "count" : true, "batchSize" : 2 }
 
 HTTP/1.1 201 Created
-content-type: application/json
+Content-type: application/json
 
 {
   "hasMore" : true,
@@ -99,7 +99,7 @@ Extract next batch, still have more:
 > curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
 
 HTTP/1.1 200 OK
-content-type: application/json
+Content-type: application/json
 
 {
   "hasMore" : true,
@@ -130,7 +130,7 @@ Extract next batch, done:
 > curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
 
 HTTP/1.1 200 OK
-content-type: application/json
+Content-type: application/json
 
 {
   "hasMore" : false,
@@ -154,7 +154,7 @@ Do not do this because *hasMore* now has a value of false:
 > curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
 
 HTTP/1.1 404 Not Found
-content-type: application/json
+Content-type: application/json
 
 {
   "errorNum": 1600,
@@ -169,7 +169,7 @@ content-type: application/json
 The `_api/cursor` endpoint can also be used to execute modifying queries.
 
 The following example appends a value into the array `arrayValue` of the document
-with key `test` in the collection `documents`. Normal update behaviour is to
+with key `test` in the collection `documents`. Normal update behavior is to
 replace the attribute completely, and using an update AQL query with the `PUSH()` 
 function allows to append to the array.
 
@@ -178,7 +178,7 @@ curl --data @- -X POST --dump http://127.0.0.1:8529/_api/cursor
 { "query": "FOR doc IN documents FILTER doc._key == @myKey UPDATE doc._key WITH { arrayValue: PUSH(doc.arrayValue, @value) } IN documents","bindVars": { "myKey": "test", "value": 42 } }
 
 HTTP/1.1 201 Created
-Content-Type: application/json; charset=utf-8
+Content-type: application/json; charset=utf-8
 
 {
   "result" : [],

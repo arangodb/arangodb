@@ -78,7 +78,7 @@ object is kept for compatibility with previous versions only.
 Replication is configured on a per-database level. If multiple database are to be 
 replicated, the replication must be set up individually per database.
 
-The replication applier on the slave can be used to perform a one-time synchronisation
+The replication applier on the slave can be used to perform a one-time synchronization
 with the master (and then stop), or to perform an ongoing replication of changes. To
 resume replication on slave restart, the *autoStart* attribute of the replication 
 applier must be set to true. 

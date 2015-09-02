@@ -2,8 +2,8 @@
 
 For string processing, AQL offers the following functions:
 
-- *CONCAT(value1, value2, ... valuen)*: Concatenate the strings 
-  passed as in *value1* to *valuen*. *null* values are ignored. Array value arguments
+- *CONCAT(value1, value2, ... valueN)*: Concatenate the strings
+  passed as in *value1* to *valueN*. *null* values are ignored. Array value arguments
   are expanded automatically, and their individual members will be concatenated.
 
       /* "foobarbaz" */
@@ -12,8 +12,8 @@ For string processing, AQL offers the following functions:
       /* "foobarbaz" */
       CONCAT([ 'foo', 'bar', 'baz' ])
 
-- *CONCAT_SEPARATOR(separator, value1, value2, ... valuen)*: 
-  Concatenate the strings passed as arguments *value1* to *valuen* using the 
+- *CONCAT_SEPARATOR(separator, value1, value2, ... valueN)*:
+  Concatenate the strings passed as arguments *value1* to *valueN* using the
   *separator* string. *null* values are ignored. Array value arguments
   are expanded automatically, and their individual members will be concatenated.
 

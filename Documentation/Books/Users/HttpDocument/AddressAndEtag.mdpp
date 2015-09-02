@@ -23,7 +23,7 @@ Example:
 
 **Note**: The following examples use the short URL format for brevity.
 
-Each document also has a [document revision](../Glossary/index.html#document_revision) or etag with is returned in the
+Each document also has a [document revision](../Glossary/index.html#document_revision) or Etag with is returned in the
 "ETag" HTTP header when requesting a document.
 
 If you obtain a document using *GET* and you want to check if a newer revision

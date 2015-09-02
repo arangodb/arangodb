@@ -1,6 +1,6 @@
 !CHAPTER HTTP Interface for User Management
 
-This is an introduction to ArangoDB's Http interface for managing users.
+This is an introduction to ArangoDB's HTTP interface for managing users.
 
 The interface provides a simple means to add, update, and remove users.  All
 users managed through this interface will be stored in the system collection

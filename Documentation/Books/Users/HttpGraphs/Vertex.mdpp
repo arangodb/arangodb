@@ -50,8 +50,8 @@ unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/gr
 {"_key":"v1","optional1":"val1"}
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: 112518113
+Content-type: application/json; charset=utf-8
+Etag: 112518113
 
 { 
   "vertex" : { 
@@ -87,11 +87,11 @@ Revision of a vertex
 
 `If-None-Match (string,optional)`
 
-If the "If-None-Match" header is given, then it must contain exactly one etag. The document is returned, if it has a different revision than the given etag. Otherwise a HTTP 304 is returned.
+If the "If-None-Match" header is given, then it must contain exactly one Etag. The document is returned, if it has a different revision than the given Etag. Otherwise a HTTP 304 is returned.
 
 `If-Match (string,optional)`
 
-If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one Etag. The document is returned, if it has the same revision ad the given Etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the Etag in an attribute rev in the URL.
 
 !SUBSECTION Description
 
@@ -123,8 +123,8 @@ get vertex properties by name
 unix> curl --dump - http://localhost:8529/_api/graph/graph/vertex/v1
 
 HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
-etag: 115532769
+Content-type: application/json; charset=utf-8
+Etag: 115532769
 
 { 
   "vertex" : { 
@@ -170,7 +170,7 @@ The call expects a JSON object as body with the new vertex properties.
 
 `if-match (string,optional)`
 
-If the "If-Match" header is given, then it must contain exactly one etag. The document is updated, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one Etag. The document is updated, if it has the same revision ad the given Etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the Etag in an attribute rev in the URL.
 
 !SUBSECTION Description
 
@@ -202,8 +202,8 @@ unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/graph/gra
 {"optional1":"val2"}
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: 120579041
+Content-type: application/json; charset=utf-8
+Etag: 120579041
 
 { 
   "vertex" : { 
@@ -253,7 +253,7 @@ The call expects a JSON object as body with the properties to patch.
 
 `if-match (string,optional)`
 
-If the "If-Match" header is given, then it must contain exactly one etag. The document is updated, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one Etag. The document is updated, if it has the same revision ad the given Etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the Etag in an attribute rev in the URL.
 
 !SUBSECTION Description
 
@@ -287,8 +287,8 @@ unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/g
 {"optional1":"vertexPatch"}
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: 123659233
+Content-type: application/json; charset=utf-8
+Etag: 123659233
 
 { 
   "vertex" : { 
@@ -305,8 +305,8 @@ unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/g
 {"optional1":null}
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: 124117985
+Content-type: application/json; charset=utf-8
+Etag: 124117985
 
 { 
   "vertex" : { 
@@ -346,7 +346,7 @@ Revision of a vertex
 
 `If-Match (string,optional)`
 
-If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one Etag. The document is returned, if it has the same revision ad the given Etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the Etag in an attribute rev in the URL.
 
 !SUBSECTION Description
 
@@ -376,7 +376,7 @@ is returned if the graph or the vertex was not found. The response body contains
 unix> curl -X DELETE --dump - http://localhost:8529/_api/graph/graph/vertex/v1
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
+Content-type: application/json; charset=utf-8
 
 { 
   "deleted" : true, 

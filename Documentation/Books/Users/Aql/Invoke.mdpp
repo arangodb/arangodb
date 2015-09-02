@@ -3,7 +3,7 @@
 !SECTION Executing queries
 
 You can run AQL queries from your application via the HTTP REST API. The full
-API description is available at [Http Interface for AQL Query Cursors](../HttpAqlQueryCursor/README.md). 
+API description is available at [HTTP Interface for AQL Query Cursors](../HttpAqlQueryCursor/README.md).
 
 You can also run AQL queries from arangosh. To do so, you can use the *_query* method 
 of the *db* object. This will run the specified query in the context of the currently
@@ -216,10 +216,10 @@ The meaning of the statistics attributes is as follows:
 * *writesIgnored*: the total number of data-modification operations that were unsuccessful,
   but have been ignored because of query option `ignoreErrors`.
 * *scannedFull*: the total number of documents iterated over when scanning a collection 
-  without an index. Documents scanned by sub-queries will be included in the result, but not
+  without an index. Documents scanned by subqueries will be included in the result, but not
   no operations triggered by built-in or user-defined AQL functions.
 * *scannedIndex*: the total number of documents iterated over when scanning a collection using
-  an index. Documents scanned by sub-queries will be included in the result, but not
+  an index. Documents scanned by subqueries will be included in the result, but not
   no operations triggered by built-in or user-defined AQL functions.
 * *filtered*: the total number of documents that were removed after executing a filter condition
   in a `FilterNode`. Note that `IndexRangeNode`s can also filter documents by selecting only
@@ -243,7 +243,7 @@ return the execution plan and some information about what optimizations could be
 the query. The query will not be executed.
 
 Explaining a query can be achieved by calling the [HTTP REST API](../HttpAqlQuery/README.md).
-A query can also be explained from the ArangoShell using `ArangoStatement`s `explain` method. 
+A query can also be explained from the ArangoShell using `ArangoStatement`s `explain` method.
 
 By default, the query optimizer will return what it considers to be the *optimal plan*. The
 optimal plan will be returned in the `plan` attribute of the result. If `explain` is
@@ -333,7 +333,7 @@ The following example disables all optimizer rules but `remove-redundant-calcula
 
 
 The contents of an execution plan are meant to be machine-readable. To get a human-readable
-version of a query's execution plan, the following commnands can be used:
+version of a query's execution plan, the following commands can be used:
 
     @startDocuBlockInline 10_workWithAQL_statementsPlansOptimizer3
     @EXAMPLE_ARANGOSH_OUTPUT{10_workWithAQL_statementsPlansOptimizer3}
@@ -357,8 +357,8 @@ return the some information about the query.
 
 The return value is an object with the collection names used in the query listed in the
 `collections` attribute, and all bind parameters listed in the `bindVars` attribute.
-Addtionally, the internal representation of the query, the query's abstract syntax tree, will
-be returned in the `ast` attribute of the result. Please note that the abstract syntax tree 
+Additionally, the internal representation of the query, the query's abstract syntax tree, will
+be returned in the `AST` attribute of the result. Please note that the abstract syntax tree
 will be returned without any optimizations applied to it.
 
     @startDocuBlockInline 11_workWithAQL_parseQueries

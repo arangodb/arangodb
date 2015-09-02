@@ -57,8 +57,8 @@ Making Changes
 
 * Develop and test your modifications there
 
-* Commit as you like, but preferrably in logical chunks. Use meaningful commit
-  messages and make sure you do not commit unneccesary files (e.g. object
+* Commit as you like, but preferably in logical chunks. Use meaningful commit
+  messages and make sure you do not commit unnecessary files (e.g. object
   files). It is normally a good idea to reference the issue number from the
   commit message so the issues will get updated automatically with comments.
 

@@ -17,7 +17,7 @@ right DBservers.
 
 As a central highly available service to hold the cluster configuration
 and to synchronize reconfiguration and fail-over operations we currently
-use a an external program called *etcd* (see [github
+use a an external program called *etcd* (see [Github
 page](https://github.com/coreos/etcd)). It provides a hierarchical
 key value store with strong consistency and reliability promises.
 This is called the "agency" and its processes are called "agents".

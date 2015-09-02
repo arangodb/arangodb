@@ -51,7 +51,7 @@ encoded body and still let ArangoDB send the non-encoded version, for example:
 
 ```js
 res.body = 'VGhpcyBpcyBhIHRlc3Q=';
-res.transformations = res.transformations || [ ]; // initialise
+res.transformations = res.transformations || [ ]; // initialize
 res.transformations.push('base64decode'); // will base64 decode the response body
 ```
 
@@ -355,7 +355,7 @@ Then we send some curl requests to these sample routes:
     @endDocuBlock MOD_08d_routingCurlToOwnConsoleLog
 
 and the console (and / or the logfile) will show requests and replies.
-*Note that logging doesn't warant the sequence in which these lines
+*Note that logging doesn't warrant the sequence in which these lines
 will appear.*
 
 !SECTION Application Deployment

@@ -24,7 +24,7 @@ If the index attribute is neither a string, an object or an array, its contents 
 not be indexed. When indexing the contents of an array attribute, an array member will 
 only be included in the index if it is a string. When indexing the contents of an object 
 attribute, an object member value will only be included in the index if it is a string. 
-Other datatypes are ignored and not indexed.
+Other data types are ignored and not indexed.
 
 !SECTION Accessing Fulltext Indexes from the Shell
 
