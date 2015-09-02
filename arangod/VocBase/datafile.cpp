@@ -268,7 +268,7 @@ static int CreateDatafile (char const* filename,
       writeSize = maximalSize - written;
     }
   
-    ssize_t writeResult = TRI_WRITE(fd, TRI_GetNullBufferFiles(), writeSize);
+    ssize_t writeResult = TRI_WRITE(fd, TRI_GetNullBufferFiles(), (TRI_write_t) writeSize);
     
     TRI_IF_FAILURE("CreateDatafile2") {
       // intentionally fail
