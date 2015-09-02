@@ -86,8 +86,7 @@ Logfile* Logfile::createNew (std::string const& filename,
     }
   }
 
-  Logfile* logfile = new Logfile(id, df, StatusType::EMPTY);
-  return logfile;
+  return new Logfile(id, df, StatusType::EMPTY);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

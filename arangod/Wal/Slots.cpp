@@ -52,7 +52,7 @@ Slots::Slots (LogfileManager* logfileManager,
   : _logfileManager(logfileManager),
     _condition(),
     _lock(),
-    _slots(new Slot[numberOfSlots]),
+    _slots(nullptr),
     _numberOfSlots(numberOfSlots),
     _freeSlots(numberOfSlots),
     _waiting(0),
@@ -63,6 +63,8 @@ Slots::Slots (LogfileManager* logfileManager,
     _lastCommittedTick(0),
     _lastCommittedDataTick(0),
     _numEvents(0)  {
+    
+  _slots = new Slot[numberOfSlots];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,9 +72,7 @@ Slots::Slots (LogfileManager* logfileManager,
 ////////////////////////////////////////////////////////////////////////////////
 
 Slots::~Slots () {
-  if (_slots != nullptr) {
-    delete[] _slots;
-  }
+  delete[] _slots;
 }
 
 // -----------------------------------------------------------------------------
@@ -109,6 +109,9 @@ int Slots::flush (bool waitForSync) {
       // wait until data has been committed to disk
       if (! waitForTick(lastTick)) {
         res = TRI_ERROR_ARANGO_SYNC_TIMEOUT;
+      }
+      else if (! worked) {
+        res = TRI_ERROR_ARANGO_DATAFILE_EMPTY;
       }
     }
     else if (! worked) {
@@ -176,33 +179,41 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 
             _logfile = nullptr;
           }
+            
+          TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
+            return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
+          }
 
           // fetch the next free logfile (this may create a new one)
-          Logfile::StatusType status = newLogfile(alignedSize);
+          Logfile::StatusType status;
+          int res = newLogfile(alignedSize, status);
 
-          if (_logfile == nullptr) {
-            usleep(10 * 1000);
-
-            TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
-              return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
-            }
-
-            // try again in next iteration
-          }
-          else if (status == Logfile::StatusType::EMPTY) {
-            // inititialise the empty logfile by writing a header marker
-            int res = writeHeader(slot);
-
-            if (res != TRI_ERROR_NO_ERROR) {
+          if (res != TRI_ERROR_NO_ERROR) {
+            if (res != TRI_ERROR_ARANGO_NO_JOURNAL) {
               return SlotInfo(res);
             }
 
-            // advance to next slot
-            slot = &_slots[_handoutIndex];
-            _logfileManager->setLogfileOpen(_logfile);
+            usleep(10 * 1000);
+            // try again in next iteration
           }
           else {
-            TRI_ASSERT(status == Logfile::StatusType::OPEN);
+            TRI_ASSERT(_logfile != nullptr);
+
+            if (status == Logfile::StatusType::EMPTY) {
+              // inititialise the empty logfile by writing a header marker
+              int res = writeHeader(slot);
+
+              if (res != TRI_ERROR_NO_ERROR) {
+                return SlotInfo(res);
+              }
+
+              // advance to next slot
+              slot = &_slots[_handoutIndex];
+              _logfileManager->setLogfileOpen(_logfile);
+            }
+            else {
+              TRI_ASSERT(status == Logfile::StatusType::OPEN);
+            }
           }
         }
 
@@ -220,7 +231,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
         return SlotInfo(slot);
       }
     }
-
+    
     // if we get here, all slots are busy
     CONDITION_LOCKER(guard, _condition);
     if (! hasWaited) {
@@ -237,6 +248,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
     if (mustWait) {
       guard.wait(10 * 1000);
     }
+            
   }
 
   return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
@@ -295,33 +307,41 @@ SlotInfo Slots::nextUnused (uint32_t size,
 
             _logfile = nullptr;
           }
+            
+          TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
+            return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
+          }
 
           // fetch the next free logfile (this may create a new one)
-          Logfile::StatusType status = newLogfile(alignedSize);
+          Logfile::StatusType status;
+          int res = newLogfile(alignedSize, status);
 
-          if (_logfile == nullptr) {
-            usleep(10 * 1000);
-
-            TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
-              return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
-            }
-
-            // try again in next iteration
-          }
-          else if (status == Logfile::StatusType::EMPTY) {
-            // inititialise the empty logfile by writing a header marker
-            int res = writeHeader(slot);
-
-            if (res != TRI_ERROR_NO_ERROR) {
+          if (res != TRI_ERROR_NO_ERROR) {
+            if (res != TRI_ERROR_ARANGO_NO_JOURNAL) {
               return SlotInfo(res);
             }
 
-            // advance to next slot
-            slot = &_slots[_handoutIndex];
-            _logfileManager->setLogfileOpen(_logfile);
+            usleep(10 * 1000);
+            // try again in next iteration
           }
           else {
-            TRI_ASSERT(status == Logfile::StatusType::OPEN);
+            TRI_ASSERT(_logfile != nullptr);
+
+            if (status == Logfile::StatusType::EMPTY) {
+              // inititialise the empty logfile by writing a header marker
+              int res = writeHeader(slot);
+
+              if (res != TRI_ERROR_NO_ERROR) {
+                return SlotInfo(res);
+              }
+
+              // advance to next slot
+              slot = &_slots[_handoutIndex];
+              _logfileManager->setLogfileOpen(_logfile);
+            }
+            else {
+              TRI_ASSERT(status == Logfile::StatusType::OPEN);
+            }
           }
         }
 
@@ -354,7 +374,7 @@ SlotInfo Slots::nextUnused (uint32_t size,
         return SlotInfo(slot);
       }
     }
-
+    
     // if we get here, all slots are busy
     CONDITION_LOCKER(guard, _condition);
     if (! hasWaited) {
@@ -404,7 +424,8 @@ void Slots::returnUsed (SlotInfo& slotInfo,
 /// @brief get the next synchronisable region
 ////////////////////////////////////////////////////////////////////////////////
 
-SyncRegion Slots::getSyncRegion () {
+SyncRegion Slots::getSyncRegion () { 
+  bool sealRequested = false;
   SyncRegion region;
 
   MUTEX_LOCKER(_lock);
@@ -415,11 +436,16 @@ SyncRegion Slots::getSyncRegion () {
     Slot const* slot = &_slots[slotIndex];
     TRI_ASSERT(slot != nullptr);
 
+    if (sealRequested && slot->isUnused()) {
+      region.canSeal = true;
+    }
+
     if (! slot->isReturned()) {
       // found a slot that is not yet returned
       // if it belongs to another logfile, we can seal the logfile we created
       // the region for
       auto otherId = slot->logfileId();
+
       if (region.logfileId != 0 && otherId != 0 && 
           otherId != region.logfileId) {
         region.canSeal = true;
@@ -440,6 +466,10 @@ SyncRegion Slots::getSyncRegion () {
       region.firstSlotIndex = slotIndex;
       region.lastSlotIndex  = slotIndex;
       region.waitForSync    = slot->waitForSync();
+
+      if (status == Logfile::StatusType::SEAL_REQUESTED) {
+        sealRequested = true; 
+      }
     }
     else {
       if (slot->logfileId() != region.logfileId) {
@@ -617,37 +647,46 @@ int Slots::closeLogfile (Slot::TickType& lastCommittedTick,
 
           // fall-through intentional
         }
+          
+        TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
+          return TRI_ERROR_ARANGO_NO_JOURNAL;
+        }
 
         TRI_ASSERT(_logfile == nullptr);
         // fetch the next free logfile (this may create a new one)
         // note: as we don't have a real marker to write the size does
         // not matter (we use a size of 1 as  it must be > 0)
-        Logfile::StatusType status = newLogfile(1);
+        Logfile::StatusType status;
+        int res = newLogfile(1, status);
 
-        if (_logfile == nullptr) {
-          TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
-            return TRI_ERROR_ARANGO_NO_JOURNAL;
+        if (res != TRI_ERROR_NO_ERROR) {
+          if (res != TRI_ERROR_ARANGO_NO_JOURNAL) {
+            return res;
           }
 
           usleep(10 * 1000);
           // try again in next iteration
         }
-        else if (status == Logfile::StatusType::EMPTY) {
-          // inititialise the empty logfile by writing a header marker
-          int res = writeHeader(slot);
+        else {
+          TRI_ASSERT(_logfile != nullptr);
 
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("could not write logfile header: %s", TRI_errno_string(res));
-            return res;
+          if (status == Logfile::StatusType::EMPTY) {
+            // inititialise the empty logfile by writing a header marker
+            res = writeHeader(slot);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              LOG_ERROR("could not write logfile header: %s", TRI_errno_string(res));
+              return res;
+            }
+
+            _logfileManager->setLogfileOpen(_logfile);
+            worked = true;
+          }
+          else {
+            TRI_ASSERT(status == Logfile::StatusType::OPEN);
+            worked = false;
           }
 
-          _logfileManager->setLogfileOpen(_logfile);
-          worked = true;
-          return TRI_ERROR_NO_ERROR;
-        }
-        else {
-          TRI_ASSERT(status == Logfile::StatusType::OPEN);
-          worked = false;
           return TRI_ERROR_NO_ERROR;
         }
       }
@@ -757,13 +796,20 @@ bool Slots::waitForTick (Slot::TickType tick) {
 /// specified size
 ////////////////////////////////////////////////////////////////////////////////
 
-Logfile::StatusType Slots::newLogfile (uint32_t size) {
+int Slots::newLogfile (uint32_t size, 
+                       Logfile::StatusType& status) {
   TRI_ASSERT(size > 0);
 
-  Logfile::StatusType status = Logfile::StatusType::UNKNOWN;
-  _logfile = _logfileManager->getWriteableLogfile(size, status);
+  status = Logfile::StatusType::UNKNOWN;
+  Logfile* logfile = nullptr;
+  int res = _logfileManager->getWriteableLogfile(size, status, logfile);
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_ASSERT(logfile != nullptr);
+    _logfile = logfile;
+  }
 
-  return status;
+  return res;
 }
 
 // -----------------------------------------------------------------------------

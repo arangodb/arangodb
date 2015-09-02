@@ -292,7 +292,9 @@ CollectorThread::CollectorThread (LogfileManager* logfileManager,
     _operationsQueue(),
     _operationsQueueInUse(false),
     _stop(0),
-    _numPendingOperations(0) {
+    _numPendingOperations(0),
+    _collectorResultCondition(),
+    _collectorResult(TRI_ERROR_NO_ERROR) {
 
   allowAsynchronousCancelation();
 }
@@ -307,6 +309,22 @@ CollectorThread::~CollectorThread () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for the collector result
+////////////////////////////////////////////////////////////////////////////////
+
+int CollectorThread::waitForResult (uint64_t timeout) {    
+  CONDITION_LOCKER(guard, _collectorResultCondition);
+
+  if (_collectorResult == TRI_ERROR_NO_ERROR) { 
+    if (guard.wait(timeout)) {
+      return TRI_ERROR_LOCK_TIMEOUT;
+    }
+  }
+ 
+  return _collectorResult;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops the collector thread
@@ -347,18 +365,35 @@ void CollectorThread::run () {
 
   while (true) {
     int stop = (int) _stop;
-    bool worked = false;
+    bool hasWorked = false;
+    bool doDelay = false;
 
     try {
       // step 1: collect a logfile if any qualifies
-      if (stop == 0) {
+      if (stop == 0) { 
         // don't collect additional logfiles in case we want to shut down
-        worked |= this->collectLogfiles();
+        bool worked;
+        int res = this->collectLogfiles(worked);
+
+        if (res == TRI_ERROR_NO_ERROR) {
+          hasWorked |= worked;
+        }
+        else if (res == TRI_ERROR_ARANGO_FILESYSTEM_FULL) {
+          doDelay = true;
+        }
       }
 
       // step 2: update master pointers
       try {
-        worked |= this->processQueuedOperations();
+        bool worked;
+        int res = this->processQueuedOperations(worked);
+
+        if (res == TRI_ERROR_NO_ERROR) {
+          hasWorked |= worked;
+        }
+        else if (res == TRI_ERROR_ARANGO_FILESYSTEM_FULL) {
+          doDelay = true;
+        }
       }
       catch (...) {
         // re-activate the queue
@@ -375,11 +410,19 @@ void CollectorThread::run () {
       LOG_ERROR("got unspecific error in collectorThread::run");
     }
 
-    if (stop == 0 && ! worked) {
+    uint64_t interval = Interval;
+
+    if (doDelay) {
+      hasWorked = false;
+      // wait longer before retrying in case disk is full
+      interval *= 2;
+    }
+
+    if (stop == 0 && ! hasWorked) {
       // sleep only if there was nothing to do
       CONDITION_LOCKER(guard, _condition);
 
-      if (! guard.wait(Interval)) {
+      if (! guard.wait(interval)) {
         if (++counter > 10) {
           LOG_TRACE("wal collector has queued operations: %d", (int) numQueuedOperations());
           counter = 0;
@@ -408,38 +451,68 @@ void CollectorThread::run () {
 /// @brief step 1: perform collection of a logfile (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CollectorThread::collectLogfiles () {
+int CollectorThread::collectLogfiles (bool& worked) {
+  // always init result variable
+  worked = false;
+
   TRI_IF_FAILURE("CollectorThreadCollect") {
-    return false;
+    return TRI_ERROR_NO_ERROR;
   }
 
   Logfile* logfile = _logfileManager->getCollectableLogfile();
 
   if (logfile == nullptr) {
-    return false;
+    return TRI_ERROR_NO_ERROR;
   }
     
+  worked = true;
   _logfileManager->setCollectionRequested(logfile);
 
-  int res = collect(logfile);
+  try {
+    int res = collect(logfile);  
+    // LOG_TRACE("collected logfile: %llu. result: %d", (unsigned long long) logfile->id(), res);
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    _logfileManager->setCollectionDone(logfile);
-    return true;
+    if (res == TRI_ERROR_NO_ERROR) {
+      // reset collector status
+      {
+        CONDITION_LOCKER(guard, _collectorResultCondition);
+        _collectorResult = TRI_ERROR_NO_ERROR;
+      }
+
+      _logfileManager->setCollectionDone(logfile);
+    }
+    else {  
+      // return the logfile to the logfile manager in case of errors
+      _logfileManager->forceStatus(logfile, Logfile::StatusType::SEALED);
+
+      // set error in collector
+      {
+        CONDITION_LOCKER(guard, _collectorResultCondition);
+        _collectorResult = res;
+        _collectorResultCondition.broadcast();
+      }
+    }
+
+    return res;
   }
-    
-  // return the logfile to the logfile manager in case of errors
-  _logfileManager->forceStatus(logfile, Logfile::StatusType::SEALED);
-  return false;
+  catch (...) {
+    LOG_DEBUG("collecting logfile %llu failed", (unsigned long long) logfile->id());
+    _logfileManager->setCollectionDone(logfile);
+
+    return TRI_ERROR_INTERNAL;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief step 2: process all still-queued collection operations
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CollectorThread::processQueuedOperations () {
+int CollectorThread::processQueuedOperations (bool& worked) {
+  // always init result variable
+  worked = false;
+
   TRI_IF_FAILURE("CollectorThreadProcessQueuedOperations") {
-    return false;
+    return TRI_ERROR_NO_ERROR;
   }
 
   {
@@ -448,7 +521,7 @@ bool CollectorThread::processQueuedOperations () {
 
     if (_operationsQueue.empty()) {
       // nothing to do
-      return false;
+      return TRI_ERROR_NO_ERROR;
     }
 
     // this flag indicates that no one else must write to the queue
@@ -542,7 +615,9 @@ bool CollectorThread::processQueuedOperations () {
     _operationsQueueInUse = false;
   }
 
-  return true;
+  worked = true;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,7 +875,6 @@ int CollectorThread::collect (Logfile* logfile) {
     if (state.documentOperations.find(cid) != state.documentOperations.end()) {
       DocumentOperationsType const& ops = state.documentOperations[cid];
 
-
       for (auto it2 = ops.begin(); it2 != ops.end(); ++it2) {
         sortedOperations.push_back((*it2).second);
       }
@@ -827,7 +901,13 @@ int CollectorThread::collect (Logfile* logfile) {
       if (res != TRI_ERROR_NO_ERROR &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        LOG_WARNING("got unexpected error in CollectorThread::collect: %s", TRI_errno_string(res));
+
+        if (res != TRI_ERROR_ARANGO_FILESYSTEM_FULL) {
+          // other places already log this error, and making the logging conditional here 
+          // prevents the log message from being shown over and over again in case the
+          // file system is full
+          LOG_WARNING("got unexpected error in CollectorThread::collect: %s", TRI_errno_string(res));
+        }
         // abort early
         return res;
       }
