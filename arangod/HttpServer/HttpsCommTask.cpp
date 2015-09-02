@@ -140,14 +140,10 @@ bool HttpsCommTask::handleEvent (EventToken token,
       // must do the SSL handshake first
       result = trySSLAccept();
     }
-    else {
+
+    if (! result) {
       // status is somehow invalid. we got here even though no accept was ever successful
       _clientClosed = true;
-    }
-
-    if (_clientClosed) {
-      // this will destroy ourselves (this)!
-      _scheduler->destroyTask(this);
     }
 
     return result;
