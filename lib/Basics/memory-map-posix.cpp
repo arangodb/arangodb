@@ -162,8 +162,8 @@ int TRI_ProtectMMFile (void* memoryAddress,
 
 int TRI_MMFileAdvise (void* memoryAddress, size_t numOfBytes, int advice) {
 #ifdef __linux__
-  LOG_DEBUG("Doing madvise %d for %lu length %lu", advice,
-            (uint64_t) memoryAddress, numOfBytes);
+  LOG_DEBUG("Doing madvise %d for %llu length %llu", advice,
+            (unsigned long long) memoryAddress, (unsigned long long) numOfBytes);
   int res = madvise(memoryAddress, numOfBytes, advice);
 
   if (res == 0) {
@@ -172,8 +172,8 @@ int TRI_MMFileAdvise (void* memoryAddress, size_t numOfBytes, int advice) {
   else {
     char buffer[256];
     char* p = strerror_r(errno, buffer, 256);
-    LOG_INFO("madvise %d for %lu length %lu failed with: %s ",
-             advice, (uint64_t) memoryAddress, numOfBytes, p);
+    LOG_INFO("madvise %d for %llu length %llu failed with: %s ",
+             advice, (unsigned long long) memoryAddress, (unsigned long long) numOfBytes, p);
     return TRI_ERROR_INTERNAL;
   }
 #else
