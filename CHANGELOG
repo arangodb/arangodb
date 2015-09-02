@@ -1,6 +1,13 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* new logfiles and datafiles are now created non-sparse
+    
+  This prevents SIGBUS signals being raised when memory of a sparse datafile is accessed 
+  and the disk is full and the accessed file part is not actually disk-backed. In
+  this case the mapped memory region is not necessarily backed by physical memory, and
+  accessing the memory may raise SIGBUS and crash arangod.
+
 * the `internal.download()` function and the module `org/arangodb/request` used some 
   internal library function that handled the sending of HTTP requests from inside of
   ArangoDB. This library unconditionally set an HTTP header `Accept-Encoding: gzip`
