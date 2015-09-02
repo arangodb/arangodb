@@ -120,7 +120,7 @@ static bool ResizeAssociativePointer (TRI_associative_pointer_t* array,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises an array
+/// @brief initializes an array
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitAssociativePointer (TRI_associative_pointer_t* array,

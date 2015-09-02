@@ -750,7 +750,7 @@ TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise an applier state struct
+/// @brief initialize an applier state struct
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitStateReplicationApplier (TRI_replication_applier_state_t* state) {
@@ -907,7 +907,7 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise an applier configuration
+/// @brief initialize an applier configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configuration_t* config) {

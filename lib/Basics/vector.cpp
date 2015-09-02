@@ -50,7 +50,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector
+/// @brief initializes a vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVector (TRI_vector_t* vector, TRI_memory_zone_t* zone, size_t elementSize) {
@@ -62,7 +62,7 @@ void TRI_InitVector (TRI_vector_t* vector, TRI_memory_zone_t* zone, size_t eleme
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector, with user-definable settings
+/// @brief initializes a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVector2 (TRI_vector_t* vector,
@@ -353,7 +353,7 @@ void* TRI_BeginVector (TRI_vector_t const* vector) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector
+/// @brief initializes a vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVectorPointer (TRI_vector_pointer_t* vector,
@@ -365,7 +365,7 @@ void TRI_InitVectorPointer (TRI_vector_pointer_t* vector,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector, with user-definable settings
+/// @brief initializes a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVectorPointer (TRI_vector_pointer_t* vector,
@@ -598,7 +598,7 @@ void* TRI_AtVectorPointer (TRI_vector_pointer_t const* vector, size_t pos) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a string vector
+/// @brief initializes a string vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVectorString (TRI_vector_string_t* vector, TRI_memory_zone_t* zone) {
@@ -609,7 +609,7 @@ void TRI_InitVectorString (TRI_vector_string_t* vector, TRI_memory_zone_t* zone)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a string vector, with user-definable settings
+/// @brief initializes a string vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVectorString2 (TRI_vector_string_t* vector,

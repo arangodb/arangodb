@@ -118,7 +118,7 @@ void Dispatcher::addAQLQueue (size_t nrThreads,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a new named queue
 ///
-/// This is not thread safe. Only used during initialisation.
+/// This is not thread safe. Only used during initialization.
 ////////////////////////////////////////////////////////////////////////////////
 
 int Dispatcher::addExtraQueue (size_t identifier,

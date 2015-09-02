@@ -33,7 +33,7 @@
 #include "Basics/files.h"
 #include "Basics/logging.h"
 #include "Basics/messages.h"
-#include "Rest/InitialiseRest.h"
+#include "Rest/InitializeRest.h"
 #include "RestServer/ArangoServer.h"
 #include "Statistics/statistics.h"
 #include <signal.h>
@@ -106,11 +106,11 @@ int main (int argc, char* argv[]) {
   bool const startAsService = false;
 #endif
 
-  // initialise sub-systems
+  // initialize sub-systems
   TRI_GlobalEntryFunction();
-  TRIAGENS_REST_INITIALISE(argc, argv);
+  TRIAGENS_REST_INITIALIZE(argc, argv);
       
-  TRI_InitialiseStatistics();
+  TRI_InitializeStatistics();
 
   if (startAsService) {
     TRI_StartService(argc, argv);

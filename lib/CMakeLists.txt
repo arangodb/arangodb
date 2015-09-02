@@ -63,7 +63,7 @@ add_library(
     Basics/fpconv.cpp
     Basics/hashes.cpp
     Basics/init.cpp
-    Basics/InitialiseBasics.cpp
+    Basics/InitializeBasics.cpp
     Basics/json.cpp
     Basics/json-utilities.cpp
     Basics/JsonHelper.cpp
@@ -112,7 +112,7 @@ add_library(
     Rest/EndpointIpV6.cpp
     Rest/HttpRequest.cpp
     Rest/HttpResponse.cpp
-    Rest/InitialiseRest.cpp
+    Rest/InitializeRest.cpp
     Rest/SslInterface.cpp
     Rest/Version.cpp
     Utilities/DummyShell.cpp

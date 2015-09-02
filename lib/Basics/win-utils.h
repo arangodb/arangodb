@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief windows utilties
+/// @brief windows utilities
 ///
 /// @file
 ///
@@ -33,8 +33,8 @@
 #include <WinSock2.h>
 
 // .............................................................................
-// Called before anything else starts - initialises whatever is required to be
-// initalised.
+// Called before anything else starts - initializes whatever is required to be
+// initialized.
 // .............................................................................
 
 typedef enum {
@@ -49,10 +49,10 @@ typedef enum {
   TRI_WIN_INITIAL_SET_MAX_STD_IO,
   TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL
 }
-TRI_win_initialise_e;
+TRI_win_initialize_e;
 
 int finaliseWindows (const TRI_win_finalise_e, const char*);
-int initialiseWindows (const TRI_win_initialise_e, const char*);
+int initializeWindows (const TRI_win_initialize_e, const char*);
 
 // .............................................................................
 // windows equivalent of ftruncate (the truncation of an open file) is

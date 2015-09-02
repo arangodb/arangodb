@@ -108,7 +108,7 @@ extern size_t PageSize;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a server instance with configuration
+/// @brief initialize a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer (TRI_server_t*,
@@ -145,7 +145,7 @@ int TRI_StartServer (TRI_server_t*,
                      bool performUpgrade);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises all databases
+/// @brief initializes all databases
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitDatabasesServer (TRI_server_t*);

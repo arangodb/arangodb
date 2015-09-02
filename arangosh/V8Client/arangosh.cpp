@@ -47,7 +47,7 @@
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
-#include "Rest/InitialiseRest.h"
+#include "Rest/InitializeRest.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -1888,7 +1888,7 @@ static void arangoshExitFunction (int, void*);
 #ifdef _WIN32
 
 // .............................................................................
-// Call this function to do various initialistions for windows only
+// Call this function to do various initializations for windows only
 //
 // TODO can we move this to a general function for all binaries?
 // .............................................................................
@@ -1902,21 +1902,21 @@ void arangoshEntryFunction() {
   // If you familiar with valgrind ... then this is not like that, however
   // you do get some similar functionality.
   // ...........................................................................
-  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
+  //res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
-  res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
-
-  if (res != 0) {
-    _exit(1);
-  }
-
-  res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+  res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
 
   if (res != 0) {
     _exit(1);
   }
 
-  res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+
+  if (res != 0) {
+    _exit(1);
+  }
+
+  res = initializeWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
     _exit(1);
@@ -2308,10 +2308,10 @@ int main (int argc, char* args[]) {
 #endif
   arangoshEntryFunction();
 
-  TRIAGENS_C_INITIALISE(argc, args);
-  TRIAGENS_REST_INITIALISE(argc, args);
+  TRIAGENS_C_INITIALIZE(argc, args);
+  TRIAGENS_REST_INITIALIZE(argc, args);
 
-  TRI_InitialiseLogging(false);
+  TRI_InitializeLogging(false);
         
   {
     std::ostringstream foxxManagerHelp;

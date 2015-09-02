@@ -491,14 +491,14 @@ double TRI_StatisticsTime () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             module initialisation
+// --SECTION--                                             module initialization
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module init function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseStatistics () {
+void TRI_InitializeStatistics () {
   TRI_ServerStatistics._startTime = TRI_microtime();
 
   // .............................................................................
@@ -519,7 +519,7 @@ void TRI_InitialiseStatistics () {
   TRI_BytesSentDistributionStatistics = new StatisticsDistribution(TRI_BytesSentDistributionVectorStatistics);
   TRI_BytesReceivedDistributionStatistics = new StatisticsDistribution(TRI_BytesReceivedDistributionVectorStatistics);
 
-  // initialise counters for all HTTP request types
+  // initialize counters for all HTTP request types
   TRI_MethodRequestsStatistics.clear();
 
   for (int i = 0; i < ((int) triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) + 1; ++i) {

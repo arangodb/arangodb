@@ -63,7 +63,7 @@ def genCFile(errors, filename):
          + "#include \"Basics/Common.h\"\n"\
          + "#include \"" + headerfile + "\"\n"\
          + "\n"\
-         + "void TRI_InitialiseErrorMessages () {\n"
+         + "void TRI_InitializeErrorMessages () {\n"
 
   # print individual errors
   for e in errors:
@@ -109,7 +109,7 @@ def genCHeaderFile(errors):
            + "/// @brief register all errors for ArangoDB\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "\n"\
-           + "void TRI_InitialiseErrorMessages ();\n"\
+           + "void TRI_InitializeErrorMessages ();\n"\
            + "\n"
  
   # print individual errors

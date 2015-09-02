@@ -152,7 +152,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
   // search criteria
   TRI_edge_header_t entry(cid, key);
 
-  // initialise the result vector
+  // initialize the result vector
   std::vector<TRI_doc_mptr_copy_t> result;
 
   auto edgeIndex = document->edgeIndex();

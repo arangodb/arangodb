@@ -56,7 +56,7 @@ using namespace triagens::rest;
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                       initialise static variables
+// --SECTION--                                       initialize static variables
 // -----------------------------------------------------------------------------
 
 const uint64_t RestReplicationHandler::defaultChunkSize = 128 * 1024;
@@ -1304,7 +1304,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    // initialise the dump container
+    // initialize the dump container
     TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize(), includeSystem);
 
     // and dump
@@ -3282,7 +3282,7 @@ void RestReplicationHandler::handleCommandDump () {
     TRI_vocbase_col_t* col = guard.collection();
     TRI_ASSERT(col != nullptr);
 
-    // initialise the dump container
+    // initialize the dump container
     TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize(), includeSystem);
 
     res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks, translateCollectionIds);

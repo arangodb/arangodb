@@ -260,7 +260,7 @@
       delete window.progressView;
     });
 
-    describe("initialisation", function () {
+    describe("initialization", function () {
 
       var r;
 

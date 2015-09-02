@@ -61,7 +61,7 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               static initialisers
+// --SECTION--                                               static initializers
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,7 +299,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout,
     int lastError = WSAGetLastError();
 
     if (error == WSANOTINITIALISED) {
-      // can not call WSAGetLastError - since the socket layer hasn't been initialised yet!
+      // can not call WSAGetLastError - since the socket layer hasn't been initialized yet!
       lastError = error;
     }
     else {

@@ -219,10 +219,10 @@ LogfileManager* LogfileManager::instance () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the logfile manager instance
+/// @brief initialize the logfile manager instance
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::initialise (std::string* path,
+void LogfileManager::initialize (std::string* path,
                                  TRI_server_t* server) {
   TRI_ASSERT(Instance == nullptr);
 
@@ -328,7 +328,7 @@ bool LogfileManager::prepare () {
   // we use microseconds
   _syncInterval = _syncInterval * 1000;
 
-  // initialise some objects
+  // initialize some objects
   _slots = new Slots(this, _numberOfSlots, 0);
   _recoverState = new RecoverState(_server, _ignoreRecoveryErrors);
 
@@ -526,7 +526,7 @@ bool LogfileManager::open () {
   res = TRI_InitDatabasesServer(_server);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not initialise databases: %s", TRI_errno_string(res));
+    LOG_ERROR("could not initialize databases: %s", TRI_errno_string(res));
     return false;
   }
   

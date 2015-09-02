@@ -861,7 +861,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
       _pos = 0;           // this is in the first block
 
       // This is a new item, so let's read the index (it is already
-      // initialised).
+      // initialized).
       readIndex(atMost);
       _posInDocs = 0;     // position in _documents . . .
     } 

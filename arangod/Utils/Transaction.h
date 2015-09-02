@@ -1245,7 +1245,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the transaction
+/// @brief initialize the transaction
 /// this will first check if the transaction is embedded in a parent
 /// transaction. if not, it will create a transaction of its own
 ////////////////////////////////////////////////////////////////////////////////
@@ -1335,7 +1335,7 @@ namespace triagens {
         TRI_voc_tid_t _externalId;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief error that occurred on transaction initialisation (before begin())
+/// @brief error that occurred on transaction initialization (before begin())
 ////////////////////////////////////////////////////////////////////////////////
 
         int _setupState;

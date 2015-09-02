@@ -30,7 +30,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/fpconv.cpp \
 	lib/Basics/hashes.cpp \
 	lib/Basics/init.cpp \
-	lib/Basics/InitialiseBasics.cpp \
+	lib/Basics/InitializeBasics.cpp \
 	lib/Basics/json.cpp \
 	lib/Basics/json-utilities.cpp \
 	lib/Basics/JsonHelper.cpp \
@@ -85,7 +85,7 @@ lib_libarango_a_SOURCES = \
 	lib/Rest/EndpointUnixDomain.cpp \
 	lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpResponse.cpp \
-	lib/Rest/InitialiseRest.cpp \
+	lib/Rest/InitializeRest.cpp \
 	lib/Rest/SslInterface.cpp \
 	lib/Rest/Version.cpp \
 	lib/Utilities/DummyShell.cpp \

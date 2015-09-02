@@ -511,19 +511,19 @@ int TRI_CreateLogAppenderSyslog (char const*,
 char const* TRI_GetFilenameLogging (void);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the logging components
+/// @brief initializes the logging components
 ///
 /// Warning: This function call is not thread safe. Never mix it with
 /// TRI_ShutdownLogging.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseLogging (bool threaded);
+void TRI_InitializeLogging (bool threaded);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shut downs the logging components
 ///
 /// Warning: This function call is not thread safe. Never mix it with
-/// TRI_InitialiseLogging.
+/// TRI_InitializeLogging.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ShutdownLogging (bool);

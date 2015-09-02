@@ -319,14 +319,14 @@ extern TRI_server_statistics_t TRI_ServerStatistics;
 double TRI_StatisticsTime (void);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             module initialisation
+// --SECTION--                                             module initialization
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module init function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseStatistics (void);
+void TRI_InitializeStatistics (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shut down statistics

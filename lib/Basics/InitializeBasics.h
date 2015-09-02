@@ -27,49 +27,49 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_INITIALISE_REST_H
-#define ARANGODB_REST_INITIALISE_REST_H 1
+#ifndef ARANGODB_BASICS_INITIALIZE_BASICS_H
+#define ARANGODB_BASICS_INITIALIZE_BASICS_H 1
 
 #include "Basics/Common.h"
 
 namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rest server
+/// @brief the namespace containing the basic classes and functions
 ////////////////////////////////////////////////////////////////////////////////
 
-  namespace rest {
+  namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise function
+/// @brief initialize function
 ////////////////////////////////////////////////////////////////////////////////
 
-    extern void InitialiseRest (int argc, char* argv[]);
+    extern void InitializeBasics (int argv, char* argc[]);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function
 ////////////////////////////////////////////////////////////////////////////////
 
-    extern void ShutdownRest ();
+    extern void ShutdownBasics ();
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise
+/// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_REST_INITIALISE(a,b)           \
-  do {                                          \
-    triagens::rest::InitialiseRest((a), (b));   \
+#define TRIAGENS_BASICS_INITIALIZE(a,b)                 \
+  do {                                                  \
+    triagens::basics::InitializeBasics((a), (b));       \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_REST_SHUTDOWN           \
-  do {                                   \
-    triagens::rest::ShutdownRest();      \
+#define TRIAGENS_BASICS_SHUTDOWN                \
+  do {                                          \
+    triagens::basics::ShutdownBasics();         \
   } while (0)
 
 #endif
