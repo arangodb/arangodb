@@ -44,7 +44,7 @@
 #include "Indexes/GeoIndex2.h"
 #include "Indexes/HashIndex.h"
 #include "Indexes/PrimaryIndex.h"
-#include "Indexes/SkiplistIndex2.h"
+#include "Indexes/SkiplistIndex.h"
 #include "RestServer/ArangoServer.h"
 #include "Utils/transactions.h"
 #include "Utils/CollectionReadLocker.h"
@@ -2585,10 +2585,11 @@ size_t TRI_DocumentIteratorDocumentCollection (TransactionBase const*,
   if (nrUsed > 0) {
     uint64_t position = 0;
     uint64_t total = 0;
-    TRI_doc_mptr_t const* ptr = nullptr;
+
     while (true) {
-      ptr = idx->lookupSequential(position, total);
-      if (ptr == nullptr || ! callback(ptr, document, data)) {
+      TRI_doc_mptr_t const* mptr = idx->lookupSequential(position, total);
+
+      if (mptr == nullptr || ! callback(mptr, document, data)) {
         break;
       }
     }
@@ -3191,13 +3192,19 @@ static int FillIndexBatch (TRI_document_collection_t* document,
         
   std::vector<TRI_doc_mptr_t const*> documents;
   documents.reserve(blockSize);
+
   if (nrUsed > 0) {
     uint64_t position = 0;
     uint64_t total = 0;
-    TRI_doc_mptr_t const* mptr;
-    do {
-      mptr = primaryIndex->lookupSequential(position, total);
+    while (true) {
+      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(position, total);
+
+      if (mptr == nullptr) {
+        break;
+      }
+
       documents.emplace_back(mptr);
+
       if (documents.size() == blockSize) {
         res = idx->batchInsert(&documents, indexPool->numThreads());
         documents.clear();
@@ -3208,7 +3215,6 @@ static int FillIndexBatch (TRI_document_collection_t* document,
         }
       }
     }
-    while (mptr != nullptr);
   }
 
   // process the remainder of the documents
@@ -3257,13 +3263,16 @@ static int FillIndexSequential (TRI_document_collection_t* document,
   if (nrUsed > 0) {
     uint64_t position = 0;
     uint64_t total = 0;
-    TRI_doc_mptr_t const* mptr = nullptr;
+
     while (true) {
-      mptr = primaryIndex->lookupSequential(position, total);
+      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(position, total);
+
       if (mptr == nullptr) {
         break;
       }
+
       int res = idx->insert(mptr, false);
+
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
@@ -3364,7 +3373,7 @@ static triagens::arango::Index* LookupPathIndexDocumentCollection (TRI_document_
       }
 
       case triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
-        auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex2*>(idx);
+        auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex*>(idx);
         
         if (unique != skiplistIndex->unique() ||
             (sparsity != -1 && sparsity != (skiplistIndex->sparse() ? 1 : 0 ))) {
@@ -4562,7 +4571,7 @@ static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (TRI_docum
   }
 
   // Create the skiplist index
-  std::unique_ptr<triagens::arango::SkiplistIndex2> skiplistIndex(new triagens::arango::SkiplistIndex2(iid, document, fields, unique, sparse));
+  std::unique_ptr<triagens::arango::SkiplistIndex> skiplistIndex(new triagens::arango::SkiplistIndex(iid, document, fields, unique, sparse));
   idx = static_cast<triagens::arango::Index*>(skiplistIndex.get());
 
   // initialises the index with all existing documents

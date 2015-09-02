@@ -285,7 +285,7 @@ namespace triagens {
 /// necessarily all at once.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_skiplist_iterator_t* _skiplistIterator;
+        triagens::arango::SkiplistIterator* _skiplistIterator;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _edgeIterator: holds the edge iterator found using

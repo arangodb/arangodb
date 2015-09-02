@@ -33,7 +33,7 @@
 #include "Basics/Exceptions.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/HashIndex.h"
-#include "Indexes/SkiplistIndex2.h"
+#include "Indexes/SkiplistIndex.h"
 #include "V8/v8-globals.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
@@ -123,10 +123,7 @@ IndexRangeBlock::~IndexRangeBlock () {
     delete _condition;
   }
     
-  if (_skiplistIterator != nullptr) {
-    TRI_FreeSkiplistIterator(_skiplistIterator);
-  }
- 
+  delete _skiplistIterator;
   delete _edgeIndexIterator; 
 }
 
@@ -1432,14 +1429,12 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
     }
   }
   
-  if (_skiplistIterator != nullptr) {
-    TRI_FreeSkiplistIterator(_skiplistIterator);
-  }
+  delete _skiplistIterator;
 
-  _skiplistIterator = static_cast<triagens::arango::SkiplistIndex2*>(idx)->lookup(skiplistOperator, en->_reverse);
+  _skiplistIterator = static_cast<triagens::arango::SkiplistIndex*>(idx)->lookup(skiplistOperator, en->_reverse);
 
   if (skiplistOperator != nullptr) {
-    TRI_FreeIndexOperator(skiplistOperator);
+    delete skiplistOperator;
   }
 
   if (_skiplistIterator == nullptr) {
@@ -1466,11 +1461,11 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
 
   try {
     size_t nrSent = 0;
-    while (nrSent < atMost && _skiplistIterator !=nullptr) { 
-      TRI_index_element_t* indexElement = _skiplistIterator->next(_skiplistIterator);
+    while (nrSent < atMost && _skiplistIterator != nullptr) {
+      TRI_index_element_t* indexElement = _skiplistIterator->next();
 
       if (indexElement == nullptr) {
-        TRI_FreeSkiplistIterator(_skiplistIterator);
+        delete _skiplistIterator;
         _skiplistIterator = nullptr;
         if (++_posInRanges < _condition->size()) {
           getSkiplistIterator(_condition->at(_sortCoords[_posInRanges]));
@@ -1489,7 +1484,7 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
   }
   catch (...) {
     if (_skiplistIterator != nullptr) {
-      TRI_FreeSkiplistIterator(_skiplistIterator);
+      delete _skiplistIterator;
       _skiplistIterator = nullptr;
     }
     throw;

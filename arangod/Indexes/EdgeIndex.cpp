@@ -46,6 +46,8 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementKey (void const* data) {
+  TRI_ASSERT_EXPENSIVE(data != nullptr);
+
   TRI_edge_header_t const* h = static_cast<TRI_edge_header_t const*>(data);
   char const* key = h->_key;
 
@@ -61,6 +63,8 @@ static uint64_t HashElementKey (void const* data) {
 
 static uint64_t HashElementEdgeFrom (void const* data,
                                      bool byKey) {
+  TRI_ASSERT_EXPENSIVE(data != nullptr);
+
   uint64_t hash;
 
   if (! byKey) {
@@ -99,6 +103,8 @@ static uint64_t HashElementEdgeFrom (void const* data,
 
 static uint64_t HashElementEdgeTo (void const* data,
                                    bool byKey) {
+  TRI_ASSERT_EXPENSIVE(data != nullptr);
+
   uint64_t hash;
 
   if (! byKey) {
@@ -137,6 +143,9 @@ static uint64_t HashElementEdgeTo (void const* data,
 
 static bool IsEqualKeyEdgeFrom (void const* left,
                                 void const* right) {
+  TRI_ASSERT_EXPENSIVE(left != nullptr);
+  TRI_ASSERT_EXPENSIVE(right != nullptr);
+
   // left is a key
   // right is an element, that is a master pointer
   TRI_edge_header_t const* l = static_cast<TRI_edge_header_t const*>(left);
@@ -170,6 +179,9 @@ static bool IsEqualKeyEdgeFrom (void const* left,
 
 static bool IsEqualKeyEdgeTo (void const* left,
                               void const* right) {
+  TRI_ASSERT_EXPENSIVE(left != nullptr);
+  TRI_ASSERT_EXPENSIVE(right != nullptr);
+
   // left is a key
   // right is an element, that is a master pointer
   TRI_edge_header_t const* l = static_cast<TRI_edge_header_t const*>(left);
@@ -213,6 +225,9 @@ static bool IsEqualElementEdge (void const* left,
 
 static bool IsEqualElementEdgeFromByKey (void const* left,
                                          void const* right) {
+  TRI_ASSERT_EXPENSIVE(left != nullptr);
+  TRI_ASSERT_EXPENSIVE(right != nullptr);
+
   char const* lKey = nullptr;
   char const* rKey = nullptr;
   TRI_voc_cid_t lCid = 0;
@@ -264,6 +279,9 @@ static bool IsEqualElementEdgeFromByKey (void const* left,
 
 static bool IsEqualElementEdgeToByKey (void const* left,
                                        void const* right) {
+  TRI_ASSERT_EXPENSIVE(left != nullptr);
+  TRI_ASSERT_EXPENSIVE(right != nullptr);
+
   char const* lKey = nullptr;
   char const* rKey = nullptr;
   TRI_voc_cid_t lCid = 0;

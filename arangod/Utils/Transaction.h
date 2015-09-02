@@ -427,17 +427,17 @@ namespace triagens {
               docs.reserve(batchSize);
             }
             TRI_ASSERT(batchSize > 0);
-            TRI_doc_mptr_t const* ptr = nullptr; 
+
             while (count < batchSize) {
-              ptr = document->primaryIndex()->lookupSequential(internalSkip, total);
-              if (ptr == nullptr) {
+              TRI_doc_mptr_t const* mptr = document->primaryIndex()->lookupSequential(internalSkip, total);
+              if (mptr == nullptr) {
                 break;
               }
               if (skip > 0) {
                 --skip;
               }
               else {
-                docs.emplace_back(*ptr);
+                docs.emplace_back(*mptr);
                 if (++count >= limit) {
                   break;
                 }
@@ -481,13 +481,14 @@ namespace triagens {
 
           uint64_t numRead = 0;
           TRI_ASSERT(batchSize > 0);
+
           while (numRead < batchSize) { 
-            auto d = document->primaryIndex()->lookupRandom(initialPosition, position, step, total);
-            if (d == nullptr) {
+            auto mptr = document->primaryIndex()->lookupRandom(initialPosition, position, step, total);
+            if (mptr == nullptr) {
               // Read all documents randomly
               break;
             }
-            docs.emplace_back(*d);
+            docs.emplace_back(*mptr);
             ++numRead;
           }
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
@@ -815,6 +816,7 @@ namespace triagens {
           uint64_t pos = 0;
           uint64_t step = 0;
           uint64_t total = 0;
+
           TRI_doc_mptr_t* found = idx->lookupRandom(intPos, pos, step, total);
           if (found != nullptr) {
             *mptr = *found;
@@ -847,16 +849,18 @@ namespace triagens {
           }
           auto idx = document->primaryIndex();
           size_t used = idx->size();
+
           if (used > 0) {
             uint64_t step = 0;
             uint64_t total = 0;
-            TRI_doc_mptr_t const* d = nullptr;
+
             while (true) {
-              d = idx->lookupSequential(step, total);
-              if (d == nullptr) {
+              TRI_doc_mptr_t const* mptr = idx->lookupSequential(step, total);
+
+              if (mptr == nullptr) {
                 break;
               }
-              ids.emplace_back(TRI_EXTRACT_MARKER_KEY(d));
+              ids.emplace_back(TRI_EXTRACT_MARKER_KEY(mptr));
             }
           }
 
@@ -962,27 +966,30 @@ namespace triagens {
 
           uint64_t count = 0;
           auto idx = document->primaryIndex();
-          TRI_doc_mptr_t const* ptr = nullptr; 
+          TRI_doc_mptr_t const* mptr = nullptr; 
 
           if (skip < 0) {
             uint64_t position = UINT64_MAX;
             do {
-              ptr = idx->lookupSequentialReverse(position);
+              mptr = idx->lookupSequentialReverse(position);
               ++skip;
             }
-            while (skip < 0 && ptr != nullptr);
-            if (ptr == nullptr) {
+            while (skip < 0 && mptr != nullptr);
+
+            if (mptr == nullptr) {
               this->unlock(trxCollection, TRI_TRANSACTION_READ);
               // To few elements, skipped all
               return TRI_ERROR_NO_ERROR;
             }
+
             do {
-              ptr = idx->lookupSequentialReverse(position);
-              if (ptr == nullptr) {
+              mptr = idx->lookupSequentialReverse(position);
+
+              if (mptr == nullptr) {
                 break;
               }
               ++count;
-              docs.emplace_back(*ptr);
+              docs.emplace_back(*mptr);
             }
             while (count < limit);
 
@@ -992,23 +999,25 @@ namespace triagens {
           uint64_t position = 0;
 
           while (skip > 0) {
-            ptr = idx->lookupSequential(position, total);
+            mptr = idx->lookupSequential(position, total);
             --skip;
-            if (ptr == nullptr) {
+            if (mptr == nullptr) {
               // To few elements, skipped all
               this->unlock(trxCollection, TRI_TRANSACTION_READ);
               return TRI_ERROR_NO_ERROR;
             }
           }
+
           do {
-            ptr = idx->lookupSequential(position, total);
-            if (ptr == nullptr) {
+            mptr = idx->lookupSequential(position, total);
+            if (mptr == nullptr) {
               break;
             }
             ++count;
-            docs.emplace_back(*ptr);
+            docs.emplace_back(*mptr);
           }
           while (count < limit);
+
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
           return TRI_ERROR_NO_ERROR;
         }
@@ -1034,15 +1043,18 @@ namespace triagens {
           uint64_t position = 0;
           uint64_t total = 0;
           auto idx = document->primaryIndex();
-          TRI_doc_mptr_t const* ptr = nullptr; 
           docs.reserve(idx->size());
+
           while (true) {
-            ptr = idx->lookupSequential(position, total);
-            if (ptr == nullptr) {
+            TRI_doc_mptr_t const* mptr = idx->lookupSequential(position, total);
+
+            if (mptr == nullptr) {
               break;
             }
-            docs.emplace_back(ptr);
+
+            docs.emplace_back(mptr);
           }
+
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
           return TRI_ERROR_NO_ERROR;
         }
