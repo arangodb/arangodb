@@ -1941,9 +1941,7 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename,
 
 bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
   if (datafile->_state == TRI_DF_STATE_READ || datafile->_state == TRI_DF_STATE_WRITE) {
-    int res;
-
-    res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &datafile->_mmHandle);
+    int res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &datafile->_mmHandle);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("munmap failed with: %d", res);
