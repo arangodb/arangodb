@@ -533,8 +533,6 @@ int HashIndex::batchInsertUnique (std::vector<TRI_doc_mptr_t const*> const* docu
       return res;
     }
   }
-  auto middle = clock() - start;
-  start = clock();
   int res = _uniqueArray->_hashArray->batchInsert(&elements, numThreads);
 
   if (res != TRI_ERROR_NO_ERROR) {
