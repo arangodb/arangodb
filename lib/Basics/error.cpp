@@ -52,10 +52,10 @@ tri_error_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief already initialised
+/// @brief already initialized
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Initialised = false;
+static bool Initialized = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief holds the last error
@@ -304,11 +304,11 @@ char const* TRI_errno_string (int error) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the error messages
+/// @brief initializes the error messages
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseError () {
-  if (Initialised) {
+void TRI_InitializeError () {
+  if (Initialized) {
     return;
   }
 
@@ -319,7 +319,7 @@ void TRI_InitialiseError () {
                              EqualError,
                              0);
 
-  TRI_InitialiseErrorMessages();
+  TRI_InitializeErrorMessages();
 
 #if defined(TRI_GCC_THREAD_LOCAL_STORAGE) || defined(TRI_WIN32_THREAD_LOCAL_STORAGE)
   ErrorNumber._number = 0;
@@ -330,7 +330,7 @@ void TRI_InitialiseError () {
 #error no TLS
 #endif
 
-  Initialised = true;
+  Initialized = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,7 +340,7 @@ void TRI_InitialiseError () {
 void TRI_ShutdownError () {
   size_t i;
 
-  if (! Initialised) {
+  if (! Initialized) {
     return;
   }
 
@@ -355,7 +355,7 @@ void TRI_ShutdownError () {
 
   TRI_DestroyAssociativePointer(&ErrorMessages);
 
-  Initialised = false;
+  Initialized = false;
 }
 
 // -----------------------------------------------------------------------------

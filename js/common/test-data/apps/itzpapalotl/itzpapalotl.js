@@ -31,7 +31,7 @@
 (function() {
   'use strict';
 
-  // initialise a new FoxxApplication
+  // initialize a new FoxxApplication
   var FoxxApplication = require("org/arangodb/foxx").Controller;
   var controller = new FoxxApplication(applicationContext);
 

@@ -371,7 +371,7 @@ namespace triagens {
 /// @brief inialises the signal handlers for the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void initialiseSignalHandlers ();
+        static void initializeSignalHandlers ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

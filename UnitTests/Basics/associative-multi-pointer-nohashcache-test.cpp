@@ -126,7 +126,7 @@ struct CMultiPointerNoHashCacheSetup {
 BOOST_FIXTURE_TEST_SUITE(CMultiPointerNoHashCacheTest, CMultiPointerNoHashCacheSetup)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test initialisation
+/// @brief test initialization
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_init) {

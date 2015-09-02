@@ -200,7 +200,7 @@ SlotInfo Slots::nextUnused (uint32_t size) {
             TRI_ASSERT(_logfile != nullptr);
 
             if (status == Logfile::StatusType::EMPTY) {
-              // inititialise the empty logfile by writing a header marker
+              // initialize the empty logfile by writing a header marker
               int res = writeHeader(slot);
 
               if (res != TRI_ERROR_NO_ERROR) {
@@ -328,7 +328,7 @@ SlotInfo Slots::nextUnused (uint32_t size,
             TRI_ASSERT(_logfile != nullptr);
 
             if (status == Logfile::StatusType::EMPTY) {
-              // inititialise the empty logfile by writing a header marker
+              // initialize the empty logfile by writing a header marker
               int res = writeHeader(slot);
 
               if (res != TRI_ERROR_NO_ERROR) {
@@ -671,7 +671,7 @@ int Slots::closeLogfile (Slot::TickType& lastCommittedTick,
           TRI_ASSERT(_logfile != nullptr);
 
           if (status == Logfile::StatusType::EMPTY) {
-            // inititialise the empty logfile by writing a header marker
+            // initialize the empty logfile by writing a header marker
             res = writeHeader(slot);
 
             if (res != TRI_ERROR_NO_ERROR) {

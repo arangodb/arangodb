@@ -69,7 +69,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new mutex
+/// @brief initializes a new mutex
 ///
 /// Mutual exclusion (often abbreviated to mutex) algorithms are used in
 /// concurrent programming to avoid the simultaneous use of a common resource,
@@ -114,7 +114,7 @@ void TRI_UnlockMutex (TRI_mutex_t*);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new spin-lock
+/// @brief initializes a new spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_FAKE_SPIN_LOCKS
@@ -166,7 +166,7 @@ void TRI_UnlockSpin (TRI_spin_t* spin);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new read-write lock
+/// @brief initializes a new read-write lock
 ///
 /// A ReadWriteLock maintains a pair of associated locks, one for read-only
 /// operations and one for writing. The read lock may be held simultaneously by
@@ -241,7 +241,7 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new condition variable
+/// @brief initializes a new condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitCondition (TRI_condition_t* cond);

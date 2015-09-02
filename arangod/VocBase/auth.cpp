@@ -289,7 +289,7 @@ static void ClearAuthInfo (TRI_vocbase_t* vocbase) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the authentication info
+/// @brief initializes the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitAuthInfo (TRI_vocbase_t* vocbase) {

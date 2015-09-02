@@ -315,7 +315,7 @@ static int CreateDatafile (char const* filename,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a datafile
+/// @brief initializes a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InitDatafile (TRI_datafile_t* datafile,
@@ -364,7 +364,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
   datafile->_dataMin     = 0;
   datafile->_dataMax     = 0;
 
-  // initialise function pointers
+  // initialize function pointers
   datafile->isPhysical   = &IsPhysicalDatafile;
   datafile->getName      = &GetNameDatafile;
   datafile->close        = &CloseDatafile;
@@ -1542,7 +1542,7 @@ char const* TRI_NameMarkerDatafile (TRI_df_marker_t const* marker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a marker with the most basic information
+/// @brief initializes a marker with the most basic information
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitMarkerDatafile (char* marker,
@@ -1553,7 +1553,7 @@ void TRI_InitMarkerDatafile (char* marker,
   TRI_ASSERT(type > TRI_MARKER_MIN && type < TRI_MARKER_MAX);
   TRI_ASSERT(size > 0);
 
-  // initialise the basic bytes
+  // initialize the basic bytes
   memset(marker, 0, size);
 
   TRI_df_marker_t* df = reinterpret_cast<TRI_df_marker_t*>(marker);

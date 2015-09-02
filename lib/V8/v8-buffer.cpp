@@ -1732,7 +1732,7 @@ static void MapSetIndexedBuffer (uint32_t idx,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the buffer module
+/// @brief initializes the buffer module
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8Buffer (v8::Isolate* isolate, v8::Handle<v8::Context> context) {

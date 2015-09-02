@@ -24,7 +24,7 @@
             document.body.removeChild(div);
         });
 
-        describe("initialisation", function () {
+        describe("initialization", function () {
 
             var servCol, coorCol;
 

@@ -285,7 +285,7 @@ void HeartbeatThread::run () {
     if (shouldSleep) {
       double const remain = interval - (TRI_microtime() - start);
 
-      // sleep for a while if apropriate
+      // sleep for a while if appropriate
       if (remain > 0.0) {
         usleep((unsigned long) (remain * 1000.0 * 1000.0));
       }
@@ -303,7 +303,7 @@ void HeartbeatThread::run () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the heartbeat
+/// @brief initializes the heartbeat
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::init () {

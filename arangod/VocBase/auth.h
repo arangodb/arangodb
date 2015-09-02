@@ -44,7 +44,7 @@ struct TRI_vocbase_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief authentication and authorisation
+/// @brief authentication and authorization
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vocbase_auth_s {
@@ -73,7 +73,7 @@ TRI_vocbase_auth_cache_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the authentication info
+/// @brief initializes the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitAuthInfo (TRI_vocbase_t*);

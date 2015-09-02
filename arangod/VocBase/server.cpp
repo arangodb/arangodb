@@ -1349,7 +1349,7 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the list of databases
+/// @brief initialize the list of databases
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InitDatabases (TRI_server_t* server,
@@ -1629,7 +1629,7 @@ static void DatabaseManager (void* data) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a server instance with configuration
+/// @brief initialize a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer (TRI_server_t* server,
@@ -1847,7 +1847,7 @@ int TRI_StartServer (TRI_server_t* server,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("unable to initialise databases: %s",
+    LOG_ERROR("unable to initialize databases: %s",
               TRI_errno_string(res));
     return res;
   }
@@ -1887,7 +1887,7 @@ int TRI_StartServer (TRI_server_t* server,
 #endif
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("unable to initialise databases: %s",
+    LOG_ERROR("unable to initialize databases: %s",
               TRI_errno_string(res));
     return res;
   }
@@ -1926,7 +1926,7 @@ int TRI_StartServer (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises all databases
+/// @brief initializes all databases
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitDatabasesServer (TRI_server_t* server) {
@@ -1939,7 +1939,7 @@ int TRI_InitDatabasesServer (TRI_server_t* server) {
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
 
-    // initialise the authentication data for the database
+    // initialize the authentication data for the database
     TRI_ReloadAuthInfo(vocbase);
 
     // start the compactor for the database

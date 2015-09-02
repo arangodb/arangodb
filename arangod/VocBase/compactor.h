@@ -41,7 +41,7 @@ struct TRI_vocbase_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the compaction blockers structure
+/// @brief initialize the compaction blockers structure
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitCompactorVocBase (TRI_vocbase_t*);

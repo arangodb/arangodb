@@ -122,7 +122,7 @@ typedef struct compaction_blocker_s {
 compaction_blocker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief auxiliary struct used when initialising compaction
+/// @brief auxiliary struct used when initializing compaction
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct compaction_intial_context_s {
@@ -813,7 +813,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   initial = InitCompaction(document, compactions);
 
   if (initial._failed) {
-    LOG_ERROR("could not create initialise compaction");
+    LOG_ERROR("could not create initialize compaction");
 
     return;
   }
@@ -1215,7 +1215,7 @@ static bool CheckAndLockCompaction (TRI_vocbase_t* vocbase) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the compaction blockers structure
+/// @brief initialize the compaction blockers structure
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitCompactorVocBase (TRI_vocbase_t* vocbase) {

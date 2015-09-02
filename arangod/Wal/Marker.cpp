@@ -1114,7 +1114,7 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
     TRI_ASSERT(legendSize >= 8);
 
     char* p = static_cast<char*>(begin()) + m->_offsetLegend;
-    memset(p, 0, 8); // initialise initial bytes of legend with 0s
+    memset(p, 0, 8); // initialize initial bytes of legend with 0s
   }
 
   // store shapedJson
@@ -1260,7 +1260,7 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
   {
     TRI_ASSERT(legendSize >= 8);
     char* p = static_cast<char*>(begin()) + m->_offsetLegend;
-    memset(p, 0, 8); // initialise initial bytes of legend with 0s
+    memset(p, 0, 8); // initialize initial bytes of legend with 0s
   }
 
   // store shapedJson

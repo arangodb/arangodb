@@ -383,7 +383,7 @@ void TRI_InitV8Dispatcher (v8::Isolate* isolate,
     TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_GET_TASK"), JS_GetTask);
   }
   else {
-    LOG_ERROR("cannot initialise tasks, scheduler or dispatcher unknown");
+    LOG_ERROR("cannot initialize tasks, scheduler or dispatcher unknown");
   }
 }
 

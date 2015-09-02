@@ -117,7 +117,7 @@ namespace triagens {
 ///
 /// there might be dependencies between features, e.g. F1 depends on F2
 /// F1->prepare() would need to be called after F2->prepare() but this is not
-/// possible. prepare2() gives a feature a second chance to initialise itself.
+/// possible. prepare2() gives a feature a second chance to initialize itself.
 /// it is called after all prepare() actions have been finished
 ////////////////////////////////////////////////////////////////////////////////
 

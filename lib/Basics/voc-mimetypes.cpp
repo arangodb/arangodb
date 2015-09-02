@@ -6,10 +6,10 @@
 #include "./lib/Basics/voc-mimetypes.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise mimetypes
+/// @brief initialize mimetypes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseEntriesMimetypes () {
+void TRI_InitializeEntriesMimetypes () {
   TRI_RegisterMimetype("gif", "image/gif", false);
   TRI_RegisterMimetype("jpg", "image/jpg", false);
   TRI_RegisterMimetype("png", "image/png", false);

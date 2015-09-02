@@ -316,7 +316,7 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
     return nullptr;
   }
 
-  // initialise collection properties
+  // initialize collection properties
   trxCollection->_transaction      = trx;
   trxCollection->_cid              = cid;
   trxCollection->_accessType       = accessType;

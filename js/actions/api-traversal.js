@@ -110,9 +110,9 @@ function notFound (req, res, code, message) {
 ///   - *if set*, must be either *"outbound"*, *"inbound"*, or *"any"*
 ///   - *if not set*, the *expander* attribute must be specified
 ///
-/// - *init* (optional): body (JavaScript) code of custom result initialisation function
+/// - *init* (optional): body (JavaScript) code of custom result initialization function
 ///     function signature: *(config, result) -> void*
-///     initialise any values in result with what is required
+///     initialize any values in result with what is required
 ///
 /// - *expander* (optional): body (JavaScript) code of custom expander function
 ///      *must* be set if *direction* attribute is **not** set
@@ -757,7 +757,7 @@ function post_api_traversal(req, res) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       initialiser
+// --SECTION--                                                       initializer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

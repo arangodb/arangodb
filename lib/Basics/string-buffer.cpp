@@ -447,7 +447,7 @@ static int AppendJsonEncodedValue (TRI_string_buffer_t* self,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new string buffer and initialise it
+/// @brief create a new string buffer and initialize it
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t* zone) {
@@ -463,7 +463,7 @@ TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t* zone) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new string buffer and initialise it with a specific size
+/// @brief create a new string buffer and initialize it with a specific size
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t* zone,
@@ -480,9 +480,9 @@ TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t* zone,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the string buffer
+/// @brief initializes the string buffer
 ///
-/// @warning You must call initialise before using the string buffer.
+/// @warning You must call initialize before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitStringBuffer (TRI_string_buffer_t * self, TRI_memory_zone_t* zone) {
@@ -495,9 +495,9 @@ void TRI_InitStringBuffer (TRI_string_buffer_t * self, TRI_memory_zone_t* zone) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the string buffer with a specific size
+/// @brief initializes the string buffer with a specific size
 ///
-/// @warning You must call initialise before using the string buffer.
+/// @warning You must call initialize before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitSizedStringBuffer (TRI_string_buffer_t * self,
@@ -568,7 +568,7 @@ int TRI_DeflateStringBuffer (TRI_string_buffer_t* self,
   strm.zfree  = Z_NULL;
   strm.opaque = Z_NULL;
 
-  // initialise deflate procedure
+  // initialize deflate procedure
   res = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
 
   if (res != Z_OK) {

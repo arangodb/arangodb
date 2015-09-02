@@ -312,7 +312,7 @@ namespace triagens {
             for (lev = _start->_height; lev < newNode->_height; lev++) {
               pos[lev] = _start;
             }
-            // Note that _start is already initialised with nullptr to the top!
+            // Note that _start is already initialized with nullptr to the top!
             _start->_height = newNode->_height;
           }
 

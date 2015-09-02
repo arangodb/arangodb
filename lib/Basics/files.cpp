@@ -77,10 +77,10 @@ using namespace std;
 static char NullBuffer[4096];
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief already initialised
+/// @brief already initialized
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Initialised = false;
+static bool Initialized = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief user-defined temporary path
@@ -215,8 +215,8 @@ static void RemoveAllLockedFiles (void) {
 /// @brief initializes some structures which are needed by the file functions
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InitialiseLockFiles (void) {
-  if (Initialised) {
+static void InitializeLockFiles (void) {
+  if (Initialized) {
     return;
   }
 
@@ -231,7 +231,7 @@ static void InitialiseLockFiles (void) {
   TRI_InitReadWriteLock(&FileNamesLock);
 
   atexit(&RemoveAllLockedFiles);
-  Initialised = true;
+  Initialized = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1160,7 +1160,7 @@ int TRI_CreateLockFile (char const* filename) {
   char* fn;
   int res;
 
-  InitialiseLockFiles();
+  InitializeLockFiles();
 
   if (0 <= LookupElementVectorString(&FileNames, filename)) {
     return TRI_ERROR_NO_ERROR;
@@ -1231,7 +1231,7 @@ int TRI_CreateLockFile (char const* filename) {
   int rv;
   int res;
 
-  InitialiseLockFiles();
+  InitializeLockFiles();
 
   if (0 <= LookupElementVectorString(&FileNames, filename)) {
     return TRI_ERROR_NO_ERROR;
@@ -1402,7 +1402,7 @@ int TRI_DestroyLockFile (char const* filename) {
   HANDLE fd;
   ssize_t n;
 
-  InitialiseLockFiles();
+  InitializeLockFiles();
   n = LookupElementVectorString(&FileNames, filename);
 
   if (n < 0) {
@@ -1431,7 +1431,7 @@ int TRI_DestroyLockFile (char const* filename) {
   int res;
   ssize_t n;
 
-  InitialiseLockFiles();
+  InitializeLockFiles();
   n = LookupElementVectorString(&FileNames, filename);
 
   if (n < 0) {
@@ -2466,12 +2466,12 @@ size_t TRI_GetNullBufferSizeFiles () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the files subsystem
+/// @brief initialize the files subsystem
 ///
-/// TODO: inialise logging here?
+/// TODO: initialize logging here?
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseFiles (void) {
+void TRI_InitializeFiles (void) {
   // clear user-defined temp path
   TempPath = nullptr;
   
@@ -2481,7 +2481,7 @@ void TRI_InitialiseFiles (void) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown the files subsystem
 ///
-/// TODO: inialise logging here?
+/// TODO: initialize logging here?
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownFiles (void) {

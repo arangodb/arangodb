@@ -27,7 +27,7 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/InitialiseBasics.h"
+#include "Basics/InitializeBasics.h"
 
 #include "Basics/init.h"
 #include "Basics/error.h"
@@ -38,8 +38,8 @@
 
 namespace triagens {
   namespace basics {
-    void InitialiseBasics (int argv, char* argc[]) {
-      TRIAGENS_C_INITIALISE(argv, argc);
+    void InitializeBasics (int argv, char* argc[]) {
+      TRIAGENS_C_INITIALIZE(argv, argc);
 
       // use the rng so the linker does not remove it from the executable
       // we might need it later because .so files might refer to the symbols

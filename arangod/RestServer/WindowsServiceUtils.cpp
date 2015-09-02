@@ -33,7 +33,7 @@
 #include "Basics/messages.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
-#include "Rest/InitialiseRest.h"
+#include "Rest/InitializeRest.h"
 #include "Basics/files.h"
 #include "RestServer/ArangoServer.h"
 
@@ -548,21 +548,21 @@ void TRI_GlobalEntryFunction () {
   // If you familiar with Valgrind ... then this is not like that, however
   // you do get some similar functionality.
 
-  // res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
+  // res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
-  res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
-
-  if (res != 0) {
-    _exit(EXIT_FAILURE);
-  }
-
-  res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+  res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
 
   if (res != 0) {
     _exit(EXIT_FAILURE);
   }
 
-  res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+
+  if (res != 0) {
+    _exit(EXIT_FAILURE);
+  }
+
+  res = initializeWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
     _exit(EXIT_FAILURE);
