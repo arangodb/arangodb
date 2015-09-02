@@ -128,9 +128,7 @@ static int FillLookupOperator (TRI_index_operator_t* slOperator,
   }
 
   switch (slOperator->_type) {
-    case TRI_AND_INDEX_OPERATOR:
-    case TRI_NOT_INDEX_OPERATOR:
-    case TRI_OR_INDEX_OPERATOR: {
+    case TRI_AND_INDEX_OPERATOR: {
       TRI_logical_index_operator_t* logicalOperator = (TRI_logical_index_operator_t*) slOperator;
       int res = FillLookupOperator(logicalOperator->_left, document);
 

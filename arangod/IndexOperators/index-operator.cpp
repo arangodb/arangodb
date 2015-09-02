@@ -67,9 +67,7 @@ TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e operato
                                                VocShaper* shaper,
                                                size_t numFields) {
   switch (operatorType) {
-    case TRI_AND_INDEX_OPERATOR:
-    case TRI_NOT_INDEX_OPERATOR:
-    case TRI_OR_INDEX_OPERATOR: {
+    case TRI_AND_INDEX_OPERATOR: {
       return new TRI_logical_index_operator_t(operatorType, shaper, leftOperand, rightOperand);
     }
 

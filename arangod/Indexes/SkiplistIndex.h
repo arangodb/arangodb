@@ -38,10 +38,6 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class SkiplistIndex
-// -----------------------------------------------------------------------------
-
 typedef struct {
   TRI_shaped_json_t* _fields;   // list of shaped json objects which the
                                 // collection should know about
@@ -65,12 +61,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class SkiplistIterator {
+
       private:
+
         friend class SkiplistIndex;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private structs
 // -----------------------------------------------------------------------------
+      
+      private:
+
         // Shorthand for the skiplist node
         typedef triagens::basics::SkipListNode<TRI_skiplist_index_key_t, TRI_index_element_t> Node;
 
@@ -86,17 +87,20 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
+      
+      private:
+
         SkiplistIndex* const _index;
         size_t _currentInterval; // starts with 0, current interval used
         bool _reverse;
         Node* _cursor;
         std::vector<SkiplistIteratorInterval> _intervals;
 
-      public:
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
+      
+      public:
 
         SkiplistIterator (
           SkiplistIndex* const idx,
@@ -124,6 +128,8 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+      
+      public:
         
         size_t size ();
 
@@ -137,6 +143,7 @@ namespace triagens {
           TRI_index_operator_t const* indexOperator,
           std::vector<SkiplistIteratorInterval>& interval
         );
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -159,6 +166,10 @@ namespace triagens {
           SkiplistIteratorInterval const& interval
         );
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class SkiplistIndex
+// -----------------------------------------------------------------------------
 
     class SkiplistIndex : public PathBasedIndex {
 
@@ -193,8 +204,8 @@ namespace triagens {
       friend struct KeyElementComparator;
       friend struct ElementElementComparator;
 
-
       typedef triagens::basics::SkipList<TRI_skiplist_index_key_t, TRI_index_element_t> TRI_Skiplist;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -246,7 +257,6 @@ namespace triagens {
 
         SkiplistIterator* lookup (TRI_index_operator_t*, bool);
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -263,7 +273,6 @@ namespace triagens {
         int _CmpKeyElm (TRI_skiplist_index_key_t const* leftKey,
                        TRI_index_element_t const* rightElement);
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -271,6 +280,7 @@ namespace triagens {
       private:
 
         ElementElementComparator CmpElmElm;
+
         KeyElementComparator CmpKeyElm;
 
 ////////////////////////////////////////////////////////////////////////////////
