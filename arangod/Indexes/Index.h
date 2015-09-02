@@ -33,7 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/logging.h"
+#include "Indexes/IndexWatermarks.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
@@ -59,11 +59,9 @@ typedef struct TRI_index_search_value_s {
 }
 TRI_index_search_value_t;
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              struct index_element
 // -----------------------------------------------------------------------------
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Unified index element. Do not directly construct it.
@@ -140,12 +138,12 @@ struct TRI_index_element_t {
 
 };
 
+namespace triagens {
+  namespace arango {
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Index
 // -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace arango {
 
     class Index {
 

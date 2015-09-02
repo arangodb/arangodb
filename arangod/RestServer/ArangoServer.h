@@ -36,12 +36,11 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include "Aql/QueryRegistry.h"
+#include "Indexes/IndexWatermarks.h"
 #include "Rest/AnyServer.h"
 #include "Rest/OperationMode.h"
-
 #include "VocBase/vocbase.h"
-#include "HttpServer/HttpHandlerFactory.h"
-#include "Aql/QueryRegistry.h"
 
 struct TRI_server_t;
 struct TRI_vocbase_defaults_s;
@@ -61,6 +60,7 @@ namespace triagens {
     class ApplicationScheduler;
     class AsyncJobManager;
     class Dispatcher;
+    class HttpHandlerFactory;
     class HttpServer;
     class HttpsServer;
   }
@@ -721,6 +721,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _threadAffinity;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default watermarks for indexes
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::arango::IndexWatermarks _defaultIndexWatermarks;
     };
   }
 }
