@@ -39,10 +39,6 @@ using namespace triagens::arango;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees an element in the skiplist
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +47,6 @@ static void FreeElm (void* e) {
   auto element = static_cast<TRI_index_element_t*>(e);
   TRI_index_element_t::free(element);
 }
-
 
 // .............................................................................
 // recall for all of the following comparison functions:
@@ -415,7 +410,6 @@ void SkiplistIterator::findHelper (
       return;
     }
 
-
     case TRI_EQ_INDEX_OPERATOR: {
       temp = _index->_skiplistIndex->leftKeyLookup(&values);
       TRI_ASSERT(nullptr != temp);
@@ -591,7 +585,6 @@ TRI_index_element_t* SkiplistIterator::prevIteration () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_element_t* SkiplistIterator::nextIteration () {
-
   if (_cursor == nullptr) {
     // In this case the iterator is exhausted or does not even have intervals.
     return nullptr;
@@ -643,12 +636,8 @@ SkiplistIndex::SkiplistIndex (TRI_idx_iid_t iid,
     CmpElmElm(this),
     CmpKeyElm(this),
     _skiplistIndex(nullptr) {
-  _skiplistIndex = new TRI_Skiplist(CmpElmElm, CmpKeyElm,
-                                    FreeElm, unique, _useExpansion);
-  if (_skiplistIndex == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
 
+  _skiplistIndex = new TRI_Skiplist(CmpElmElm, CmpKeyElm, FreeElm, unique, _useExpansion);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -656,9 +645,7 @@ SkiplistIndex::SkiplistIndex (TRI_idx_iid_t iid,
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIndex::~SkiplistIndex () {
-  if (_skiplistIndex != nullptr) {
-    delete _skiplistIndex;
-  }
+  delete _skiplistIndex;
 }
 
 // -----------------------------------------------------------------------------
