@@ -423,6 +423,43 @@ ArangoServer::~ArangoServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::buildApplicationServer () {
+  // detect alignment settings for ARM
+  {
+#ifdef __arm__
+    // To change the alignment trap behavior, simply echo a number into
+    // /proc/cpu/alignment.  The number is made up from various bits:
+    // 
+    // bit             behavior when set
+    // ---             -----------------
+    // 
+    // 0               A user process performing an unaligned memory access
+    //                 will cause the kernel to print a message indicating
+    //                 process name, pid, pc, instruction, address, and the
+    //                 fault code.
+    // 
+    // 1               The kernel will attempt to fix up the user process
+    //                 performing the unaligned access.  This is of course
+    //                 slow (think about the floating point emulator) and
+    //                 not recommended for production use.
+    //
+    // 2               The kernel will send a SIGBUS signal to the user process
+    //                 performing the unaligned access.
+    std::string const filename("/proc/cpu/alignment");
+
+    try {
+      std::string cpuAlignment = triagens::basics::FileUtils::slurp("/proc/cpu/alignment");
+      int64_t alignment = std::stol(cpuAlignment);
+      if ((alignment & 2) == 0) {
+        LOG_WARNING("possibly incompatible CPU alignment settings found in '%s'. this may cause arangod to abort with SIGBUS. it may be necessary to set the value of '%s' to 2");
+      }
+    }
+    catch (...) {
+      // ignore that we cannot detect the alignment
+      LOG_TRACE("unable to detect CPU alignment settings. could not process file '%s'", filename.c_str());
+    }
+#endif
+  }
+
   _applicationServer = new ApplicationServer("arangod", "[<options>] <database-directory>", rest::Version::getDetailed());
 
   string conf = TRI_BinaryName(_argv[0]) + ".conf";
