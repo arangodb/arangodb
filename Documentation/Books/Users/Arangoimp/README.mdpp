@@ -80,7 +80,7 @@ that any existing index definitions for the collection will be preserved even if
 As the import file already contains the data in JSON format, attribute names and
 data types are fully preserved. As can be seen in the example data, there is no
 need for all data records to have the same attribute names or types. Records can
-be in-homogenous.
+be inhomogeneous.
 
 Please note that by default, _arangoimp_ will import data into the specified 
 collection in the default database (*_system*). To specify a different database, 
@@ -353,4 +353,3 @@ If you import values into *_key*, you should make sure they are valid and unique
 
 When importing data into an edge collection, you should make sure that all import
 documents can *_from* and *_to* and that their values point to existing documents.
-

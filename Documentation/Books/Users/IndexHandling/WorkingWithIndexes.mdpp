@@ -37,7 +37,7 @@ db._index("demo/362549736");
 @startDocuBlock collectionGetIndexes
 
 !SUBSECTION Creating an index
-Indexes can be created using the general method *ensureIndex*, or *enshure&lt;type&gt;Index* (see the respective subchapters that also describe the behaviour of this index in more detail.
+Indexes can be created using the general method *ensureIndex*, or *ensure&lt;type&gt;Index* (see the respective subchapters that also describe the behavior of this index in more detail.
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 @startDocuBlock collectionEnsureIndex
 

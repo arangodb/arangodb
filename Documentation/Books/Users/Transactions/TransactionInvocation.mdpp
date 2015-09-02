@@ -15,7 +15,7 @@ is started.
 
 There are no individual *BEGIN*, *COMMIT* or *ROLLBACK* transaction commands 
 in ArangoDB. Instead, a transaction in ArangoDB is started by providing a 
-description of the transaction to the *db._executeTransaction* Javascript 
+description of the transaction to the *db._executeTransaction* JavaScript 
 function:
 
 ```js
@@ -111,7 +111,7 @@ db._executeTransaction({
 });
 ```
 Please note that any operations specified in *action* will be executed on the 
-server, in a separate scope. Variables will be bound late. Accessing any Javascript 
+server, in a separate scope. Variables will be bound late. Accessing any JavaScript 
 variables defined on the client-side or in some other server context from inside
 a transaction may not work. 
 Instead, any variables used inside *action* should be defined inside *action* itself:
@@ -154,7 +154,7 @@ There is no explicit abort or roll back command.
 
 As mentioned earlier, a transaction will commit automatically when the end of
 the *action* function is reached and no exception has been thrown. In this 
-case, the user can return any legal Javascript value from the function:
+case, the user can return any legal JavaScript value from the function:
 
 ```js
 db._executeTransaction({

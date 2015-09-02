@@ -3,7 +3,7 @@ The query module provides the infrastructure for working with currently running 
 
 
 !SUBSECTION Properties
-`queries.properties()` Returns the servers current query tracking configuration; we change the slow query threshhold to get better results:
+`queries.properties()` Returns the servers current query tracking configuration; we change the slow query threshold to get better results:
 
     @startDocuBlockInline QUERY_01_properyOfQueries
     @EXAMPLE_ARANGOSH_OUTPUT{QUERY_01_properyOfQueries}

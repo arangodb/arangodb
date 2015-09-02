@@ -63,14 +63,14 @@ This may be considered a feature or an anti-feature, so it is configurable.
 If replication of system collections is undesired, they can be excluded from replication
 by setting the `includeSystem` attribute to `false` in the following commands:
 
-* initial synchronisation: `replication.sync({ includeSystem: false })`
+* initial synchronization: `replication.sync({ includeSystem: false })`
 * continuous replication: `replication.applier.properties({ includeSystem: false })`
 
 This will exclude all system collections (including `_aqlfunctions`, `_graphs` etc.)
-from the initial synchronisation and the continuous replication.
+from the initial synchronization and the continuous replication.
 
 If this is also undesired, it is also possible to specify a list of collections to
-exclude from the initial synchronisation and the continuous replication using the
+exclude from the initial synchronization and the continuous replication using the
 `restrictCollections` attribute, e.g.:
 
     require("org/arangodb/replication").applier.properties({ 
@@ -112,7 +112,7 @@ rebuild afterwards:
     ./configure <options go here>
     make
 
-!SECTION Misceallaneous changes
+!SECTION Miscellaneous changes
 
 As a consequence of global renaming in the codebase, the option `mergeArrays` has
 been renamed to `mergeObjects`. This option controls whether JSON objects will be 

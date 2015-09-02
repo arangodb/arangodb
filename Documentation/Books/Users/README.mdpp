@@ -12,7 +12,7 @@ Key features include:
 * Use ArangoDB as an **application server** and fuse your application and database together for maximal throughput
 * JavaScript for all: **no language zoo**, you can use one language from your browser to your back-end
 * ArangoDB is **multi-threaded** - exploit the power of all your cores
-* **Flexible data modelling**: model your data as combination of key-value pairs, documents or graphs - perfect for social relations
+* **Flexible data modeling**: model your data as combination of key-value pairs, documents or graphs - perfect for social relations
 * Free **index choice**: use the correct index for your problem, be it a skip list or a fulltext search
 * Configurable **durability**: let the application decide if it needs more durability or more performance
 * No-nonsense storage: ArangoDB uses all of the power of **modern storage hardware**, like SSD and large caches
@@ -27,11 +27,11 @@ You can also go to our [cookbook](https://docs.arangodb.com/cookbook) and look t
 
 !SUBSECTION Community
 
-If you have questions regarding Arangodb, Foxx, drivers, or this documentation don't hesitate to contact us on:
+If you have questions regarding ArangoDB, Foxx, drivers, or this documentation don't hesitate to contact us on:
 
-- [github](https://github.com/arangodb/arangodb/issues) for issues and missbehaviour or [pull requests](https://www.arangodb.com/community/)
-- [google groups](https://groups.google.com/forum/?hl=de#!forum/arangodb) for discussions about ArangoDB in general or to anounce your new Foxx App
-- [stackoverflow](http://stackoverflow.com/questions/tagged/arangodb) for questions about AQL, usage scenarios etc.
+- [Github](https://github.com/arangodb/arangodb/issues) for issues and misbehavior or [pull requests](https://www.arangodb.com/community/)
+- [Google groups](https://groups.google.com/forum/?hl=de#!forum/arangodb) for discussions about ArangoDB in general or to announce your new Foxx App
+- [Stackoverflow](http://stackoverflow.com/questions/tagged/arangodb) for questions about AQL, usage scenarios etc.
 
 Please describe:
 
@@ -41,6 +41,6 @@ Please describe:
 - the client you're using
 - which parts of the Documentation you're working with (link)
 - what you expect to happen
-- whats actualy happening
+- whats actually happening
 
 We will respond as soon as possible.

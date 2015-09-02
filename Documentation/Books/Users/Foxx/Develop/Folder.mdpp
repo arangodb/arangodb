@@ -3,7 +3,7 @@
 Now we are almost ready to write some code.
 Hence it is time to introduce the folder structure created by Foxx.
 We still follow the example of the app installed at `/example`.
-The route to reach this application via http(s) is constructed with the following parts:
+The route to reach this application via HTTP(S) is constructed with the following parts:
 
 * The ArangoDB endpoint `<arangodb>`: (e.g. `http://localhost:8529`)
 * The selected database `<db>`: (e.g. `_system`)

@@ -28,7 +28,7 @@
 @startDocuBlock keep_alive_timeout
 
 
-!SUBSECTION Default api compatibility
+!SUBSECTION Default API compatibility
 @startDocuBlock serverDefaultApi
 
 

@@ -1,6 +1,6 @@
 !CHAPTER JavaScript Modules
 
-!SUBSECTION Introduction to Javascript Modules
+!SUBSECTION Introduction to JavaScript Modules
 
 The ArangoDB uses a [CommonJS](http://wiki.commonjs.org/wiki)
 compatible module and package concept. You can use the function *require* in

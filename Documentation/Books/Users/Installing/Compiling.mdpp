@@ -68,7 +68,7 @@ Download the latest source using GIT:
 
 Note: if you only plan to compile ArangoDB locally and do not want to modify or push
 any changes, you can speed up cloning substantially by using the *--single-branch* and 
-*--depth* parameters for the clone command as follws:
+*--depth* parameters for the clone command as follows:
     
     git clone --single-branch --depth 1 git://github.com/arangodb/arangodb.git
 
@@ -167,7 +167,7 @@ parameter once to perform required upgrade or initialization tasks.
 
 !SECTION Devel Version
 
-Note: a seperate [blog article](http://jsteemann.github.io/blog/2014/10/16/how-to-compile-arangodb-from-source/)
+Note: a separate [blog article](http://jsteemann.github.io/blog/2014/10/16/how-to-compile-arangodb-from-source/)
 is available that describes how to compile ArangoDB from source on Ubuntu.
 
 !SUBSECTION Basic System Requirements

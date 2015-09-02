@@ -1,4 +1,4 @@
-!CHAPTER Install Applications from github
+!CHAPTER Install Applications from Github
 
 In this chapter we will make use of the Foxx manager as described [before](README.md).
 This time we want to install an app out of our version control hosted on [github.com](https://www.github.com).
