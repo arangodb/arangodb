@@ -97,6 +97,8 @@ bool HttpsCommTask::setup (Scheduler* scheduler, EventLoop loop) {
   }
 
   // build a new connection
+  TRI_ASSERT(_ssl == nullptr);
+
   ERR_clear_error();
   _ssl = SSL_new(_ctx);
 
@@ -131,13 +133,24 @@ bool HttpsCommTask::handleEvent (EventToken token,
                                  EventType revents) {
   // try to accept the SSL connection
   if (! _accepted) {
-    if (token == _readWatcher && (revents & EVENT_SOCKET_READ)) {
-      return trySSLAccept();
+    bool result = false; // be pessimistic
+
+    if ((token == _readWatcher && (revents & EVENT_SOCKET_READ)) ||
+        (token == _writeWatcher && (revents & EVENT_SOCKET_WRITE))) {
+      // must do the SSL handshake first
+      result = trySSLAccept();
+    }
+    else {
+      // status is somehow invalid. we got here even though no accept was ever successful
+      _clientClosed = true;
     }
 
-    if (token == _writeWatcher && (revents & EVENT_SOCKET_WRITE)) {
-      return trySSLAccept();
+    if (_clientClosed) {
+      // this will destroy ourselves (this)!
+      _scheduler->destroyTask(this);
     }
+
+    return result;
   }
 
   // if we blocked on write, read can be called when the socket is writeable
@@ -213,6 +226,7 @@ bool HttpsCommTask::handleWrite () {
 
 bool HttpsCommTask::trySSLAccept () {
   if (nullptr == _ssl) {
+    _clientClosed = true;
     return false;
   }
 
