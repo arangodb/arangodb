@@ -80,6 +80,7 @@ namespace triagens {
           HashElementFuncType const _hashElement;
           IsEqualKeyElementFuncType const _isEqualKeyElement;
           IsEqualElementElementFuncType const _isEqualElementElement;
+          IsEqualElementElementFuncType const _isEqualElementElementByKey;
 
           std::function<std::string()> _contextCallback;
 
@@ -97,12 +98,14 @@ namespace triagens {
               HashElementFuncType hashElement,
               IsEqualKeyElementFuncType isEqualKeyElement,
               IsEqualElementElementFuncType isEqualElementElement,
+              IsEqualElementElementFuncType isEqualElementElementByKey,
               size_t numberBuckets = 1,
               std::function<std::string()> contextCallback = [] () -> std::string { return ""; }) 
             : _hashKey(hashKey), 
               _hashElement(hashElement),
               _isEqualKeyElement(isEqualKeyElement),
               _isEqualElementElement(isEqualElementElement),
+              _isEqualElementElementByKey(isEqualElementElementByKey),
               _contextCallback(contextCallback) {
 
               // Make the number of buckets a power of two:
@@ -279,8 +282,7 @@ namespace triagens {
 ///        This does not resize and expects to have enough space
 ////////////////////////////////////////////////////////////////////////////////
 
-          int doInsert (Key const* key,
-                        Element* element,
+          int doInsert (Element* element,
                         Bucket& b,
                         uint64_t hash) {
 
@@ -289,10 +291,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                ! _isEqualElementElementByKey(element, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                  ! _isEqualElementElementByKey(element, b._table[i]); ++i);
             }
 
             Element* arrayElement = b._table[i];
@@ -301,7 +303,7 @@ namespace triagens {
               return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
             }
 
-            b._table[i] = static_cast<Element*>(element);
+            b._table[i] = element;
             TRI_ASSERT(b._table[i] != nullptr);
             b._nrUsed++;
 
@@ -400,10 +402,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualElementElement(element, b._table[i]); ++i);
+                ! _isEqualElementElementByKey(element, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualElementElement(element, b._table[i]); ++i);
+                  ! _isEqualElementElementByKey(element, b._table[i]); ++i);
             }
 
             // ...........................................................................
@@ -443,32 +445,31 @@ namespace triagens {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an key/element to the array
+/// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-          int insert (Key const* key,
-                      Element* element,
+          int insert (Element* element,
                       bool isRollback) {
 
-            uint64_t hash = _hashKey(key);
+            uint64_t hash = _hashElement(element);
             Bucket& b = _buckets[hash & _bucketsMask];
 
             if (! checkResize(b, 0)) {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
-            return doInsert(key, element, b, hash);
+            return doInsert(element, b, hash);
           }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds multiple elements to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-          int batchInsert (std::vector<std::pair<Key const*, Element const*>> const* data,
+          int batchInsert (std::vector<Element*> const* data,
                            size_t numThreads) {
 
             std::atomic<int> res(TRI_ERROR_NO_ERROR);
-            std::vector<std::pair<Key const*, Element const*>> const& elements = *(data);
+            std::vector<Element*> const& elements = *(data);
 
             if (elements.size() < numThreads) {
               numThreads = elements.size();
@@ -479,7 +480,7 @@ namespace triagens {
 
             size_t const chunkSize = elements.size() / numThreads;
 
-            typedef std::vector<std::pair<std::pair<Key const*, Element const*>, uint64_t>> DocumentsPerBucket;
+            typedef std::vector<std::pair<Element*, uint64_t>> DocumentsPerBucket;
             triagens::basics::Mutex bucketMapLocker;
 
             std::unordered_map<uint64_t, std::vector<DocumentsPerBucket>> allBuckets;
@@ -491,7 +492,7 @@ namespace triagens {
                   std::unordered_map<uint64_t, DocumentsPerBucket> partitions;
 
                   for (size_t i = lower; i < upper; ++i) {
-                    uint64_t hash = _hashKey(elements[i].first);
+                    uint64_t hash = _hashElement(elements[i]);
                     auto bucketId = hash & _bucketsMask;
 
                     auto it = partitions.find(bucketId);
@@ -583,7 +584,7 @@ namespace triagens {
                     
                     for (auto const& it2 : it.second) {
                       for (auto const& it3 : it2) {
-                        doInsert(it3.first.first, const_cast<Element*>(it3.first.second), b, it3.second);
+                        doInsert(it3.first, b, it3.second);
                       }
                     }
                   }
