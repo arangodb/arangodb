@@ -200,7 +200,7 @@ static int FillLookupOperator (TRI_index_operator_t* slOperator,
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-size_t SkiplistIterator::size () {
+size_t SkiplistIterator::size () const {
   return _intervals.size();
 }
 
@@ -223,7 +223,7 @@ void SkiplistIterator::initCursor () {
   }
 }
 
-bool SkiplistIterator::hasNext () {
+bool SkiplistIterator::hasNext () const {
   if (_reverse) {
     return hasPrevIteration();
   }
@@ -499,7 +499,7 @@ void SkiplistIterator::findHelper (
 /// interval or before it - without advancing the iterator.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SkiplistIterator::hasPrevIteration () {
+bool SkiplistIterator::hasPrevIteration () const {
   // ...........................................................................
   // if we have more intervals than the one we are currently working
   // on then of course we have a previous doc, because intervals are nonempty.
@@ -523,7 +523,7 @@ bool SkiplistIterator::hasPrevIteration () {
 /// interval - without advancing the iterator.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SkiplistIterator::hasNextIteration () {
+bool SkiplistIterator::hasNextIteration () const {
   if (_cursor == nullptr) {
     return false;
   }
@@ -814,7 +814,7 @@ size_t SkiplistIndex::elementSize () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SkiplistIndex::KeyElementComparator::operator() (TRI_skiplist_index_key_t const* leftKey,
-                                      TRI_index_element_t const* rightElement) {
+                                                     TRI_index_element_t const* rightElement) const {
 
   TRI_ASSERT(nullptr != leftKey);
   TRI_ASSERT(nullptr != rightElement);
@@ -841,8 +841,8 @@ int SkiplistIndex::KeyElementComparator::operator() (TRI_skiplist_index_key_t co
 ////////////////////////////////////////////////////////////////////////////////
 
 int SkiplistIndex::ElementElementComparator::operator() (TRI_index_element_t const* leftElement,
-                                          TRI_index_element_t const* rightElement,
-                                          triagens::basics::SkipListCmpType cmptype) {
+                                                         TRI_index_element_t const* rightElement,
+                                                         triagens::basics::SkipListCmpType cmptype) const {
 
   TRI_ASSERT(nullptr != leftElement);
   TRI_ASSERT(nullptr != rightElement);
