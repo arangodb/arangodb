@@ -124,6 +124,7 @@ namespace triagens {
                          std::vector<TRI_index_element_t*>& elements,
                          TRI_doc_mptr_t const* document);
 
+        size_t numPaths () const;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------

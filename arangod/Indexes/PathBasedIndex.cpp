@@ -160,6 +160,10 @@ int PathBasedIndex::fillElement (std::function<TRI_index_element_t* ()> allocate
   return TRI_ERROR_NO_ERROR;
 }
 
+size_t PathBasedIndex::numPaths () const {
+  return _paths.size();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
