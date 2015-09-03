@@ -3484,7 +3484,7 @@ void RestReplicationHandler::handleCommandDump () {
 /// is returned when an invalid HTTP method is used.
 ///
 /// @RESTRETURNCODE{500}
-/// is returned if an error occurred during sychronisation or when starting the
+/// is returned if an error occurred during sychronization or when starting the
 /// continuous replication.
 ///
 /// @RESTRETURNCODE{501}
@@ -3703,7 +3703,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 /// is returned when an invalid HTTP method is used.
 ///
 /// @RESTRETURNCODE{500}
-/// is returned if an error occurred during sychronisation.
+/// is returned if an error occurred during sychronization.
 ///
 /// @RESTRETURNCODE{501}
 /// is returned when this operation is called on a coordinator in a cluster.
@@ -4029,7 +4029,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 ///   Setting *adaptivePolling* to false will make the replication applier
 ///   contact the logger server in a constant interval, regardless of whether
-///   the logger server provides updates frequently or seldomly.
+///   the logger server provides updates frequently or seldom.
 ///
 /// - *includeSystem*: whether or not system collection operations will be applied
 ///

@@ -2158,7 +2158,7 @@ double FilterNode::estimateCost (size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
   // We are pessimistic here by not reducing the nrItems. However, in the
   // worst case the filter does not reduce the items at all. Furthermore,
-  // no optimiser rule introduces FilterNodes, thus it is not important
+  // no optimizer rule introduces FilterNodes, thus it is not important
   // that they appear to lower the costs. Note that contrary to this,
   // an IndexRangeNode does lower the costs, it also has a better idea
   // to what extent the number of items is reduced. On the other hand it

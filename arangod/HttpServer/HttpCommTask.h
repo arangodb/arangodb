@@ -487,7 +487,7 @@ namespace triagens {
         size_t _originalBodyLength;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief asnyc task for signalling when a new chunk is available
+/// @brief asnyc task for signaling when a new chunk is available
 ////////////////////////////////////////////////////////////////////////////////
 
         AsyncChunkedTask _chunkedTask;

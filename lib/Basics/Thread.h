@@ -157,7 +157,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allows asynchrounous cancelation
+/// @brief allows asynchronous cancelation
 ////////////////////////////////////////////////////////////////////////////////
 
         void allowAsynchronousCancelation ();

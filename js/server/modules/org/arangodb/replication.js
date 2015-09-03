@@ -117,11 +117,11 @@ applier.properties = function (config) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief performs a one-time synchronisation with a remote endpoint
+/// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 function sync(config) {
-  return internal.synchroniseReplication(config);
+  return internal.synchronizeReplication(config);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

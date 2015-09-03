@@ -151,10 +151,10 @@ bool RestSimpleHandler::cancelQuery () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the query was cancelled
+/// @brief whether or not the query was canceled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestSimpleHandler::wasCancelled () {
+bool RestSimpleHandler::wasCanceled () {
   MUTEX_LOCKER(_queryLock);
   return _queryKilled;
 }
@@ -172,7 +172,7 @@ bool RestSimpleHandler::wasCancelled () {
 ///
 /// The JSON object can also contain an *options* object, which itself may
 /// contain the *waitForSync* attribute: if set to true, then all removal 
-/// operations will instantly be synchronised to disk. If this is not specified, 
+/// operations will instantly be synchronized to disk. If this is not specified, 
 /// then the collection's default sync behavior will be applied.
 ///
 /// @RESTDESCRIPTION
@@ -311,7 +311,7 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCancelled())) {
+          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
       }
 
@@ -491,7 +491,7 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCancelled())) {
+          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
       }
 

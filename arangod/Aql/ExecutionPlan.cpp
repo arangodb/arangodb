@@ -82,7 +82,7 @@ ExecutionPlan::~ExecutionPlan () {
 /// @brief create an execution plan from an AST
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
+ExecutionPlan* ExecutionPlan::instantiateFromAst (Ast* ast) {
   TRI_ASSERT(ast != nullptr);
 
   auto root = ast->root();
@@ -134,7 +134,7 @@ void ExecutionPlan::getCollectionsFromJson (Ast* ast,
 /// @brief create an execution plan from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
+ExecutionPlan* ExecutionPlan::instantiateFromJson (Ast* ast,
                                                    triagens::basics::Json const& json) {
   TRI_ASSERT(ast != nullptr);
 

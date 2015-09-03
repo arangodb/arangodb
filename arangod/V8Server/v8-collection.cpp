@@ -1697,7 +1697,7 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 /// **Note** : Retrieving the figures will always load the collection into 
 /// memory.
 ///
-/// * *alive.count*: The number of curretly active documents in all datafiles and
+/// * *alive.count*: The number of currently active documents in all datafiles and
 ///   journals of the collection. Documents that are contained in the
 ///   write-ahead log only are not reported in this figure.
 /// * *alive.size*: The total size in bytes used by all active documents of the

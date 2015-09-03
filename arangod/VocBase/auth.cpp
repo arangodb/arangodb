@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase authentication and authorisation
+/// @brief vocbase authentication and authorization
 ///
 /// @file
 ///
@@ -399,7 +399,7 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
-  LOG_DEBUG("starting to load authentication and authorisation information");
+  LOG_DEBUG("starting to load authentication and authorization information");
 
   TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_USERS);
 

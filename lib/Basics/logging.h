@@ -214,7 +214,7 @@ void TRI_FreeBufferLogging (struct TRI_vector_s*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief macro that validates printf() style call arguments
 /// the printf() call contained will never be executed but is just there to
-/// enable compile-time error check. it will be optimised away after that
+/// enable compile-time error check. it will be optimized away after that
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_LOGGER

@@ -41,7 +41,7 @@ typedef enum {
   TRI_WIN_FINAL_SET_INVALID_HANLE_HANDLER,
   TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL
 }
-TRI_win_finalise_e;
+TRI_win_finalize_e;
 
 typedef enum {
   TRI_WIN_INITIAL_SET_DEBUG_FLAG,
@@ -51,7 +51,7 @@ typedef enum {
 }
 TRI_win_initialize_e;
 
-int finaliseWindows (const TRI_win_finalise_e, const char*);
+int finalizeWindows (const TRI_win_finalize_e, const char*);
 int initializeWindows (const TRI_win_initialize_e, const char*);
 
 // .............................................................................
