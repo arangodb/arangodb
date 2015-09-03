@@ -336,7 +336,16 @@ From time to time there will be bigger structural changes in ArangoDB, which may
 render the old Makefiles invalid. Should this be the case and `make` complains
 about missing files etc., the following commands should fix it:
 
+    rm -rf lib/*/.deps arangod/*/.deps arangosh/*/.deps Makefile
+    make setup
+    ./configure <your configure options go here>
+    make
+
+In order to reset everything and also recompile all 3rd party libraries, issue
+the following commands:
+
     make superclean
+    git checkout -- .
     make setup
     ./configure <your configure options go here>
     make
@@ -348,3 +357,6 @@ If you forgot your previous configure options, you can look them up with
     head config.log
    
 before issuing `make superclean` (as make `superclean` also removes the file `config.log`). 
+
+Sometimes you can get away with the less intrusive commands:
+
