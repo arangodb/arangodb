@@ -43,6 +43,30 @@ namespace triagens {
   namespace basics {
 
 // -----------------------------------------------------------------------------
+// --SECTION--                               Position Object for bucket indizies
+// -----------------------------------------------------------------------------
+
+    struct BucketPosition {
+      size_t bucketId;
+      uint64_t position;
+
+      BucketPosition () 
+        : bucketId(SIZE_MAX),
+          position(0) {
+      }
+
+      void reset () {
+        bucketId = SIZE_MAX - 1;
+        position = 0;
+      }
+
+      bool operator== (BucketPosition const& other) {
+        return position == other.position &&
+               bucketId == other.bucketId;
+      }
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                       UNIQUE ASSOCIATIVE POINTERS
 // -----------------------------------------------------------------------------
 
@@ -54,7 +78,7 @@ namespace triagens {
       class AssocUnique {
 
         public:
-
+          
           typedef std::function<uint64_t(Key const*)> HashKeyFuncType;
           typedef std::function<uint64_t(Element const*)> HashElementFuncType;
           typedef std::function<bool(Key const*, uint64_t hash, Element const*)> 
@@ -260,19 +284,76 @@ namespace triagens {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Finds the element at the given position in concatenated buckets.
-///        Say we have 2 Buckets each of size 5. Position 7 would be in
-///        the second bucket at Position 2 (7 - Bucket1.size())
+/// @brief Finds the element at the given position in the buckets.
+///        Iterates using the given step size
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findElementSequentialBuckets (uint64_t position) const {
-            for (auto& b : _buckets) {
-              if (position >= b._nrAlloc) {
-                position -= b._nrAlloc;
+          Element* findElementSequentialBucketsRandom (BucketPosition& position,
+                                                       uint64_t const step,
+                                                       BucketPosition const& initial) const {
+            Element* found;
+            Bucket b = _buckets[position.bucketId];
+            do {
+              found = b._table[position.position];
+              position.position += step;
+              while (position.position >= b._nrAlloc) {
+                position.position -= b._nrAlloc;
+                position.bucketId = (position.bucketId + 1) % _buckets.size();
+                b = _buckets[position.bucketId];
               }
-              else {
-                return b._table[position];
+              if (position == initial) {
+                // We are done. Return the last element we have in hand
+                return found;
               }
+            }
+            while (found == nullptr);
+            return found;
+          }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Finds the element at the given position in the buckets.
+////////////////////////////////////////////////////////////////////////////////
+
+          Element* findElementSequentialBuckets (BucketPosition& position, bool increasing) const {
+            if (position.bucketId >= _buckets.size()) {
+              return nullptr;
+            }
+            Bucket b = _buckets[position.bucketId];
+            Element* found;
+            if (increasing) {
+              do {
+                found = b._table[position.position];
+                ++position.position;
+                if (position.position >= b._nrAlloc) {
+                  position.position = 0;
+                  ++position.bucketId;
+                  if (position.bucketId == _buckets.size()) {
+                    // Indicate we are done
+                    return nullptr;
+                  }
+                  b = _buckets[position.bucketId];
+                }
+              } while (found == nullptr);
+              return found;
+            }
+            else {
+              do {
+                found = b._table[position.position];
+                if (position.position == 0) {
+                  if (position.bucketId == 0) {
+                    // Indicate we are done
+                    position.bucketId = _buckets.size();
+                    return nullptr;
+                  }
+                  --position.bucketId;
+                  b = _buckets[position.bucketId];
+                  position.position = b._nrAlloc - 1;
+                }
+                else {
+                  --position.position;
+                }
+              } while (found == nullptr);
+              return found;
             }
             return nullptr;
           }
@@ -735,31 +816,34 @@ namespace triagens {
 /// @brief a method to iterate over all elements in the index in
 ///        a sequential order.
 ///        Returns nullptr if all documents have been returned.
-///        Convention: position === 0 indicates a new start.
+///        Convention: position.bucketId == SIZE_MAX indicates a new start.
+///        During a continue the total will not be modified.
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findSequential (uint64_t& position,
+          Element* findSequential (BucketPosition& position,
                                    uint64_t& total) const {
-            if (position == 0) {
-              if (isEmpty()) {
-                return nullptr;
-              }
+            if (position.bucketId == SIZE_MAX) {
               // Fill Total
+              uint64_t used = 0;
               total = 0;
               for (auto& b : _buckets) {
                 total += b._nrAlloc;
+                used += b._nrUsed;
+              }
+              if (used == 0) {
+                return nullptr;
               }
               TRI_ASSERT(total > 0);
+              position.bucketId = 0;
+              position.position = 0;
+            }
+            if (position.bucketId == SIZE_MAX - 1) {
+              // The position has been resetted
+              position.bucketId = 0;
+              position.position = 0;
             }
 
-            Element* res = nullptr;
-            do {
-              res = findElementSequentialBuckets(position);
-              position++;
-            } 
-            while (position < total && res == nullptr);
-
-            return res;
+            return findElementSequentialBuckets(position, true);
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -769,28 +853,21 @@ namespace triagens {
 ///        Convention: position === UINT64_MAX indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findSequentialReverse (uint64_t& position) const {
-            if (position == UINT64_MAX) {
+          Element* findSequentialReverse (BucketPosition& position) const {
+            if (position.bucketId == SIZE_MAX) {
               if (isEmpty()) {
                 return nullptr;
               }
-
-              // Fill Total
-              uint64_t position = 0;
-              for (auto& b : _buckets) {
-                position += b._nrAlloc;
-              }
-              TRI_ASSERT(position > 0);
+              position.bucketId = _buckets.size() - 1;
+              position.position = _buckets[position.bucketId]._nrAlloc - 1;
+            }
+            if (position.bucketId == SIZE_MAX - 1) {
+              // The position has been resetted
+              position.bucketId = _buckets.size() - 1;
+              position.position = _buckets[position.bucketId]._nrAlloc - 1;
             }
 
-            Element* res = nullptr;
-            do {
-              res = findElementSequentialBuckets(position);
-              position--;
-            } 
-            while (position > 0 && res == nullptr);
-
-            return res;
+            return findElementSequentialBuckets(position, false);
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,8 +877,8 @@ namespace triagens {
 ///        Convention: *step === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findRandom (uint64_t& initialPosition,
-                               uint64_t& position,
+          Element* findRandom (BucketPosition& initialPosition,
+                               BucketPosition& position,
                                uint64_t& step,
                                uint64_t& total) const {
             if (step != 0 && position == initialPosition) {
@@ -810,12 +887,14 @@ namespace triagens {
             }
             if (step == 0) {
               // Initialize
-              if (isEmpty()) {
-                return nullptr;
-              }
+              uint64_t used = 0;
               total = 0;
               for (auto& b : _buckets) {
                 total += b._nrAlloc;
+                used += b._nrUsed;
+              }
+              if (used == 0) {
+                return nullptr;
               }
               TRI_ASSERT(total > 0);
 
@@ -823,25 +902,26 @@ namespace triagens {
               while (true) {
                 step = TRI_UInt32Random() % total;
                 if (step > 10 && triagens::basics::binaryGcd<uint64_t>(total, step) == 1) {
-                  while (initialPosition == 0) {
-                    initialPosition = TRI_UInt32Random() % total;
+                  uint64_t initialPositionNr = 0;
+                  while (initialPositionNr == 0) {
+                    initialPositionNr = TRI_UInt32Random() % total;
                   }
-                  position = initialPosition;
+                  for (size_t i = 0; i < _buckets.size(); ++i) {
+                    if (initialPositionNr < _buckets[i]._nrAlloc) {
+                      position.bucketId = i;
+                      position.position = initialPositionNr;
+                      initialPosition.bucketId = i;
+                      initialPosition.position = initialPositionNr;
+                      break;
+                    }
+                    initialPositionNr -= _buckets[i]._nrAlloc;
+                  }
                   break;
                 }
               }
             }
 
-            // Find documents
-            Element* res = nullptr; 
-            do {
-              res = findElementSequentialBuckets(position);
-              position += step;
-              position = position % total;
-            } 
-            while (initialPosition != position && res == nullptr);
-
-            return res;
+            return findElementSequentialBucketsRandom(position, step, initialPosition);
           }
 
       };
