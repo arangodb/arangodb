@@ -391,7 +391,7 @@ namespace triagens {
 /// - *x-method-override*
 ///
 /// If the option is set to *true* and any of these headers is set, the
-/// request method will be overriden by the value of the header. For example,
+/// request method will be overridden by the value of the header. For example,
 /// this allows issuing an HTTP DELETE request which to the outside world will
 /// look like an HTTP GET request. This allows bypassing proxies and tools that
 /// will only let certain request types pass.

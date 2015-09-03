@@ -51,7 +51,7 @@ namespace triagens {
     struct RecoverState;
     class RemoverThread;
     class Slot;
-    class SynchroniserThread;
+    class SynchronizerThread;
 
     struct LogfileRange {
       LogfileRange (Logfile::IdType id,
@@ -460,14 +460,14 @@ namespace triagens {
                            void*& oldLegend);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finalise a log entry
+/// @brief finalize a log entry
 ////////////////////////////////////////////////////////////////////////////////
 
-        void finalise (SlotInfo&, bool);
+        void finalize (SlotInfo&, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
-/// this is a convenience function that combines allocate, memcpy and finalise
+/// this is a convenience function that combines allocate, memcpy and finalize
 ////////////////////////////////////////////////////////////////////////////////
 
         SlotInfoCopy allocateAndWrite (void*,
@@ -476,7 +476,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
-/// this is a convenience function that combines allocate, memcpy and finalise,
+/// this is a convenience function that combines allocate, memcpy and finalize,
 /// this version is for markers with legends
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -490,14 +490,14 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
-/// this is a convenience function that combines allocate, memcpy and finalise
+/// this is a convenience function that combines allocate, memcpy and finalize
 ////////////////////////////////////////////////////////////////////////////////
 
         SlotInfoCopy allocateAndWrite (Marker const&,
                                        bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finalise and seal the currently open logfile
+/// @brief finalize and seal the currently open logfile
 /// this is useful to ensure that any open writes up to this point have made
 /// it into a logfile
 ////////////////////////////////////////////////////////////////////////////////
@@ -714,16 +714,16 @@ namespace triagens {
         int writeShutdownInfo (bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start the synchroniser thread
+/// @brief start the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        int startSynchroniserThread ();
+        int startSynchronizerThread ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the synchroniser thread
+/// @brief stop the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        void stopSynchroniserThread ();
+        void stopSynchronizerThread ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the allocator thread
@@ -1106,10 +1106,10 @@ namespace triagens {
         Slots* _slots;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the synchroniser thread
+/// @brief the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        SynchroniserThread* _synchroniserThread;
+        SynchronizerThread* _synchronizerThread;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the allocator thread

@@ -97,7 +97,7 @@ namespace triagens {
       INITIALIZATION        = 0,
       PARSING,
       AST_OPTIMIZATION,
-      PLAN_INSTANCIATION,
+      PLAN_INSTANTIATION,
       PLAN_OPTIMIZATION,
       EXECUTION,
       FINALIZATION,

@@ -80,7 +80,7 @@ function notFound (req, res, code, message) {
 ///
 /// - *graphName*: (optional) name of the graph that contains the edges.
 ///     Either *edgeCollection* or *graphName* has to be given.
-///     In case both values are set the *graphName* is prefered.
+///     In case both values are set the *graphName* is preferred.
 ///
 /// - *filter* (optional, default is to include all nodes):
 ///     body (JavaScript code) of custom filter function
@@ -90,7 +90,7 @@ function notFound (req, res, code, message) {
 ///     - *"prune"* -> the edges of this vertex will not be followed.
 ///     - *""* or *undefined* -> visit the vertex and follow it's edges.
 ///     - *Array* -> containing any combination of the above.
-///       If there is at least one *"exclude"* or *"prune"* respectivly
+///       If there is at least one *"exclude"* or *"prune"* respectively
 ///       is contained, it's effect will occur.
 ///
 /// - *minDepth* (optional, ANDed with any existing filters):

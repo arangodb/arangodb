@@ -2,7 +2,7 @@
 /*global assertEqual, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, sort optimisations
+/// @brief tests for query language, sort optimizations
 ///
 /// @file
 ///
@@ -37,9 +37,9 @@ var getQueryResults = helper.getQueryResults;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryOptimiserSortTestSuite () {
+function ahuacatlQueryOptimizerSortTestSuite () {
   var collection = null;
-  var cn = "UnitTestsAhuacatlOptimiserSort";
+  var cn = "UnitTestsAhuacatlOptimizerSort";
   
   var explain = function (query, params) {
     return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-for-sort", "+use-index-range", "+remove-redundant-sorts" ] } })).map(function(node) { return node.type; });
@@ -437,7 +437,7 @@ function ahuacatlQueryOptimiserSortTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ahuacatlQueryOptimiserSortTestSuite);
+jsunity.run(ahuacatlQueryOptimizerSortTestSuite);
 
 return jsunity.done();
 

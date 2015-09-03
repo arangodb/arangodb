@@ -1388,7 +1388,7 @@ function head_api_structure(req, res)  {
 /// If the `waitForSync` parameter is not specified or set to
 /// `false`, then the collection's default `waitForSync` behavior is
 /// applied. The `waitForSync` URL parameter cannot be used to disable
-/// synchronisation for collections that have a default `waitForSync` value
+/// synchronization for collections that have a default `waitForSync` value
 /// of `true`.
 ///
 /// @RESTRETURNCODES
@@ -1496,14 +1496,14 @@ function delete_api_structure (req, res) {
 /// value of `null` be saved for the attribute by default.
 ///
 /// Optionally, the URL parameter `waitForSync` can be used to force
-/// synchronisation of the document update operation to disk even in case
+/// synchronization of the document update operation to disk even in case
 /// that the `waitForSync` flag had been disabled for the entire collection.
-/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
+/// Thus, the `waitForSync` URL parameter can be used to force synchronization
 /// of just specific operations. To use this, set the `waitForSync` parameter
 /// to `true`. If the `waitForSync` parameter is not specified or set to
 /// `false`, then the collection's default `waitForSync` behavior is
 /// applied. The `waitForSync` URL parameter cannot be used to disable
-/// synchronisation for collections that have a default `waitForSync` value
+/// synchronization for collections that have a default `waitForSync` value
 /// of `true`.
 ///
 /// The body of the response contains a JSON object with the information about
@@ -1625,14 +1625,14 @@ function patch_api_structure (req, res) {
 /// relevant in order to avoid confusion when using proxies.
 ///
 /// Optionally, the URL parameter `waitForSync` can be used to force
-/// synchronisation of the document replacement operation to disk even in case
+/// synchronization of the document replacement operation to disk even in case
 /// that the `waitForSync` flag had been disabled for the entire collection.
-/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
+/// Thus, the `waitForSync` URL parameter can be used to force synchronization
 /// of just specific operations. To use this, set the `waitForSync` parameter
 /// to `true`. If the `waitForSync` parameter is not specified or set to
 /// `false`, then the collection's default `waitForSync` behavior is
 /// applied. The `waitForSync` URL parameter cannot be used to disable
-/// synchronisation for collections that have a default `waitForSync` value
+/// synchronization for collections that have a default `waitForSync` value
 /// of `true`.
 ///
 /// The body of the response contains a JSON object with the information about
@@ -1669,7 +1669,7 @@ function patch_api_structure (req, res) {
 /// id, then by default a `HTTP 412` conflict is returned and no replacement is
 /// performed.
 ///
-/// The conditional update behavior can be overriden with the `policy` URL query parameter:
+/// The conditional update behavior can be overridden with the `policy` URL query parameter:
 ///
 /// - PUT /_api/document/`document-handle`?policy=`policy`
 ///
@@ -1787,13 +1787,13 @@ function put_api_structure (req, res) {
 /// documents has been sync to disk.
 ///
 /// Optionally, the URL parameter `waitForSync` can be used to force
-/// synchronisation of the document creation operation to disk even in case that
+/// synchronization of the document creation operation to disk even in case that
 /// the `waitForSync` flag had been disabled for the entire collection.  Thus,
-/// the `waitForSync` URL parameter can be used to force synchronisation of just
+/// the `waitForSync` URL parameter can be used to force synchronization of just
 /// this specific operations. To use this, set the `waitForSync` parameter to
 /// `true`. If the `waitForSync` parameter is not specified or set to `false`,
 /// then the collection's default `waitForSync` behavior is applied. The
-/// `waitForSync` URL parameter cannot be used to disable synchronisation for
+/// `waitForSync` URL parameter cannot be used to disable synchronization for
 /// collections that have a default `waitForSync` value of `true`.
 ///
 /// @RESTRETURNCODES

@@ -2633,7 +2633,7 @@ void TRI_PrintShapeValues (TRI_shape_value_t* values,
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief explicit instanciation of the two functions
+/// @brief explicit instantiation of the two functions
 ////////////////////////////////////////////////////////////////////////////////
 
 template bool TRI_StringifyArrayShapedJson<VocShaper> (VocShaper*, struct TRI_string_buffer_s*, TRI_shaped_json_t const*, bool);

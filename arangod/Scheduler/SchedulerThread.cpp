@@ -240,7 +240,7 @@ void SchedulerThread::run () {
     catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
       if (_stopping != 0) {
-        LOG_WARNING("caught cancellation exception during work");
+        LOG_WARNING("caught cancelation exception during work");
         throw;
       }
 #endif

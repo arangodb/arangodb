@@ -15528,7 +15528,7 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
             updateStatus("critical");
             break;
           default:
-            console.debug("Undefined server state occured. This is still in development");
+            console.debug("Undefined server state occurred. This is still in development");
         }
       });
       return res;
@@ -15717,7 +15717,7 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
             }
             break;
           default:
-            console.debug("Undefined server state occured. This is still in development");
+            console.debug("Undefined server state occurred. This is still in development");
         }
       });
       return res;

@@ -536,14 +536,14 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
   if (tryCatch.HasCaught()) {
     // caught a V8 exception
     if (! tryCatch.CanContinue()) {
-      // request was cancelled
+      // request was canceled
       TRI_GET_GLOBALS();
       v8g->_canceled = true;
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
-    // request was not cancelled, but some other error occurred
+    // request was not canceled, but some other error occurred
     // peek into the exception
     if (tryCatch.Exception()->IsObject()) {
       // cast the exception to an object
@@ -572,7 +572,7 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, details);
     }
     
-    // we can't figure out what kind of error occured and throw a generic error
+    // we can't figure out what kind of error occurred and throw a generic error
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
   

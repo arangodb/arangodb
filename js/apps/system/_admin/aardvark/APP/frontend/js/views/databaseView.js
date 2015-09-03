@@ -201,11 +201,11 @@
 
     editDatabase: function(e) {
       var dbName = this.evaluateDatabaseName($(e.currentTarget).attr("id"), '_edit-database'),
-        isDeleteable = true;
+        isDeletable = true;
       if(dbName === this.currentDB) {
-        isDeleteable = false;
+        isDeletable = false;
       }
-      this.createEditDatabaseModal(dbName, isDeleteable);
+      this.createEditDatabaseModal(dbName, isDeletable);
     },
 
     search: function() {
@@ -256,14 +256,14 @@
       return str.substring(0, index);
     },
 
-    createEditDatabaseModal: function(dbName, isDeleteable) {
+    createEditDatabaseModal: function(dbName, isDeletable) {
       var buttons = [],
         tableContent = [];
 
       tableContent.push(
         window.modalView.createReadOnlyEntry("id_name", "Name", dbName, "")
       );
-      if (isDeleteable) {
+      if (isDeletable) {
         buttons.push(
           window.modalView.createDeleteButton(
             "Delete",

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replication initial data synchroniser
+/// @brief replication initial data synchronizer
 ///
 /// @file
 ///
@@ -104,7 +104,7 @@ InitialSyncer::~InitialSyncer () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run method, performs a full synchronisation
+/// @brief run method, performs a full synchronization
 ////////////////////////////////////////////////////////////////////////////////
 
 int InitialSyncer::run (string& errorMsg) {

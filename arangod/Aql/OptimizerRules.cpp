@@ -4271,7 +4271,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief recognises that a RemoveNode can be moved to the shards.
+/// @brief recognizes that a RemoveNode can be moved to the shards.
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::undistributeRemoveAfterEnumCollRule (Optimizer* opt, 

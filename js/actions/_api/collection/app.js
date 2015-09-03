@@ -184,7 +184,7 @@ function parseBodyForCreateCollection (req, res) {
 /// - *name*: The name of the collection.
 ///
 /// - *waitForSync* (optional, default: false): If *true* then
-///   the data is synchronised to disk before returning from a document create,
+///   the data is synchronized to disk before returning from a document create,
 ///   update, replace or removal operation.
 ///
 /// - *doCompact* (optional, default is *true*): whether or not the collection
@@ -206,9 +206,9 @@ function parseBodyForCreateCollection (req, res) {
 ///   or re-starting the server will also cause full loss of data in the
 ///   collection. Setting this option will make the resulting collection be
 ///   slightly faster than regular collections because ArangoDB does not
-///   enforce any synchronisation to disk and does not calculate any CRC
+///   enforce any synchronization to disk and does not calculate any CRC
 ///   checksums for datafiles (as there are no datafiles). This option 
-///   should threrefore be used for cache-type collections only, and not 
+///   should therefore be used for cache-type collections only, and not 
 ///   for data that cannot be re-created otherwise.
 ///
 /// - *keyOptions* (optional) additional options for key generation. If
@@ -231,7 +231,7 @@ function parseBodyForCreateCollection (req, res) {
 ///   - *2*: document collection
 ///   - *3*: edges collection
 ///
-/// - *indexBuckets* (optiona): number of buckets into which indexes using a hash
+/// - *indexBuckets* (optional): number of buckets into which indexes using a hash
 ///   table are split. The default is 16 and this number has to be a
 ///   power of 2 and less than or equal to 1024. 
 ///   
@@ -488,7 +488,7 @@ function get_api_collections (req, res) {
 /// This is achieved by forcing a load of the underlying collection.
 ///
 /// - *waitForSync*: If *true* then creating, changing or removing
-///   documents will wait until the data has been synchronised to disk.
+///   documents will wait until the data has been synchronized to disk.
 ///
 /// - *doCompact*: Whether or not the collection will be compacted.
 ///
@@ -628,7 +628,7 @@ function get_api_collections (req, res) {
 ///
 /// - *count*: The number of documents currently present in the collection.
 ///
-/// * *figures.alive.count*: The number of curretly active documents in all datafiles
+/// * *figures.alive.count*: The number of currently active documents in all datafiles
 ///   and journals of the collection. Documents that are contained in the
 ///   write-ahead log only are not reported in this figure.
 ///
@@ -1237,7 +1237,7 @@ function put_api_collection_truncate (req, res, collection) {
 /// attribute(s)
 ///
 /// - *waitForSync*: If *true* then creating or changing a
-///   document will wait until the data has been synchronised to disk.
+///   document will wait until the data has been synchronized to disk.
 ///
 /// - *journalSize*: The maximal size of a journal or datafile in bytes. 
 ///   The value must be at least `1048576` (1 MB). Note that when

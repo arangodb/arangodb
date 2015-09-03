@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replication initial data synchroniser
+/// @brief replication initial data synchronizer
 ///
 /// @file
 ///
@@ -105,7 +105,7 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run method, performs a full synchronisation
+/// @brief run method, performs a full synchronization
 ////////////////////////////////////////////////////////////////////////////////
 
         int run (std::string&);
@@ -162,7 +162,7 @@ namespace triagens {
           _progress = message;
 
           if (_verbose) {
-            LOG_INFO("synchronisation progress: %s", message.c_str());
+            LOG_INFO("synchronization progress: %s", message.c_str());
           }
         }
 
