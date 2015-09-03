@@ -43,7 +43,7 @@ namespace triagens {
   namespace basics {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                               Position Object for bucket indizies
+// --SECTION--                                Position object for bucket indexes
 // -----------------------------------------------------------------------------
 
     struct BucketPosition {
@@ -60,7 +60,7 @@ namespace triagens {
         position = 0;
       }
 
-      bool operator== (BucketPosition const& other) {
+      bool operator== (BucketPosition const& other) const {
         return position == other.position &&
                bucketId == other.bucketId;
       }
@@ -311,54 +311,6 @@ namespace triagens {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Finds the element at the given position in the buckets.
-////////////////////////////////////////////////////////////////////////////////
-
-          Element* findElementSequentialBuckets (BucketPosition& position, bool increasing) const {
-            if (position.bucketId >= _buckets.size()) {
-              return nullptr;
-            }
-            Bucket b = _buckets[position.bucketId];
-            Element* found;
-            if (increasing) {
-              do {
-                found = b._table[position.position];
-                ++position.position;
-                if (position.position >= b._nrAlloc) {
-                  position.position = 0;
-                  ++position.bucketId;
-                  if (position.bucketId == _buckets.size()) {
-                    // Indicate we are done
-                    return nullptr;
-                  }
-                  b = _buckets[position.bucketId];
-                }
-              } while (found == nullptr);
-              return found;
-            }
-            else {
-              do {
-                found = b._table[position.position];
-                if (position.position == 0) {
-                  if (position.bucketId == 0) {
-                    // Indicate we are done
-                    position.bucketId = _buckets.size();
-                    return nullptr;
-                  }
-                  --position.bucketId;
-                  b = _buckets[position.bucketId];
-                  position.position = b._nrAlloc - 1;
-                }
-                else {
-                  --position.position;
-                }
-              } while (found == nullptr);
-              return found;
-            }
-            return nullptr;
-          }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Insert a document into the given bucket
 ///        This does not resize and expects to have enough space
 ////////////////////////////////////////////////////////////////////////////////
@@ -390,7 +342,6 @@ namespace triagens {
 
             return TRI_ERROR_NO_ERROR;
           }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -817,33 +768,66 @@ namespace triagens {
 ///        a sequential order.
 ///        Returns nullptr if all documents have been returned.
 ///        Convention: position.bucketId == SIZE_MAX indicates a new start.
+///        Convention: position.bucketId == SIZE_MAX - 1 indicates a restart.
 ///        During a continue the total will not be modified.
 ////////////////////////////////////////////////////////////////////////////////
 
           Element* findSequential (BucketPosition& position,
                                    uint64_t& total) const {
-            if (position.bucketId == SIZE_MAX) {
-              // Fill Total
-              uint64_t used = 0;
-              total = 0;
-              for (auto& b : _buckets) {
-                total += b._nrAlloc;
-                used += b._nrUsed;
-              }
-              if (used == 0) {
+            if (position.bucketId >= _buckets.size()) {
+              // bucket id is out of bounds. now handle edge cases
+              if (position.bucketId < SIZE_MAX - 1) {
                 return nullptr;
               }
-              TRI_ASSERT(total > 0);
-              position.bucketId = 0;
-              position.position = 0;
-            }
-            if (position.bucketId == SIZE_MAX - 1) {
-              // The position has been resetted
+
+              if (position.bucketId == SIZE_MAX) {
+                // first call, now fill Total
+                uint64_t used = 0;
+                total = 0;
+                for (auto const& b : _buckets) {
+                  total += b._nrAlloc;
+                  used += b._nrUsed;
+                }
+
+                if (used == 0) {
+                  return nullptr;
+                }
+
+                TRI_ASSERT(total > 0);
+              }
+
               position.bucketId = 0;
               position.position = 0;
             }
 
-            return findElementSequentialBuckets(position, true);
+            while (true) {
+              Bucket const& b = _buckets[position.bucketId];
+              uint64_t const n = b._nrAlloc;
+
+              for (; position.position < n && b._table[position.position] == nullptr; ++position.position);
+
+              if (position.position != n) {
+                // found an element
+                auto found = b._table[position.position];
+                TRI_ASSERT_EXPENSIVE(found != nullptr);
+
+                // move forward the position indicator one more time
+                if (++position.position == n) {
+                  position.position = 0;
+                  ++position.bucketId;
+                }
+
+                return found;
+              }
+
+              // reached end
+              position.position = 0;
+              if (++position.bucketId >= _buckets.size()) {
+                // Indicate we are done
+                return nullptr;
+              }
+              // continue iteration with next bucket
+            }
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -854,20 +838,43 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           Element* findSequentialReverse (BucketPosition& position) const {
-            if (position.bucketId == SIZE_MAX) {
-              if (isEmpty()) {
+            if (position.bucketId >= _buckets.size()) {
+              // bucket id is out of bounds. now handle edge cases
+              if (position.bucketId < SIZE_MAX - 1) {
                 return nullptr;
               }
-              position.bucketId = _buckets.size() - 1;
-              position.position = _buckets[position.bucketId]._nrAlloc - 1;
-            }
-            if (position.bucketId == SIZE_MAX - 1) {
-              // The position has been resetted
+
+              if (position.bucketId == SIZE_MAX && isEmpty()) {
+                return nullptr;
+              }
+
               position.bucketId = _buckets.size() - 1;
               position.position = _buckets[position.bucketId]._nrAlloc - 1;
             }
 
-            return findElementSequentialBuckets(position, false);
+            Bucket b = _buckets[position.bucketId];
+            Element* found;
+            do {
+              found = b._table[position.position];
+
+              if (position.position == 0) {
+                if (position.bucketId == 0) {
+                  // Indicate we are done
+                  position.bucketId = _buckets.size();
+                  return nullptr;
+                }
+
+                --position.bucketId;
+                b = _buckets[position.bucketId];
+                position.position = b._nrAlloc - 1;
+              }
+              else {
+                --position.position;
+              }
+            } 
+            while (found == nullptr);
+
+            return found;
           }
 
 ////////////////////////////////////////////////////////////////////////////////

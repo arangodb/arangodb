@@ -59,7 +59,8 @@ CollectionScanner::~CollectionScanner () {
   
 RandomCollectionScanner::RandomCollectionScanner (triagens::arango::AqlTransaction* trx,
                                                   TRI_transaction_collection_t* trxCollection) 
-  : CollectionScanner(trx, trxCollection) {
+  : CollectionScanner(trx, trxCollection),
+    step(0) {
 }
 
 int RandomCollectionScanner::scan (std::vector<TRI_doc_mptr_copy_t>& docs,
