@@ -489,7 +489,7 @@ namespace triagens {
 
 
       // current implementation (see version at the top of the file)
-      UniformIntegerImpl * uniformInteger = new UniformIntegerMersenne;
+      UniformIntegerImpl* uniformInteger = new UniformIntegerMersenne;
 
 // -----------------------------------------------------------------------------
       // uniform integer generator
@@ -644,6 +644,10 @@ namespace triagens {
         if (RandomHelper::combinedDevice != nullptr) {
           delete RandomHelper::combinedDevice;
           RandomHelper::combinedDevice = nullptr;
+        }  
+        
+        if (uniformInteger == nullptr) {
+          delete uniformInteger;
         }
       }
 
@@ -681,6 +685,7 @@ namespace triagens {
     }
   }
 }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
