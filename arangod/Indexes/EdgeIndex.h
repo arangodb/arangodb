@@ -100,7 +100,7 @@ namespace triagens {
          
         int remove (struct TRI_doc_mptr_t const*, bool) override final;
         
-        int batchInsert (std::vector<struct TRI_doc_mptr_t const*> const*,
+        int batchInsert (std::vector<TRI_doc_mptr_t const*> const*,
                          size_t) override final;
 
 ////////////////////////////////////////////////////////////////////////////////

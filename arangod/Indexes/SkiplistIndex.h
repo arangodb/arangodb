@@ -81,7 +81,8 @@ namespace triagens {
 
           SkiplistIteratorInterval ()
             : _leftEndPoint(nullptr),
-              _rightEndPoint(nullptr) { }
+              _rightEndPoint(nullptr) { 
+          }
         };
 
 // -----------------------------------------------------------------------------
@@ -90,7 +91,7 @@ namespace triagens {
       
       private:
 
-        SkiplistIndex* const _index;
+        SkiplistIndex const* _index;
         size_t _currentInterval; // starts with 0, current interval used
         bool _reverse;
         Node* _cursor;
@@ -102,16 +103,16 @@ namespace triagens {
       
       public:
 
-        SkiplistIterator (
-          SkiplistIndex* const idx,
-          bool reverse
-        ) : _index(idx) ,
+        SkiplistIterator (SkiplistIndex const* idx,
+                          bool reverse) 
+          : _index(idx) ,
             _currentInterval(0),
             _reverse(reverse),
             _cursor(nullptr) {
         }
 
-        ~SkiplistIterator () {}
+        ~SkiplistIterator () {
+        }
 
         // always holds the last node returned, initially equal to
         // the _leftEndPoint of the first interval (or the 
@@ -131,9 +132,9 @@ namespace triagens {
       
       public:
         
-        size_t size ();
+        size_t size () const;
 
-        bool hasNext ();
+        bool hasNext () const;
 
         TRI_index_element_t* next ();
 
@@ -150,10 +151,10 @@ namespace triagens {
 
       private:
 
-        bool hasPrevIteration ();
+        bool hasPrevIteration () const;
         TRI_index_element_t* prevIteration ();
 
-        bool hasNextIteration ();
+        bool hasNextIteration () const;
         TRI_index_element_t* nextIteration ();
 
         bool findHelperIntervalIntersectionValid (
@@ -162,9 +163,7 @@ namespace triagens {
           SkiplistIteratorInterval& interval
         );
 
-        bool findHelperIntervalValid (
-          SkiplistIteratorInterval const& interval
-        );
+        bool findHelperIntervalValid (SkiplistIteratorInterval const& interval);
     };
 
 // -----------------------------------------------------------------------------
@@ -175,7 +174,7 @@ namespace triagens {
 
       struct KeyElementComparator {
         int operator() (TRI_skiplist_index_key_t const* leftKey,
-                        TRI_index_element_t const* rightElement);
+                        TRI_index_element_t const* rightElement) const;
 
         KeyElementComparator (SkiplistIndex* idx) {
           _idx = idx;
@@ -189,7 +188,7 @@ namespace triagens {
       struct ElementElementComparator {
         int operator() (TRI_index_element_t const* leftElement,
                         TRI_index_element_t const* rightElement,
-                       triagens::basics::SkipListCmpType cmptype);
+                        triagens::basics::SkipListCmpType cmptype) const;
 
         ElementElementComparator (SkiplistIndex* idx) {
           _idx = idx;
@@ -262,7 +261,6 @@ namespace triagens {
       private:
 
         size_t elementSize () const;
-       
 
         int _CmpElmElm (TRI_index_element_t const* leftElement,
                        TRI_index_element_t const* rightElement,

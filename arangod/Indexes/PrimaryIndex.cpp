@@ -56,7 +56,6 @@ static bool IsEqualKeyElement (char const* key,
                                uint64_t const hash,
                                TRI_doc_mptr_t const* element) {
 
-  // Performance?
   return (hash == element->_hash &&
           strcmp(key, TRI_EXTRACT_MARKER_KEY(element)) == 0);
 }
@@ -91,6 +90,7 @@ PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection)
   _primaryIndex = new TRI_PrimaryIndex_t(HashKey,
                                          HashElement,
                                          IsEqualKeyElement,
+                                         IsEqualElementElement,
                                          IsEqualElementElement,
                                          indexBuckets,
                                          [] () -> std::string { return "primary"; }
@@ -217,7 +217,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse (uint64_t& position) {
 int PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
                              void const** found) {
   *found = nullptr;
-  int res = _primaryIndex->insert(TRI_EXTRACT_MARKER_KEY(header), header, false);
+  int res = _primaryIndex->insert(header, false);
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
     *found = _primaryIndex->find(header);
   }
@@ -231,7 +231,7 @@ int PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
 ////////////////////////////////////////////////////////////////////////////////
 
 void PrimaryIndex::insertKey (TRI_doc_mptr_t* header) {
-  _primaryIndex->insert(TRI_EXTRACT_MARKER_KEY(header), header, false);
+  _primaryIndex->insert(header, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,7 +242,7 @@ void PrimaryIndex::insertKey (TRI_doc_mptr_t* header) {
 
 void PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
                               uint64_t slot) {
-  _primaryIndex->insert(TRI_EXTRACT_MARKER_KEY(header), header, false);
+  _primaryIndex->insert(header, false);
   // TODO slot is hint where to insert the element. It is not yet used
   //
   // if (slot != UINT64_MAX) {

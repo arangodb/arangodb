@@ -245,7 +245,7 @@ namespace triagens {
 /// @brief return the successor node or nullptr if last node
 ////////////////////////////////////////////////////////////////////////////////
 
-        Node* nextNode (Node* node) {
+        Node* nextNode (Node* node) const {
           return node->_next[0];
         }
 

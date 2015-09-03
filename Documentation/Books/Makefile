@@ -91,7 +91,7 @@ clean-book-intermediate:
 #  - all docublocks are used somewhere in the documentation
 #  
 check-docublocks:
-	grep -R '@startDocuBlock' . |\
+	grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v '@startDocuBlockInline' |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
@@ -101,7 +101,7 @@ check-docublocks:
 		grep -v '.*~:.*' |\
 		grep -v '.*#.*:.*' \
 		   > /tmp/rawindoc.txt
-	grep -R '@startDocuBlockInline' . |\
+	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\
@@ -111,9 +111,9 @@ check-docublocks:
 		grep -v '.*#.*:.*' \
 		   >> /tmp/rawindoc.txt
 	cat /tmp/rawindoc.txt | sed  -e "s;.*ck ;;" -e "s;.*ne ;;" |sort -u > /tmp/indoc.txt
-	grep -R '^/// @startDocuBlock' ../../lib ../../arangod ../../arangosh ../../js |grep -v aardvark > /tmp/rawinprog.txt
+	grep -R '^/// @startDocuBlock' ../../lib ../../arangod ../../arangosh ../../js --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" |grep -v aardvark > /tmp/rawinprog.txt
 # searching the Inline docublocks needs some more blacklisting:
-	grep -R '@startDocuBlockInline' . |\
+	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\
