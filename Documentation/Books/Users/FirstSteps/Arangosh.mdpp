@@ -52,3 +52,16 @@ CLIENT options:
   --server.request-timeout <double>         request timeout in seconds (default: 300)
   --server.username <string>                username to use when connecting (default: "root")
 ```
+
+!SECTION Database Wrappers
+The *db*-Object is available in *arangosh* as well as on *arangod* i.e. if you're using [Foxx](/Foxx). While its Interface is persistant bewteen the *arangosh* and the *arangod* implementations, its underpinning are not. The *arangod* implementation is JavaScript wrappers around ArangoDBs native C++ implementation, the *arangosh* implementation wraps HTTP-Accesses to [ArangoDBs RESTfull API](/HttpApi/index.html).
+
+So while this code may produce similar results when executed in *arangosh* and *arangod*, the cpu-usage and time required will be really different:
+
+```js
+for (i = 0; i < 100000; i++) {
+    db.test.save({ name: { first: "Jan" }, count: i});
+}
+```
+
+Since the *arangosh* version will be doing around 100k HTTP-Requests, and the *arangod* version [will directly write to the database](/Advanced/ServerInternals.mdpp).
