@@ -265,7 +265,7 @@ namespace triagens {
 ///        the second bucket at Position 2 (7 - Bucket1.size())
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findElementSequentialBucktes (uint64_t position) const {
+          Element* findElementSequentialBuckets (uint64_t position) const {
             for (auto& b : _buckets) {
               if (position >= b._nrAlloc) {
                 position -= b._nrAlloc;
@@ -754,7 +754,7 @@ namespace triagens {
 
             Element* res = nullptr;
             do {
-              res = findElementSequentialBucktes(position);
+              res = findElementSequentialBuckets(position);
               position++;
             } 
             while (position < total && res == nullptr);
@@ -785,7 +785,7 @@ namespace triagens {
 
             Element* res = nullptr;
             do {
-              res = findElementSequentialBucktes(position);
+              res = findElementSequentialBuckets(position);
               position--;
             } 
             while (position > 0 && res == nullptr);
@@ -835,7 +835,7 @@ namespace triagens {
             // Find documents
             Element* res = nullptr; 
             do {
-              res = findElementSequentialBucktes(position);
+              res = findElementSequentialBuckets(position);
               position += step;
               position = position % total;
             } 

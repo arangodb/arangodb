@@ -427,9 +427,12 @@ namespace triagens {
               docs.reserve(batchSize);
             }
             TRI_ASSERT(batchSize > 0);
+              
+            auto primaryIndex = document->primaryIndex();
 
             while (count < batchSize) {
-              TRI_doc_mptr_t const* mptr = document->primaryIndex()->lookupSequential(internalSkip, total);
+              TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(internalSkip, total);
+
               if (mptr == nullptr) {
                 break;
               }
@@ -438,6 +441,7 @@ namespace triagens {
               }
               else {
                 docs.emplace_back(*mptr);
+
                 if (++count >= limit) {
                   break;
                 }
