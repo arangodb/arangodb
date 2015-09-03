@@ -32,7 +32,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "Basics/gcd.h"
 #include "Basics/logging.h"
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
