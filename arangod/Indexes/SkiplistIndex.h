@@ -245,8 +245,6 @@ namespace triagens {
          
         int remove (struct TRI_doc_mptr_t const*, bool) override final;
 
-        size_t numFields () const;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attempts to locate an entry in the skip list index
 ///
