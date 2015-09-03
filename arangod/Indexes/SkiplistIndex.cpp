@@ -415,7 +415,7 @@ void SkiplistIterator::findHelper (
       TRI_ASSERT(nullptr != temp);
       interval._leftEndPoint = temp;
 
-      bool const allAttributesCoveredByCondition = (values._numFields == _index->numFields());
+      bool const allAttributesCoveredByCondition = (values._numFields == _index->numPaths());
 
       if (_index->unique() && allAttributesCoveredByCondition) {
         // At most one hit:
@@ -657,10 +657,6 @@ size_t SkiplistIndex::memory () const {
          static_cast<size_t>(_skiplistIndex->getNrUsed()) * elementSize();
 }
 
-size_t SkiplistIndex::numFields () const {
-  return _fields.size();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
@@ -806,7 +802,7 @@ SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
 // -----------------------------------------------------------------------------
 
 size_t SkiplistIndex::elementSize () const {
-  return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numFields());
+  return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numPaths());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -856,7 +852,7 @@ int SkiplistIndex::ElementElementComparator::operator() (TRI_index_element_t con
   }
 
   auto shaper = _idx->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  for (size_t j = 0;  j < _idx->numFields();  j++) {
+  for (size_t j = 0;  j < _idx->numPaths();  j++) {
     int compareResult = CompareElementElement(leftElement,
                                               j,
                                               rightElement,

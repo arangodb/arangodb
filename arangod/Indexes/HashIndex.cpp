@@ -203,7 +203,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
     indexBuckets = collection->_info._indexBuckets;
   }
     
-  std::unique_ptr<HashElementFunc> func(new HashElementFunc(_paths.size()));
+  std::unique_ptr<HashElementFunc> func(new HashElementFunc(numPaths()));
 
   if (unique) {
     std::unique_ptr<IsEqualElementElementByKey> compare(new IsEqualElementElementByKey(_paths.size()));
@@ -221,7 +221,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
   else {
     _multiArray = nullptr;
       
-    std::unique_ptr<IsEqualElementElementByKey> compare(new IsEqualElementElementByKey(_paths.size()));
+    std::unique_ptr<IsEqualElementElementByKey> compare(new IsEqualElementElementByKey(numPaths()));
 
     std::unique_ptr<TRI_HashArrayMulti_t> array(new TRI_HashArrayMulti_t(HashKey, 
                                                                          *(func.get()),
