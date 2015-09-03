@@ -24,3 +24,5 @@ is that the alignment settings also affect all other user processes (which Arang
 is not aware of) and thus may have side-effects outside of ArangoDB. It is therefore
 more reasonable to have the system administrator carry out the changes.
 
+If the alignment settings are not correct, ArangoDB will log a warning at startup.
+
