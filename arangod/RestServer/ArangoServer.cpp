@@ -804,9 +804,9 @@ void ArangoServer::buildApplicationServer () {
       
         int64_t alignment = std::stol(std::string(cpuAlignment.c_str() + start, end - start));
         if ((alignment & 2) == 0) {
-          LOG_WARNING("possibly incompatible CPU alignment settings found in '%s'. this may cause arangod to abort with SIGBUS. it may be necessary to set the value in '%s' to 2", 
-                      filename.c_str(), 
-                      filename.c_str());
+          LOG_FATAL_AND_EXIT("possibly incompatible CPU alignment settings found in '%s'. this may cause arangod to abort with SIGBUS. Please set the value in '%s' to 2", 
+                             filename.c_str(), 
+                             filename.c_str());
         }
 
         alignmentDetected = true;
