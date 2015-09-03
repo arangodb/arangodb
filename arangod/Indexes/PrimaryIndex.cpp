@@ -179,8 +179,8 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key,
 ///        Convention: step === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupRandom (uint64_t& initialPosition,
-                                            uint64_t& position,
+TRI_doc_mptr_t* PrimaryIndex::lookupRandom (triagens::basics::BucketPosition& initialPosition,
+                                            triagens::basics::BucketPosition& position,
                                             uint64_t& step,
                                             uint64_t& total) {
   return _primaryIndex->findRandom(initialPosition, position, step, total);
@@ -193,7 +193,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupRandom (uint64_t& initialPosition,
 ///        Convention: position === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupSequential (uint64_t& position,
+TRI_doc_mptr_t* PrimaryIndex::lookupSequential (triagens::basics::BucketPosition& position,
                                                 uint64_t& total) {
   return _primaryIndex->findSequential(position, total);
 }
@@ -205,7 +205,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupSequential (uint64_t& position,
 ///        Convention: position === UINT64_MAX indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse (uint64_t& position) {
+TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse (triagens::basics::BucketPosition& position) {
   return _primaryIndex->findSequentialReverse(position);
 }
 

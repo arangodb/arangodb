@@ -43,8 +43,7 @@ CollectionScanner::CollectionScanner (triagens::arango::AqlTransaction* trx,
                                       TRI_transaction_collection_t* trxCollection) 
   : trx(trx), 
     trxCollection(trxCollection),
-    totalCount(0),
-    position(0) {
+    totalCount(0) {
 }
   
 CollectionScanner::~CollectionScanner () {
@@ -60,10 +59,7 @@ CollectionScanner::~CollectionScanner () {
   
 RandomCollectionScanner::RandomCollectionScanner (triagens::arango::AqlTransaction* trx,
                                                   TRI_transaction_collection_t* trxCollection) 
-  : CollectionScanner(trx, trxCollection),
-    initialPosition(0),
-    step(0) {
-
+  : CollectionScanner(trx, trxCollection) {
 }
 
 int RandomCollectionScanner::scan (std::vector<TRI_doc_mptr_copy_t>& docs,
@@ -82,8 +78,8 @@ int RandomCollectionScanner::scan (std::vector<TRI_doc_mptr_copy_t>& docs,
 // -----------------------------------------------------------------------------
 
 void RandomCollectionScanner::reset () {
-  initialPosition = 0;
-  position = 0;
+  initialPosition.reset();
+  position.reset();
   step = 0;
 }
 
@@ -117,7 +113,7 @@ int LinearCollectionScanner::scan (std::vector<TRI_doc_mptr_copy_t>& docs,
 // -----------------------------------------------------------------------------
 
 void LinearCollectionScanner::reset () {
-  position = 0;
+  position.reset();
 }
 
 // -----------------------------------------------------------------------------

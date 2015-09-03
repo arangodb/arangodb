@@ -272,7 +272,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int readOffset (std::vector<TRI_doc_mptr_copy_t>& docs,
-                  uint64_t& internalSkip,
+                  triagens::basics::BucketPosition& internalSkip,
                   uint64_t batchSize,
                   int64_t skip,
                   uint64_t limit,
