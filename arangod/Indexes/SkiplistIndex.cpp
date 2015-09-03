@@ -39,10 +39,6 @@ using namespace triagens::arango;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees an element in the skiplist
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +47,6 @@ static void FreeElm (void* e) {
   auto element = static_cast<TRI_index_element_t*>(e);
   TRI_index_element_t::free(element);
 }
-
 
 // .............................................................................
 // recall for all of the following comparison functions:
@@ -205,7 +200,7 @@ static int FillLookupOperator (TRI_index_operator_t* slOperator,
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-size_t SkiplistIterator::size () {
+size_t SkiplistIterator::size () const {
   return _intervals.size();
 }
 
@@ -228,7 +223,7 @@ void SkiplistIterator::initCursor () {
   }
 }
 
-bool SkiplistIterator::hasNext () {
+bool SkiplistIterator::hasNext () const {
   if (_reverse) {
     return hasPrevIteration();
   }
@@ -415,7 +410,6 @@ void SkiplistIterator::findHelper (
       return;
     }
 
-
     case TRI_EQ_INDEX_OPERATOR: {
       temp = _index->_skiplistIndex->leftKeyLookup(&values);
       TRI_ASSERT(nullptr != temp);
@@ -505,7 +499,7 @@ void SkiplistIterator::findHelper (
 /// interval or before it - without advancing the iterator.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SkiplistIterator::hasPrevIteration () {
+bool SkiplistIterator::hasPrevIteration () const {
   // ...........................................................................
   // if we have more intervals than the one we are currently working
   // on then of course we have a previous doc, because intervals are nonempty.
@@ -529,7 +523,7 @@ bool SkiplistIterator::hasPrevIteration () {
 /// interval - without advancing the iterator.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SkiplistIterator::hasNextIteration () {
+bool SkiplistIterator::hasNextIteration () const {
   if (_cursor == nullptr) {
     return false;
   }
@@ -591,7 +585,6 @@ TRI_index_element_t* SkiplistIterator::prevIteration () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_element_t* SkiplistIterator::nextIteration () {
-
   if (_cursor == nullptr) {
     // In this case the iterator is exhausted or does not even have intervals.
     return nullptr;
@@ -643,12 +636,8 @@ SkiplistIndex::SkiplistIndex (TRI_idx_iid_t iid,
     CmpElmElm(this),
     CmpKeyElm(this),
     _skiplistIndex(nullptr) {
-  _skiplistIndex = new TRI_Skiplist(CmpElmElm, CmpKeyElm,
-                                    FreeElm, unique, _useExpansion);
-  if (_skiplistIndex == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
 
+  _skiplistIndex = new TRI_Skiplist(CmpElmElm, CmpKeyElm, FreeElm, unique, _useExpansion);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -656,9 +645,7 @@ SkiplistIndex::SkiplistIndex (TRI_idx_iid_t iid,
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIndex::~SkiplistIndex () {
-  if (_skiplistIndex != nullptr) {
-    delete _skiplistIndex;
-  }
+  delete _skiplistIndex;
 }
 
 // -----------------------------------------------------------------------------
@@ -823,7 +810,7 @@ size_t SkiplistIndex::elementSize () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SkiplistIndex::KeyElementComparator::operator() (TRI_skiplist_index_key_t const* leftKey,
-                                      TRI_index_element_t const* rightElement) {
+                                                     TRI_index_element_t const* rightElement) const {
 
   TRI_ASSERT(nullptr != leftKey);
   TRI_ASSERT(nullptr != rightElement);
@@ -850,8 +837,8 @@ int SkiplistIndex::KeyElementComparator::operator() (TRI_skiplist_index_key_t co
 ////////////////////////////////////////////////////////////////////////////////
 
 int SkiplistIndex::ElementElementComparator::operator() (TRI_index_element_t const* leftElement,
-                                          TRI_index_element_t const* rightElement,
-                                          triagens::basics::SkipListCmpType cmptype) {
+                                                         TRI_index_element_t const* rightElement,
+                                                         triagens::basics::SkipListCmpType cmptype) const {
 
   TRI_ASSERT(nullptr != leftElement);
   TRI_ASSERT(nullptr != rightElement);

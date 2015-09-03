@@ -3,6 +3,7 @@
   * [Linux](Installing/Linux.md)
   * [Mac OS X](Installing/MacOSX.md)
   * [Windows](Installing/Windows.md)
+  * [ARM](Installing/ARM.md)
   * [Compiling](Installing/Compiling.md)
   * [Upgrading](Installing/Upgrading.md)
     * [Incompatible changes in 2.7](Upgrading/UpgradingChanges27.md)
