@@ -83,8 +83,7 @@ PathBasedIndex::~PathBasedIndex () {
 /// @brief helper function to insert a document into any index type
 ////////////////////////////////////////////////////////////////////////////////
 
-int PathBasedIndex::fillElement (std::function<TRI_index_element_t* ()> allocate,
-                                 std::vector<TRI_index_element_t*>& elements,
+int PathBasedIndex::fillElement (std::vector<TRI_index_element_t*>& elements,
                                  TRI_doc_mptr_t const* document) {
   TRI_ASSERT(document != nullptr);
   TRI_ASSERT_EXPENSIVE(document->getDataPtr() != nullptr);   // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -111,7 +110,7 @@ int PathBasedIndex::fillElement (std::function<TRI_index_element_t* ()> allocate
       // index sparsity!
       char const* ptr = document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-      TRI_index_element_t* element = allocate();
+      TRI_index_element_t* element = TRI_index_element_t::allocate(n);
 
       if (element == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -140,7 +139,7 @@ int PathBasedIndex::fillElement (std::function<TRI_index_element_t* ()> allocate
 
       for (auto& info : toInsert) {
         TRI_ASSERT(info.size() == n);
-        TRI_index_element_t* element = allocate();
+        TRI_index_element_t* element = TRI_index_element_t::allocate(n);
 
         if (element == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
@@ -158,10 +157,6 @@ int PathBasedIndex::fillElement (std::function<TRI_index_element_t* ()> allocate
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-size_t PathBasedIndex::numPaths () const {
-  return _paths.size();
 }
 
 // -----------------------------------------------------------------------------
