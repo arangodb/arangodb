@@ -92,6 +92,8 @@ if (MSVC)
   add_definitions("-DUSE_REGEX_STATIC=1")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
 
+  message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
+
   foreach (flag_var
 	   CMAKE_C_FLAGS
 	   CMAKE_C_FLAGS_DEBUG
@@ -114,6 +116,7 @@ if (MSVC)
     endif ()
   endforeach()
 
+  message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
   set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib;getopt;regex)
 
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /LTCG /SAFESEH:NO /ignore:4099")

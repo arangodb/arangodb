@@ -299,9 +299,9 @@ pack-deb-cmake:
 ### @brief Windows 64-bit bundle
 ################################################################################
 
-.PHONY: pack-win32 pack-winXX winXX-cmake
+.PHONY: pack-win32 pack-winXX winXX-cmake win64-relative win64-relative-debug
 
-pack-win32:
+pack-win32: 
 	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12"
 
 pack-win64:
@@ -314,6 +314,10 @@ pack-win64-relative:
 	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
 
 win64-relative:
+	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON"'
+	$(MAKE) winXX-build BITS=64
+
+win64-relative-debug:
 	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
 	$(MAKE) winXX-build BITS=64
 
