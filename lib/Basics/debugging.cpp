@@ -293,26 +293,27 @@ void TRI_ShutdownDebugging () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_GetBacktrace (std::string& btstr) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
 #ifdef _WIN32
-  void         * stack[100];
+  void* stack[100];
   unsigned short frames;
-  SYMBOL_INFO  * symbol;
-  HANDLE         process;
+  SYMBOL_INFO* symbol;
+  HANDLE process;
 
   process = GetCurrentProcess();
 
   SymInitialize(process, nullptr, true);
 
-  frames               = CaptureStackBackTrace(0, 100, stack, nullptr);
-  symbol               = (SYMBOL_INFO*) calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+  frames = CaptureStackBackTrace(0, 100, stack, nullptr);
+  symbol = (SYMBOL_INFO*) calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
 
   if (symbol == nullptr) {
     // cannot allocate memory
     return;
   }
 
-  symbol->MaxNameLen   = 255;
+  symbol->MaxNameLen = 255;
   symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
 
   for (unsigned int i = 0; i < frames; i++) {
@@ -327,12 +328,12 @@ void TRI_GetBacktrace (std::string& btstr) {
 
 #else
   void* stack_frames[50];
-  size_t size, i;
   char** strings;
 
-  size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
-  strings = backtrace_symbols(stack_frames, size);
-  for (i = 0; i < size; i++) {
+  size_t size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
+  char** strings = backtrace_symbols(stack_frames, size);
+
+  for (size_t i = 0; i < size; i++) {
     std::stringstream ss;
     if (strings != nullptr) {
       char *mangled_name = nullptr, *offset_begin = nullptr, *offset_end = nullptr;
@@ -394,39 +395,32 @@ void TRI_GetBacktrace (std::string& btstr) {
         *offset_begin++ = '\0';
         *offset_end++ = '\0';
         int status = 0;
-        char * demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
+        char* demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
 
         if (demangled_name != nullptr) {
           if (status == 0) {
             ss << stack_frames[i];
-            btstr +=  strings[i] +
-              std::string("() [") +
-              ss.str() +
-              std::string("] ") +
-              demangled_name +
-              std::string("\n");
+            btstr += strings[i] + std::string("() [") + ss.str() + std::string("] ") + demangled_name + std::string("\n");
           }
           else {
-            btstr += strings[i] +
-              std::string("\n");
+            btstr += strings[i] + std::string("\n");
           }
           TRI_SystemFree(demangled_name);
         }
       }
       else {
-        btstr += strings[i] +
-          std::string("\n");
+        btstr += strings[i] + std::string("\n");
       }
     }
     else {
       ss << stack_frames[i];
-      btstr += ss.str() +
-        std::string("\n");
+      btstr += ss.str() + std::string("\n");
     }
   }
   if (strings != nullptr) {
     TRI_SystemFree(strings);  
   }
+#endif
 #endif
 #endif
 }
@@ -436,10 +430,12 @@ void TRI_GetBacktrace (std::string& btstr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_PrintBacktrace () {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
   std::string out;
   TRI_GetBacktrace(out);
   fprintf(stderr, "%s", out.c_str());
+#endif
 #endif
 }
 
