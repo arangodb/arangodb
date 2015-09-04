@@ -781,15 +781,13 @@ namespace triagens {
               }
 
               if (position.bucketId == SIZE_MAX) {
-                // first call, now fill Total
-                uint64_t used = 0;
+                // first call, now fill total
                 total = 0;
                 for (auto const& b : _buckets) {
-                  total += b._nrAlloc;
-                  used += b._nrUsed;
+                  total += b._nrUsed;
                 }
 
-                if (used == 0) {
+                if (total == 0) {
                   return nullptr;
                 }
 
