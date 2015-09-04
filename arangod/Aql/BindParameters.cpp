@@ -120,6 +120,37 @@ void BindParameters::process () {
   _processed = true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief strip collection name prefixes from the parameters
+/// the values must be a JSON array. the array is modified in place
+////////////////////////////////////////////////////////////////////////////////
+
+void BindParameters::StripCollectionNames (TRI_json_t* keys, 
+                                           char const* collectionName) {
+  if (! TRI_IsArrayJson(keys)) {
+    return;
+  }
+
+  size_t const n = TRI_LengthVectorJson(keys);
+
+  for (size_t i = 0; i < n; ++i) {
+    auto key = static_cast<TRI_json_t*>(TRI_AtVector(&keys->_value._objects, i));
+
+    if (TRI_IsStringJson(key)) {
+      auto s = key->_value._string.data;
+      auto p = strchr(s, '/');
+
+      if (p != nullptr && strncmp(s, collectionName, p - s) == 0) {
+        size_t pos = static_cast<size_t>(p - s);
+        // key begins with collection name + '/', now strip it in place for further comparisons
+        memmove(s, p + 1, key->_value._string.length - 2 - pos);
+        key->_value._string.length -= pos + 1;
+        key->_value._string.data[key->_value._string.length - 1] = '\0';
+      }
+    }
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

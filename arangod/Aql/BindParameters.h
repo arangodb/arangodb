@@ -87,6 +87,14 @@ namespace triagens {
 
         uint64_t hash () const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief strip collection name prefixes from the parameters
+/// the values must be a JSON array. the array is modified in place
+////////////////////////////////////////////////////////////////////////////////
+
+        static void StripCollectionNames (TRI_json_t*, 
+                                          char const*);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
