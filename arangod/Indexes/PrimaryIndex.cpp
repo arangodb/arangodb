@@ -40,11 +40,11 @@ using namespace triagens::arango;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-static uint64_t HashKey (char const* key) {
+static inline uint64_t HashKey (char const* key) {
   return TRI_FnvHashString(key);
 }
 
-static uint64_t HashElement (TRI_doc_mptr_t const* element) {
+static inline uint64_t HashElement (TRI_doc_mptr_t const* element) {
   return element->_hash;
 }
 
@@ -168,7 +168,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key,
-                                               uint64_t& position) const {
+                                         uint64_t& position) const {
   // TODO we ignore the position right now. It should be the position it would fit into
   position = 0;
   return lookupKey(key);
