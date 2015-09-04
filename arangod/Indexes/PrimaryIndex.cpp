@@ -220,9 +220,11 @@ int PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
                              void const** found) {
   *found = nullptr;
   int res = _primaryIndex->insert(header, false);
+
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
     *found = _primaryIndex->find(header);
   }
+
   return res;
 }
 
