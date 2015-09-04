@@ -107,6 +107,93 @@ function SimpleQueryLookupByKeysSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection with document ids
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentIds : function () {
+      var keys = [ ];
+
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+        keys.push(c.name() + "/test" + i);
+      }
+
+      // should have matches
+      var result = c.documents(keys);
+      assertEqual(100, result.documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection with document ids
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentIdDuplicates : function () {
+      var keys = [ ];
+
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+        // each document is here exactly twice
+        keys.push(c.name() + "/test" + i);
+        keys.push(c.name() + "/test" + i);
+      }
+
+      // should have matches
+      var result = c.documents(keys);
+      assertEqual(100, result.documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection with document ids
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentIdNonExisting : function () {
+      var keys = [ ];
+
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+        keys.push(c.name() + "/foo" + i);
+      }
+
+      // should not have matches
+      var result = c.documents(keys);
+      assertEqual(0, result.documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection with document ids
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentIdsInvalid : function () {
+      var keys = [ ];
+
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+        keys.push(c.name() + "/");
+      }
+
+      // should not have matches
+      var result = c.documents(keys);
+      assertEqual(0, result.documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection with document ids
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentIdsOtherCollection : function () {
+      var keys = [ ];
+
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+        keys.push("Another" + c.name() + "/test" + i);
+      }
+
+      // should not have matches
+      var result = c.documents(keys);
+      assertEqual(0, result.documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup in collection with numeric keys
 ////////////////////////////////////////////////////////////////////////////////
 

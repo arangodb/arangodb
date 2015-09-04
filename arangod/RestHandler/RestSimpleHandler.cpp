@@ -473,6 +473,8 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
     triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
     bindVars("@collection", triagens::basics::Json(collectionName));
     bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keys)));
+  
+    triagens::aql::BindParameters::StripCollectionNames(TRI_LookupObjectJson(bindVars.json(), "keys"), collectionName.c_str());
 
     std::string const aql("FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
     
