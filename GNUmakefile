@@ -315,11 +315,11 @@ pack-win64-relative:
 
 win64-relative:
 	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON"'
-	$(MAKE) winXX-build BITS=64
+	$(MAKE) winXX-build BITS=64 BUILD_TARGET=RelWithDebInfo
 
 win64-relative-debug:
 	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
-	$(MAKE) winXX-build BITS=64
+	$(MAKE) winXX-build BITS=64 BUILD_TARGET=Debug
 
 pack-winXX:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
