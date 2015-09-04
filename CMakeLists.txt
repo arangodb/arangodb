@@ -192,8 +192,8 @@ endif()
 ### @brief Enable Backtrace
 ################################################################################
 
-option(USER_MAINTAINER_MODE "whether we want to have Assertions and other development features" OFF)
-if (USER_MAINTAINER_MODE)
+option(USE_MAINTAINER_MODE "whether we want to have assertions and other development features" OFF)
+if (USE_MAINTAINER_MODE)
   add_definitions("-DTRI_ENABLE_MAINTAINER_MODE=1")
 endif()
 
