@@ -74,19 +74,21 @@ static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
 // --SECTION--                                                class PrimaryIndex
 // -----------------------------------------------------------------------------
         
-uint64_t const PrimaryIndex::InitialSize = 251;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection) 
-  : Index(0, collection, std::vector<std::vector<triagens::basics::AttributeName>>( { { { TRI_VOC_ATTRIBUTE_KEY, false } } } )) {
+  : Index(0, collection, std::vector<std::vector<triagens::basics::AttributeName>>( { { { TRI_VOC_ATTRIBUTE_KEY, false } } } )),
+    _primaryIndex(nullptr) {
+
   uint32_t indexBuckets = 1;
+
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
     indexBuckets = collection->_info._indexBuckets;
   }
+
   _primaryIndex = new TRI_PrimaryIndex_t(HashKey,
                                          HashElement,
                                          IsEqualKeyElement,
