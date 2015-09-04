@@ -2,7 +2,7 @@
 /*global assertEqual, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, limit optimisations
+/// @brief tests for query language, limit optimizations
 ///
 /// @file
 ///
@@ -37,9 +37,9 @@ var getQueryResults = helper.getQueryResults;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryOptimiserLimitTestSuite () {
+function ahuacatlQueryOptimizerLimitTestSuite () {
   var collection = null;
-  var cn = "UnitTestsAhuacatlOptimiserLimit";
+  var cn = "UnitTestsAhuacatlOptimizerLimit";
   
   var explain = function (query, params) {
     return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
@@ -683,7 +683,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ahuacatlQueryOptimiserLimitTestSuite);
+jsunity.run(ahuacatlQueryOptimizerLimitTestSuite);
 
 return jsunity.done();
 

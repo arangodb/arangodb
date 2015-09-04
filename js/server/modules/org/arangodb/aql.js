@@ -8556,7 +8556,7 @@ exports.AQL_DATE_MILLISECOND = AQL_DATE_MILLISECOND;
 
 exports.reload = reloadUserFunctions;
 
-// initialise the query engine
+// initialize the query engine
 resetRegexCache();
 //reloadUserFunctions();
 

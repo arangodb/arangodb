@@ -12711,7 +12711,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             "change-collection-sync",
             "Wait for sync",
             wfs,
-            "Synchronise to disk before returning from a create or update of a document.",
+            "Synchronize to disk before returning from a create or update of a document.",
             [{value: false, label: "No"}, {value: true, label: "Yes"}]        )
         );
       }
@@ -13173,7 +13173,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           "new-collection-sync",
           "Sync",
           "",
-          "Synchronise to disk before returning from a create or update of a document.",
+          "Synchronize to disk before returning from a create or update of a document.",
           [{value: false, label: "No"}, {value: true, label: "Yes"}]
         )
       );
@@ -14125,11 +14125,11 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     editDatabase: function(e) {
       var dbName = this.evaluateDatabaseName($(e.currentTarget).attr("id"), '_edit-database'),
-        isDeleteable = true;
+        isDeletable = true;
       if(dbName === this.currentDB) {
-        isDeleteable = false;
+        isDeletable = false;
       }
-      this.createEditDatabaseModal(dbName, isDeleteable);
+      this.createEditDatabaseModal(dbName, isDeletable);
     },
 
     search: function() {
@@ -14180,14 +14180,14 @@ window.ArangoUsers = Backbone.Collection.extend({
       return str.substring(0, index);
     },
 
-    createEditDatabaseModal: function(dbName, isDeleteable) {
+    createEditDatabaseModal: function(dbName, isDeletable) {
       var buttons = [],
         tableContent = [];
 
       tableContent.push(
         window.modalView.createReadOnlyEntry("id_name", "Name", dbName, "")
       );
-      if (isDeleteable) {
+      if (isDeletable) {
         buttons.push(
           window.modalView.createDeleteButton(
             "Delete",

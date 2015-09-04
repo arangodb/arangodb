@@ -315,7 +315,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _bound as Json, this is either for constant values 
-/// (_isConstant==true) or for JSON-serialised subexpressions
+/// (_isConstant==true) or for JSON-serialized subexpressions
 /// (_isConstant==false).
 ////////////////////////////////////////////////////////////////////////////////
 

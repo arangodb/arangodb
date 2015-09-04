@@ -151,7 +151,7 @@ static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an exception with an error code
-/// Implicitely demands *args* to be function arguments.
+/// Implicitly demands *args* to be function arguments.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_SET_EXCEPTION(code)                                      \
@@ -167,7 +167,7 @@ static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an exception and returning
-/// Implicitely demands *args* to be function arguments.
+/// Implicitly demands *args* to be function arguments.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_SET_EXCEPTION_MESSAGE(code, message)                     \
@@ -183,7 +183,7 @@ static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an exception and returning
-/// Implicitely demands *args* to be function arguments.
+/// Implicitly demands *args* to be function arguments.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_THROW_EXCEPTION_FULL(code, message)                      \
@@ -331,7 +331,7 @@ static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return undefined (default..)
-///   implicitely requires 'args and 'isolate' to be available
+///   implicitly requires 'args and 'isolate' to be available
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_RETURN_UNDEFINED()                                      \
@@ -340,7 +340,7 @@ static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return 'true'
-///   implicitely requires 'args and 'isolate' to be available
+///   implicitly requires 'args and 'isolate' to be available
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_RETURN_TRUE()                            \
@@ -349,7 +349,7 @@ static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return 'false'
-///   implicitely requires 'args and 'isolate' to be available
+///   implicitly requires 'args and 'isolate' to be available
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_RETURN_FALSE()                           \
@@ -358,7 +358,7 @@ static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return 'null'
-///   implicitely requires 'args and 'isolate' to be available
+///   implicitly requires 'args and 'isolate' to be available
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_V8_RETURN_NULL()                            \
@@ -367,7 +367,7 @@ static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return any sort of V8-value
-///   implicitely requires 'args and 'isolate' to be available
+///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the v8::Value/v8::Number/...
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -377,7 +377,7 @@ static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a char*
-///   implicitely requires 'args and 'isolate' to be available
+///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the char* variable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -387,7 +387,7 @@ static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a std::string
-///   implicitely requires 'args and 'isolate' to be available
+///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the std::string variable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -397,7 +397,7 @@ static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string which you know the length of
-///   implicitely requires 'args and 'isolate' to be available
+///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the char* variable
 /// @param WHATLEn the name of the int variable containing the length of WHAT
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,17 +408,17 @@ static const uint32_t V8DataSlot = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief retrieve the instance of the TRI_v8_global of the current thread
-///   implicitely creates a variable 'v8g' with a pointer to it.
-///   implicitely requires 'isolate' to be available
+///   implicitly creates a variable 'v8g' with a pointer to it.
+///   implicitly requires 'isolate' to be available
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_GET_GLOBALS()                                               \
         TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(V8DataSlot))
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch a string-member from the globel into the local scope of the function
+/// @brief fetch a string-member from the global into the local scope of the function
 ///     will give you a variable of the same name.
-///     implicitely requires 'v8g' and 'isolate' to be there.
+///     implicitly requires 'v8g' and 'isolate' to be there.
 /// @param WHICH the member string name to get as local variable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -426,11 +426,11 @@ static const uint32_t V8DataSlot = 0;
   auto WHICH = v8::Local<v8::String>::New(isolate, v8g->WHICH)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch a member from the globel into the local scope of the function
+/// @brief fetch a member from the global into the local scope of the function
 ///     will give you a variable of the same name.
-///     implicitely requires 'v8g' and 'isolate' to be there.
+///     implicitly requires 'v8g' and 'isolate' to be there.
 /// @param WHICH the member name to get as local variable
-/// @param TYPE  the type of the member to instanciate
+/// @param TYPE  the type of the member to instantiate
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_GET_GLOBAL(WHICH, TYPE)                             \

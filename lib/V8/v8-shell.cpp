@@ -100,7 +100,7 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, const char* field, size_t, 
 /// @FUN{processCsvFile(@FA{filename}, @FA{callback})}
 ///
 /// Processes a CSV file. The @FA{callback} function is called for line in the
-/// file. The seperator is @LIT{\,} and the quote is @LIT{"}.
+/// file. The separator is @LIT{\,} and the quote is @LIT{"}.
 ///
 /// Create the input file @LIT{csv.txt}
 ///
@@ -114,7 +114,7 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, const char* field, size_t, 
 ///
 /// Processes a CSV file. The @FA{callback} function is called for line in the
 /// file. The @FA{options} argument must be an object. The value of
-/// @LIT{seperator} sets the seperator character and @LIT{quote} the quote
+/// @LIT{separator} sets the separator character and @LIT{quote} the quote
 /// character.
 ////////////////////////////////////////////////////////////////////////////////
 

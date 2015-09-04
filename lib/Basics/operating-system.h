@@ -749,7 +749,7 @@ typedef unsigned char bool;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return system error string
-/// macro requires ERRORBUF to instanciate its buffer before.
+/// macro requires ERRORBUF to instantiate its buffer before.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_SYSTEM_ERROR()                      \

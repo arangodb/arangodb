@@ -212,7 +212,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Wal/RemoverThread.cpp \
 	arangod/Wal/Slot.cpp \
 	arangod/Wal/Slots.cpp \
-	arangod/Wal/SynchroniserThread.cpp 
+	arangod/Wal/SynchronizerThread.cpp 
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           PROGRAM

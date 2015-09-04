@@ -246,7 +246,7 @@ source. For instance GNU CC of at least version 4.8.
 - Cancelable asynchronous jobs: several potentially long-running jobs can now be
   canceled via an explicit cancel operation. This allows stopping long-running
   queries, traversals or scripts without shutting down the complete ArangoDB
-  process. Job cancellation is provided for asynchronously executed jobs as is
+  process. Job cancelation is provided for asynchronously executed jobs as is
   described in @ref HttpJobCancel.
 
 - Server-side periodic task management: an ArangoDB server now provides

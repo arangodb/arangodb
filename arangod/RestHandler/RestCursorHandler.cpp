@@ -148,7 +148,7 @@ void RestCursorHandler::processQuery (TRI_json_t const* json) {
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCancelled())) {
+        (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
@@ -276,10 +276,10 @@ bool RestCursorHandler::cancelQuery () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the query was cancelled
+/// @brief whether or not the query was canceled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCursorHandler::wasCancelled () {
+bool RestCursorHandler::wasCanceled () {
   MUTEX_LOCKER(_queryLock);
   return _queryKilled;
 }

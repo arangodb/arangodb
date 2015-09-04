@@ -40,7 +40,7 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 /// @brief test suite: Creation
 ///   these tests seem to fail when run in cluster or with valgrind from arangosh
 ///   (while they succeed when run on the frontend)
-///   test-helper.js:Helper.waitUnload expects timeley behaviour
+///   test-helper.js:Helper.waitUnload expects timely behavior
 ////////////////////////////////////////////////////////////////////////////////
 
 function CapConstraintTimecriticalSuite() {

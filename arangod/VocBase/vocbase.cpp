@@ -1523,7 +1523,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     TRI_UnloadCollectionVocBase(vocbase, collection, true);
   }
 
-  // this will signal the synchroniser and the compactor threads to do one last iteration
+  // this will signal the synchronizer and the compactor threads to do one last iteration
   vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
   
   TRI_LockCondition(&vocbase->_compactorCondition);

@@ -456,7 +456,7 @@ uint32_t TRI_FinalCrc32 (uint32_t value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief CRC32 value of data block
 ///
-/// optimised code to process 8 bytes at a time. provides a substantial speedup
+/// optimized code to process 8 bytes at a time. provides a substantial speedup
 /// compared to the one-byte-at-a-time version
 ///
 /// code found at http://create.stephan-brumme.com/crc32/#slicing-by-8-overview,
