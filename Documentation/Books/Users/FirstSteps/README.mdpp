@@ -51,10 +51,10 @@ The ArangoDB package comes with the following programs:
   read-eval-print loop (REPL) and provides functions to access and
   administrate the ArangoDB server. See [Details about the ArangoDB Shell](../FirstSteps/Arangosh.md).
 * _arangoimp_: A bulk importer for the ArangoDB server.
-  See [Details about Arangoimp](../Arangoimp/README.md).
+  See [Details about Arangoimp](../HttpBulkImports/Arangoimp.md).
 * _arangodump_: A tool to create backups of an ArangoDB database. See
-   [Details about Arangodump](../Arangodump/README.md).
+   [Details about Arangodump](../HttpBulkImports/Arangodump.md).
 * _arangorestore_: A tool to reload data from a backup into an ArangoDB database.
-  See [Details about Arangorestore](../Arangorestore/README.md)
+  See [Details about Arangorestore](../HttpBulkImports/Arangorestore.md)
 * _arango-dfdb_: A datafile debugger for ArangoDB. It is intended to be
   used primarily during development of ArangoDB
