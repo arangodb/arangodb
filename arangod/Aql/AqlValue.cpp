@@ -1019,7 +1019,7 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
         if (p < totalSize + (*it)->size()) {
           // found the correct vector
           auto vecCollection = (*it)->getDocumentCollection(0);
-          return (*it)->getValue(p - totalSize, 0).toJson(trx, vecCollection, copy);
+          return (*it)->getValueReference(p - totalSize, 0).toJson(trx, vecCollection, copy);
         }
         totalSize += (*it)->size();
       }
