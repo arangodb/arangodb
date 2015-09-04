@@ -265,22 +265,6 @@ namespace triagens {
           return this->readSlice(this->trxCollection(), docs);
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read documents within a transaction, using skip and limit and an
-/// internal offset into the primary index. this can be used for incremental
-/// access to the documents
-////////////////////////////////////////////////////////////////////////////////
-
-        int readOffset (std::vector<TRI_doc_mptr_copy_t>& docs,
-                  triagens::basics::BucketPosition& internalSkip,
-                  uint64_t batchSize,
-                  int64_t skip,
-                  uint64_t limit,
-                  uint64_t& total) {
-
-          return this->readIncremental(this->trxCollection(), docs, internalSkip, batchSize, skip, limit, total);
-        }
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
