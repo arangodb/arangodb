@@ -148,6 +148,7 @@ add_executable(
     Indexes/GeoIndex2.cpp
     Indexes/HashIndex.cpp
     Indexes/Index.cpp
+    Indexes/IndexWatermarks.cpp
     Indexes/PathBasedIndex.cpp
     Indexes/PrimaryIndex.cpp
     Indexes/SkiplistIndex.cpp

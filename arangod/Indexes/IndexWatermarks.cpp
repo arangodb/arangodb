@@ -22,45 +22,71 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_INDEXWATERMARKS_H
-#define ARANGODB_INDEXES_INDEXWATERMARKS_H 1
+#include "IndexWatermarks.h"
 
-#include "Basics/Common.h"
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            struct IndexWatermarks
 // -----------------------------------------------------------------------------
 
-namespace triagens {
-  namespace arango {
+// -----------------------------------------------------------------------------
+// --SECTION--                                               static initializers
+// -----------------------------------------------------------------------------
 
-    struct IndexWatermarks {
-      IndexWatermarks ()
-        : initialFillFactor(DefaultInitialFillFactor),
-          lowWatermark(DefaultLowWatermark),
-          highWatermark(DefaultHighWatermark) {
-      }
+double IndexWatermarks::DefaultInitialFillFactor  = 0.5;
+double IndexWatermarks::DefaultLowWatermark       = 0.0;
+double IndexWatermarks::DefaultHighWatermark      = 0.0;
 
-      static void SetDefaults (IndexWatermarks const&);
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
-      double initialFillFactor;
-      double lowWatermark;
-      double highWatermark;
+void IndexWatermarks::SetDefaults (IndexWatermarks const& other) {
+  auto initialFillFactor = other.initialFillFactor;
 
-      static double DefaultInitialFillFactor;
-      static double DefaultLowWatermark;
-      static double DefaultHighWatermark;
-    };
-
+  if (initialFillFactor < 0.05) {
+    initialFillFactor = 0.05;
   }
-}
+  else if (initialFillFactor > 0.90) {
+    initialFillFactor = 0.90;
+  }
 
-#endif
+  DefaultInitialFillFactor = initialFillFactor;
+
+
+  auto lowWatermark = other.lowWatermark;
+
+  if (lowWatermark < 0.0) {
+    lowWatermark = 0.0;
+  }
+  else if (lowWatermark > 0.95) {
+    lowWatermark = 0.95;
+  }
+
+  DefaultLowWatermark = lowWatermark;
+
+
+  auto highWatermark = other.highWatermark;
+
+  if (highWatermark < 0.0) {
+    highWatermark = 0.0;
+  }
+  else if (highWatermark > 0.95) {
+    highWatermark = 0.95;
+  }
+
+  if (lowWatermark >= highWatermark) {
+    highWatermark = lowWatermark + 0.01;
+  }
+
+  DefaultHighWatermark = highWatermark;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
