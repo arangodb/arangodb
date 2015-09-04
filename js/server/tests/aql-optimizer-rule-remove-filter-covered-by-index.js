@@ -75,7 +75,7 @@ function optimizerRuleTestSuite() {
 /// @brief set up
 /// Datastructure: 
 ///  - double index on (a,b)/(f,g) for tests with these
-///  - single column index on d/j to test sort behaviour without sub-columns
+///  - single column index on d/j to test sort behavior without sub-columns
 ///  - non-indexed columns c/h to sort without indices.
 ///  - non-skiplist indexed columns e/j to check whether its not selecting them.
 ///  - join column 'joinme' to intersect both tables.

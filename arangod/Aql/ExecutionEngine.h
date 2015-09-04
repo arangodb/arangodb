@@ -76,7 +76,7 @@ namespace triagens {
 // @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ExecutionEngine* instanciateFromPlan (QueryRegistry*, 
+        static ExecutionEngine* instantiateFromPlan (QueryRegistry*, 
                                                      Query*,
                                                      ExecutionPlan*,
                                                      bool);

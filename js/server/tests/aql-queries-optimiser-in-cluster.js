@@ -37,9 +37,9 @@ var getQueryResults = helper.getQueryResults;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryOptimiserInTestSuite () {
+function ahuacatlQueryOptimizerInTestSuite () {
   var c = null;
-  var cn = "UnitTestsAhuacatlOptimiserIn";
+  var cn = "UnitTestsAhuacatlOptimizerIn";
   
   var explain = function (query, params) {
     return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
@@ -572,7 +572,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ahuacatlQueryOptimiserInTestSuite);
+jsunity.run(ahuacatlQueryOptimizerInTestSuite);
 
 return jsunity.done();
 

@@ -1359,7 +1359,7 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
 ///
 /// Returns an array of all indexes defined for the collection.
 /// 
-/// Note that `_key` implicitely has an index assigned to it.
+/// Note that `_key` implicitly has an index assigned to it.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionGetIndexes}
 /// ~db._create("test");

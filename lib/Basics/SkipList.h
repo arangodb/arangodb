@@ -222,7 +222,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the start node, note that this does not return the first 
 /// data node but the (internal) artificial node stored under _start. This
-/// is consistent behaviour with the leftLookup method given a key value
+/// is consistent behavior with the leftLookup method given a key value
 /// of -infinity.
 ////////////////////////////////////////////////////////////////////////////////
 

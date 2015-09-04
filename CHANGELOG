@@ -139,7 +139,7 @@ v2.7.0 (XXXX-XX-XX)
 
 * increased default value collection-specific `indexBuckets` value from 1 to 16
 
-  Collections created from 2.7 on will use the new default if not overriden on
+  Collections created from 2.7 on will use the new default if not overridden on
   collection creation or later using `collection.properties({ indexBuckets: ... })`.
 
   The `indexBuckets` value determines the number of buckets to use when creating
@@ -3076,7 +3076,7 @@ v2.2.0 (2014-07-10)
 * fixed a bug in arangodump which got the collection name in _from and _to
   attributes of edges wrong (all were "_unknown")
 
-* fixed a bug in arangorestore which did not recognise wrong _from and _to
+* fixed a bug in arangorestore which did not recognize wrong _from and _to
   attributes of edges
 
 * improved error detection and reporting in arangorestore
@@ -3299,7 +3299,7 @@ v2.0.5 (2014-04-21)
 
 * Fixed a caching problem in IE JS Shell
 
-* added cancellation for async jobs
+* added cancelation for async jobs
 
 * upgraded to new gyp for V8
 

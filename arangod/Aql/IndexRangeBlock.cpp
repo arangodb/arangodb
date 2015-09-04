@@ -353,8 +353,8 @@ int IndexRangeBlock::initialize () {
 
   _allVariableBoundExpressions.clear();
 
-  // instanciate expressions:
-  auto instanciateExpression = [&] (RangeInfoBound const& b) -> void {
+  // instantiate expressions:
+  auto instantiateExpression = [&] (RangeInfoBound const& b) -> void {
     AstNode const* a = b.getExpressionAst(_engine->getQuery()->ast());
     Expression* expression = nullptr;
  
@@ -397,12 +397,12 @@ int IndexRangeBlock::initialize () {
       try {
         for (auto const& r : orRanges[i]) {
           for (auto const& l : r._lows) {
-            instanciateExpression(l);
+            instantiateExpression(l);
           }
 
           if (useHighBounds()) {
             for (auto const& h : r._highs) {
-              instanciateExpression(h);
+              instantiateExpression(h);
             }
           }
         }

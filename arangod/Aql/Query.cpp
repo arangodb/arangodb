@@ -73,7 +73,7 @@ static std::string StateNames[] = {
   "initializing",           // INITIALIZATION 
   "parsing",                // PARSING
   "optimizing ast",         // AST_OPTIMIZATION
-  "instanciating plan",     // PLAN_INSTANCIATION
+  "instantiating plan",     // PLAN_INSTANTIATION
   "optimizing plan",        // PLAN_OPTIMIZATION
   "executing",              // EXECUTION
   "finalizing"              // FINALIZATION
@@ -534,15 +534,15 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       parser->ast()->validateAndOptimize();
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
 
-      enterState(PLAN_INSTANCIATION);
-      plan.reset(ExecutionPlan::instanciateFromAst(parser->ast()));
+      enterState(PLAN_INSTANTIATION);
+      plan.reset(ExecutionPlan::instantiateFromAst(parser->ast()));
 
       if (plan.get() == nullptr) {
         // oops
         return QueryResult(TRI_ERROR_INTERNAL, "failed to create query execution engine");
       }
 
-      // Run the query optimiser:
+      // Run the query optimizer:
       enterState(PLAN_OPTIMIZATION);
       triagens::aql::Optimizer opt(maxNumberOfPlans());
       // getenabled/disabled rules
@@ -551,8 +551,8 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       plan.reset(opt.stealBest()); // Now we own the best one again
       planRegisters = true;
     }
-    else {   // no queryString, we are instanciating from _queryJson
-      enterState(PLAN_INSTANCIATION);
+    else {   // no queryString, we are instantiating from _queryJson
+      enterState(PLAN_INSTANTIATION);
       ExecutionPlan::getCollectionsFromJson(parser->ast(), _queryJson);
 
       parser->ast()->variables()->fromJson(_queryJson);
@@ -570,7 +570,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       }
 
       // we have an execution plan in JSON format
-      plan.reset(ExecutionPlan::instanciateFromJson(parser->ast(), _queryJson));
+      plan.reset(ExecutionPlan::instantiateFromJson(parser->ast(), _queryJson));
       if (plan.get() == nullptr) {
         // oops
         return QueryResult(TRI_ERROR_INTERNAL);
@@ -581,27 +581,27 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     }
 
     TRI_ASSERT(plan.get() != nullptr);
-    /* // for debugging of serialisation/deserialisation . . . * /
+    /* // for debugging of serialization/deserialization . . . * /
     auto JsonPlan = plan->toJson(parser->ast(),TRI_UNKNOWN_MEM_ZONE, true);
     auto JsonString = JsonPlan.toString();
     std::cout << "original plan: \n" << JsonString << "\n";
 
-    auto otherPlan = ExecutionPlan::instanciateFromJson (parser->ast(),
+    auto otherPlan = ExecutionPlan::instantiateFromJson (parser->ast(),
                                                          JsonPlan);
     otherPlan->getCost(); 
     auto otherJsonString =
       otherPlan->toJson(parser->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString(); 
-    std::cout << "deserialised plan: \n" << otherJsonString << "\n";
+    std::cout << "deserialized plan: \n" << otherJsonString << "\n";
     //TRI_ASSERT(otherJsonString == JsonString); */
     
     // varsUsedLater and varsValid are unordered_sets and so their orders
-    // are not the same in the serialised and deserialised plans 
+    // are not the same in the serialized and deserialized plans 
 
     // return the V8 context
     exitContext();
 
     enterState(EXECUTION);
-    ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(registry, this, plan.get(), planRegisters));
+    ExecutionEngine* engine(ExecutionEngine::instantiateFromPlan(registry, this, plan.get(), planRegisters));
 
     // If all went well so far, then we keep _plan, _parser and _trx and
     // return:
@@ -971,15 +971,15 @@ QueryResult Query::explain () {
       return transactionError(res);
     }
 
-    enterState(PLAN_INSTANCIATION);
-    ExecutionPlan* plan = ExecutionPlan::instanciateFromAst(parser.ast());
+    enterState(PLAN_INSTANTIATION);
+    ExecutionPlan* plan = ExecutionPlan::instantiateFromAst(parser.ast());
 
     if (plan == nullptr) {
       // oops
       return QueryResult(TRI_ERROR_INTERNAL);
     }
 
-    // Run the query optimiser:
+    // Run the query optimizer:
     enterState(PLAN_OPTIMIZATION);
     triagens::aql::Optimizer opt(maxNumberOfPlans());
     // get enabled/disabled rules

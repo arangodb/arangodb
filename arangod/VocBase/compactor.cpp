@@ -998,7 +998,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 //  }
 
   // if we cannot acquire the read lock instantly, we will exit directly.
-  // otherwise we'll risk a multi-thread deadlock between synchroniser,
+  // otherwise we'll risk a multi-thread deadlock between synchronizer,
   // compactor and data-modification threads (e.g. POST /_api/document)
   if (! TRI_TRY_READ_LOCK_DATAFILES_DOC_COLLECTION(document)) {
     return false;

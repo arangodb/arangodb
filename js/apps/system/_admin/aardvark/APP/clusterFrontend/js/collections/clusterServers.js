@@ -138,7 +138,7 @@
             }
             break;
           default:
-            console.debug("Undefined server state occured. This is still in development");
+            console.debug("Undefined server state occurred. This is still in development");
         }
       });
       return res;

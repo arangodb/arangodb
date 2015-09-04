@@ -93,7 +93,7 @@ bool RestAqlHandler::isDirect () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief POST method for /_api/aql/instanciate
+/// @brief POST method for /_api/aql/instantiate
 /// The body is a JSON with attributes "plan" for the execution plan and
 /// "options" for the options, all exactly as in AQL_EXECUTEJSON.
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +122,7 @@ void RestAqlHandler::createQueryFromJson () {
   auto query = new Query(_applicationV8, false, _vocbase, plan, options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("failed to instanciate the query: %s", res.details.c_str());
+    LOG_ERROR("failed to instantiate the query: %s", res.details.c_str());
 
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
       res.details);
@@ -189,7 +189,7 @@ void RestAqlHandler::parseQuery () {
                          nullptr, nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("failed to instanciate the Query: %s", res.details.c_str());
+    LOG_ERROR("failed to instantiate the Query: %s", res.details.c_str());
     generateError(HttpResponse::BAD, res.code, res.details);
     delete query;
     return;
@@ -247,7 +247,7 @@ void RestAqlHandler::explainQuery () {
                          parameters.steal(), options.steal(), PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("failed to instanciate the Query: %s", res.details.c_str());
+    LOG_ERROR("failed to instantiate the Query: %s", res.details.c_str());
     generateError(HttpResponse::BAD, res.code, res.details);
     delete query;
     return;
@@ -310,7 +310,7 @@ void RestAqlHandler::createQueryFromString () {
                          parameters.steal(), options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("failed to instanciate the Query: %s", res.details.c_str());
+    LOG_ERROR("failed to instantiate the Query: %s", res.details.c_str());
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
       res.details);
     delete query;
@@ -385,7 +385,7 @@ void RestAqlHandler::createQueryFromString () {
 ///             If "number" is not given it defaults to 1.
 /// For the "initializeCursor" operation, one has to bind the following 
 /// attributes:
-///   "items": This is a serialised AqlItemBlock with usually only one row 
+///   "items": This is a serialized AqlItemBlock with usually only one row 
 ///            and the correct number of columns.
 ///   "pos":   The number of the row in "items" to take, usually 0.
 /// For the "shutdown" and "lock" operations no additional arguments are
@@ -559,7 +559,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
   catch (...) {
     _queryRegistry->close(_vocbase, _qId);
       
-    LOG_ERROR("failed during use of query: Unknown exeption occured");
+    LOG_ERROR("failed during use of query: Unknown exception occurred");
 
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
@@ -592,7 +592,7 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
       if (suffix.size() != 1) {
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       }
-      else if (suffix[0] == "instanciate") {
+      else if (suffix[0] == "instantiate") {
         createQueryFromJson(); 
       }
       else if (suffix[0] == "parse") {

@@ -94,10 +94,10 @@ However, a few words of explanation about what happens behind the
 scenes are in order. Firstly, a running async query can internally be
 executed by C++ code or by JavaScript code. For example CRUD operations
 are executed directly in C++, whereas AQL queries and transactions
-are executed by JavaScript code. The job cancellation only works for
+are executed by JavaScript code. The job cancelation only works for
 JavaScript code, since the mechanism used is simply to trigger an
 uncatchable exception in the JavaScript thread, which will be caught
-on the C++ level, which in turn leads to the cancellation of the job.
+on the C++ level, which in turn leads to the cancelation of the job.
 No result can be retrieved later, since all data about the request is
 discarded.
 

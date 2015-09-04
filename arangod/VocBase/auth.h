@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase authentication and authorisation
+/// @brief vocbase authentication and authorization
 ///
 /// @file
 ///

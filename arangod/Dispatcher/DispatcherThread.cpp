@@ -237,7 +237,7 @@ void DispatcherThread::handleJob (Job* job) {
   catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
     if (_queue->_stopping.load(memory_order_relaxed)) {
-      LOG_WARNING("caught cancellation exception during work");
+      LOG_WARNING("caught cancelation exception during work");
       throw;
     }
 #endif
@@ -278,7 +278,7 @@ void DispatcherThread::handleJob (Job* job) {
   catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
     if (_queue->_stopping.load(memory_order_relaxed)) {
-      LOG_WARNING("caught cancellation exception during cleanup");
+      LOG_WARNING("caught cancelation exception during cleanup");
       throw;
     }
 #endif

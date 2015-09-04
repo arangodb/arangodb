@@ -177,7 +177,7 @@ static volatile int Initialized = 0;
 /// @brief shutdown function already installed
 ////////////////////////////////////////////////////////////////////////////////
 
-static volatile bool ShutdownInitalised = false;
+static volatile bool ShutdownInitalized = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of first log file
@@ -1845,9 +1845,9 @@ void TRI_InitializeLogging (bool threaded) {
   }
 
   // always close logging at the end
-  if (! ShutdownInitalised) {
+  if (! ShutdownInitalized) {
     atexit((void (*)(void)) TRI_ShutdownLogging);
-    ShutdownInitalised = true;
+    ShutdownInitalized = true;
   }
 }
 

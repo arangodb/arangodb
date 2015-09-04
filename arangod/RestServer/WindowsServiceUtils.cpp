@@ -583,7 +583,7 @@ void TRI_GlobalExitFunction (int exitCode, void* data) {
   // any windows specific stuff.
   // ...........................................................................
 
-  int res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
     exit(EXIT_FAILURE);

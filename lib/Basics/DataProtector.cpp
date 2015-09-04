@@ -43,7 +43,7 @@ std::atomic<int> triagens::basics::DataProtector::_last(0);
 /// template parameter, such that the compiler can allocate a thread local
 /// variable for each of them.
 
-// TODO: Reactivate this template instanciation once everybody has gcc >= 4.9.2
+// TODO: Reactivate this template instantiation once everybody has gcc >= 4.9.2
 // template class triagens::basics::DataProtector<64>;
 
 // Local Variables:

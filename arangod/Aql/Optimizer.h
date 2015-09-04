@@ -220,7 +220,7 @@ namespace triagens {
         // make operations on sharded collections use scatter / gather / remote
         scatterInClusterRule_pass10                   = 1010,
           
-        // move FilterNodes & Calculation nodes inbetween
+        // move FilterNodes & Calculation nodes in between
         // scatter(remote) <-> gather(remote) so they're
         // distributed to the cluster nodes.
         distributeFilternCalcToClusterRule_pass10     = 1020,
@@ -233,7 +233,7 @@ namespace triagens {
         // only a SingletonNode and possibly some CalculationNodes as dependencies
         removeUnnecessaryRemoteScatterRule_pass10     = 1040,
 
-        //recognise that a RemoveNode can be moved to the shards
+        //recognize that a RemoveNode can be moved to the shards
         undistributeRemoveAfterEnumCollRule_pass10    = 1050
       };
     
@@ -243,7 +243,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of an optimizer rule function, the function gets an
-/// optimiser, an ExecutionPlan, and the current rule. it has
+/// optimizer, an ExecutionPlan, and the current rule. it has
 /// to append one or more plans to the resulting deque. This must
 /// include the original plan if it ought to be kept. The rule has to
 /// set the level of the appended plan to the largest level of rule
@@ -667,7 +667,7 @@ namespace triagens {
         static triagens::basics::Mutex SetupLock;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the current set of plans to be optimised
+/// @brief the current set of plans to be optimized
 ////////////////////////////////////////////////////////////////////////////////
 
         PlanList _plans;

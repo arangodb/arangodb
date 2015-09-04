@@ -249,11 +249,11 @@ var ERRORS = require("internal").errors;
 ///
 /// The data returned in the *plan* attribute of the result contains one
 /// element per AQL top-level statement (i.e. *FOR*, *RETURN*,
-/// *FILTER* etc.). If the query optimiser removed some unnecessary statements,
+/// *FILTER* etc.). If the query optimizer removed some unnecessary statements,
 /// the result might also contain less elements than there were top-level
 /// statements in the AQL query.
 /// The following example shows a query with a non-sensible filter condition that
-/// the optimiser has removed so that there are less top-level statements:
+/// the optimizer has removed so that there are less top-level statements:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainEmpty}
 ///     var url = "/_api/explain";

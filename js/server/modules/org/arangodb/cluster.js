@@ -814,7 +814,7 @@ function setupReplication () {
                               ArangoServerState.idOfPrimary());
         var config = { "endpoint": endpoint, "includeSystem": false };
         rep.applier.properties(config);
-        console.info("Starting synchronisation...");
+        console.info("Starting synchronization...");
         var res = rep.sync(config);
         console.info("Last log tick: "+res.lastLogTick+
                     ", starting replication...");

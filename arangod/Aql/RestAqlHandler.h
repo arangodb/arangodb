@@ -96,7 +96,7 @@ namespace triagens {
         status_t execute () override;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief POST method for /_api/aql/instanciate
+/// @brief POST method for /_api/aql/instantiate
 /// The body is a JSON with attributes "plan" for the execution plan and
 /// "options" for the options, all exactly as in AQL_EXECUTEJSON.
 ////////////////////////////////////////////////////////////////////////////////
