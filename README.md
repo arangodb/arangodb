@@ -16,7 +16,7 @@ ArangoDB is a multi-model, open-source database with flexible data models for do
 
 The supported data models can be mixed in queries and allow ArangoDB to be the aggregation point for your data.
 
-To get started, try one of our 10 minutes [tutorials](https://www.arangodb.com/tutorials) in your favourite programming language or try one of our [ArangoDB Cookbook recipes](https://docs.arangodb.com/cookbook).
+To get started, try one of our 10 minutes [tutorials](https://www.arangodb.com/tutorials) in your favorite programming language or try one of our [ArangoDB Cookbook recipes](https://docs.arangodb.com/cookbook).
 
 For the impatient: [download](https://www.arangodb.com/download) and install ArangoDB. Start the server `arangod` and point your browser to `http://127.0.0.1:8529/`.
 
@@ -48,13 +48,13 @@ Other features of ArangoDB include:
 * Use a **data-centric microservices** approach with ArangoDB Foxx and fuse your application-logic and database together for maximal throughput
 * JavaScript for all: **no language zoo**, you can use one language from your browser to your back-end
 * ArangoDB is **multi-threaded** - exploit the power of all your cores
-* **Flexible data modelling**: model your data as combination of key-value pairs, documents or graphs - perfect for social relations
+* **Flexible data modeling**: model your data as combination of key-value pairs, documents or graphs - perfect for social relations
 * Free **index choice**: use the correct index for your problem, be it a skip list or a fulltext search
 * Configurable **durability**: let the application decide if it needs more durability or more performance
 * **Powerful query language** (AQL) to retrieve and modify data 
 * **Transactions**: run queries on multiple documents or collections with optional transactional consistency and isolation
 * **Replication** and **Sharding**: set up the database in a master-slave configuration or spread bigger datasets across multiple servers
-* It is **open source** (Apache Licence 2.0)
+* It is **open source** (Apache License 2.0)
 
 For more in-depth information read the [design goals of ArangoDB](http://www.arangodb.com/2012/03/07/avocadodbs-design-objectives)
 
