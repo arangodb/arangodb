@@ -7,8 +7,6 @@ DESCRIPTION
 The arangob binary can be used to issue test requests to the 
 ArangoDB database. It can be used for benchmarks or server function
 testing. It supports parallel querying and batch requests.
-arangob currently only supports a few common test cases out of the box.
-More test cases might be added later.
 OPTIONS
 For a complete list of options, please refer to the ArangoDB
 online manual, available at http://www.arangodb.org/
@@ -34,7 +32,7 @@ complexity value for test case (meaning depends on test case) ENDOPTION
 OPTION "--server.endpoint <string>"
 server endpoint to connect to, consisting of protocol, ip address and port ENDOPTION
 OPTION "--server.database <string>"
-database name to use when connection (default: "_system") ENDOPTION
+database name to use when connecting (default: "_system") ENDOPTION
 OPTION "--server.username <string>"
 username to use when connecting (default "root") ENDOPTION
 OPTION "--server.password <string>"
