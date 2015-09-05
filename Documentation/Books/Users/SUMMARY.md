@@ -236,6 +236,7 @@
     * [Geo Indexes](IndexHandling/Geo.md)
     * [Cap Constraint](IndexHandling/Cap.md)
 * [Advanced](Advanced/README.md)
+  * [Arangob](Advanced/Arangob.md)
   * [Write-ahead log](Advanced/WriteAheadLog.md)
   * [Server Internals](Advanced/ServerInternals.md)
   * [Datafile Debugger](Advanced/DatafileDebugger.md)
