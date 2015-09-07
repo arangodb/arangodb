@@ -1336,7 +1336,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   auto primaryIndex = document->primaryIndex();
 
   // no primary index lock required here because we are the only ones reading from the index ATM
-  uint64_t slot;
+  triagens::basics::BucketPosition slot;
   auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key, slot));
 
   // it is a new entry
@@ -1356,7 +1356,11 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     // insert into primary index
     if (state->_initialCount != -1) {
       // we can now use an optimized insert method
-      primaryIndex->insertKey(header, slot);
+      res = primaryIndex->insertKey(header, slot);
+
+      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+        document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
+      }
     }
     else {
       // use regular insert method
@@ -1364,11 +1368,15 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
       if (res != TRI_ERROR_NO_ERROR) {
         // insertion failed
-        LOG_ERROR("inserting document into indexes failed");
         document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
-
-        return res;
       }
+    }
+        
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("inserting document into indexes failed with error: %s",
+                TRI_errno_string(res));
+
+      return res;
     }
 
     ++document->_numberDocuments;
@@ -1713,9 +1721,7 @@ static int OpenIteratorHandleDocumentMarker (TRI_df_marker_t const* marker,
     }
   }
 
-  OpenIteratorAddOperation(state, TRI_VOC_DOCUMENT_OPERATION_INSERT, marker, datafile->_fid);
-
-  return TRI_ERROR_NO_ERROR;
+  return OpenIteratorAddOperation(state, TRI_VOC_DOCUMENT_OPERATION_INSERT, marker, datafile->_fid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
