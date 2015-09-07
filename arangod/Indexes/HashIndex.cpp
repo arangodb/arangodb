@@ -491,7 +491,7 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
     TRI_IF_FAILURE("InsertHashIndex") {
       return TRI_ERROR_DEBUG;
     }
-    return _uniqueArray->_hashArray->insert(element, isRollback);
+    return _uniqueArray->_hashArray->insert(element);
   };
 
   size_t count = elements.size();

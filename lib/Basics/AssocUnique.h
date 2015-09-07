@@ -452,10 +452,12 @@ namespace triagens {
 /// @brief finds an element given a key, returns NULL if not found
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findByKey (Key const* key) const {
+          Element* findByKey (Key const* key,
+                              BucketPosition* position = nullptr) const {
             uint64_t hash = _hashKey(key);
             uint64_t i = hash;
-            Bucket const& b = _buckets[i & _bucketsMask];
+            uint64_t bucketId = i & _bucketsMask;
+            Bucket const& b = _buckets[bucketId];
 
             uint64_t const n = b._nrAlloc;
             i = i % n;
@@ -466,6 +468,13 @@ namespace triagens {
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
                   ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+            }
+            
+            if (position != nullptr) {
+              // if requested, pass the position of the found element back
+              // to the caller
+              position->bucketId = bucketId;
+              position->position = i;
             }
 
             // ...........................................................................
@@ -480,9 +489,7 @@ namespace triagens {
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-          int insert (Element* element,
-                      bool isRollback) {
-
+          int insert (Element* element) {
             uint64_t hash = _hashElement(element);
             Bucket& b = _buckets[hash & _bucketsMask];
 
@@ -491,6 +498,34 @@ namespace triagens {
             }
 
             return doInsert(element, b, hash);
+          }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds an element to the array, at the specified position
+/// the caller must have calculated the correct position before. 
+/// the caller must also have checked that the bucket still has some reserve
+/// space.
+/// if the method returns TRI_ERROR_UNIQUE_CONSTRAINT_VIOLATED, the element
+/// was not inserted. if it returns TRI_ERROR_OUT_OF_MEMORY, the element was
+/// inserted, but resizing afterwards failed!
+////////////////////////////////////////////////////////////////////////////////
+
+          int insertAtPosition (Element* element, BucketPosition const& position) {
+            Bucket& b = _buckets[position.bucketId];
+            Element* arrayElement = b._table[position.position];
+
+            if (arrayElement != nullptr) {
+              return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+            }
+
+            b._table[position.position] = element;
+            b._nrUsed++;
+           
+            if (! checkResize(b, 0)) {
+              return TRI_ERROR_OUT_OF_MEMORY;
+            }
+            
+            return TRI_ERROR_NO_ERROR;
           }
 
 ////////////////////////////////////////////////////////////////////////////////
