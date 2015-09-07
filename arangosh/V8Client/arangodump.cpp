@@ -213,8 +213,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-static void arangodumpEntryFunction ();
-static void arangodumpExitFunction (int, void*);
+static void LocalEntryFunction ();
+static void LocalExitFunction (int, void*);
 
 #ifdef _WIN32
 
@@ -222,7 +222,7 @@ static void arangodumpExitFunction (int, void*);
 // Call this function to do various initializations for windows only
 // .............................................................................
 
-void arangodumpEntryFunction () {
+static void LocalEntryFunction () {
   int maxOpenFiles = 1024;
   int res = 0;
 
@@ -248,10 +248,10 @@ void arangodumpEntryFunction () {
     _exit(1);
   }
 
-  TRI_Application_Exit_SetExit(arangodumpExitFunction);
+  TRI_Application_Exit_SetExit(LocalExitFunction);
 }
 
-static void arangodumpExitFunction (int exitCode, void* data) {
+static void LocalExitFunction (int exitCode, void* data) {
   int res = 0;
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
@@ -268,10 +268,10 @@ static void arangodumpExitFunction (int exitCode, void* data) {
 }
 #else
 
-static void arangodumpEntryFunction () {
+static void LocalEntryFunction () {
 }
 
-static void arangodumpExitFunction (int exitCode, void* data) {
+static void LocalExitFunction (int exitCode, void* data) {
 }
 
 #endif
@@ -1180,7 +1180,7 @@ static string rewriteLocation (void* data, const string& location) {
 int main (int argc, char* argv[]) {
   int ret = EXIT_SUCCESS;
 
-  arangodumpEntryFunction();
+  LocalEntryFunction();
 
   TRIAGENS_C_INITIALIZE(argc, argv);
   TRIAGENS_REST_INITIALIZE(argc, argv);
@@ -1406,7 +1406,7 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
-  arangodumpExitFunction(ret, nullptr);
+  LocalExitFunction(ret, nullptr);
 
   return ret;
 }

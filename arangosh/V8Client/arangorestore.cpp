@@ -213,15 +213,16 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-static void arangorestoreEntryFunction ();
-static void arangorestoreExitFunction (int, void*);
+static void LocalEntryFunction ();
+static void LocalExitFunction (int, void*);
 
 #ifdef _WIN32
 
 // .............................................................................
 // Call this function to do various initializations for windows only
 // .............................................................................
-void arangorestoreEntryFunction () {
+
+static void LocalEntryFunction () {
   int maxOpenFiles = 1024;
   int res = 0;
 
@@ -247,11 +248,11 @@ void arangorestoreEntryFunction () {
     _exit(1);
   }
 
-  TRI_Application_Exit_SetExit(arangorestoreExitFunction);
+  TRI_Application_Exit_SetExit(LocalExitFunction);
 
 }
 
-static void arangorestoreExitFunction (int exitCode, void* data) {
+static void LocalExitFunction (int exitCode, void* data) {
   int res = 0;
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
@@ -268,10 +269,10 @@ static void arangorestoreExitFunction (int exitCode, void* data) {
 }
 #else
 
-static void arangorestoreEntryFunction () {
+static void LocalEntryFunction () {
 }
 
-static void arangorestoreExitFunction (int exitCode, void* data) {
+static void LocalExitFunction (int exitCode, void* data) {
 }
 
 #endif
@@ -878,7 +879,7 @@ static string rewriteLocation (void* data, const string& location) {
 int main (int argc, char* argv[]) {
   int ret = EXIT_SUCCESS;
 
-  arangorestoreEntryFunction();
+  LocalEntryFunction();
 
   TRIAGENS_C_INITIALIZE(argc, argv);
   TRIAGENS_REST_INITIALIZE(argc, argv);
@@ -1058,7 +1059,7 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
-  arangorestoreExitFunction(ret, nullptr);
+  LocalExitFunction(ret, nullptr);
 
   return ret;
 }
