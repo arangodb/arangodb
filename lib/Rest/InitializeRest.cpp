@@ -151,6 +151,10 @@ namespace triagens {
 
     void ShutdownRest () {
       opensslCleanup();
+ 
+      ERR_free_strings();
+      EVP_cleanup();
+      CRYPTO_cleanup_all_ex_data();
 
       TRIAGENS_BASICS_SHUTDOWN;
     }
