@@ -184,6 +184,7 @@ namespace triagens {
           case (IN_WRITE): {
             size_t bytesWritten = 0;
 
+            TRI_ASSERT(_writeBuffer.length() >= _written);
             TRI_set_errno(TRI_ERROR_NO_ERROR);
 
             bool res = _connection->handleWrite(
