@@ -467,6 +467,7 @@ arangod Example tool
 --------------------
 --------------------
 `make example` picks examples from the source code documentation, executes them, and creates a transcript including their results.
+*Hint: Windows users may use ./scripts/generateExamples for this purpose*
 
 To update 
 Heres how its details work:
