@@ -51,7 +51,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a numeric value from an hierchical JSON
+/// @brief extracts a numeric value from an hierarchical JSON
 ////////////////////////////////////////////////////////////////////////////////
 
 template<typename T>

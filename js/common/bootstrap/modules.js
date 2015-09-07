@@ -150,8 +150,8 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief in-flight modules
 ///
-/// These modules are currently loading and must be cleanup when a cancellation
-/// occured.
+/// These modules are currently loading and must be cleanup when a cancelation
+/// occurred.
 ////////////////////////////////////////////////////////////////////////////////
 
   var inFlight = {};

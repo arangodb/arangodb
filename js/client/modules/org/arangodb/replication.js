@@ -163,7 +163,7 @@ applier.properties = function (config) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief performs a one-time synchronisation with a remote endpoint
+/// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 var sync = function (config) {

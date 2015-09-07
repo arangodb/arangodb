@@ -289,12 +289,12 @@ if (global.REPLICATION_APPLIER_FORGET) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sychroniseReplication
+/// @brief sychronizeReplication
 ////////////////////////////////////////////////////////////////////////////////
 
-if (global.REPLICATION_SYNCHRONISE) {
-  exports.synchroniseReplication = global.REPLICATION_SYNCHRONISE;
-  delete global.REPLICATION_SYNCHRONISE;
+if (global.REPLICATION_SYNCHRONIZE) {
+  exports.synchronizeReplication = global.REPLICATION_SYNCHRONIZE;
+  delete global.REPLICATION_SYNCHRONIZE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

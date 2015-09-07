@@ -1,6 +1,6 @@
 var measurements = ["time",
                     "ast optimization",
-                    "plan instanciation",
+                    "plan instantiation",
                     "parsing",
                     "plan optimization",
                     "execution",

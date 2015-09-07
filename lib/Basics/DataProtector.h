@@ -68,7 +68,7 @@ namespace triagens {
 ///       that as long as unused is in scope, pSeen remains valid.
 ///     - The DataProtector instances needs 64*Nr bytes of memory.
 ///     - DataProtector.cpp needs to contain an explicit template 
-///       instanciation for all values of Nr used in the executable.
+///       instantiation for all values of Nr used in the executable.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define DATA_PROTECTOR_MULTIPLICITY 64

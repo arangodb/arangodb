@@ -118,7 +118,7 @@
                             "paramType": "path",
                             "required": true,
                             "name": "query-id",
-                            "description": "The id of the query. <br><br> Kills a running query. The query will be terminated at the next cancellation point. <br><br>"
+                            "description": "The id of the query. <br><br> Kills a running query. The query will be terminated at the next cancelation point. <br><br>"
                         }
                     ],
                     "notes": "",

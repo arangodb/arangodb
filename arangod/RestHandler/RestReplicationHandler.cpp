@@ -795,7 +795,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 /// **Note**: These calls are uninteresting to users.
 ///
 /// @RESTBODYPARAM{body,json,required}
-/// A JSON object with the batch configration.
+/// A JSON object with the batch configuration.
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -810,7 +810,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 ///
 /// - *ttl*: the time-to-live for the batch (in seconds)
 ///
-/// If the batch's ttl can be extended successully, the response is empty.
+/// If the batch's ttl can be extended successfully, the response is empty.
 ///
 /// **Note**: on a coordinator, this request must have the URL parameter
 /// *DBserver* which must be an ID of a DBserver.
@@ -3484,7 +3484,7 @@ void RestReplicationHandler::handleCommandDump () {
 /// is returned when an invalid HTTP method is used.
 ///
 /// @RESTRETURNCODE{500}
-/// is returned if an error occurred during sychronisation or when starting the
+/// is returned if an error occurred during sychronization or when starting the
 /// continuous replication.
 ///
 /// @RESTRETURNCODE{501}
@@ -3703,7 +3703,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 /// is returned when an invalid HTTP method is used.
 ///
 /// @RESTRETURNCODE{500}
-/// is returned if an error occurred during sychronisation.
+/// is returned if an error occurred during sychronization.
 ///
 /// @RESTRETURNCODE{501}
 /// is returned when this operation is called on a coordinator in a cluster.
@@ -4029,7 +4029,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 ///   Setting *adaptivePolling* to false will make the replication applier
 ///   contact the logger server in a constant interval, regardless of whether
-///   the logger server provides updates frequently or seldomly.
+///   the logger server provides updates frequently or seldom.
 ///
 /// - *includeSystem*: whether or not system collection operations will be applied
 ///

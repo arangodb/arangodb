@@ -116,8 +116,8 @@ namespace triagens {
 ///        Convention: step === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupRandom (uint64_t& initialPosition,
-                                      uint64_t& position,
+        TRI_doc_mptr_t* lookupRandom (triagens::basics::BucketPosition& initialPosition,
+                                      triagens::basics::BucketPosition& position,
                                       uint64_t& step,
                                       uint64_t& total);
 
@@ -128,7 +128,7 @@ namespace triagens {
 ///        Convention: position === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupSequential (uint64_t& position,
+        TRI_doc_mptr_t* lookupSequential (triagens::basics::BucketPosition& position,
                                           uint64_t& total);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,7 +138,7 @@ namespace triagens {
 ///        Convention: position === UINT64_MAX indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupSequentialReverse(uint64_t& position);
+        TRI_doc_mptr_t* lookupSequentialReverse (triagens::basics::BucketPosition& position);
 
         int insertKey (TRI_doc_mptr_t*, void const**);
         void insertKey (TRI_doc_mptr_t*);
@@ -173,11 +173,6 @@ namespace triagens {
 
         TRI_PrimaryIndex_t* _primaryIndex;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief associative array of pointers
-////////////////////////////////////////////////////////////////////////////////
-
-        static uint64_t const InitialSize;
     };
 
   }

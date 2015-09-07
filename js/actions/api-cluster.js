@@ -711,7 +711,7 @@ actions.defineHttp({
         if (cursor instanceof Error) {
             res.responseCode = actions.HTTP_BAD;
             res.body = JSON.stringify( {"error":true,
-                "errorMessage": "an error occured"});
+                "errorMessage": "an error occurred"});
         }
         res.responseCode = actions.HTTP_OK;
         res.body = JSON.stringify({result : cursor.docs});

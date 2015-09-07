@@ -47,7 +47,7 @@ Protected attributes of `TRI_vocbase_col_t`:
 - `_path`
 
 
-TRI_*_SYNCHRONISER_WAITER_VOC_BASE (C)
+TRI_*_SYNCHRONIZER_WAITER_VOC_BASE (C)
 ======================================
 
 TODO

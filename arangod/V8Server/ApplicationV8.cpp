@@ -975,6 +975,8 @@ bool ApplicationV8::prepare2 () {
   _platform = v8::platform::CreateDefaultPlatform();
   v8::V8::InitializePlatform(_platform);
   v8::V8::Initialize();
+  
+  v8::V8::SetArrayBufferAllocator(&_bufferAllocator);
 
   // setup instances
   {

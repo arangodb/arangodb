@@ -19,7 +19,7 @@ Key features include:
 * **Powerful query language** (AQL) to retrieve and modify data 
 * **Transactions**: run queries on multiple documents or collections with optional transactional consistency and isolation
 * **Replication** and **Sharding**: set up the database in a master-slave configuration or spread bigger datasets across multiple servers
-* It is **open source** (Apache Licence 2.0)
+* It is **open source** (Apache License 2.0)
 
 In this documentation you can inform yourself about all the functions, features and programs ArangoDB provides for you.
 

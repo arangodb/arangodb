@@ -220,8 +220,8 @@ function get_api_database (req, res) {
 /// - *passwd*: the user password as a string. If not specified, then it defaults
 ///   to the empty string.
 ///
-/// - *active*: a boolean flag indicating whether the user accout should be
-///   actived or not. The default value is *true*.
+/// - *active*: a boolean flag indicating whether the user account should be
+///   activated or not. The default value is *true*.
 ///
 /// - *extra*: an optional JSON object with extra user information. The data
 ///   contained in *extra* will be stored for the user but not be interpreted

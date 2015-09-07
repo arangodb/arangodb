@@ -360,7 +360,7 @@ bool RestQueryHandler::deleteQuerySlow () {
 /// @RESTURLPARAM{query-id,string,required}
 /// The id of the query.
 ///
-/// Kills a running query. The query will be terminated at the next cancellation
+/// Kills a running query. The query will be terminated at the next cancelation
 /// point.
 ///
 /// @RESTRETURNCODES

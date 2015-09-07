@@ -32,7 +32,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "Basics/gcd.h"
 #include "Basics/logging.h"
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
@@ -398,7 +397,7 @@ namespace triagens {
 
         int readIncremental (TRI_transaction_collection_t* trxCollection,
                              std::vector<TRI_doc_mptr_copy_t>& docs,
-                             uint64_t& internalSkip,
+                             triagens::basics::BucketPosition& internalSkip,
                              uint64_t batchSize,
                              int64_t skip,
                              uint64_t limit,
@@ -427,9 +426,12 @@ namespace triagens {
               docs.reserve(batchSize);
             }
             TRI_ASSERT(batchSize > 0);
+              
+            auto primaryIndex = document->primaryIndex();
 
             while (count < batchSize) {
-              TRI_doc_mptr_t const* mptr = document->primaryIndex()->lookupSequential(internalSkip, total);
+              TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(internalSkip, total);
+
               if (mptr == nullptr) {
                 break;
               }
@@ -438,6 +440,7 @@ namespace triagens {
               }
               else {
                 docs.emplace_back(*mptr);
+
                 if (++count >= limit) {
                   break;
                 }
@@ -463,8 +466,8 @@ namespace triagens {
 
         int readRandom (TRI_transaction_collection_t* trxCollection,
                         std::vector<TRI_doc_mptr_copy_t>& docs,
-                        uint64_t& initialPosition,
-                        uint64_t& position,
+                        triagens::basics::BucketPosition& initialPosition,
+                        triagens::basics::BucketPosition& position,
                         uint64_t batchSize,
                         uint64_t& step,
                         uint64_t& total) {
@@ -812,8 +815,8 @@ namespace triagens {
           }
 
           auto idx = document->primaryIndex();
-          uint64_t intPos = 0;
-          uint64_t pos = 0;
+          triagens::basics::BucketPosition intPos;
+          triagens::basics::BucketPosition pos;
           uint64_t step = 0;
           uint64_t total = 0;
 
@@ -851,7 +854,7 @@ namespace triagens {
           size_t used = idx->size();
 
           if (used > 0) {
-            uint64_t step = 0;
+            triagens::basics::BucketPosition step;
             uint64_t total = 0;
 
             while (true) {
@@ -969,7 +972,7 @@ namespace triagens {
           TRI_doc_mptr_t const* mptr = nullptr; 
 
           if (skip < 0) {
-            uint64_t position = UINT64_MAX;
+            triagens::basics::BucketPosition position;
             do {
               mptr = idx->lookupSequentialReverse(position);
               ++skip;
@@ -996,7 +999,7 @@ namespace triagens {
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
             return TRI_ERROR_NO_ERROR;
           }
-          uint64_t position = 0;
+          triagens::basics::BucketPosition position;
 
           while (skip > 0) {
             mptr = idx->lookupSequential(position, total);
@@ -1040,7 +1043,7 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          uint64_t position = 0;
+          triagens::basics::BucketPosition position;
           uint64_t total = 0;
           auto idx = document->primaryIndex();
           docs.reserve(idx->size());

@@ -429,7 +429,7 @@ void TRI_headers_t::release (TRI_doc_mptr_t* header,
     // memory by freeing all already-allocated blocks and wiping the freelist
     // we only do this if we had allocated 8 blocks of headers
     // this limit is arbitrary, but will ensure we only free memory if
-    // it is sensible and not everytime the last document is removed
+    // it is sensible and not every time the last document is removed
 
     for (auto& it : _blocks) {
       delete[] it;

@@ -98,7 +98,7 @@ static ExecutionBlock* CreateBlock (ExecutionEngine* engine,
         return new SortedAggregateBlock(engine, static_cast<AggregateNode const*>(en));
       }
 
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot instanciate AggregateBlock with undetermined aggregation method");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot instantiate AggregateBlock with undetermined aggregation method");
     }
     case ExecutionNode::SUBQUERY: {
       auto es = static_cast<SubqueryNode const*>(en);
@@ -215,7 +215,7 @@ ExecutionEngine::~ExecutionEngine () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                     walker class for ExecutionNode to instanciate
+// --SECTION--                     walker class for ExecutionNode to instantiate
 // -----------------------------------------------------------------------------
 
 struct Instanciator final : public WalkerWorker<ExecutionNode> {
@@ -273,17 +273,17 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                     walker class for ExecutionNode to instanciate
+// --SECTION--                     walker class for ExecutionNode to instantiate
 // -----------------------------------------------------------------------------
 
-// Here is a description of how the instanciation of an execution plan
+// Here is a description of how the instantiation of an execution plan
 // works in the cluster. See below for a complete example
 //
-// The instanciation of this works as follows:
+// The instantiation of this works as follows:
 // (0) Variable usage and register planning is done in the global plan
 // (1) A walk with subqueries is done on the whole plan
 //     The purpose is to plan how many ExecutionEngines we need, where they
-//     have to be instanciated and which plan nodes belong to each of them.
+//     have to be instantiated and which plan nodes belong to each of them.
 //     Such a walk is depth first and visits subqueries after it has visited
 //     the dependencies of the subquery node recursively. Whenever the
 //     walk passes by a RemoteNode it switches location between coordinator
@@ -301,13 +301,13 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 // (2) buildEngines is called with that data. It proceeds engine by engine,
 //     starting from the back of the list. This means that an engine that
 //     is referred to in a RemoteNode (because its nodes are dependencies
-//     of that node) are always already instanciated before the RemoteNode
-//     is instanciated. The corresponding query ids are collected in a
+//     of that node) are always already instantiated before the RemoteNode
+//     is instantiated. The corresponding query ids are collected in a
 //     global hash table, for which the key consists of the id of the 
 //     RemoteNode using the query and the actual query id. For each engine,
-//     the nodes are instanciated along the list of nodes for that engine.
-//     This means that all dependencies of a node N are already instanciated
-//     when N is instanciated. We distintuish the coordinator and the
+//     the nodes are instantiated along the list of nodes for that engine.
+//     This means that all dependencies of a node N are already instantiated
+//     when N is instantiated. We distinguish the coordinator and the
 //     DBserver case. In the former one we have to clone a part of the
 //     plan and in the latter we have to send a part to a DBserver via HTTP.
 //
@@ -359,7 +359,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 //   engine 3: [Singleton, Enum coll2, Calc e.name==d.name, Filter]
 // buildEngines will then do engines in the order 3, 2, 1, 0 and for each
 // of them the nodes from left to right in these lists. In the end, we have
-// a proper instanciation of the whole thing.
+// a proper instantiation of the whole thing.
 
 
 struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
@@ -437,8 +437,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
      //   itoa(ID of RemoteNode in original plan) + "/" + <name of vocbase>
      // and the value is the
      //   queryId used in the QueryRegistry
-     // this is built up when we instanciate the various engines on the
-     // DBservers and used when we instanciate the ones on the
+     // this is built up when we instantiate the various engines on the
+     // DBservers and used when we instantiate the ones on the
      // coordinator. Note that the main query and engine is not put into
      // this map at all.
 
@@ -554,7 +554,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     auto cc = triagens::arango::ClusterComm::instance();
 
     std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + 
-                          "/_api/aql/instanciate");
+                          "/_api/aql/instantiate");
 
     auto headers = new std::map<std::string, std::string>;
     (*headers)["X-Arango-Nolock"] = shardId;   // Prevent locking
@@ -596,7 +596,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         if (res->answer_code == triagens::rest::HttpResponse::OK ||
             res->answer_code == triagens::rest::HttpResponse::CREATED ||
             res->answer_code == triagens::rest::HttpResponse::ACCEPTED) {
-          // query instanciated without problems
+          // query instantiated without problems
           nrok++;
 
           // pick up query id from response
@@ -904,7 +904,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 /// @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegistry,
+ExecutionEngine* ExecutionEngine::instantiateFromPlan (QueryRegistry* queryRegistry,
                                                        Query* query,
                                                        ExecutionPlan* plan,
                                                        bool planRegisters) {
@@ -925,7 +925,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     ExecutionBlock* root = nullptr;
 
     if (isCoordinator) {
-      // instanciate the engine on the coordinator
+      // instantiate the engine on the coordinator
 
       std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
       plan->root()->walk(inst.get());
@@ -1047,7 +1047,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
                triagens::rest::HttpRequest::HTTP_REQUEST_PUT, url, 
                  "{\"code\": 0}", headers, 120.0);
             // Ignore result, we need to try to remove all.
-            // However, log the incident if we have an errormessage.
+            // However, log the incident if we have an errorMessage.
             if (res->errorMessage.length() > 0) {
               std::string msg("while trying to unregister query ");
               msg += queryId +
@@ -1075,7 +1075,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
       }
     }
     else {
-      // instanciate the engine on a local server
+      // instantiate the engine on a local server
       engine = new ExecutionEngine(query);
       std::unique_ptr<Instanciator> inst(new Instanciator(engine));
       plan->root()->walk(inst.get());

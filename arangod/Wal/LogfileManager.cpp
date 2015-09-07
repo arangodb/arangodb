@@ -46,7 +46,7 @@
 #include "Wal/RecoverState.h"
 #include "Wal/RemoverThread.h"
 #include "Wal/Slots.h"
-#include "Wal/SynchroniserThread.h"
+#include "Wal/SynchronizerThread.h"
 
 using namespace triagens::wal;
 
@@ -152,7 +152,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _logfilesLock(),
     _logfiles(),
     _slots(nullptr),
-    _synchroniserThread(nullptr),
+    _synchronizerThread(nullptr),
     _allocatorThread(nullptr),
     _collectorThread(nullptr),
     _removerThread(nullptr),
@@ -460,7 +460,7 @@ bool LogfileManager::open () {
   }
  
 
-  // now start allocator and synchroniser
+  // now start allocator and synchronizer
   res = startAllocatorThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -468,10 +468,10 @@ bool LogfileManager::open () {
     return false;
   }
 
-  res = startSynchroniserThread();
+  res = startSynchronizerThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not start WAL synchroniser thread: %s", TRI_errno_string(res));
+    LOG_ERROR("could not start WAL synchronizer thread: %s", TRI_errno_string(res));
     return false;
   }
   
@@ -573,8 +573,8 @@ void LogfileManager::stop () {
   LOG_TRACE("stopping allocator thread");
   stopAllocatorThread();
 
-  LOG_TRACE("stopping synchroniser thread");
-  stopSynchroniserThread();
+  LOG_TRACE("stopping synchronizer thread");
+  stopSynchronizerThread();
 
   // close all open logfiles
   LOG_TRACE("closing logfiles");
@@ -718,7 +718,7 @@ bool LogfileManager::logfileCreationAllowed (uint32_t size) {
   uint32_t numberOfLogfiles = 0;
 
   // note: this information could also be cached instead of being recalculated
-  // everytime
+  // every time
   READ_LOCKER(_logfilesLock);
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
@@ -743,7 +743,7 @@ bool LogfileManager::hasReserveLogfiles () {
   uint32_t numberOfLogfiles = 0;
 
   // note: this information could also be cached instead of being recalculated
-  // everytime
+  // every time
   READ_LOCKER(_logfilesLock);
 
   // reverse-scan the logfiles map
@@ -767,7 +767,7 @@ bool LogfileManager::hasReserveLogfiles () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::signalSync () {
-  _synchroniserThread->signalSync();
+  _synchronizerThread->signalSync();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -828,17 +828,17 @@ SlotInfo LogfileManager::allocate (uint32_t size,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finalise a log entry
+/// @brief finalize a log entry
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::finalise (SlotInfo& slotInfo,
+void LogfileManager::finalize (SlotInfo& slotInfo,
                                bool waitForSync) {
   _slots->returnUsed(slotInfo, waitForSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
-/// this is a convenience function that combines allocate, memcpy and finalise
+/// this is a convenience function that combines allocate, memcpy and finalize
 ///
 /// We need this version with cid, sid, legendOffset and oldLegend because
 /// there is a cache for each WAL file keeping track which legends are
@@ -868,15 +868,15 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
   try {
     slotInfo.slot->fill(src, size);
 
-    // we must copy the slotinfo because finalise() will set its internal to 0 again
+    // we must copy the slotinfo because finalize() will set its internal to 0 again
     SlotInfoCopy copy(slotInfo.slot);
 
-    finalise(slotInfo, waitForSync);
+    finalize(slotInfo, waitForSync);
     return copy;
   }
   catch (...) {
     // if we don't return the slot we'll run into serious problems later
-    finalise(slotInfo, false);
+    finalize(slotInfo, false);
 
     return SlotInfoCopy(TRI_ERROR_INTERNAL);
   }
@@ -884,7 +884,7 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
-/// this is a convenience function that combines allocate, memcpy and finalise
+/// this is a convenience function that combines allocate, memcpy and finalize
 ////////////////////////////////////////////////////////////////////////////////
 
 SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
@@ -902,15 +902,15 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
   try {
     slotInfo.slot->fill(src, size);
 
-    // we must copy the slotinfo because finalise() will set its internal to 0 again
+    // we must copy the slotinfo because finalize() will set its internal to 0 again
     SlotInfoCopy copy(slotInfo.slot);
 
-    finalise(slotInfo, waitForSync);
+    finalize(slotInfo, waitForSync);
     return copy;
   }
   catch (...) {
     // if we don't return the slot we'll run into serious problems later
-    finalise(slotInfo, false);
+    finalize(slotInfo, false);
 
     return SlotInfoCopy(TRI_ERROR_INTERNAL);
   }
@@ -918,7 +918,7 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
-/// this is a convenience function that combines allocate, memcpy and finalise
+/// this is a convenience function that combines allocate, memcpy and finalize
 ////////////////////////////////////////////////////////////////////////////////
 
 SlotInfoCopy LogfileManager::allocateAndWrite (Marker const& marker,
@@ -927,7 +927,7 @@ SlotInfoCopy LogfileManager::allocateAndWrite (Marker const& marker,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finalise and seal the currently open logfile
+/// @brief finalize and seal the currently open logfile
 /// this is useful to ensure that any open writes up to this point have made
 /// it into a logfile
 ////////////////////////////////////////////////////////////////////////////////
@@ -1844,18 +1844,18 @@ int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start the synchroniser thread
+/// @brief start the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-int LogfileManager::startSynchroniserThread () {
-  _synchroniserThread = new SynchroniserThread(this, _syncInterval);
+int LogfileManager::startSynchronizerThread () {
+  _synchronizerThread = new SynchronizerThread(this, _syncInterval);
 
-  if (_synchroniserThread == nullptr) {
+  if (_synchronizerThread == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
 
-  if (! _synchroniserThread->start()) {
-    delete _synchroniserThread;
+  if (! _synchronizerThread->start()) {
+    delete _synchronizerThread;
     return TRI_ERROR_INTERNAL;
   }
 
@@ -1863,18 +1863,18 @@ int LogfileManager::startSynchroniserThread () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the synchroniser thread
+/// @brief stop the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::stopSynchroniserThread () {
-  if (_synchroniserThread != nullptr) {
-    LOG_TRACE("stopping WAL synchroniser thread");
+void LogfileManager::stopSynchronizerThread () {
+  if (_synchronizerThread != nullptr) {
+    LOG_TRACE("stopping WAL synchronizer thread");
 
-    _synchroniserThread->stop();
-    _synchroniserThread->shutdown();
+    _synchronizerThread->stop();
+    _synchronizerThread->shutdown();
 
-    delete _synchroniserThread;
-    _synchroniserThread = nullptr;
+    delete _synchronizerThread;
+    _synchronizerThread = nullptr;
   }
 }
 

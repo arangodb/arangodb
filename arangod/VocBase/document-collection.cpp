@@ -2583,7 +2583,7 @@ size_t TRI_DocumentIteratorDocumentCollection (TransactionBase const*,
   size_t const nrUsed = idx->size();
 
   if (nrUsed > 0) {
-    uint64_t position = 0;
+    triagens::basics::BucketPosition position;
     uint64_t total = 0;
 
     while (true) {
@@ -3194,7 +3194,7 @@ static int FillIndexBatch (TRI_document_collection_t* document,
   documents.reserve(blockSize);
 
   if (nrUsed > 0) {
-    uint64_t position = 0;
+    triagens::basics::BucketPosition position;
     uint64_t total = 0;
     while (true) {
       TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(position, total);
@@ -3261,7 +3261,7 @@ static int FillIndexSequential (TRI_document_collection_t* document,
 #endif
 
   if (nrUsed > 0) {
-    uint64_t position = 0;
+    triagens::basics::BucketPosition position;
     uint64_t total = 0;
 
     while (true) {

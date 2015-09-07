@@ -8,7 +8,7 @@ newVersionNumber = $(shell cat ../../VERSION)
 # per book targets
 check-summary:
 	@find ppbooks/$(NAME) -name \*.md |sed -e "s;ppbooks/$(NAME)/;;" |grep -vf SummaryBlacklist.txt |sort > /tmp/is_md.txt
-	@cat $(NAME)/SUMMARY.md |sed -e "s;.*(;;" -e "s;).*;;" |sort |grep -v '# Summary' > /tmp/is_summary.txt
+	@cat $(NAME)/SUMMARY.md |grep '(' |sed -e "s;.*(;;" -e "s;).*;;" |sort |grep -v '# Summary' > /tmp/is_summary.txt
 	@if test "`comm -3 /tmp/is_md.txt /tmp/is_summary.txt|wc -l`" -ne 0; then \
 		echo "not all files are mapped to the summary!"; \
 		echo " files found       |    files in summary"; \
@@ -28,6 +28,11 @@ book-check-markdown-leftovers:
 	@if test "`find books/$(NAME) -name '*.html' -exec grep -- '##' {} \; -print | wc -l`" -gt 0; then \
 		echo "found these unconverted markdown titles: "; \
 		find books/$(NAME) -name '*.html' -exec grep '##' {} \; -print; \
+		exit 1; \
+	fi
+	@if test "`find books/$(NAME) -name '*.html' -exec grep '\.md\"' {} \; -print | wc -l`" -gt 0; then \
+		echo "found dangling markdown links: "; \
+		find books/$(NAME) -name '*.html' -exec grep '\.md"' {} \; -print; \
 		exit 1; \
 	fi
 
@@ -91,7 +96,7 @@ clean-book-intermediate:
 #  - all docublocks are used somewhere in the documentation
 #  
 check-docublocks:
-	grep -R '@startDocuBlock' . |\
+	grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v '@startDocuBlockInline' |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
@@ -101,7 +106,7 @@ check-docublocks:
 		grep -v '.*~:.*' |\
 		grep -v '.*#.*:.*' \
 		   > /tmp/rawindoc.txt
-	grep -R '@startDocuBlockInline' . |\
+	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\
@@ -111,9 +116,9 @@ check-docublocks:
 		grep -v '.*#.*:.*' \
 		   >> /tmp/rawindoc.txt
 	cat /tmp/rawindoc.txt | sed  -e "s;.*ck ;;" -e "s;.*ne ;;" |sort -u > /tmp/indoc.txt
-	grep -R '^/// @startDocuBlock' ../../lib ../../arangod ../../arangosh ../../js |grep -v aardvark > /tmp/rawinprog.txt
+	grep -R '^/// @startDocuBlock' ../../lib ../../arangod ../../arangosh ../../js --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" |grep -v aardvark > /tmp/rawinprog.txt
 # searching the Inline docublocks needs some more blacklisting:
-	grep -R '@startDocuBlockInline' . |\
+	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\
@@ -141,7 +146,7 @@ check-docublocks:
 			done; \
 		fi; \
 		if test "`comm -1 -3 /tmp/indoc.txt /tmp/inprog.txt |wc -l`" -gt 0; then \
-			echo "Programm code:"; \
+			echo "Program code:"; \
 			for grepit in `comm -1 -3 /tmp/indoc.txt /tmp/inprog.txt`; do \
 				grep "$$grepit" /tmp/rawinprog.txt | sed "s;/// @startDocuBlock;\t\t;"; \
 			done; \

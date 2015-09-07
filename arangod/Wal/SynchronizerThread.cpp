@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Write-ahead log synchroniser thread
+/// @brief Write-ahead log synchronizer thread
 ///
 /// @file
 ///
@@ -27,7 +27,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SynchroniserThread.h"
+#include "SynchronizerThread.h"
 
 #include "Basics/logging.h"
 #include "Basics/ConditionLocker.h"
@@ -40,7 +40,7 @@
 using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                          class SynchroniserThread
+// --SECTION--                                          class SynchronizerThread
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -48,12 +48,12 @@ using namespace triagens::wal;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the synchroniser thread
+/// @brief create the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-SynchroniserThread::SynchroniserThread (LogfileManager* logfileManager,
+SynchronizerThread::SynchronizerThread (LogfileManager* logfileManager,
                                         uint64_t syncInterval)
-  : Thread("WalSynchroniser"),
+  : Thread("WalSynchronizer"),
     _logfileManager(logfileManager),
     _condition(),
     _waiting(0),
@@ -65,10 +65,10 @@ SynchroniserThread::SynchroniserThread (LogfileManager* logfileManager,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the synchroniser thread
+/// @brief destroy the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-SynchroniserThread::~SynchroniserThread () {
+SynchronizerThread::~SynchronizerThread () {
 }
 
 // -----------------------------------------------------------------------------
@@ -76,10 +76,10 @@ SynchroniserThread::~SynchroniserThread () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the synchroniser thread
+/// @brief stops the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void SynchroniserThread::stop () {
+void SynchronizerThread::stop () {
   if (_stop > 0) {
     return;
   }
@@ -96,7 +96,7 @@ void SynchroniserThread::stop () {
 /// @brief signal that we need a sync
 ////////////////////////////////////////////////////////////////////////////////
 
-void SynchroniserThread::signalSync () {
+void SynchronizerThread::signalSync () {
   CONDITION_LOCKER(guard, _condition);
   ++_waiting;
   _condition.signal();
@@ -110,7 +110,7 @@ void SynchroniserThread::signalSync () {
 /// @brief main loop
 ////////////////////////////////////////////////////////////////////////////////
 
-void SynchroniserThread::run () {
+void SynchronizerThread::run () {
   uint64_t iterations = 0;
   uint32_t waiting;
     
@@ -141,10 +141,10 @@ void SynchroniserThread::run () {
       }
       catch (triagens::basics::Exception const& ex) {
         int res = ex.code();
-        LOG_ERROR("got unexpected error in synchroniserThread: %s", TRI_errno_string(res));
+        LOG_ERROR("got unexpected error in synchronizerThread: %s", TRI_errno_string(res));
       }
       catch (...) {
-        LOG_ERROR("got unspecific error in synchroniserThread");
+        LOG_ERROR("got unspecific error in synchronizerThread");
       }
     }
 
@@ -180,10 +180,10 @@ void SynchroniserThread::run () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief synchronise an unsynchronized region
+/// @brief synchronize an unsynchronized region
 ////////////////////////////////////////////////////////////////////////////////
 
-int SynchroniserThread::doSync (bool& checkMore) {
+int SynchronizerThread::doSync (bool& checkMore) {
   checkMore = false;
 
   // get region to sync
@@ -230,9 +230,9 @@ int SynchroniserThread::doSync (bool& checkMore) {
     //   auto slot3 = logfileManager->allocate(1);
     //
     //   // return slot 3
-    //   logfileManager->finalise(slot3, false);
+    //   logfileManager->finalize(slot3, false);
     //   // return slot 1
-    //   logfileManager->finalise(slot1, false);
+    //   logfileManager->finalize(slot1, false);
     //
     //   // some thread now requests flushing logs. this will produce a
     //   // sync region from slot 1..slot 1.
@@ -241,7 +241,7 @@ int SynchroniserThread::doSync (bool& checkMore) {
     //   // if we now return slot2, it would produce a sync region from
     //   // slot2..slot3. this is fine but won't work if the logfile is
     //   // already sealed.
-    //   logfileManager->finalise(slot2, false);
+    //   logfileManager->finalize(slot2, false);
 
     if (region.canSeal) {
       // only seal the logfile if it is safe to do so
@@ -259,7 +259,7 @@ int SynchroniserThread::doSync (bool& checkMore) {
 /// @brief get a logfile descriptor (it caches the descriptor for performance)
 ////////////////////////////////////////////////////////////////////////////////
 
-int SynchroniserThread::getLogfileDescriptor (Logfile::IdType id) {
+int SynchronizerThread::getLogfileDescriptor (Logfile::IdType id) {
   if (id != _logfileCache.id ||
       _logfileCache.id == 0) {
 

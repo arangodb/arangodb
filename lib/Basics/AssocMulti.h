@@ -25,7 +25,7 @@
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -387,14 +387,14 @@ namespace triagens {
 /// @brief adds multiple elements to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-        int batchInsert (std::vector<Element const*> const* data,
+        int batchInsert (std::vector<Element*> const* data,
                          size_t numThreads) {
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
           check(true, true);
 #endif
           std::atomic<int> res(TRI_ERROR_NO_ERROR);
 
-          std::vector<Element const*> const& elements = *(data);
+          std::vector<Element*> const& elements = *(data);
 
           if (elements.size() < numThreads) {
             numThreads = elements.size();
@@ -428,7 +428,7 @@ namespace triagens {
                     it = partitions.emplace(bucketId, DocumentsPerBucket()).first;
                   }
 
-                  (*it).second.emplace_back(std::make_pair(const_cast<Element*>(elements[i]), hashByKey));
+                  (*it).second.emplace_back(std::make_pair(elements[i], hashByKey));
                 }
 
                 // transfer ownership to the central map

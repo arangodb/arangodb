@@ -2,7 +2,7 @@
 /*global assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, sort optimisations
+/// @brief tests for query language, sort optimizations
 ///
 /// @file
 ///
@@ -39,9 +39,9 @@ var getQueryResults = helper.getQueryResults;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryOptimiserSortTestSuite () {
+function ahuacatlQueryOptimizerSortTestSuite () {
   var collection = null;
-  var cn = "UnitTestsAhuacatlOptimiserSort";
+  var cn = "UnitTestsAhuacatlOptimizerSort";
   
   var explain = function (query, params) {
     return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-for-sort", "+use-index-range", "+remove-redundant-sorts" ] } })).map(function(node) { return node.type; });
@@ -624,7 +624,7 @@ function ahuacatlQueryOptimiserSortTestSuite () {
 function sortTestsuite () {
   var testStrings = "Die Luftangriffe auf Singapur zwischen November 1944 und März 1945 waren eine militärische Kampagne der Luftstreitkräfte der Alliierten gegen Ende des Zweiten Weltkrieges. Insgesamt elf Angriffe wurden durch Langstreckenbomber der United States Army Air Force (USAAF) geflogen. Die meisten dieser Angriffe zielten auf den dortigen, von den Streitkräften des Gegners Japan besetzten Marinestützpunkt und die Dockanlagen auf der Insel. Vereinzelt warfen die Bomber auch Seeminen in die Singapur umgebenden Gewässer ab. Nach der Verlegung der amerikanischen Bomber, welche für andere Operationen abgezogen wurden, setzte die britische Royal Air Force die Minenlegeoperationen noch bis Ende Mai 1945 fort.".split(" ");
   var testStringsSorted;
-  var cn = "UnitTestsAqlOptimiserSortAlphabetic";
+  var cn = "UnitTestsAqlOptimizerSortAlphabetic";
   var collection = null;
 
   var explain = function (query, params) {
@@ -732,7 +732,7 @@ function sortTestsuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ahuacatlQueryOptimiserSortTestSuite);
+jsunity.run(ahuacatlQueryOptimizerSortTestSuite);
 jsunity.run(sortTestsuite);
 return jsunity.done();
 

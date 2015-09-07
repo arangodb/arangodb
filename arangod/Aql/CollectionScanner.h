@@ -65,7 +65,7 @@ namespace triagens {
       triagens::arango::AqlTransaction* trx;
       TRI_transaction_collection_t* trxCollection;
       uint64_t totalCount;
-      uint64_t position;
+      triagens::basics::BucketPosition position;
     };
 
 // -----------------------------------------------------------------------------
@@ -86,7 +86,7 @@ namespace triagens {
 
       void reset () override;
 
-      uint64_t initialPosition;
+      triagens::basics::BucketPosition initialPosition;
       uint64_t step;
     };
 
