@@ -155,6 +155,33 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             class BufferAllocator
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a buffer allocator used for V8
+////////////////////////////////////////////////////////////////////////////////
+
+    class BufferAllocator : public v8::ArrayBuffer::Allocator {
+      public:
+        virtual void* Allocate (size_t length) {
+          void* data = AllocateUninitialized(length);
+          if (data != nullptr) {
+            memset(data, 0, length);
+          }
+          return data;
+        }
+        virtual void* AllocateUninitialized (size_t length) { 
+          return malloc(length); 
+        }
+        virtual void Free (void* data, size_t) { 
+          if (data != nullptr) {
+            free(data); 
+          }
+        }
+      };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                               class ApplicationV8
 // -----------------------------------------------------------------------------
 
@@ -482,6 +509,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::aql::QueryRegistry* _queryRegistry;
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a buffer allocator for V8
+////////////////////////////////////////////////////////////////////////////////
+  
+        BufferAllocator _bufferAllocator;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the directory containing the startup scripts
