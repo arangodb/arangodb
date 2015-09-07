@@ -67,13 +67,14 @@ between). Thus, the replication will lead to an *eventually consistent* state of
 !SUBSECTION Replication configuration
 
 The replication is turned off by default. In order to create a master-slave setup,
-the so-called *replication applier* needs to be enabled on both on a slave databases.
+the so-called *replication applier* needs to be enabled on the slave databases.
 Since ArangoDB 2.2, the master database does not need any special configuration, as
 it will automatically log all data modification operations into its write-ahead log.
-The write-ahead log is then used in replication. Previous versions of ArangoDB
-required the so-called *replication logger* to be activated on the master, too. The
-replication logger does not have any purpose in ArangoDB 2.2 and higher, and the
-object is kept for compatibility with previous versions only.
+The write-ahead log is then used in replication. Versions prior to ArangoDB 2.2
+required the so-called *replication logger* to be activated on the master, too. This
+requirement is gone since ArangoDB 2.2 and the replication logger does not have any 
+purpose in ArangoDB 2.2 and higher. The replication logger object is kept for compatibility 
+with previous versions only.
 
 Replication is configured on a per-database level. If multiple database are to be 
 replicated, the replication must be set up individually per database.
@@ -81,5 +82,5 @@ replicated, the replication must be set up individually per database.
 The replication applier on the slave can be used to perform a one-time synchronization
 with the master (and then stop), or to perform an ongoing replication of changes. To
 resume replication on slave restart, the *autoStart* attribute of the replication 
-applier must be set to true. 
+applier must be set to *true*. 
 
