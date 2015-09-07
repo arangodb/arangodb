@@ -203,7 +203,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
     indexBuckets = collection->_info._indexBuckets;
   }
     
-  std::unique_ptr<HashElementFunc> func(new HashElementFunc(numPaths()));
+  std::unique_ptr<HashElementFunc> func(new HashElementFunc(_paths.size()));
 
   if (unique) {
     std::unique_ptr<IsEqualElementElementByKey> compare(new IsEqualElementElementByKey(_paths.size()));
@@ -221,7 +221,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
   else {
     _multiArray = nullptr;
       
-    std::unique_ptr<IsEqualElementElementByKey> compare(new IsEqualElementElementByKey(numPaths()));
+    std::unique_ptr<IsEqualElementElementByKey> compare(new IsEqualElementElementByKey(_paths.size()));
 
     std::unique_ptr<TRI_HashArrayMulti_t> array(new TRI_HashArrayMulti_t(HashKey, 
                                                                          *(func.get()),
@@ -491,16 +491,17 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
     TRI_IF_FAILURE("InsertHashIndex") {
       return TRI_ERROR_DEBUG;
     }
-    return _uniqueArray->_hashArray->insert(element, isRollback);
+    return _uniqueArray->_hashArray->insert(element);
   };
 
-  size_t count = elements.size();
-  for (size_t i = 0; i < count; ++i) {
+  size_t const n = elements.size();
+
+  for (size_t i = 0; i < n; ++i) {
     auto hashElement = elements[i];
     res = work(hashElement, isRollback);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      for (size_t j = i; j < count; ++j) {
+      for (size_t j = i; j < n; ++j) {
         // Free all elements that are not yet in the index
         FreeElement(elements[j]);
       }
@@ -527,6 +528,7 @@ int HashIndex::batchInsertUnique (std::vector<TRI_doc_mptr_t const*> const* docu
       return res;
     }
   }
+
   int res = _uniqueArray->_hashArray->batchInsert(&elements, numThreads);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -545,6 +547,12 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
 
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(elements, doc);
+    
+  if (res != TRI_ERROR_NO_ERROR) {
+    for (auto& hashElement : elements) {
+      FreeElement(hashElement);
+    }
+  }
 
   auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
     TRI_IF_FAILURE("InsertHashIndex") {
@@ -564,12 +572,14 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
     return TRI_ERROR_NO_ERROR;
   };
   
-  size_t const count = elements.size();
-  for (size_t i = 0; i < count; ++i) {
+  size_t const n = elements.size();
+
+  for (size_t i = 0; i < n; ++i) {
     auto hashElement = elements[i];
     res = work(hashElement, isRollback);
+
     if (res != TRI_ERROR_NO_ERROR) {
-      for (size_t j = i; j < count; ++j) {
+      for (size_t j = i; j < n; ++j) {
         // Free all elements that are not yet in the index
         FreeElement(elements[j]);
       }
@@ -643,28 +653,35 @@ int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
 }
 
 int HashIndex::removeMultiElement (TRI_index_element_t* element, bool isRollback) {
-    TRI_IF_FAILURE("RemoveHashIndex") {
-      return TRI_ERROR_DEBUG;
-    }
+  TRI_IF_FAILURE("RemoveHashIndex") {
+    return TRI_ERROR_DEBUG;
+  }
 
-    TRI_index_element_t* old = _multiArray->_hashArray->remove(element);
-       
-    if (old == nullptr) {
-      // not found
-      if (isRollback) {   // ignore in this case, because it can happen
-        return TRI_ERROR_NO_ERROR;
-      }
-      else {
-        return TRI_ERROR_INTERNAL;
-      }
+  TRI_index_element_t* old = _multiArray->_hashArray->remove(element);
+      
+  if (old == nullptr) {
+    // not found
+    if (isRollback) {   // ignore in this case, because it can happen
+      return TRI_ERROR_NO_ERROR;
     }
-    FreeElement(old);
-    return TRI_ERROR_NO_ERROR;
+    else {
+      return TRI_ERROR_INTERNAL;
+    }
+  }
+  FreeElement(old);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(elements, doc);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    for (auto& hashElement : elements) {
+      FreeElement(hashElement);
+    }
+  }
 
   for (auto& hashElement : elements) {
     res = removeMultiElement(hashElement, isRollback);

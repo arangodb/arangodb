@@ -280,6 +280,16 @@ v2.7.0 (XXXX-XX-XX)
 
 * updated chai to 3.0.
 
+* Use more madvise calls to speed up things when memory is tight, in particular
+  at load time but also for random accesses later.
+
+* Use a configurable number of buckets in the hash indexes and in the primary
+  index. This should alleviate problems with hash resizing and corresponding
+  service pauses.
+
+* ArangoDB now builds up hash indexes in parallel using multiple threads 
+  (use new option --database.index-threads).
+
 
 v2.6.8 (XXXX-XX-XX)
 -------------------

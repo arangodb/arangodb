@@ -164,14 +164,13 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key) const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
 /// returns the index position into which a key would belong in the second
-/// parameter. sets position to UINT64_MAX if the position cannot be determined
+/// parameter. also returns the hash value for the object
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key,
-                                         uint64_t& position) const {
-  // TODO we ignore the position right now. It should be the position it would fit into
-  position = 0;
-  return lookupKey(key);
+                                         triagens::basics::BucketPosition& position,
+                                         uint64_t& hash) const {
+  return _primaryIndex->findByKey(key, position, hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,7 +218,7 @@ TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse (triagens::basics::BucketP
 int PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
                              void const** found) {
   *found = nullptr;
-  int res = _primaryIndex->insert(header, false);
+  int res = _primaryIndex->insert(header);
 
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
     *found = _primaryIndex->find(header);
@@ -230,32 +229,13 @@ int PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a key/element to the index
-/// this is a special, optimized (read: reduced) variant of the above insert
-/// function 
-////////////////////////////////////////////////////////////////////////////////
-
-void PrimaryIndex::insertKey (TRI_doc_mptr_t* header) {
-  _primaryIndex->insert(header, false);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a key/element to the index
 /// this is a special, optimized version that receives the target slot index
 /// from a previous lookupKey call
 ////////////////////////////////////////////////////////////////////////////////
 
-void PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
-                              uint64_t slot) {
-  _primaryIndex->insert(header, false);
-  // TODO slot is hint where to insert the element. It is not yet used
-  //
-  // if (slot != UINT64_MAX) {
-  //   i = k = slot;
-  // }
-  // else {
-  //   i = k = header->_hash % n;
-  // }
-  //
+int PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
+                             triagens::basics::BucketPosition const& position) {
+  return _primaryIndex->insertAtPosition(header, position);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

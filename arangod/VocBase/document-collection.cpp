@@ -765,6 +765,7 @@ static int CreateHeader (TRI_document_collection_t* document,
                          TRI_doc_document_key_marker_t const* marker,
                          TRI_voc_fid_t fid,
                          TRI_voc_key_t key,
+                         uint64_t hash,
                          TRI_doc_mptr_t** result) {
   size_t markerSize = (size_t) marker->base._size;
   TRI_ASSERT(markerSize > 0);
@@ -776,12 +777,10 @@ static int CreateHeader (TRI_document_collection_t* document,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  auto primaryIndex = document->primaryIndex();
-
   header->_rid     = marker->_rid;
   header->_fid     = fid;
   header->setDataPtr(marker);  // ONLY IN OPENITERATOR
-  header->_hash    = primaryIndex->calculateHash(key); // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+  header->_hash    = hash; 
   *result = header;
 
   return TRI_ERROR_NO_ERROR;
@@ -1336,15 +1335,16 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   auto primaryIndex = document->primaryIndex();
 
   // no primary index lock required here because we are the only ones reading from the index ATM
-  uint64_t slot;
-  auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key, slot));
+  triagens::basics::BucketPosition slot;
+  uint64_t hash;
+  auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key, slot, hash));
 
   // it is a new entry
   if (found == nullptr) {
     TRI_doc_mptr_t* header;
 
     // get a header
-    int res = CreateHeader(document, (TRI_doc_document_key_marker_t*) marker, operation->_fid, key, &header);
+    int res = CreateHeader(document, (TRI_doc_document_key_marker_t*) marker, operation->_fid, key, hash, &header);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("out of memory");
@@ -1356,7 +1356,11 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     // insert into primary index
     if (state->_initialCount != -1) {
       // we can now use an optimized insert method
-      primaryIndex->insertKey(header, slot);
+      res = primaryIndex->insertKey(header, slot);
+
+      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+        document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
+      }
     }
     else {
       // use regular insert method
@@ -1364,11 +1368,15 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
       if (res != TRI_ERROR_NO_ERROR) {
         // insertion failed
-        LOG_ERROR("inserting document into indexes failed");
         document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
-
-        return res;
       }
+    }
+        
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("inserting document into indexes failed with error: %s",
+                TRI_errno_string(res));
+
+      return res;
     }
 
     ++document->_numberDocuments;
@@ -1713,9 +1721,7 @@ static int OpenIteratorHandleDocumentMarker (TRI_df_marker_t const* marker,
     }
   }
 
-  OpenIteratorAddOperation(state, TRI_VOC_DOCUMENT_OPERATION_INSERT, marker, datafile->_fid);
-
-  return TRI_ERROR_NO_ERROR;
+  return OpenIteratorAddOperation(state, TRI_VOC_DOCUMENT_OPERATION_INSERT, marker, datafile->_fid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

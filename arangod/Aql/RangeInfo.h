@@ -32,6 +32,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
+#include "IndexOperators/index-operator.h"
 
 class VocShaper;
 

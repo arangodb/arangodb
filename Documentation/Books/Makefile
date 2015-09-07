@@ -146,7 +146,7 @@ check-docublocks:
 			done; \
 		fi; \
 		if test "`comm -1 -3 /tmp/indoc.txt /tmp/inprog.txt |wc -l`" -gt 0; then \
-			echo "Programm code:"; \
+			echo "Program code:"; \
 			for grepit in `comm -1 -3 /tmp/indoc.txt /tmp/inprog.txt`; do \
 				grep "$$grepit" /tmp/rawinprog.txt | sed "s;/// @startDocuBlock;\t\t;"; \
 			done; \

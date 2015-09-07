@@ -34,6 +34,7 @@
 #include "Basics/string-buffer.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
+#include "Indexes/HashIndex.h"
 #include "Indexes/SkiplistIndex.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-result.h"

@@ -157,8 +157,8 @@ namespace triagens {
 
           public:
 
-            HashElementFunc (size_t s) 
-              : _numFields(s) {
+            HashElementFunc (size_t n) 
+              : _numFields(n) {
             }
 
             uint64_t operator() (TRI_index_element_t const* element,
@@ -209,7 +209,7 @@ namespace triagens {
               }
 
               for (size_t j = 0;  j < _numFields;  ++j) {
-                TRI_shaped_sub_t* leftSub = &left->subObjects()[j];
+                TRI_shaped_sub_t* leftSub  = &left->subObjects()[j];
                 TRI_shaped_sub_t* rightSub = &right->subObjects()[j];
 
                 if (leftSub->_sid != rightSub->_sid) {

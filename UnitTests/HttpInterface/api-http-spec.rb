@@ -174,7 +174,7 @@ describe ArangoDB do
         doc.headers['allow'].should eq(@headers)
 
         doc.code.should eq(200)
-        doc.response.body.should be_nil
+        doc.response.body.should be_nil_or_empty
       end
 
       it "checks handling of an OPTIONS request, with body" do
@@ -183,7 +183,7 @@ describe ArangoDB do
         doc.headers['allow'].should eq(@headers)
 
         doc.code.should eq(200)
-        doc.response.body.should be_nil
+        doc.response.body.should be_nil_or_empty
       end
     end
 
@@ -292,7 +292,7 @@ describe ArangoDB do
         doc.headers['access-control-max-age'].should eq("1800")
         doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
-        doc.response.body.should be_nil
+        doc.response.body.should be_nil_or_empty
       end
 
       it "checks handling of a CORS OPTIONS preflight request, empty headers" do
@@ -307,7 +307,7 @@ describe ArangoDB do
         doc.headers['access-control-max-age'].should eq("1800")
         doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
-        doc.response.body.should be_nil
+        doc.response.body.should be_nil_or_empty
       end
 
       it "checks handling of a CORS OPTIONS preflight request, populated headers" do
@@ -322,7 +322,7 @@ describe ArangoDB do
         doc.headers['access-control-max-age'].should eq("1800")
         doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
-        doc.response.body.should be_nil
+        doc.response.body.should be_nil_or_empty
       end
 
       it "checks handling of a CORS GET request, with credentials" do
@@ -360,7 +360,7 @@ describe ArangoDB do
         doc.headers['access-control-max-age'].should eq("1800")
         doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
-        doc.response.body.should be_nil
+        doc.response.body.should be_nil_or_empty
       end
 
     end

@@ -2555,7 +2555,7 @@ void AggregateNode::getVariablesUsedHere (std::unordered_set<Variable const*>& v
       auto myselfAsNonConst = const_cast<AggregateNode*>(this);
       myselfAsNonConst->walk(&finder);
       if (finder.depth == 1) {
-        // we are toplevel, let's run again with mindepth = 0
+        // we are top level, let's run again with mindepth = 0
         finder.userVars.clear();
         finder.mindepth = 0;
         finder.depth = -1;

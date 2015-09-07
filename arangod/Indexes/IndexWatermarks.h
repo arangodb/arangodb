@@ -30,6 +30,7 @@
 #ifndef ARANGODB_INDEXES_INDEXWATERMARKS_H
 #define ARANGODB_INDEXES_INDEXWATERMARKS_H 1
 
+#if 0
 #include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
@@ -60,6 +61,7 @@ namespace triagens {
   }
 }
 
+#endif
 #endif
 
 // -----------------------------------------------------------------------------
