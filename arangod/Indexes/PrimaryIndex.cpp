@@ -164,12 +164,13 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key) const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
 /// returns the index position into which a key would belong in the second
-/// parameter. sets position to UINT64_MAX if the position cannot be determined
+/// parameter. also returns the hash value for the object
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key,
-                                         triagens::basics::BucketPosition& position) const {
-  return _primaryIndex->findByKey(key, &position);
+                                         triagens::basics::BucketPosition& position,
+                                         uint64_t& hash) const {
+  return _primaryIndex->findByKey(key, position, hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

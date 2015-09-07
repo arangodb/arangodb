@@ -452,8 +452,7 @@ namespace triagens {
 /// @brief finds an element given a key, returns NULL if not found
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findByKey (Key const* key,
-                              BucketPosition* position = nullptr) const {
+          Element* findByKey (Key const* key) const {
             uint64_t hash = _hashKey(key);
             uint64_t i = hash;
             uint64_t bucketId = i & _bucketsMask;
@@ -470,12 +469,43 @@ namespace triagens {
                   ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
             }
             
-            if (position != nullptr) {
-              // if requested, pass the position of the found element back
-              // to the caller
-              position->bucketId = bucketId;
-              position->position = i;
+            // ...........................................................................
+            // return whatever we found, this is nullptr if the thing was not found
+            // and otherwise a valid pointer
+            // ...........................................................................
+
+            return b._table[i];
+          }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds an element given a key, returns NULL if not found
+/// also returns the internal hash value and the bucket position the element
+/// was found at (or would be placed into)
+////////////////////////////////////////////////////////////////////////////////
+
+          Element* findByKey (Key const* key,
+                              BucketPosition& position,
+                              uint64_t& hash) const {
+            hash = _hashKey(key);
+            uint64_t i = hash;
+            uint64_t bucketId = i & _bucketsMask;
+            Bucket const& b = _buckets[bucketId];
+
+            uint64_t const n = b._nrAlloc;
+            i = i % n;
+            uint64_t k = i;
+
+            for (; i < n && b._table[i] != nullptr && 
+                ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+            if (i == n) {
+              for (i = 0; i < k && b._table[i] != nullptr && 
+                  ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
             }
+            
+            // if requested, pass the position of the found element back
+            // to the caller
+            position.bucketId = bucketId;
+            position.position = i;
 
             // ...........................................................................
             // return whatever we found, this is nullptr if the thing was not found

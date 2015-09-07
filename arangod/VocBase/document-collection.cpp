@@ -765,6 +765,7 @@ static int CreateHeader (TRI_document_collection_t* document,
                          TRI_doc_document_key_marker_t const* marker,
                          TRI_voc_fid_t fid,
                          TRI_voc_key_t key,
+                         uint64_t hash,
                          TRI_doc_mptr_t** result) {
   size_t markerSize = (size_t) marker->base._size;
   TRI_ASSERT(markerSize > 0);
@@ -776,12 +777,10 @@ static int CreateHeader (TRI_document_collection_t* document,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  auto primaryIndex = document->primaryIndex();
-
   header->_rid     = marker->_rid;
   header->_fid     = fid;
   header->setDataPtr(marker);  // ONLY IN OPENITERATOR
-  header->_hash    = primaryIndex->calculateHash(key); // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+  header->_hash    = hash; 
   *result = header;
 
   return TRI_ERROR_NO_ERROR;
@@ -1337,14 +1336,15 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
   // no primary index lock required here because we are the only ones reading from the index ATM
   triagens::basics::BucketPosition slot;
-  auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key, slot));
+  uint64_t hash;
+  auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key, slot, hash));
 
   // it is a new entry
   if (found == nullptr) {
     TRI_doc_mptr_t* header;
 
     // get a header
-    int res = CreateHeader(document, (TRI_doc_document_key_marker_t*) marker, operation->_fid, key, &header);
+    int res = CreateHeader(document, (TRI_doc_document_key_marker_t*) marker, operation->_fid, key, hash, &header);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("out of memory");

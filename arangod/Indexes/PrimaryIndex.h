@@ -104,10 +104,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
 /// returns the index position into which a key would belong in the second
-/// parameter. sets position to UINT64_MAX if the position cannot be determined
+/// parameter. also returns the hash value for the object
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupKey (char const*, triagens::basics::BucketPosition&) const;
+        TRI_doc_mptr_t* lookupKey (char const*, triagens::basics::BucketPosition&, uint64_t&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in
