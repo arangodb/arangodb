@@ -27,6 +27,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 #include "IndexWatermarks.h"
 
 using namespace triagens::arango;
@@ -87,6 +88,7 @@ void IndexWatermarks::SetDefaults (IndexWatermarks const& other) {
 
   DefaultHighWatermark = highWatermark;
 }
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
