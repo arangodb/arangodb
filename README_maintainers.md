@@ -336,11 +336,96 @@ You then will be able to see stack traces.
 Documentation
 -------------
 -------------
-Dependencies:
- * swagger
- * gitbook (https://github.com/GitbookIO/gitbook)
- * markdown-pp (https://github.com/triAGENS/markdown-pp)
- * cURL if you want to cut'n'paste execute the examples
+Dependencies to build documentation:
+
+- [swagger 1.2](http://swagger.io/) for the API-Documentation inside aardvark
+
+- Setuptools
+  
+    https://pypi.python.org/pypi/setuptools
+
+    Download setuptools zip file, extract to any folder, use bundled python 2.6 to install:
+
+        python ez_install.py
+
+  This will place the required files in python's Lib/site-packages folder.
+
+- MarkdownPP
+
+    https://github.com/triAGENS/markdown-pp/
+
+    Checkout the code with Git, use bundled python 2.6 to install:
+
+        python setup.py install
+
+- Node.js / io.js
+  
+    https://iojs.org/
+
+    Make sure the option to *Add to PATH* is enabled.
+    After installation, the following commands should be available everywhere:
+
+    - `node`
+    - `iojs` (if you installed io.js)
+    - `npm`
+
+    If not, add the installation path to your environment variable PATH.
+
+- [Gitbook](https://github.com/GitbookIO/gitbook)
+
+    Can be installed with Node's package manager NPM:
+
+        npm install gitbook-cli -g
+
+- Calibre2 (optional, only required if you want to build the e-book version)
+
+  http://calibre-ebook.com/download
+
+  Run the installer and follow the instructions.
+
+Generate users documentation
+============================
+
+Simply run the `make` command in `arangodb/Documentation/Books`.
+
+You may encounter permission problem with gitbook and its NPM invokations;
+In that case you need to run the command as root / Administrator.
+
+On windows you may see "device busy" errors, retry. Make shure you don't have 
+intermediate files in the ppbooks / books -sub folder open (i.e. browser or editor)
+It can also temporarily occur during phases of high HDD / SSD load.
+
+The build-scripts contain several sanity checks, i.e. whether all examples are 
+used, and no dead references are there. (see building examples in that case below)
+
+If the markdown files aren't converted to html, or `index.html` shows a single
+chapter only (content of `README.md`), make sure 
+[Cygwin create native symlinks](https://docs.arangodb.com/cookbook/CompilingUnderWindows.html)
+It does not, if `SUMMARY.md` in `Books/ppbooks/` looks like this:
+
+    !<symlink>ÿþf o o   
+
+If sub-chapters do not show in the navigation, try another browser (Firefox).
+Chrome's security policies are pretty strict about localhost and file://
+protocol. You may access the docs through a local web server to lift the
+restrictions.
+
+
+Using Gitbook
+=============
+
+The `make` command in `arangodb/Documentation/Books/` generates a website
+version of the manual. If you want to generate PDF, ePUB etc., run below
+build commands in `arangodb/Documentation/Books/books/Users/`. Calibre's
+`ebook-convert` will be used for the conversion.
+
+Generate a PDF:
+
+    gitbook pdf ./ppbooks/Users ./target/path/filename.pdf
+
+Generate an ePub:
+
+    gitbook epub ./ppbooks/Users ./target/path/filename.epub
 
 Where...
 --------
