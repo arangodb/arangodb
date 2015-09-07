@@ -184,15 +184,16 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-static void arangoimpEntryFunction ();
-static void arangoimpExitFunction (int, void*);
+static void LocalEntryFunction ();
+static void LocalExitFunction (int, void*);
 
 #ifdef _WIN32
 
 // .............................................................................
 // Call this function to do various initializations for windows only
 // .............................................................................
-void arangoimpEntryFunction() {
+
+static void LocalEntryFunction () {
   int maxOpenFiles = 1024;
   int res = 0;
 
@@ -204,6 +205,7 @@ void arangoimpEntryFunction() {
   //res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+
   if (res != 0) {
     _exit(1);
   }
@@ -218,12 +220,12 @@ void arangoimpEntryFunction() {
     _exit(1);
   }
 
-  TRI_Application_Exit_SetExit(arangoimpExitFunction);
-
+  TRI_Application_Exit_SetExit(LocalExitFunction);
 }
 
-static void arangoimpExitFunction(int exitCode, void* data) {
+static void LocalExitFunction (int exitCode, void* data) {
   int res = 0;
+
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
   // any windows specific stuff.
@@ -239,10 +241,10 @@ static void arangoimpExitFunction(int exitCode, void* data) {
 }
 #else
 
-static void arangoimpEntryFunction() {
+static void LocalEntryFunction () {
 }
 
-static void arangoimpExitFunction(int exitCode, void* data) {
+static void LocalExitFunction (int exitCode, void* data) {
 }
 
 #endif
@@ -272,7 +274,7 @@ static string RewriteLocation (void* data, const std::string& location) {
 int main (int argc, char* argv[]) {
   int ret = EXIT_SUCCESS;
 
-  arangoimpEntryFunction();
+  LocalEntryFunction();
 
   TRIAGENS_C_INITIALIZE(argc, argv);
   TRIAGENS_REST_INITIALIZE(argc, argv);
@@ -476,7 +478,7 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
-  arangoimpExitFunction(ret, nullptr);
+  LocalExitFunction(ret, nullptr);
 
   return ret;
 }
