@@ -602,7 +602,7 @@ static void JS_TransactionsWal (const v8::FunctionCallbackInfo<v8::Value>& args)
       result->ForceSet(TRI_V8_ASCII_STRING("minLastCollected"), v8::Null(isolate));
     }
     else {
-      result->ForceSet(TRI_V8_ASCII_STRING("minLastCollected"), v8::Number::New(isolate, static_cast<double>(value)));
+      result->ForceSet(TRI_V8_ASCII_STRING("minLastCollected"), V8TickId(isolate, static_cast<TRI_voc_tick_t>(value)));
     }
   }
   // lastSealedId
@@ -612,7 +612,7 @@ static void JS_TransactionsWal (const v8::FunctionCallbackInfo<v8::Value>& args)
       result->ForceSet(TRI_V8_ASCII_STRING("minLastSealed"), v8::Null(isolate));
     }
     else {
-      result->ForceSet(TRI_V8_ASCII_STRING("minLastSealed"), v8::Number::New(isolate, static_cast<double>(value)));
+      result->ForceSet(TRI_V8_ASCII_STRING("minLastSealed"), V8TickId(isolate, static_cast<TRI_voc_tick_t>(value)));
     }
   }
 
