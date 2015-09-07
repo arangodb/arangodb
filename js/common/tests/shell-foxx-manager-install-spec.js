@@ -350,7 +350,7 @@ describe("Foxx Manager install", function() {
     });
   });
 
-  it("checking marvolous comments", function() {
+  it("checking marvelous comments", function() {
     var mount = "/unittest/comments";
     try {
       FoxxManager.uninstall(mount, {force: true});
