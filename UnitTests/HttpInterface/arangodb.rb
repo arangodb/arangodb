@@ -4,6 +4,7 @@ require 'rubygems'
 require 'httparty'
 require 'json'
 require 'rspec'
+require 'rspec/expectations'
 
 
 $address = ENV['ARANGO_SERVER'] || '127.0.0.1:8529'
@@ -40,6 +41,15 @@ RSpec.configure do |config|
   if $ssl == '1'
     config.filter_run_excluding :ssl => true
   end
+end
+
+################################################################################
+## cross rspec version compatibility tool: 
+################################################################################
+RSpec::Matchers.define :be_nil_or_empty do
+ match do |actual|
+   actual.nil? || actual.empty?
+ end
 end
 
 class ArangoDB

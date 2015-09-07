@@ -795,7 +795,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 /// **Note**: These calls are uninteresting to users.
 ///
 /// @RESTBODYPARAM{body,json,required}
-/// A JSON object with the batch configration.
+/// A JSON object with the batch configuration.
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -810,7 +810,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 ///
 /// - *ttl*: the time-to-live for the batch (in seconds)
 ///
-/// If the batch's ttl can be extended successully, the response is empty.
+/// If the batch's ttl can be extended successfully, the response is empty.
 ///
 /// **Note**: on a coordinator, this request must have the URL parameter
 /// *DBserver* which must be an ID of a DBserver.

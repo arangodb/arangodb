@@ -31,6 +31,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Indexes/SkiplistIndex.h"
 #include "Utils/AqlTransaction.h"
 #include "VocBase/shaped-json.h"
 

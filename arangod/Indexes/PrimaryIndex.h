@@ -104,10 +104,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
 /// returns the index position into which a key would belong in the second
-/// parameter. sets position to UINT64_MAX if the position cannot be determined
+/// parameter. also returns the hash value for the object
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupKey (char const*, uint64_t&) const;
+        TRI_doc_mptr_t* lookupKey (char const*, triagens::basics::BucketPosition&, uint64_t&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in
@@ -141,7 +141,6 @@ namespace triagens {
         TRI_doc_mptr_t* lookupSequentialReverse (triagens::basics::BucketPosition& position);
 
         int insertKey (TRI_doc_mptr_t*, void const**);
-        void insertKey (TRI_doc_mptr_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a key/element to the index
@@ -149,7 +148,7 @@ namespace triagens {
 /// from a previous lookupKey call
 ////////////////////////////////////////////////////////////////////////////////
 
-        void insertKey (struct TRI_doc_mptr_t*, uint64_t);
+        int insertKey (struct TRI_doc_mptr_t*, triagens::basics::BucketPosition const&);
 
         TRI_doc_mptr_t* removeKey (char const*);
 

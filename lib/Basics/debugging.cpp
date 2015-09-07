@@ -328,7 +328,6 @@ void TRI_GetBacktrace (std::string& btstr) {
 
 #else
   void* stack_frames[50];
-  char** strings;
 
   size_t size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
   char** strings = backtrace_symbols(stack_frames, size);
