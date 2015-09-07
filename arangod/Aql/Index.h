@@ -34,9 +34,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
-#include "Indexes/HashIndex.h"
 #include "Indexes/Index.h"
-#include "Indexes/SkiplistIndex.h"
+#include "Indexes/PathBasedIndex.h"
 
 namespace triagens {
   namespace aql {
@@ -67,15 +66,11 @@ namespace triagens {
         if (type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
           unique = true;
         }
-        else if (type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
-          auto hashIndex = static_cast<triagens::arango::HashIndex const*>(idx);
-          sparse = hashIndex->sparse();
-          unique = hashIndex->unique();
-        }
-        else if (type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-          auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex const*>(idx);
-          sparse = skiplistIndex->sparse();
-          unique = skiplistIndex->unique();
+        else if (type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX ||
+                 type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+          auto pathBasedIndex = static_cast<triagens::arango::PathBasedIndex const*>(idx);
+          sparse = pathBasedIndex->sparse();
+          unique = pathBasedIndex->unique();
         }
       }
       

@@ -323,11 +323,11 @@ namespace triagens {
             uint64_t i = hash % n;
             uint64_t k = i;
 
-            for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualElementElementByKey(element, b._table[i]); ++i);
+            for (; i < n && b._table[i] != nullptr &&
+                 ! _isEqualElementElementByKey(element, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualElementElementByKey(element, b._table[i]); ++i);
+                   ! _isEqualElementElementByKey(element, b._table[i]); ++i);
             }
 
             Element* arrayElement = b._table[i];
@@ -337,7 +337,6 @@ namespace triagens {
             }
 
             b._table[i] = element;
-            TRI_ASSERT(b._table[i] != nullptr);
             b._nrUsed++;
 
             return TRI_ERROR_NO_ERROR;
