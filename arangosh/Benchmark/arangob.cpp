@@ -81,7 +81,7 @@ static atomic<int> Started;
 Mutex StartMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief send asychronous requests
+/// @brief send asynchronous requests
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool Async = false;
@@ -192,7 +192,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
   ProgramOptionsDescription description("STANDARD options");
 
   description
-    ("async", &Async, "send asychronous requests")
+    ("async", &Async, "send asynchronous requests")
     ("concurrency", &ThreadConcurrency, "number of parallel connections")
     ("requests", &Operations, "total number of operations")
     ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching)")
@@ -268,7 +268,7 @@ static void arangobExitFunction (int exitCode, void* data) {
   // any windows specific stuff.
   // ...........................................................................
 
-  res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
     exit(1);

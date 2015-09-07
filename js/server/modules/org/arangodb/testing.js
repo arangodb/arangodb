@@ -270,7 +270,7 @@ function makeTestingArgsClient (options) {
  };
 }
 
-function makeAuthorisationHeaders (options) {
+function makeAuthorizationHeaders (options) {
   return {"headers":
             {"Authorization": "Basic " + base64Encode(options.username+":"+
                                                       options.password)}};
@@ -426,7 +426,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
   while (true) {
     wait(0.5, false);
-    var r = download(url+"/_api/version", "", makeAuthorisationHeaders(options));
+    var r = download(url+"/_api/version", "", makeAuthorizationHeaders(options));
     if (! r.error && r.code === 200) {
       break;
     }
@@ -620,7 +620,7 @@ function waitOnServerForGC(instanceInfo, options, waitTime) {
     var r;
     var t;
     t = 'require("internal").wait(' + waitTime + ', true);';
-    var o = makeAuthorisationHeaders(options);
+    var o = makeAuthorizationHeaders(options);
     o.method = "POST";
     o.timeout = waitTime * 10;
     o.returnBodyOnError = true;
@@ -685,7 +685,7 @@ function shutdownInstance (instanceInfo, options) {
   else {
     if (typeof(instanceInfo.exitStatus) === 'undefined') {
       download(instanceInfo.url+"/_admin/shutdown","",
-               makeAuthorisationHeaders(options));
+               makeAuthorizationHeaders(options));
 
       print("Waiting for server shut down");
       var count = 0;
@@ -866,7 +866,7 @@ function runThere (options, instanceInfo, file) {
           '};' +
           '}';
     }
-    var o = makeAuthorisationHeaders(options);
+    var o = makeAuthorizationHeaders(options);
     o.method = "POST";
     o.timeout = 3600;
     o.returnBodyOnError = true;

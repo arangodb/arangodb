@@ -74,7 +74,7 @@ struct TRI_index_element_t {
 
      // Do not use new for this struct, use ...
      TRI_index_element_t () {
-     };
+     }
 
      ~TRI_index_element_t () = delete;
 
@@ -108,9 +108,9 @@ struct TRI_index_element_t {
 /// @brief Allocate a new index Element
 ////////////////////////////////////////////////////////////////////////////////
 
-    static TRI_index_element_t* allocate (size_t numSubs, bool set) {
+    static TRI_index_element_t* allocate (size_t numSubs) {
       void* space = TRI_Allocate(
-        TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numSubs), set
+        TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numSubs), false
       );
       return new (space) TRI_index_element_t();
     }
@@ -119,9 +119,8 @@ struct TRI_index_element_t {
 /// @brief Memory usage of an index element
 ////////////////////////////////////////////////////////////////////////////////
 
-    static size_t memoryUsage (size_t numSubs) {
-      return sizeof(TRI_doc_mptr_t*) + 
-             (sizeof(TRI_shaped_sub_t) * numSubs);
+    static inline size_t memoryUsage (size_t numSubs) {
+      return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numSubs);
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -277,7 +276,7 @@ namespace triagens {
         virtual int insert (struct TRI_doc_mptr_t const*, bool) = 0;
         virtual int remove (struct TRI_doc_mptr_t const*, bool) = 0;
         virtual int postInsert (struct TRI_transaction_collection_s*, struct TRI_doc_mptr_t const*);
-        virtual int batchInsert (std::vector<struct TRI_doc_mptr_t const*> const*, size_t);
+        virtual int batchInsert (std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
         // a garbage collection function for the index
         virtual int cleanup ();

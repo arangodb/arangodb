@@ -304,7 +304,7 @@ struct TRI_vocbase_t {
   // state of the database
   // 0 = inactive
   // 1 = normal operation/running
-  // 2 = shutdown in progress/waiting for compactor/synchroniser thread to finish
+  // 2 = shutdown in progress/waiting for compactor/synchronizer thread to finish
   // 3 = shutdown in progress/waiting for cleanup thread to finish
   // 4 = version check failed
 

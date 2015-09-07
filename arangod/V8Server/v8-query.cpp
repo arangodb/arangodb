@@ -987,83 +987,6 @@ static void JS_AllQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects documents from a collection, using an offset into the
-/// primary index. this can be used for incremental access
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_OffsetQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // expecting two arguments
-  if (args.Length() != 4) {
-    TRI_V8_THROW_EXCEPTION_USAGE("OFFSET(<internalSkip>, <batchSize>, <skip>, <limit>)");
-  }
-
-  TRI_vocbase_col_t const* col = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), TRI_GetVocBaseColType());
-
-  if (col == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-  }
-
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
-
-  uint64_t internalSkip = TRI_ObjectToUInt64(args[0], false);
-  uint64_t batchSize    = TRI_ObjectToUInt64(args[1], false);
-
-  // extract skip and limit
-  int64_t skip;
-  uint64_t limit;
-  ExtractSkipAndLimit(args, 2, skip, limit);
-
-  uint64_t total = 0;
-  vector<TRI_doc_mptr_copy_t> docs;
-
-  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  res = trx.readOffset(docs, internalSkip, batchSize, skip, limit, total);
-  TRI_ASSERT(docs.empty() || trx.hasDitch());
-
-  res = trx.finish(res);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  size_t const n = docs.size();
-
-  // setup result
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  v8::Handle<v8::Array> documents = v8::Array::New(isolate, static_cast<int>(n));
-  // reserve full capacity in one go
-  result->Set(TRI_V8_ASCII_STRING("documents"), documents);
-
-  for (size_t i = 0; i < n; ++i) {
-    v8::Handle<v8::Value> document = WRAP_SHAPED_JSON(trx, col->_cid, docs[i].getDataPtr());
-
-    if (document.IsEmpty()) {
-      TRI_V8_THROW_EXCEPTION_MEMORY();
-    }
-    else {
-      documents->Set(static_cast<uint32_t>(i), document);
-    }
-  }
-
-  result->Set(TRI_V8_ASCII_STRING("total"), v8::Number::New(isolate, static_cast<double>(total)));
-  result->Set(TRI_V8_ASCII_STRING("count"), v8::Number::New(isolate, static_cast<double>(n)));
-  result->Set(TRI_V8_ASCII_STRING("skip"), v8::Number::New(isolate, static_cast<double>(internalSkip)));
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief selects a random document
 ///
 /// @FUN{@FA{collection}.any()}
@@ -2284,6 +2207,8 @@ static void JS_LookupByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
   bindVars("@collection", triagens::basics::Json(std::string(col->_name)));
   bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_ObjectToJson(isolate, args[0])));
 
+  triagens::aql::BindParameters::StripCollectionNames(TRI_LookupObjectJson(bindVars.json(), "keys"), col->_name);
+
   std::string const aql("FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
     
   TRI_GET_GLOBALS();
@@ -2452,9 +2377,6 @@ void TRI_InitV8Queries (v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("lookupByKeys"), JS_LookupByKeys, true); // an alias for .documents
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("documents"), JS_LookupByKeys, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("removeByKeys"), JS_RemoveByKeys, true);
-  
-  // internal methods. not intended to be used by end-users
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("OFFSET"), JS_OffsetQuery, true);
 }
 
 // -----------------------------------------------------------------------------

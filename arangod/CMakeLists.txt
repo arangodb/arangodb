@@ -148,6 +148,7 @@ add_executable(
     Indexes/GeoIndex2.cpp
     Indexes/HashIndex.cpp
     Indexes/Index.cpp
+    Indexes/IndexWatermarks.cpp
     Indexes/PathBasedIndex.cpp
     Indexes/PrimaryIndex.cpp
     Indexes/SkiplistIndex.cpp
@@ -254,7 +255,7 @@ add_executable(
     Wal/RemoverThread.cpp
     Wal/Slot.cpp
     Wal/Slots.cpp
-    Wal/SynchroniserThread.cpp
+    Wal/SynchronizerThread.cpp
 )
 
 target_link_libraries(

@@ -273,12 +273,12 @@ static void JS_StopOutputPager (const v8::FunctionCallbackInfo<v8::Value>& args)
 /// @FUN{importCsvFile(@FA{filename}, @FA{collection})}
 ///
 /// Imports data of a CSV file. The data is imported to @FA{collection}.
-////The seperator is @CODE{\,} and the quote is @CODE{"}.
+////The separator is @CODE{\,} and the quote is @CODE{"}.
 ///
 /// @FUN{importCsvFile(@FA{filename}, @FA{collection}, @FA{options})}
 ///
 /// Imports data of a CSV file. The data is imported to @FA{collection}.
-////The seperator is @CODE{\,} and the quote is @CODE{"}.
+////The separator is @CODE{\,} and the quote is @CODE{"}.
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ImportCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1931,7 +1931,7 @@ static void arangoshExitFunction (int exitCode, void* data) {
   // any windows specific stuff.
   // ...........................................................................
 
-  int res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
     exit(1);

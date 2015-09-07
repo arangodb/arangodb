@@ -415,7 +415,7 @@ void SkiplistIterator::findHelper (
       TRI_ASSERT(nullptr != temp);
       interval._leftEndPoint = temp;
 
-      bool const allAttributesCoveredByCondition = (values._numFields == _index->numFields());
+      bool const allAttributesCoveredByCondition = (values._numFields == _index->numPaths());
 
       if (_index->unique() && allAttributesCoveredByCondition) {
         // At most one hit:
@@ -657,10 +657,6 @@ size_t SkiplistIndex::memory () const {
          static_cast<size_t>(_skiplistIndex->getNrUsed()) * elementSize();
 }
 
-size_t SkiplistIndex::numFields () const {
-  return _fields.size();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
@@ -694,12 +690,9 @@ triagens::basics::Json SkiplistIndex::toJsonFigures (TRI_memory_zone_t* zone) co
 int SkiplistIndex::insert (TRI_doc_mptr_t const* doc, 
                             bool) {
 
-  auto allocate = [this] () -> TRI_index_element_t* {
-    return TRI_index_element_t::allocate(elementSize(), false);
-  };
   std::vector<TRI_index_element_t*> elements;
 
-  int res = fillElement(allocate, elements, doc);
+  int res = fillElement(elements, doc);
 
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& it : elements) {
@@ -741,12 +734,9 @@ int SkiplistIndex::insert (TRI_doc_mptr_t const* doc,
 int SkiplistIndex::remove (TRI_doc_mptr_t const* doc, 
                             bool) {
 
-  auto allocate = [this] () -> TRI_index_element_t* {
-    return TRI_index_element_t::allocate(elementSize(), false);
-  };
-
   std::vector<TRI_index_element_t*> elements;
-  int res = fillElement(allocate, elements, doc);
+
+  int res = fillElement(elements, doc);
 
   // attempt the removal for skiplist indexes
   // ownership for the index element is transferred to the index
@@ -805,10 +795,6 @@ SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-size_t SkiplistIndex::elementSize () const {
-  return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numFields());
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares a key with an element in a skip list, generic callback
 ////////////////////////////////////////////////////////////////////////////////
@@ -856,7 +842,7 @@ int SkiplistIndex::ElementElementComparator::operator() (TRI_index_element_t con
   }
 
   auto shaper = _idx->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  for (size_t j = 0;  j < _idx->numFields();  j++) {
+  for (size_t j = 0;  j < _idx->numPaths();  j++) {
     int compareResult = CompareElementElement(leftElement,
                                               j,
                                               rightElement,

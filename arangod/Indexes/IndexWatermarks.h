@@ -36,20 +36,25 @@
 // --SECTION--                                            struct IndexWatermarks
 // -----------------------------------------------------------------------------
 
-
 namespace triagens {
   namespace arango {
 
     struct IndexWatermarks {
       IndexWatermarks ()
-        : initialFillFactor(0.5),
-          lowWatermark(0.0),
-          highWatermark(0.66) {
+        : initialFillFactor(DefaultInitialFillFactor),
+          lowWatermark(DefaultLowWatermark),
+          highWatermark(DefaultHighWatermark) {
       }
+
+      static void SetDefaults (IndexWatermarks const&);
 
       double initialFillFactor;
       double lowWatermark;
       double highWatermark;
+
+      static double DefaultInitialFillFactor;
+      static double DefaultLowWatermark;
+      static double DefaultHighWatermark;
     };
 
   }

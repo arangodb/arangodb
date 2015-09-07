@@ -106,8 +106,8 @@ namespace triagens {
 /// @brief returns the memory needed for an index key entry
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t keyEntrySize () const {
-          return _paths.size() * (sizeof(TRI_shaped_sub_t) + sizeof(TRI_doc_mptr_t*));
+        inline size_t elementSize () const {
+          return TRI_index_element_t::memoryUsage(_paths.size());
         }
 
 // -----------------------------------------------------------------------------
@@ -120,9 +120,16 @@ namespace triagens {
 /// @brief helper function to insert a document into any index type
 ////////////////////////////////////////////////////////////////////////////////
 
-        int fillElement (std::function<TRI_index_element_t* ()> allocate,
-                         std::vector<TRI_index_element_t*>& elements,
+        int fillElement (std::vector<TRI_index_element_t*>& elements,
                          TRI_doc_mptr_t const* document);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of paths
+////////////////////////////////////////////////////////////////////////////////
+
+        inline size_t numPaths () const {
+          return _paths.size();
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

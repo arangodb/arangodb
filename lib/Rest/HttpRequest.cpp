@@ -500,10 +500,10 @@ void HttpRequest::setHeader (char const* key,
       if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
           (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
           (keyLength == 22 && memcmp(key, "x-http-method-override", keyLength) == 0)) {
-        string overridenType(value);
-        StringUtils::tolowerInPlace(&overridenType);
+        string overriddenType(value);
+        StringUtils::tolowerInPlace(&overriddenType);
 
-        _type = getRequestType(overridenType.c_str(), overridenType.size());
+        _type = getRequestType(overriddenType.c_str(), overriddenType.size());
 
         // don't insert this header!!
         return;

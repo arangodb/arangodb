@@ -139,7 +139,7 @@ v2.7.0 (XXXX-XX-XX)
 
 * increased default value collection-specific `indexBuckets` value from 1 to 16
 
-  Collections created from 2.7 on will use the new default if not overriden on
+  Collections created from 2.7 on will use the new default if not overridden on
   collection creation or later using `collection.properties({ indexBuckets: ... })`.
 
   The `indexBuckets` value determines the number of buckets to use when creating
@@ -291,8 +291,78 @@ v2.7.0 (XXXX-XX-XX)
   (use new option --database.index-threads).
 
 
-v2.6.5 (XXXX-XX-XX)
+v2.6.8 (XXXX-XX-XX)
 -------------------
+
+* ARM only:
+
+  The ArangoDB packages for ARM require the kernel to allow unaligned memory access.
+  How the kernel handles unaligned memory access is configurable at runtime by
+  checking and adjusting the contents `/proc/cpu/alignment`.
+
+  In order to operate on ARM, ArangoDB requires the bit 1 to be set. This will
+  make the kernel trap and adjust unaligned memory accesses. If this bit is not
+  set, the kernel may send a SIGBUS signal to ArangoDB and terminate it.
+
+  To set bit 1 in `/proc/cpu/alignment` use the following command as a privileged
+  user (e.g. root):
+
+      echo "2" > /proc/cpu/alignment
+
+  Note that this setting affects all user processes and not just ArangoDB. Setting
+  the alignment with the above command will also not make the setting permanent,
+  so it will be lost after a restart of the system. In order to make the setting
+  permanent, it should be executed during system startup or before starting arangod.
+
+  The ArangoDB start/stop scripts do not adjust the alignment setting, but rely on 
+  the environment to have the correct alignment setting already. The reason for this
+  is that the alignment settings also affect all other user processes (which ArangoDB
+  is not aware of) and thus may have side-effects outside of ArangoDB. It is therefore
+  more reasonable to have the system administrator carry out the change.
+
+
+v2.6.7 (2015-08-25)
+-------------------
+
+* improved AssocMulti index performance when resizing. 
+
+  This makes the edge index perform less I/O when under memory pressure.
+
+
+v2.6.6 (2015-08-23)
+-------------------
+
+* added startup option `--server.additional-threads` to create separate queues
+  for slow requests.
+
+
+v2.6.5 (2015-08-17)
+-------------------
+
+* added startup option `--database.throw-collection-not-loaded-error`
+
+  Accessing a not-yet loaded collection will automatically load a collection
+  on first access. This flag controls what happens in case an operation
+  would need to wait for another thread to finalize loading a collection. If
+  set to *true*, then the first operation that accesses an unloaded collection
+  will load it. Further threads that try to access the same collection while
+  it is still loading immediately fail with an error (1238, *collection not loaded*). 
+  This is to prevent all server threads from being blocked while waiting on the
+  same collection to finish loading. When the first thread has completed loading 
+  the collection, the collection becomes regularly available, and all operations
+  from that point on can be carried out normally, and error 1238 will not be
+  thrown anymore for that collection.
+
+  If set to *false*, the first thread that accesses a not-yet loaded collection
+  will still load it. Other threads that try to access the collection while
+  loading will not fail with error 1238 but instead block until the collection
+  is fully loaded. This configuration might lead to all server threads being
+  blocked because they are all waiting for the same collection to complete
+  loading. Setting the option to *true* will prevent this from happening, but
+  requires clients to catch error 1238 and react on it (maybe by scheduling 
+  a retry for later).
+
+  The default value is *false*.
 
 * fixed busy wait loop in scheduler threads that sometimes consumed 100% CPU while
   waiting for events on connections closed unexpectedly by the client side
@@ -3016,7 +3086,7 @@ v2.2.0 (2014-07-10)
 * fixed a bug in arangodump which got the collection name in _from and _to
   attributes of edges wrong (all were "_unknown")
 
-* fixed a bug in arangorestore which did not recognise wrong _from and _to
+* fixed a bug in arangorestore which did not recognize wrong _from and _to
   attributes of edges
 
 * improved error detection and reporting in arangorestore
@@ -3239,7 +3309,7 @@ v2.0.5 (2014-04-21)
 
 * Fixed a caching problem in IE JS Shell
 
-* added cancellation for async jobs
+* added cancelation for async jobs
 
 * upgraded to new gyp for V8
 

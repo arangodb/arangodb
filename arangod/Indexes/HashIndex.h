@@ -90,7 +90,14 @@ namespace triagens {
          
         int remove (struct TRI_doc_mptr_t const*, bool) override final;
         
+        int batchInsert (std::vector<TRI_doc_mptr_t const*> const*,
+                         size_t) override final;
+
         int sizeHint (size_t) override final;
+
+        bool hasBatchInsert () const override final {
+          return true;
+        }
         
         std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths () const {
           return _paths;
@@ -120,7 +127,11 @@ namespace triagens {
 
         int insertUnique (struct TRI_doc_mptr_t const*, bool);
 
+        int batchInsertUnique (std::vector<TRI_doc_mptr_t const*> const*, size_t);
+
         int insertMulti (struct TRI_doc_mptr_t const*, bool);
+
+        int batchInsertMulti (std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
         int removeUniqueElement(TRI_index_element_t*, bool);
 
@@ -193,6 +204,10 @@ namespace triagens {
               TRI_ASSERT_EXPENSIVE(left->document() != nullptr);
               TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
 
+              if (left->document() == right->document()) {
+                return true;
+              }
+
               for (size_t j = 0;  j < _numFields;  ++j) {
                 TRI_shaped_sub_t* leftSub = &left->subObjects()[j];
                 TRI_shaped_sub_t* rightSub = &right->subObjects()[j];
@@ -241,11 +256,13 @@ namespace triagens {
           
         struct UniqueArray {
           UniqueArray () = delete;
-          UniqueArray (TRI_HashArray_t*, HashElementFunc*);
+          UniqueArray (TRI_HashArray_t*, HashElementFunc*, IsEqualElementElementByKey*);
+
           ~UniqueArray ();
 
-          TRI_HashArray_t*      _hashArray;   // the hash array itself, unique values
-          HashElementFunc*      _hashElement; // hash function for elements
+          TRI_HashArray_t*            _hashArray;   // the hash array itself, unique values
+          HashElementFunc*            _hashElement; // hash function for elements
+          IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
         };
 
 ////////////////////////////////////////////////////////////////////////////////

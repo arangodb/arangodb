@@ -454,7 +454,7 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
     return {"error": true, "bootstrapServers": true, "errorMessage": "No coordinators to start"};
   }
 
-  // autorization header for coordinator
+  // authorization header for coordinator
   var hdrs = {
     Authorization: getAuthorizationHeader(username, password)
   };
@@ -915,7 +915,7 @@ upgradeActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
   // until they responded!), just to be on the safe side:
   wait(0.5);
 
-  // autorization header for coordinator
+  // authorization header for coordinator
   var hdrs = {
     Authorization: getAuthorizationHeader(username, password)
   };

@@ -42,7 +42,7 @@ request is executed for.
 Running AQL queries can also be killed on the server. ArangoDB provides a kill facility
 via an HTTP interface. To kill a running query, its id (as returned for the query in the
 list of currently running queries) must be specified. The kill flag of the query will
-then be set, and the query will be aborted as soon as it reaches a cancellation point.
+then be set, and the query will be aborted as soon as it reaches a cancelation point.
 
 <!--arangod/RestHandler/RestQueryHandler.cpp -->
 @startDocuBlock DeleteApiQueryKill

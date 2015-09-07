@@ -446,8 +446,8 @@ int EdgeIndex::remove (TRI_doc_mptr_t const* doc,
         
 int EdgeIndex::batchInsert (std::vector<TRI_doc_mptr_t const*> const* documents, 
                             size_t numThreads) {
-  _edgesFrom->batchInsert(reinterpret_cast<std::vector<void const*> const*>(documents), numThreads);
-  _edgesTo->batchInsert(reinterpret_cast<std::vector<void const*> const*>(documents), numThreads);
+  _edgesFrom->batchInsert(reinterpret_cast<std::vector<void*> const*>(documents), numThreads);
+  _edgesTo->batchInsert(reinterpret_cast<std::vector<void*> const*>(documents), numThreads);
   
   return TRI_ERROR_NO_ERROR;
 }

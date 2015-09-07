@@ -1,0 +1,37 @@
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-tick-ranges</span>
+
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+
+[ 
+  { 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.11821/journals/logfile-138037.db"</span>, 
+    <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"334645"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"645077813"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.11821/journals/logfile-645208885.db"</span>, 
+    <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"645471029"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"647830325"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.11821/journals/logfile-647961397.db"</span>, 
+    <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"648092469"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"832641845"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.11821/journals/logfile-832772917.db"</span>, 
+    <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"832903989"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"833035061"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.11821/journals/logfile-833166133.db"</span>, 
+    <span class="hljs-string">"status"</span> : <span class="hljs-string">"open"</span>, 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"833493813"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"838277941"</span> 
+  } 
+]

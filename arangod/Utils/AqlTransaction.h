@@ -181,7 +181,7 @@ namespace triagens {
 /// @brief lockCollections, this is needed in a corner case in AQL: we need
 /// to lock all shards in a controlled way when we set up a distributed
 /// execution engine. To this end, we prevent the standard mechanism to
-/// lock collections on the DBservers when we instanciate the query. Then,
+/// lock collections on the DBservers when we instantiate the query. Then,
 /// in a second round, we need to lock the shards in exactly the right
 /// order via an HTTP call. This method is used to implement that HTTP action.
 ////////////////////////////////////////////////////////////////////////////////

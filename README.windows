@@ -13,16 +13,16 @@
    that ArangoDB has been installed in the location <ROOTDIR>.
 
    You have to be careful when choosing an installation directory. You need either
-   write permission to this directoy or you need to modify the config file for the
+   write permission to this directory or you need to modify the config file for the
    server process. In the latter case the database directory and the Foxx directory
    should must be writable by the user.
 
-   Installating for a single user:
+   Installation for a single user:
 
        Select a different directory during installation. For example 
        `C:/Users/<username>/arangodb` or `C:/ArangoDB`.
 
-   Installating for multiple users:
+   Installation for multiple users:
 
        Keep the default directory. After the installation edit the file
        `<ROOTDIR>/etc/arangodb/arangod.conf`. Adjust the `directory` and `app-path`
@@ -36,7 +36,7 @@
 
        Create the directories for each user that wants to use ArangoDB.
 
-   Installating as Service
+   Installation as Service
 
        Keep the default directory. After the installation open a command line
        as administrator (search for `cmd` and right click `run as administrator`)
@@ -67,7 +67,7 @@
    by default.
 
    Please check the output of the `arangod.exe` executable before going on. If
-   the server started successully, you should see a line `ArangoDB is ready for
+   the server started successfully, you should see a line `ArangoDB is ready for
    business. Have fun!`  at the end of its output.
 
    We now wish to check that the installation is working correctly and to do
@@ -76,7 +76,7 @@
    to the page: http://127.0.0.1:8529/
 
    To check if your installation was successful, click the `Collection` tab and
-   open the configutation. Select the `System` TYPE. If the installation was
+   open the configuration. Select the `System` TYPE. If the installation was
    successful, then the page should display a few system collections.
 
    Try to add a new collection and then add some documents to this new
@@ -119,7 +119,7 @@
 7) To uninstall the Arango server application you can use the windows control panel
    (as you would normally uninstall an application). Note however, that any data
    files created by the Arango server will remain as well as the <ROOTDIR>
-   directory.  To complete the uninstallation process, remove the data files and
+   directory.  To complete the deinstallation process, remove the data files and
    the <ROOTDIR> directory manually.
 
 If you have any questions regarding the installation or other matters please use

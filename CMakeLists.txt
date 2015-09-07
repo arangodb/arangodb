@@ -88,7 +88,6 @@ endif ()
 if (MSVC)
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=2048")
-
   add_definitions("-DUSE_REGEX_STATIC=1")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
 
@@ -192,8 +191,8 @@ endif()
 ### @brief Enable Backtrace
 ################################################################################
 
-option(USER_MAINTAINER_MODE "whether we want to have Assertions and other development features" OFF)
-if (USER_MAINTAINER_MODE)
+option(USE_MAINTAINER_MODE "whether we want to have assertions and other development features" OFF)
+if (USE_MAINTAINER_MODE)
   add_definitions("-DTRI_ENABLE_MAINTAINER_MODE=1")
 endif()
 

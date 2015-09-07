@@ -120,7 +120,7 @@ namespace triagens {
         TRI_action_result_t executeAction ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              proctected variables
+// --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
 
       protected:

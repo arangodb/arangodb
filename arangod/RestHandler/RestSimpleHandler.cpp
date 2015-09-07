@@ -151,10 +151,10 @@ bool RestSimpleHandler::cancelQuery () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the query was cancelled
+/// @brief whether or not the query was canceled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestSimpleHandler::wasCancelled () {
+bool RestSimpleHandler::wasCanceled () {
   MUTEX_LOCKER(_queryLock);
   return _queryKilled;
 }
@@ -172,7 +172,7 @@ bool RestSimpleHandler::wasCancelled () {
 ///
 /// The JSON object can also contain an *options* object, which itself may
 /// contain the *waitForSync* attribute: if set to true, then all removal 
-/// operations will instantly be synchronised to disk. If this is not specified, 
+/// operations will instantly be synchronized to disk. If this is not specified, 
 /// then the collection's default sync behavior will be applied.
 ///
 /// @RESTDESCRIPTION
@@ -311,7 +311,7 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCancelled())) {
+          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
       }
 
@@ -473,6 +473,8 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
     triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
     bindVars("@collection", triagens::basics::Json(collectionName));
     bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keys)));
+  
+    triagens::aql::BindParameters::StripCollectionNames(TRI_LookupObjectJson(bindVars.json(), "keys"), collectionName.c_str());
 
     std::string const aql("FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
     
@@ -491,7 +493,7 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCancelled())) {
+          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
       }
 

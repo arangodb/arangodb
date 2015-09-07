@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertUndefined, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -55,7 +55,7 @@ function optimizerRuleTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 1000; ++i) {
+      for (var i = 0; i < 1010; ++i) {
         c.save({ value: i });
       }
     },
@@ -161,7 +161,124 @@ function optimizerRuleTestSuite () {
 /// @brief test results
 ////////////////////////////////////////////////////////////////////////////////
 
-    testResults : function () {
+    testResultsNested : function () {
+      var query = "FOR i IN 1..2 FOR j IN " + c.name() + " SORT RAND() RETURN j";
+      var result = AQL_EXPLAIN(query, { }, paramEnabled);
+      assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+
+      result = AQL_EXECUTE(query).json;
+      assertEqual(1010 * 2, result.length);
+
+      // assert all random results are unique
+      var hasSeen = { };
+      for (var i = 0; i < result.length; ++i) {
+        var key = result[i]._key;
+        if (hasSeen.hasOwnProperty(key)) {
+          assertEqual(1, hasSeen[key]);
+          hasSeen[key] = 2;
+        }
+        else {
+          assertUndefined(hasSeen[key]);
+          hasSeen[key] = 1;
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results
+////////////////////////////////////////////////////////////////////////////////
+
+    testResultsNestedWithLimit : function () {
+      var query = "FOR i IN 1..2 FOR j IN " + c.name() + " SORT RAND() LIMIT 1020 RETURN j";
+      var result = AQL_EXPLAIN(query, { }, paramEnabled);
+      assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+
+      result = AQL_EXECUTE(query).json;
+      assertEqual(1020, result.length);
+
+      // assert all random results are unique
+      var hasSeen = { };
+      for (var i = 0; i < result.length; ++i) {
+        var key = result[i]._key;
+        if (hasSeen.hasOwnProperty(key)) {
+          assertEqual(1, hasSeen[key]);
+          hasSeen[key] = 2;
+        }
+        else {
+          assertUndefined(hasSeen[key]);
+          hasSeen[key] = 1;
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results
+////////////////////////////////////////////////////////////////////////////////
+
+    testResultsMustNotHaveDuplicates : function () {
+      var query = "FOR j IN " + c.name() + " SORT RAND() RETURN j";
+      var result = AQL_EXPLAIN(query, { }, paramEnabled);
+      assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+
+      result = AQL_EXECUTE(query).json;
+      assertEqual(1010, result.length);
+
+      // assert all random results are unique
+      var hasSeen = { };
+      for (var i = 0; i < result.length; ++i) {
+        var key = result[i]._key;
+        assertFalse(hasSeen.hasOwnProperty(key));
+        hasSeen[key] = 1;
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results
+////////////////////////////////////////////////////////////////////////////////
+
+    testResultsDescMustNotHaveDuplicates : function () {
+      var query = "FOR j IN " + c.name() + " SORT RAND() DESC RETURN j";
+      var result = AQL_EXPLAIN(query, { }, paramEnabled);
+      assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+
+      result = AQL_EXECUTE(query).json;
+      assertEqual(1010, result.length);
+
+      // assert all random results are unique
+      var hasSeen = { };
+      for (var i = 0; i < result.length; ++i) {
+        var key = result[i]._key;
+        assertFalse(hasSeen.hasOwnProperty(key));
+        hasSeen[key] = 1;
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results
+////////////////////////////////////////////////////////////////////////////////
+
+    testResultsLimit : function () {
+      var query = "FOR j IN " + c.name() + " SORT RAND() LIMIT 1001 RETURN j";
+      var result = AQL_EXPLAIN(query, { }, paramEnabled);
+      assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      
+      result = AQL_EXECUTE(query).json;
+      assertEqual(1001, result.length);
+
+      // assert all random results are unique
+      var hasSeen = { };
+      for (var i = 0; i < result.length; ++i) {
+        var key = result[i]._key;
+        assertFalse(hasSeen.hasOwnProperty(key));
+        hasSeen[key] = 1;
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryResults : function () {
       var result = AQL_EXECUTE("FOR i IN 1..5 LET values = (FOR j IN " + c.name() + " SORT RAND() RETURN j) RETURN values").json;
 
       assertEqual(5, result.length);
@@ -169,7 +286,8 @@ function optimizerRuleTestSuite () {
       // assert all random results are unique
       var hasSeen = { };
       for (var i = 0; i < result.length; ++i) {
-        assertEqual(1000, result[i].length);
+        assertEqual(1010, result[i].length);
+        // each subquery result must be different
         var key = JSON.stringify(result[i]);
         assertFalse(hasSeen.hasOwnProperty(key));
         hasSeen[key] = 1;

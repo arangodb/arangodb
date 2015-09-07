@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replication continuous data synchroniser
+/// @brief replication continuous data synchronizer
 ///
 /// @file
 ///
@@ -114,7 +114,7 @@ ContinuousSyncer::~ContinuousSyncer () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run method, performs continuous synchronisation
+/// @brief run method, performs continuous synchronization
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::run () {
@@ -999,7 +999,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
 
       // no error
       if (worked) {
-        // we have done something, so we won't sleep (but check for cancellation)
+        // we have done something, so we won't sleep (but check for cancelation)
         inactiveCycles = 0;
         sleepTime      = 0;
       }
@@ -1032,7 +1032,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
               (unsigned long long) sleepTime);
 
     // this will make the applier thread sleep if there is nothing to do,
-    // but will also check for cancellation
+    // but will also check for cancelation
     if (! _applier->wait(sleepTime)) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
@@ -1146,7 +1146,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run the continuous synchronisation
+/// @brief run the continuous synchronization
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::followMasterLog (string& errorMsg,

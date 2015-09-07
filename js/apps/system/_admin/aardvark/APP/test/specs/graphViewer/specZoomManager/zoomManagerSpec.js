@@ -189,7 +189,7 @@
 
       });
 
-      describe('the zoom behaviour', function() {
+      describe('the zoom behavior', function() {
 
         var fontMax,
           fontMin,
@@ -431,7 +431,7 @@
         });
       });
 
-      describe('the distortion behaviour', function() {
+      describe('the distortion behavior', function() {
 
         it('should register fisheye distortion at the node shaper', function() {
           expect(nodeShaperMock.changeTo).toHaveBeenCalledWith({

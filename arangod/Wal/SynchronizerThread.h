@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Write-ahead log synchroniser thread
+/// @brief Write-ahead log synchronizer thread
 ///
 /// @file
 ///
@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_WAL_SYNCHRONISER_THREAD_H
-#define ARANGODB_WAL_SYNCHRONISER_THREAD_H 1
+#ifndef ARANGODB_WAL_SYNCHRONIZER_THREAD_H
+#define ARANGODB_WAL_SYNCHRONIZER_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -42,18 +42,18 @@ namespace triagens {
     class LogfileManager;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                          class SynchroniserThread
+// --SECTION--                                          class SynchronizerThread
 // -----------------------------------------------------------------------------
 
-    class SynchroniserThread : public basics::Thread {
+    class SynchronizerThread : public basics::Thread {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief SynchroniserThread
+/// @brief SynchronizerThread
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
-        SynchroniserThread (SynchroniserThread const&) = delete;
-        SynchroniserThread& operator= (SynchroniserThread const&) = delete;
+        SynchronizerThread (SynchronizerThread const&) = delete;
+        SynchronizerThread& operator= (SynchronizerThread const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -62,17 +62,17 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the synchroniser thread
+/// @brief create the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        SynchroniserThread (LogfileManager*,
+        SynchronizerThread (LogfileManager*,
                             uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the synchroniser thread
+/// @brief destroy the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~SynchroniserThread ();
+        ~SynchronizerThread ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -81,7 +81,7 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the synchroniser thread
+/// @brief stops the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
         void stop ();
@@ -111,7 +111,7 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief synchronise an unsynchronized region
+/// @brief synchronize an unsynchronized region
 ////////////////////////////////////////////////////////////////////////////////
 
         int doSync (bool&);
@@ -153,7 +153,7 @@ namespace triagens {
         volatile sig_atomic_t _stop;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wait interval for the synchroniser thread when idle
+/// @brief wait interval for the synchronizer thread when idle
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t const _syncInterval;

@@ -1338,7 +1338,7 @@ actions.defineHttp({
 /// The request body must be a JSON object with the following attributes:
 /// - *collection*: the name of the collection
 ///
-/// - *count*: the number of documents to return at most. Specifiying count is
+/// - *count*: the number of documents to return at most. Specifying count is
 ///   optional. If it is not specified, it defaults to 1.
 ///
 /// Note: this method is not supported for sharded collections with more than
@@ -1454,7 +1454,7 @@ actions.defineHttp({
 /// The request body must be a JSON object with the following attributes:
 /// - *collection*: the name of the collection
 ///
-/// - *count*: the number of documents to return at most. Specifiying count is
+/// - *count*: the number of documents to return at most. Specifying count is
 ///   optional. If it is not specified, it defaults to 1.
 ///
 /// If the *count* argument is not supplied, the result is the "latest" document
@@ -1715,7 +1715,7 @@ actions.defineHttp({
 /// - options: a json object which can contains following attributes:
 ///
 /// - *waitForSync*: if set to true, then all removal operations will
-///   instantly be synchronised to disk. If this is not specified, then the
+///   instantly be synchronized to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
 /// - *limit*: an optional value that determines how many documents to
@@ -1880,7 +1880,7 @@ actions.defineHttp({
 /// - *options*: a json object which can contain following attributes
 ///
 /// - *waitForSync*: if set to true, then all removal operations will
-///   instantly be synchronised to disk. If this is not specified, then the
+///   instantly be synchronized to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
 /// - *limit*: an optional value that determines how many documents to
@@ -2032,7 +2032,7 @@ actions.defineHttp({
 /// - *newValue*: A document containing all the attributes to update in the
 ///   found documents.
 ///
-/// - *options*: a json object wich can contains following attributes:
+/// - *options*: a json object which can contains following attributes:
 ///
 /// - *keepNull*: This parameter can be used to modify the behavior when
 ///   handling *null* values. Normally, *null* values are stored in the
@@ -2041,7 +2041,7 @@ actions.defineHttp({
 ///   values will be removed from the updated document.
 ///
 /// - *waitForSync*: if set to true, then all removal operations will
-///   instantly be synchronised to disk. If this is not specified, then the
+///   instantly be synchronized to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
 /// - *limit*: an optional value that determines how many documents to
