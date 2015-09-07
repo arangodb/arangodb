@@ -141,8 +141,6 @@ void GeneralClientConnection::disconnect () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralClientConnection::handleWrite (double timeout, void const* buffer, size_t length, size_t* bytesWritten) {
-  TRI_ASSERT(this != nullptr);
-
   *bytesWritten = 0;
 
   if (prepare(timeout, true)) {
