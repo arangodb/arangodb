@@ -36,7 +36,7 @@ Runtime
 
 Startup
 -------
-We now have a startup rc file: ~/.arangod.rc . Its evaled as javascript.
+We now have a startup rc file: ~/.arangod.rc . It's evaled as javascript.
 A sample version to help working with the arangod rescue console may look like that:
 
     ENABLE_NATIVE_BACKTRACES(true);
@@ -67,11 +67,11 @@ to lint your modified files.
 
     make jslint
 
-to find out whether all of your files comply to jslint. This is required to make contineous integration work smoothly.
+to find out whether all of your files comply to jslint. This is required to make continuous integration work smoothly.
 
 if you want to add new files / patterns to this make target, edit js/Makefile.files
 
-to be safe from commiting non-linted stuff add **.git/hooks/pre-commit** with:
+to be safe from committing non-linted stuff add **.git/hooks/pre-commit** with:
 
     make gitjslint
 
@@ -115,7 +115,7 @@ These tests are disabled. You may however want to run them by hand.
 replication
 -----------
 (only applies to ruby tests)
-These tests aren't run automaticaly since they require a manual set up environment.
+These tests aren't run automatically since they require a manual set up environment.
 
 -spec
 -----
@@ -316,11 +316,11 @@ For the average *nix user windows debugging has some awkward methods.
 
 Coredump generation
 -------------------
-Coredumps can be created using the task manager; switch it to detail view, the context menu offers to *create dump file*; the generated file ends in a directory that explorer hides from you - AppData - you have to type that in the location bar. This however only for running processes which is not as usefull as having dumps of crashing processes. While its a common feature to turn on coredumps with the system facilities on *nix systems, its not as easy in windows. You need an external program [from the Sysinternals package: ProcDump](https://technet.microsoft.com/en-us/sysinternals/dd996900.aspx). First look up the PID of arangod, you can finde it in the brackets in its logfile. Then call it like this:
+Coredumps can be created using the task manager; switch it to detail view, the context menu offers to *create dump file*; the generated file ends in a directory that explorer hides from you - AppData - you have to type that in the location bar. This however only for running processes which is not as useful as having dumps of crashing processes. While its a common feature to turn on coredumps with the system facilities on *nix systems, its not as easy in windows. You need an external program [from the Sysinternals package: ProcDump](https://technet.microsoft.com/en-us/sysinternals/dd996900.aspx). First look up the PID of arangod, you can finde it in the brackets in its logfile. Then call it like this:
 
     procdump -accepteula -e -ma < PID of arangod >
 
-It will keep on running and monitor arangod until eventually a crash happenes. You will then get a core dump if an incident occurs or *Dump count not reached.* if nothing happened, *Dump count reached.* if a dump was written - the filename will be printed above.
+It will keep on running and monitor arangod until eventually a crash happens. You will then get a core dump if an incident occurs or *Dump count not reached.* if nothing happened, *Dump count reached.* if a dump was written - the filename will be printed above.
 
 Debugging symbols
 -----------------
@@ -350,28 +350,28 @@ Where...
 
 generate
 --------
- - make examples - on toplevel to generate Documentation/Examples
+ - make examples - on top level to generate Documentation/Examples
  - make examples FILTER_EXAMPLE=geoIndexSelect will only produce one example - *geoIndexSelect*
  - make examples FILTER_EXAMPLE='MOD.*' will only produce the examples matching that regex
- - make examples server.endpoint=tcp://127.0.0.1:8529 will utilize an existing arangod instead of starting anown.
+ - make examples server.endpoint=tcp://127.0.0.1:8529 will utilize an existing arangod instead of starting a new one.
    this does seriously cut down the execution time.
- - alternatively you can use generateExamples (i.e. on windows since the make taregt is not portable) like that:
+ - alternatively you can use generateExamples (i.e. on windows since the make target is not portable) like that:
     ./scripts/generateExamples
        --server.endpoint 'tcp://127.0.0.1:8529'
        --withPython 3rdParty/V8-4.3.61/third_party/python_26/python26.exe 
        --onlyThisOne 'MOD.*'
 
- - make swagger - on toplevel to generate the documentation interactively with the server
+ - make swagger - on top level to generate the documentation interactively with the server
  - cd Documentation/Books; make - to generate the HTML documentation
 
 write markdown
 --------------
-mdpp files are used for the structure. To join it with parts extracted from the programm documentation
+mdpp files are used for the structure. To join it with parts extracted from the program documentation
 you need to place hooks:
   - `@startDocuBlock &ltdocuBlockName&gt;` is replaced by a Docublock extracted from source.
   - `@startDocuBlockInline &lt;docuBlockName&gt;` till `@endDocuBlock &lt;docuBlockName&gt;`
      is replaced in with its own evaluated content - so  *@EXAMPLE_ARANGOSH_OUTPUT* sections are executed
-     the same way as inside of sourcecode documentation.
+     the same way as inside of source code documentation.
 
 read / use the documentation
 ----------------------------
@@ -386,34 +386,34 @@ arangod Example tool
 To update 
 Heres how its details work:
   - all ending with *.cpp*, *.js* and *.mdpp* are searched.
-  - all lines inside of sourcecode starting with '///' are matched, all lines in .mdpp files.
+  - all lines inside of source code starting with '///' are matched, all lines in .mdpp files.
   - an example start is marked with *@EXAMPLE_ARANGOSH_OUTPUT* or *@EXAMPLE_ARANGOSH_RUN*
   - the example is named by the string provided in brackets after the above key
   - the output is written to *Documentation/Examples/<name>.generated*
   - examples end with *@END_EXAMPLE_[OUTPUT|RUN]*
-  - all code inbetween is executed as javascript in the **arangosh** while talking to a valid **arangod**.
+  - all code in between is executed as javascript in the **arangosh** while talking to a valid **arangod**.
 
-OUTPUT and RUN Specialities
+OUTPUT and RUN specifics
 ---------------------------
 By default, Examples should be self contained and thus not depend on each other. They should clean up the collections they create.
 Building will fail if resources aren't cleaned.
-However, if you intend a set of OUTPUT and RUN to demonstrate interactively, you have to use an alphabeticaly sorteable
-namingscheme so they're executed in sequence. Using <modulename>_<sequencenumber>[abcd]_thisDoesThat seems to be a good scheme.
+However, if you intend a set of OUTPUT and RUN to demonstrate interactively, you have to use an alphabetical sortable
+naming scheme so they're executed in sequence. Using <modulename>_<sequencenumber>[abcd]_thisDoesThat seems to be a good scheme.
 
   - OUTPUT is intended to create samples that the users can cut'n'paste into their arangosh. Its used for javascript api documentation.
     * wrapped lines:
       Lines starting with a pipe ('/// |') are joined together with the next following line.
-      You have to do this, if you want to execute loops, functions or commands which shouldn't be torn appart by the framework.
+      You have to do this, if you want to execute loops, functions or commands which shouldn't be torn apart by the framework.
     * Lines starting with *var*:
       The command behaves similar to the arangosh: the server reply won't be printed.
-      Hovever, the variable will be in the scope of the other lines - else it won't.
+      However, the variable will be in the scope of the other lines - else it won't.
     * Lines starting with a Tilde ('/// ~'):
-      These lines can be used for setup/teardown purposes. They are completely invisible in the generated example transscript.
+      These lines can be used for setup/teardown purposes. They are completely invisible in the generated example transcript.
 
     * ~removeIgnoreCollection("test") - the collection test may live across several tests.
     * ~addIgnoreCollection("test") - the collection test will again be alarmed if left over.
 
-  - it is excuted line by line. If a line is intended to fail (aka throw an exception),
+  - it is executed line by line. If a line is intended to fail (aka throw an exception),
     you have to specify *// xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)* so the exception will be caught;
     else the example is marked as broken.
     If you need to wrap that line, you may want to make the next line like this to suppress an empty line:
@@ -422,7 +422,7 @@ namingscheme so they're executed in sequence. Using <modulename>_<sequencenumber
         /// ~ // xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)
     
  - RUN is intended to be pasted into a unix shell with *cURL* to demonstrate how the REST-HTTP-APIs work.
-   The whole chunk of code is executet at once, and is expected **not to throw**.
+   The whole chunk of code is executed at once, and is expected **not to throw**.
    You should use **assert(condition)** to ensure the result is what you've expected.
 
     * Send the HTTP-request: `var response = logCurlRequest('GET', url);`
