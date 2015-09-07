@@ -382,6 +382,24 @@ function walSuite () {
       catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_DOCUMENT_TOO_LARGE.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test transactions
+////////////////////////////////////////////////////////////////////////////////
+
+    testTransactions : function () {
+      var result = internal.wal.transactions();
+      
+      assertTrue(result.hasOwnProperty("runningTransactions"));
+      assertTrue(typeof result.runningTransactions === "number");
+      assertTrue(result.runningTransactions >= 0);
+
+      assertTrue(result.hasOwnProperty("minLastCollected"));
+      assertTrue(result.minLastCollected === null || typeof result.minLastCollected === "string");
+
+      assertTrue(result.hasOwnProperty("minLastSealed"));
+      assertTrue(result.minLastSealed === null || typeof result.minLastSealed === "string");
     }
 
   };
