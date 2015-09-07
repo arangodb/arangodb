@@ -1595,6 +1595,37 @@ LogfileRanges LogfileManager::ranges () {
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get information about running transactions
+////////////////////////////////////////////////////////////////////////////////
+
+std::tuple<size_t, Logfile::IdType, Logfile::IdType> LogfileManager::runningTransactions () {
+  size_t count = 0;
+  Logfile::IdType lastCollectedId = UINT64_MAX;
+  Logfile::IdType lastSealedId = UINT64_MAX;
+
+  {
+    Logfile::IdType value;
+    READ_LOCKER(_transactionsLock);
+
+    for (auto const& it : _transactions) {
+      ++count;
+  
+      value = it.second.first;
+      if (value < lastCollectedId) {
+        lastCollectedId = value;
+      }
+
+      value = it.second.second;
+      if (value < lastSealedId) {
+        lastSealedId = value;
+      }
+    }
+  }
+
+  return std::tuple<size_t, Logfile::IdType, Logfile::IdType>(count, lastCollectedId, lastSealedId);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------

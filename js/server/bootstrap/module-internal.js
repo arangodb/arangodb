@@ -122,6 +122,10 @@ exports.wal = {
 
   properties: function () {
     return global.WAL_PROPERTIES.apply(null, arguments);
+  },
+  
+  transactions: function () {
+    return global.WAL_TRANSACTIONS.apply(null, arguments);
   }
 };
 

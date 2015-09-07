@@ -66,7 +66,7 @@ static void JS_StateLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>
 
   v8::Handle<v8::Object> server = v8::Object::New(isolate);
   server->Set(TRI_V8_ASCII_STRING("version"),  TRI_V8_ASCII_STRING(TRI_VERSION));
-  server->Set(TRI_V8_ASCII_STRING("serverId"), TRI_V8_STD_STRING(StringUtils::itoa(TRI_GetIdServer()))); /// TODO
+  server->Set(TRI_V8_ASCII_STRING("serverId"), TRI_V8_STD_STRING(StringUtils::itoa(TRI_GetIdServer())));
   result->Set(TRI_V8_ASCII_STRING("server"), server);
   
   v8::Handle<v8::Object> clients = v8::Object::New(isolate);

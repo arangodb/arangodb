@@ -80,6 +80,14 @@ exports.wal = {
     }
 
     throw "not connected";
+  },
+
+  transactions: function () {
+    if (exports.arango) {
+      return exports.arango.GET("/_admin/wal/transactions", "");
+    }
+
+    throw "not connected";
   }
 };
 

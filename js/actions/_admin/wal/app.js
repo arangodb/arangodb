@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-
 var actions = require("org/arangodb/actions");
 
 // -----------------------------------------------------------------------------
@@ -149,7 +148,7 @@ actions.defineHttp({
 /// @RESTDESCRIPTION
 ///
 /// Retrieves the configuration of the write-ahead log. The result is a JSON
-/// array with the following attributes:
+/// object with the following attributes:
 /// - *allowOversizeEntries*: whether or not operations that are bigger than a
 ///   single logfile can be executed and stored
 /// - *logfileSize*: the size of each write-ahead logfile
@@ -204,6 +203,63 @@ actions.defineHttp({
     }
     else if (req.requestType === actions.GET) {
       result = internal.wal.properties();
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    else {
+      actions.resultUnsupported(req, res);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_admin_wal_transactions
+/// @brief returns information about the currently running transactions
+///
+/// @RESTHEADER{GET /_admin/wal/transactions, Returns information about the currently running transactions}
+///
+/// @RESTDESCRIPTION
+///
+/// Returns information about the currently running transactions. The result
+/// is a JSON object with the following attributes:
+/// - *runningTransactions*: number of currently running transactions
+/// - *minLastCollected*: minimum id of the last collected logfile (at the
+///   start of each running transaction). This is *null* if no transaction is
+///   running.
+/// - *minLastSealed*: minimum id of the last sealed logfile (at the
+///   start of each running transaction). This is *null* if no transaction is
+///   running.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned if the operation succeeds.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+/// @endDocuBlock
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestWalTransactionsGet}
+///     var url = "/_admin/wal/transactions";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/wal/transactions",
+  prefix : false,
+
+  callback : function (req, res) {
+    var result;
+
+    if (req.requestType === actions.GET) {
+      result = internal.wal.transactions();
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
     else {
