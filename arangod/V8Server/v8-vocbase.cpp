@@ -588,6 +588,44 @@ static void JS_FlushWal (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get information about the currently running transactions
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_TransactionsWal (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto const& info = triagens::wal::LogfileManager::instance()->runningTransactions();
+  
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
+  result->ForceSet(TRI_V8_ASCII_STRING("runningTransactions"), v8::Number::New(isolate, static_cast<double>(std::get<0>(info))));
+  // lastCollectedId
+  {
+    auto value = std::get<1>(info);
+    if (value == UINT64_MAX) {
+      result->ForceSet(TRI_V8_ASCII_STRING("minLastCollected"), v8::Null(isolate));
+    }
+    else {
+      result->ForceSet(TRI_V8_ASCII_STRING("minLastCollected"), V8TickId(isolate, static_cast<TRI_voc_tick_t>(value)));
+    }
+  }
+  // lastSealedId
+  {
+    auto value = std::get<2>(info);
+    if (value == UINT64_MAX) {
+      result->ForceSet(TRI_V8_ASCII_STRING("minLastSealed"), v8::Null(isolate));
+    }
+    else {
+      result->ForceSet(TRI_V8_ASCII_STRING("minLastSealed"), V8TickId(isolate, static_cast<TRI_voc_tick_t>(value)));
+    }
+  }
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3892,6 +3930,7 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("TRANSACTION"), JS_Transaction, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("WAL_FLUSH"), JS_FlushWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("WAL_PROPERTIES"), JS_PropertiesWal, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("WAL_TRANSACTIONS"), JS_TransactionsWal, true);
   
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("ENABLE_NATIVE_BACKTRACES"), JS_EnableNativeBacktraces, true);
 
