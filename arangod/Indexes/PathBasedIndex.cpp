@@ -97,6 +97,10 @@ int PathBasedIndex::fillElement (std::vector<TRI_index_element_t*>& elements,
 
     return TRI_ERROR_INTERNAL;
   }
+
+  TRI_IF_FAILURE("FillElementIllegalShape") {
+    return TRI_ERROR_INTERNAL;
+  }
   
   size_t const n = _paths.size();
   std::vector<TRI_shaped_json_t> shapes;
@@ -113,6 +117,9 @@ int PathBasedIndex::fillElement (std::vector<TRI_index_element_t*>& elements,
       TRI_index_element_t* element = TRI_index_element_t::allocate(n);
 
       if (element == nullptr) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+      TRI_IF_FAILURE("FillElementOOM") {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
@@ -142,6 +149,9 @@ int PathBasedIndex::fillElement (std::vector<TRI_index_element_t*>& elements,
         TRI_index_element_t* element = TRI_index_element_t::allocate(n);
 
         if (element == nullptr) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+        TRI_IF_FAILURE("FillElementOOM") {
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
