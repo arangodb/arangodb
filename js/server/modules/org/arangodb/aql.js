@@ -7127,7 +7127,7 @@ function AQL_GRAPH_EDGES (graphName,
   }
   params.visitor = TRAVERSAL_EDGE_VISITOR.bind(visitorConfig);
   
-  var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_NEIGHBORS");
+  var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_EDGES");
   if (options.edgeExamples) {
     params.followEdges = options.edgeExamples;
   }
@@ -7147,7 +7147,7 @@ function AQL_GRAPH_EDGES (graphName,
     }
   });
   fromVertices.forEach(function (v) {
-    var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
+    var e = TRAVERSAL_FUNC("GRAPH_EDGES",
       factory,
       v._id,
       undefined,
