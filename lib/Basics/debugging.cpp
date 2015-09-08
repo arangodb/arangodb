@@ -187,11 +187,11 @@ void TRI_AddFailurePointDebugging (char const* value) {
         return;
       }
 
-      TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
-
       memcpy(copy, FailurePoints, strlen(FailurePoints));
       memcpy(copy + strlen(FailurePoints) - 1, checkValue, n);
       copy[strlen(FailurePoints) + n - 1] = '\0';
+      
+      TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
     }
 
     FailurePoints = copy;
