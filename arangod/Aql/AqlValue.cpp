@@ -360,10 +360,13 @@ triagens::basics::Json AqlValue::at (triagens::arango::AqlTransaction* trx,
       for (auto it = _vector->begin(); it != _vector->end(); ++it) {
         auto current = (*it);
         size_t const n = current->size();
+
         if (offset + i < n) {
           auto vecCollection = current->getDocumentCollection(0);
+
           return current->getValue(i - offset, 0).toJson(trx, vecCollection, true);
         }
+
         offset += (*it)->size();
       }
       break; // fall-through to exception
@@ -806,8 +809,9 @@ uint64_t AqlValue::hash (triagens::arango::AqlTransaction* trx,
         auto current = (*it);
         size_t const n = current->size();
         auto vecCollection = current->getDocumentCollection(0);
+
         for (size_t i = 0; i < n; ++i) {
-          json.add(current->getValue(i, 0).toJson(trx, vecCollection, false));
+          json.add(current->getValueReference(i, 0).toJson(trx, vecCollection, true));
         }
       }
 
