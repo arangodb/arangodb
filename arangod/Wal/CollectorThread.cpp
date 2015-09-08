@@ -495,10 +495,22 @@ int CollectorThread::collectLogfiles (bool& worked) {
 
     return res;
   }
-  catch (...) {
-    LOG_DEBUG("collecting logfile %llu failed", (unsigned long long) logfile->id());
-    _logfileManager->setCollectionDone(logfile);
+  catch (triagens::basics::Exception const& ex) {
+    _logfileManager->forceStatus(logfile, Logfile::StatusType::SEALED);
 
+    int res = ex.code();
+    
+    LOG_DEBUG("collecting logfile %llu failed: %s", 
+              (unsigned long long) logfile->id(),
+              TRI_errno_string(res));
+
+    return res;
+  }
+  catch (...) {
+    _logfileManager->forceStatus(logfile, Logfile::StatusType::SEALED);
+
+    LOG_DEBUG("collecting logfile %llu failed", (unsigned long long) logfile->id());
+  
     return TRI_ERROR_INTERNAL;
   }
 }
@@ -814,6 +826,10 @@ int CollectorThread::collect (Logfile* logfile) {
   TRI_datafile_t* df = logfile->df();
 
   TRI_ASSERT(df != nullptr);
+    
+  TRI_IF_FAILURE("CollectorThreadCollectException") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   // We will sequentially scan the logfile for collection:
   TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_SEQUENTIAL);

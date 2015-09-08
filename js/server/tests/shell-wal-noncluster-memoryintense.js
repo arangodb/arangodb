@@ -90,6 +90,31 @@ function walFailureSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test disabled collector
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollectorThreadException : function () {
+      internal.wal.flush(true, true);
+      internal.debugSetFailAt("CollectorThreadCollectException");
+
+      var i = 0;
+      for (i = 0; i < 1000; ++i) {
+        c.save({ _key: "test" + i });
+      }
+
+      assertEqual(1000, c.count());
+      internal.wal.flush(true, false);
+      
+      assertEqual(1000, c.count());
+      internal.wait(6);
+      internal.debugClearFailAt();
+      
+      testHelper.waitUnload(c);
+      
+      assertEqual(1000, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test no more available logfiles
 ////////////////////////////////////////////////////////////////////////////////
 
