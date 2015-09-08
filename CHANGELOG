@@ -1,7 +1,7 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
-* new logfiles and datafiles are now created non-sparse
+* new WAL logfiles and datafiles are now created non-sparse
     
   This prevents SIGBUS signals being raised when memory of a sparse datafile is accessed 
   and the disk is full and the accessed file part is not actually disk-backed. In
@@ -137,19 +137,19 @@ v2.7.0 (XXXX-XX-XX)
   When self-compiling ArangoDB on MacOS without Homebrew, Readline now is a
   prerequisite.
 
-* increased default value collection-specific `indexBuckets` value from 1 to 16
+* increased default value collection-specific `indexBuckets` value from 1 to 8
 
   Collections created from 2.7 on will use the new default if not overridden on
   collection creation or later using `collection.properties({ indexBuckets: ... })`.
 
-  The `indexBuckets` value determines the number of buckets to use when creating
-  an edges index in the collection, and it may be used in future versions of ArangoDB
-  for other index types, too.
+  The `indexBuckets` value determines the number of buckets to use for indexes of
+  type `primary`, `hash` and `edge`.
 
-* allow parallel processing of multiple buckets when loading edge indexes
+* allow parallel processing of multiple buckets when loading edge or hash indexes
 
-  Buckets will be built in parallel if the collection has an `indexBuckets` value
-  greater than 1 and the collection contains a significant amount of documents/edges.
+  Index buckets will be filled in parallel if the collection has an `indexBuckets` 
+  value greater than 1 and the collection contains a significant amount of 
+  documents/edges.
 
 * changed HTTP client to use poll instead of select on Linux and MacOS
 
@@ -162,10 +162,12 @@ v2.7.0 (XXXX-XX-XX)
 
 * implemented AQL `LIKE` function using ICU regexes
 
-* add `RETURN DISTINCT` for AQL queries to return unique results:
+* added `RETURN DISTINCT` for AQL queries to return unique results:
 
       FOR doc IN collection
-        RETURN DISTINCT doc.status 
+        RETURN DISTINCT doc.status
+        
+  This change also introduces `DISTINCT` as an AQL keyword. 
 
 * removed `createNamedQueue()` and `addJob()` functions from org/arangodb/tasks
 
