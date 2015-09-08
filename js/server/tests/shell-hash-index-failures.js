@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertTrue, assertNotEqual */
+/*global fail, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests failure cases in HashIndex
@@ -30,8 +30,6 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var errors = internal.errors;
-var testHelper = require("org/arangodb/test-helper").Helper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
