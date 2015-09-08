@@ -204,9 +204,9 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
   }
     
   std::unique_ptr<HashElementFunc> func(new HashElementFunc(_paths.size()));
+  std::unique_ptr<IsEqualElementElementByKey> compare(new IsEqualElementElementByKey(_paths.size()));
 
   if (unique) {
-    std::unique_ptr<IsEqualElementElementByKey> compare(new IsEqualElementElementByKey(_paths.size()));
     std::unique_ptr<TRI_HashArray_t> array(new TRI_HashArray_t(HashKey,
                                                                *(func.get()),
                                                                IsEqualKeyElementHash,
@@ -221,8 +221,6 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
   else {
     _multiArray = nullptr;
       
-    std::unique_ptr<IsEqualElementElementByKey> compare(new IsEqualElementElementByKey(_paths.size()));
-
     std::unique_ptr<TRI_HashArrayMulti_t> array(new TRI_HashArrayMulti_t(HashKey, 
                                                                          *(func.get()),
                                                                          IsEqualKeyElement,
@@ -234,9 +232,9 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
       
     _multiArray = new HashIndex::MultiArray(array.get(), func.get(), compare.get());
 
-    compare.release();
     array.release();
   }
+  compare.release();
 
   func.release();
 }
@@ -552,6 +550,7 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
     for (auto& hashElement : elements) {
       FreeElement(hashElement);
     }
+    return res;
   }
 
   auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {

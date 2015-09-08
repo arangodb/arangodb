@@ -36,7 +36,9 @@
 #include "Basics/gcd.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
+#include "Basics/memory-map.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/prime-numbers.h"
 #include "Basics/random.h"
 
 namespace triagens {
@@ -230,9 +232,21 @@ namespace triagens {
 
             TRI_ASSERT(targetSize > 0);
 
+            targetSize = TRI_NearPrime(targetSize);
+
             // This might throw, is catched outside
             b._table = new Element* [targetSize];
 
+#ifdef __linux__
+            if (b._nrAlloc > 1000000) {
+              uintptr_t mem = reinterpret_cast<uintptr_t>(b._table);
+              uintptr_t pageSize = getpagesize();
+              mem = (mem / pageSize) * pageSize;
+              void* memptr = reinterpret_cast<void*>(mem);
+              TRI_MMFileAdvise(memptr, b._nrAlloc * sizeof(Element*),
+                               TRI_MADVISE_RANDOM);
+            }
+#endif
             for (uint64_t i = 0; i < targetSize; i++) {
               b._table[i] = nullptr;
             }
@@ -390,11 +404,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           int resize (size_t size) {
+            size /= _buckets.size();
             for (auto& b : _buckets) {
+              if (2 * (2 * size + 1) < 3 * b._nrUsed) {
+                return TRI_ERROR_BAD_PARAMETER;
+              }
+
               try {
-                resizeInternal(b,
-                    (uint64_t) (3 * size / 2 + 1) / _buckets.size(), 
-                    false);
+                resizeInternal(b, 2 * size + 1, false);
               }
               catch (...) {
                 return TRI_ERROR_OUT_OF_MEMORY;

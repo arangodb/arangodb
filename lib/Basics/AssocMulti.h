@@ -36,12 +36,12 @@
 // #define TRI_CHECK_MULTI_POINTER_HASH 1
 
 #include "Basics/Common.h"
-#include "Basics/prime-numbers.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
+#include "Basics/memory-map.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/memory-map.h"
+#include "Basics/prime-numbers.h"
 
 namespace triagens {
   namespace basics {
