@@ -266,19 +266,17 @@ v2.7.0 (XXXX-XX-XX)
 
 * Foxx Queue job success/failure handlers arguments have changed from `(jobId, jobData, result, jobFailures)` to `(result, jobData, job)`.
 
-* added Foxx Queue job options `repeatTimes`, `repeatUntil` and `repeatDelay`.
+* added Foxx Queue job options `repeatTimes`, `repeatUntil` and `repeatDelay` to automatically re-schedule jobs when they are completed.
 
-* added Foxx manifest configuration type `password`.
+* added Foxx manifest configuration type `password` to mask values in the web interface.
 
-* fixed handling of default values in Foxx manifest configurations
+* fixed default values in Foxx manifest configurations sometimes not being used as defaults.
 
-* fixed handling of optional parameters in Foxx manifest configurations
+* fixed optional parameters in Foxx manifest configurations sometimes not being cleared correctly.
 
-* added verbose Foxx manifest dependency format
+* Foxx dependencies can now be marked as optional using a slightly more verbose syntax in your manifest file.
 
-* added optional Foxx dependencies
-
-* converted Foxx constructors to classes
+* converted Foxx constructors to ES6 classes so you can extend them using class syntax.
 
 * updated chai to 3.0.
 
