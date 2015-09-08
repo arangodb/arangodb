@@ -140,6 +140,7 @@ HashIndex::UniqueArray::~UniqueArray () {
 
   delete _hashArray;
   delete _hashElement;
+  delete _isEqualElElByKey;
 }
 
 // -----------------------------------------------------------------------------
