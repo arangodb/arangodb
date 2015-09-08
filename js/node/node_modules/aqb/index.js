@@ -1,21 +1,10 @@
 /*jshint browserify: true */
 /*globals console: false */
 'use strict';
+var console = require('console');
 var AqlError = require('./errors').AqlError;
 var assumptions = require('./assumptions');
 var types = require('./types');
-
-var warn = (function () {
-  if (typeof console !== 'undefined') {
-    return function () {return console.warn.apply(console, arguments);};
-  }
-  try {
-    var cons = require('console');
-    return function () {return cons.warn.apply(cons, arguments);};
-  } catch (err) {
-    return function () {};
-  }
-}());
 
 function QB(obj) {
   if (typeof obj === 'string') {
@@ -57,17 +46,16 @@ Object.keys(types._Expression.prototype).forEach(function (key) {
   };
 });
 
-QB.if_ = QB.if = function (cond, then, otherwise) {
+QB.if = function (cond, then, otherwise) {
   return types.autoCastToken(cond).then(then).else(otherwise);
 };
-
 QB.bool = function (value) {
   return new types.BooleanLiteral(value);
 };
 QB.num = function (value) {
   return new types.NumberLiteral(value);
 };
-QB.int_ = QB.int = function (value) {
+QB.int = function (value) {
   return new types.IntegerLiteral(value);
 };
 QB.str = function (value) {
@@ -88,7 +76,6 @@ QB.ref = function (value) {
 QB.expr = function (value) {
   return new types.RawExpression(value);
 };
-
 QB.fn = function (functionName, arity) {
   if (typeof arity === 'number') {
     arity = [arity];
@@ -122,7 +109,7 @@ QB.fn = function (functionName, arity) {
 
 function deprecateAqlFunction(fn, functionName) {
   return function () {
-    warn('The AQL function ' + functionName + ' is deprecated!');
+    console.warn('The AQL function ' + functionName + ' is deprecated!');
     return fn.apply(this, arguments);
   };
 }

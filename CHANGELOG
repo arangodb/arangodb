@@ -278,6 +278,8 @@ v2.7.0 (XXXX-XX-XX)
 
 * converted Foxx constructors to ES6 classes so you can extend them using class syntax.
 
+* updated aqb to 2.0.
+
 * updated chai to 3.0.
 
 * Use more madvise calls to speed up things when memory is tight, in particular
