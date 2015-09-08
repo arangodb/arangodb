@@ -247,6 +247,7 @@ unittests-recovery:
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-multi-flush"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-simple"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-all"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-other"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="foxx-directories"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-rename"
