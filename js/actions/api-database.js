@@ -202,7 +202,7 @@ function get_api_database (req, res) {
 ///
 /// @RESTHEADER{POST /_api/database, Create database}
 ///
-/// @RESTBODYPARAM{body,json,required}
+/// @RESTALLBODYPARAM{body,json,required} /// TODOSWAGGER
 /// the body with the name of the database.
 ///
 /// @RESTDESCRIPTION
@@ -266,7 +266,7 @@ function get_api_database (req, res) {
 ///     var data = {
 ///       name: name
 ///     };
-///     var response = logCurlRequest('POST', url, JSON.stringify(data));
+///     var response = logCurlRequest('POST', url, data);
 ///
 ///     db._dropDatabase(name);
 ///     assert(response.code === 201);
@@ -300,7 +300,7 @@ function get_api_database (req, res) {
 ///         }
 ///       ]
 ///     };
-///     var response = logCurlRequest('POST', url, JSON.stringify(data));
+///     var response = logCurlRequest('POST', url, data);
 ///
 ///     db._dropDatabase(name);
 ///     assert(response.code === 201);

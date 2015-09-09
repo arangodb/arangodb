@@ -43,11 +43,11 @@ var actions = require("org/arangodb/actions");
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{waitForSync,boolean,optional}
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Whether or not the operation should block until the not-yet synchronized
 /// data in the write-ahead log was synchronized to disk.
 ///
-/// @RESTURLPARAM{waitForCollector,boolean,optional}
+/// @RESTQUERYPARAM{waitForCollector,boolean,optional}
 /// Whether or not the operation should block until the data in the flushed
 /// log has been collected by the write-ahead log garbage collector. Note that
 /// setting this option to *true* might block for a long time if there are
@@ -130,7 +130,7 @@ actions.defineHttp({
 ///       logfileSize: 32 * 1024 * 1024,
 ///       allowOversizeEntries: true
 ///     };
-///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
+///     var response = logCurlRequest('PUT', url, body);
 ///
 ///     assert(response.code === 200);
 ///

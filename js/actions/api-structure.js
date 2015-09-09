@@ -1744,7 +1744,7 @@ function put_api_structure (req, res) {
 ///
 /// @RESTHEADER{POST /_api/structure,creates a document}
 ///
-/// @RESTBODYPARAM{document,json,required}
+/// @RESTALLBODYPARAM{document,json,required}
 /// A JSON representation of document.
 ///
 /// @RESTQUERYPARAMETERS

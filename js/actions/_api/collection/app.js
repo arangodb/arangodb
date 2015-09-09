@@ -174,7 +174,7 @@ function parseBodyForCreateCollection (req, res) {
 ///
 /// @RESTHEADER{POST /_api/collection, Create collection}
 ///
-/// @RESTBODYPARAM{body,json,required}
+/// @RESTALLBODYPARAM{body,json,required}/// TODOSWAGGER
 /// the body with name and options for a collection.
 ///
 /// @RESTDESCRIPTION
@@ -256,6 +256,15 @@ function parseBodyForCreateCollection (req, res) {
 ///   determine the target shard.
 /// **Note**: Values of shard key attributes cannot be changed once set.
 ///   This option is meaningless in a single server setup.
+///
+/// @RESTRETURNCODE{400}
+/// If the *collection-name* is missing, then a *HTTP 400* is
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the *collection-name* is unknown, then a *HTTP 404* is returned.
+///
+///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateCollection}
@@ -264,7 +273,7 @@ function parseBodyForCreateCollection (req, res) {
 ///       name: "testCollectionBasics"
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///
@@ -274,7 +283,7 @@ function parseBodyForCreateCollection (req, res) {
 ///       type : 3
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
@@ -295,7 +304,7 @@ function parseBodyForCreateCollection (req, res) {
 ///       }
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
@@ -380,6 +389,11 @@ function post_api_collection (req, res) {
 ///
 /// By providing the optional URL parameter *excludeSystem* with a value of
 /// *true*, all system collections will be excluded from the response.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// The list of collections
 ///
 /// @EXAMPLES
 ///
@@ -1190,6 +1204,16 @@ function put_api_collection_unload (req, res, collection) {
 /// @RESTDESCRIPTION
 /// Removes all documents from the collection, but leaves the indexes intact.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the *collection-name* is missing, then a *HTTP 400* is
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the *collection-name* is unknown, then a *HTTP 404*
+/// is returned.
+///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierTruncate}
@@ -1282,6 +1306,16 @@ function put_api_collection_truncate (req, res, collection) {
 /// *numberOfShards* or *shardKeys* cannot be changed once a collection is
 /// created.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the *collection-name* is missing, then a *HTTP 400* is
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the *collection-name* is unknown, then a *HTTP 404*
+/// is returned.
+///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierPropertiesSync}
@@ -1349,6 +1383,15 @@ function put_api_collection_properties (req, res, collection) {
 ///
 /// - *isSystem*: If *true* then the collection is a system collection.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the *collection-name* is missing, then a *HTTP 400* is
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the *collection-name* is unknown, then a *HTTP 404*
+/// is returned.
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierRename}

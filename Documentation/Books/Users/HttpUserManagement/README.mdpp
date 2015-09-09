@@ -37,3 +37,7 @@ Please note that user operations are not included in ArangoDB's replication.
 <!-- js/actions/api-user.js -->
 
 @startDocuBlock JSF_api_user_fetch
+
+<!-- js/actions/api-user.js -->
+
+@startDocuBlock JSF_api_user_fetch_list

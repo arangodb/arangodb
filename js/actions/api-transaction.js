@@ -42,40 +42,40 @@ var actions = require("org/arangodb/actions");
 ///
 /// @RESTHEADER{POST /_api/transaction, Execute transaction}
 ///
-/// @RESTBODYPARAM{body,string,required}
-/// Contains the *collections* and *action*.
+/// @RESTBODYPARAM{collections,string,required,string}
+/// contains the array of collections to be used in the
+/// transaction (mandatory). *collections* must be a JSON object that can
+/// have the optional sub-attributes *read* and *write*. *read*
+/// and *write* must each be either arrays of collections names or strings
+/// with a single collection name.
+///
+/// @RESTBODYPARAM{action,string,required,string}
+/// the actual transaction operations to be executed, in the
+/// form of stringified JavaScript code. The code will be executed on server
+/// side, with late binding. It is thus critical that the code specified in
+/// *action* properly sets up all the variables it needs.
+/// If the code specified in *action* ends with a return statement, the
+/// value returned will also be returned by the REST API in the *result*
+/// attribute if the transaction committed successfully.
+///
+/// @RESTBODYPARAM{waitForSync,boolean,optional,boolean}
+/// an optional boolean flag that, if set, will force the
+/// transaction to write all data to disk before returning.
+///
+/// @RESTBODYPARAM{lockTimeout,integer,optional,int64}
+/// an optional numeric value that can be used to set a
+/// timeout for waiting on collection locks. If not specified, a default
+/// value will be used. Setting *lockTimeout* to *0* will make ArangoDB
+/// not time out waiting for a lock.
+///
+/// @RESTBODYPARAM{params,string,optional,string}
+/// optional arguments passed to *action*.
 ///
 /// @RESTDESCRIPTION
 ///
+/// Contains the *collections* and *action*.
+///
 /// The transaction description must be passed in the body of the POST request.
-///
-/// The following attributes must be specified inside the JSON object:
-///
-/// - *collections*: contains the array of collections to be used in the
-///   transaction (mandatory). *collections* must be a JSON object that can
-///   have the optional sub-attributes *read* and *write*. *read*
-///   and *write* must each be either arrays of collections names or strings
-///   with a single collection name.
-///
-/// - *action*: the actual transaction operations to be executed, in the
-///   form of stringified JavaScript code. The code will be executed on server
-///   side, with late binding. It is thus critical that the code specified in
-///   *action* properly sets up all the variables it needs.
-///   If the code specified in *action* ends with a return statement, the
-///   value returned will also be returned by the REST API in the *result*
-///   attribute if the transaction committed successfully.
-///
-/// The following optional attributes may also be specified in the request:
-///
-/// - *waitForSync*: an optional boolean flag that, if set, will force the
-///   transaction to write all data to disk before returning.
-///
-/// - *lockTimeout*: an optional numeric value that can be used to set a
-///   timeout for waiting on collection locks. If not specified, a default
-///   value will be used. Setting *lockTimeout* to *0* will make ArangoDB
-///   not time out waiting for a lock.
-///
-/// - *params*: optional arguments passed to *action*.
 ///
 /// If the transaction is fully executed and committed on the server,
 /// *HTTP 200* will be returned. Additionally, the return value of the

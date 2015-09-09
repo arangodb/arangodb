@@ -55,6 +55,11 @@ var API = "_api/index";
 /// available in the *identifiers* as an object with the index handles as
 /// keys.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// returns a json object containing a list of indexes on that collection.
+///
 /// @EXAMPLES
 ///
 /// Return information about all indexes:
@@ -209,20 +214,22 @@ function get_api_index (req, res) {
 /// @RESTQUERYPARAM{collection,string,required}
 /// The collection name.
 ///
-/// @RESTBODYPARAM{cap-constraint,json,required}
+/// @RESTBODYPARAM{type,string,required,string}
+/// must be equal to *"cap"*.
+///
+/// @RESTBODYPARAM{size,integer,optional,int64}
+/// The maximal number of documents for the collection. If specified,
+/// the value must be greater than zero.
+///
+/// @RESTBODYPARAM{byteSize,integer,optional,int64}
+/// The maximal size of the active document data in the collection
+/// (in bytes). If specified, the value must be at least 16384.
+///
 ///
 /// @RESTDESCRIPTION
 ///
 /// Creates a cap constraint for the collection *collection-name*,
 /// if it does not already exist. Expects an object containing the index details.
-///
-/// - *type*: must be equal to *"cap"*.
-///
-/// - *size*: The maximal number of documents for the collection. If specified,
-///   the value must be greater than zero.
-///
-/// - *byteSize*: The maximal size of the active document data in the collection
-///   (in bytes). If specified, the value must be at least 16384.
 ///
 /// **Note**: The cap constraint does not index particular attributes of the
 /// documents in a collection, but limits the number of documents in the
@@ -265,7 +272,7 @@ function get_api_index (req, res) {
 ///       size : 10
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);
 ///
@@ -286,35 +293,37 @@ function get_api_index (req, res) {
 /// @RESTQUERYPARAM{collection,string,required}
 /// The collection name.
 ///
-/// @RESTBODYPARAM{index-details,json,required}
+/// 
+/// @RESTBODYPARAM{type,string,required,string}
+/// must be equal to *"geo"*.
+///
+/// @RESTBODYPARAM{fields,array,required,string}
+/// An array with one or two attribute paths.
+///
+/// If it is an array with one attribute path *location*, then a geo-spatial
+/// index on all documents is created using *location* as path to the
+/// coordinates. The value of the attribute must be an array with at least two
+/// double values. The array must contain the latitude (first value) and the
+/// longitude (second value). All documents, which do not have the attribute
+/// path or with value that are not suitable, are ignored.
+///
+/// If it is an array with two attribute paths *latitude* and *longitude*,
+/// then a geo-spatial index on all documents is created using *latitude*
+/// and *longitude* as paths the latitude and the longitude. The value of
+/// the attribute *latitude* and of the attribute *longitude* must a
+/// double. All documents, which do not have the attribute paths or which
+/// values are not suitable, are ignored.
+///
+/// @RESTBODYPARAM{geoJson,string,required,string}
+/// If a geo-spatial index on a *location* is constructed
+/// and *geoJson* is *true*, then the order within the array is longitude
+/// followed by latitude. This corresponds to the format described in
+/// http://geojson.org/geojson-spec.html#positions
 ///
 /// @RESTDESCRIPTION
 ///
 /// Creates a geo-spatial index in the collection *collection-name*, if
 /// it does not already exist. Expects an object containing the index details.
-///
-/// - *type*: must be equal to *"geo"*.
-///
-/// - *fields*: An array with one or two attribute paths.
-///
-///   If it is an array with one attribute path *location*, then a geo-spatial
-///   index on all documents is created using *location* as path to the
-///   coordinates. The value of the attribute must be an array with at least two
-///   double values. The array must contain the latitude (first value) and the
-///   longitude (second value). All documents, which do not have the attribute
-///   path or with value that are not suitable, are ignored.
-///
-///   If it is an array with two attribute paths *latitude* and *longitude*,
-///   then a geo-spatial index on all documents is created using *latitude*
-///   and *longitude* as paths the latitude and the longitude. The value of
-///   the attribute *latitude* and of the attribute *longitude* must a
-///   double. All documents, which do not have the attribute paths or which
-///   values are not suitable, are ignored.
-///
-/// - *geoJson*: If a geo-spatial index on a *location* is constructed
-///   and *geoJson* is *true*, then the order within the array is longitude
-///   followed by latitude. This corresponds to the format described in
-///   http://geojson.org/geojson-spec.html#positions
 ///
 /// Geo indexes are always sparse, meaning that documents that do not contain
 /// the index attributes or have non-numeric values in the index attributes
@@ -389,22 +398,23 @@ function get_api_index (req, res) {
 /// @RESTQUERYPARAM{collection-name,string,required}
 /// The collection name.
 ///
-/// @RESTBODYPARAM{index-details,json,required}
+/// @RESTBODYPARAM{type,string,required,string}
+/// must be equal to *"hash"*.
+///
+/// @RESTBODYPARAM{fields,array,required,string}
+/// an array of attribute paths.
+///
+/// @RESTBODYPARAM{unique,boolean,required,}
+/// if *true*, then create a unique index.
+///
+/// @RESTBODYPARAM{sparse,boolean,required,}
+/// if *true*, then create a sparse index.
 ///
 /// @RESTDESCRIPTION
 ///
 /// Creates a hash index for the collection *collection-name* if it
 /// does not already exist. The call expects an object containing the index
-/// details. The following attributes can be present in the body of the
-/// request object:
-///
-/// - *type*: must be equal to *"hash"*.
-///
-/// - *fields*: an array of attribute paths.
-///
-/// - *unique*: if *true*, then create a unique index.
-///
-/// - *sparse*: if *true*, then create a sparse index.
+/// details.
 ///
 /// In a sparse index all documents will be excluded from the index that do not 
 /// contain at least one of the specified index attributes (i.e. *fields*) or that 
@@ -517,22 +527,24 @@ function get_api_index (req, res) {
 /// @RESTQUERYPARAM{collection-name,string,required}
 /// The collection name.
 ///
-/// @RESTBODYPARAM{index-details,json,required}
+/// 
+/// @RESTBODYPARAM{type,string,required,string}
+/// must be equal to *"skiplist"*.
+///
+/// @RESTBODYPARAM{fields,array,required,string}
+/// an array of attribute paths.
+///
+/// @RESTBODYPARAM{unique,boolean,required,}
+/// if *true*, then create a unique index.
+///
+/// @RESTBODYPARAM{sparse,boolean,required,}
+/// if *true*, then create a sparse index.
 ///
 /// @RESTDESCRIPTION
 ///
 /// Creates a skip-list index for the collection *collection-name*, if
 /// it does not already exist. The call expects an object containing the index
-/// details. The following attributes can be present in the body of the
-/// request object:
-///
-/// - *type*: must be equal to *"skiplist"*.
-///
-/// - *fields*: an array of attribute paths.
-///
-/// - *unique*: if *true*, then create a unique index.
-///
-/// - *sparse*: if *true*, then create a sparse index.
+/// details.
 ///
 /// In a sparse index all documents will be excluded from the index that do not 
 /// contain at least one of the specified index attributes (i.e. *fields*) or that 
@@ -624,23 +636,23 @@ function get_api_index (req, res) {
 /// @RESTQUERYPARAM{collection-name,string,required}
 /// The collection name.
 ///
-/// @RESTBODYPARAM{index-details,json,required}
+/// @RESTBODYPARAM{type,string,required,string}
+/// must be equal to *"fulltext"*.
+///
+/// @RESTBODYPARAM{fields,array,required,string}
+/// an array of attribute names. Currently, the array is limited
+/// to exactly one attribute.
+///
+/// @RESTBODYPARAM{minLength,integer,required,int64}
+/// Minimum character length of words to index. Will default
+/// to a server-defined value if unspecified. It is thus recommended to set
+/// this value explicitly when creating the index.
 ///
 /// @RESTDESCRIPTION
 ///
 /// Creates a fulltext index for the collection *collection-name*, if
 /// it does not already exist. The call expects an object containing the index
-/// details. The following attributes can be present in the body of the
-/// request object:
-///
-/// - *type*: must be equal to *"fulltext"*.
-///
-/// - *fields*: an array of attribute names. Currently, the array is limited
-///   to exactly one attribute.
-///
-/// - *minLength*: Minimum character length of words to index. Will default
-///   to a server-defined value if unspecified. It is thus recommended to set
-///   this value explicitly when creating the index.
+/// details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -691,7 +703,7 @@ function get_api_index (req, res) {
 /// @RESTQUERYPARAM{collection,string,required}
 /// The collection name.
 ///
-/// @RESTBODYPARAM{index-details,json,required}
+/// @RESTALLBODYPARAM{index-details,json,required} ///TODOSWAGGER
 ///
 /// @RESTDESCRIPTION
 ///
@@ -787,9 +799,9 @@ function post_api_index (req, res) {
 ///
 /// @RESTHEADER{DELETE /_api/index/{index-handle}, Delete index}
 ///
-/// @RESTQUERYPARAMETERS
+/// @RESTURLPARAMETERS
 ///
-/// @RESTQUERYPARAM{index-handle,string,required}
+/// @RESTURLPARAM{index-handle,string,required}
 /// The index handle.
 ///
 /// @RESTDESCRIPTION

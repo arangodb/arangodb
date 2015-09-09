@@ -40,9 +40,9 @@ var ERRORS = require("internal").errors;
 /// @startDocuBlock JSF_post_api_explain
 /// @brief explain an AQL query and return information about it
 ///
-/// @RESTHEADER{POST /_api/explain, Explain an AQL query}
+/// @RESTHEADER{POST /_api/explain, Explain an AQL query} /// TODOSWAGGER
 ///
-/// @RESTBODYPARAM{body,json,required}
+/// @RESTALLBODYPARAM{body,json,required}
 /// The query string needs to be passed in the attribute *query* of a JSON
 /// object as the body of the POST request. If the query references any bind
 /// variables, these must also be passed in the attribute *bindVars*. Additional
@@ -133,7 +133,7 @@ var ERRORS = require("internal").errors;
 ///       query : "FOR p IN products RETURN p"
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///
@@ -154,7 +154,7 @@ var ERRORS = require("internal").errors;
 ///       query : "FOR p IN products LET a = p.id FILTER a == 4 LET name = p.name SORT p.id LIMIT 1 RETURN name",
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///
@@ -182,7 +182,7 @@ var ERRORS = require("internal").errors;
 ///       }
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///
@@ -205,7 +205,7 @@ var ERRORS = require("internal").errors;
 ///       }
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///
@@ -221,7 +221,7 @@ var ERRORS = require("internal").errors;
 ///       query : "FOR i IN 1..10 RETURN 1 / 0"
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///
