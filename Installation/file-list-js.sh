@@ -3,6 +3,7 @@ set -e
 
 SRCDIR=$1
 
+if test ! -f "$SRCDIR/.file-list-js";  then
 (
   cd ${SRCDIR}
 
@@ -28,4 +29,7 @@ SRCDIR=$1
 | egrep -v "^js/apps/system/.*/test/" \
 | egrep -v "^js/apps/system/.*/test_data/" \
 | egrep -v "^js/apps/system/.*/coverage/" \
-| egrep -v "fileset.*tests.*fixtures.*an.*odd.*filename"
+| egrep -v "fileset.*tests.*fixtures.*an.*odd.*filename" > "$SRCDIR/.file-list-js"
+fi
+
+cat "$SRCDIR/.file-list-js"
