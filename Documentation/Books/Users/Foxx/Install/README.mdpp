@@ -6,18 +6,17 @@ The Foxx manager is a shell program. It should have been installed under **/usr/
 when installing the ArangoDB package. An instance of the ArangoDB server must be
 up and running.
 
-```
-unix> foxx-manager
-Expecting a command, please try:
+    unix> foxx-manager
+    Expecting a command, please try:
 
-Example usage:
- foxx-manager install <app-info> <mount-point> option1=value1
- foxx-manager uninstall <mount-point>
+    Example usage:
+     foxx-manager install <app-info> <mount-point> option1=value1
+     foxx-manager uninstall <mount-point>
 
-Further help:
- foxx-manager help   for the list of foxx-manager commands
- foxx-manager --help for the list of options
-```
+    Further help:
+     foxx-manager help   for the list of foxx-manager commands
+     foxx-manager --help for the list of options
+
 The most important commands are
 
 * **install**: Installs a Foxx application to a local URL and calls its setup method
@@ -27,18 +26,17 @@ The most important commands are
 When dealing with a fresh install of ArangoDB, there should be no installed
 applications besides the system applications that are shipped with ArangoDB.
 
-````
-unix> foxx-manager list
-Mount                   Name           Author               Description                                       Version    Development
----------------------   ------------   ------------------   -----------------------------------------------   --------   ------------
-/_admin/aardvark        aardvark       ArangoDB GmbH        ArangoDB Admin Web Interface                      1.0        no
-/_api/gharial           gharial        ArangoDB GmbH        ArangoDB Graph Module                             0.1        no
-/_system/cerberus       cerberus       ArangoDB GmbH        Password Manager                                  0.0.1      no
-/_system/sessions       sessions       ArangoDB GmbH        Session storage for Foxx.                         0.1        no
-/_system/simple-auth    simple-auth    ArangoDB GmbH        Simple password-based authentication for Foxx.    0.1        no
----------------------   ------------   ------------------   -----------------------------------------------   --------   ------------
-5 application(s) found
-```
+    unix> foxx-manager list
+    Mount                   Name           Author               Description                                       Version    Development
+    ---------------------   ------------   ------------------   -----------------------------------------------   --------   ------------
+    /_admin/aardvark        aardvark       ArangoDB GmbH        ArangoDB Admin Web Interface                      1.0        no
+    /_api/gharial           gharial        ArangoDB GmbH        ArangoDB Graph Module                             0.1        no
+    /_system/cerberus       cerberus       ArangoDB GmbH        Password Manager                                  0.0.1      no
+    /_system/sessions       sessions       ArangoDB GmbH        Session storage for Foxx.                         0.1        no
+    /_system/simple-auth    simple-auth    ArangoDB GmbH        Simple password-based authentication for Foxx.    0.1        no
+    ---------------------   ------------   ------------------   -----------------------------------------------   --------   ------------
+    5 application(s) found
+
 
 There are currently several applications installed, all of them are system applications. 
 You can safely ignore system applications.  
@@ -108,7 +106,8 @@ We can also replace a running application by any other application:
     unix> foxx-manager replace itzpapalotl:0.9.0 /example
     Application itzpapalotl version 0.9.0 installed successfully at mount point /example
 
-This is a shortcut for an *uninstall* then *install* procedure and includes invocation of *teardown* and *setup* scripts of the respective applications.
+This is a shortcut for an *uninstall* then *install* procedure and includes
+invocation of *teardown* and *setup* scripts of the respective applications.
 If no application is installed at the mount point this shortcut will fail, use *install* instead.
 Note here we have specified a specific version of the application: *0.9.0*.
 
@@ -117,57 +116,57 @@ Finally you can upgrade a running application to a newer version:
     unix> foxx-manager update itzpapalotl:1.0.0 /example
     Application itzpapalotl version 1.0.0 installed successfully at mount point /example
 
-This will do *uninstall* and *install* of the application but will **not** execute *setup* or *teardown* scripts, but will run the *upgrade* script instead.
+This will do *uninstall* and *install* of the application but will **not**
+execute *setup* or *teardown* scripts, but will run the *upgrade* script instead.
 
 !SECTION Configuration
 
 * **configuration**: Reads the configuration of a Foxx application
 * **configure**: Modifies Foxx application's configuration
 
-Here example of how to modify and check that it worked. In this case we modified the workKey for 388 to 700.
+Here's an example of how to modify workKey from 388 to 700 and check if it worked:
 
-  unix>foxx-manager configure /auth workKey=700
-  Reconfigured Application credential-auth version 1.1.0 on mount point /auth
+    unix>foxx-manager configure /auth workKey=700
+    Reconfigured Application credential-auth version 1.1.0 on mount point /auth
+    
+    unix> foxx-manager configuration /auth
+    Configuration options:
+    {
+      "json": {
+        "default": false,
+        "required": true,
+        "description": "Convert password data to JSON.",
+        "type": "boolean",
+        "title": "Json",
+        "current": false
+      },
+      "keyLength": {
+        "required": true,
+        "default": 66,
+        "description": "Length of the derived key.",
+        "type": "integer",
+        "title": "KeyLength",
+        "current": 66
+      },
+      "workUnits": {
+        "required": true,
+        "default": 60,
+        "description": "Multiplication factor to determine the number of iterations. Higher values make the hashing slower and harder to brute-force.",
+        "type": "integer",
+        "title": "WorkUnits",
+        "current": 60
+      },
+      "workKey": {
+        "required": true,
+        "default": 388,
+        "description": "Addition factor to determine the number of iterations. Should be a secret value between one and 999.",
+        "type": "integer",
+        "title": "WorkKey",
+        "current": 700
+      },
+      "code": 200
+    }
 
-````
-unix> foxx-manager configuration /auth
-Configuration options:
-{
-  "json": {
-    "default": false,
-    "required": true,
-    "description": "Convert password data to JSON.",
-    "type": "boolean",
-    "title": "Json",
-    "current": false
-  },
-  "keyLength": {
-    "required": true,
-    "default": 66,
-    "description": "Length of the derived key.",
-    "type": "integer",
-    "title": "KeyLength",
-    "current": 66
-  },
-  "workUnits": {
-    "required": true,
-    "default": 60,
-    "description": "Multiplication factor to determine the number of iterations. Higher values make the hashing slower and harder to brute-force.",
-    "type": "integer",
-    "title": "WorkUnits",
-    "current": 60
-  },
-  "workKey": {
-    "required": true,
-    "default": 388,
-    "description": "Addition factor to determine the number of iterations. Should be a secret value between one and 999.",
-    "type": "integer",
-    "title": "WorkKey",
-    "current": 700
-  },
-  "code": 200
-}
-```
 
 !SECTION Application identifier
 
