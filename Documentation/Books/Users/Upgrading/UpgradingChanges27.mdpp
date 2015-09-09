@@ -28,3 +28,70 @@ class MyModel extends Foxx.Model {
 }
 MyModel.prototype.schema = {/* ... */};
 ```
+
+!SUBSECTION Bundling and compilation
+
+The `assets` property is no longer supported in Foxx manifests and is scheduled to be removed in a future version of ArangoDB. The `files` property can still be used to serve static assets but it is recommended to use separate tooling to compile and bundle your assets.
+
+The support for loading and ad-hoc compiling CoffeeScript source files has been deprecated and will be removed as well. If you want to continue to write Foxx apps in CoffeeScript you should use a CoffeeScript compiler directly as part of your build process.
+
+!SUBSECTION Manifest scripts
+
+The properties `setup` and `teardown` have been moved into the `scripts` property map:
+
+**Before:**
+
+```json
+{
+  ...
+  "setup": "scripts/setup.js",
+  "teardown": "scripts/teardown.js"
+}
+```
+
+**After:**
+
+```json
+{
+  ...
+  "scripts": {
+    "setup": "scripts/setup.js",
+    "teardown": "scripts/teardown.js"
+  }
+}
+```
+
+!SUBSECTION Foxx Queues
+
+Function-based Foxx Queue job types are no longer supported. To learn about how you can use the new script-based job types [follow the updated recipe in the cookbook](https://docs.arangodb.com/cookbook/FoxxQueues.html).
+
+!SUBSECTION Foxx Sessions
+
+The `jwt` and `type` options have been removed from the `activateSessions` API.
+
+If you want to replicate the behaviour of the `jwt` option you can use the JWT functions in the `crypto` module. A JWT-based session storage that doesn't write sessions to the database is available as the [sessions-jwt app](https://github.com/arangodb/foxx-sessions-jwt) in the Foxx app store.
+
+The session type is now inferred from the presence of the `cookie` or `header` options (allowing you to enable support for both). If you want to use the default settings for `cookie` or `header` you can pass the value `true` instead.
+
+The `sessionStorageApp` option has been removed in favour of the `sessionStorage` option.
+
+**Before:**
+
+```js
+var Foxx = require('org/arangodb/foxx');
+var ctrl = new Foxx.Controller(applicationContext);
+
+ctrl.activateSessions({
+  sessionStorageApp: 'some-sessions-app',
+  type: 'cookie'
+});
+```
+
+**After:**
+
+```js
+ctrl.activateSessions({
+  sessionStorage: applicationContext.dependencies.sessions.sessionStorage,
+  cookie: true
+});
+```
