@@ -130,26 +130,31 @@ v2.7.0 (XXXX-XX-XX)
   CTRL-C again will reset the prompt if something was entered before, or quit
   arangosh if no command was entered directly before.
   
-  This affects the arangosh version build with Readline-support only.
+  This affects the arangosh version build with Readline-support only (Linux 
+  and MacOS).
 
   The MacOS version of ArangoDB for Homebrew now depends on Readline, too. The
   Homebrew formula has been changed accordingly.
   When self-compiling ArangoDB on MacOS without Homebrew, Readline now is a
   prerequisite.
 
-* increased default value collection-specific `indexBuckets` value from 1 to 8
+* increased default value for collection-specific `indexBuckets` value from 1 to 8
 
-  Collections created from 2.7 on will use the new default if not overridden on
-  collection creation or later using `collection.properties({ indexBuckets: ... })`.
+  Collections created from 2.7 on will use the new default value of `8` if not 
+  overridden on collection creation or later using 
+  `collection.properties({ indexBuckets: ... })`.
 
   The `indexBuckets` value determines the number of buckets to use for indexes of
-  type `primary`, `hash` and `edge`.
+  type `primary`, `hash` and `edge`. Having multiple index buckets allows splitting
+  an index into smaller components, which can be filled in parallel when a collection
+  is loading. Additionally, resizing and reallocation of indexes are faster and
+  less intrusive if the index uses multiple buckets, because resize and reallocation
+  will affect only data in a single bucket instead of all index values.
 
-* allow parallel processing of multiple buckets when loading edge or hash indexes
-
-  Index buckets will be filled in parallel if the collection has an `indexBuckets` 
-  value greater than 1 and the collection contains a significant amount of 
-  documents/edges.
+  The index buckets will be filled in parallel when loading a collection if the collection 
+  has an `indexBuckets` value greater than 1 and the collection contains a significant 
+  amount of documents/edges (the current threshold is 256K documents but this value
+  may change in future versions of ArangoDB).
 
 * changed HTTP client to use poll instead of select on Linux and MacOS
 
@@ -171,7 +176,14 @@ v2.7.0 (XXXX-XX-XX)
 
 * removed `createNamedQueue()` and `addJob()` functions from org/arangodb/tasks
 
-* moved dispatcher to atomic implementation
+* use less locks and more atomic variables in the internal dispatcher
+  and V8 context handling implementations. This leads to improved throughput in 
+  some ArangoDB internals and allows for higher HTTP request throughput for
+  many operations.
+
+  A short overview of the improvements can be found here:
+
+  https://www.arangodb.com/2015/08/throughput-enhancements/
 
 * added shorthand notation for attribute names in AQL object literals:
 
@@ -191,7 +203,12 @@ v2.7.0 (XXXX-XX-XX)
 
 * removed configure option `--enable-figures`
 
-  This option was removed to simplify some statistics code.
+  This option previously controlled whether HTTP request statistics code was
+  compiled into ArangoDB or not. The previous default value was `true` so 
+  statistics code was available in official packages. Setting the option to 
+  `false` led to compile errors so it is doubtful the default value was
+  ever changed. By removing the option some internal statistics code was also
+  simplified.
 
 * removed run-time manipulation methods for server endpoints:
 
@@ -284,13 +301,6 @@ v2.7.0 (XXXX-XX-XX)
 
 * Use more madvise calls to speed up things when memory is tight, in particular
   at load time but also for random accesses later.
-
-* Use a configurable number of buckets in the hash indexes and in the primary
-  index. This should alleviate problems with hash resizing and corresponding
-  service pauses.
-
-* ArangoDB now builds up hash indexes in parallel using multiple threads 
-  (use new option --database.index-threads).
 
 
 v2.6.8 (XXXX-XX-XX)
