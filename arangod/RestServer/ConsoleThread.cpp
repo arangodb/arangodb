@@ -185,6 +185,17 @@ start_pretty_print();
                                 TRI_V8_ASCII_STRING("(startup)"),
                                 false);
 
+#ifndef _WIN32
+    // allow SIGINT in this particular thread... otherwise we cannot CTRL-C the console
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGINT);
+ 
+    if (pthread_sigmask(SIG_UNBLOCK, &set, nullptr) < 0) {
+      LOG_ERROR("unable to install signal handler");
+    }
+#endif
+
     V8LineEditor console(isolate, localContext, ".arangod.history");
 
     console.open(true);
