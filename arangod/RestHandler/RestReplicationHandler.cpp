@@ -573,11 +573,11 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// @startDocuBlock JSF_get_api_replication_logger_tick_ranges
 /// @brief returns the tick value ranges available in the logfiles
 ///
-/// @RESTHEADER{GET /_api/replication/logger-tick-ranges, Return the tick ranges available in the logfiles}
+/// @RESTHEADER{GET /_api/replication/logger-tick-ranges, Return the tick ranges available in the WAL logfiles}
 ///
 /// @RESTDESCRIPTION
 /// Returns the currently available ranges of tick values for all currently
-/// available logfiles. The tick values can be used to determine if certain
+/// available WAL logfiles. The tick values can be used to determine if certain
 /// data (identified by tick value) is still available for replication.
 ///
 /// The body of the response contains a JSON array. Each array member is an object
@@ -1372,7 +1372,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run the command that determines which transactions were open at
 /// a given tick value
-/// this is an internal method use by ArangoDB's replication and that should not 
+/// this is an internal method use by ArangoDB's replication that should not 
 /// be called by client drivers directly
 ////////////////////////////////////////////////////////////////////////////////
 

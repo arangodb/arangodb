@@ -35,14 +35,6 @@
   },
 
   "files": {
-    "/documentation.js": {
-      "path": "build/documentation.min.js",
-      "gzip": true
-    },
-    "/documentation.html": {
-      "path": "build/documentation-min.html",
-      "gzip": true
-    },
     "/standalone.html": {
       "path": "frontend/build/standalone-min.html",
       "gzip": true
@@ -87,8 +79,6 @@
       "path": "favicon.ico",
       "gzip": false
     },
-    "/api-docs.json": "api-docs.json",
-    "/api-docs": "api-docs",
     "/fonts": "frontend/fonts",
     "/img": "frontend/compressed-img",
     "/ammapLibs": "frontend/js/lib/ammap/plugins/export/libs",

@@ -40,7 +40,7 @@
 
     render: function () {
       $(this.el).html(this.template.render({
-        isSystem: this.currentDB.get("isSystem")
+        currentDB: this.currentDB
       }));
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));

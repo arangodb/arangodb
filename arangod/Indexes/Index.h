@@ -33,7 +33,6 @@
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/JsonHelper.h"
-#include "Indexes/IndexWatermarks.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
