@@ -292,6 +292,7 @@ v2.7.0 (XXXX-XX-XX)
 * ArangoDB now builds up hash indexes in parallel using multiple threads 
   (use new option --database.index-threads).
 
+* The API documentation for ArangoDB has been moved from "Tools" to "Links" in the web interface.
 
 v2.6.8 (XXXX-XX-XX)
 -------------------
