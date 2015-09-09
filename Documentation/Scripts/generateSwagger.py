@@ -67,6 +67,30 @@ swagger = {
 }
 
 ################################################################################
+### @brief native swagger types
+################################################################################
+
+swaggerBaseTypes = [
+    'integer',
+    'long',
+    'float',
+    'double',
+    'string',
+    'byte',
+    'binary',
+    'boolean',
+    'date',
+    'dateTime',
+    'password'
+]
+
+################################################################################
+### @brief length of the swagger definition namespace
+################################################################################
+
+defLen = len('#/definitions/')
+
+################################################################################
 ### @brief operation
 ################################################################################
 
@@ -636,12 +660,17 @@ def restbodyparam(cargo, r=Regexen()):
                                     swagger['definitions'][ptype2],
                                     'description')
 
-    if ptype == 'object':
-            swagger['definitions'][currentDocuBlock]['properties'][name]['additionalProperties'] = {}
-    elif ptype == 'array':
+    if ptype == 'array':
+        if ptype2 not in swaggerBaseTypes:
             swagger['definitions'][currentDocuBlock]['properties'][name]['items'] = {
-            'type': ptype2
+                '$ref': '#/definitions/' + ptype2
             }
+        else:
+            swagger['definitions'][currentDocuBlock]['properties'][name]['items'] = {
+                'type': ptype2
+            }
+    elif ptype == 'object':
+            swagger['definitions'][currentDocuBlock]['properties'][name]['additionalProperties'] = {}
     elif ptype != 'string':
         swagger['definitions'][currentDocuBlock]['properties'][name]['format'] = ptype2
 
@@ -721,7 +750,14 @@ def reststruct(cargo, r=Regexen()):
         }
 
     if ptype == 'array':
-        swagger['definitions'][className]['properties'][name]['items'] = {'type': ptype2}
+        if ptype2 not in swaggerBaseTypes:
+            swagger['definitions'][currentDocuBlock]['properties'][name]['items'] = {
+                '$ref': '#/definitions/' + ptype2
+            }
+        else:
+            swagger['definitions'][currentDocuBlock]['properties'][name]['items'] = {
+                'type': ptype2
+            }
     elif ptype != 'string' and ptype != 'boolean':
         swagger['definitions'][className]['properties'][name]['format'] = ptype2
 
@@ -931,19 +967,26 @@ def unwrapPostJson(reference, layer):
     global swagger
     rc = ''
     for param in swagger['definitions'][reference]['properties'].keys():
-        required = param in swagger['definitions'][reference]['required']
+        required = 'required' in swagger['definitions'][reference] and param in swagger['definitions'][reference]['required']
         if '$ref' in swagger['definitions'][reference]['properties'][param]:
-            subStructRef = swagger['definitions'][reference]['properties'][param]['$ref'][len('#/definitions/'):]
+            subStructRef = swagger['definitions'][reference]['properties'][param]['$ref'][defLen:]
             rc += "<li>*" + param + "*: "
             rc += swagger['definitions'][subStructRef]['description'] + "\n<ul class=\"swagger-list\">\n"
-            rc += unwrapPostJson(subStructRef,
-                                 layer + 1)
+            rc += unwrapPostJson(subStructRef, layer + 1)
             rc += "</li></ul>"
         
         elif swagger['definitions'][reference]['properties'][param]['type'] == 'object':
             rc += swagger['definitions'][reference]['properties'][param]['description']
         elif swagger['definitions'][reference]['properties'][param]['type'] == 'array':
-            rc += ' ' * layer + "<li>*" + param + "*: " + swagger['definitions'][reference]['properties'][param]['description'] + '</li>\n'
+            rc += ' ' * layer + "<li>*" + param + "*: " + swagger['definitions'][reference]['properties'][param]['description']
+            if 'type' in swagger['definitions'][reference]['properties'][param]['items']:
+                rc += " of type " + swagger['definitions'][reference]['properties'][param]['type']['items']['type']
+            else:
+                subStructRef = swagger['definitions'][reference]['properties'][param]['items']['$ref'][defLen:]
+                rc += "\n<ul class=\"swagger-list\">\n"
+                rc += unwrapPostJson(subStructRef, layer + 1)
+                rc += "\n</ul>\n"
+            rc += '</li>\n'
         else:
             rc += ' ' * layer + "<li>*" + param + "*: " + swagger['definitions'][reference]['properties'][param]['description'] + '</li>\n'
     return rc
@@ -1032,7 +1075,7 @@ for route in swagger['paths'].keys():
                     swagger['paths'][route][verb]['description'] += "free style json body"
                 else:
                     swagger['paths'][route][verb]['description'] += "<ul class=\"swagger-list\">" + unwrapPostJson(
-                        swagger['paths'][route][verb]['parameters'][nParam]['schema']['$ref'][len('#/definitions/'):],
+                        swagger['paths'][route][verb]['parameters'][nParam]['schema']['$ref'][defLen:],
                         0) + "</ul>"
                                
         if 'x-examples' in swagger['paths'][route][verb]:

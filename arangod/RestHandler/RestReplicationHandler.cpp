@@ -4045,11 +4045,11 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 /// performed by the replication applier. This should be used for debugging replication
 /// problems only.
 ///
-/// @RESTBODYPARAM{restrictType,string,required,string}/// TODOSWAGGER
-/// the configuration for *restrictCollections*
+/// @RESTBODYPARAM{restrictType,string,required,string}
+/// the configuration for *restrictCollections*; Has to be either *include* or *exclude*
 ///
-/// @RESTBODYPARAM{restrictCollections,array,optional,string}/// TODOSWAGGER
-/// the optional array of collections to include or exclude,
+/// @RESTBODYPARAM{restrictCollections,array,optional,string}
+/// the array of collections to include or exclude,
 /// based on the setting of *restrictType*
 ///
 /// @RESTDESCRIPTION

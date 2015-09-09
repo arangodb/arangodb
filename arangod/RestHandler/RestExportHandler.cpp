@@ -219,16 +219,20 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
 /// is useful to ensure garbage collection of cursors that are not fully fetched
 /// by clients. If not set, a server-defined value will be used.
 ///
-/// @RESTBODYPARAM{restrict,array,optional,string} /// TODOSWAGGER
-/// an optional object containing an array of attribute names that will be 
-/// included or excluded when returning result documents. If specified, *fields* must
-/// be an object and contain a *type* attribute which must be set to either *include*
-/// or *exclude*. It must also contain a *fields* attribute containing an array of
-/// attribute names to include or exclude. Matching of attribute names for inclusion
-/// or exclusion will be done on the top level only. Specifying names of nested attributes
-/// is not supported at the moment.
+/// @RESTBODYPARAM{restrict,object,optional,JSF_post_api_export_restrictions}
+/// an object containing an array of attribute names that will be 
+/// included or excluded when returning result documents.
 ///
 /// Not specifying *restrict* will by default return all attributes of each document.
+///
+/// @RESTSTRUCT{type,JSF_post_api_export_restrictions,string,required,string}
+/// has to be be set to either *include* or *exclude* depending on which you want to use
+///
+/// @RESTSTRUCT{fields,JSF_post_api_export_restrictions,array,required,string}
+/// Contains an array of attribute names to *include* or *exclude*. Matching of attribute names
+/// for *inclusion* or *exclusion* will be done on the top level only.
+/// Specifying names of nested attributes is not supported at the moment.
+///
 ///
 /// @RESTQUERYPARAMETERS
 ///
