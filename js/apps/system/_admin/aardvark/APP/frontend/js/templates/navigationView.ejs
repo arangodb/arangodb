@@ -24,9 +24,6 @@
         <% } %>
 
         <li class="dropdown-item">
-          <a id="api" class="tab" href="#api">API</a>
-        </li>
-        <li class="dropdown-item">
           <a id="userManagement" class="tab" href="#userManagement">User Management</a>
         </li>
         <li class="dropdown-item">
@@ -38,6 +35,7 @@
       <a href="#" class="tab" id="links">Links <b class="caret"></b></a>
       <ul class="link-dropdown-menu" id="link_dropdown">
         <li class="dropdown-header">Documentation</li>
+        <li class="dropdown-item"><a href="/_db/<%= db %>/_admin/aardvark/api/index.html" target="_blank">API Documentation</a></li>
         <li class="dropdown-item"><a href="http://docs.arangodb.com/Arangosh/"
                                      target="_blank">JS Shell Documentation</a></li>
         <li class="dropdown-item"><a href="http://docs.arangodb.com/Aql/" target="_blank">AQL
@@ -57,11 +55,11 @@
     <option value="" selected="selected">Select</option>
     <option value="#">Dashboard</option>
 
-      <% if(isSystem) { %>
+    <% if(isSystem) { %>
 
-        <option value="#databases">Databases</option>
+      <option value="#databases">Databases</option>
 
-      <% } %>
+    <% } %>
 
     <option value="#collections">Collections</option>
     <option value="#demo">Demo</option>
@@ -70,12 +68,10 @@
     <option value="#query">AQL Editor</option>
     <option value="#shell">JS Shell</option>
 
-      <% if(isSystem) { %>
+    <% if(isSystem) { %>
 
-        <option value="#logs">Logs</option>
+      <option value="#logs">Logs</option>
 
-      <% } %>
-
-    <option value="#api">Api</option>
+    <% } %>
   </select>
 </script>

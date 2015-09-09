@@ -13,17 +13,6 @@
 
 <!-- obsolete file -->
 
-<script id="apiView.ejs" type="text/template">
-<div class="headerBar">
-  <a class="arangoHeader">Core - API - Documentation</a>
-</div>
-<div class="form-actions api-actions">
-  <div id="swagger-ui-container" class="swagger-ui-wrap api-container">
-
-  </div>
-</div>
-</script>
-
 <script id="applicationDetailView.ejs" type="text/template">
   <div class="application-detail-view">
     <div class="headerBar">
@@ -141,12 +130,12 @@
         <dd>
           <ul>
             <li>
-              <a href="./foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+              <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
                 API Documentation
               </a>
             </li>
             <li>
-              <a href="./foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+              <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
                 Swagger JSON
               </a>
             </li>
@@ -164,7 +153,7 @@
       </div>
       <% if (mode === 'swagger') { %>
       <div class="swagger">
-        <iframe src="/_db/<%= db%>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
+        <iframe src="/_db/<%= db %>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
       </div>
       <% } else if (mode === 'readme') { %>
       <div class="readme">
@@ -2357,9 +2346,6 @@ if (list.length > 0) {
         <% } %>
 
         <li class="dropdown-item">
-          <a id="api" class="tab" href="#api">API</a>
-        </li>
-        <li class="dropdown-item">
           <a id="userManagement" class="tab" href="#userManagement">User Management</a>
         </li>
         <li class="dropdown-item">
@@ -2371,6 +2357,7 @@ if (list.length > 0) {
       <a href="#" class="tab" id="links">Links <b class="caret"></b></a>
       <ul class="link-dropdown-menu" id="link_dropdown">
         <li class="dropdown-header">Documentation</li>
+        <li class="dropdown-item"><a href="/_db/<%= db %>/_admin/aardvark/api/index.html" target="_blank">API Documentation</a></li>
         <li class="dropdown-item"><a href="http://docs.arangodb.com/Arangosh/"
                                      target="_blank">JS Shell Documentation</a></li>
         <li class="dropdown-item"><a href="http://docs.arangodb.com/Aql/" target="_blank">AQL
@@ -2390,11 +2377,11 @@ if (list.length > 0) {
     <option value="" selected="selected">Select</option>
     <option value="#">Dashboard</option>
 
-      <% if(isSystem) { %>
+    <% if(isSystem) { %>
 
-        <option value="#databases">Databases</option>
+      <option value="#databases">Databases</option>
 
-      <% } %>
+    <% } %>
 
     <option value="#collections">Collections</option>
     <option value="#demo">Demo</option>
@@ -2403,13 +2390,11 @@ if (list.length > 0) {
     <option value="#query">AQL Editor</option>
     <option value="#shell">JS Shell</option>
 
-      <% if(isSystem) { %>
+    <% if(isSystem) { %>
 
-        <option value="#logs">Logs</option>
+      <option value="#logs">Logs</option>
 
-      <% } %>
-
-    <option value="#api">Api</option>
+    <% } %>
   </select>
 </script>
 
@@ -2911,7 +2896,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1441056861954"></script>
+<script src="app.js?version=1441798468660"></script>
 
   </body>
 </html>

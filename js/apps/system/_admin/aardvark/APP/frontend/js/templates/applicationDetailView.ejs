@@ -115,12 +115,12 @@
         <dd>
           <ul>
             <li>
-              <a href="./foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+              <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
                 API Documentation
               </a>
             </li>
             <li>
-              <a href="./foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+              <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
                 Swagger JSON
               </a>
             </li>
@@ -138,7 +138,7 @@
       </div>
       <% if (mode === 'swagger') { %>
       <div class="swagger">
-        <iframe src="/_db/<%= db%>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
+        <iframe src="/_db/<%= db %>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
       </div>
       <% } else if (mode === 'readme') { %>
       <div class="readme">

@@ -31,20 +31,6 @@
             "frontend/css/highlightjs.css",
             "frontend/css/jsoneditor.css",
             "frontend/ttf/arangofont/style.css"
-          ],
-          documentation: [
-            "frontend/js/lib/jquery-2.1.0.min.js",
-            "frontend/js/lib/handlebars-1.0.rc.1.js",
-            "frontend/js/lib/underscore.js",
-            "frontend/js/lib/backbone.js",
-            "frontend/js/lib/swagger.js",
-            "frontend/js/lib/swagger-ui.js",
-            "frontend/js/lib/highlight.7.3.pack.js",
-            "frontend/js/arango/arango.js",
-            "frontend/js/shell/browser.js",
-            "frontend/js/bootstrap/module-internal.js",
-            "frontend/js/client/bootstrap/module-internal.js",
-            "frontend/js/documentation/documentation.js"
           ]
         },
         standalone: {
@@ -176,8 +162,7 @@
           },
           files: {
             'frontend/build/standalone-min.html' : 'frontend/build/standalone.html',
-            'clusterFrontend/build/cluster-min.html' : 'clusterFrontend/build/cluster.html',
-            'frontend/build/documentation-min.html' : 'frontend/html/documentation.html'
+            'clusterFrontend/build/cluster-min.html' : 'clusterFrontend/build/cluster.html'
           }
         }
       },
@@ -292,28 +277,6 @@
             dest: '.',
             ext: '.js.gz'
           }]
-        },
-        docuJS: {
-          options: {
-            mode: 'gzip'
-          },
-          files: [{
-            expand: true,
-            src: ['build/documentation.js'],
-            dest: '.',
-            ext: '.js.gz'
-          }]
-        },
-        docuHTML: {
-          options: {
-            mode: 'gzip'
-          },
-          files: [{
-            expand: true,
-            src: ['build/documentation-min.html'],
-            dest: '.',
-            ext: '.html.gz'
-          }]
         }
       },
 
@@ -349,10 +312,6 @@
         css: {
           src: ['<%=project.shared.css %>'],
           dest: 'build/extra.css'
-        },
-        documentation: {
-          src: ['<%=project.shared.documentation %>'],
-          dest: "build/documentation.js"
         }
       },
 
@@ -493,7 +452,6 @@
         dist: {
           files: {
             'frontend/build/app.min.js': 'frontend/build/app.js',
-            'build/documentation.min.js': 'build/documentation.js',
             'clusterFrontend/build/cluster.min.js': 'clusterFrontend/build/cluster.js',
             'frontend/src/ace.min.js': 'frontend/src/ace.js',
             'build/sharedLibs.min.js': 'build/sharedLibs.js'
