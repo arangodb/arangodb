@@ -202,34 +202,41 @@ function get_api_database (req, res) {
 ///
 /// @RESTHEADER{POST /_api/database, Create database}
 ///
-/// @RESTALLBODYPARAM{body,json,required} /// TODOSWAGGER
-/// the body with the name of the database.
+/// @RESTBODYPARAM{name,string,required,string}
+/// Has to contain a valid database name.
 ///
-/// @RESTDESCRIPTION
-/// Creates a new database
-///
-/// The request body must be a JSON object with the attribute *name*. *name* must
-/// contain a valid database name.
-///
-/// The request body can optionally contain an attribute *users*, which then
-/// must be a list of user objects to initially create for the new database.
-/// Each user object can contain the following attributes:
-///
-/// - *username*: the user name as a string. This attribute is mandatory.
-///
-/// - *passwd*: the user password as a string. If not specified, then it defaults
-///   to the empty string.
-///
-/// - *active*: a boolean flag indicating whether the user account should be
-///   activated or not. The default value is *true*.
-///
-/// - *extra*: an optional JSON object with extra user information. The data
-///   contained in *extra* will be stored for the user but not be interpreted
-///   further by ArangoDB.
-///
+/// @RESTBODYPARAM{username,string,optional,string}
+/// The user name as a string.
 /// If *users* is not specified or does not contain any users, a default user
 /// *root* will be created with an empty string password. This ensures that the
 /// new database will be accessible after it is created.
+///
+/// @RESTBODYPARAM{passwd,string,optional,string}
+/// The user password as a string. If not specified, it will default to an empty string.
+///
+/// @RESTBODYPARAM{active,boolean,optional,}
+/// A Flag indicating whether the user account should be activated or not.
+/// The default value is *true*.
+///
+/// @RESTBODYPARAM{extra,object,optional,}
+/// A JSON object with extra user information. The data contained in *extra*
+///  will be stored for the user but not be interpreted further by ArangoDB.
+///
+/// @RESTBODYPARAM{users,array,optional,JSF_get_api_database_new_USERS}
+/// Has to be a list of user objects to initially create for the new database.
+/// Each user object can contain the following attributes:
+///
+/// @RESTSTRUCT{username,JSF_get_api_database_new_USERS,string,required,string}
+/// Loginname of the user to be created
+///
+/// @RESTSTRUCT{passwd,JSF_get_api_database_new_USERS,string,required,string}
+/// Password for the user
+///
+/// @RESTSTRUCT{active,JSF_get_api_database_new_USERS,boolean,required,}
+/// if *False* the user won't be able to log into the database.
+///
+/// @RESTDESCRIPTION
+/// Creates a new database
 ///
 /// The response is a JSON object with the attribute *result* set to *true*.
 ///
