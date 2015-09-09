@@ -1,11 +1,4 @@
-<!DOCTYPE html><html lang="en" xmlns="http://www.w3.org/1999/html"><head><meta charset="utf-8"><title>ArangoDB Web Interface</title><meta name="description" content="ArangoDB Admin Web Interface"><meta name="author" content="Heiko Kernbach, Michael Hackstein"><link href="css/style.css" rel="stylesheet"><link href="css/sass.css" rel="stylesheet"><link rel="shortcut icon" type="image/x-icon" href="favicon.ico"><script id="apiView.ejs" type="text/template"><div class="headerBar">
-  <a class="arangoHeader">Core - API - Documentation</a>
-</div>
-<div class="form-actions api-actions">
-  <div id="swagger-ui-container" class="swagger-ui-wrap api-container">
-
-  </div>
-</div></script><script id="applicationDetailView.ejs" type="text/template"><div class="application-detail-view">
+<!DOCTYPE html><html lang="en" xmlns="http://www.w3.org/1999/html"><head><meta charset="utf-8"><title>ArangoDB Web Interface</title><meta name="description" content="ArangoDB Admin Web Interface"><meta name="author" content="Heiko Kernbach, Michael Hackstein"><link href="css/style.css" rel="stylesheet"><link href="css/sass.css" rel="stylesheet"><link rel="shortcut icon" type="image/x-icon" href="favicon.ico"><script id="applicationDetailView.ejs" type="text/template"><div class="application-detail-view">
     <div class="headerBar">
       <div class="headerButtonBar">
         <ul class="headerButtonList">
@@ -121,12 +114,12 @@
         <dd>
           <ul>
             <li>
-              <a href="./foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+              <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
                 API Documentation
               </a>
             </li>
             <li>
-              <a href="./foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+              <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
                 Swagger JSON
               </a>
             </li>
@@ -144,7 +137,7 @@
       </div>
       <% if (mode === 'swagger') { %>
       <div class="swagger">
-        <iframe src="/_db/<%= db%>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
+        <iframe src="/_db/<%= db %>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
       </div>
       <% } else if (mode === 'readme') { %>
       <div class="readme">
@@ -2191,9 +2184,6 @@ if (list.length > 0) {
         <% } %>
 
         <li class="dropdown-item">
-          <a id="api" class="tab" href="#api">API</a>
-        </li>
-        <li class="dropdown-item">
           <a id="userManagement" class="tab" href="#userManagement">User Management</a>
         </li>
         <li class="dropdown-item">
@@ -2205,6 +2195,7 @@ if (list.length > 0) {
       <a href="#" class="tab" id="links">Links <b class="caret"></b></a>
       <ul class="link-dropdown-menu" id="link_dropdown">
         <li class="dropdown-header">Documentation</li>
+        <li class="dropdown-item"><a href="/_db/<%= db %>/_admin/aardvark/api/index.html" target="_blank">API Documentation</a></li>
         <li class="dropdown-item"><a href="http://docs.arangodb.com/Arangosh/"
                                      target="_blank">JS Shell Documentation</a></li>
         <li class="dropdown-item"><a href="http://docs.arangodb.com/Aql/" target="_blank">AQL
@@ -2224,11 +2215,11 @@ if (list.length > 0) {
     <option value="" selected="selected">Select</option>
     <option value="#">Dashboard</option>
 
-      <% if(isSystem) { %>
+    <% if(isSystem) { %>
 
-        <option value="#databases">Databases</option>
+      <option value="#databases">Databases</option>
 
-      <% } %>
+    <% } %>
 
     <option value="#collections">Collections</option>
     <option value="#demo">Demo</option>
@@ -2237,13 +2228,11 @@ if (list.length > 0) {
     <option value="#query">AQL Editor</option>
     <option value="#shell">JS Shell</option>
 
-      <% if(isSystem) { %>
+    <% if(isSystem) { %>
 
-        <option value="#logs">Logs</option>
+      <option value="#logs">Logs</option>
 
-      <% } %>
-
-    <option value="#api">Api</option>
+    <% } %>
   </select></script><script id="notificationItem.ejs" type="text/template"><% notifications.forEach(function(n) { %>
   <li class="dropdown-item">
     <div class="notificationItem">
@@ -2651,4 +2640,4 @@ var cutByResolution = function (str) {
         <% }); %>
       </ul>
     </div>
-  <% } %></script></head><body><nav class="navbar"><div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="usermenu" id="userBar" style="float:right"></div><div class="notificationmenu" id="notificationBar" style="float:right"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="centralRow resizecontainer"><div id="content" class="centralContent"></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><footer class="footer"><div class="resizecontainer" id="footerBar"></div></footer><script src="app.js?version=1441056861954"></script></body></html>
+  <% } %></script></head><body><nav class="navbar"><div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="usermenu" id="userBar" style="float:right"></div><div class="notificationmenu" id="notificationBar" style="float:right"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="centralRow resizecontainer"><div id="content" class="centralContent"></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><footer class="footer"><div class="resizecontainer" id="footerBar"></div></footer><script src="app.js?version=1441798468660"></script></body></html>

@@ -6402,12 +6402,6 @@ toolbar {
 .query-output .ace_gutter-cell {
   background-color: #f0f0f0; }
 
-.swagger-ui-wrap {
-  background-color: #fff;
-  border-radius: 3px; }
-  .swagger-ui-wrap #resources li.resource {
-    background-color: #f4f3f3; }
-
 .centralContent .api-actions {
   margin: 0 !important;
   padding: 0; }
