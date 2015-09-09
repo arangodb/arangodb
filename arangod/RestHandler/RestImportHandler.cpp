@@ -362,7 +362,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 /// @RESTHEADER{POST /_api/import,imports documents from JSON}
 ///
-/// @RESTBODYPARAM{documents,string,required}
+/// @RESTALLBODYPARAM{documents,string,required}
 /// The body must either be a JSON-encoded array of objects or a string with
 /// multiple JSON objects separated by newlines.
 ///
@@ -496,7 +496,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///       { name: { detailed: "detailed name", short: "short name" } }
 ///     ];
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list", JSON.stringify(body));
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
@@ -545,7 +545,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///       { name: { detailed: "detailed name", short: "short name" } }
 ///     ];
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=auto", JSON.stringify(body));
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=auto", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
@@ -572,7 +572,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///       { id: "55932", count: 4334 },
 ///     ];
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&createCollection=true&type=list", JSON.stringify(body));
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&createCollection=true&type=list", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
@@ -621,7 +621,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 ///     var body = [ { name: "some name" } ];
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list&details=true", JSON.stringify(body));
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list&details=true", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
@@ -926,7 +926,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///
 /// @RESTHEADER{POST /_api/import,imports document values}
 ///
-/// @RESTBODYPARAM{documents,string,required}
+/// @RESTALLBODYPARAM{documents,string,required}
 /// The body must consist of JSON-encoded arrays of attribute values, with one
 /// line per document. The first row of the request must be a JSON-encoded
 /// array of attribute names. These attribute names are used for the data in the

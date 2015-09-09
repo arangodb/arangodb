@@ -48,7 +48,7 @@ var API = "_api/simple/";
 /// **Note**: This is only used internally and should not be accessible by the user
 ///           and thus this documentation is private.
 ///
-/// RESTBODYPARAM{query,string,required}
+/// RESTBODYPARAM{query,string,required,string}
 /// Contains the query specification.
 ///
 /// RESTDESCRIPTION
@@ -91,15 +91,15 @@ var API = "_api/simple/";
 /// @brief returns all documents of a collection matching a given example,
 /// using a specific skiplist index
 ///
-/// @RESTHEADER{PUT /_api/simple/by-example-skiplist, Skiplist index}
+/// RESTHEADER{PUT /_api/simple/by-example-skiplist, Skiplist index}
 ///
 /// **Note**: This is only used internally and should not be accesible by the user.
 ///           and thus this documentation is private.
 ///
-/// @RESTBODYPARAM{query,string,required}
+/// RESTBODYPARAM{query,string,required,string}
 /// Contains the query specification.
 ///
-/// @RESTDESCRIPTION
+/// RESTDESCRIPTION
 ///
 /// This will find all documents matching a given example, using the specified
 /// skiplist index.
@@ -120,16 +120,16 @@ var API = "_api/simple/";
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
-/// @RESTRETURNCODES
+/// RESTRETURNCODES
 ///
-/// @RESTRETURNCODE{201}
+/// RESTRETURNCODE{201}
 /// is returned if the query was executed successfully.
 ///
-/// @RESTRETURNCODE{400}
+/// RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
 /// query. The response body contains an error document in this case.
 ///
-/// @RESTRETURNCODE{404}
+/// RESTRETURNCODE{404}
 /// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 /// The same error code is also returned if an invalid index id or type is used.
@@ -139,15 +139,15 @@ var API = "_api/simple/";
 /// @brief returns all documents of a collection matching a given condition,
 /// using a specific skiplist index
 ///
-/// @RESTHEADER{PUT /_api/simple/by-condition-skiplist,Query by-condition using Skiplist index}
+/// RESTHEADER{PUT /_api/simple/by-condition-skiplist,Query by-condition using Skiplist index}
 ///
 /// **Note**: This is only used internally and should not be accesible by the user.
 ///           and thus this documentation is private.
 ///
-/// @RESTBODYPARAM{query,string,required}
+/// RESTBODYPARAM{query,string,required,string}
 /// Contains the query specification.
 ///
-/// @RESTDESCRIPTION
+/// RESTDESCRIPTION
 ///
 /// This will find all documents matching a given condition, using the specified
 /// skiplist index.
@@ -168,16 +168,16 @@ var API = "_api/simple/";
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
-/// @RESTRETURNCODES
+/// RESTRETURNCODES
 ///
-/// @RESTRETURNCODE{201}
+/// RESTRETURNCODE{201}
 /// is returned if the query was executed successfully.
 ///
-/// @RESTRETURNCODE{400}
+/// RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
 /// query. The response body contains an error document in this case.
 ///
-/// @RESTRETURNCODE{404}
+/// RESTRETURNCODE{404}
 /// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 /// The same error code is also returned if an invalid index id or type is used.
@@ -289,15 +289,13 @@ setupIndexQueries();
 ///
 /// @RESTHEADER{PUT /_api/simple/any, Return a random document}
 ///
-/// @RESTBODYPARAM{query,string,required}
-/// Contains the query.
-///
 /// @RESTDESCRIPTION
 ///
 /// Returns a random document from a collection. The call expects a JSON object
 /// as body with the following attributes:
 ///
-/// - *collection*: The identifier or name of the collection to query.
+/// @RESTBODYPARAM{collection,string,required, string}
+/// The identifier or name of the collection to query.
 ///
 /// Returns a JSON object with the document stored in the attribute
 /// *document* if the collection contains at least one document. If
@@ -382,8 +380,28 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/near, Returns documents near a coordinate}
 ///
-/// @RESTBODYPARAM{query,string,required}
-/// Contains the query.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// The name of the collection to query.
+///
+/// @RESTBODYPARAM{latitude,string,required,string}
+/// The latitude of the coordinate.
+///
+/// @RESTBODYPARAM{longitude,string,required,string}
+/// The longitude of the coordinate.
+///
+/// @RESTBODYPARAM{distance,string,required,string}
+/// If given, the attribute key used to return the distance to
+/// the given coordinate. (optional). If specified, distances are returned in meters.
+///
+/// @RESTBODYPARAM{skip,string,required,string}
+/// The number of documents to skip in the query. (optional)
+///
+/// @RESTBODYPARAM{limit,string,required,string}
+/// The maximal amount of documents to return. The *skip* is
+/// applied before the *limit* restriction. The default is 100. (optional)
+///
+/// @RESTBODYPARAM{geo,string,required,string}
+/// If given, the identifier of the geo-index to use. (optional)
 ///
 /// @RESTDESCRIPTION
 ///
@@ -397,23 +415,6 @@ actions.defineHttp({
 /// for the document.  If you have more than one geo-spatial index, you can use
 /// the *geo* field to select a particular index.
 ///
-/// The call expects a JSON object as body with the following attributes:
-///
-/// - *collection*: The name of the collection to query.
-///
-/// - *latitude*: The latitude of the coordinate.
-///
-/// - *longitude*: The longitude of the coordinate.
-///
-/// - *distance*: If given, the attribute key used to return the distance to
-///   the given coordinate. (optional). If specified, distances are returned in meters.
-///
-/// - *skip*: The number of documents to skip in the query. (optional)
-///
-/// - *limit*: The maximal amount of documents to return. The *skip* is
-///   applied before the *limit* restriction. The default is 100. (optional)
-///
-/// - *geo*: If given, the identifier of the geo-index to use. (optional)
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
@@ -571,8 +572,31 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/within, Find documents within a radius around a coordinate}
 ///
-/// @RESTBODYPARAM{query,string,required}
-/// Contains the query.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// The name of the collection to query.
+///
+/// @RESTBODYPARAM{latitude,string,required,string}
+/// The latitude of the coordinate.
+///
+/// @RESTBODYPARAM{longitude,string,required,string}
+/// The longitude of the coordinate.
+///
+/// @RESTBODYPARAM{radius,string,required,string}
+/// The maximal radius (in meters).
+///
+/// @RESTBODYPARAM{distance,string,required,string}
+/// If given, the attribute key used to return the distance to
+/// the given coordinate. (optional). If specified, distances are returned in meters.
+///
+/// @RESTBODYPARAM{skip,string,required,string}
+/// The number of documents to skip in the query. (optional)
+///
+/// @RESTBODYPARAM{limit,string,required,string}
+/// The maximal amount of documents to return. The *skip* is
+/// applied before the *limit* restriction. The default is 100. (optional)
+///
+/// @RESTBODYPARAM{geo,string,required,string}
+/// If given, the identifier of the geo-index to use. (optional)
 ///
 /// @RESTDESCRIPTION
 ///
@@ -584,25 +608,6 @@ actions.defineHttp({
 /// coordinates for the document.  If you have more than one geo-spatial index,
 /// you can use the *geo* field to select a particular index.
 ///
-/// The call expects a JSON object as body with the following attributes:
-///
-/// - *collection*: The name of the collection to query.
-///
-/// - *latitude*: The latitude of the coordinate.
-///
-/// - *longitude*: The longitude of the coordinate.
-///
-/// - *radius*: The maximal radius (in meters).
-///
-/// - *distance*: If given, the attribute key used to return the distance to
-///   the given coordinate. (optional). If specified, distances are returned in meters.
-///
-/// - *skip*: The number of documents to skip in the query. (optional)
-///
-/// - *limit*: The maximal amount of documents to return. The *skip* is
-///   applied before the *limit* restriction. The default is 100. (optional)
-///
-/// - *geo*: If given, the identifier of the geo-index to use. (optional)
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
@@ -755,8 +760,30 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/within-rectangle, Within rectangle query}
 ///
-/// @RESTBODYPARAM{query,string,required}
-/// Contains the query.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// The name of the collection to query.
+///
+/// @RESTBODYPARAM{latitude1,string,required,string}
+/// The latitude of the first rectangle coordinate.
+///
+/// @RESTBODYPARAM{longitude1,string,required,string}
+/// The longitude of the first rectangle coordinate.
+///
+/// @RESTBODYPARAM{latitude2,string,required,string}
+/// The latitude of the second rectangle coordinate.
+///
+/// @RESTBODYPARAM{longitude2,string,required,string}
+/// The longitude of the second rectangle coordinate.
+///
+/// @RESTBODYPARAM{skip,string,required,string}
+/// The number of documents to skip in the query. (optional)
+///
+/// @RESTBODYPARAM{limit,string,required,string}
+/// The maximal amount of documents to return. The *skip* is
+/// applied before the *limit* restriction. The default is 100. (optional)
+///
+/// @RESTBODYPARAM{geo,string,required,string}
+/// If given, the identifier of the geo-index to use. (optional)
 ///
 /// @RESTDESCRIPTION
 ///
@@ -767,25 +794,6 @@ actions.defineHttp({
 /// the collection. This index also defines which attribute holds the
 /// coordinates for the document.  If you have more than one geo-spatial index,
 /// you can use the *geo* field to select a particular index.
-///
-/// The call expects a JSON object as body with the following attributes:
-///
-/// - *collection*: The name of the collection to query.
-///
-/// - *latitude1*: The latitude of the first rectangle coordinate.
-///
-/// - *longitude1*: The longitude of the first rectangle coordinate.
-///
-/// - *latitude2*: The latitude of the second rectangle coordinate.
-///
-/// - *longitude2*: The longitude of the second rectangle coordinate.
-///
-/// - *skip*: The number of documents to skip in the query. (optional)
-///
-/// - *limit*: The maximal amount of documents to return. The *skip* is
-///   applied before the *limit* restriction. The default is 100. (optional)
-///
-/// - *geo*: If given, the identifier of the geo-index to use. (optional)
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
@@ -824,7 +832,7 @@ actions.defineHttp({
 ///       limit : 2
 ///     };
 ///
-///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
+///     var response = logCurlRequest('PUT', url, body);
 ///
 ///     assert(response.code === 201);
 ///
@@ -908,8 +916,25 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/fulltext, Fulltext index query}
 ///
-/// @RESTBODYPARAM{query,string,required}
-/// Contains the query.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// The name of the collection to query.
+///
+/// @RESTBODYPARAM{attribute,string,required,string}
+/// The attribute that contains the texts.
+///
+/// @RESTBODYPARAM{query,string,required,string}
+/// The fulltext query. Please refer to [Fulltext queries](../SimpleQueries/FulltextQueries.html)
+///   for details.
+///
+/// @RESTBODYPARAM{skip,string,required,string}
+/// The number of documents to skip in the query (optional).
+///
+/// @RESTBODYPARAM{limit,string,required,string}
+/// The maximal amount of documents to return. The *skip*
+/// is applied before the *limit* restriction. (optional)
+///
+/// @RESTBODYPARAM{index,string,required,string}
+/// The identifier of the fulltext-index to use.
 ///
 /// @RESTDESCRIPTION
 ///
@@ -918,22 +943,6 @@ actions.defineHttp({
 ///
 /// In order to use the *fulltext* operator, a fulltext index must be defined
 /// for the collection and the specified attribute.
-///
-/// The call expects a JSON object as body with the following attributes:
-///
-/// - *collection*: The name of the collection to query.
-///
-/// - *attribute*: The attribute that contains the texts.
-///
-/// - *query*: The fulltext query. Please refer to [Fulltext queries](../SimpleQueries/FulltextQueries.html)
-///   for details.
-///
-/// - *skip*: The number of documents to skip in the query (optional).
-///
-/// - *limit*: The maximal amount of documents to return. The *skip*
-///   is applied before the *limit* restriction. (optional)
-///
-/// - *index*: The identifier of the fulltext-index to use.
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
@@ -1041,23 +1050,22 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/by-example, Simple query by-example}
 ///
-/// @RESTBODYPARAM{query,string,required}
-/// Contains the query.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// The name of the collection to query.
+///
+/// @RESTBODYPARAM{example,string,required,string}
+/// The example document.
+///
+/// @RESTBODYPARAM{skip,string,required,string}
+/// The number of documents to skip in the query (optional).
+///
+/// @RESTBODYPARAM{limit,string,required,string}
+/// The maximal amount of documents to return. The *skip*
+/// is applied before the *limit* restriction. (optional)
 ///
 /// @RESTDESCRIPTION
 ///
 /// This will find all documents matching a given example.
-///
-/// The call expects a JSON object as body with the following attributes:
-///
-/// - *collection*: The name of the collection to query.
-///
-/// - *example*: The example document.
-///
-/// - *skip*: The number of documents to skip in the query (optional).
-///
-/// - *limit*: The maximal amount of documents to return. The *skip*
-///   is applied before the *limit* restriction. (optional)
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
@@ -1195,18 +1203,15 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/first-example, Find documents matching an example}
 ///
-/// @RESTBODYPARAM{query,json,required}
-/// Contains the query.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// The name of the collection to query.
+///
+/// @RESTBODYPARAM{example,string,required,string}
+/// The example document.
 ///
 /// @RESTDESCRIPTION
 ///
 /// This will return the first document matching a given example.
-///
-/// The call expects a JSON object as body with the following attributes:
-///
-/// - *collection*: The name of the collection to query.
-///
-/// - *example*: The example document.
 ///
 /// Returns a result containing the document or *HTTP 404* if no
 /// document matched the example.
@@ -1323,8 +1328,12 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/first, First document of a collection}
 ///
-/// @RESTBODYPARAM{query,json,required}
-/// Contains the query.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// the name of the collection
+///
+/// @RESTBODYPARAM{count,string,optional,string}
+/// the number of documents to return at most. Specifying count is
+/// optional. If it is not specified, it defaults to 1.
 ///
 /// @RESTDESCRIPTION
 ///
@@ -1334,12 +1343,6 @@ actions.defineHttp({
 /// result array.
 /// If the *count* argument is not supplied, the result is the "oldest" document
 /// of the collection, or *null* if the collection is empty.
-///
-/// The request body must be a JSON object with the following attributes:
-/// - *collection*: the name of the collection
-///
-/// - *count*: the number of documents to return at most. Specifying count is
-///   optional. If it is not specified, it defaults to 1.
 ///
 /// Note: this method is not supported for sharded collections with more than
 /// one shard.
@@ -1441,8 +1444,12 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/last, Last document of a collection}
 ///
-/// @RESTBODYPARAM{query,json,required}
-/// Contains the query.
+/// @RESTBODYPARAM{collection,string,required,string}
+///  the name of the collection
+///
+/// @RESTBODYPARAM{count,integer,required,int64}
+/// the number of documents to return at most. Specifying count is
+/// optional. If it is not specified, it defaults to 1.
 ///
 /// @RESTDESCRIPTION
 ///
@@ -1450,12 +1457,6 @@ actions.defineHttp({
 /// insertion/update time. When the *count* argument is supplied, the result
 /// will be an array of documents, with the "latest" document being first in the
 /// result array.
-///
-/// The request body must be a JSON object with the following attributes:
-/// - *collection*: the name of the collection
-///
-/// - *count*: the number of documents to return at most. Specifying count is
-///   optional. If it is not specified, it defaults to 1.
 ///
 /// If the *count* argument is not supplied, the result is the "latest" document
 /// of the collection, or *null* if the collection is empty.
@@ -1560,31 +1561,33 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/range, Simple range query}
 ///
-/// @RESTBODYPARAM{query,json,required}
-/// Contains the query.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// The name of the collection to query.
+///
+/// @RESTBODYPARAM{attribute,string,required,string}
+/// The attribute path to check.
+///
+/// @RESTBODYPARAM{left,string,required,string}
+/// The lower bound.
+///
+/// @RESTBODYPARAM{right,string,required,string}
+/// The upper bound.
+///
+/// @RESTBODYPARAM{closed,boolean,required,}
+/// If *true*, use interval including *left* and *right*,
+/// otherwise exclude *right*, but include *left*.
+///
+/// @RESTBODYPARAM{skip,string,required,string}
+/// The number of documents to skip in the query (optional).
+///
+/// @RESTBODYPARAM{limit,integer,optional,int64}
+/// The maximal amount of documents to return. The *skip*
+/// is applied before the *limit* restriction. (optional)
 ///
 /// @RESTDESCRIPTION
 ///
 /// This will find all documents within a given range. In order to execute a
 /// range query, a skip-list index on the queried attribute must be present.
-///
-/// The call expects a JSON object as body with the following attributes:
-///
-/// - *collection*: The name of the collection to query.
-///
-/// - *attribute*: The attribute path to check.
-///
-/// - *left*: The lower bound.
-///
-/// - *right*: The upper bound.
-///
-/// - *closed*: If *true*, use interval including *left* and *right*,
-///   otherwise exclude *right*, but include *left*.
-///
-/// - *skip*: The number of documents to skip in the query (optional).
-///
-/// - *limit*: The maximal amount of documents to return. The *skip*
-///   is applied before the *limit* restriction. (optional)
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
@@ -1697,31 +1700,30 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/remove-by-example, Remove documents by example}
 ///
-/// @RESTBODYPARAM{query,json,required}
-/// Contains the query.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// The name of the collection to remove from.
+///
+/// @RESTBODYPARAM{example,string,required,string}
+/// An example document that all collection documents are compared against.
+///
+/// @RESTBODYPARAM{options,object,optional,put_api_simple_remove_by_example_opts}
+/// a json object which can contains following attributes:
+///
+/// @RESTSTRUCT{waitForSync,put_api_simple_remove_by_example_opts,string,optional,string}
+/// if set to true, then all removal operations will
+/// instantly be synchronized to disk. If this is not specified, then the
+/// collection's default sync behavior will be applied.
+///
+/// @RESTSTRUCT{limit,put_api_simple_remove_by_example_opts,string,required,string}
+/// an optional value that determines how many documents to
+/// delete at most. If *limit* is specified but is less than the number
+/// of documents in the collection, it is undefined which of the documents
+/// will be deleted.
 ///
 /// @RESTDESCRIPTION
 ///
 /// This will find all documents in the collection that match the specified
 /// example object.
-///
-/// The call expects a JSON object as body with the following attributes:
-///
-/// - *collection*: The name of the collection to remove from.
-///
-/// - *example*: An example document that all collection documents are compared
-///   against.
-///
-/// - options: a json object which can contains following attributes:
-///
-/// - *waitForSync*: if set to true, then all removal operations will
-///   instantly be synchronized to disk. If this is not specified, then the
-///   collection's default sync behavior will be applied.
-///
-/// - *limit*: an optional value that determines how many documents to
-///   delete at most. If *limit* is specified but is less than the number
-///   of documents in the collection, it is undefined which of the documents
-///   will be deleted.
 ///
 /// Note: the *limit* attribute is not supported on sharded collections.
 /// Using it will result in an error.
@@ -1857,8 +1859,30 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/replace-by-example, Replace documents by example}
 ///
-/// @RESTBODYPARAM{query,json,required}
-/// Contains the query.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// The name of the collection to replace within.
+///
+/// @RESTBODYPARAM{example,string,required,string}
+/// An example document that all collection documents are compared against.
+///
+/// @RESTBODYPARAM{newValue,string,required,string}
+/// The replacement document that will get inserted in place
+/// of the "old" documents.
+///
+/// @RESTBODYPARAM{options,object,optional,put_api_simple_replace_by_example_options}
+/// a json object which can contain following attributes
+///
+/// @RESTSTRUCT{waitForSync,put_api_simple_replace_by_example_options,boolean,optional,}
+/// if set to true, then all removal operations will
+///  instantly be synchronized to disk. If this is not specified, then the
+///  collection's default sync behavior will be applied.
+///
+/// @RESTSTRUCT{limit,put_api_simple_replace_by_example_options,string,optional,string}
+/// an optional value that determines how many documents to
+/// replace at most. If *limit* is specified but is less than the number
+/// of documents in the collection, it is undefined which of the documents
+/// will be replaced.
+///
 ///
 /// @RESTDESCRIPTION
 ///
@@ -1866,27 +1890,6 @@ actions.defineHttp({
 /// example object, and replace the entire document body with the new value
 /// specified. Note that document meta-attributes such as *_id*, *_key*,
 /// *_from*, *_to* etc. cannot be replaced.
-///
-/// The call expects a JSON object as body with the following attributes:
-///
-/// - *collection*: The name of the collection to replace within.
-///
-/// - *example*: An example document that all collection documents are compared
-///   against.
-///
-/// - *newValue*: The replacement document that will get inserted in place
-///   of the "old" documents.
-///
-/// - *options*: a json object which can contain following attributes
-///
-/// - *waitForSync*: if set to true, then all removal operations will
-///   instantly be synchronized to disk. If this is not specified, then the
-///   collection's default sync behavior will be applied.
-///
-/// - *limit*: an optional value that determines how many documents to
-///   replace at most. If *limit* is specified but is less than the number
-///   of documents in the collection, it is undefined which of the documents
-///   will be replaced.
 ///
 /// Note: the *limit* attribute is not supported on sharded collections.
 /// Using it will result in an error.
@@ -2012,8 +2015,35 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{PUT /_api/simple/update-by-example, Update documents by example}
 ///
-/// @RESTBODYPARAM{query,json,required}
-/// Contains the query.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// The name of the collection to update within.
+///
+/// @RESTBODYPARAM{example,string,required,string}
+/// An example document that all collection documents are compared against.
+///
+/// @RESTBODYPARAM{newValue,object,required,}
+/// A document containing all the attributes to update in the found documents.
+///
+/// @RESTBODYPARAM{options,object,optional,put_api_simple_update_by_example_options}
+/// a json object which can contains following attributes:
+///
+/// @RESTSTRUCT{keepNull,put_api_simple_update_by_example_options,string,optional,string}
+/// This parameter can be used to modify the behavior when
+/// handling *null* values. Normally, *null* values are stored in the
+/// database. By setting the *keepNull* parameter to *false*, this
+/// behavior can be changed so that all attributes in *data* with *null*
+/// values will be removed from the updated document.
+///
+/// @RESTSTRUCT{waitForSync,put_api_simple_update_by_example_options,boolean,optional,}
+/// if set to true, then all removal operations will
+/// instantly be synchronized to disk. If this is not specified, then the
+/// collection's default sync behavior will be applied.
+///
+/// @RESTSTRUCT{limit,put_api_simple_update_by_example_options,integer,optional,int64}
+/// an optional value that determines how many documents to
+/// update at most. If *limit* is specified but is less than the number
+/// of documents in the collection, it is undefined which of the documents
+/// will be updated.
 ///
 /// @RESTDESCRIPTION
 ///
@@ -2021,33 +2051,6 @@ actions.defineHttp({
 /// example object, and partially update the document body with the new value
 /// specified. Note that document meta-attributes such as *_id*, *_key*,
 /// *_from*, *_to* etc. cannot be replaced.
-///
-/// The call expects a JSON object as body with the following attributes:
-///
-/// - *collection*: The name of the collection to update within.
-///
-/// - *example*: An example document that all collection documents are compared
-///   against.
-///
-/// - *newValue*: A document containing all the attributes to update in the
-///   found documents.
-///
-/// - *options*: a json object which can contains following attributes:
-///
-/// - *keepNull*: This parameter can be used to modify the behavior when
-///   handling *null* values. Normally, *null* values are stored in the
-///   database. By setting the *keepNull* parameter to *false*, this
-///   behavior can be changed so that all attributes in *data* with *null*
-///   values will be removed from the updated document.
-///
-/// - *waitForSync*: if set to true, then all removal operations will
-///   instantly be synchronized to disk. If this is not specified, then the
-///   collection's default sync behavior will be applied.
-///
-/// - *limit*: an optional value that determines how many documents to
-///   update at most. If *limit* is specified but is less than the number
-///   of documents in the collection, it is undefined which of the documents
-///   will be updated.
 ///
 /// Note: the *limit* attribute is not supported on sharded collections.
 /// Using it will result in an error.

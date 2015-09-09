@@ -44,7 +44,7 @@ man:
 
 swagger:
 	(python \
-            @srcdir@/Documentation/Scripts/generateSwaggerApi.py \
+            @srcdir@/Documentation/Scripts/generateSwagger.py \
                 @srcdir@ \
                 @srcdir@/js/apps/system/_admin/aardvark/APP/api-docs api-docs \
         ) > @srcdir@/js/apps/system/_admin/aardvark/APP/api-docs.json	

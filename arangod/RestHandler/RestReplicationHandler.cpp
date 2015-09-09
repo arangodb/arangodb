@@ -755,15 +755,13 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 ///
 /// **Note**: These calls are uninteresting to users.
 ///
-/// @RESTBODYPARAM{body,json,required}
+/// @RESTBODYPARAM{ttl,integer,required,int64}
+/// the time-to-live for the new batch (in seconds)
+///
 /// A JSON object with the batch configuration.
 ///
 /// @RESTDESCRIPTION
 /// Creates a new dump batch and returns the batch's id.
-///
-/// The body of the request must be a JSON object with the following attributes:
-///
-/// - *ttl*: the time-to-live for the new batch (in seconds)
 ///
 /// The response is a JSON object with the following attributes:
 ///
@@ -794,8 +792,8 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 ///
 /// **Note**: These calls are uninteresting to users.
 ///
-/// @RESTBODYPARAM{body,json,required}
-/// A JSON object with the batch configuration.
+/// @RESTBODYPARAM{ttl,integer,required,int64}
+/// the time-to-live for the new batch (in seconds)
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -805,10 +803,6 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 /// @RESTDESCRIPTION
 /// Extends the ttl of an existing dump batch, using the batch's id and
 /// the provided ttl value.
-///
-/// The body of the request must be a JSON object with the following attributes:
-///
-/// - *ttl*: the time-to-live for the batch (in seconds)
 ///
 /// If the batch's ttl can be extended successfully, the response is empty.
 ///
@@ -3334,8 +3328,63 @@ void RestReplicationHandler::handleCommandDump () {
 /// @startDocuBlock JSF_put_api_replication_makeSlave
 /// @RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a slave of another}
 ///
-/// @RESTBODYPARAM{configuration,json,required}
-/// A JSON representation of the configuration.
+/// @RESTBODYPARAM{endpoint,string,required,string}
+/// the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
+///
+/// @RESTBODYPARAM{database,string,required,string}
+/// the database name on the master (if not specified, defaults to the
+/// name of the local current database).
+///
+/// @RESTBODYPARAM{username,string,optional,string}
+/// an optional ArangoDB username to use when connecting to the master.
+///
+/// @RESTBODYPARAM{password,string,required,string}
+/// the password to use when connecting to the master.
+///
+/// @RESTBODYPARAM{includeSystem,boolean,required,}
+/// whether or not system collection operations will be applied
+///
+/// @RESTBODYPARAM{restrictType,string,optional,string}
+/// an optional string value for collection filtering. When
+/// specified, the allowed values are *include* or *exclude*.
+///
+/// @RESTBODYPARAM{restrictCollections,array,optional,string}
+/// an optional array of collections for use with *restrictType*. 
+/// If *restrictType* is *include*, only the specified collections
+/// will be sychronised. If *restrictType* is *exclude*, all but the specified
+/// collections will be synchronized.
+///
+/// @RESTBODYPARAM{maxConnectRetries,integer,required,int64}
+/// the maximum number of connection attempts the applier
+/// will make in a row. If the applier cannot establish a connection to the
+/// endpoint in this number of attempts, it will stop itself.
+///
+/// @RESTBODYPARAM{connectTimeout,integer,required,int64}
+/// the timeout (in seconds) when attempting to connect to the
+/// endpoint. This value is used for each connection attempt.
+///
+/// @RESTBODYPARAM{requestTimeout,integer,required,int64}
+/// the timeout (in seconds) for individual requests to the endpoint.
+///
+/// @RESTBODYPARAM{chunkSize,integer,required,int64}
+/// the requested maximum size for log transfer packets that
+/// is used when the endpoint is contacted.
+///
+/// @RESTBODYPARAM{adaptivePolling,boolean,required,}
+/// whether or not the replication applier will use adaptive polling.
+///
+/// @RESTBODYPARAM{requireFromPresent,boolean,required,}
+/// if set to *true*, then the replication applier will check
+/// at start of its continuous replication if the start tick from the dump phase
+/// is still present on the master. If not, then there would be data loss. If 
+/// *requireFromPresent* is *true*, the replication applier will abort with an
+/// appropriate error message. If set to *false*, then the replication applier will
+/// still start, and ignore the data loss.
+///
+/// @RESTBODYPARAM{verbose,boolean,optional,}
+/// if set to *true*, then a log line will be emitted for all operations 
+/// performed by the replication applier. This should be used for debugging replication
+/// problems only.
 ///
 /// @RESTDESCRIPTION
 /// Starts a full data synchronization from a remote endpoint into the local ArangoDB
@@ -3343,54 +3392,6 @@ void RestReplicationHandler::handleCommandDump () {
 /// The operation works on a per-database level.
 ///
 /// All local database data will be removed prior to the synchronization.
-///
-/// The body of the request must be JSON object with the configuration. The
-/// following attributes are allowed for the configuration:
-///
-/// - *endpoint*: the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
-///
-/// - *database*: the database name on the master (if not specified, defaults to the
-///   name of the local current database).
-///
-/// - *username*: an optional ArangoDB username to use when connecting to the master.
-///
-/// - *password*: the password to use when connecting to the master.
-///
-/// - *includeSystem*: whether or not system collection operations will be applied
-///
-/// - *restrictType*: an optional string value for collection filtering. When
-///    specified, the allowed values are *include* or *exclude*.
-///
-/// - *restrictCollections*: an optional array of collections for use with
-///   *restrictType*. If *restrictType* is *include*, only the specified collections
-///    will be sychronised. If *restrictType* is *exclude*, all but the specified
-///    collections will be synchronized.
-///
-/// - *maxConnectRetries*: the maximum number of connection attempts the applier
-///   will make in a row. If the applier cannot establish a connection to the
-///   endpoint in this number of attempts, it will stop itself.
-///
-/// - *connectTimeout*: the timeout (in seconds) when attempting to connect to the
-///   endpoint. This value is used for each connection attempt.
-///
-/// - *requestTimeout*: the timeout (in seconds) for individual requests to the endpoint.
-///
-/// - *chunkSize*: the requested maximum size for log transfer packets that
-///   is used when the endpoint is contacted.
-///
-/// - *adaptivePolling*: whether or not the replication applier will use
-///   adaptive polling.
-///
-/// - *requireFromPresent*: if set to *true*, then the replication applier will check
-///   at start of its continuous replication if the start tick from the dump phase
-///   is still present on the master. If not, then there would be data loss. If 
-///   *requireFromPresent* is *true*, the replication applier will abort with an
-///   appropriate error message. If set to *false*, then the replication applier will
-///   still start, and ignore the data loss.
-///
-/// - *verbose*: if set to *true*, then a log line will be emitted for all operations 
-///   performed by the replication applier. This should be used for debugging replication
-///   problems only.
 ///
 /// In case of success, the body of the response is a JSON object with the following
 /// attributes:
@@ -3634,8 +3635,31 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 ///
 /// @RESTHEADER{PUT /_api/replication/sync, Synchronize data from a remote endpoint}
 ///
-/// @RESTBODYPARAM{configuration,json,required}
-/// A JSON representation of the configuration.
+/// @RESTBODYPARAM{endpoint,string,required,string}
+/// the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
+///
+/// @RESTBODYPARAM{database,string,optional,string}
+/// the database name on the master (if not specified, defaults to the
+/// name of the local current database).
+///
+/// @RESTBODYPARAM{username,string,optional,string}
+/// an optional ArangoDB username to use when connecting to the endpoint.
+///
+/// @RESTBODYPARAM{password,string,required,string}
+/// the password to use when connecting to the endpoint.
+///
+/// @RESTBODYPARAM{includeSystem,boolean,required,}
+/// whether or not system collection operations will be applied
+///
+/// @RESTBODYPARAM{restrictType,string,optional,string}
+/// an optional string value for collection filtering. When
+/// specified, the allowed values are *include* or *exclude*.
+///
+/// @RESTBODYPARAM{restrictCollections,array,optional,string}
+/// an optional array of collections for use with
+/// *restrictType*. If *restrictType* is *include*, only the specified collections
+/// will be sychronised. If *restrictType* is *exclude*, all but the specified
+///  collections will be synchronized.
 ///
 /// @RESTDESCRIPTION
 /// Starts a full data synchronization from a remote endpoint into the local
@@ -3651,28 +3675,6 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 /// data in the local ArangoDB database, and after start will transfer collection data
 /// from the remote database to the local ArangoDB database. It will extract data from the
 /// remote database by calling the remote database's *dump* API until all data are fetched.
-///
-/// The body of the request must be JSON object with the configuration. The
-/// following attributes are allowed for the configuration:
-///
-/// - *endpoint*: the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
-///
-/// - *database*: the database name on the master (if not specified, defaults to the
-///   name of the local current database).
-///
-/// - *username*: an optional ArangoDB username to use when connecting to the endpoint.
-///
-/// - *password*: the password to use when connecting to the endpoint.
-///
-/// - *includeSystem*: whether or not system collection operations will be applied
-///
-/// - *restrictType*: an optional string value for collection filtering. When
-///    specified, the allowed values are *include* or *exclude*.
-///
-/// - *restrictCollections*: an optional array of collections for use with
-///   *restrictType*. If *restrictType* is *include*, only the specified collections
-///    will be sychronised. If *restrictType* is *exclude*, all but the specified
-///    collections will be synchronized.
 ///
 /// In case of success, the body of the response is a JSON object with the following
 /// attributes:
@@ -3981,73 +3983,80 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// @RESTHEADER{PUT /_api/replication/applier-config, Adjust configuration of replication applier}
 ///
-/// @RESTBODYPARAM{configuration,json,required}
-/// A JSON representation of the configuration.
+/// @RESTBODYPARAM{endpoint,string,required,string}
+/// the logger server to connect to (e.g. "tcp://192.168.173.13:8529"). The endpoint must be specified.
+///
+/// @RESTBODYPARAM{database,string,required,string}
+/// the name of the database on the endpoint. If not specified, defaults to the current local database name.
+///
+/// @RESTBODYPARAM{username,string,optional,string}
+/// an optional ArangoDB username to use when connecting to the endpoint.
+///
+/// @RESTBODYPARAM{password,string,required,string}
+/// the password to use when connecting to the endpoint.
+///
+/// @RESTBODYPARAM{maxConnectRetries,integer,required,int64}
+/// the maximum number of connection attempts the applier
+/// will make in a row. If the applier cannot establish a connection to the
+/// endpoint in this number of attempts, it will stop itself.
+///
+/// @RESTBODYPARAM{connectTimeout,integer,required,int64}
+/// the timeout (in seconds) when attempting to connect to the
+/// endpoint. This value is used for each connection attempt.
+///
+/// @RESTBODYPARAM{requestTimeout,integer,required,int64}
+/// the timeout (in seconds) for individual requests to the endpoint.
+///
+/// @RESTBODYPARAM{chunkSize,integer,required,int64}
+/// the requested maximum size for log transfer packets that
+/// is used when the endpoint is contacted.
+///
+/// @RESTBODYPARAM{autoStart,boolean,required,}
+/// whether or not to auto-start the replication applier on
+/// (next and following) server starts
+///
+/// @RESTBODYPARAM{adaptivePolling,boolean,required,}
+/// if set to *true*, the replication applier will fall
+/// to sleep for an increasingly long period in case the logger server at the
+/// endpoint does not have any more replication events to apply. Using
+/// adaptive polling is thus useful to reduce the amount of work for both the
+/// applier and the logger server for cases when there are only infrequent
+/// changes. The downside is that when using adaptive polling, it might take
+/// longer for the replication applier to detect that there are new replication
+/// events on the logger server.
+///
+/// Setting *adaptivePolling* to false will make the replication applier
+/// contact the logger server in a constant interval, regardless of whether
+/// the logger server provides updates frequently or seldom.
+///
+/// @RESTBODYPARAM{includeSystem,boolean,required,}
+/// whether or not system collection operations will be applied
+///
+/// @RESTBODYPARAM{requireFromPresent,boolean,required,}
+/// if set to *true*, then the replication applier will check
+/// at start whether the start tick from which it starts or resumes replication is
+/// still present on the master. If not, then there would be data loss. If 
+/// *requireFromPresent* is *true*, the replication applier will abort with an
+/// appropriate error message. If set to *false*, then the replication applier will
+/// still start, and ignore the data loss.
+///
+/// @RESTBODYPARAM{verbose,boolean,required,}
+/// if set to *true*, then a log line will be emitted for all operations 
+/// performed by the replication applier. This should be used for debugging replication
+/// problems only.
+///
+/// @RESTBODYPARAM{restrictType,string,required,string}/// TODOSWAGGER
+/// the configuration for *restrictCollections*
+///
+/// @RESTBODYPARAM{restrictCollections,array,optional,string}/// TODOSWAGGER
+/// the optional array of collections to include or exclude,
+/// based on the setting of *restrictType*
 ///
 /// @RESTDESCRIPTION
 /// Sets the configuration of the replication applier. The configuration can
 /// only be changed while the applier is not running. The updated configuration
 /// will be saved immediately but only become active with the next start of the
 /// applier.
-///
-/// The body of the request must be JSON object with the configuration. The
-/// following attributes are allowed for the configuration:
-///
-/// - *endpoint*: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
-///   The endpoint must be specified.
-///
-/// - *database*: the name of the database on the endpoint. If not specified, defaults
-///   to the current local database name.
-///
-/// - *username*: an optional ArangoDB username to use when connecting to the endpoint.
-///
-/// - *password*: the password to use when connecting to the endpoint.
-///
-/// - *maxConnectRetries*: the maximum number of connection attempts the applier
-///   will make in a row. If the applier cannot establish a connection to the
-///   endpoint in this number of attempts, it will stop itself.
-///
-/// - *connectTimeout*: the timeout (in seconds) when attempting to connect to the
-///   endpoint. This value is used for each connection attempt.
-///
-/// - *requestTimeout*: the timeout (in seconds) for individual requests to the endpoint.
-///
-/// - *chunkSize*: the requested maximum size for log transfer packets that
-///   is used when the endpoint is contacted.
-///
-/// - *autoStart*: whether or not to auto-start the replication applier on
-///   (next and following) server starts
-///
-/// - *adaptivePolling*: if set to *true*, the replication applier will fall
-///   to sleep for an increasingly long period in case the logger server at the
-///   endpoint does not have any more replication events to apply. Using
-///   adaptive polling is thus useful to reduce the amount of work for both the
-///   applier and the logger server for cases when there are only infrequent
-///   changes. The downside is that when using adaptive polling, it might take
-///   longer for the replication applier to detect that there are new replication
-///   events on the logger server.
-///
-///   Setting *adaptivePolling* to false will make the replication applier
-///   contact the logger server in a constant interval, regardless of whether
-///   the logger server provides updates frequently or seldom.
-///
-/// - *includeSystem*: whether or not system collection operations will be applied
-///
-/// - *requireFromPresent*: if set to *true*, then the replication applier will check
-///   at start whether the start tick from which it starts or resumes replication is
-///   still present on the master. If not, then there would be data loss. If 
-///   *requireFromPresent* is *true*, the replication applier will abort with an
-///   appropriate error message. If set to *false*, then the replication applier will
-///   still start, and ignore the data loss.
-///
-/// - *verbose*: if set to *true*, then a log line will be emitted for all operations 
-///   performed by the replication applier. This should be used for debugging replication
-///   problems only.
-///
-/// - *restrictType*: the configuration for *restrictCollections*
-///
-/// - *restrictCollections*: the optional array of collections to include or exclude,
-///   based on the setting of *restrictType*
 ///
 /// In case of success, the body of the response is a JSON object with the updated
 /// configuration.
@@ -4083,7 +4092,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///       adaptivePolling: true
 ///     };
 ///
-///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
+///     var response = logCurlRequest('PUT', url, body);
 ///
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);

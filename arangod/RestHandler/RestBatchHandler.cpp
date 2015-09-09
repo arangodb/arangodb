@@ -66,9 +66,9 @@ RestBatchHandler::~RestBatchHandler () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a batch request
 ///
-/// @RESTHEADER{POST /_api/batch,executes a batch request}
+/// @RESTHEADER{POST /_api/batch,executes a batch request} /// TODOSWAGGER: contentype
 ///
-/// @RESTBODYPARAM{body,string,required}
+/// @RESTALLBODYPARAM{body,string,required}
 /// The multipart batch request, consisting of the envelope and the individual
 /// batch parts.
 ///

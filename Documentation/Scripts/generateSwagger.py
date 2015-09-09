@@ -34,8 +34,13 @@
 ### @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ################################################################################
 
-import sys, re, json, string, os
+import sys, re, json, string, os, os.path, operator
+from pygments import highlight
+from pygments.lexers import YamlLexer
+from pygments.formatters import TerminalFormatter
 
+#, yaml
+import ruamel.yaml as yaml
 rc = re.compile
 MS = re.M | re.S
 
@@ -44,17 +49,65 @@ MS = re.M | re.S
 ################################################################################
 
 swagger = {
-    'apiVersion': '0.1',
-    'swaggerVersion': '1.1',
-    'basePath': '/',
-    'apis': []
+  "swagger": "2.0",
+  "info": {
+    "description": "ArangoDB REST API Interface",
+    "version": "1.0",
+    "title": "ArangoDB",
+    "license": {
+      "name": "Apache License, Version 2.0"
     }
+  },
+  "basePath": "/_db/_system/_admin/aardvark",
+  "schemes": [
+    "http"
+  ],
+  "definitions": {},
+  "paths" : {}
+}
+
+################################################################################
+### @brief operation
+################################################################################
+
+httpPath = ''
+
+################################################################################
+### @brief operation
+################################################################################
+
+method = ''
 
 ################################################################################
 ### @brief operation
 ################################################################################
 
 operation = {}
+
+################################################################################
+### @brief current filename
+################################################################################
+
+fn = ''
+
+################################################################################
+### @brief current section
+################################################################################
+
+currentTag = ''
+
+################################################################################
+### @brief current docublock
+################################################################################
+
+currentDocuBlock = ''
+
+################################################################################
+### @brief collect json body parameter definitions:
+################################################################################
+
+restBodyParam = None
+restSubBodyParam = None
 
 ################################################################################
 ### @brief C_FILE
@@ -66,7 +119,10 @@ C_FILE = False
 ### @brief DEBUG
 ################################################################################
 
+DEBUG = True
 DEBUG = False
+
+removeTrailingBR = re.compile("<br>$")
 
 ################################################################################
 ### @brief trim_text
@@ -175,13 +231,13 @@ def Typography(txt):
     else:
         txt = txt[0:-1]
 
-    txt = BackTicks(txt)
-    txt = AsteriskBold(txt)
-    txt = AsteriskItalic(txt)
-    txt = FN(txt)
-    txt = LIT(txt)
-    txt = FA(txt)
-
+#    txt = BackTicks(txt)
+#    txt = AsteriskBold(txt)
+#    txt = AsteriskItalic(txt)
+#    txt = FN(txt)
+#    txt = LIT(txt)
+#    txt = FA(txt)
+#
     # no way to find out the correct link for Swagger, 
     # so replace all @ref elements with just "the manual"
 
@@ -206,12 +262,19 @@ class StateMachine:
         self.handlers = []
         self.startState = None
         self.endStates = []
+        self.file = ''
+        self.fn = ''
 
     def add_state(self, handler, end_state=0):
         self.handlers.append(handler)
 
         if end_state:
             self.endStates.append(handler)
+
+    def set_fn(self, filename):
+        self.fn = filename
+        global fn
+        fn = filename
 
     def set_start(self, handler):
         self.startState = handler
@@ -226,17 +289,21 @@ class StateMachine:
                 "at least one state must be an end_state"
 
         handler = self.startState
+        try:
+            while 1:
+                (newState, cargo) = handler(cargo)
 
-        while 1:
-            (newState, cargo) = handler(cargo)
-
-            if newState in self.endStates:
-                newState(cargo)
-                break
-            elif newState not in self.handlers:
-                raise RuntimeError, "Invalid target %s" % newState
-            else:
-                handler = newState
+                if newState in self.endStates:
+                    newState(cargo)
+                    break
+                elif newState not in self.handlers:
+                    raise RuntimeError, "Invalid target %s" % newState
+                else:
+                    handler = newState
+        except:
+            print >> sys.stderr, "while parsing '" + self.fn + "'"
+            print >> sys.stderr, "trying to use handler '"  + handler.__name__ + "'"
+            raise
 
 ################################################################################
 ### @brief Regexen
@@ -248,11 +315,14 @@ class Regexen:
         self.DESCRIPTION_SP = re.compile('^\s\s.*$')
         self.DESCRIPTION_BL = re.compile('^\s*$')
         self.EMPTY_LINE = re.compile('^\s*$')
+        self.START_DOCUBLOCK = re.compile('.*@startDocuBlock ')
         self.END_EXAMPLE_ARANGOSH_RUN = re.compile('.*@END_EXAMPLE_ARANGOSH_RUN')
         self.EXAMPLES = re.compile('.*@EXAMPLES')
         self.EXAMPLE_ARANGOSH_RUN = re.compile('.*@EXAMPLE_ARANGOSH_RUN{')
         self.FILE = re.compile('.*@file')
         self.RESTBODYPARAM = re.compile('.*@RESTBODYPARAM')
+        self.RESTSTRUCT = re.compile('.*@RESTSTRUCT')
+        self.RESTALLBODYPARAM = re.compile('.*@RESTALLBODYPARAM')
         self.RESTDESCRIPTION = re.compile('.*@RESTDESCRIPTION')
         self.RESTDONE = re.compile('.*@RESTDONE')
         self.RESTHEADER = re.compile('.*@RESTHEADER{')
@@ -285,8 +355,11 @@ def next_step(fp, line, r):
 
     if not line:                              return eof, (fp, line)
     elif check_end_of_comment(line, r):       return skip_code, (fp, line)
+    elif r.START_DOCUBLOCK.match(line):       return start_docublock, (fp, line)
     elif r.EXAMPLE_ARANGOSH_RUN.match(line):  return example_arangosh_run, (fp, line)
     elif r.RESTBODYPARAM.match(line):         return restbodyparam, (fp, line)
+    elif r.RESTSTRUCT.match(line):            return reststruct, (fp, line)
+    elif r.RESTALLBODYPARAM.match(line):      return restallbodyparam, (fp, line)
     elif r.RESTDESCRIPTION.match(line):       return restdescription, (fp, line)
     elif r.RESTHEADER.match(line):            return restheader, (fp, line)
     elif r.RESTHEADERPARAM.match(line):       return restheaderparam, (fp, line)
@@ -299,7 +372,7 @@ def next_step(fp, line, r):
     elif r.RESTURLPARAMETERS.match(line):     return resturlparameters, (fp, line)
 
     if r.EXAMPLES.match(line):
-        operation['examples'] = ""
+        operation['x-examples'] = ""
         return examples, (fp, line)
 
     return None, None
@@ -322,6 +395,12 @@ def generic_handler(cargo, r, message):
 
 ################################################################################
 ### @brief generic handler with description
+### @param cargo the file we're working on
+### @param r the regex that matched
+### @param message
+### @param op
+### @param para an object were we should write to
+### @param name the key in para we should write to
 ################################################################################
 
 def generic_handler_desc(cargo, r, message, op, para, name):
@@ -341,8 +420,11 @@ def generic_handler_desc(cargo, r, message, op, para, name):
             para[name] = trim_text(para[name])
 
             if op:
-                operation[op].append(para)
-
+                try:
+                    operation[op].append(para)
+                except AttributeError as x:
+                    print >> sys.stderr, "trying to set '%s' on operations - failed. '%s'" % (op, para)
+                    raise
             return next, c
 
         if C_FILE and line[0:4] == "////":
@@ -363,48 +445,63 @@ def generic_handler_desc(cargo, r, message, op, para, name):
         if not inUL and inLI:
             line = " <ul class=\"swagger-list\">" + line
             inUL = True
-        elif inUL and not inLI:
+        elif inUL and r.EMPTY_LINE.match(line):
             line = "</ul> " + line
             inUL = False
 
+        elif inLI and r.EMPTY_LINE.match(line):
+            line = "</li> " + line
+            inUL = False
+
         if not inLI and r.EMPTY_LINE.match(line):
-            line = "<br><br>"
+            line = "<br>"
 
         para[name] += line + ' '
+    para[name] = removeTrailingBR.sub("", para[name])
+
+def start_docublock(cargo, r=Regexen()):
+    global currentDocuBlock
+    (fp, last) = cargo
+    try:
+        currentDocuBlock = last.split(' ')[2].rstrip()
+    except Exception as x:
+        print >> sys.stderr, "failed to fetch docublock in '" + last + "'"
+        raise
+
+    return generic_handler(cargo, r, 'start_docublock')
+
+
 
 ################################################################################
 ### @brief restheader
 ################################################################################
 
 def restheader(cargo, r=Regexen()):
-    global swagger, operation
+    global swagger, operation, httpPath, method, restBodyParam, fn
 
     (fp, last) = cargo
 
     temp = parameters(last).split(',')
     (method, path) = temp[0].split()
 
+    restBodyParam = None
+    #TODO: hier checken, ob der letzte alles hatte (responses)
     summary = temp[1]
     summaryList = summary.split()
-
+    method = method.lower()
     nickname = summaryList[0] + ''.join([word.capitalize() for word in summaryList[1:]])
 
-    operation = {
-        'httpMethod': method,
-        'nickname': nickname,
-        'parameters': [],
+    httpPath = FA(path, wordboundary = ['{', '}'])
+    if not httpPath in swagger['paths']:
+        swagger['paths'][httpPath] = {}
+    swagger['paths'][httpPath][method] = {
+        'x-sourcefile': fn,
+        'tags': [currentTag],
         'summary': summary,
-        'notes': '',
-        'examples': '',
-        'errorResponses': []
+        'description': '',
+        'parameters' : [],
         }
-    
-    api = {
-        'path': FA(path, wordboundary = ['{', '}']),
-        'operations': [ operation ]
-        }
-
-    swagger['apis'].append(api)
+    operation = swagger['paths'][httpPath][method]
 
     return generic_handler(cargo, r, "resturlparameters")
 
@@ -420,24 +517,26 @@ def resturlparameters(cargo, r=Regexen()):
 ################################################################################
 
 def resturlparam(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method
     (fp, last) = cargo
 
     parametersList = parameters(last).split(',')
 
-    if parametersList[2] == 'required':
-        required = True
-    else:
-        required = False
-        
+    if parametersList[2] != 'required':
+        print >> sys.stderr, "only required is supported in RESTURLPARAM"
+        raise
+
     para = {
         'name': parametersList[0],
-        'paramType': 'path',
+        'in': 'path',
+        'format': parametersList[1],
         'description': '',
-        'dataType': parametersList[1].capitalize(),
-        'required': required
+        'type': parametersList[1].lower(),
+        'required': True
         }
-
-    return generic_handler_desc(cargo, r, "resturlparam", 'parameters', para, 'description')
+    swagger['paths'][httpPath][method]['parameters'].append(para) 
+    
+    return generic_handler_desc(cargo, r, "resturlparam", None, para, 'description')
 
 ################################################################################
 ### @brief restqueryparameters
@@ -458,48 +557,184 @@ def restheaderparameters(cargo, r=Regexen()):
 ################################################################################
 
 def restheaderparam(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method
     (fp, last) = cargo
 
     parametersList = parameters(last).split(',')
 
     para = {
-        'paramType': 'header',
-        'dataType': parametersList[1].capitalize(),
+        'in': 'header',
+        'type': parametersList[1].lower(),
         'name': parametersList[0],
         'description': ''
         }
+    swagger['paths'][httpPath][method]['parameters'].append(para) 
 
-    return generic_handler_desc(cargo, r, "restheaderparam", 'parameters', para, 'description')
+    return generic_handler_desc(cargo, r, "restheaderparam", None, para, 'description')
 
 ################################################################################
 ### @brief restbodyparam
 ################################################################################
 
 def restbodyparam(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method, restBodyParam
     (fp, last) = cargo
 
-    parametersList = parameters(last).split(',')
+    try:
+        (name, ptype, required, ptype2) = parameters(last).split(',')
+    except Exception as x:
+        print >> sys.stderr, "RESTBODYPARAM: 4 arguments required. You gave me: " + parameters(last)
 
-    if parametersList[2] == 'required':
+    if required == 'required':
         required = True
     else:
         required = False
 
-    para = {
-        'name': parametersList[0],
-        'paramType': 'body',
-        'description': '',
-        'dataType': parametersList[1].capitalize(),
-        'required': required
+    if restBodyParam == None:
+        restBodyParam = {
+            'name': 'Json Post Body',
+            'in': 'body',
+            'required': True,
+            'schema': {
+                '$ref': '#/definitions/' + currentDocuBlock
+                }
+            }
+        swagger['paths'][httpPath][method]['parameters'].append(restBodyParam) 
+        # https://github.com/swagger-api/swagger-ui/issues/1430
+        # once this is solved we can skip this:
+        operation['description'] += "<br><em>for the post body parameters see the 'Try this operation'-section</em><br>"
+
+    if not currentDocuBlock in swagger['definitions']:
+        swagger['definitions'][currentDocuBlock] = {
+            'type' : 'object',
+            'required': [],
+            'properties': {},
+            }
+
+    swagger['definitions'][currentDocuBlock]['properties'][name] = {
+        'type': ptype,
+        'description': ''
         }
 
-    return generic_handler_desc(cargo, r, "restbodyparam", 'parameters', para, 'description')
+    if ptype == 'object' and len(ptype2) > 0:
+        swagger['definitions'][currentDocuBlock]['properties'][name] = {
+            '$ref': '#/definitions/' + ptype2
+            }
+
+        if not ptype2 in swagger['definitions']:
+            swagger['definitions'][ptype2] = {
+                'type': 'object',
+                'required': [],
+                'properties' : {},
+                'description': ''
+                }
+
+        if required:
+            swagger['schema'][ptype2]['required'].append(name)
+        
+        return generic_handler_desc(cargo, r, "restbodyparam", None,
+                                    swagger['definitions'][ptype2],
+                                    'description')
+
+    if ptype == 'object':
+            swagger['definitions'][currentDocuBlock]['properties'][name]['additionalProperties'] = {}
+    elif ptype == 'array':
+            swagger['definitions'][currentDocuBlock]['properties'][name]['items'] = {
+            'type': ptype2
+            }
+    elif ptype != 'string':
+        swagger['definitions'][currentDocuBlock]['properties'][name]['format'] = ptype2
+
+
+    if required:
+        swagger['definitions'][currentDocuBlock]['required'].append(name)
+
+    return generic_handler_desc(cargo, r, "restbodyparam", None,
+                                swagger['definitions'][currentDocuBlock]['properties'][name],
+                                'description')
+
+################################################################################
+### @brief restallbodyparam
+################################################################################
+
+def restallbodyparam(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method, restBodyParam
+    (fp, last) = cargo
+
+    try:
+        (name, ptype, required) = parameters(last).split(',')
+    except Exception as x:
+        print >> sys.stderr, "RESTALLBODYPARAM: 3 arguments required. You gave me: " + parameters(last)
+
+    if required == 'required':
+        required = True
+    else:
+        required = False
+    if restBodyParam != None:
+        raise Exception("May only have one 'ALLBODY'")
+
+    restBodyParam = {
+            'name': 'Json Post Body',
+            'description': '',
+            'in': 'body',
+            'required': required,
+            'schema': {
+                'type': 'object',
+                'additionalProperties': {}
+                }
+            }
+    swagger['paths'][httpPath][method]['parameters'].append(restBodyParam) 
+
+    return generic_handler_desc(cargo, r, "restbodyparam", None,
+                                restBodyParam,
+                                'description')
+
+################################################################################
+### @brief reststruct
+################################################################################
+
+def reststruct(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method, restBodyParam, restSubBodyParam
+    (fp, last) = cargo
+
+    try:
+        (name, className, ptype, required, ptype2) = parameters(last).split(',')
+    except Exception as x:
+        print >> sys.stderr, "RESTSTRUCT: 4 arguments required. You gave me: " + parameters(last)
+
+    if required == 'required':
+        required = True
+    else:
+        required = False
+
+    if className not in swagger['definitions']:
+        swagger['definitions'][className] = {
+            'type': 'object',
+            'properties' : {},
+            'description': ''
+            }
+
+
+    swagger['definitions'][className]['properties'][name] = {
+        'type': ptype,
+        'description': ''
+        }
+
+    if ptype == 'array':
+        swagger['definitions'][className]['properties'][name]['items'] = {'type': ptype2}
+    elif ptype != 'string' and ptype != 'boolean':
+        swagger['definitions'][className]['properties'][name]['format'] = ptype2
+
+    return generic_handler_desc(cargo, r, "restbodyparam", None,
+                                swagger['definitions'][className]['properties'][name],
+                                'description')
 
 ################################################################################
 ### @brief restqueryparam
 ################################################################################
 
 def restqueryparam(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method
     (fp, last) = cargo
 
     parametersList = parameters(last).split(',')
@@ -511,26 +746,31 @@ def restqueryparam(cargo, r=Regexen()):
 
     para = {
         'name': parametersList[0],
-        'paramType': 'query',
+        'in': 'query',
         'description': '',
-        'dataType': parametersList[1].capitalize(),
+        'type': parametersList[1].lower(),
         'required': required
         }
 
-    return generic_handler_desc(cargo, r, "restqueryparam", 'parameters', para, 'description')
+    swagger['paths'][httpPath][method]['parameters'].append(para) 
+    return generic_handler_desc(cargo, r, "restqueryparam", None, para, 'description')
 
 ################################################################################
 ### @brief restdescription
 ################################################################################
 
 def restdescription(cargo, r=Regexen()):
-    return generic_handler_desc(cargo, r, "restdescription", None, operation, 'notes')
+    global swagger, operation, httpPath, method
+    return generic_handler_desc(cargo, r, "restdescription", None,
+                                swagger['paths'][httpPath][method],
+                                'description')
 
 ################################################################################
 ### @brief restreturncodes
 ################################################################################
 
 def restreturncodes(cargo, r=Regexen()):
+    
     return generic_handler(cargo, r, "restreturncodes")
 
 ################################################################################
@@ -540,19 +780,22 @@ def restreturncodes(cargo, r=Regexen()):
 def restreturncode(cargo, r=Regexen()):
     (fp, last) = cargo
 
-    returncode = {
-        'code': parameters(last),
-        'reason': ''
+    if not 'responses' in swagger['paths'][httpPath][method]:
+        swagger['paths'][httpPath][method]['responses'] = {}
+    swagger['paths'][httpPath][method]['responses'][parameters(last)] =  {
+        #'code': parameters(last),
+        'description': ''
         }
-        
-    return generic_handler_desc(cargo, r, "restreturncode", 'errorResponses', returncode, 'reason')
+    return generic_handler_desc(cargo, r, "restreturncode", None,
+                                swagger['paths'][httpPath][method]['responses'][parameters(last)],
+                                'description')
 
 ################################################################################
 ### @brief examples
 ################################################################################
 
 def examples(cargo, r=Regexen()):
-    return generic_handler_desc(cargo, r, "examples", None, operation, 'examples')
+    return generic_handler_desc(cargo, r, "x-examples", None, operation, 'x-examples')
 
 ################################################################################
 ### @brief example_arangosh_run
@@ -567,12 +810,13 @@ def example_arangosh_run(cargo, r=Regexen()):
 
     # new examples code TODO should include for each example own object in json file
     examplefile = open(os.path.join(os.path.dirname(__file__), '../Examples/' + parameters(last) + '.generated'))
-    operation['examples'] += '<br><br><pre><code class="json">'
+
+    operation['x-examples'] += '<details><summary>Example</summary><br><br><pre><code class="json">'
 
     for line in examplefile.readlines():
-        operation['examples'] += line
+        operation['x-examples'] += line
 
-    operation['examples'] += '</code></pre><br>'
+    operation['x-examples'] += '</code></pre><br></details>'
 
     line = ""
 
@@ -591,8 +835,6 @@ def example_arangosh_run(cargo, r=Regexen()):
 def eof(cargo):
     global DEBUG, C_FILE
     if DEBUG: print >> sys.stderr, "eof"
-
-    print json.dumps(swagger, indent=4, separators=(',',': '))
 
 ################################################################################
 ### @brief error
@@ -653,29 +895,154 @@ def skip_code(cargo, r=Regexen()):
 ### @brief main
 ################################################################################
 
-if __name__ == "__main__":
-    automat = StateMachine()
+automat = StateMachine()
 
-    automat.add_state(comment)
-    automat.add_state(eof, end_state=1)
-    automat.add_state(error, end_state=1)
-    automat.add_state(example_arangosh_run)
-    automat.add_state(examples)
-    automat.add_state(skip_code)
-    automat.add_state(restbodyparam)
-    automat.add_state(restdescription)
-    automat.add_state(restheader)
-    automat.add_state(restheaderparam)
-    automat.add_state(restheaderparameters)
-    automat.add_state(restqueryparam)
-    automat.add_state(restqueryparameters)
-    automat.add_state(restreturncode)
-    automat.add_state(restreturncodes)
-    automat.add_state(resturlparam)
-    automat.add_state(resturlparameters)
+automat.add_state(comment)
+automat.add_state(eof, end_state=1)
+automat.add_state(error, end_state=1)
+automat.add_state(start_docublock)
+automat.add_state(example_arangosh_run)
+automat.add_state(examples)
+automat.add_state(skip_code)
+automat.add_state(restbodyparam)
+automat.add_state(reststruct)
+automat.add_state(restallbodyparam)
+automat.add_state(restdescription)
+automat.add_state(restheader)
+automat.add_state(restheaderparam)
+automat.add_state(restheaderparameters)
+automat.add_state(restqueryparam)
+automat.add_state(restqueryparameters)
+automat.add_state(restreturncode)
+automat.add_state(restreturncodes)
+automat.add_state(resturlparam)
+automat.add_state(resturlparameters)
 
+
+
+def getOneApi(infile, filename):
     automat.set_start(skip_code)
-    automat.run((sys.stdin, ''))
+    automat.set_fn(filename)
+    automat.run((infile, ''))
+
+
+
+def unwrapPostJson(reference, layer):
+    global swagger
+    rc = ''
+    for param in swagger['definitions'][reference]['properties'].keys():
+        required = param in swagger['definitions'][reference]['required']
+        if '$ref' in swagger['definitions'][reference]['properties'][param]:
+            subStructRef = swagger['definitions'][reference]['properties'][param]['$ref'][len('#/definitions/'):]
+            rc += "<li>*" + param + "*: "
+            rc += swagger['definitions'][subStructRef]['description'] + "\n<ul class=\"swagger-list\">\n"
+            rc += unwrapPostJson(subStructRef,
+                                 layer + 1)
+            rc += "</li></ul>"
+        
+        elif swagger['definitions'][reference]['properties'][param]['type'] == 'object':
+            rc += swagger['definitions'][reference]['properties'][param]['description']
+        elif swagger['definitions'][reference]['properties'][param]['type'] == 'array':
+            rc += ' ' * layer + "<li>*" + param + "*: " + swagger['definitions'][reference]['properties'][param]['description'] + '</li>\n'
+        else:
+            rc += ' ' * layer + "<li>*" + param + "*: " + swagger['definitions'][reference]['properties'][param]['description'] + '</li>\n'
+    return rc
+
+
+files = { 
+  "aqlfunction" : [ "js/actions/api-aqlfunction.js" ],
+  "batch" : [ "arangod/RestHandler/RestBatchHandler.cpp" ],
+  "collection" : [ "js/actions/_api/collection/app.js" ],
+  "cursor" : [ "arangod/RestHandler/RestCursorHandler.cpp" ],
+  "database" : [ "js/actions/api-database.js" ],
+  "document" : [ "arangod/RestHandler/RestDocumentHandler.cpp" ],
+  "edge" : [ "arangod/RestHandler/RestEdgeHandler.cpp" ],
+  "edges" : [ "js/actions/api-edges.js" ],
+  "endpoint" : [ "js/actions/api-endpoint.js" ],
+  "explain" : [ "js/actions/api-explain.js" ],
+  "export" : [ "arangod/RestHandler/RestExportHandler.cpp" ],
+  "graph" : [ "js/actions/api-graph.js" ],
+  "import" : [ "arangod/RestHandler/RestImportHandler.cpp" ],
+  "index" : [ "js/actions/api-index.js" ],
+  "job" : [ "arangod/HttpServer/AsyncJobManager.h" ],
+  "log" : [ "arangod/RestHandler/RestAdminLogHandler.cpp" ],
+  "query" : [ "arangod/RestHandler/RestQueryHandler.cpp" ],
+  "replication" : [ "arangod/RestHandler/RestReplicationHandler.cpp" ],
+  "simple" : [ "js/actions/api-simple.js", "arangod/RestHandler/RestSimpleHandler.cpp" ],
+  "structure" : [ "js/actions/api-structure.js" ],
+  "system" : [ "js/actions/api-system.js" ],# TODO: no docu here.
+  "tasks" : [ "js/actions/api-tasks.js" ],
+  "transaction" : [ "js/actions/api-transaction.js" ],
+  "traversal" : [ "js/actions/api-traversal.js" ],
+  "user" : [ "js/actions/_api/user/app.js" ],
+  "version" : [ "arangod/RestHandler/RestVersionHandler.cpp" ],
+  "wal" : [ "js/actions/_admin/wal/app.js" ]
+}
+
+if len(sys.argv) < 3:
+  print >> sys.stderr, "usage: " + sys.argv[0] + " <scriptDir> <outDir> <relDir>"
+  sys.exit(1)
+
+scriptDir = sys.argv[1]
+if not scriptDir.endswith("/"):
+  scriptDir += "/"
+
+outDir = sys.argv[2]
+if not outDir.endswith("/"):
+  outDir += "/"
+
+relDir = sys.argv[3]
+if not relDir.endswith("/"):
+  relDir += "/"
+
+# read ArangoDB version
+f = open(scriptDir + "VERSION", "r")
+for version in f:
+  version = version.strip('\n')
+f.close()
+
+
+paths = {};
+
+
+for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
+    currentTag = name
+    tmpname = scriptDir + "/arango-swagger-" + name
+    if os.path.isfile(tmpname):
+        os.remove(tmpname)
+
+    with open(tmpname, 'w') as tmpfile:
+        for tmp in filenames:
+            with open(tmp) as infile:
+                tmpfile.write(infile.read())   
+
+    outfile = outDir + name + ".json"
+
+    infile = open(tmpname)
+    getOneApi(infile, name + " - " + ', '.join(filenames))
+    infile.close()
+
+
+for route in swagger['paths'].keys():
+    for verb in swagger['paths'][route].keys():
+        for nParam in range(0, len(swagger['paths'][route][verb]['parameters'])):
+            if swagger['paths'][route][verb]['parameters'][nParam]['in'] == 'body':
+                #print swagger['paths'][route][verb]['parameters'][nParam]
+                if 'additionalProperties' in swagger['paths'][route][verb]['parameters'][nParam]['schema']:
+                    swagger['paths'][route][verb]['description'] += "free style json body"
+                else:
+                    swagger['paths'][route][verb]['description'] += "<ul class=\"swagger-list\">" + unwrapPostJson(
+                        swagger['paths'][route][verb]['parameters'][nParam]['schema']['$ref'][len('#/definitions/'):],
+                        0) + "</ul>"
+                               
+        if 'x-examples' in swagger['paths'][route][verb]:
+            swagger['paths'][route][verb]['description'] +=  swagger['paths'][route][verb]['x-examples']
+            swagger['paths'][route][verb]['x-examples'] = None
+
+#print highlight(yaml.dump(swagger, Dumper=yaml.RoundTripDumper), YamlLexer(), TerminalFormatter())
+#print yaml.dump(swagger, Dumper=yaml.RoundTripDumper)
+print json.dumps(swagger, indent=4, separators=(', ',': '), sort_keys=True)
+#print highlight(yaml.dump(swagger, Dumper=yaml.RoundTripDumper), YamlLexer(), TerminalFormatter())
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
@@ -687,3 +1054,4 @@ if __name__ == "__main__":
 ## End:
 
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
+

@@ -101,7 +101,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///
 /// @RESTHEADER{POST /_api/document,Create document}
 ///
-/// @RESTBODYPARAM{document,json,required}
+/// @RESTALLBODYPARAM{document,json,required}
 /// A JSON representation of the document.
 ///
 /// @RESTQUERYPARAMETERS
@@ -963,7 +963,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// @RESTHEADER{PUT /_api/document/{document-handle},Replace document}
 ///
-/// @RESTBODYPARAM{document,json,required}
+/// @RESTALLBODYPARAM{document,json,required}
 /// A JSON representation of the new document.
 ///
 /// @RESTURLPARAMETERS
@@ -1190,7 +1190,7 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// @RESTHEADER{PATCH /_api/document/{document-handle}, Patch document}
 ///
-/// @RESTBODYPARAM{document,json,required}
+/// @RESTALLBODYPARAM{document,json,required}
 /// A JSON representation of the document update.
 ///
 /// @RESTURLPARAMETERS

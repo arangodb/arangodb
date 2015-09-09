@@ -518,3 +518,43 @@ naming scheme so they're executed in sequence. Using <modulename>_<sequencenumbe
     * dump the reply to the errorlog for testing (will mark run as failed): `logErrorResponse(response);`
 
 
+Swagger integration
+-------------------
+-------------------
+`make swagger` scans the sourcecode, and generates swagger output. 
+It scans for all documentationblocks containing `@RESTHEADER`
+
+Tokens may have curly brackets with comma separated fields. They may optionally be followed by subsequent text
+lines with a long descriptions.
+
+It consists of several sections which in term have sub-parameters:
+**Supported Sections:**
+
+RESTURLPARAMETERS
+-----------------
+RESTDESCRIPTION
+---------------
+Long text describing this route.
+
+RESTRETURNCODES
+---------------
+should consist of several *RESTRETURNCODE* tokens.
+
+
+**Supported Tokens:**
+RESTHEADER
+----------
+Up to 2 parameters.
+* *[GET|POST|PUT|DELETE] <url>* url should start with a */*, it may contain parameters in curly brackets, that
+  have to be documented in subsequent *RESTURLPARAM* tokens in the *RESTURLPARAMETERS* section.
+
+
+RESTURLPARAM
+------------
+Consists of 3 values separated by ',':
+* name: name of the parameter
+* type: [integer|long|float|double|string|byte|binary|boolean|date|dateTime|password] -
+  [see the swagger documentation](https://github.com/swagger-api/swagger-spec/blob/master/versions/2.0.md#data-types)
+* [required|optionas] Optional is not supported anymore. Split the docublock into one with and one without.
+
+Folowed by a long description.

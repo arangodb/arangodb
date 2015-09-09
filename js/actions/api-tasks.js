@@ -35,30 +35,20 @@ var API = "_api/tasks";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_api_tasks
-/// @brief Retrieves all (or one) currently active server task(s)
+/// @brief Retrieves  one currently active server task
 ///
-/// @RESTHEADER{GET /_api/tasks/{id}, Fetch all tasks or one task with id}
+/// @RESTHEADER{GET /_api/tasks/{id}, Fetch one task with id}
 /// 
-/// @RESTURLPARAM{id,string,optional}
+/// @RESTURLPARAM{id,string,required}
 /// The id of the task to fetch.
 ///
 /// @RESTDESCRIPTION
-/// fetches all existing tasks on the server; optionally just the one specified
-/// by *id*
+/// fetches one existing tasks on the server specified by *id*
+///
+/// @RESTRETURNCODE{200}
+/// The requested task
 ///
 /// @EXAMPLES
-///
-/// Getting all tasks:
-/// @EXAMPLE_ARANGOSH_RUN{RestTasksListAll}
-///     var url = "/_api/tasks";
-///
-///     var response = logCurlRequest('GET', url);
-///
-///     assert(response.code === 200);
-///
-///     logJsonResponse(response);
-///
-/// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Getting a single task by id:
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksListOne}
@@ -78,6 +68,34 @@ var API = "_api/tasks";
 ///     var response = logCurlRequest('GET', url);
 ///
 ///     assert(response.code === 404);
+///     logJsonResponse(response);
+///
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_tasks_all
+/// @brief Retrieves all currently active server tasks
+///
+/// @RESTHEADER{GET /_api/tasks/, Fetch all tasks or one task}
+/// 
+/// @RESTDESCRIPTION
+/// fetches all existing tasks on the server
+///
+/// @RESTRETURNCODE{200}
+/// The list of tasks
+///
+/// @EXAMPLES
+///
+/// Getting all tasks:
+/// @EXAMPLE_ARANGOSH_RUN{RestTasksListAll}
+///     var url = "/_api/tasks";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
 ///     logJsonResponse(response);
 ///
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -109,14 +127,20 @@ function get_api_tasks (req, res) {
 ///
 /// @RESTHEADER{POST /_api/tasks, creates a task}
 ///
-/// @RESTBODYPARAM{body,json,required}
-/// A JSON object describing the new task:
+/// @RESTBODYPARAM{name,string,required,string}
+/// The name of the task
 ///
-/// - *name*: name of the task
-/// - *command*: JavaScript code to be executed
-/// - *params*: parameters to be passed into command
-/// - *period*: n seconds between the executions
-/// - *offset*: n seconds initial delay 
+/// @RESTBODYPARAM{command,string,required,string}
+/// The JavaScript code to be executed
+///
+/// @RESTBODYPARAM{params,string,required,string}
+/// The parameters to be passed into command
+///
+/// @RESTBODYPARAM{period,integer,optional,int64}
+/// number of seconds between the executions
+///
+/// @RESTBODYPARAM{offset,integer,optional,int64}
+/// Number of seconds initial delay 
 ///
 /// @RESTDESCRIPTION
 /// creates a new task with a generated id
@@ -161,14 +185,20 @@ function get_api_tasks (req, res) {
 /// @RESTURLPARAM{id,string,required}
 /// The id of the task to create
 ///
-/// @RESTBODYPARAM{body,json,required}
-/// A JSON object describing the new task:
+/// @RESTBODYPARAM{name,string,required,string}
+/// The name of the task
 ///
-/// - *name*: name of the task
-/// - *command*: javascript code to be executed
-/// - *params*: parameters to be passed into command
-/// - *period*: n seconds between the executions
-/// - *offset*: n seconds initial delay 
+/// @RESTBODYPARAM{command,string,required,string}
+/// The JavaScript code to be executed
+///
+/// @RESTBODYPARAM{params,string,required,string}
+/// The parameters to be passed into command
+///
+/// @RESTBODYPARAM{period,integer,optional,int64}
+/// number of seconds between the executions
+///
+/// @RESTBODYPARAM{offset,integer,optional,int64}
+/// Number of seconds initial delay 
 ///
 /// @RESTDESCRIPTION
 /// registers a new task with the specified id

@@ -74,7 +74,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 ///
 /// @RESTHEADER{POST /_api/edge,Create edge}
 ///
-/// @RESTBODYPARAM{edge-document,json,required}
+/// @RESTALLBODYPARAM{edge-document,json,required}
 /// A JSON representation of the edge document must be passed as the body of
 /// the POST request. This JSON object may contain the edge's document key in
 /// the *_key* attribute if needed.
@@ -483,7 +483,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTHEADER{PUT /_api/edge/{document-handle},replaces an edge}
 ///
-/// @RESTBODYPARAM{edge,json,required}
+/// @RESTALLBODYPARAM{edge,json,required}
 /// A JSON representation of the new edge data.
 ///
 /// @RESTURLPARAMETERS
@@ -612,7 +612,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTHEADER{PATCH /_api/edge/{document-handle}, Patches edge}
 ///
-/// @RESTBODYPARAM{document,json,required}
+/// @RESTALLBODYPARAM{document,json,required}
 /// A JSON representation of the edge update.
 ///
 /// @RESTURLPARAMETERS
