@@ -37,7 +37,6 @@
 #endif
 
 #include "Aql/QueryRegistry.h"
-#include "Indexes/IndexWatermarks.h"
 #include "Rest/AnyServer.h"
 #include "Rest/OperationMode.h"
 #include "VocBase/vocbase.h"
@@ -728,12 +727,6 @@ namespace triagens {
 
         uint32_t _threadAffinity;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default watermarks for indexes
-////////////////////////////////////////////////////////////////////////////////
-#if 0
-        triagens::arango::IndexWatermarks _defaultIndexWatermarks;
-#endif      
     };
   }
 }

@@ -595,11 +595,6 @@ void ArangoServer::buildApplicationServer () {
     ("database.query-cache-mode", &_queryCacheMode, "mode for the AQL query cache (on, off, demand)")
     ("database.query-cache-max-results", &_queryCacheMaxResults, "maximum number of results in query cache per database")
     ("database.index-threads", &_indexThreads, "threads to start for parallel background index creation")
-#if 0    
-    ("database.index-initial-fill-factor", &_defaultIndexWatermarks.initialFillFactor, "the initial fill factor for hash and edge indexes")
-    ("database.index-low-watermark", &_defaultIndexWatermarks.lowWatermark, "low watermark for hash and edge indexes")
-    ("database.index-high-watermark", &_defaultIndexWatermarks.highWatermark, "high watermark for hash and edge indexes")
-#endif    
     ("database.throw-collection-not-loaded-error", &_throwCollectionNotLoadedError, "throw an error when accessing a collection that is still loading")
   ;
 
@@ -748,11 +743,6 @@ void ArangoServer::buildApplicationServer () {
     _disableAuthentication = true;
   }
  
-#if 0 
-  // default defaults for index watermarks
-  IndexWatermarks::SetDefaults(_defaultIndexWatermarks);
-#endif
-
   TRI_SetThrowCollectionNotLoadedVocBase(nullptr, _throwCollectionNotLoadedError);
   
   // set global query tracking flag
