@@ -1,0 +1,16 @@
+!CHAPTER Features and Improvements
+
+The following list shows in detail which features have been added or improved in
+ArangoDB 2.7. ArangoDB 2.7 also contains several bugfixes that are not listed
+here. For a list of bugfixes, please consult the [CHANGELOG](https://github.com/arangodb/arangodb/blob/devel/CHANGELOG).
+
+!SECTION APIs added
+
+!SECTION AQL improvements
+
+!SECTION Web Admin Interface
+
+!SECTION Foxx improvements
+
+!SECTION Miscellaneous changes
+
