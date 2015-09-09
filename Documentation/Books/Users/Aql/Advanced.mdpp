@@ -124,7 +124,7 @@ also present, *RETURN* must come later.
 
 ```
 FOR u IN users 
-  RETURN u.friends[* RETURN CONCAT(CURRENT.name, " is a friend of ", u.name) ] 
+  RETURN u.friends[* RETURN CONCAT(CURRENT.name, " is a friend of ", u.name)] 
 ```
 
 The above will return:

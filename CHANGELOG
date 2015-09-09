@@ -247,9 +247,9 @@ v2.7.0 (XXXX-XX-XX)
 
 * AQL function call arguments optimization
 
-  This will lead to arguments in function calls inside AQL queries will not be copied but passed
+  This will lead to arguments in function calls inside AQL queries not being copied but passed
   by reference. This may speed up calls to functions with bigger argument values or queries that
-  calls functions a lot of times.
+  call functions a lot of times.
 
 * upgraded V8 version to 4.3.61
 
@@ -276,7 +276,7 @@ v2.7.0 (XXXX-XX-XX)
   In some cases JavaScript exceptions would re-throw without information of the original problem.
   Now the original exception is logged for failure analysis.
  
-* based REST API method PUT `/_api/simple/all` on the cursor API and make its use AQL internally.
+* based REST API method PUT `/_api/simple/all` on the cursor API and make it use AQL internally.
 
   The change speeds up this REST API method and will lead to additional query information being
   returned by the REST API. Clients can use this extra information or ignore it.
