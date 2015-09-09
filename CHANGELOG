@@ -302,9 +302,13 @@ v2.7.0 (XXXX-XX-XX)
 * Use more madvise calls to speed up things when memory is tight, in particular
   at load time but also for random accesses later.
 
-* The API documentation for ArangoDB has been moved from "Tools" to "Links" in the web interface.
-
 * Overhauled web interface
+  
+  The web interface now has a new design.
+
+  The API documentation for ArangoDB has been moved from "Tools" to "Links" in the web interface.
+
+  The "Applications" tab in the web interfaces has been renamed to "Services".
 
 
 v2.6.8 (XXXX-XX-XX)
