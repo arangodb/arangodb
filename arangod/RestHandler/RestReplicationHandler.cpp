@@ -578,7 +578,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// @RESTDESCRIPTION
 /// Returns the currently available ranges of tick values for all currently
 /// available WAL logfiles. The tick values can be used to determine if certain
-/// data (identified by tick value) is still available for replication.
+/// data (identified by tick value) are still available for replication.
 ///
 /// The body of the response contains a JSON array. Each array member is an object
 /// that describes a single logfile. Each object has the following attributes:
