@@ -6,13 +6,13 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: text/plain; charset=utf-<span class="hljs-number">8</span>
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">605887238</span>
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">602267227</span>
 
-shell&gt; curl -X PUT --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/605887238</span>
+shell&gt; curl -X PUT --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/602267227</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">605887238</span>
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">602267227</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 

@@ -7,7 +7,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/testCollectionBasics
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"622992134"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"622321243"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionBasics"</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -26,7 +26,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/testCollectionEdges
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"623123206"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"622452315"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionEdges"</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 

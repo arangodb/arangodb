@@ -2,13 +2,13 @@ shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/gr
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-number">782244614</span>
+etag: <span class="hljs-number">778427995</span>
 
 { 
   <span class="hljs-string">"edge"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge1"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge1"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"782244614"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"778427995"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/vert1"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/vert2"</span>, 
     <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 

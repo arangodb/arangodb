@@ -2,9 +2,9 @@ shell&gt; curl --header <span class="hljs-string">'x-arango-async: store'</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: text/plain; charset=utf-<span class="hljs-number">8</span>
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">606214918</span>
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">602594907</span>
 
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/606214918</span>
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/602594907</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">204</span> No Content
 content-type: text/plain; charset=utf-<span class="hljs-number">8</span>

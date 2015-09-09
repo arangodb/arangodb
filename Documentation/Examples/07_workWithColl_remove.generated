@@ -3,16 +3,16 @@ arangosh&gt; db.example.remove(db.example.byExample({ name: <span class="hljs-st
 arangosh&gt; db.example.toArray()
 [ 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/464657158"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"464657158"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"464657158"</span>, 
-    <span class="hljs-string">"age"</span> : <span class="hljs-number">31</span>, 
-    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Jane Smith"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/464117339"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"464117339"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"464117339"</span>, 
+    <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"World"</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/464067334"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"464067334"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"464067334"</span>, 
-    <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"World"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/464707163"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"464707163"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"464707163"</span>, 
+    <span class="hljs-string">"age"</span> : <span class="hljs-number">31</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Jane Smith"</span> 
   } 
 ]

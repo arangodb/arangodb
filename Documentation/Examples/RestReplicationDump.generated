@@ -3,6 +3,6 @@ shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/re
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/x-arango-dump; charset=utf-<span class="hljs-number">8</span>
 x-arango-replication-checkmore: <span class="hljs-literal">false</span>
-x-arango-replication-lastincluded: <span class="hljs-number">840112902</span>
+x-arango-replication-lastincluded: <span class="hljs-number">836296283</span>
 
-<span class="hljs-string">"{\"tick\":\"839457542\",\"type\":2300,\"key\":\"123456\",\"rev\":\"839392006\",\"data\":{\"_key\":\"123456\",\"_rev\":\"839392006\",\"c\":false,\"b\":1,\"d\":\"additional value\"}}\n{\"tick\":\"839916294\",\"type\":2302,\"key\":\"foobar\",\"rev\":\"839850758\"}\n{\"tick\":\"840112902\",\"type\":2302,\"key\":\"abcdef\",\"rev\":\"840047366\"}\n"</span>
+<span class="hljs-string">"{\"tick\":\"835640923\",\"type\":2300,\"key\":\"123456\",\"rev\":\"835575387\",\"data\":{\"_key\":\"123456\",\"_rev\":\"835575387\",\"c\":false,\"b\":1,\"d\":\"additional value\"}}\n{\"tick\":\"836099675\",\"type\":2302,\"key\":\"foobar\",\"rev\":\"836034139\"}\n{\"tick\":\"836296283\",\"type\":2302,\"key\":\"abcdef\",\"rev\":\"836230747\"}\n"</span>

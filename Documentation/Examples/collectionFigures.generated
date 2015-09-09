@@ -37,6 +37,6 @@ arangosh&gt; db.demo.figures()
     <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"size"</span> : <span class="hljs-number">2008</span> 
   }, 
-  <span class="hljs-string">"lastTick"</span> : <span class="hljs-string">"20257542"</span>, 
+  <span class="hljs-string">"lastTick"</span> : <span class="hljs-string">"20307547"</span>, 
   <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span> 
 }

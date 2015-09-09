@@ -5,21 +5,21 @@ arangosh&gt; graph._neighbors(<span class="hljs-string">'germanCity/Hamburg'</sp
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Paris"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1733434118"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1732238939"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">4000000</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1733237510"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1732042331"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">80000</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1732647686"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1731452507"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span> 
   } 
