@@ -1,10 +1,10 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-follow?from=840899334&amp;chunkSize=400</span>
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-follow?from=838852187&amp;chunkSize=400</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/x-arango-dump; charset=utf-<span class="hljs-number">8</span>
 x-arango-replication-active: <span class="hljs-literal">true</span>
 x-arango-replication-checkmore: <span class="hljs-literal">true</span>
-x-arango-replication-lastincluded: <span class="hljs-number">841751302</span>
-x-arango-replication-lasttick: <span class="hljs-number">844045062</span>
+x-arango-replication-lastincluded: <span class="hljs-number">839442011</span>
+x-arango-replication-lasttick: <span class="hljs-number">843439707</span>
 
-<span class="hljs-string">"{\"tick\":\"841161478\",\"type\":2100,\"database\":\"72454\",\"cid\":\"840833798\",\"id\":\"841095942\",\"index\":{\"id\":\"841095942\",\"type\":\"hash\",\"fields\":[\"name\"],\"selectivityEstimate\":1,\"unique\":false,\"sparse\":false}}\n{\"tick\":\"841489158\",\"type\":2100,\"database\":\"72454\",\"cid\":\"840833798\",\"id\":\"841423622\",\"index\":{\"id\":\"841423622\",\"type\":\"skiplist\",\"fields\":[\"a\",\"b\"],\"unique\":true,\"sparse\":false}}\n{\"tick\":\"841751302\",\"type\":2100,\"database\":\"72454\",\"cid\":\"840833798\",\"id\":\"841620230\",\"index\":{\"id\":\"841620230\",\"type\":\"cap\",\"size\":500,\"byteSize\":0,\"unique\":false}}\n"</span>
+<span class="hljs-string">"{\"tick\":\"838917723\",\"type\":2001,\"database\":\"122459\",\"cid\":\"837017179\"}\n{\"tick\":\"838983259\",\"type\":2001,\"database\":\"122459\",\"cid\":\"838000219\"}\n{\"tick\":\"839114331\",\"type\":2000,\"database\":\"122459\",\"cid\":\"839048795\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"839048795\",\"indexBuckets\":1,\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"839442011\",\"type\":2300,\"database\":\"122459\",\"cid\":\"839048795\",\"tid\":\"0\",\"key\":\"p1\",\"rev\":\"839376475\",\"data\":{\"_key\":\"p1\",\"_rev\":\"839376475\",\"name\":\"flux compensator\"}}\n"</span>

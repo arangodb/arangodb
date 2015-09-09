@@ -5,11 +5,11 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 [ 
   { 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"18422534"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"18472539"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"user-defined task"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1440525354.957128</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1441784803.768685</span>, 
     <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function () {\n      require('org/arangodb/foxx/queues/manager').manage();\n    })(params)"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
   }, 
@@ -18,7 +18,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-gc"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">450</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1440525354.726689</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1441784803.633632</span>, 
     <span class="hljs-string">"command"</span> : <span class="hljs-string">"require('org/arangodb/statistics').garbageCollector();"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
   }, 
@@ -27,7 +27,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">900</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1440525354.726237</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1441784803.633316</span>, 
     <span class="hljs-string">"command"</span> : <span class="hljs-string">"require('org/arangodb/statistics').historianAverage();"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
   }, 
@@ -36,7 +36,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-collector"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">10</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1440525354.726158</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1441784803.63327</span>, 
     <span class="hljs-string">"command"</span> : <span class="hljs-string">"require('org/arangodb/statistics').historian();"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
   } 

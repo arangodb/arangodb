@@ -12,7 +12,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge2"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge2"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"787159814"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"783343195"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/v1"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/v3"</span>, 
       <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
@@ -21,7 +21,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge3"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge3"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"787684102"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"783867483"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/v2"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/v4"</span>, 
       <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
@@ -30,7 +30,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge1"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge1"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"786635526"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"782818907"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/v1"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/v2"</span>, 
       <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
@@ -39,7 +39,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge4"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge4"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"788208390"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"784391771"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/v1"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/v5"</span>, 
       <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
