@@ -130,6 +130,13 @@ controller.allRoutes
   }
 });
 
+controller.apiDocumentation('/api', {
+  swaggerJson(req, res) {
+    var filename = applicationContext.foxxFilename('api-docs.json');
+    res.sendFile(filename, {lastModified: true});
+  }
+});
+
 /** Is version check allowed
  *
  * Check if version check is allowed
