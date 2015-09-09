@@ -1,114 +1,208 @@
 {
-    "swaggerVersion": "1.1", 
-    "apiVersion": "2.6.0-devel", 
-    "apis": [
-        {
-            "path": "api-docs/aqlfunction.{format}", 
-            "description": "aqlfunction API"
+    "basePath": "/_db/_system/_admin/aardvark", 
+    "definitions": {
+        "JSF_get_api_database_new": {
+            "properties": {
+                "active": {
+                    "description": "A Flag indicating whether the user account should be activated or not. The default value is *true*. <br>", 
+                    "format": "", 
+                    "type": "boolean"
+                }, 
+                "extra": {
+                    "additionalProperties": {}, 
+                    "description": "A JSON object with extra user information. The data contained in *extra*  will be stored for the user but not be interpreted further by ArangoDB. <br>", 
+                    "type": "object"
+                }, 
+                "name": {
+                    "description": "Has to contain a valid database name. <br>", 
+                    "type": "string"
+                }, 
+                "passwd": {
+                    "description": "The user password as a string. If not specified, it will default to an empty string. <br>", 
+                    "type": "string"
+                }, 
+                "username": {
+                    "description": "The user name as a string. If *users* is not specified or does not contain any users, a default user *root* will be created with an empty string password. This ensures that the new database will be accessible after it is created. <br>", 
+                    "type": "string"
+                }, 
+                "users": {
+                    "description": "Has to be a list of user objects to initially create for the new database. Each user object can contain the following attributes: <br>", 
+                    "items": {
+                        "$ref": "#/definitions/JSF_get_api_database_new_USERS"
+                    }, 
+                    "type": "array"
+                }
+            }, 
+            "required": [
+                "name"
+            ], 
+            "type": "object"
         }, 
-        {
-            "path": "api-docs/batch.{format}", 
-            "description": "batch API"
-        }, 
-        {
-            "path": "api-docs/collection.{format}", 
-            "description": "collection API"
-        }, 
-        {
-            "path": "api-docs/cursor.{format}", 
-            "description": "cursor API"
-        }, 
-        {
-            "path": "api-docs/database.{format}", 
-            "description": "database API"
-        }, 
-        {
-            "path": "api-docs/document.{format}", 
-            "description": "document API"
-        }, 
-        {
-            "path": "api-docs/edge.{format}", 
-            "description": "edge API"
-        }, 
-        {
-            "path": "api-docs/edges.{format}", 
-            "description": "edges API"
-        }, 
-        {
-            "path": "api-docs/endpoint.{format}", 
-            "description": "endpoint API"
-        }, 
-        {
-            "path": "api-docs/explain.{format}", 
-            "description": "explain API"
-        }, 
-        {
-            "path": "api-docs/export.{format}", 
-            "description": "export API"
-        }, 
-        {
-            "path": "api-docs/graph.{format}", 
-            "description": "graph API"
-        }, 
-        {
-            "path": "api-docs/import.{format}", 
-            "description": "import API"
-        }, 
-        {
-            "path": "api-docs/index.{format}", 
-            "description": "index API"
-        }, 
-        {
-            "path": "api-docs/job.{format}", 
-            "description": "job API"
-        }, 
-        {
-            "path": "api-docs/log.{format}", 
-            "description": "log API"
-        }, 
-        {
-            "path": "api-docs/query.{format}", 
-            "description": "query API"
-        }, 
-        {
-            "path": "api-docs/replication.{format}", 
-            "description": "replication API"
-        }, 
-        {
-            "path": "api-docs/simple.{format}", 
-            "description": "simple API"
-        }, 
-        {
-            "path": "api-docs/structure.{format}", 
-            "description": "structure API"
-        }, 
-        {
-            "path": "api-docs/system.{format}", 
-            "description": "system API"
-        }, 
-        {
-            "path": "api-docs/tasks.{format}", 
-            "description": "tasks API"
-        }, 
-        {
-            "path": "api-docs/transaction.{format}", 
-            "description": "transaction API"
-        }, 
-        {
-            "path": "api-docs/traversal.{format}", 
-            "description": "traversal API"
-        }, 
-        {
-            "path": "api-docs/user.{format}", 
-            "description": "user API"
-        }, 
-        {
-            "path": "api-docs/version.{format}", 
-            "description": "version API"
-        }, 
-        {
-            "path": "api-docs/wal.{format}", 
-            "description": "wal API"
+        "JSF_get_api_database_new_USERS": {
+            "description": "", 
+            "properties": {
+                "active": {
+                    "description": "if *False* the user won't be able to log into the database. <br>", 
+                    "type": "boolean"
+                }, 
+                "passwd": {
+                    "description": "Password for the user <br>", 
+                    "type": "string"
+                }, 
+                "username": {
+                    "description": "Loginname of the user to be created <br>", 
+                    "type": "string"
+                }
+            }, 
+            "type": "object"
         }
-    ]
+    }, 
+    "info": {
+        "description": "ArangoDB REST API Interface", 
+        "license": {
+            "name": "Apache License, Version 2.0"
+        }, 
+        "title": "ArangoDB", 
+        "version": "1.0"
+    }, 
+    "paths": {
+        "/_api/database": {
+            "get": {
+                "description": "Retrieves the list of all existing databases <br> **Note**: retrieving the list of databases is only possible from within the *_system* database. <br><br><details><summary>Example</summary><br><br><pre><code class=\"json\">shell&gt; curl --dump - http:<span class=\"hljs-comment\">//localhost:8529/_api/database</span>\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">200</span> OK\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"result\"</span> : [ \n    <span class=\"hljs-string\">\"_system\"</span> \n  ], \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">200</span> \n}\n</code></pre><br></details><br>", 
+                "parameters": [], 
+                "responses": {
+                    "200": {
+                        "description": "is returned if the list of database was compiled successfully. <br>"
+                    }, 
+                    "400": {
+                        "description": "is returned if the request is invalid. <br>"
+                    }, 
+                    "403": {
+                        "description": "is returned if the request was not executed in the *_system* database. <br>"
+                    }
+                }, 
+                "summary": " List of databases", 
+                "tags": [
+                    "database"
+                ], 
+                "x-examples": null, 
+                "x-sourcefile": "database - js/actions/api-database.js"
+            }, 
+            "post": {
+                "description": "<br><em>for the post body parameters see the 'Try this operation'-section</em><br>Creates a new database <br> The response is a JSON object with the attribute *result* set to *true*. <br> **Note**: creating a new database is only possible from within the *_system* database. <br><ul class=\"swagger-list\"><li>*username*: The user name as a string. If *users* is not specified or does not contain any users, a default user *root* will be created with an empty string password. This ensures that the new database will be accessible after it is created. <br></li>\n<li>*users*: Has to be a list of user objects to initially create for the new database. Each user object can contain the following attributes: <br>\n<ul class=\"swagger-list\">\n <li>*username*: Loginname of the user to be created <br></li>\n <li>*passwd*: Password for the user <br></li>\n <li>*active*: if *False* the user won't be able to log into the database. <br></li>\n\n</ul>\n</li>\nA JSON object with extra user information. The data contained in *extra*  will be stored for the user but not be interpreted further by ArangoDB. <br><li>*passwd*: The user password as a string. If not specified, it will default to an empty string. <br></li>\n<li>*active*: A Flag indicating whether the user account should be activated or not. The default value is *true*. <br></li>\n<li>*name*: Has to contain a valid database name. <br></li>\n</ul><br> Creating a database named *example*. <br><details><summary>Example</summary><br><br><pre><code class=\"json\">shell&gt; curl -X POST --data-binary @- --dump - http:<span class=\"hljs-comment\">//localhost:8529/_api/database &lt;&lt;EOF</span>\n{ \n  <span class=\"hljs-string\">\"name\"</span> : <span class=\"hljs-string\">\"example\"</span> \n}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">201</span> Created\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"result\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">201</span> \n}\n</code></pre><br></details><br> Creating a database named *mydb* with two users. <br><details><summary>Example</summary><br><br><pre><code class=\"json\">shell&gt; curl -X POST --data-binary @- --dump - http:<span class=\"hljs-comment\">//localhost:8529/_api/database &lt;&lt;EOF</span>\n{ \n  <span class=\"hljs-string\">\"name\"</span> : <span class=\"hljs-string\">\"mydb\"</span>, \n  <span class=\"hljs-string\">\"users\"</span> : [ \n    { \n      <span class=\"hljs-string\">\"username\"</span> : <span class=\"hljs-string\">\"admin\"</span>, \n      <span class=\"hljs-string\">\"passwd\"</span> : <span class=\"hljs-string\">\"secret\"</span>, \n      <span class=\"hljs-string\">\"active\"</span> : <span class=\"hljs-literal\">true</span> \n    }, \n    { \n      <span class=\"hljs-string\">\"username\"</span> : <span class=\"hljs-string\">\"tester\"</span>, \n      <span class=\"hljs-string\">\"passwd\"</span> : <span class=\"hljs-string\">\"test001\"</span>, \n      <span class=\"hljs-string\">\"active\"</span> : <span class=\"hljs-literal\">false</span> \n    } \n  ] \n}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">201</span> Created\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"result\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">201</span> \n}\n</code></pre><br></details><br>", 
+                "parameters": [
+                    {
+                        "in": "body", 
+                        "name": "Json Post Body", 
+                        "required": true, 
+                        "schema": {
+                            "$ref": "#/definitions/JSF_get_api_database_new"
+                        }
+                    }
+                ], 
+                "responses": {
+                    "201": {
+                        "description": "is returned if the database was created successfully. <br>"
+                    }, 
+                    "400": {
+                        "description": "is returned if the request parameters are invalid or if a database with the specified name already exists. <br>"
+                    }, 
+                    "403": {
+                        "description": "is returned if the request was not executed in the *_system* database. <br>"
+                    }, 
+                    "409": {
+                        "description": "is returned if a database with the specified name already exists. <br>"
+                    }
+                }, 
+                "summary": " Create database", 
+                "tags": [
+                    "database"
+                ], 
+                "x-examples": null, 
+                "x-sourcefile": "database - js/actions/api-database.js"
+            }
+        }, 
+        "/_api/database/current": {
+            "get": {
+                "description": "Retrieves information about the current database <br> The response is a JSON object with the following attributes: <br>  <ul class=\"swagger-list\"><li>*name*: the name of the current database </ul>   <ul class=\"swagger-list\"><li>*id*: the id of the current database </ul>   <ul class=\"swagger-list\"><li>*path*: the filesystem path of the current database </ul>   <ul class=\"swagger-list\"><li>*isSystem*: whether or not the current database is the *_system* database </ul><br><details><summary>Example</summary><br><br><pre><code class=\"json\">shell&gt; curl --dump - http:<span class=\"hljs-comment\">//localhost:8529/_api/database/current</span>\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">200</span> OK\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"result\"</span> : { \n    <span class=\"hljs-string\">\"name\"</span> : <span class=\"hljs-string\">\"_system\"</span>, \n    <span class=\"hljs-string\">\"id\"</span> : <span class=\"hljs-string\">\"106000\"</span>, \n    <span class=\"hljs-string\">\"path\"</span> : <span class=\"hljs-string\">\"/tmp/vocdir.24004/databases/database-106000\"</span>, \n    <span class=\"hljs-string\">\"isSystem\"</span> : <span class=\"hljs-literal\">true</span> \n  }, \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">200</span> \n}\n</code></pre><br></details><br>", 
+                "parameters": [], 
+                "responses": {
+                    "200": {
+                        "description": "is returned if the information was retrieved successfully. <br>"
+                    }, 
+                    "400": {
+                        "description": "is returned if the request is invalid. <br>"
+                    }, 
+                    "404": {
+                        "description": "is returned if the database could not be found. <br>"
+                    }
+                }, 
+                "summary": " Information of the database", 
+                "tags": [
+                    "database"
+                ], 
+                "x-examples": null, 
+                "x-sourcefile": "database - js/actions/api-database.js"
+            }
+        }, 
+        "/_api/database/user": {
+            "get": {
+                "description": "Retrieves the list of all databases the current user can access without specifying a different username or password. <br><br><details><summary>Example</summary><br><br><pre><code class=\"json\">shell&gt; curl --dump - http:<span class=\"hljs-comment\">//localhost:8529/_api/database/user</span>\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">200</span> OK\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"result\"</span> : [ \n    <span class=\"hljs-string\">\"_system\"</span> \n  ], \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">200</span> \n}\n</code></pre><br></details><br>", 
+                "parameters": [], 
+                "responses": {
+                    "200": {
+                        "description": "is returned if the list of database was compiled successfully. <br>"
+                    }, 
+                    "400": {
+                        "description": "is returned if the request is invalid. <br>"
+                    }
+                }, 
+                "summary": " List of accessible databases ", 
+                "tags": [
+                    "database"
+                ], 
+                "x-examples": null, 
+                "x-sourcefile": "database - js/actions/api-database.js"
+            }
+        }, 
+        "/_api/database/{database-name}": {
+            "delete": {
+                "description": "Drops the database along with all data stored in it. <br> **Note**: dropping a database is only possible from within the *_system* database. The *_system* database itself cannot be dropped. <br><br><details><summary>Example</summary><br><br><pre><code class=\"json\">shell&gt; curl -X DELETE --dump - http:<span class=\"hljs-comment\">//localhost:8529/_api/database/example</span>\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">200</span> OK\ncontent-type: application/json; charset=utf-<span class=\"hljs-number\">8</span>\n\n{ \n  <span class=\"hljs-string\">\"result\"</span> : <span class=\"hljs-literal\">true</span>, \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">200</span> \n}\n</code></pre><br></details><br>", 
+                "parameters": [
+                    {
+                        "description": "The name of the database <br>", 
+                        "format": "string", 
+                        "in": "path", 
+                        "name": "database-name", 
+                        "required": true, 
+                        "type": "string"
+                    }
+                ], 
+                "responses": {
+                    "200": {
+                        "description": "is returned if the database was dropped successfully. <br>"
+                    }, 
+                    "400": {
+                        "description": "is returned if the request is malformed. <br>"
+                    }, 
+                    "403": {
+                        "description": "is returned if the request was not executed in the *_system* database. <br>"
+                    }, 
+                    "404": {
+                        "description": "is returned if the database could not be found. <br>"
+                    }
+                }, 
+                "summary": " Drop database", 
+                "tags": [
+                    "database"
+                ], 
+                "x-examples": null, 
+                "x-sourcefile": "database - js/actions/api-database.js"
+            }
+        }
+    }, 
+    "schemes": [
+        "http"
+    ], 
+    "swagger": "2.0"
 }
