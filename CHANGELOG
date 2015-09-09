@@ -72,12 +72,12 @@ v2.7.0 (XXXX-XX-XX)
   instantly after parsing the startup options.
 
   That means when either `--server.uid` or `--server.gid` are set, the privilege
-  change may happen earlier at startup. This may prevent binding the server to
-  and endpoint with a port number lower than 1024, if the user has no privileges
+  change will happen earlier. This may prevent binding the server to an endpoint 
+  with a port number lower than 1024 if the arangodb user has no privileges
   for that. Previous versions of ArangoDB changed the privileges later, so some
   startup actions were still carried out under the invoking user (i.e. likely 
   *root* when started via init.d or system scripts) and especially binding to
-  low ports was still possible there.
+  low port numbers was still possible there.
 
   The default privileges for user *arangodb* will not be sufficient for binding
   to port numbers lower than 1024. To have an ArangoDB 2.7 bind to a port number 
