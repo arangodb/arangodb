@@ -424,11 +424,11 @@ dumped collection, but also an additional 32-digit hash value. This is done to
 prevent overwriting dump files in case-insensitive file systems when there exist 
 multiple collections with the same name (but with different cases). 
   
-For example, if a database had two collections `test` and `Test`, previous
+For example, if a database had two collections *test* and *Test*, previous
 versions of arangodump created the following files: 
   
-* `test.structure.json` and `test.data.json` for collection `test`
-* `Test.structure.json` and `Test.data.json` for collection `Test`
+* `test.structure.json` and `test.data.json` for collection *test*
+* `Test.structure.json` and `Test.data.json` for collection *Test*
 
 This did not work in case-insensitive filesystems, because the files for the
 second collection would have overwritten the files of the first. arangodump in 
