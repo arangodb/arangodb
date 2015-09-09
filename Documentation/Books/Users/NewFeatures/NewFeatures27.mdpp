@@ -10,7 +10,70 @@ here. For a list of bugfixes, please consult the [CHANGELOG](https://github.com/
 
 !SECTION Web Admin Interface
 
+The ArangoDB API documentation has been moved from the "Tools" menu to the "Documentation" menu. The new documentation is based on Swagger 2.0 and opens in a separate web page.
+
 !SECTION Foxx improvements
 
-!SECTION Miscellaneous changes
+!SUBSECTION ES2015 Classes
 
+All Foxx constructors have been replaced with ES2015 classes and can be extended using the class syntax. The `extend` method is still supported at the moment but will become deprecated in ArangoDB 2.8 and removed in ArangoDB 2.9.
+
+**Before:**
+
+```js
+var Foxx = require('org/arangodb/foxx');
+var MyModel = Foxx.Model.extend({
+  // ...
+  schema: {/* ... */}
+});
+```
+
+**After:**
+
+```js
+var Foxx = require('org/arangodb/foxx');
+class MyModel extends Foxx.Model {
+  // ...
+}
+MyModel.prototype.schema = {/* ... */};
+```
+
+!SUBSECTION Confidential configuration
+
+It is now possible to specify configuration options with the type `password`. The password type is equivalent to the text type but will be masked in the web frontend to prevent accidental exposure of confidential options like API keys and passwords when configuring your Foxx application.
+
+!SUBSECTION Dependencies
+
+The syntax for specifying dependencies in manifests has been extended to allow specifying optional dependencies. Unmet optional dependencies will not prevent an app from being mounted. The traditional shorthand syntax for specifying non-optional dependencies will still be supported in the upcoming versions of ArangoDB.
+
+**Before:**
+
+```json
+{
+  ...
+  "dependencies": {
+    "notReallyNeeded": "users:^1.0.0",
+    "totallyNecessary": "sessions:^1.0.0"
+  }
+}
+```
+
+**After:**
+
+```json
+{
+  "dependencies": {
+    "notReallyNeeded": {
+      "name": "users",
+      "version": "^1.0.0",
+      "required": false
+    },
+    "totallyNecessary": {
+      "name": "sessions",
+      "version": "^1.0.0"
+    }
+  }
+}
+```
+
+!SECTION Miscellaneous changes
