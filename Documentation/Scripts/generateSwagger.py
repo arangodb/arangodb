@@ -129,6 +129,12 @@ currentTag = ''
 currentDocuBlock = ''
 
 ################################################################################
+### @brief index of example block we're reading
+################################################################################
+
+currentExample = 0
+
+################################################################################
 ### @brief collect json body parameter definitions:
 ################################################################################
 
@@ -149,6 +155,7 @@ DEBUG = True
 DEBUG = False
 
 removeTrailingBR = re.compile("<br>$")
+removeLeadingBR = re.compile("^<br>")
 
 ################################################################################
 ### @brief trim_text
@@ -396,10 +403,7 @@ def next_step(fp, line, r):
     elif r.RESTRETURNCODES.match(line):       return restreturncodes, (fp, line)
     elif r.RESTURLPARAM.match(line):          return resturlparam, (fp, line)
     elif r.RESTURLPARAMETERS.match(line):     return resturlparameters, (fp, line)
-
-    if r.EXAMPLES.match(line):
-        operation['x-examples'] = ""
-        return examples, (fp, line)
+    elif r.EXAMPLES.match(line):              return examples, (fp, line)
 
     return None, None
 
@@ -507,7 +511,7 @@ def setRequired(where, which):
 ################################################################################
 
 def restheader(cargo, r=Regexen()):
-    global swagger, operation, httpPath, method, restBodyParam, fn
+    global swagger, operation, httpPath, method, restBodyParam, fn, currentExample
 
     (fp, last) = cargo
 
@@ -526,13 +530,13 @@ def restheader(cargo, r=Regexen()):
         swagger['paths'][httpPath] = {}
     swagger['paths'][httpPath][method] = {
         'x-filename': fn,
+        'x-examples': [],
         'tags': [currentTag],
         'summary': summary,
         'description': '',
         'parameters' : [],
         }
     operation = swagger['paths'][httpPath][method]
-
     return generic_handler(cargo, r, "resturlparameters")
 
 ################################################################################
@@ -840,7 +844,9 @@ def restreturncode(cargo, r=Regexen()):
 ################################################################################
 
 def examples(cargo, r=Regexen()):
-    return generic_handler_desc(cargo, r, "x-examples", None, operation, 'x-examples')
+    global currentExample
+    operation['x-examples'].append('')
+    return generic_handler_desc(cargo, r, "x-examples", None, operation['x-examples'], currentExample)
 
 ################################################################################
 ### @brief example_arangosh_run
@@ -848,20 +854,21 @@ def examples(cargo, r=Regexen()):
 
 
 def example_arangosh_run(cargo, r=Regexen()):
-    global DEBUG, C_FILE
+    global currentExample, DEBUG, C_FILE
 
     if DEBUG: print >> sys.stderr, "example_arangosh_run"
     fp, last = cargo
 
+    exampleHeader = removeLeadingBR.sub("", removeTrailingBR.sub("", operation['x-examples'][currentExample])).strip()
+
     # new examples code TODO should include for each example own object in json file
     examplefile = open(os.path.join(os.path.dirname(__file__), '../Examples/' + parameters(last) + '.generated'))
-
-    operation['x-examples'] += '<details><summary>Example</summary><br><br><pre><code class="json">'
+    operation['x-examples'][currentExample]= '<details><summary>Example: ' + exampleHeader.strip('\n ') + '</summary><br><br><pre><code class="json">'
 
     for line in examplefile.readlines():
-        operation['x-examples'] += line
+        operation['x-examples'][currentExample] += line
 
-    operation['x-examples'] += '</code></pre><br></details>'
+    operation['x-examples'][currentExample] += '</code></pre><br></details>\n'
 
     line = ""
 
@@ -870,6 +877,8 @@ def example_arangosh_run(cargo, r=Regexen()):
 
         if not line:
             return eof, (fp, line)
+
+    currentExample += 1
 
     return examples, (fp, line)
 
@@ -1086,9 +1095,10 @@ for route in swagger['paths'].keys():
                     swagger['paths'][route][verb]['description'] += "<ul class=\"swagger-list\">" + unwrapPostJson(
                         getReference(swagger['paths'][route][verb]['parameters'][nParam]['schema'], route, verb),0) + "</ul>"
                                
-        if 'x-examples' in swagger['paths'][route][verb]:
-            swagger['paths'][route][verb]['description'] +=  swagger['paths'][route][verb]['x-examples']
-            swagger['paths'][route][verb]['x-examples'] = None
+        if 'x-examples' in swagger['paths'][route][verb] and len(swagger['paths'][route][verb]['x-examples']) > 0:
+            for nExample in range(0, len(swagger['paths'][route][verb]['x-examples'])):
+                swagger['paths'][route][verb]['description'] +=  swagger['paths'][route][verb]['x-examples'][nExample]
+            swagger['paths'][route][verb]['x-examples'] = []# todo unset!
 
 #print highlight(yaml.dump(swagger, Dumper=yaml.RoundTripDumper), YamlLexer(), TerminalFormatter())
 #print yaml.dump(swagger, Dumper=yaml.RoundTripDumper)
