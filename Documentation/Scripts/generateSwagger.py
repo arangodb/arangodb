@@ -71,6 +71,8 @@ swagger = {
 ################################################################################
 
 swaggerBaseTypes = [
+    'object',
+    'array',
     'integer',
     'long',
     'float',
@@ -519,7 +521,7 @@ def restheader(cargo, r=Regexen()):
     if not httpPath in swagger['paths']:
         swagger['paths'][httpPath] = {}
     swagger['paths'][httpPath][method] = {
-        'x-sourcefile': fn,
+        'x-filename': fn,
         'tags': [currentTag],
         'summary': summary,
         'description': '',
@@ -601,7 +603,7 @@ def restheaderparam(cargo, r=Regexen()):
 ################################################################################
 
 def restbodyparam(cargo, r=Regexen()):
-    global swagger, operation, httpPath, method, restBodyParam
+    global swagger, operation, httpPath, method, restBodyParam, fn
     (fp, last) = cargo
 
     try:
@@ -630,6 +632,7 @@ def restbodyparam(cargo, r=Regexen()):
 
     if not currentDocuBlock in swagger['definitions']:
         swagger['definitions'][currentDocuBlock] = {
+            'x-filename': fn,
             'type' : 'object',
             'required': [],
             'properties': {},
@@ -647,6 +650,7 @@ def restbodyparam(cargo, r=Regexen()):
 
         if not ptype2 in swagger['definitions']:
             swagger['definitions'][ptype2] = {
+                'x-filename': fn,
                 'type': 'object',
                 'required': [],
                 'properties' : {},
@@ -669,6 +673,8 @@ def restbodyparam(cargo, r=Regexen()):
             swagger['definitions'][currentDocuBlock]['properties'][name]['items'] = {
                 'type': ptype2
             }
+            if ptype2 == 'object':
+                swagger['definitions'][currentDocuBlock]['properties'][name]['items']['additionalProperties'] = {}
     elif ptype == 'object':
             swagger['definitions'][currentDocuBlock]['properties'][name]['additionalProperties'] = {}
     elif ptype != 'string':
@@ -730,6 +736,7 @@ def reststruct(cargo, r=Regexen()):
         (name, className, ptype, required, ptype2) = parameters(last).split(',')
     except Exception as x:
         print >> sys.stderr, "RESTSTRUCT: 4 arguments required. You gave me: " + parameters(last)
+        raise
 
     if required == 'required':
         required = True
@@ -751,11 +758,11 @@ def reststruct(cargo, r=Regexen()):
 
     if ptype == 'array':
         if ptype2 not in swaggerBaseTypes:
-            swagger['definitions'][currentDocuBlock]['properties'][name]['items'] = {
+            swagger['definitions'][className]['properties'][name]['items'] = {
                 '$ref': '#/definitions/' + ptype2
             }
         else:
-            swagger['definitions'][currentDocuBlock]['properties'][name]['items'] = {
+            swagger['definitions'][className]['properties'][name]['items'] = {
                 'type': ptype2
             }
     elif ptype != 'string' and ptype != 'boolean':
@@ -961,7 +968,17 @@ def getOneApi(infile, filename):
     automat.set_fn(filename)
     automat.run((infile, ''))
 
-
+def getReference(name, source, verb):
+    ref = name['$ref'][defLen:]
+    if not ref in swagger['definitions']:
+        fn = ''
+        if verb:
+            fn = swagger['paths'][route][verb]['x-filename']
+        else:
+            fn = swagger['definitions'][source]['x-filename']
+        print >> sys.stderr, json.dumps(swagger['definitions'], indent=4, separators=(', ',': '), sort_keys=True)
+        raise Exception("invalid reference: " + ref + " in " + fn)
+    return ref
 
 def unwrapPostJson(reference, layer):
     global swagger
@@ -969,7 +986,8 @@ def unwrapPostJson(reference, layer):
     for param in swagger['definitions'][reference]['properties'].keys():
         required = 'required' in swagger['definitions'][reference] and param in swagger['definitions'][reference]['required']
         if '$ref' in swagger['definitions'][reference]['properties'][param]:
-            subStructRef = swagger['definitions'][reference]['properties'][param]['$ref'][defLen:]
+            subStructRef = getReference(swagger['definitions'][reference]['properties'][param], reference, None)
+
             rc += "<li>*" + param + "*: "
             rc += swagger['definitions'][subStructRef]['description'] + "\n<ul class=\"swagger-list\">\n"
             rc += unwrapPostJson(subStructRef, layer + 1)
@@ -980,9 +998,9 @@ def unwrapPostJson(reference, layer):
         elif swagger['definitions'][reference]['properties'][param]['type'] == 'array':
             rc += ' ' * layer + "<li>*" + param + "*: " + swagger['definitions'][reference]['properties'][param]['description']
             if 'type' in swagger['definitions'][reference]['properties'][param]['items']:
-                rc += " of type " + swagger['definitions'][reference]['properties'][param]['type']['items']['type']
+                rc += " of type " + swagger['definitions'][reference]['properties'][param]['items']['type']#
             else:
-                subStructRef = swagger['definitions'][reference]['properties'][param]['items']['$ref'][defLen:]
+                subStructRef = getReference(swagger['definitions'][reference]['properties'][param]['items'], reference, None)
                 rc += "\n<ul class=\"swagger-list\">\n"
                 rc += unwrapPostJson(subStructRef, layer + 1)
                 rc += "\n</ul>\n"
@@ -1050,21 +1068,10 @@ paths = {};
 
 for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
     currentTag = name
-    tmpname = scriptDir + "/arango-swagger-" + name
-    if os.path.isfile(tmpname):
-        os.remove(tmpname)
-
-    with open(tmpname, 'w') as tmpfile:
-        for tmp in filenames:
-            with open(tmp) as infile:
-                tmpfile.write(infile.read())   
-
-    outfile = outDir + name + ".json"
-
-    infile = open(tmpname)
-    getOneApi(infile, name + " - " + ', '.join(filenames))
-    infile.close()
-
+    for fn in filenames:
+        infile = open(fn)
+        getOneApi(infile, name + " - " + ', '.join(filenames))
+        infile.close()
 
 for route in swagger['paths'].keys():
     for verb in swagger['paths'][route].keys():
@@ -1075,8 +1082,7 @@ for route in swagger['paths'].keys():
                     swagger['paths'][route][verb]['description'] += "free style json body"
                 else:
                     swagger['paths'][route][verb]['description'] += "<ul class=\"swagger-list\">" + unwrapPostJson(
-                        swagger['paths'][route][verb]['parameters'][nParam]['schema']['$ref'][defLen:],
-                        0) + "</ul>"
+                        getReference(swagger['paths'][route][verb]['parameters'][nParam]['schema'], route, verb),0) + "</ul>"
                                
         if 'x-examples' in swagger['paths'][route][verb]:
             swagger['paths'][route][verb]['description'] +=  swagger['paths'][route][verb]['x-examples']
