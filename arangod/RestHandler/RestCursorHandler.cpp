@@ -414,11 +414,8 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// for the query. If set to *true*, it will lead to the query cache being checked
 /// for the query if the query cache mode is either *on* or *demand*.
 ///
-/// @RESTBODYPARAM{bindvalues,object,optional,}
-/// key/value object
-///
-/// @RESTBODYPARAM{bindVars,array,optional,bindvalues}
-/// list of bind parameters.
+/// @RESTBODYPARAM{bindVars,array,optional,object}
+/// list of bind parameter objects.
 ///
 /// @RESTBODYPARAM{options,object,optional,JSF_post_api_cursor_opts}
 /// key/value object with extra options for the query.
