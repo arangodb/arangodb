@@ -77,7 +77,7 @@ resizing times.
 
 !SUBSECTION Throughput enhancements
 
-The ArangoDB-internal implementtions for dispatching requests, keeping statistics
+The ArangoDB-internal implementations for dispatching requests, keeping statistics
 and assigning V8 contexts to threads have been improved in order to use less
 locks. These changes allow higher concurrency and throughput in these components,
 which can also make the server handle more requests in a given period of time.
