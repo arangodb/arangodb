@@ -102,16 +102,16 @@ collections.
 !SUBSECTION RETURN DISTINCT
 
 To return unique values from a query, AQL now provides the `DISTINCT` keyword.
-It can used as a modifier for `RETURN` statements, as a shorter alternative to
+It can be used as a modifier for `RETURN` statements, as a shorter alternative to
 the already existing `COLLECT` statement.
 
 For example, the following query only returns distinct (unique) `status`
 attribute values from the collection:
 
-````
+```
     FOR doc IN collection
       RETURN DISTINCT doc.status
-````
+```
 
 `RETURN DISTINCT` is not allowed on the top-level of a query if there is no `FOR` 
 loop in front of it. `RETURN DISTINCT` is allowed in subqueries.
@@ -254,8 +254,15 @@ not require defining the bind parameter values separately:
     });
 ```
 
-Note that template strings are available in the JavaScript functions provided
-in ArangoDB to build queries, but aren't an AQL feature. AQL could always handle
+The `aqlQuery` template string generator will also handle collection objects
+automatically:
+
+```js
+    db._query(aqlQuery`FOR u IN ${ db.users } RETURN u.name`);
+```
+
+Note that while template strings are available in the JavaScript functions provided
+to build queries, they aren't a feature of AQL itself. AQL could always handle
 multiline query strings and provided bind parameters (`@...`) for separating
 the query string and the parameter values. The `aqlQuery` template string
 generator function will take care of this separation, too, but will do it
