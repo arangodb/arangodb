@@ -230,7 +230,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this server's id
 /// @startDocuBlock clusterMyLocalInfo
-/// `--cluster.my-local-info info
+/// `--cluster.my-local-info info`
 ///
 /// Some local information about the server in the cluster, this can for
 /// example be an IP address with a process ID or any string unique to
@@ -245,7 +245,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this server's id
 /// @startDocuBlock clusterMyId
-/// `--cluster.my-id id
+/// `--cluster.my-id id`
 ///
 /// The local server's id in the cluster. Specifying *id* is mandatory on
 /// startup. Each server of the cluster must have a unique id.
