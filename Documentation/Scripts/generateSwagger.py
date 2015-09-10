@@ -206,7 +206,7 @@ def BackTicks(txt, wordboundary = ['<em>','</em>']):
 ### *word* -> <b>word</b>
 ################################################################################
 
-def AsteriskItalic(txt, wordboundary = ['<em>','</em>']):
+def AsteriskItalic(txt, wordboundary = ['<strong>','</strong>']):
     r = rc(r"""([\(\s'/">]|^|.)\*(.*?)\*([<\s\.\),:;'"?!/-]|$)""", MS)
     subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
 
@@ -218,7 +218,7 @@ def AsteriskItalic(txt, wordboundary = ['<em>','</em>']):
 ### **word** -> <b>word</b>
 ################################################################################
 
-def AsteriskBold(txt, wordboundary = ['<em>','</em>']):
+def AsteriskBold(txt, wordboundary = ['<strong>','</strong>']):
     r = rc(r"""([\(\s'/">]|^|.)\*\*(.*?)\*\*([<\s\.\),:;'"?!/-]|$)""", MS)
     subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
 
@@ -271,8 +271,8 @@ def Typography(txt):
         txt = txt[0:-1]
 
 #    txt = BackTicks(txt)
-#    txt = AsteriskBold(txt)
-#    txt = AsteriskItalic(txt)
+    txt = AsteriskBold(txt)
+    txt = AsteriskItalic(txt)
 #    txt = FN(txt)
 #    txt = LIT(txt)
 #    txt = FA(txt)
@@ -1008,7 +1008,7 @@ def unwrapPostJson(reference, layer):
         if '$ref' in swagger['definitions'][reference]['properties'][param]:
             subStructRef = getReference(swagger['definitions'][reference]['properties'][param], reference, None)
 
-            rc += "<li>*" + param + "*: "
+            rc += "<li><strong>" + param + "</strong>: "
             rc += swagger['definitions'][subStructRef]['description'] + "<ul class=\"swagger-list\">"
             rc += unwrapPostJson(subStructRef, layer + 1)
             rc += "</li></ul>"
@@ -1016,7 +1016,7 @@ def unwrapPostJson(reference, layer):
         elif swagger['definitions'][reference]['properties'][param]['type'] == 'object':
             rc += brTrim(swagger['definitions'][reference]['properties'][param]['description'])
         elif swagger['definitions'][reference]['properties'][param]['type'] == 'array':
-            rc += ' ' * layer + "<li>*" + param + "*: " + brTrim(swagger['definitions'][reference]['properties'][param]['description'])
+            rc += ' ' * layer + "<li><strong>" + param + "</strong>: " + brTrim(swagger['definitions'][reference]['properties'][param]['description'])
             if 'type' in swagger['definitions'][reference]['properties'][param]['items']:
                 rc += " of type " + swagger['definitions'][reference]['properties'][param]['items']['type']#
             else:
@@ -1026,7 +1026,7 @@ def unwrapPostJson(reference, layer):
                 rc += "</ul>"
             rc += '</li>'
         else:
-            rc += ' ' * layer + "<li>*" + param + "*: " + swagger['definitions'][reference]['properties'][param]['description'] + '</li>\n'
+            rc += ' ' * layer + "<li><strong>" + param + "</strong>: " + swagger['definitions'][reference]['properties'][param]['description'] + '</li>\n'
     return rc
 
 
