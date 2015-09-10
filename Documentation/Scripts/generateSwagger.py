@@ -154,8 +154,14 @@ C_FILE = False
 DEBUG = True
 DEBUG = False
 
+################################################################################
+### @brief facility to remove leading and trailing html-linebreaks
+################################################################################
 removeTrailingBR = re.compile("<br>$")
 removeLeadingBR = re.compile("^<br>")
+
+def brTrim(text):
+    return removeLeadingBR.sub("", removeTrailingBR.sub("", text.strip(' ')))
 
 ################################################################################
 ### @brief trim_text
@@ -512,7 +518,7 @@ def setRequired(where, which):
 
 def restheader(cargo, r=Regexen()):
     global swagger, operation, httpPath, method, restBodyParam, fn, currentExample
-
+    currentExample = 0
     (fp, last) = cargo
 
     temp = parameters(last).split(',')
@@ -625,8 +631,12 @@ def restbodyparam(cargo, r=Regexen()):
         required = False
 
     if restBodyParam == None:
+        # https://github.com/swagger-api/swagger-ui/issues/1430
+        # once this is solved we can skip this:
+        operation['description'] += "**A json post document with these Properties is required:**"
         restBodyParam = {
             'name': 'Json Post Body',
+            'x-description-offset': len(swagger['paths'][httpPath][method]['description']),
             'in': 'body',
             'required': True,
             'schema': {
@@ -634,9 +644,6 @@ def restbodyparam(cargo, r=Regexen()):
                 }
             }
         swagger['paths'][httpPath][method]['parameters'].append(restBodyParam) 
-        # https://github.com/swagger-api/swagger-ui/issues/1430
-        # once this is solved we can skip this:
-        operation['description'] += "<br><em>for the post body parameters see the 'Try this operation'-section</em><br>"
 
     if not currentDocuBlock in swagger['definitions']:
         swagger['definitions'][currentDocuBlock] = {
@@ -718,6 +725,7 @@ def restallbodyparam(cargo, r=Regexen()):
             'name': 'Json Post Body',
             'description': '',
             'in': 'body',
+            'x-description-offset': len(swagger['paths'][httpPath][method]['description']),
             'required': required,
             'schema': {
                 'type': 'object',
@@ -810,6 +818,7 @@ def restqueryparam(cargo, r=Regexen()):
 
 def restdescription(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
+    swagger['paths'][httpPath][method]['description'] += '\n\n'
     return generic_handler_desc(cargo, r, "restdescription", None,
                                 swagger['paths'][httpPath][method],
                                 'description')
@@ -859,7 +868,7 @@ def example_arangosh_run(cargo, r=Regexen()):
     if DEBUG: print >> sys.stderr, "example_arangosh_run"
     fp, last = cargo
 
-    exampleHeader = removeLeadingBR.sub("", removeTrailingBR.sub("", operation['x-examples'][currentExample])).strip()
+    exampleHeader = brTrim(operation['x-examples'][currentExample]).strip()
 
     # new examples code TODO should include for each example own object in json file
     examplefile = open(os.path.join(os.path.dirname(__file__), '../Examples/' + parameters(last) + '.generated'))
@@ -1000,22 +1009,22 @@ def unwrapPostJson(reference, layer):
             subStructRef = getReference(swagger['definitions'][reference]['properties'][param], reference, None)
 
             rc += "<li>*" + param + "*: "
-            rc += swagger['definitions'][subStructRef]['description'] + "\n<ul class=\"swagger-list\">\n"
+            rc += swagger['definitions'][subStructRef]['description'] + "<ul class=\"swagger-list\">"
             rc += unwrapPostJson(subStructRef, layer + 1)
             rc += "</li></ul>"
         
         elif swagger['definitions'][reference]['properties'][param]['type'] == 'object':
-            rc += swagger['definitions'][reference]['properties'][param]['description']
+            rc += brTrim(swagger['definitions'][reference]['properties'][param]['description'])
         elif swagger['definitions'][reference]['properties'][param]['type'] == 'array':
-            rc += ' ' * layer + "<li>*" + param + "*: " + swagger['definitions'][reference]['properties'][param]['description']
+            rc += ' ' * layer + "<li>*" + param + "*: " + brTrim(swagger['definitions'][reference]['properties'][param]['description'])
             if 'type' in swagger['definitions'][reference]['properties'][param]['items']:
                 rc += " of type " + swagger['definitions'][reference]['properties'][param]['items']['type']#
             else:
                 subStructRef = getReference(swagger['definitions'][reference]['properties'][param]['items'], reference, None)
-                rc += "\n<ul class=\"swagger-list\">\n"
+                rc += "\n<ul class=\"swagger-list\">"
                 rc += unwrapPostJson(subStructRef, layer + 1)
-                rc += "\n</ul>\n"
-            rc += '</li>\n'
+                rc += "</ul>"
+            rc += '</li>'
         else:
             rc += ' ' * layer + "<li>*" + param + "*: " + swagger['definitions'][reference]['properties'][param]['description'] + '</li>\n'
     return rc
@@ -1086,15 +1095,21 @@ for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
 
 for route in swagger['paths'].keys():
     for verb in swagger['paths'][route].keys():
+        # insert the post json description into the place we extracted it:
         for nParam in range(0, len(swagger['paths'][route][verb]['parameters'])):
             if swagger['paths'][route][verb]['parameters'][nParam]['in'] == 'body':
-                #print swagger['paths'][route][verb]['parameters'][nParam]
+                descOffset = swagger['paths'][route][verb]['parameters'][nParam]['x-description-offset']
+                postText = swagger['paths'][route][verb]['description'][:descOffset]
                 if 'additionalProperties' in swagger['paths'][route][verb]['parameters'][nParam]['schema']:
-                    swagger['paths'][route][verb]['description'] += "free style json body"
+                    postText += "free style json body"
                 else:
-                    swagger['paths'][route][verb]['description'] += "<ul class=\"swagger-list\">" + unwrapPostJson(
+                    postText +="<ul class=\"swagger-list\">" + unwrapPostJson(
                         getReference(swagger['paths'][route][verb]['parameters'][nParam]['schema'], route, verb),0) + "</ul>"
-                               
+
+                postText += swagger['paths'][route][verb]['description'][descOffset:]
+                swagger['paths'][route][verb]['description'] = postText
+
+        # Append the examples to the description:
         if 'x-examples' in swagger['paths'][route][verb] and len(swagger['paths'][route][verb]['x-examples']) > 0:
             for nExample in range(0, len(swagger['paths'][route][verb]['x-examples'])):
                 swagger['paths'][route][verb]['description'] +=  swagger['paths'][route][verb]['x-examples'][nExample]
