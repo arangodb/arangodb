@@ -28,7 +28,6 @@ independent, using multiple buckets provides the following benefits:
   per bucket. As each bucket only contains a fraction of the entire index,
   resizing and rehashing a bucket is much faster and less intrusive than resizing 
   and rehashing the entire index. 
-  index.
 
 When creating new collections, the default number of index buckets is `8` since
 ArangoDB 2.7. In previous versions, the default value was `1`. The number of
