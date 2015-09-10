@@ -110,7 +110,6 @@ function get_api_aqlfunction (req, res) {
 /// input). The *isDeterministic* attribute is currently not used but may be
 /// used later for optimisations.
 ///
-///
 /// @RESTDESCRIPTION
 ///
 /// In case of success, the returned JSON object has the following properties:
