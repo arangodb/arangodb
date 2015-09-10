@@ -4,7 +4,7 @@ set -e
 SRCDIR=$1
 DSTDIR=$2
 
-cat ${SRCDIR}/.file-list-js | while read a; do
+${SRCDIR}/Installation/file-list-js.sh ${SRCDIR} | while read a; do
   if test -f "$DSTDIR/$a";  then
     echo "$DSTDIR/$a: already exists, giving up"
     exit 1
