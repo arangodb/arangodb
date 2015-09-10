@@ -58,7 +58,7 @@ swagger = {
       "name": "Apache License, Version 2.0"
     }
   },
-  "basePath": "/_db/_system/_admin/aardvark",
+  "basePath": "/",
   "schemes": [
     "http"
   ],
@@ -497,6 +497,10 @@ def start_docublock(cargo, r=Regexen()):
     return generic_handler(cargo, r, 'start_docublock')
 
 
+def setRequired(where, which):
+    if not 'required' in where:
+        where['required'] = []
+    where['required'].append(which)
 
 ################################################################################
 ### @brief restheader
@@ -634,7 +638,6 @@ def restbodyparam(cargo, r=Regexen()):
         swagger['definitions'][currentDocuBlock] = {
             'x-filename': fn,
             'type' : 'object',
-            'required': [],
             'properties': {},
             }
 
@@ -652,13 +655,12 @@ def restbodyparam(cargo, r=Regexen()):
             swagger['definitions'][ptype2] = {
                 'x-filename': fn,
                 'type': 'object',
-                'required': [],
                 'properties' : {},
                 'description': ''
                 }
 
         if required:
-            swagger['schema'][ptype2]['required'].append(name)
+            setRequired(swagger['schema'][ptype2], name)
         
         return generic_handler_desc(cargo, r, "restbodyparam", None,
                                     swagger['definitions'][ptype2],
@@ -682,7 +684,7 @@ def restbodyparam(cargo, r=Regexen()):
 
 
     if required:
-        swagger['definitions'][currentDocuBlock]['required'].append(name)
+        setRequired(swagger['definitions'][currentDocuBlock], name)
 
     return generic_handler_desc(cargo, r, "restbodyparam", None,
                                 swagger['definitions'][currentDocuBlock]['properties'][name],
