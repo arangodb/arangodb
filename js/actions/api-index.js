@@ -703,7 +703,7 @@ function get_api_index (req, res) {
 /// @RESTQUERYPARAM{collection,string,required}
 /// The collection name.
 ///
-/// @RESTALLBODYPARAM{index-details,json,required} ///TODOSWAGGER
+/// @RESTLBODYPARAM{index-details,json,required}
 ///
 /// @RESTDESCRIPTION
 ///
