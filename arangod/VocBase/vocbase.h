@@ -56,6 +56,7 @@ namespace triagens {
     class QueryList;
   }
   namespace arango {
+    class CollectionKeysRepository;
     class CursorRepository;
   }
 }
@@ -286,6 +287,7 @@ struct TRI_vocbase_t {
   void*                                   _userStructures;
   triagens::aql::QueryList*               _queries;
   triagens::arango::CursorRepository*     _cursorRepository;
+  triagens::arango::CollectionKeysRepository*  _collectionKeys;
 
   TRI_associative_pointer_t               _authInfo;
   TRI_associative_pointer_t               _authCache;

@@ -194,6 +194,8 @@ add_executable(
     Scheduler/TimerTask.cpp
     Statistics/statistics.cpp
     Utils/CollectionExport.cpp
+    Utils/CollectionKeys.cpp
+    Utils/CollectionKeysRepository.cpp
     Utils/Cursor.cpp
     Utils/CursorRepository.cpp
     Utils/DocumentHelper.cpp

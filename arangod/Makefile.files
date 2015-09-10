@@ -152,6 +152,8 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Scheduler/TimerTask.cpp \
 	arangod/Statistics/statistics.cpp \
 	arangod/Utils/CollectionExport.cpp \
+	arangod/Utils/CollectionKeys.cpp \
+	arangod/Utils/CollectionKeysRepository.cpp \
 	arangod/Utils/Cursor.cpp \
 	arangod/Utils/CursorRepository.cpp \
 	arangod/Utils/DocumentHelper.cpp \

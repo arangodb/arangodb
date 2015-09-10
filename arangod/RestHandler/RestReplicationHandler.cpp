@@ -42,6 +42,8 @@
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/CollectionKeys.h"
+#include "Utils/CollectionKeysRepository.h"
 #include "Utils/transactions.h"
 #include "VocBase/compactor.h"
 #include "VocBase/replication-applier.h"
@@ -159,6 +161,27 @@ HttpHandler::status_t RestReplicationHandler::execute () {
       }
       else {
         handleCommandInventory();
+      }
+    }
+    else if (command == "keys") {
+      if (type != HttpRequest::HTTP_REQUEST_GET &&
+          type != HttpRequest::HTTP_REQUEST_POST &&
+          type != HttpRequest::HTTP_REQUEST_DELETE) {
+        goto BAD_CALL;
+      }
+      
+      if (isCoordinatorError()) {
+        return status_t(HttpHandler::HANDLER_DONE);
+      }
+
+      if (type == HttpRequest::HTTP_REQUEST_POST) {
+        handleCommandCreateKeys();
+      }
+      else if (type == HttpRequest::HTTP_REQUEST_GET) {
+        handleCommandGetKeys();
+      }
+      else if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+        handleCommandRemoveKeys();
       }
     }
     else if (command == "dump") {
@@ -1726,7 +1749,7 @@ void RestReplicationHandler::handleCommandClusterInventory () {
           // Wrap the result:
           TRI_json_t wrap;
           TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &wrap, 3);
-          TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE,&wrap,"collections", &json);
+          TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &wrap,"collections", &json);
           TRI_voc_tick_t tick = TRI_CurrentTickServer();
           char* tickString = TRI_StringUInt64(tick);
           char const* stateStatic = "unused";
@@ -3047,6 +3070,214 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief produce list of keys for a specific collection
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandCreateKeys () {
+  char const* collection = _request->value("collection");
+
+  if (collection == nullptr) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return;
+  }
+
+  TRI_voc_tick_t tickEnd = UINT64_MAX;
+
+  // determine end tick for keys
+  bool found;
+  char const* value = _request->value("to", found);
+
+  if (found) {
+    tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+  }
+
+  TRI_vocbase_col_t* c = TRI_LookupCollectionByNameVocBase(_vocbase, collection);
+
+  if (c == nullptr) {
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return;
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    triagens::arango::CollectionGuard guard(_vocbase, c->_cid, false);
+
+    TRI_vocbase_col_t* col = guard.collection();
+    TRI_ASSERT(col != nullptr);
+   
+    // turn off the compaction for the collection 
+    TRI_voc_tick_t id;
+    res = TRI_InsertBlockerCompactorVocBase(_vocbase, 24.0 * 60.0 * 60.0, &id);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    // initialize a container with the keys
+    std::unique_ptr<CollectionKeys> keys(new CollectionKeys(_vocbase, col->_name, id, 300.0));
+    
+    std::string const idString(std::to_string(keys->id()));
+
+    keys->create(tickEnd);
+    size_t const count = keys->count();
+
+    auto keysRepository = static_cast<triagens::arango::CollectionKeysRepository*>(_vocbase->_collectionKeys);
+
+    try {
+      keysRepository->store(keys.get());
+      keys.release();
+    }
+    catch (...) {
+      throw;
+    }
+         
+
+    triagens::basics::Json json(triagens::basics::Json::Object);
+    json.set("id", triagens::basics::Json(idString));
+    json.set("count", triagens::basics::Json(static_cast<double>(count)));
+
+    generateResult(HttpResponse::OK, json.json());
+
+  }
+  catch (triagens::basics::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a key range
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandGetKeys () {
+  std::vector<std::string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 2) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting GET /_api/replication/keys/<keys-id>");
+    return;
+  }
+  
+  std::string const& id = suffix[1];
+
+  TRI_voc_tick_t tickStart = 0;
+  TRI_voc_tick_t tickEnd = 0;
+
+  // determine start and end tick for keys
+  bool found;
+  char const* value = _request->value("from", found);
+
+  if (found) {
+    tickStart = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+  }
+  
+  value = _request->value("to", found);
+  if (found) {
+    tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+  }
+
+  if (tickStart > tickEnd || tickEnd == 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid from/to values");
+    return;
+  }
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    auto keysRepository = static_cast<triagens::arango::CollectionKeysRepository*>(_vocbase->_collectionKeys);
+    TRI_ASSERT(keysRepository != nullptr);
+ 
+    auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(triagens::basics::StringUtils::uint64(id));
+  
+    bool busy;
+    auto collectionKeys = keysRepository->find(collectionKeysId, busy);
+
+    if (collectionKeys == nullptr) {
+      if (busy) {
+        generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_BUSY), TRI_ERROR_CURSOR_BUSY); // TODO: Fix error code
+      }
+      else {
+        generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND); // TODO: fix error code
+      }
+      return;
+    }
+
+    try {  
+      auto result = collectionKeys->hashChunk(tickStart, tickEnd);
+
+      collectionKeys->release();
+    
+      triagens::basics::Json json(triagens::basics::Json::Object, 3);
+      json.set("low", triagens::basics::Json(std::get<0>(result)));
+      json.set("high", triagens::basics::Json(std::get<1>(result)));
+      json.set("hash", triagens::basics::Json(std::to_string(std::get<2>(result))));
+
+      generateResult(HttpResponse::OK, json.json());
+    }
+    catch (...) {
+      collectionKeys->release();
+      throw;
+    }
+  }
+  catch (triagens::basics::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+  }
+}
+
+void RestReplicationHandler::handleCommandRemoveKeys () {
+  std::vector<std::string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 2) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting DELETE /_api/replication/keys/<keys-id>");
+    return;
+  }
+  
+  std::string const& id = suffix[0];
+
+  auto keys = static_cast<triagens::arango::CollectionKeysRepository*>(_vocbase->_collectionKeys);
+  TRI_ASSERT(keys != nullptr);
+ 
+  auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(triagens::basics::StringUtils::uint64(id));
+  bool found = keys->remove(collectionKeysId);
+
+  if (! found) {
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND); // TODO: fix error code
+    return;
+  }
+
+  _response = createResponse(HttpResponse::ACCEPTED);
+  _response->setContentType("application/json; charset=utf-8");
+   
+  triagens::basics::Json json(triagens::basics::Json::Object);
+  json.set("id", triagens::basics::Json(id)); // id as a string! 
+  json.set("error", triagens::basics::Json(false)); 
+  json.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
+
+  json.dump(_response->body());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

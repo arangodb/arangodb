@@ -177,7 +177,7 @@ bool RestQueryCacheHandler::readProperties () {
 /// @startDocuBlock PutApiQueryCacheProperties
 /// @brief changes the configuration for the AQL query cache
 ///
-/// @RESTHEADER{PUT /_api/query-cache/properties, Changes the global properties for the AQL query cache}
+/// @RESTHEADER{PUT /_api/query-cache/properties, Globally adjusts the AQL query result cache properties}
 ///
 /// @RESTBODYPARAM{properties,json,required}
 /// The global properties for AQL query cache.

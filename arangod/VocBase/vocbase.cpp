@@ -47,6 +47,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/threads.h"
 #include "Basics/Exceptions.h"
+#include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/transactions.h"
 #include "VocBase/auth.h"
@@ -1508,6 +1509,11 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   if (vocbase->_cursorRepository != nullptr) {
     vocbase->_cursorRepository->garbageCollect(true);
   }
+  
+  // mark all collection keys as deleted so underlying collections can be freed soon
+  if (vocbase->_collectionKeys != nullptr) {
+    vocbase->_collectionKeys->garbageCollect(true);
+  }
 
   std::vector<TRI_vocbase_col_t*> collections;
 
@@ -2381,14 +2387,16 @@ TRI_vocbase_t::TRI_vocbase_t (TRI_server_t* server,
     _userStructures(nullptr),
     _queries(nullptr),
     _cursorRepository(nullptr),
+    _collectionKeys(nullptr),
     _authInfoLoaded(false),
     _hasCompactor(false),
     _isOwnAppsDirectory(true),
     _oldTransactions(nullptr),
     _replicationApplier(nullptr) {
 
-  _queries = new triagens::aql::QueryList(this);
+  _queries          = new triagens::aql::QueryList(this);
   _cursorRepository = new triagens::arango::CursorRepository(this);
+  _collectionKeys   = new triagens::arango::CollectionKeysRepository(this);
  
   _path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
   _name = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
@@ -2447,6 +2455,7 @@ TRI_vocbase_t::~TRI_vocbase_t () {
   TRI_DestroyAssociativePointer(&_collectionsById);
 
   delete _cursorRepository;
+  delete _collectionKeys;
   delete _queries;
   
   // free name and path
