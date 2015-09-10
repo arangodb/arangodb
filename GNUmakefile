@@ -127,6 +127,7 @@ pack-dmg-cmake:
 	test -d bin || mkdir bin
 	make bin/etcd-arango
 
+	rm -f ./.file-list-js
 	cd Build && ${MAKE}
 
 	./Installation/file-copy-js.sh . Build
@@ -152,6 +153,7 @@ pack-macosxcode:
 	${MAKE} -f GNUMakefile pack-macosxcode-cmake MOREOPTS='$(MOREOPTS)'
 
 pack-macosxcode-cmake:
+	rm -f ./.file-list-js
 	cd Build && cmake \
 		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "BUILD_PACKAGE=dmg-cli" \
@@ -214,6 +216,7 @@ pack-macosx-cmake:
 	test -d bin || mkdir bin
 	make bin/etcd-arango
 
+	rm -f ./.file-list-js
 	cd Build && ${MAKE}
 
 	./Installation/file-copy-js.sh . Build
@@ -261,6 +264,7 @@ pack-arm-cmake:
 
 	${MAKE} ${BUILT_SOURCES}
 
+	rm -f ./.file-list-js
 	cd Build && ${MAKE}
 
 	./Installation/file-copy-js.sh . Build
@@ -289,6 +293,7 @@ pack-deb-cmake:
 
 	${MAKE} ${BUILT_SOURCES}
 
+	rm -f ./.file-list-js
 	cd Build && ${MAKE}
 
 	./Installation/file-copy-js.sh . Build
@@ -336,6 +341,7 @@ pack-winXX-MOREOPTS:
 	${MAKE} packXX BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 
 winXX-cmake: checkcmake
+	rm -f ./.file-list-js
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
 		-D "ARANGODB_VERSION=${VERSION}" \
