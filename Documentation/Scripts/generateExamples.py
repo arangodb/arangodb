@@ -420,7 +420,7 @@ def generateArangoshRun(testName):
     rc = " FAILED in " + testName;
   }
   print("[" + (time () - startTime) + "s] " + rc);
-  output = highlight("js", output);
+  ///output = highlight("js", output);
   fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
