@@ -164,6 +164,16 @@ def brTrim(text):
     return removeLeadingBR.sub("", removeTrailingBR.sub("", text.strip(' ')))
 
 ################################################################################
+### @brief check for token to be right
+################################################################################
+
+reqOpt = ["required", "optional"]
+def CheckReqOpt(token):
+    if token not in reqOpt:
+        print >> sys.stderr, "This is supposed to be required or optional!"
+        raise Exception("invalid value")
+
+################################################################################
 ### @brief trim_text
 ################################################################################
 
@@ -274,7 +284,7 @@ def Typography(txt):
     txt = AsteriskBold(txt)
     txt = AsteriskItalic(txt)
 #    txt = FN(txt)
-#    txt = LIT(txt)
+    txt = LIT(txt)
 #    txt = FA(txt)
 #
     # no way to find out the correct link for Swagger, 
@@ -522,18 +532,23 @@ def restheader(cargo, r=Regexen()):
     (fp, last) = cargo
 
     temp = parameters(last).split(',')
-    (method, path) = temp[0].split()
+    (ucmethod, path) = temp[0].split()
 
     restBodyParam = None
     #TODO: hier checken, ob der letzte alles hatte (responses)
     summary = temp[1]
     summaryList = summary.split()
-    method = method.lower()
+    method = ucmethod.lower()
     nickname = summaryList[0] + ''.join([word.capitalize() for word in summaryList[1:]])
 
     httpPath = FA(path, wordboundary = ['{', '}'])
     if not httpPath in swagger['paths']:
         swagger['paths'][httpPath] = {}
+    if method in swagger['paths'][httpPath]:
+        print >> sys.stderr, "duplicate route detected:"
+        print >> sys.stderr, "There already is a route " + ucmethod + " " + httpPath
+        raise Exception("Duplicate route")
+
     swagger['paths'][httpPath][method] = {
         'x-filename': fn,
         'x-examples': [],
@@ -625,6 +640,7 @@ def restbodyparam(cargo, r=Regexen()):
     except Exception as x:
         print >> sys.stderr, "RESTBODYPARAM: 4 arguments required. You gave me: " + parameters(last)
 
+    CheckReqOpt(required)
     if required == 'required':
         required = True
     else:
@@ -714,6 +730,7 @@ def restallbodyparam(cargo, r=Regexen()):
     except Exception as x:
         print >> sys.stderr, "RESTALLBODYPARAM: 3 arguments required. You gave me: " + parameters(last)
 
+    CheckReqOpt(required)
     if required == 'required':
         required = True
     else:
@@ -752,6 +769,7 @@ def reststruct(cargo, r=Regexen()):
         print >> sys.stderr, "RESTSTRUCT: 4 arguments required. You gave me: " + parameters(last)
         raise
 
+    CheckReqOpt(required)
     if required == 'required':
         required = True
     else:
@@ -796,6 +814,7 @@ def restqueryparam(cargo, r=Regexen()):
 
     parametersList = parameters(last).split(',')
 
+    CheckReqOpt(parametersList[2])
     if parametersList[2] == 'required':
         required = True
     else:
@@ -1045,7 +1064,7 @@ files = {
   "graph" : [ "js/actions/api-graph.js" ],
   "import" : [ "arangod/RestHandler/RestImportHandler.cpp" ],
   "index" : [ "js/actions/api-index.js" ],
-  "job" : [ "arangod/HttpServer/AsyncJobManager.h" ],
+  "job" : [ "arangod/HttpServer/AsyncJobManager.h" ],# TODO: no docu here
   "log" : [ "arangod/RestHandler/RestAdminLogHandler.cpp" ],
   "query" : [ "arangod/RestHandler/RestQueryHandler.cpp" ],
   "replication" : [ "arangod/RestHandler/RestReplicationHandler.cpp" ],
@@ -1095,6 +1114,10 @@ for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
 
 for route in swagger['paths'].keys():
     for verb in swagger['paths'][route].keys():
+        if len(swagger['paths'][route][verb]['description']) == 0:
+            print >> sys.stderr, "Description of Route empty; @RESTDESCRIPTION missing?"
+            print >> sys.stderr, "in :" + verb + " " + route
+            #raise TODO
         # insert the post json description into the place we extracted it:
         for nParam in range(0, len(swagger['paths'][route][verb]['parameters'])):
             if swagger['paths'][route][verb]['parameters'][nParam]['in'] == 'body':
@@ -1111,6 +1134,7 @@ for route in swagger['paths'].keys():
 
         # Append the examples to the description:
         if 'x-examples' in swagger['paths'][route][verb] and len(swagger['paths'][route][verb]['x-examples']) > 0:
+            swagger['paths'][route][verb]['description'] += '<br>'
             for nExample in range(0, len(swagger['paths'][route][verb]['x-examples'])):
                 swagger['paths'][route][verb]['description'] +=  swagger['paths'][route][verb]['x-examples'][nExample]
             swagger['paths'][route][verb]['x-examples'] = []# todo unset!
