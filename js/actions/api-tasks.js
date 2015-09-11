@@ -163,7 +163,7 @@ function get_api_tasks (req, res) {
 ///       period: 2
 ///     }
 ///     var response = logCurlRequest('POST', url,
-///                                   JSON.stringify(sampleTask));
+///                                   sampleTask);
 ///
 ///     assert(response.code === 200);
 ///
@@ -222,7 +222,7 @@ function get_api_tasks (req, res) {
 ///       period: 2
 ///     }
 ///     var response = logCurlRequest('PUT', url + 'sampleTask',
-///                                   JSON.stringify(sampleTask));
+///                                   sampleTask);
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -275,6 +275,8 @@ function post_api_task_register (req, res, byId) {
 ///
 /// @EXAMPLES
 ///
+/// trying to delete non existing task
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksDeleteFail}
 ///     var url = "/_api/tasks/NoTaskWithThatName";
 ///
@@ -284,6 +286,8 @@ function post_api_task_register (req, res, byId) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Remove existing Task
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksDelete}
 ///     var url = "/_api/tasks/";
@@ -298,7 +302,7 @@ function post_api_task_register (req, res, byId) {
 ///     curlRequest('DELETE', url + sampleTask.id);
 ///     // put in something we may delete:
 ///     curlRequest('PUT', url + sampleTask.id,
-///                 JSON.stringify(sampleTask));
+///                 sampleTask);
 ///
 ///     var response = logCurlRequest('DELETE', url + sampleTask.id);
 ///
