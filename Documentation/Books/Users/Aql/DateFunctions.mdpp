@@ -64,20 +64,24 @@ These two above date functions accept the following input values:
 The following calls to *DATE_TIMESTAMP* are equivalent and will all return 
 *1399472349522*:
 
-    DATE_TIMESTAMP("2014-05-07T14:19:09.522")
-    DATE_TIMESTAMP("2014-05-07T14:19:09.522Z")
-    DATE_TIMESTAMP("2014-05-07 14:19:09.522")
-    DATE_TIMESTAMP("2014-05-07 14:19:09.522Z")
-    DATE_TIMESTAMP(2014, 5, 7, 14, 19, 9, 522)
-    DATE_TIMESTAMP(1399472349522)
+```js
+DATE_TIMESTAMP("2014-05-07T14:19:09.522")
+DATE_TIMESTAMP("2014-05-07T14:19:09.522Z")
+DATE_TIMESTAMP("2014-05-07 14:19:09.522")
+DATE_TIMESTAMP("2014-05-07 14:19:09.522Z")
+DATE_TIMESTAMP(2014, 5, 7, 14, 19, 9, 522)
+DATE_TIMESTAMP(1399472349522)
+```
 
 The same is true for calls to *DATE_ISO8601* that also accepts variable input 
 formats:
 
-    DATE_ISO8601("2014-05-07T14:19:09.522Z")
-    DATE_ISO8601("2014-05-07 14:19:09.522Z")
-    DATE_ISO8601(2014, 5, 7, 14, 19, 9, 522)
-    DATE_ISO8601(1399472349522)
+```js
+DATE_ISO8601("2014-05-07T14:19:09.522Z")
+DATE_ISO8601("2014-05-07 14:19:09.522Z")
+DATE_ISO8601(2014, 5, 7, 14, 19, 9, 522)
+DATE_ISO8601(1399472349522)
+```
 
 The above functions are all equivalent and will return *"2014-05-07T14:19:09.522Z"*.
 
@@ -108,23 +112,258 @@ The following date functions can be used with dates created by *DATE_TIMESTAMP* 
 
 - *DATE_MILLISECOND(date)*: Returns the milliseconds part of *date* as a number. 
 
+- *DATE_DAYOFYEAR(date)*: Returns the day of year number of *date*.
+  The return values range from 1 to 365, or 366 in a leap year respectively.
+
+- *DATE_ISOWEEK(date)*: Returns the ISO week date of *date*. The return values
+  range from 1 to 53. Monday is considered the first day of the week. There are no
+  fractional weeks, thus the last days in December may belong to the first week of
+  the next year, and the first days in January may be part of the previous year's
+  last week.
+
+- *DATE_LEAPYEAR(date)*: Returns whether the year of *date* is a leap year.
+
+  It can be used to determine the number of days in a month:
+
+```js
+LET daysInMonth = [29, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+RETURN daysInMonth[DATE_MONTH(date) == 2 && DATE_LEAPYEAR(date) ? 0 : DATE_MONTH(date)]
+```
+
+- *DATE_QUARTER(date)*: Returns the quarter of the given date (1-based):
+
+  - 1: January, February, March
+  - 2: April, May, June
+  - 3: July, August, September
+  - 4: October, November, December
+
 The following other date functions are also available:
 
 - *DATE_NOW()*: Returns the current time as a timestamp.
-  The return value has millisecond precision. To convert the return value to seconds, 
-  divide it by 1000.
+  The return value has millisecond precision. To convert the return value to
+  seconds, divide it by 1000.
   
-  Note that this function is evaluated on every invocation and may return different 
-  values when invoked multiple times in the same query.
+  Note that this function is evaluated on every invocation and may return
+  different values when invoked multiple times in the same query.
 
+- *DATE_ADD(date, amount, unit)*: Adds *amount* given in *unit* from *date* and
+  returns the calculated date.
 
-Working with dates and indices
-------------------------------
+  *unit* can be either of the following to specify the time unit to add or
+  subtract (case-insensitive):
+  - y, year, years
+  - m, month, months
+  - w, week, weeks
+  - d, day, days
+  - h, hour, hours
+  - i, minute, minutes
+  - s, second, seconds
+  - f, millisecond, milliseconds
+
+  *amount* is the number of *unit*s to add (positive value) or subtract
+  (negative value).
+  
+  Examples:
+
+```js
+DATE_ADD(DATE_NOW(), -1, "day") // yesterday; also see DATE_SUBTRACT()
+DATE_ADD(DATE_NOW(), 3, "months") // in three months
+DATE_ADD(DATE_ADD("2015-04-01", 5, "years"), 1, "month") // May 1st 2020
+DATE_ADD("2015-04-01", 12*5 + 1, "months") // also May 1st 2020
+DATE_ADD(DATE_TIMESTAMP(DATE_YEAR(DATE_NOW()), 12, 24), -4, "years") // Christmas four years ago
+DATE_ADD(DATE_ADD("2016-02", "month", 1), -1, "day") // last day of February (29th, because 2016 is a leap year!)
+```
+
+  You may also pass an ISO duration string as *amount* and leave out *unit*.
+  The format is `P_Y_M_W_DT_H_M_._S`, where underscores stand for digits and
+  letters for time intervals - except for `P` (period) and `T` (time).
+  The meaning of the other letters are:
+  - Y: years
+  - M: months (if before T)
+  - W: weeks
+  - D: days
+  - H: hours
+  - M: minutes (if after T)
+  - S: seconds (optionally with 3 decimal places for milliseconds)
+
+  The string must be prefixed by a `P`. A separating `T` is only required if
+  `H`, `M` and/or `S` are specified. You only need to specify the needed pairs
+  of amounts and time intervals.
+
+  Examples:
+
+```js
+DATE_ADD(DATE_NOW(), "P1Y") // add 1 year
+DATE_ADD(DATE_NOW(), "P3M2W") // add 3 months and 2 weeks
+DATE_ADD(DATE_NOW(), "P5DT26H") // add 5 days and 26 hours (=6 days and 2 hours)
+DATE_ADD("2000-01-01", "PT4H") // add 4 hours
+DATE_ADD("2000-01-01", "PT30M44.4S" // add 30 minutes, 44 seconds and 400 ms
+DATE_ADD("2000-01-01", "P1Y2M3W4DT5H6M7.89S" // add a bit of everything
+```
+
+- *DATE_SUBTRACT(date, amount, unit)*: Subtracts *amount* given in *unit* from
+  *date* and returns the calculated date.
+  
+  It works the same as *DATE_ADD()*, except that it subtracts. It is equivalent
+  to calling *DATE_ADD()* with a negative amount, except that *DATE_SUBTRACT()*
+  can also subtract ISO durations. Note that negative ISO durations are not
+  supported (i.e. starting with `-P`, like `-P1Y`).
+
+  Examples:
+
+```js
+DATE_SUBTRACT(DATE_NOW(), 1, "day") // yesterday
+DATE_SUBTRACT(DATE_TIMESTAMP(DATE_YEAR(DATE_NOW()), 12, 24), 4, "years") // Christmas four years ago
+DATE_SUBTRACT(DATE_ADD("2016-02", "month", 1), 1, "day") // last day of February (29th, because 2016 is a leap year!)
+DATE_SUBTRACT(DATE_NOW(), "P4D") // four days ago
+DATE_SUBTRACT(DATE_NOW(), "PT1H3M") // 1 hour and 30 minutes ago
+```
+
+- *DATE_DIFF(date1, date2, unit, asFloat)*: Calculate the difference
+  between two dates in given time *unit*, optionally with decimal places.
+  Returns a negative value if *date1* is greater than *date2*.
+
+  *unit* can be either of the following to specify the time unit to return the
+  difference in (case-insensitive):
+  - y, year, years
+  - m, month, months
+  - w, week, weeks
+  - d, day, days
+  - h, hour, hours
+  - i, minute, minutes
+  - s, second, seconds
+  - f, millisecond, milliseconds
+
+- *DATE_COMPARE(date1, date2, unitRangeStart, unitRangeEnd)*: Compare two
+  partial dates and return true if the match, false otherwise. The parts to
+  compare are defined by a range of time units.
+  
+  The full range is: years, months, days, hours, minutes, seconds, milliseconds.
+  Pass the unit to start from as *unitRangeStart*, and the unit to end with as
+  *unitRangeEnd*. All units in between will be compared. Leave out *unitRangeEnd*
+  to only compare *unitRangeStart*. You can refer to the units as:
+  
+  - y, year, years
+  - m, month, months
+  - d, day, days
+  - h, hour, hours
+  - i, minute, minutes
+  - s, second, seconds
+  - f, millisecond, milliseconds
+
+  An error is raised if *unitRangeEnd* is a unit before *unitRangeStart*.
+
+  Examples:
+
+```js
+// Compare months and days, true on birthdays if you're born on 4th of April
+DATE_COMPARE("1985-04-04", DATE_NOW(), "months", "days")
+
+// Will only match on one day if the current year is a leap year!
+// You may want to add or subtract one day from date1 to match every year.
+DATE_COMPARE("1984-02-29", DATE_NOW(), "months", days")
+
+// compare years, months and days (true, because it's the same day)
+DATE_COMPARE("2001-01-01T15:30:45.678Z", "2001-01-01T08:08:08.008Z", "years", "days")
+```
+
+  You can directly compare ISO date strings if you want to find dates before or
+  after a certain date, or in between two dates (`>=`, `>`, `<`, `<=`).
+  No special date function is required. Equality tests (`==` and `!=`) will only
+  match the exact same date and time however. You may use `SUBSTRING()` to
+  compare partial date strings, `DATE_COMPARE()` is basically a convenience
+  function for that. However, neither is really required to limit a search to a
+  certain day for instance:
+
+```js
+FOR doc IN coll
+    FILTER doc.date >= "2015-05-15" AND doc.date < "2015-05-16"
+    RETURN doc
+```
+
+  Every ISO date on that day is greater than `2015-05-15` in a string comparison
+  (e.g. `2015-05-15T11:30:00.000Z`). The time components will be "ignored". The
+  equal sign in `>=` merely helps to express the semantic. Dates before
+  `2015-05-15` are less and therefore filtered out. The second condition works
+  likewise. The query will return every document with `date` ranging from
+  `2015-05-15T00:00:00.000Z` to `2015-05-15T23:99:99.999Z`. It would also include
+  `2015-05-15T24:00:00.000Z`, but that date is actually `2015-05-16T00:00:00.000Z`
+  and can only occur if inserted manually.
+  
+  Leap days in leap years (29th of February) must be always handled manually,
+  if you require so (e.g. birthday checks):
+
+```js
+LET today = DATE_NOW()
+LET noLeapYear = NOT DATE_LEAPYEAR(today)
+
+FOR user IN users
+    LET birthday = noLeapYear AND
+                   DATE_MONTH(user.birthday) == 2 AND
+                   DATE_DAY(user.birthday) == 29
+                   ? DATE_SUBTRACT(user.birthday, 1, "day") /* treat like 28th in non-leap years */
+                   : user.birthday
+    FILTER DATE_COMPARE(today, birthday, "month", "day")
+    /* includes leaplings on the 28th of February in non-leap years,
+     * but excludes them in leap years which do have a 29th February.
+     * Replace DATE_SUBTRACT() by DATE_ADD() to include them on the 1st of March
+     * in non-leap years instead (depends on local jurisdiction).
+     */
+    RETURN user
+```
+
+- *DATE_FORMAT(date, format)*: Format a date according to the given format string.
+  It supports the following placeholders (case-insensitive):
+  - %t: timestamp
+  - %o: ISO date (0000-00-00T00:00:00.000Z)
+  - %w: day of week (0..6)
+  - %y: year (0000..9999)
+  - %m: month (01..12)
+  - %d: day (01..31)
+  - %h: hour (00..23)
+  - %i: minute (00..59)
+  - %s: second (00..59)
+  - %f: millisecond (000..999)
+  - %x: day of year (001..366)
+  - %k: ISO week date (01..53)
+  - %l: leap year (0 or 1)
+  - %q: quarter (1..4)
+  - %%: literal %
+
+  Month, day, hour, minute, second and ISO week date are zero-padded to 2
+  characters, millisecond and day of year to 3 characters. Year is zero-padded
+  to 4 characters, or 6 if year is negative (it will be 7 chars long however
+  because of the leading minus character, and is not suitable for comparisons
+  with 4-chars positive years). Timestamp is not padded.
+  
+  Single `%` characters will appear as percent characters, as long as they aren't
+  followed by a valid placeholder letter. `%%` is only required to output a
+  placeholder literally.
+  
+  Note that this is a rather costly operation and may not be suitable for large
+  datasets (like over 1 million dates). If possible, avoid formatting dates on
+  server-side and leave it up to the client to do so. This function should only
+  be used for special date comparisons or to store the formatted dates in the
+  database. Use the primitive `DATE_*()` functions together with `CONCAT()` if
+  possible for better performance.
+
+  Examples:
+  
+```js
+DATE_FORMAT(DATE_NOW(), "%q/%y") // quarter and year (e.g. "3/2015")
+DATE_FORMAT(DATE_NOW(), "%d.%m.%y %h:%i:%s") // e.g. "18.09.2015 15:30:49"
+DATE_FORMAT("2016", "%%l = %l") // "%l = 1" (2016 is a leap year)
+DATE_FORMAT("2016-03-01", "% %x %") // "% 063 %"
+```
+
+!SECTION Working with dates and indices
+
 There are two recommended ways to store timestamps in ArangoDB:
-  - as string with ISO 8601 UTC timestamp
+  - as string with [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) UTC timestamp
   - as [Epoch number](https://en.wikipedia.org/wiki/Epoch_%28reference_date%29)
 
-This way you can work with [skiplist indices](../IndexHandling/Skiplist.html) and use
+The sort order of both is identical due to the sort properties of ISO date strings.
+Therefore, you can work with [skiplist indices](../IndexHandling/Skiplist.html) and use
 string comparisons (less than, greater than, in, equality) to express time ranges in your queries:
 
     @startDocuBlockInline working_with_date_time
@@ -139,3 +378,17 @@ string comparisons (less than, greater than, in, equality) to express time range
     @endDocuBlock working_with_date_time
 
 The first and the last timestamp in the array are excluded from the result by the `FILTER`.
+
+!SECTION Limitations
+
+Note that dates before the year 1583 aren't allowed by the
+[ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) standard by default, because
+they lie before the official introduction of the Gregorian calendar and may thus
+be incorrect or invalid. All AQL date functions apply the same rules to every
+date according to the Gregorian calendar system, even if inappropriate. That
+does not constitute a problem, unless you deal with dates prior to 1583 and
+especially years before Christ. The standard allows negative years, but requires
+special treatment of positive years too, if negative years are used (e.g.
+`+002015-05-15` and `-000753-01-01`). This is rarely used however, and thus not
+handled by AQL. Leap seconds are also ignored, just as they are in JavaScript as per
+[ECMAScript Language Specifications](http://www.ecma-international.org/ecma-262/5.1/#sec-15.9.1.1).
