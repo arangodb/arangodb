@@ -4869,8 +4869,8 @@ function DATE_CALC(value, amount, unit, func) {
     var m;
     
     // if amount is not a number, than it must be an ISO duration string
-    if (isNaN(amount)) {
-      if (unit !== undefined) {
+    if (TYPEWEIGHT(amount) !== TYPEWEIGHT_NUMBER) {
+      if (TYPEWEIGHT(unit) !== TYPEWEIGHT_STRING) {
         WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
