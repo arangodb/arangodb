@@ -1240,8 +1240,12 @@ function post_graph_all_vertices (req, res, g) {
 ///     g.addEdge(v1,v3, 3);
 ///     g.addEdge(v2,v4, 4);
 ///     var url = "/_api/graph/graph/vertices/v2";
-///     var body = '{"batchSize" : 100, "filter" : {"direction" : "any", "properties":';
-///     body += '[] }}';
+///     var body = {
+///            "batchSize" : 100,
+///            "filter" : {
+///              "direction" : "any",
+///               "properties":[] }};
+///
 ///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);
@@ -1266,8 +1270,15 @@ function post_graph_all_vertices (req, res, g) {
 ///     g.addEdge(v1, v3, 3);
 ///     g.addEdge(v4, v2, 4);
 ///     var url = "/_api/graph/graph/vertices/v2";
-///     var body = '{"batchSize" : 100, "filter" : {"direction" : "out", "properties":';
-///     body += '[ { "key": "optional1", "value": "val2", "compare" : "==" }, ] }}';
+///     var body = {
+///         "batchSize" : 100,
+///         "filter" : {
+///             "direction" : "out",
+///             "properties": [ {
+///                    "key": "optional1",
+///                    "value": "val2",
+///                    "compare" : "==" }, ] }};
+///
 ///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);
@@ -2065,7 +2076,7 @@ function post_graph_all_edges (req, res, g) {
 ///     g.addEdge(v2, v4, "edge3", { "optional1" : "val1" });
 ///     g.addEdge(v1, v5, "edge4", { "optional1" : "val1" });
 ///     var url = "/_api/graph/graph/edges/v2";
-///     var body = '{"batchSize" : 100, "filter" : { "direction" : "any" }}';
+///     var body = {"batchSize" : 100, "filter" : { "direction" : "any" }};
 ///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);

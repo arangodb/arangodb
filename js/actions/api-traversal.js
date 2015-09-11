@@ -233,9 +233,10 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"graphName" : "' + g.__name + '", ';
-///         body += '"direction" : "outbound"}';
+///     var body = {
+///          "startVertex": a ,
+///           "graphName" : g.__name,
+///           "direction" : "outbound"};
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
@@ -251,9 +252,9 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"graphName" : "' + g.__name + '", ';
-///         body += '"direction" : "inbound"}';
+///     var body = { "startVertex": a,
+///                  "graphName" : g.__name,
+///                  "direction" : "inbound"};
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
@@ -293,14 +294,17 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"graphName" : "' + g.__name + '", ';
-///         body += '"direction" : "outbound", ';
-///         body += '"filter" : "if (vertex.name === \\"Bob\\" || ';
-///         body += 'vertex.name === \\"Charlie\\") {';
-///         body += 'return \\"exclude\\";'
-///         body += '}'
-///         body += 'return;"}';
+///     var filter  = 'if (vertex.name === "Bob" || '+
+///                   '    vertex.name === "Charlie") {'+
+///                   '  return "exclude";'+
+///                   '}'+
+///                   'return;';
+///
+///     var body = {
+///          "startVertex" : a,
+///          "graphName"   : g.__name,
+///          "direction"   : "outbound",
+///          "filter"      : filter};
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
@@ -316,13 +320,15 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"graphName" : "' + g.__name + '", ';
-///         body += '"direction" : "outbound", ';
-///         body += '"filter" : "if (vertex.name === \\"Bob\\") {';
-///         body += 'return \\"prune\\";'
-///         body += '}'
-///         body += 'return;"}';
+///     var filter = 'if (vertex.name === "Bob") {'+
+///                  'return "prune";' +
+///                  '}' +
+///                  'return;';
+///
+///     var body = { "startVertex": a,
+///                  "graphName" : g.__name,
+///                  "direction" : "outbound",
+///                  "filter" : filter};
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
@@ -338,10 +344,10 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"graphName" : "' + g.__name + '", ';
-///         body += '"direction" : "outbound", ';
-///         body += '"minDepth" : 2}';
+///     var body = { "startVertex": a,
+///                  "graphName" : g.__name,
+///                  "direction" : "outbound",
+///                  "minDepth" : 2};
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
@@ -357,10 +363,10 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"graphName" : "' + g.__name + '", ';
-///         body += '"direction" : "outbound", ';
-///         body += '"maxDepth" : 1}';
+///     var body = { "startVertex" : a,
+///                  "graphName"   : g.__name,
+///                  "direction"   : "outbound",
+///                  "maxDepth"    : 1};
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
@@ -376,10 +382,10 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"graphName" : "' + g.__name + '", ';
-///         body += '"direction" : "outbound", ';
-///         body += '"visitor" : "result.visited.vertices.push(vertex._id);"}';
+///     var body = { "startVertex": a,
+///                  "graphName" : g.__name,
+///                  "direction" : "outbound",
+///                  "visitor" : "result.visited.vertices.push(vertex._id);"};
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);
@@ -395,11 +401,11 @@ function notFound (req, res, code, message) {
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
-///     var body = '{ "startVertex": "' + a + '", ';
-///         body += '"graphName" : "' + g.__name + '", ';
-///         body += '"direction" : "outbound", ';
-///         body += '"init" : "result.visited = 0; result.myVertices = [ ];", ';
-///         body += '"visitor" : "result.visited++; result.myVertices.push(vertex);"}';
+///     var body = { "startVertex": a,
+///                  "graphName" : g.__name,
+///                  "direction" : "outbound",
+///                  "init" : "result.visited = 0; result.myVertices = [ ];",
+///                  "visitor" : "result.visited++; result.myVertices.push(vertex);"};
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///     assert(response.code === 200);

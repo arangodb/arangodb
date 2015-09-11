@@ -327,7 +327,7 @@ setupIndexQueries();
 ///     collection.save({"Hello5" : "World5" });
 ///
 ///     var url = "/_api/simple/any";
-///     var body = '{ "collection": "products" }';
+///     var body = { "collection": "products" };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -454,13 +454,13 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"latitude" : 0, ' +
-///       '"longitude" : 0, ' +
-///       '"skip" : 1, ' +
-///       '"limit" : 2 ' +
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "latitude" : 0,
+///       "longitude" : 0,
+///       "skip" : 1,
+///       "limit" : 2
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -482,14 +482,14 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"latitude" : 0, ' +
-///       '"longitude" : 0, ' +
-///       '"skip" : 1, ' +
-///       '"limit" : 3, ' +
-///       '"distance" : "distance" ' +
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "latitude" : 0,
+///       "longitude" : 0,
+///       "skip" : 1,
+///       "limit" : 3,
+///       "distance" : "distance"
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -648,14 +648,14 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"latitude" : 0, ' +
-///       '"longitude" : 0, ' +
-///       '"skip" : 1, ' +
-///       '"limit" : 2, ' +
-///       '"radius" : 500 ' +
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "latitude" : 0,
+///       "longitude" : 0,
+///       "skip" : 1,
+///       "limit" : 2,
+///       "radius" : 500
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -677,8 +677,8 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ "collection": "products", "latitude" : 0, "longitude" : 0, ' +
-///                '"skip" : 1, "limit" : 3, "distance" : "distance", "radius" : 300 }';
+///     var body = { "collection": "products", "latitude" : 0, "longitude" : 0,
+///                "skip" : 1, "limit" : 3, "distance" : "distance", "radius" : 300 };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -982,7 +982,7 @@ actions.defineHttp({
 ///     products.save({"text" : "this is nothing" });
 ///     var loc = products.ensureFulltextIndex("text");
 ///     var url = "/_api/simple/fulltext";
-///     var body = '{ "collection": "products", "attribute" : "text", "query" : "word" }';
+///     var body = { "collection": "products", "attribute" : "text", "query" : "word" };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1098,7 +1098,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/by-example";
-///     var body = '{ "collection": "products", "example" :  { "i" : 1 }  }';
+///     var body = { "collection": "products", "example" :  { "i" : 1 }  };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1119,7 +1119,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/by-example";
-///     var body = '{ "collection": "products", "example" : { "a.j" : 1 } }';
+///     var body = { "collection": "products", "example" : { "a.j" : 1 } };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1140,7 +1140,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } } }';
+///     var body = { "collection": "products", "example" : { "a" : { "j" : 1 } } };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1249,7 +1249,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/first-example";
-///     var body = '{ "collection": "products", "example" :  { "i" : 1 }  }';
+///     var body = { "collection": "products", "example" :  { "i" : 1 }  };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1270,7 +1270,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/first-example";
-///     var body = '{ "collection": "products", "example" :  { "l" : 1 }  }';
+///     var body = { "collection": "products", "example" :  { "l" : 1 }  };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1376,7 +1376,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/first";
-///     var body = '{ "collection": "products", "count" : 2 }';
+///     var body = { "collection": "products", "count" : 2 };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1397,7 +1397,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/first";
-///     var body = '{ "collection": "products" }';
+///     var body = { "collection": "products" };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1493,7 +1493,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/last";
-///     var body = '{ "collection": "products", "count" : 2 }';
+///     var body = { "collection": "products", "count" : 2 };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1514,7 +1514,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/last";
-///     var body = '{ "collection": "products" }';
+///     var body = { "collection": "products" };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1631,7 +1631,7 @@ actions.defineHttp({
 ///     products.save({ "i": 3});
 ///     products.save({ "i": 4});
 ///     var url = "/_api/simple/range";
-///     var body = '{ "collection": "products", "attribute" : "i", "left" : 2, "right" : 4 }';
+///     var body = { "collection": "products", "attribute" : "i", "left" : 2, "right" : 4 };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1758,7 +1758,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/remove-by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } } }';
+///     var body = { "collection": "products", "example" : { "a" : { "j" : 1 } } };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1779,8 +1779,8 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/remove-by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } },' +
-///                 '"waitForSync": true, "limit": 2 }';
+///     var body = { "collection": "products", "example" : { "a" : { "j" : 1 } },
+///                 "waitForSync": true, "limit": 2 };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1801,11 +1801,11 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/remove-by-example";
-///     var body = '{'+
-///                '"collection": "products",' +
-///                '"example" : { "a" : { "j" : 1 } },' +
-///                '"options": {"waitForSync": true, "limit": 2} ' +
-///                '}';
+///     var body = {
+///                "collection": "products",
+///                "example" : { "a" : { "j" : 1 } },
+///                "options": {"waitForSync": true, "limit": 2}
+///                };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1928,12 +1928,12 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/replace-by-example";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"example" : { "a" : { "j" : 1 } }, ' +
-///       '"newValue" : {"foo" : "bar"}, ' +
-///       '"limit" : 3 ' +
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "example" : { "a" : { "j" : 1 } },
+///       "newValue" : {"foo" : "bar"},
+///       "limit" : 3
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1954,12 +1954,12 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/replace-by-example";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"example" : { "a" : { "j" : 1 } }, ' +
-///       '"newValue" : {"foo" : "bar"}, ' +
-///       '"options": {"limit" : 3,  "waitForSync": true  }'+
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "example" : { "a" : { "j" : 1 } },
+///       "newValue" : {"foo" : "bar"},
+///       "options": {"limit" : 3,  "waitForSync": true  }
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -2095,12 +2095,12 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/update-by-example";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"example" : { "a" : { "j" : 1 } }, ' +
-///       '"newValue" : { "a" : { "j" : 22 } }, ' +
-///       '"limit" : 3 ' +
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "example" : { "a" : { "j" : 1 } },
+///       "newValue" : { "a" : { "j" : 22 } },
+///       "limit" : 3
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -2121,12 +2121,12 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/update-by-example";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"example" : { "a" : { "j" : 1 } }, ' +
-///       '"newValue" : { "a" : { "j" : 22 } }, ' +
-///       '"options" :  { "limit" : 3, "waitForSync": true }  ' +
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "example" : { "a" : { "j" : 1 } },
+///       "newValue" : { "a" : { "j" : 22 } },
+///       "options" :  { "limit" : 3, "waitForSync": true }
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
