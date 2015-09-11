@@ -621,7 +621,7 @@ void Executor::generateCodeExpression (AstNode const* node) {
 
   // write prologue
   // this checks if global variable _AQL is set and populates if it not
-  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("(function (vars, consts) { if (_AQL === undefined) { _AQL = require(\"org/arangodb/aql\"); } return "));
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("(function (vars, consts, reset) { if (_AQL === undefined) { _AQL = require(\"org/arangodb/aql\"); } if (reset) { _AQL.clearCaches(); } return "));
 
   generateCodeNode(node);
 

@@ -193,7 +193,7 @@ var unitMappingArray = [null, "y", "m", "w", "d", "h", "i", "s", "f"];
 var ISODurationRegex = /^P(?:(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d+))?S)?)?$/i;
 /* jshint +W101 */
 
-var ISODurationCache = {}; // TODO: clear cache for every new AQL query to avoid memory leak
+var ISODurationCache = {}; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief substring ranges for DATE_COMPARE()
@@ -304,10 +304,23 @@ msPerUnit.year = msPerUnit.y;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clear caches
+////////////////////////////////////////////////////////////////////////////////
+
+function clearCaches () {
+  'use strict';
+
+  RegexCache        = { 'i' : { }, '' : { } };
+  ISODurationCache = { };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add zeros for a total length of width chars (left padding by default)
 ////////////////////////////////////////////////////////////////////////////////
 
-function zeropad(n, width, padRight) {
+function zeropad (n, width, padRight) {
+  'use strict';
+
   padRight = padRight || false;
   n = "" + n;
   if (padRight) {
@@ -373,16 +386,6 @@ function THROW (func, error, data) {
 
 function DB_PREFIX () {
   return INTERNAL.db._name();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reset the regex cache
-////////////////////////////////////////////////////////////////////////////////
-
-function resetRegexCache () {
-  'use strict';
-
-  RegexCache = { 'i' : { }, '' : { } };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4603,8 +4606,14 @@ function MAKE_DATE (args, func) {
     }
   }
 
-  // TODO: add check if Date is NaN? Note: avoid duplicate warnings!
-  return new Date(Date.UTC.apply(null, args));
+  var result = new Date(Date.UTC.apply(null, args));
+
+  if (TYPEWEIGHT(result) !== TYPEWEIGHT_NULL) {
+    return result;
+  }
+
+  // avoid returning NaN here
+  return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4857,7 +4866,7 @@ function AQL_DATE_QUARTER (value) {
 /// @brief internal function to add or subtract from date
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_CALC(value, amount, unit, func) {
+function DATE_CALC (value, amount, unit, func) {
   'use strict';
 
   try {
@@ -4865,6 +4874,12 @@ function DATE_CALC(value, amount, unit, func) {
     // and terminate immediately, or return a bunch of 'null's? If it shall
     // stop, then best handled in MAKE_DATE() itself I guess.
     var date = MAKE_DATE([ value ], func);
+
+    if (date === null) {
+      WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      return null;
+    }
+
     var sign = (func === "DATE_ADD" || func === undefined) ? 1 : -1;
     var m;
     
@@ -4891,7 +4906,7 @@ function DATE_CALC(value, amount, unit, func) {
         duration[8] = zeropad(duration[8], 3, true).substring(0, 3);
       }
       // add or subtract component by component, from ms to year
-      for (var d=duration.length-1; d>=1; d--) {
+      for (var d = duration.length - 1; d >= 1; d--) {
         if (duration[d]) {
           // convert weeks to days
           if (d === 3) {
@@ -4905,11 +4920,11 @@ function DATE_CALC(value, amount, unit, func) {
       }
       return date.toISOString(); 
     } else {
-      if (unit === undefined || typeof unit !== "string") {
+      if (TYPEWEIGHT(unit) !== TYPEWEIGHT_STRING) {
         WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
-      m = unitMapping[unit.toLowerCase()]; // TODO: AQL_TO_STRING?
+      m = unitMapping[unit.toLowerCase()]; // we're sure unit is a string here
       if (m === "undefined") {
         WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
         return null;
@@ -4945,7 +4960,6 @@ function AQL_DATE_SUBTRACT (value, amount, unit) {
   'use strict';
   return DATE_CALC(value, amount, unit, "DATE_SUBTRACT");
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return date difference in given unit, optionally with fractions
@@ -9052,9 +9066,10 @@ exports.AQL_DATE_COMPARE = AQL_DATE_COMPARE;
 exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 
 exports.reload = reloadUserFunctions;
+exports.clearCaches = clearCaches;
 
 // initialize the query engine
-resetRegexCache();
+exports.clearCaches();
 //reloadUserFunctions();
 
 // -----------------------------------------------------------------------------

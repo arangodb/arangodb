@@ -124,6 +124,12 @@ namespace triagens {
        std::unordered_map<Variable const*, std::unordered_set<std::string>> _attributeRestrictions;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief number of times the expression was executed
+////////////////////////////////////////////////////////////////////////////////
+
+       size_t _numExecutions;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the expression is simple. simple in this case means
 /// that the expression result will always contain non-cyclic data and no 
 /// special JavaScript types such as Date, RegExp, Function etc.
