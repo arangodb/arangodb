@@ -1,14 +1,14 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("social");
-arangosh> graph.male.save({neym: "Jon", _key: "john"});
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
+arangosh&gt; graph.male.save({neym: <span class="hljs-string">"Jon"</span>, _key: <span class="hljs-string">"john"</span>});
 { 
-  "_id" : "male/john", 
-  "_rev" : "1847980939", 
-  "_key" : "john" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/john"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1852116514"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"john"</span> 
 }
-arangosh> graph.male.replace("male/john", {name: "John"});
+arangosh&gt; graph.male.replace(<span class="hljs-string">"male/john"</span>, {name: <span class="hljs-string">"John"</span>});
 { 
-  "_id" : "male/john", 
-  "_rev" : "1848177547", 
-  "_key" : "john" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/john"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1852313122"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"john"</span> 
 }

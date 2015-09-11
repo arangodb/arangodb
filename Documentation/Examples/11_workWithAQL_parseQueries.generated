@@ -1,61 +1,61 @@
-arangosh> var stmt = db._createStatement("FOR doc IN @@collection FILTER doc.foo == @bar RETURN doc");
-arangosh> stmt.parse();
+arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement(<span class="hljs-string">"FOR doc IN @@collection FILTER doc.foo == @bar RETURN doc"</span>);
+arangosh&gt; stmt.parse();
 { 
-  "bindVars" : [ 
-    "bar", 
-    "@collection" 
+  <span class="hljs-string">"bindVars"</span> : [ 
+    <span class="hljs-string">"bar"</span>, 
+    <span class="hljs-string">"@collection"</span> 
   ], 
-  "collections" : [ ], 
-  "ast" : [ 
+  <span class="hljs-string">"collections"</span> : [ ], 
+  <span class="hljs-string">"ast"</span> : [ 
     { 
-      "type" : "root", 
-      "subNodes" : [ 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"root"</span>, 
+      <span class="hljs-string">"subNodes"</span> : [ 
         { 
-          "type" : "for", 
-          "subNodes" : [ 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"for"</span>, 
+          <span class="hljs-string">"subNodes"</span> : [ 
             { 
-              "type" : "variable", 
-              "name" : "doc", 
-              "id" : 0 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"variable"</span>, 
+              <span class="hljs-string">"name"</span> : <span class="hljs-string">"doc"</span>, 
+              <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
             }, 
             { 
-              "type" : "parameter", 
-              "name" : "@collection" 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"parameter"</span>, 
+              <span class="hljs-string">"name"</span> : <span class="hljs-string">"@collection"</span> 
             } 
           ] 
         }, 
         { 
-          "type" : "filter", 
-          "subNodes" : [ 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"filter"</span>, 
+          <span class="hljs-string">"subNodes"</span> : [ 
             { 
-              "type" : "compare ==", 
-              "subNodes" : [ 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"compare =="</span>, 
+              <span class="hljs-string">"subNodes"</span> : [ 
                 { 
-                  "type" : "attribute access", 
-                  "name" : "foo", 
-                  "subNodes" : [ 
+                  <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
+                  <span class="hljs-string">"name"</span> : <span class="hljs-string">"foo"</span>, 
+                  <span class="hljs-string">"subNodes"</span> : [ 
                     { 
-                      "type" : "reference", 
-                      "name" : "doc", 
-                      "id" : 0 
+                      <span class="hljs-string">"type"</span> : <span class="hljs-string">"reference"</span>, 
+                      <span class="hljs-string">"name"</span> : <span class="hljs-string">"doc"</span>, 
+                      <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
                     } 
                   ] 
                 }, 
                 { 
-                  "type" : "parameter", 
-                  "name" : "bar" 
+                  <span class="hljs-string">"type"</span> : <span class="hljs-string">"parameter"</span>, 
+                  <span class="hljs-string">"name"</span> : <span class="hljs-string">"bar"</span> 
                 } 
               ] 
             } 
           ] 
         }, 
         { 
-          "type" : "return", 
-          "subNodes" : [ 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"return"</span>, 
+          <span class="hljs-string">"subNodes"</span> : [ 
             { 
-              "type" : "reference", 
-              "name" : "doc", 
-              "id" : 0 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"reference"</span>, 
+              <span class="hljs-string">"name"</span> : <span class="hljs-string">"doc"</span>, 
+              <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
             } 
           ] 
         } 

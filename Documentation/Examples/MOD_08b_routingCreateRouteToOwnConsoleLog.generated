@@ -1,17 +1,17 @@
-arangosh> db._routing.save({
-........>  middleware: [
-........>    {
-........>      url: {
-........>        match: "/subdirectory/*"
-........>      },
-........>      action: {
-........>        do: "db://OwnMiddlewareTest/logRequest"
-........>      }
-........>    }
-........>  ]
-........> });
+arangosh&gt; db._routing.save({
+........&gt;  middleware: [
+........&gt;    {
+........&gt;      url: {
+........&gt;        match: <span class="hljs-string">"/subdirectory/*"</span>
+........&gt;      },
+........&gt;      action: {
+........&gt;        <span class="hljs-keyword">do</span>: <span class="hljs-string">"db://OwnMiddlewareTest/logRequest"</span>
+........&gt;      }
+........&gt;    }
+........&gt;  ]
+........&gt; });
 { 
-  "_id" : "_routing/612299659", 
-  "_rev" : "612299659", 
-  "_key" : "612299659" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/617549346"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"617549346"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"617549346"</span> 
 }

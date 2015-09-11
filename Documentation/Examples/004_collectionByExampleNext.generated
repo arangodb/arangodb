@@ -1,26 +1,26 @@
-arangosh> db.users.save({ name: "Gerhard" });
+arangosh&gt; db.users.save({ name: <span class="hljs-string">"Gerhard"</span> });
 { 
-  "_id" : "users/27521931", 
-  "_rev" : "27521931", 
-  "_key" : "27521931" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/24579618"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"24579618"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"24579618"</span> 
 }
-arangosh> db.users.save({ name: "Helmut" });
+arangosh&gt; db.users.save({ name: <span class="hljs-string">"Helmut"</span> });
 { 
-  "_id" : "users/27784075", 
-  "_rev" : "27784075", 
-  "_key" : "27784075" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/24841762"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"24841762"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"24841762"</span> 
 }
-arangosh> db.users.save({ name: "Angela" });
+arangosh&gt; db.users.save({ name: <span class="hljs-string">"Angela"</span> });
 { 
-  "_id" : "users/27980683", 
-  "_rev" : "27980683", 
-  "_key" : "27980683" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/25038370"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25038370"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"25038370"</span> 
 }
-arangosh> var a = db.users.byExample( {"name" : "Angela" } );
-arangosh> while (a.hasNext()) print(a.next());
+arangosh&gt; <span class="hljs-keyword">var</span> a = db.users.byExample( {<span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> } );
+arangosh&gt; <span class="hljs-keyword">while</span> (a.hasNext()) print(a.next());
 { 
-  "_id" : "users/27980683", 
-  "_key" : "27980683", 
-  "_rev" : "27980683", 
-  "name" : "Angela" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/25038370"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"25038370"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25038370"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> 
 }

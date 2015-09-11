@@ -1,47 +1,47 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
-........> + "'routeplanner', {}, {}, {" +
-........> "weight : 'distance', endVertexCollectionRestriction : 'frenchCity', " +
-........> "includeData: true, " +
-........> "startVertexCollectionRestriction : 'germanCity'}) RETURN [e.startVertex, e.vertex._id, " +
-........> "e.distance, LENGTH(e.paths)]"
-........> ).toArray();
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_SHORTEST_PATH("</span>
+........&gt; + <span class="hljs-string">"'routeplanner', {}, {}, {"</span> +
+........&gt; <span class="hljs-string">"weight : 'distance', endVertexCollectionRestriction : 'frenchCity', "</span> +
+........&gt; <span class="hljs-string">"includeData: true, "</span> +
+........&gt; <span class="hljs-string">"startVertexCollectionRestriction : 'germanCity'}) RETURN [e.startVertex, e.vertex._id, "</span> +
+........&gt; <span class="hljs-string">"e.distance, LENGTH(e.paths)]"</span>
+........&gt; ).toArray();
 [ 
   [ 
-    null, 
-    null, 
-    1, 
-    0 
+    <span class="hljs-literal">null</span>, 
+    <span class="hljs-literal">null</span>, 
+    <span class="hljs-number">1</span>, 
+    <span class="hljs-number">0</span> 
   ], 
   [ 
-    null, 
-    null, 
-    1, 
-    0 
+    <span class="hljs-literal">null</span>, 
+    <span class="hljs-literal">null</span>, 
+    <span class="hljs-number">1</span>, 
+    <span class="hljs-number">0</span> 
   ], 
   [ 
-    null, 
-    null, 
-    1, 
-    0 
+    <span class="hljs-literal">null</span>, 
+    <span class="hljs-literal">null</span>, 
+    <span class="hljs-number">1</span>, 
+    <span class="hljs-number">0</span> 
   ], 
   [ 
-    null, 
-    null, 
-    1, 
-    0 
+    <span class="hljs-literal">null</span>, 
+    <span class="hljs-literal">null</span>, 
+    <span class="hljs-number">1</span>, 
+    <span class="hljs-number">0</span> 
   ], 
   [ 
-    null, 
-    null, 
-    1, 
-    0 
+    <span class="hljs-literal">null</span>, 
+    <span class="hljs-literal">null</span>, 
+    <span class="hljs-number">1</span>, 
+    <span class="hljs-number">0</span> 
   ], 
   [ 
-    null, 
-    null, 
-    1, 
-    0 
+    <span class="hljs-literal">null</span>, 
+    <span class="hljs-literal">null</span>, 
+    <span class="hljs-number">1</span>, 
+    <span class="hljs-number">0</span> 
   ] 
 ]

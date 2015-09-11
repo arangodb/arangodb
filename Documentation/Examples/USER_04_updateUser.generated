@@ -1,9 +1,9 @@
-arangosh> require("org/arangodb/users").update("my-user", "my-secret-password");
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/users"</span>).update(<span class="hljs-string">"my-user"</span>, <span class="hljs-string">"my-secret-password"</span>);
 { 
-  "user" : "my-user", 
-  "active" : true, 
-  "extra" : { 
+  <span class="hljs-string">"user"</span> : <span class="hljs-string">"my-user"</span>, 
+  <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"extra"</span> : { 
   }, 
-  "changePassword" : false, 
-  "code" : 200 
+  <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

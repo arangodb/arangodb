@@ -1,44 +1,44 @@
-arangosh> db._create("vertex");
-[ArangoCollection 505869195, "vertex" (type document, status loaded)]
-arangosh> db._createEdgeCollection("relation");
-[ArangoCollection 506000267, "relation" (type edge, status loaded)]
-arangosh> myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
+arangosh&gt; db._create(<span class="hljs-string">"vertex"</span>);
+[ArangoCollection <span class="hljs-number">508235298</span>, <span class="hljs-string">"vertex"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+arangosh&gt; db._createEdgeCollection(<span class="hljs-string">"relation"</span>);
+[ArangoCollection <span class="hljs-number">508366370</span>, <span class="hljs-string">"relation"</span> (type edge, status loaded)]
+arangosh&gt; myGraph.v1 = db.vertex.insert({ name : <span class="hljs-string">"vertex 1"</span> });
 { 
-  "_id" : "vertex/506327947", 
-  "_rev" : "506327947", 
-  "_key" : "506327947" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertex/508694050"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"508694050"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"508694050"</span> 
 }
-arangosh> myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
+arangosh&gt; myGraph.v2 = db.vertex.insert({ name : <span class="hljs-string">"vertex 2"</span> });
 { 
-  "_id" : "vertex/506524555", 
-  "_rev" : "506524555", 
-  "_key" : "506524555" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertex/508890658"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"508890658"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"508890658"</span> 
 }
-arangosh> myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2, { label : "knows" });
+arangosh&gt; myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2, { label : <span class="hljs-string">"knows"</span> });
 { 
-  "_id" : "relation/506852235", 
-  "_rev" : "506852235", 
-  "_key" : "506852235" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/509218338"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"509218338"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"509218338"</span> 
 }
-arangosh> db._document(myGraph.e1);
+arangosh&gt; db._document(myGraph.e1);
 { 
-  "label" : "knows", 
-  "_id" : "relation/506852235", 
-  "_rev" : "506852235", 
-  "_key" : "506852235", 
-  "_from" : "vertex/506327947", 
-  "_to" : "vertex/506524555" 
+  <span class="hljs-string">"label"</span> : <span class="hljs-string">"knows"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/509218338"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"509218338"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"509218338"</span>, 
+  <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertex/508694050"</span>, 
+  <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertex/508890658"</span> 
 }
-arangosh> db.relation.outEdges(myGraph.v1._id);
+arangosh&gt; db.relation.outEdges(myGraph.v1._id);
 [ 
   { 
-    "_id" : "relation/506852235", 
-    "_key" : "506852235", 
-    "_rev" : "506852235", 
-    "_from" : "vertex/506327947", 
-    "_to" : "vertex/506524555", 
-    "label" : "knows" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/509218338"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"509218338"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"509218338"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertex/508694050"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertex/508890658"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"knows"</span> 
   } 
 ]
-arangosh> db.relation.outEdges(myGraph.v2._id);
+arangosh&gt; db.relation.outEdges(myGraph.v2._id);
 [ ]

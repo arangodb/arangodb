@@ -1,15 +1,15 @@
-arangosh> var query = "FOR doc IN mycollection FILTER doc.value > 42 RETURN doc";
-arangosh> require("org/arangodb/aql/explainer").explain(query, {colors:false});
+arangosh&gt; <span class="hljs-keyword">var</span> query = <span class="hljs-string">"FOR doc IN mycollection FILTER doc.value &gt; 42 RETURN doc"</span>;
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/aql/explainer"</span>).explain(query, {colors:<span class="hljs-literal">false</span>});
 Query string:
- FOR doc IN mycollection FILTER doc.value > 42 RETURN doc
+ FOR doc IN mycollection FILTER doc.value &gt; <span class="hljs-number">42</span> RETURN doc
 
 Execution plan:
  Id   NodeType                  Est.   Comment
-  1   SingletonNode                1   * ROOT
-  2   EnumerateCollectionNode    201     - FOR doc IN mycollection   /* full collection scan */
-  3   CalculationNode            201       - LET #1 = doc.`value` > 42   /* simple expression */   /* collections used: doc : mycollection */
-  4   FilterNode                 201       - FILTER #1
-  5   ReturnNode                 201       - RETURN doc
+  <span class="hljs-number">1</span>   SingletonNode                <span class="hljs-number">1</span>   * ROOT
+  <span class="hljs-number">2</span>   EnumerateCollectionNode    <span class="hljs-number">201</span>     - FOR doc IN mycollection   <span class="hljs-comment">/* full collection scan */</span>
+  <span class="hljs-number">3</span>   CalculationNode            <span class="hljs-number">201</span>       - LET #<span class="hljs-number">1</span> = doc.<span class="hljs-string">`value`</span> &gt; <span class="hljs-number">42</span>   <span class="hljs-comment">/* simple expression */</span>   <span class="hljs-comment">/* collections used: doc : mycollection */</span>
+  <span class="hljs-number">4</span>   FilterNode                 <span class="hljs-number">201</span>       - FILTER #<span class="hljs-number">1</span>
+  <span class="hljs-number">5</span>   ReturnNode                 <span class="hljs-number">201</span>       - RETURN doc
 
 Indexes used:
  none

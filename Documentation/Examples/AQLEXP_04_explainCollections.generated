@@ -1,7 +1,7 @@
-arangosh> stmt.explain().plan.collections
+arangosh&gt; stmt.explain().plan.collections
 [ 
   { 
-    "name" : "test", 
-    "type" : "read" 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"test"</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"read"</span> 
   } 
 ]

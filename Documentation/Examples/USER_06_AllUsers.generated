@@ -1,17 +1,17 @@
-arangosh> require("org/arangodb/users").all();
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/users"</span>).all();
 [ 
   { 
-    "user" : "root", 
-    "active" : true, 
-    "extra" : { 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span>, 
+    <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"extra"</span> : { 
     }, 
-    "changePassword" : false 
+    <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span> 
   }, 
   { 
-    "user" : "my-user", 
-    "active" : true, 
-    "extra" : { 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"my-user"</span>, 
+    <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"extra"</span> : { 
     }, 
-    "changePassword" : false 
+    <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span> 
   } 
 ]

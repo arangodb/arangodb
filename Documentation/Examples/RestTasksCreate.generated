@@ -1,20 +1,20 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/tasks/ <<EOF
-{"name":"SampleTask","command":"(function(params) { require('internal').print(params); })(params)","params":{"foo":"bar","bar":"foo"},"period":2}
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/tasks/ &lt;&lt;EOF</span>
+{<span class="hljs-string">"name"</span>:<span class="hljs-string">"SampleTask"</span>,<span class="hljs-string">"command"</span>:<span class="hljs-string">"(function(params) { require('internal').print(params); })(params)"</span>,<span class="hljs-string">"params"</span>:{<span class="hljs-string">"foo"</span>:<span class="hljs-string">"bar"</span>,<span class="hljs-string">"bar"</span>:<span class="hljs-string">"foo"</span>},<span class="hljs-string">"period"</span>:<span class="hljs-number">2</span>}
 EOF
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "id" : "899937163", 
-  "name" : "SampleTask", 
-  "type" : "periodic", 
-  "period" : 2, 
-  "created" : 1439371977.385858, 
-  "command" : "(function(params) { require('internal').print(params); })(params)", 
-  "database" : "_system", 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"905186850"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"SampleTask"</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
+  <span class="hljs-string">"period"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">1441963893.494984</span>, 
+  <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function(params) { require('internal').print(params); })(params)"</span>, 
+  <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }
-shell> curl -X DELETE --dump - http://localhost:8529/_api/tasks/899937163
+shell&gt; curl -X DELETE --dump - http:<span class="hljs-comment">//localhost:8529/_api/tasks/905186850</span>
 

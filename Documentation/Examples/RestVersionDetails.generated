@@ -1,27 +1,29 @@
-shell> curl --dump - http://localhost:8529/_api/version?details=true
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/version?details=true</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "server" : "arango", 
-  "version" : "2.7.0-devel", 
-  "details" : { 
-    "architecture" : "64bit", 
-    "build-date" : "2015-08-12 11:03:14", 
-    "configure" : "'./configure' '--enable-relative' '--enable-maintainer-mode' '--enable-all-in-one-icu' '--with-backtrace' '--enable-v8-debug' 'CXXFLAGS=-O0 -ggdb' 'CFLAGS=-O0 -ggdb'", 
-    "env" : "CFLAGS='-O0 -ggdb' CXXFLAGS='-O0 -ggdb'", 
-    "fd-client-event-handler" : "select", 
-    "fd-setsize" : "1024", 
-    "icu-version" : "54.1", 
-    "libev-version" : "4.11", 
-    "maintainer-mode" : "true", 
-    "openssl-version" : "OpenSSL 1.0.2 22 Jan 2015", 
-    "repository-version" : "heads/devel-0-g4142674d901fa399bde9dcfe788ce781fdbad97a-dirty", 
-    "server-version" : "2.7.0-devel", 
-    "sizeof int" : "4", 
-    "sizeof void*" : "8", 
-    "v8-version" : "4.3.61", 
-    "mode" : "standalone" 
+  <span class="hljs-string">"server"</span> : <span class="hljs-string">"arango"</span>, 
+  <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.7.0-devel"</span>, 
+  <span class="hljs-string">"details"</span> : { 
+    <span class="hljs-string">"architecture"</span> : <span class="hljs-string">"64bit"</span>, 
+    <span class="hljs-string">"build-date"</span> : <span class="hljs-string">"2015-09-07 09:35:30"</span>, 
+    <span class="hljs-string">"configure"</span> : <span class="hljs-string">"'./configure' '--enable-relative' '--enable-maintainer-mode' '--enable-all-in-one-icu' '--with-backtrace' '--enable-v8-debug' 'CXXFLAGS=-O0 -ggdb' 'CFLAGS=-O0 -ggdb'"</span>, 
+    <span class="hljs-string">"env"</span> : <span class="hljs-string">"CFLAGS='-O0 -ggdb' CXXFLAGS='-O0 -ggdb'"</span>, 
+    <span class="hljs-string">"fd-client-event-handler"</span> : <span class="hljs-string">"poll"</span>, 
+    <span class="hljs-string">"fd-setsize"</span> : <span class="hljs-string">"1024"</span>, 
+    <span class="hljs-string">"icu-version"</span> : <span class="hljs-string">"54.1"</span>, 
+    <span class="hljs-string">"libev-version"</span> : <span class="hljs-string">"4.11"</span>, 
+    <span class="hljs-string">"maintainer-mode"</span> : <span class="hljs-string">"true"</span>, 
+    <span class="hljs-string">"openssl-version"</span> : <span class="hljs-string">"OpenSSL 1.0.2 22 Jan 2015"</span>, 
+    <span class="hljs-string">"readline-version"</span> : <span class="hljs-string">"6.3"</span>, 
+    <span class="hljs-string">"repository-version"</span> : <span class="hljs-string">"heads/devel-0-gb9cb1469068cdba4163042d296be90c3e9ff66cc"</span>, 
+    <span class="hljs-string">"server-version"</span> : <span class="hljs-string">"2.7.0-devel"</span>, 
+    <span class="hljs-string">"sizeof int"</span> : <span class="hljs-string">"4"</span>, 
+    <span class="hljs-string">"sizeof void*"</span> : <span class="hljs-string">"8"</span>, 
+    <span class="hljs-string">"tcmalloc"</span> : <span class="hljs-string">"false"</span>, 
+    <span class="hljs-string">"v8-version"</span> : <span class="hljs-string">"4.3.61"</span>, 
+    <span class="hljs-string">"mode"</span> : <span class="hljs-string">"standalone"</span> 
   } 
 }

@@ -1,5 +1,5 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("social");
-arangosh> var query = graph._edges({type: "married"});
-arangosh> query.vertices([{name: "Bob"}, {name: "Charly"}]).toArray();
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> query = graph._edges({type: <span class="hljs-string">"married"</span>});
+arangosh&gt; query.vertices([{name: <span class="hljs-string">"Bob"</span>}, {name: <span class="hljs-string">"Charly"</span>}]).toArray();
 [ ]

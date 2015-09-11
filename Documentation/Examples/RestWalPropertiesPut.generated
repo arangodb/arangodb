@@ -1,18 +1,21 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_admin/wal/properties <<EOF
-{"logfileSize":33554432,"allowOversizeEntries":true}
+shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_admin/wal/properties &lt;&lt;EOF</span>
+{ 
+  <span class="hljs-string">"logfileSize"</span> : <span class="hljs-number">33554432</span>, 
+  <span class="hljs-string">"allowOversizeEntries"</span> : <span class="hljs-literal">true</span> 
+}
 EOF
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "allowOversizeEntries" : true, 
-  "logfileSize" : 33554432, 
-  "historicLogfiles" : 10, 
-  "reserveLogfiles" : 1, 
-  "syncInterval" : 100, 
-  "throttleWait" : 15000, 
-  "throttleWhenPending" : 0, 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"allowOversizeEntries"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"logfileSize"</span> : <span class="hljs-number">33554432</span>, 
+  <span class="hljs-string">"historicLogfiles"</span> : <span class="hljs-number">10</span>, 
+  <span class="hljs-string">"reserveLogfiles"</span> : <span class="hljs-number">1</span>, 
+  <span class="hljs-string">"syncInterval"</span> : <span class="hljs-number">100</span>, 
+  <span class="hljs-string">"throttleWait"</span> : <span class="hljs-number">15000</span>, 
+  <span class="hljs-string">"throttleWhenPending"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

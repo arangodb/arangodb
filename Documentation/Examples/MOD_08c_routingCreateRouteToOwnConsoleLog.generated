@@ -1,34 +1,34 @@
-arangosh> db._routing.save({
-........>    url: "/subdirectory/ourtest/1",
-........>    action: {
-........>      do: "org/arangodb/actions/echoRequest"
-........>    }
-........> });
+arangosh&gt; db._routing.save({
+........&gt;    url: <span class="hljs-string">"/subdirectory/ourtest/1"</span>,
+........&gt;    action: {
+........&gt;      <span class="hljs-keyword">do</span>: <span class="hljs-string">"org/arangodb/actions/echoRequest"</span>
+........&gt;    }
+........&gt; });
 { 
-  "_id" : "_routing/612496267", 
-  "_rev" : "612496267", 
-  "_key" : "612496267" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/617745954"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"617745954"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"617745954"</span> 
 }
-arangosh> db._routing.save({
-........>    url: "/subdirectory/ourtest/2",
-........>    action: {
-........>      do: "org/arangodb/actions/echoRequest"
-........>    }
-........> });
+arangosh&gt; db._routing.save({
+........&gt;    url: <span class="hljs-string">"/subdirectory/ourtest/2"</span>,
+........&gt;    action: {
+........&gt;      <span class="hljs-keyword">do</span>: <span class="hljs-string">"org/arangodb/actions/echoRequest"</span>
+........&gt;    }
+........&gt; });
 { 
-  "_id" : "_routing/612692875", 
-  "_rev" : "612692875", 
-  "_key" : "612692875" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/617942562"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"617942562"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"617942562"</span> 
 }
-arangosh> db._routing.save({
-........>    url: "/subdirectory/ourtest/3",
-........>    action: {
-........>      do: "org/arangodb/actions/echoRequest"
-........>    }
-........> });
+arangosh&gt; db._routing.save({
+........&gt;    url: <span class="hljs-string">"/subdirectory/ourtest/3"</span>,
+........&gt;    action: {
+........&gt;      <span class="hljs-keyword">do</span>: <span class="hljs-string">"org/arangodb/actions/echoRequest"</span>
+........&gt;    }
+........&gt; });
 { 
-  "_id" : "_routing/612889483", 
-  "_rev" : "612889483", 
-  "_key" : "612889483" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/618139170"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"618139170"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"618139170"</span> 
 }
-arangosh> require("internal").reloadRouting()
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).reloadRouting()

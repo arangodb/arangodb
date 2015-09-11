@@ -1,12 +1,12 @@
-shell> curl --dump - http://localhost:8529/url2
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/url2</span>
 
-HTTP/1.1 200 OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: text/plain
 
-"route 2"
-shell> curl --dump - http://localhost:8529/url3
+<span class="hljs-string">"route 2"</span>
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/url3</span>
 
-HTTP/1.1 200 OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: text/plain
 
-"route 3"
+<span class="hljs-string">"route 3"</span>

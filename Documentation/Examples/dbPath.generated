@@ -1,2 +1,2 @@
-arangosh> require("internal").db._path();
-/tmp/vocdir.25246/databases/database-127883
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).db._path();
+<span class="hljs-regexp">/tmp/</span>vocdir.23754/databases/database-<span class="hljs-number">69154</span>

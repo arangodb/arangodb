@@ -1,20 +1,21 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first-example <<EOF
-{ "collection": "products", "example" :  { "i" : 1 }  }
+shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/simple/first-example &lt;&lt;EOF</span>
+{ <span class="hljs-string">"collection"</span>: <span class="hljs-string">"products"</span>, <span class="hljs-string">"example"</span> :  { <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> }  }
 EOF
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "document" : { 
-    "_id" : "products/849671051", 
-    "_key" : "849671051", 
-    "_rev" : "849671051", 
-    "i" : 1, 
-    "a" : { 
-      "j" : 1 
+  <span class="hljs-string">"document"</span> : { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/854920738"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"854920738"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"854920738"</span>, 
+    <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"a"</span> : { 
+      <span class="hljs-string">"k"</span> : <span class="hljs-number">2</span>, 
+      <span class="hljs-string">"j"</span> : <span class="hljs-number">2</span> 
     } 
   }, 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

@@ -1,31 +1,31 @@
 arangosh&gt; db._create(<span class="hljs-string">"vertex"</span>);
-[ArangoCollection <span class="hljs-number">22677622</span>, <span class="hljs-string">"vertex"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">504106530</span>, <span class="hljs-string">"vertex"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; db._createEdgeCollection(<span class="hljs-string">"relation"</span>);
-[ArangoCollection <span class="hljs-number">22808694</span>, <span class="hljs-string">"relation"</span> (type edge, status loaded)]
+[ArangoCollection <span class="hljs-number">504237602</span>, <span class="hljs-string">"relation"</span> (type edge, status loaded)]
 arangosh&gt; v1 = db.vertex.insert({ name : <span class="hljs-string">"vertex 1"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertex/23136374"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"23136374"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"23136374"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertex/504565282"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"504565282"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"504565282"</span> 
 }
 arangosh&gt; v2 = db.vertex.insert({ name : <span class="hljs-string">"vertex 2"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertex/23332982"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"23332982"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"23332982"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertex/504761890"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"504761890"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"504761890"</span> 
 }
 arangosh&gt; e1 = db.relation.insert(v1, v2, { label : <span class="hljs-string">"knows"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/23660662"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"23660662"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"23660662"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/505089570"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"505089570"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"505089570"</span> 
 }
 arangosh&gt; db._document(e1);
 { 
   <span class="hljs-string">"label"</span> : <span class="hljs-string">"knows"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/23660662"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"23660662"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"23660662"</span>, 
-  <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertex/23136374"</span>, 
-  <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertex/23332982"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/505089570"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"505089570"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"505089570"</span>, 
+  <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertex/504565282"</span>, 
+  <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertex/504761890"</span> 
 }

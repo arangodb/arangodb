@@ -1,7 +1,7 @@
-shell> curl --dump - http://localhost:8529/redirectMe
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/redirectMe</span>
 
-HTTP/1.1 301 Moved
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">301</span> Moved
 content-type: text/html
-location: http://127.0.0.1:35246/somewhere.else/
+location: http:<span class="hljs-comment">//127.0.0.1:33754/somewhere.else/</span>
 
-"<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\"http://127.0.0.1:35246/somewhere.else/\">http://127.0.0.1:35246/somewhere.else/</a>.</p></body></html>"
+<span class="hljs-string">"&lt;html&gt;&lt;head&gt;&lt;title&gt;Moved&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&lt;h1&gt;Moved&lt;/h1&gt;&lt;p&gt;This page has moved to &lt;a href=\"http://127.0.0.1:33754/somewhere.else/\"&gt;http://127.0.0.1:33754/somewhere.else/&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;"</span>

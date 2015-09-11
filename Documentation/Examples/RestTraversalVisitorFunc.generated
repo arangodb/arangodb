@@ -1,22 +1,22 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal <<EOF
-{ "startVertex": "persons/alice", "graphName" : "knows_graph", "direction" : "outbound", "visitor" : "result.visited.vertices.push(vertex._id);"}
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/traversal &lt;&lt;EOF</span>
+{ <span class="hljs-string">"startVertex"</span>: <span class="hljs-string">"persons/alice"</span>, <span class="hljs-string">"graphName"</span> : <span class="hljs-string">"knows_graph"</span>, <span class="hljs-string">"direction"</span> : <span class="hljs-string">"outbound"</span>, <span class="hljs-string">"visitor"</span> : <span class="hljs-string">"result.visited.vertices.push(vertex._id);"</span>}
 EOF
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "result" : { 
-    "visited" : { 
-      "vertices" : [ 
-        "persons/alice", 
-        "persons/bob", 
-        "persons/charlie", 
-        "persons/dave" 
+  <span class="hljs-string">"result"</span> : { 
+    <span class="hljs-string">"visited"</span> : { 
+      <span class="hljs-string">"vertices"</span> : [ 
+        <span class="hljs-string">"persons/alice"</span>, 
+        <span class="hljs-string">"persons/bob"</span>, 
+        <span class="hljs-string">"persons/charlie"</span>, 
+        <span class="hljs-string">"persons/dave"</span> 
       ], 
-      "paths" : [ ] 
+      <span class="hljs-string">"paths"</span> : [ ] 
     } 
   }, 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

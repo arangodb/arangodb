@@ -1,5 +1,5 @@
-arangosh> col = db.example;
-[ArangoCollection 502854539, "example" (type document, status loaded)]
-arangosh> col.unload();
-arangosh> col;
-[ArangoCollection 502854539, "example" (type document, status unloaded)]
+arangosh&gt; col = db.example;
+[ArangoCollection <span class="hljs-number">503909922</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+arangosh&gt; col.unload();
+arangosh&gt; col;
+[ArangoCollection <span class="hljs-number">503909922</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status unloaded)]

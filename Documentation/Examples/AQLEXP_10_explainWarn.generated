@@ -1,8 +1,8 @@
-arangosh> var stmt = db._createStatement("FOR i IN 1..10 RETURN 1 / 0")
-arangosh> stmt.explain().warnings;
+arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement(<span class="hljs-string">"FOR i IN 1..10 RETURN 1 / 0"</span>)
+arangosh&gt; stmt.explain().warnings;
 [ 
   { 
-    "code" : 1562, 
-    "message" : "division by zero" 
+    <span class="hljs-string">"code"</span> : <span class="hljs-number">1562</span>, 
+    <span class="hljs-string">"message"</span> : <span class="hljs-string">"division by zero"</span> 
   } 
 ]
