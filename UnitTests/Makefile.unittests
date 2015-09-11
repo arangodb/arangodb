@@ -154,7 +154,7 @@ start-server:
 		done)
 # wait for unix domain socket enpoints:
 	@(test "$(PROTO)" == "unix" && \
-		while ! ./bin/arangosh  \
+		while ! @builddir@/bin/arangosh $(CLIENT_OPT)  \
 			--server.endpoint unix://$(VOCDIR)/arango.sock \
 			 --javascript.execute-string 'if (arango.GET("/_api/version").server === "arango") { 0; } else {1; }'; do \
 		    sleep 1; \
