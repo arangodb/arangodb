@@ -1,4 +1,4 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/collection &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/collection &lt;&lt;EOF
 { 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionBasics"</span> 
 }
@@ -9,7 +9,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/testCollectionBasics
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"623840802"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"616228089"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionBasics"</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -19,7 +19,7 @@ location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/testColl
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/collection &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/collection &lt;&lt;EOF
 { 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionEdges"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">3</span> 
@@ -31,7 +31,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/testCollectionEdges
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"623971874"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"616359161"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionEdges"</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 

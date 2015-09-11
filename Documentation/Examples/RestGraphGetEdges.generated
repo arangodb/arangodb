@@ -1,4 +1,4 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/graph/graph/edges &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edges &lt;&lt;EOF
 { 
   <span class="hljs-string">"batchSize"</span> : <span class="hljs-number">100</span> 
 }
@@ -12,7 +12,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge4"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge4"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"782634530"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"777512185"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/v1"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/v5"</span>, 
       <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
@@ -21,7 +21,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge2"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge2"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"781585954"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"776463609"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/v1"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/v3"</span>, 
       <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
@@ -30,7 +30,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge3"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge3"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"782110242"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"776987897"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/v2"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/v4"</span>, 
       <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
@@ -39,7 +39,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge1"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge1"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"781061666"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"775939321"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/v1"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/v2"</span>, 
       <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 

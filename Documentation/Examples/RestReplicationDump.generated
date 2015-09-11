@@ -1,8 +1,8 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/dump?collection=testCollection</span>
+shell> curl --dump - http://localhost:8529/_api/replication/dump?collection=testCollection
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-content-type: application/x-arango-dump; charset=utf-<span class="hljs-number">8</span>
-x-arango-replication-checkmore: <span class="hljs-literal">false</span>
-x-arango-replication-lastincluded: <span class="hljs-number">834997794</span>
+HTTP/1.1 200 OK
+content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-checkmore: false
+x-arango-replication-lastincluded: 829416697
 
-<span class="hljs-string">"{\"tick\":\"834342434\",\"type\":2300,\"key\":\"123456\",\"rev\":\"834276898\",\"data\":{\"_key\":\"123456\",\"_rev\":\"834276898\",\"c\":false,\"b\":1,\"d\":\"additional value\"}}\n{\"tick\":\"834801186\",\"type\":2302,\"key\":\"foobar\",\"rev\":\"834735650\"}\n{\"tick\":\"834997794\",\"type\":2302,\"key\":\"abcdef\",\"rev\":\"834932258\"}\n"</span>
+"{\"tick\":\"828761337\",\"type\":2300,\"key\":\"123456\",\"rev\":\"828695801\",\"data\":{\"_key\":\"123456\",\"_rev\":\"828695801\",\"c\":false,\"b\":1,\"d\":\"additional value\"}}\n{\"tick\":\"829220089\",\"type\":2302,\"key\":\"foobar\",\"rev\":\"829154553\"}\n{\"tick\":\"829416697\",\"type\":2302,\"key\":\"abcdef\",\"rev\":\"829351161\"}\n"

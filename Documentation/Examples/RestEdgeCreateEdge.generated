@@ -1,4 +1,4 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/edge/?collection=edges&amp;from=vertices/1&amp;to=vertices/2 &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/edge/?collection=edges&from=vertices/1&to=vertices/2 &lt;&lt;EOF
 { 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Emil"</span> 
 }
@@ -6,26 +6,26 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-string">"726863394"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/edge/edges/<span class="hljs-number">726863394</span>
+etag: <span class="hljs-string">"721741049"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/edge/edges/<span class="hljs-number">721741049</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/726863394"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"726863394"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"726863394"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/721741049"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"721741049"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"721741049"</span> 
 }
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/edge/edges/726863394</span>
+shell> curl --dump - http://localhost:8529/_api/edge/edges/721741049
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-string">"726863394"</span>
+etag: <span class="hljs-string">"721741049"</span>
 
 { 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Emil"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/726863394"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"726863394"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"726863394"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/721741049"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"721741049"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"721741049"</span>, 
   <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/1"</span>, 
   <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/2"</span> 
 }

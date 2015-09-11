@@ -1,4 +1,4 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/traversal &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal &lt;&lt;EOF
 { 
   <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"persons/alice"</span>, 
   <span class="hljs-string">"graphName"</span> : <span class="hljs-string">"knows_graph"</span>, 
@@ -20,37 +20,37 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
         { 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"909839906"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904258809"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         }, 
         { 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/eve"</span>, 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"eve"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910691874"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905110777"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eve"</span> 
         }, 
         { 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910036514"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904455417"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
         }, 
         { 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"909839906"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904258809"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         }, 
         { 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/charlie"</span>, 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlie"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910298658"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904717561"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charlie"</span> 
         }, 
         { 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/dave"</span>, 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"dave"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910495266"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904914169"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Dave"</span> 
         } 
       ], 
@@ -61,7 +61,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"909839906"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904258809"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             } 
           ] 
@@ -69,9 +69,9 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/911543842"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"911543842"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"911543842"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/905962745"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"905962745"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905962745"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/alice"</span> 
             } 
@@ -80,13 +80,13 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"909839906"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904258809"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"eve"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910691874"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905110777"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eve"</span> 
             } 
           ] 
@@ -94,16 +94,16 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/911543842"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"911543842"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"911543842"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/905962745"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"905962745"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905962745"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/alice"</span> 
             }, 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/911740450"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"911740450"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"911740450"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/906159353"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"906159353"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"906159353"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span> 
             } 
@@ -112,19 +112,19 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"909839906"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904258809"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"eve"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910691874"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905110777"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eve"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910036514"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904455417"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
             } 
           ] 
@@ -132,23 +132,23 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/911543842"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"911543842"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"911543842"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/905962745"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"905962745"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905962745"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/alice"</span> 
             }, 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/911740450"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"911740450"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"911740450"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/906159353"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"906159353"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"906159353"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span> 
             }, 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/910954018"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"910954018"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910954018"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/905372921"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"905372921"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905372921"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span> 
             } 
@@ -157,25 +157,25 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"909839906"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904258809"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"eve"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910691874"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905110777"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eve"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910036514"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904455417"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"909839906"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904258809"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             } 
           ] 
@@ -183,23 +183,23 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/911543842"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"911543842"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"911543842"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/905962745"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"905962745"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905962745"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/alice"</span> 
             }, 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/911740450"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"911740450"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"911740450"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/906159353"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"906159353"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"906159353"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span> 
             }, 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/911150626"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"911150626"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"911150626"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/905569529"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"905569529"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905569529"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/bob"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/charlie"</span> 
             } 
@@ -208,25 +208,25 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"909839906"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904258809"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"eve"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910691874"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905110777"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eve"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910036514"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904455417"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/charlie"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlie"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910298658"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904717561"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charlie"</span> 
             } 
           ] 
@@ -234,23 +234,23 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/911543842"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"911543842"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"911543842"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/905962745"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"905962745"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905962745"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/alice"</span> 
             }, 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/911740450"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"911740450"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"911740450"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/906159353"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"906159353"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"906159353"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span> 
             }, 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/911347234"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"911347234"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"911347234"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/905766137"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"905766137"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905766137"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/bob"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/dave"</span> 
             } 
@@ -259,25 +259,25 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"909839906"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904258809"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"eve"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910691874"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"905110777"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eve"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910036514"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904455417"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/dave"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"dave"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"910495266"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904914169"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Dave"</span> 
             } 
           ] 

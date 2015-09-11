@@ -1,4 +1,4 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/hello/world</span>
+shell> curl --dump - http://localhost:8529/hello/world
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
@@ -11,11 +11,11 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">33754</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">32255</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">28371</span>, 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">61421</span>, 
       <span class="hljs-string">"id"</span> : <span class="hljs-string">"11"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
@@ -40,8 +40,8 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
   <span class="hljs-string">"options"</span> : { 
   } 
 }
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/hello/world &lt;&lt;EOF</span>
-{hello: <span class="hljs-string">'world'</span>}
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/hello/world &lt;&lt;EOF
+{hello: 'world'}
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
@@ -55,11 +55,11 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">33754</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">32255</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">28371</span>, 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">61421</span>, 
       <span class="hljs-string">"id"</span> : <span class="hljs-string">"11"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
@@ -85,8 +85,8 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
   <span class="hljs-string">"options"</span> : { 
   } 
 }
-shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/hello/world &lt;&lt;EOF</span>
-{hello: <span class="hljs-string">'world'</span>}
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/hello/world &lt;&lt;EOF
+{hello: 'world'}
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
@@ -100,11 +100,11 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">33754</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">32255</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">28371</span>, 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">61421</span>, 
       <span class="hljs-string">"id"</span> : <span class="hljs-string">"11"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
@@ -130,7 +130,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
   <span class="hljs-string">"options"</span> : { 
   } 
 }
-shell&gt; curl -X DELETE --dump - http:<span class="hljs-comment">//localhost:8529/hello/world</span>
+shell> curl -X DELETE --dump - http://localhost:8529/hello/world
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> Not Found
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>

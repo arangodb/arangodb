@@ -1,4 +1,4 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/graph/graph/vertices &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertices &lt;&lt;EOF
 { 
   <span class="hljs-string">"batchSize"</span> : <span class="hljs-number">100</span> 
 }
@@ -12,31 +12,31 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertices/v1"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"v1"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"809111074"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"803988729"</span>, 
       <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
     }, 
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertices/v2"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"v2"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"809504290"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"804381945"</span>, 
       <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
     }, 
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertices/v5"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"v5"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"810683938"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"805561593"</span>, 
       <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
     }, 
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertices/v3"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"v3"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"809897506"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"804775161"</span>, 
       <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
     }, 
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertices/v4"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"v4"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"810290722"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"805168377"</span>, 
       <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
     } 
   ], 

@@ -1,8 +1,8 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/import?collection=products&amp;createCollection=true &lt;&lt;EOF</span>
-[ <span class="hljs-string">"value1"</span>, <span class="hljs-string">"value2"</span> ]
-[ <span class="hljs-number">1234</span>, <span class="hljs-literal">null</span> ]
-[ <span class="hljs-string">"foo"</span>, <span class="hljs-string">"bar"</span> ]
-[ <span class="hljs-number">534.55</span>, <span class="hljs-literal">true</span> ]
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&createCollection=true &lt;&lt;EOF
+[ "value1", "value2" ]
+[ 1234, null ]
+[ "foo", "bar" ]
+[ 534.55, true ]
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created

@@ -1,4 +1,4 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/tasks/statistics-average-collector</span>
+shell> curl --dump - http://localhost:8529/_api/tasks/statistics-average-collector
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
@@ -8,7 +8,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
   <span class="hljs-string">"period"</span> : <span class="hljs-number">900</span>, 
-  <span class="hljs-string">"created"</span> : <span class="hljs-number">1441963801.969445</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">1441996695.863672</span>, 
   <span class="hljs-string">"command"</span> : <span class="hljs-string">"require('org/arangodb/statistics').historianAverage();"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 

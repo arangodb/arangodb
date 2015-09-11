@@ -1,41 +1,41 @@
-shell&gt; curl -X POST --header <span class="hljs-string">'Content-Type: multipart/form-data; boundary=SomeBoundaryValue'</span> --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/batch &lt;&lt;EOF</span>
+shell> curl -X POST --header 'Content-Type: multipart/form-data; boundary=SomeBoundaryValue' --data-binary @- --dump - http://localhost:8529/_api/batch &lt;&lt;EOF
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 Content-Id: myId1
 
-GET /_api/version HTTP/<span class="hljs-number">1.1</span>
+GET /_api/version HTTP/1.1
 
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 Content-Id: myId2
 
-DELETE /_api/collection/products HTTP/<span class="hljs-number">1.1</span>
+DELETE /_api/collection/products HTTP/1.1
 
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 Content-Id: someId
 
-POST /_api/collection/products HTTP/<span class="hljs-number">1.1</span>
+POST /_api/collection/products HTTP/1.1
 
-{ <span class="hljs-string">"name"</span>: <span class="hljs-string">"products"</span> }
+{ "name": "products" }
 
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 Content-Id: nextId
 
-GET /_api/collection/products/figures HTTP/<span class="hljs-number">1.1</span>
+GET /_api/collection/products/figures HTTP/1.1
 
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 Content-Id: otherId
 
-DELETE /_api/collection/products HTTP/<span class="hljs-number">1.1</span>
+DELETE /_api/collection/products HTTP/1.1
 --SomeBoundaryValue--
 
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/1.1 200 OK
 content-type: multipart/form-data; boundary=SomeBoundaryValue
-x-arango-errors: <span class="hljs-number">1</span>
+x-arango-errors: 1
 
-<span class="hljs-string">"--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: myId1\r\n\r\nHTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 43\r\n\r\n{\"server\":\"arango\",\"version\":\"2.7.0-devel\"}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: myId2\r\n\r\nHTTP/1.1 404 Not Found\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 88\r\n\r\n{\"error\":true,\"code\":404,\"errorNum\":1203,\"errorMessage\":\"unknown collection 'products'\"}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: someId\r\n\r\nHTTP/1.1 200 OK\r\nLocation: /_db/_system/_api/collection/products\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 137\r\n\r\n{\"id\":\"623447586\",\"name\":\"products\",\"waitForSync\":false,\"isVolatile\":false,\"isSystem\":false,\"status\":3,\"type\":2,\"error\":false,\"code\":200}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: nextId\r\n\r\nHTTP/1.1 200 OK\r\nLocation: /_db/_system/_api/collection/products/figures\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 635\r\n\r\n{\"id\":\"623447586\",\"name\":\"products\",\"isSystem\":false,\"doCompact\":true,\"isVolatile\":false,\"journalSize\":1048576,\"keyOptions\":{\"type\":\"traditional\",\"allowUserKeys\":true},\"waitForSync\":false,\"indexBuckets\":8,\"count\":0,\"figures\":{\"alive\":{\"count\":0,\"size\":0},\"dead\":{\"count\":0,\"size\":0,\"deletion\":0},\"datafiles\":{\"count\":0,\"fileSize\":0},\"journals\":{\"count\":0,\"fileSize\":0},\"compactors\":{\"count\":0,\"fileSize\":0},\"shapefiles\":{\"count\":0,\"fileSize\":0},\"shapes\":{\"count\":0,\"size\":0},\"attributes\":{\"count\":0,\"size\":0},\"indexes\":{\"count\":1,\"size\":16064},\"lastTick\":\"0\",\"uncollectedLogfileEntries\":0},\"status\":3,\"type\":2,\"error\":false,\"code\":200}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: otherId\r\n\r\nHTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 43\r\n\r\n{\"id\":\"623447586\",\"error\":false,\"code\":200}\r\n--SomeBoundaryValue--"</span>
+"--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: myId1\r\n\r\nHTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 41\r\n\r\n{\"server\":\"arango\",\"version\":\"2.7.0-rc1\"}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: myId2\r\n\r\nHTTP/1.1 404 Not Found\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 88\r\n\r\n{\"error\":true,\"code\":404,\"errorNum\":1203,\"errorMessage\":\"unknown collection 'products'\"}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: someId\r\n\r\nHTTP/1.1 200 OK\r\nLocation: /_db/_system/_api/collection/products\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 137\r\n\r\n{\"id\":\"615900409\",\"name\":\"products\",\"waitForSync\":false,\"isVolatile\":false,\"isSystem\":false,\"status\":3,\"type\":2,\"error\":false,\"code\":200}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: nextId\r\n\r\nHTTP/1.1 200 OK\r\nLocation: /_db/_system/_api/collection/products/figures\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 635\r\n\r\n{\"id\":\"615900409\",\"name\":\"products\",\"isSystem\":false,\"doCompact\":true,\"isVolatile\":false,\"journalSize\":1048576,\"keyOptions\":{\"type\":\"traditional\",\"allowUserKeys\":true},\"waitForSync\":false,\"indexBuckets\":8,\"count\":0,\"figures\":{\"alive\":{\"count\":0,\"size\":0},\"dead\":{\"count\":0,\"size\":0,\"deletion\":0},\"datafiles\":{\"count\":0,\"fileSize\":0},\"journals\":{\"count\":0,\"fileSize\":0},\"compactors\":{\"count\":0,\"fileSize\":0},\"shapefiles\":{\"count\":0,\"fileSize\":0},\"shapes\":{\"count\":0,\"size\":0},\"attributes\":{\"count\":0,\"size\":0},\"indexes\":{\"count\":1,\"size\":16064},\"lastTick\":\"0\",\"uncollectedLogfileEntries\":0},\"status\":3,\"type\":2,\"error\":false,\"code\":200}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\nContent-Id: otherId\r\n\r\nHTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 43\r\n\r\n{\"id\":\"615900409\",\"error\":false,\"code\":200}\r\n--SomeBoundaryValue--"

@@ -1,8 +1,8 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/711855650</span>
+shell> curl --dump - http://localhost:8529/_api/document/products/706733305
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-string">"711855650"</span>
+etag: <span class="hljs-string">"706733305"</span>
 
 { 
   <span class="hljs-string">"inhabitants"</span> : { 
@@ -10,11 +10,11 @@ etag: <span class="hljs-string">"711855650"</span>
     <span class="hljs-string">"india"</span> : <span class="hljs-number">1263590000</span>, 
     <span class="hljs-string">"usa"</span> : <span class="hljs-number">319220000</span> 
   }, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/711855650"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"711855650"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"711855650"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/706733305"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"706733305"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"706733305"</span> 
 }
-shell&gt; curl -X PATCH --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/711855650?mergeObjects=true &lt;&lt;EOF</span>
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/706733305?mergeObjects=true &lt;&lt;EOF
 { 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"indonesia"</span> : <span class="hljs-number">252164800</span>, 
@@ -23,11 +23,11 @@ shell&gt; curl -X PATCH --data-binary @- --dump - http:<span class="hljs-comment
 }
 EOF
 
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/711855650</span>
+shell> curl --dump - http://localhost:8529/_api/document/products/706733305
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-string">"712379938"</span>
+etag: <span class="hljs-string">"707257593"</span>
 
 { 
   <span class="hljs-string">"inhabitants"</span> : { 
@@ -37,11 +37,11 @@ etag: <span class="hljs-string">"712379938"</span>
     <span class="hljs-string">"indonesia"</span> : <span class="hljs-number">252164800</span>, 
     <span class="hljs-string">"brazil"</span> : <span class="hljs-number">203553000</span> 
   }, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/711855650"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"712379938"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"711855650"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/706733305"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"707257593"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"706733305"</span> 
 }
-shell&gt; curl -X PATCH --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/711855650?mergeObjects=false &lt;&lt;EOF</span>
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/706733305?mergeObjects=false &lt;&lt;EOF
 { 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"pakistan"</span> : <span class="hljs-number">188346000</span> 
@@ -51,26 +51,26 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-string">"712838690"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">711855650</span>
+etag: <span class="hljs-string">"707716345"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">706733305</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/711855650"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"712838690"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"711855650"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/706733305"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"707716345"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"706733305"</span> 
 }
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/711855650</span>
+shell> curl --dump - http://localhost:8529/_api/document/products/706733305
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-string">"712838690"</span>
+etag: <span class="hljs-string">"707716345"</span>
 
 { 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"pakistan"</span> : <span class="hljs-number">188346000</span> 
   }, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/711855650"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"712838690"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"711855650"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/706733305"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"707716345"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"706733305"</span> 
 }

@@ -1,4 +1,4 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/import?collection=products&amp;type=list &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=list &lt;&lt;EOF
 [ 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"abc"</span>, 

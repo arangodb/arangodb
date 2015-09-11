@@ -1,4 +1,4 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-state</span>
+shell> curl --dump - http://localhost:8529/_api/replication/logger-state
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
@@ -6,13 +6,13 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 { 
   <span class="hljs-string">"state"</span> : { 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"840175138"</span>, 
-    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">5079</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-09-11T09:31:29Z"</span> 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"834594041"</span>, 
+    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">5031</span>, 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-09-11T18:38:39Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.7.0-devel"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"208267300529216"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.7.0-rc1"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"123816419594401"</span> 
   }, 
   <span class="hljs-string">"clients"</span> : [ ] 
 }

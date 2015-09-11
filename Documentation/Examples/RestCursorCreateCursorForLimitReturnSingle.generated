@@ -1,4 +1,4 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/cursor &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
 { 
   <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR p IN products LIMIT 2 RETURN p"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-literal">true</span>, 
@@ -13,15 +13,15 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
   <span class="hljs-string">"result"</span> : [ 
     { 
       <span class="hljs-string">"hello1"</span> : <span class="hljs-string">"world1"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/652938786"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"652938786"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"652938786"</span> 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/644474105"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"644474105"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"644474105"</span> 
     }, 
     { 
       <span class="hljs-string">"hello2"</span> : <span class="hljs-string">"world1"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/653266466"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"653266466"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"653266466"</span> 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/644801785"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"644801785"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"644801785"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 

@@ -1,4 +1,4 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/cursor &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
 { 
   <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR p IN products LIMIT 5 RETURN p"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-literal">true</span>, 
@@ -12,20 +12,20 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"hello3"</span> : <span class="hljs-string">"world1"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/651628066"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"651628066"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"651628066"</span> 
+      <span class="hljs-string">"hello5"</span> : <span class="hljs-string">"world1"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/643818745"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"643818745"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"643818745"</span> 
     }, 
     { 
-      <span class="hljs-string">"hello5"</span> : <span class="hljs-string">"world1"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/652283426"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"652283426"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"652283426"</span> 
+      <span class="hljs-string">"hello3"</span> : <span class="hljs-string">"world1"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/643163385"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"643163385"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"643163385"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"652480034"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"644015353"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"extra"</span> : { 
     <span class="hljs-string">"stats"</span> : { 

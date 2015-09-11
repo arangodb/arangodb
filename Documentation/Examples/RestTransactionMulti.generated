@@ -1,4 +1,4 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/transaction &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction &lt;&lt;EOF
 { 
   <span class="hljs-string">"collections"</span> : { 
     <span class="hljs-string">"write"</span> : [ 

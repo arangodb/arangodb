@@ -1,4 +1,4 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/graph</span>
+shell> curl --dump - http://localhost:8529/_api/graph
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
@@ -8,7 +8,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/graph1"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"graph1"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"785845794"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"780723449"</span>, 
       <span class="hljs-string">"edgeDefinitions"</span> : [ 
         { 
           <span class="hljs-string">"collection"</span> : <span class="hljs-string">"edges1"</span>, 
@@ -24,7 +24,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/graph2"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"graph2"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"786828834"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"781706489"</span>, 
       <span class="hljs-string">"edgeDefinitions"</span> : [ 
         { 
           <span class="hljs-string">"collection"</span> : <span class="hljs-string">"edges2"</span>, 

@@ -1,11 +1,11 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/endpoint</span>
+shell> curl --dump - http://localhost:8529/_api/endpoint
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 [ 
   { 
-    <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:33754"</span>, 
+    <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:32255"</span>, 
     <span class="hljs-string">"databases"</span> : [ ] 
   } 
 ]

@@ -1,4 +1,4 @@
-shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial/social/edge/relation &lt;&lt;EOF</span>
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation &lt;&lt;EOF
 { 
   <span class="hljs-string">"collection"</span> : <span class="hljs-string">"relation"</span>, 
   <span class="hljs-string">"from"</span> : [ 
@@ -16,7 +16,7 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json
-etag: <span class="hljs-number">596839970</span>
+etag: <span class="hljs-number">589882617</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -40,6 +40,6 @@ etag: <span class="hljs-number">596839970</span>
     ], 
     <span class="hljs-string">"orphanCollections"</span> : [ ], 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"596839970"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"589882617"</span> 
   } 
 }
