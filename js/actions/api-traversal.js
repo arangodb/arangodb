@@ -157,6 +157,7 @@ function notFound (req, res, code, message) {
 /// @RESTBODYPARAM{uniqueness,string,optional,string}
 /// specifies uniqueness for vertices and edges visited
 /// if set, must be an object like this:
+///
 /// *"uniqueness": {"vertices": "none"|"global"|"path", "edges": "none"|"global"|"path"}*
 ///
 /// @RESTBODYPARAM{maxIterations,string,optional,string}
@@ -225,7 +226,7 @@ function notFound (req, res, code, message) {
 ///
 /// The starting vertex will always be Alice.
 ///
-/// Follow only outbound edges:
+/// Follow only outbound edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalOutbound}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -243,7 +244,7 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Follow only inbound edges:
+/// Follow only inbound edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalInbound}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -261,7 +262,7 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Follow any direction of edges:
+/// Follow any direction of edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalAny}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -285,7 +286,7 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Excluding *Charlie* and *Bob*:
+/// Excluding *Charlie* and *Bob*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalFilterExclude}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -308,7 +309,7 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Do not follow edges from *Bob*:
+/// Do not follow edges from *Bob*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalFilterPrune}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -330,7 +331,7 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Visit only nodes in a depth of at least 2:
+/// Visit only nodes in a depth of at least 2
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalMinDepth}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -349,7 +350,7 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Visit only nodes in a depth of at most 1:
+/// Visit only nodes in a depth of at most 1
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalMaxDepth}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -368,7 +369,7 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Using a visitor function to return vertex ids only:
+/// Using a visitor function to return vertex ids only
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalVisitorFunc}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -387,7 +388,7 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Count all visited nodes and return a list of nodes only:
+/// Count all visited nodes and return a list of nodes only
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalVisitorCountAndList}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -407,7 +408,7 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Expand only inbound edges of *Alice* and outbound edges of *Eve*:
+/// Expand only inbound edges of *Alice* and outbound edges of *Eve*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalVisitorExpander}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -444,7 +445,7 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Follow the *depthfirst* strategy:
+/// Follow the *depthfirst* strategy
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalDepthFirst}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -465,7 +466,7 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Using *postorder* ordering:
+/// Using *postorder* ordering
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalPostorder}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -508,7 +509,7 @@ function notFound (req, res, code, message) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Edges should only be included once globally,
-/// but nodes are included every time they are visited:
+/// but nodes are included every time they are visited
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalEdgeUniqueness}
 ///     var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -532,7 +533,7 @@ function notFound (req, res, code, message) {
 ///     examples.dropGraph("knows_graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// If the underlying graph is cyclic, *maxIterations* should be set:
+/// If the underlying graph is cyclic, *maxIterations* should be set
 ///
 /// The underlying graph has two vertices *Alice* and *Bob*.
 /// With the directed edges:

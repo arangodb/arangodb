@@ -131,7 +131,7 @@ var actions = require("org/arangodb/actions");
 ///
 /// @EXAMPLES
 ///
-/// Executing a transaction on a single collection:
+/// Executing a transaction on a single collection
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTransactionSingle}
 ///     var cn = "products";
@@ -152,7 +152,7 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Executing a transaction using multiple collections:
+/// Executing a transaction using multiple collections
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTransactionMulti}
 ///     var cn1 = "materials";
@@ -186,7 +186,7 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn2);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Aborting a transaction due to an internal error:
+/// Aborting a transaction due to an internal error
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTransactionAbortInternal}
 ///     var cn = "products";
@@ -213,7 +213,7 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Aborting a transaction by explicitly throwing an exception:
+/// Aborting a transaction by explicitly throwing an exception
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTransactionAbort}
 ///     var cn = "products";
@@ -235,7 +235,7 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Referring to a non-existing collection:
+/// Referring to a non-existing collection
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTransactionNonExisting}
 ///     var cn = "products";

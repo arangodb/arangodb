@@ -423,6 +423,7 @@ actions.defineHttp({
 /// way for retrieving documents from a collection using the near operator is
 /// to issue an [AQL query](../Aql/GeoFunctions.md) using the *NEAR* function as follows: 
 ///
+///
 ///     FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit)
 ///       RETURN doc`
 ///
@@ -441,7 +442,7 @@ actions.defineHttp({
 ///
 /// @EXAMPLES
 ///
-/// Without distance:
+/// Without distance
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleNear}
 ///     var cn = "products";
@@ -469,7 +470,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// With distance:
+/// With distance
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleNearDistance}
 ///     var cn = "products";
@@ -616,6 +617,7 @@ actions.defineHttp({
 /// way for retrieving documents from a collection using the near operator is
 /// to issue an [AQL query](../Aql/GeoFunctions.md) using the *WITHIN* function as follows: 
 ///
+///
 ///     FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
 ///       RETURN doc
 ///
@@ -634,7 +636,7 @@ actions.defineHttp({
 ///
 /// @EXAMPLES
 ///
-/// Without distance:
+/// Without distance
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleWithin}
 ///     var cn = "products";
@@ -663,7 +665,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// With distance:
+/// With distance
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleWithinDistance}
 ///     var cn = "products";
@@ -952,6 +954,7 @@ actions.defineHttp({
 /// to issue an AQL query using the *FULLTEXT* [AQL function](../Aql/FulltextFunctions.md) 
 /// as follows:
 ///
+///
 ///     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
 ///       RETURN doc
 ///
@@ -1084,7 +1087,7 @@ actions.defineHttp({
 ///
 /// @EXAMPLES
 ///
-/// Matching an attribute:
+/// Matching an attribute
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleByExample}
 ///     var cn = "products";
@@ -1105,7 +1108,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Matching an attribute which is a sub-document:
+/// Matching an attribute which is a sub-document
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleByExample2}
 ///     var cn = "products";
@@ -1126,7 +1129,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Matching an attribute within a sub-document:
+/// Matching an attribute within a sub-document
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleByExample3}
 ///     var cn = "products";
@@ -1235,7 +1238,7 @@ actions.defineHttp({
 ///
 /// @EXAMPLES
 ///
-/// If a matching document was found:
+/// If a matching document was found
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirstExample}
 ///     var cn = "products";
@@ -1256,7 +1259,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// If no document was found:
+/// If no document was found
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirstExampleNotFound}
 ///     var cn = "products";
@@ -1362,7 +1365,7 @@ actions.defineHttp({
 ///
 /// @EXAMPLES
 ///
-/// Retrieving the first n documents:
+/// Retrieving the first n documents
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirst}
 ///     var cn = "products";
@@ -1383,7 +1386,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Retrieving the first document:
+/// Retrieving the first document
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirstSingle}
 ///     var cn = "products";
@@ -1479,7 +1482,7 @@ actions.defineHttp({
 ///
 /// @EXAMPLES
 ///
-/// Retrieving the last n documents:
+/// Retrieving the last n documents
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleLast}
 ///     var cn = "products";
@@ -1500,7 +1503,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Retrieving the first document:
+/// Retrieving the first document
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleLastSingle}
 ///     var cn = "products";
@@ -1595,6 +1598,7 @@ actions.defineHttp({
 /// The function may be removed in future versions of ArangoDB. The preferred
 /// way for retrieving documents from a collection within a specific range
 /// is to use an AQL query as follows: 
+///
 ///
 ///     FOR doc IN @@collection 
 ///       FILTER doc.value >= @left && doc.value < @right 
@@ -1763,7 +1767,9 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
 /// Using Parameter: waitForSync and limit
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample_1}
 ///     var cn = "products";
 ///     db._drop(cn);
@@ -1783,7 +1789,9 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
 /// Using Parameter: waitForSync and limit with new signature
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample_2}
 ///     var cn = "products";
 ///     db._drop(cn);
@@ -1934,7 +1942,9 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
 /// Using new Signature for attributes WaitForSync and limit
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleReplaceByExampleWaitForSync}
 ///     var cn = "products";
 ///     db._drop(cn);
@@ -2073,7 +2083,9 @@ actions.defineHttp({
 /// response body contains an error document in this case.
 ///
 /// @EXAMPLES
+///
 /// using old syntax for options
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample}
 ///     var cn = "products";
 ///     db._drop(cn);
@@ -2097,7 +2109,9 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
 /// using new signature for options
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample_1}
 ///     var cn = "products";
 ///     db._drop(cn);

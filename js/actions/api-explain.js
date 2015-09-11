@@ -130,7 +130,7 @@ var ERRORS = require("internal").errors;
 ///
 /// @EXAMPLES
 ///
-/// Valid query:
+/// Valid query
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainValid}
 ///     var url = "/_api/explain";
@@ -150,7 +150,7 @@ var ERRORS = require("internal").errors;
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// A plan with some optimizer rules applied:
+/// A plan with some optimizer rules applied
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainOptimizerRules}
 ///     var url = "/_api/explain";
@@ -171,7 +171,7 @@ var ERRORS = require("internal").errors;
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Using some options:
+/// Using some options
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainOptions}
 ///     var url = "/_api/explain";
@@ -199,7 +199,7 @@ var ERRORS = require("internal").errors;
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Returning all plans:
+/// Returning all plans
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainAllPlans}
 ///     var url = "/_api/explain";
@@ -222,7 +222,7 @@ var ERRORS = require("internal").errors;
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// A query that produces a warning:
+/// A query that produces a warning
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainWarning}
 ///     var url = "/_api/explain";
@@ -237,7 +237,7 @@ var ERRORS = require("internal").errors;
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Invalid query (missing bind parameter):
+/// Invalid query (missing bind parameter)
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainInvalid}
 ///     var url = "/_api/explain";
@@ -262,7 +262,7 @@ var ERRORS = require("internal").errors;
 /// the result might also contain less elements than there were top-level
 /// statements in the AQL query.
 /// The following example shows a query with a non-sensible filter condition that
-/// the optimizer has removed so that there are less top-level statements:
+/// the optimizer has removed so that there are less top-level statements.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainEmpty}
 ///     var url = "/_api/explain";

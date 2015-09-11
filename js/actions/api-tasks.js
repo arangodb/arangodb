@@ -50,7 +50,7 @@ var API = "_api/tasks";
 ///
 /// @EXAMPLES
 ///
-/// Getting a single task by id:
+/// Fetching a single task by its id
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksListOne}
 ///     var url = "/_api/tasks/statistics-average-collector";
 ///
@@ -61,7 +61,7 @@ var API = "_api/tasks";
 ///
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Fetching a non-existing task:
+/// trying to fetch a non-existing task
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksListNonExisting}
 ///     var url = "/_api/tasks/non-existing-task";
 ///
@@ -88,7 +88,7 @@ var API = "_api/tasks";
 ///
 /// @EXAMPLES
 ///
-/// Getting all tasks:
+/// Fetching all tasks
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksListAll}
 ///     var url = "/_api/tasks";
 ///

@@ -104,7 +104,7 @@ bool RestVersionHandler::isDirect () const {
 ///
 /// @EXAMPLES
 ///
-/// Returns the version information.
+/// Return the version information
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestVersion}
 ///     var response = logCurlRequest('GET', '/_api/version');
@@ -114,7 +114,7 @@ bool RestVersionHandler::isDirect () const {
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Returns the version information with details.
+/// Return the version information with details
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestVersionDetails}
 ///     var response = logCurlRequest('GET', '/_api/version?details=true');

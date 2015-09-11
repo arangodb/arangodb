@@ -62,7 +62,7 @@ var API = "_api/index";
 ///
 /// @EXAMPLES
 ///
-/// Return information about all indexes:
+/// Return information about all indexes
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexAllIndexes}
 ///     var cn = "products";
@@ -207,7 +207,7 @@ function get_api_index (req, res) {
 /// @startDocuBlock JSF_post_api_index_cap
 /// @brief creates a cap constraint
 ///
-/// @RESTHEADER{POST /_api/index, Create cap constraint}
+/// @RESTHEADER{POST /_api/index#CapConstraints, Create cap constraint}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -227,6 +227,9 @@ function get_api_index (req, res) {
 ///
 ///
 /// @RESTDESCRIPTION
+/// **NOTE** Swagger examples won't work due to the anchor.
+///
+///
 ///
 /// Creates a cap constraint for the collection *collection-name*,
 /// if it does not already exist. Expects an object containing the index details.
@@ -286,7 +289,7 @@ function get_api_index (req, res) {
 /// @startDocuBlock JSF_post_api_index_geo
 /// @brief creates a geo index
 ///
-/// @RESTHEADER{POST /_api/index, Create geo-spatial index}
+/// @RESTHEADER{POST /_api/index#geo, Create geo-spatial index}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -321,6 +324,8 @@ function get_api_index (req, res) {
 /// http://geojson.org/geojson-spec.html#positions
 ///
 /// @RESTDESCRIPTION
+/// **NOTE** Swagger examples won't work due to the anchor.
+///
 ///
 /// Creates a geo-spatial index in the collection *collection-name*, if
 /// it does not already exist. Expects an object containing the index details.
@@ -343,7 +348,7 @@ function get_api_index (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// Creating a geo index with a location attribute:
+/// Creating a geo index with a location attribute
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateGeoLocation}
 ///     var cn = "products";
@@ -364,7 +369,7 @@ function get_api_index (req, res) {
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Creating a geo index with latitude and longitude attributes:
+/// Creating a geo index with latitude and longitude attributes
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateGeoLatitudeLongitude}
 ///     var cn = "products";
@@ -391,7 +396,7 @@ function get_api_index (req, res) {
 /// @startDocuBlock JSF_post_api_index_hash
 /// @brief creates a hash index
 ///
-/// @RESTHEADER{POST /_api/index, Create hash index}
+/// @RESTHEADER{POST /_api/index#hash, Create hash index}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -411,6 +416,8 @@ function get_api_index (req, res) {
 /// if *true*, then create a sparse index.
 ///
 /// @RESTDESCRIPTION
+/// **NOTE** Swagger examples won't work due to the anchor.
+///
 ///
 /// Creates a hash index for the collection *collection-name* if it
 /// does not already exist. The call expects an object containing the index
@@ -447,7 +454,7 @@ function get_api_index (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// Creating an unique constraint:
+/// Creating an unique constraint
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewUniqueConstraint}
 ///     var cn = "products";
@@ -469,7 +476,7 @@ function get_api_index (req, res) {
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Creating a non-unique hash index:
+/// Creating a non-unique hash index
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewHashIndex}
 ///     var cn = "products";
@@ -491,7 +498,7 @@ function get_api_index (req, res) {
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Creating a sparse index:
+/// Creating a sparse index
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateSparseHashIndex}
 ///     var cn = "products";
@@ -578,7 +585,7 @@ function get_api_index (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// Creating a skiplist index:
+/// Creating a skiplist index
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewSkiplist}
 ///     var cn = "products";
@@ -600,7 +607,7 @@ function get_api_index (req, res) {
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Creating a sparse skiplist index:
+/// Creating a sparse skiplist index
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateSparseSkiplist}
 ///     var cn = "products";
@@ -629,7 +636,7 @@ function get_api_index (req, res) {
 /// @startDocuBlock JSF_post_api_index_fulltext
 /// @brief creates a fulltext index
 ///
-/// @RESTHEADER{POST /_api/index, Create fulltext index}
+/// @RESTHEADER{POST /_api/index#fulltext, Create fulltext index}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -649,6 +656,8 @@ function get_api_index (req, res) {
 /// this value explicitly when creating the index.
 ///
 /// @RESTDESCRIPTION
+/// **NOTE** Swagger examples won't work due to the anchor.
+///
 ///
 /// Creates a fulltext index for the collection *collection-name*, if
 /// it does not already exist. The call expects an object containing the index
@@ -669,7 +678,7 @@ function get_api_index (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// Creating a fulltext index:
+/// Creating a fulltext index
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewFulltext}
 ///     var cn = "products";
@@ -696,16 +705,18 @@ function get_api_index (req, res) {
 /// @startDocuBlock JSF_post_api_index
 /// @brief creates an index
 ///
-/// @RESTHEADER{POST /_api/index, Create index}
+/// @RESTHEADER{POST /_api/index#general, Create index}
 ///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{collection,string,required}
 /// The collection name.
 ///
-/// @RESTLBODYPARAM{index-details,json,required}
+/// @RESTALLBODYPARAM{index-details,json,required}
 ///
 /// @RESTDESCRIPTION
+/// **NOTE** Swagger examples won't work due to the anchor.
+///
 ///
 /// Creates a new index in the collection *collection*. Expects
 /// an object containing the index details.

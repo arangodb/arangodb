@@ -1163,7 +1163,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///
 /// @EXAMPLES
 ///
-/// No log events available:
+/// No log events available
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowEmpty}
 ///     var re = require("org/arangodb/replication");
@@ -1177,7 +1177,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// A few log events:
+/// A few log events
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowSome}
 ///     var re = require("org/arangodb/replication");
@@ -1201,7 +1201,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// More events than would fit into the response:
+/// More events than would fit into the response
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowBufferLimit}
 ///     var re = require("org/arangodb/replication");
@@ -1647,7 +1647,7 @@ void RestReplicationHandler::handleCommandInventory () {
 ///
 /// The response will be an array of JSON objects, one for each collection.
 /// Each collection containscontains exactly two keys "parameters" and "indexes". This
-/// information comes from Plan/Collections/<DB-Name>/* in the agency,
+/// information comes from Plan/Collections/{DB-Name}/* in the agency,
 /// just that the *indexes* attribute there is relocated to adjust it to
 /// the data format of arangodump.
 ///

@@ -360,7 +360,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief imports documents from JSON
 ///
-/// @RESTHEADER{POST /_api/import,imports documents from JSON}
+/// @RESTHEADER{POST /_api/import#json,imports documents from JSON}
 ///
 /// @RESTALLBODYPARAM{documents,string,required}
 /// The body must either be a JSON-encoded array of objects or a string with
@@ -426,6 +426,9 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// with details about documents that could not be imported.
 ///
 /// @RESTDESCRIPTION
+/// **NOTE** Swagger examples won't work due to the anchor.
+///
+///
 /// Creates documents in the collection identified by `collection-name`.
 /// The JSON representations of the documents must be passed as the body of the
 /// POST request. The request body can either consist of multiple lines, with
@@ -481,7 +484,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 /// @EXAMPLES
 ///
-/// Importing documents with heterogenous attributes from a JSON array:
+/// Importing documents with heterogenous attributes from a JSON array
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonList}
 ///     db._flushCache();
@@ -508,7 +511,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Importing documents from individual JSON lines:
+/// Importing documents from individual JSON lines
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonLines}
 ///     db._flushCache();
@@ -530,7 +533,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Using the auto type detection:
+/// Using the auto type detection
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonType}
 ///     db._flushCache();
@@ -557,7 +560,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Importing documents into a new collection from a JSON array:
+/// Importing documents into a new collection from a JSON array
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonCreate}
 ///     db._flushCache();
@@ -584,7 +587,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Importing into an edge collection, with attributes `_from`, `_to` and `name`:
+/// Importing into an edge collection, with attributes `_from`, `_to` and `name`
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonEdge}
 ///     db._flushCache();
@@ -610,7 +613,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     db._drop("products");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Importing into an edge collection, omitting `_from` or `_to`:
+/// Importing into an edge collection, omitting `_from` or `_to`
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonEdgeInvalid}
 ///     db._flushCache();
@@ -633,7 +636,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Violating a unique constraint, but allow partial imports:
+/// Violating a unique constraint, but allow partial imports
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonUniqueContinue}
 ///     var cn = "products";
@@ -655,7 +658,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Violating a unique constraint, not allowing partial imports:
+/// Violating a unique constraint, not allowing partial imports
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonUniqueFail}
 ///     var cn = "products";
@@ -673,7 +676,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Using a non-existing collection:
+/// Using a non-existing collection
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonInvalidCollection}
 ///     var cn = "products";
@@ -688,7 +691,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Using a malformed body:
+/// Using a malformed body
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonInvalidBody}
 ///     var cn = "products";
@@ -924,7 +927,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief imports documents from JSON-encoded lists
 ///
-/// @RESTHEADER{POST /_api/import,imports document values}
+/// @RESTHEADER{POST /_api/import#document,imports document values}
 ///
 /// @RESTALLBODYPARAM{documents,string,required}
 /// The body must consist of JSON-encoded arrays of attribute values, with one
@@ -981,6 +984,9 @@ bool RestImportHandler::createFromJson (string const& type) {
 /// with details about documents that could not be imported.
 ///
 /// @RESTDESCRIPTION
+/// **NOTE** Swagger examples won't work due to the anchor.
+///
+///
 /// Creates documents in the collection identified by `collection-name`.
 /// The first line of the request body must contain a JSON-encoded array of
 /// attribute names. All following lines in the request body must contain
@@ -1038,7 +1044,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 /// @EXAMPLES
 ///
 /// Importing two documents, with attributes `_key`, `value1` and `value2` each. One
-/// line in the import data is empty:
+/// line in the import data is empty
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportCsvExample}
 ///     var cn = "products";
@@ -1059,7 +1065,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Importing two documents into a new collection:
+/// Importing two documents into a new collection
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportCsvCreate}
 ///     var cn = "products";
@@ -1080,7 +1086,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Importing into an edge collection, with attributes `_from`, `_to` and `name`:
+/// Importing into an edge collection, with attributes `_from`, `_to` and `name`
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportCsvEdge}
 ///     var cn = "links";
@@ -1104,7 +1110,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///     db._drop("products");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Importing into an edge collection, omitting `_from` or `_to`:
+/// Importing into an edge collection, omitting `_from` or `_to`
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportCsvEdgeInvalid}
 ///     var cn = "links";
@@ -1125,7 +1131,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Violating a unique constraint, but allow partial imports:
+/// Violating a unique constraint, but allow partial imports
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportCsvUniqueContinue}
 ///     var cn = "products";
@@ -1146,7 +1152,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Violating a unique constraint, not allowing partial imports:
+/// Violating a unique constraint, not allowing partial imports
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportCsvUniqueFail}
 ///     var cn = "products";
@@ -1163,7 +1169,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Using a non-existing collection:
+/// Using a non-existing collection
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportCsvInvalidCollection}
 ///     var cn = "products";
@@ -1178,7 +1184,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Using a malformed body:
+/// Using a malformed body
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportCsvInvalidBody}
 ///     var cn = "products";
