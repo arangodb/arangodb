@@ -146,7 +146,7 @@ The following other date functions are also available:
   Note that this function is evaluated on every invocation and may return
   different values when invoked multiple times in the same query.
 
-- *DATE_ADD(date, amount, unit)*: Adds *amount* given in *unit* from *date* and
+- *DATE_ADD(date, amount, unit)*: Adds *amount* given in *unit* to *date* and
   returns the calculated date.
 
   *unit* can be either of the following to specify the time unit to add or
