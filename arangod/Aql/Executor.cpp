@@ -245,6 +245,15 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "DATE_MINUTE",                 Function("DATE_MINUTE",                 "AQL_DATE_MINUTE", "ns", true, true, false, true, true) },
   { "DATE_SECOND",                 Function("DATE_SECOND",                 "AQL_DATE_SECOND", "ns", true, true, false, true, true) },
   { "DATE_MILLISECOND",            Function("DATE_MILLISECOND",            "AQL_DATE_MILLISECOND", "ns", true, true, false, true, true) },
+  { "DATE_DAYOFYEAR",              Function("DATE_DAYOFYEAR",              "AQL_DATE_DAYOFYEAR", "ns", true, true, false, true, true) },
+  { "DATE_ISOWEEK",                Function("DATE_ISOWEEK",                "AQL_DATE_ISOWEEK", "ns", true, true, false, true, true) },
+  { "DATE_LEAPYEAR",               Function("DATE_LEAPYEAR",               "AQL_DATE_LEAPYEAR", "ns", true, true, false, true, true) },
+  { "DATE_QUARTER",                Function("DATE_QUARTER",                "AQL_DATE_QUARTER", "ns", true, true, false, true, true) },
+  { "DATE_ADD",                    Function("DATE_ADD",                    "AQL_DATE_ADD", "ns,ns|n", true, true, false, true, true) },
+  { "DATE_SUBTRACT",               Function("DATE_SUBTRACT",               "AQL_DATE_SUBTRACT", "ns,ns|n", true, true, false, true, true) },
+  { "DATE_DIFF",                   Function("DATE_DIFF",                   "AQL_DATE_DIFF", "ns,ns,s|b", true, true, false, true, true) },
+  { "DATE_COMPARE",                Function("DATE_COMPARE",                "AQL_DATE_COMPARE", "ns,ns,s|s", true, true, false, true, true) },
+  { "DATE_FORMAT",                 Function("DATE_FORMAT",                 "AQL_DATE_FORMAT", "ns,s", true, true, false, true, true) },
 
   // misc functions
   { "FAIL",                        Function("FAIL",                        "AQL_FAIL", "|s", false, false, true, true, true) },
