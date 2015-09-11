@@ -396,7 +396,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// impact for some queries so this option is turned off by default, and "count"
 /// is only returned when requested.
 ///
-/// @RESTBODYPARAM{batchSize,integer,roptional,int64}
+/// @RESTBODYPARAM{batchSize,integer,optional,int64}
 /// maximum number of result documents to be transferred from
 /// the server to the client in one roundtrip. If this attribute is
 /// not set, a server-controlled default value will be used. A *batchSize* value of
@@ -408,7 +408,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// is useful to ensure garbage collection of cursors that are not fully fetched
 /// by clients. If not set, a server-defined value will be used.
 ///
-/// @RESTBODYPARAM{cache,boolean,optionas,}
+/// @RESTBODYPARAM{cache,boolean,optional,}
 /// flag to determine whether the AQL query cache
 /// shall be used. If set to *false*, then any query cache lookup will be skipped
 /// for the query. If set to *true*, it will lead to the query cache being checked
