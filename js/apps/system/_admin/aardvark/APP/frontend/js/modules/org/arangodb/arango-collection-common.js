@@ -696,7 +696,12 @@ ArangoCollection.prototype.geo = function(loc, order) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{007_collectionNear}
 /// ~ db._create("geo");
 ///   db.geo.ensureGeoIndex("loc");
-///   for (var i = -90;  i <= 90;  i += 10) { for (var j = -180; j <= 180; j += 10) { db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
+///   |for (var i = -90;  i <= 90;  i += 10) { 
+///   |   for (var j = -180; j <= 180; j += 10) {
+///   |     db.geo.save({
+///   |        name : "Name/" + i + "/" + j,
+///   |        loc: [ i, j ] });
+///   } }
 ///   db.geo.near(0, 0).limit(2).toArray();
 /// ~ db._drop("geo");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -707,7 +712,12 @@ ArangoCollection.prototype.geo = function(loc, order) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{008_collectionNearDistance}
 /// ~ db._create("geo");
 ///   db.geo.ensureGeoIndex("loc");
-///   for (var i = -90;  i <= 90;  i += 10) { for (var j = -180; j <= 180; j += 10) { db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
+///   |for (var i = -90;  i <= 90;  i += 10) {
+///   |  for (var j = -180; j <= 180; j += 10) {
+///   |     db.geo.save({
+///   |         name : "Name/" + i + "/" + j,
+///   |         loc: [ i, j ] });
+///   } }
 ///   db.geo.near(0, 0).distance().limit(2).toArray();
 /// ~ db._drop("geo");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -759,7 +769,9 @@ ArangoCollection.prototype.near = function (lat, lon) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{009_collectionWithin}
 /// ~ db._create("geo");
 /// ~ db.geo.ensureGeoIndex("loc");
-/// ~ for (var i = -90;  i <= 90;  i += 10) { for (var j = -180; j <= 180; j += 10) { db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
+/// |~ for (var i = -90;  i <= 90;  i += 10) {
+/// |  for (var j = -180; j <= 180; j += 10) {
+///       db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
 ///   db.geo.within(0, 0, 2000 * 1000).distance().toArray();
 /// ~ db._drop("geo");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
