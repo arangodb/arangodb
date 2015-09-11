@@ -121,7 +121,7 @@ FulltextIndex::FulltextIndex (TRI_idx_iid_t iid,
                               TRI_document_collection_t* collection,
                               std::string const& attribute,
                               int minWordLength) 
-  : Index(iid, collection, std::vector<std::string>{ attribute }),
+  : Index(iid, collection, std::vector<std::vector<triagens::basics::AttributeName>> { { { attribute, false } } } ),
     _pid(0),
     _fulltextIndex(nullptr),
     _minWordLength(minWordLength > 0 ? minWordLength : 1) {
@@ -158,14 +158,30 @@ size_t FulltextIndex::memory () const {
   return TRI_MemoryFulltextIndex(_fulltextIndex);
 }
 
-triagens::basics::Json FulltextIndex::toJson (TRI_memory_zone_t* zone) const {
-  auto json = Index::toJson(zone);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the index
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json FulltextIndex::toJson (TRI_memory_zone_t* zone,
+                                              bool withFigures) const {
+  auto json = Index::toJson(zone, withFigures);
 
   // hard-coded
   json("unique", triagens::basics::Json(false))
       ("sparse", triagens::basics::Json(true));
 
   json("minLength", triagens::basics::Json(zone, static_cast<double>(_minWordLength)));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the index figures
+////////////////////////////////////////////////////////////////////////////////
+        
+triagens::basics::Json FulltextIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
+  triagens::basics::Json json(triagens::basics::Json::Object);
+  json("memory", triagens::basics::Json(static_cast<double>(memory())));
 
   return json;
 }

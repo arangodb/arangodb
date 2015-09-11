@@ -1,2 +1,2 @@
-arangosh> db.five.all().limit(2).count(true);
-2
+arangosh&gt; db.five.all().limit(<span class="hljs-number">2</span>).count(<span class="hljs-literal">true</span>);
+<span class="hljs-number">2</span>

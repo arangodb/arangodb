@@ -112,6 +112,8 @@ pack-dmg-cmake:
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
 		-D "READLINE_VERSION=${READLINE_VERSION}" \
+		-D "READLINE_INCLUDE=${READLINE_INCLUDE}" \
+		-D "READLINE_LIB_PATH=${READLINE_LIB_PATH}" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		..
@@ -125,6 +127,7 @@ pack-dmg-cmake:
 	test -d bin || mkdir bin
 	make bin/etcd-arango
 
+	rm -f ./.file-list-js
 	cd Build && ${MAKE}
 
 	./Installation/file-copy-js.sh . Build
@@ -150,6 +153,7 @@ pack-macosxcode:
 	${MAKE} -f GNUMakefile pack-macosxcode-cmake MOREOPTS='$(MOREOPTS)'
 
 pack-macosxcode-cmake:
+	rm -f ./.file-list-js
 	cd Build && cmake \
 		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "BUILD_PACKAGE=dmg-cli" \
@@ -159,6 +163,8 @@ pack-macosxcode-cmake:
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
 		-D "READLINE_VERSION=${READLINE_VERSION}" \
+		-D "READLINE_INCLUDE=${READLINE_INCLUDE}" \
+		-D "READLINE_LIB_PATH=${READLINE_LIB_PATH}" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		-G Xcode \
@@ -194,6 +200,8 @@ pack-macosx-cmake:
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
 		-D "READLINE_VERSION=${READLINE_VERSION}" \
+		-D "READLINE_INCLUDE=${READLINE_INCLUDE}" \
+		-D "READLINE_LIB_PATH=${READLINE_LIB_PATH}" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		$(MOREOPTS) \
@@ -208,6 +216,7 @@ pack-macosx-cmake:
 	test -d bin || mkdir bin
 	make bin/etcd-arango
 
+	rm -f ./.file-list-js
 	cd Build && ${MAKE}
 
 	./Installation/file-copy-js.sh . Build
@@ -255,6 +264,7 @@ pack-arm-cmake:
 
 	${MAKE} ${BUILT_SOURCES}
 
+	rm -f ./.file-list-js
 	cd Build && ${MAKE}
 
 	./Installation/file-copy-js.sh . Build
@@ -283,6 +293,7 @@ pack-deb-cmake:
 
 	${MAKE} ${BUILT_SOURCES}
 
+	rm -f ./.file-list-js
 	cd Build && ${MAKE}
 
 	./Installation/file-copy-js.sh . Build
@@ -293,23 +304,27 @@ pack-deb-cmake:
 ### @brief Windows 64-bit bundle
 ################################################################################
 
-.PHONY: pack-win32 pack-winXX winXX-cmake
+.PHONY: pack-win32 pack-winXX winXX-cmake win64-relative win64-relative-debug
 
-pack-win32:
+pack-win32: 
 	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12"
 
 pack-win64:
 	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64"
 
 pack-win32-relative:
-	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12" MOREOPTS='-D "USE_RELATIVE=ON" -D "USER_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
 
 pack-win64-relative:
-	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USER_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
 
 win64-relative:
-	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USER_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
-	$(MAKE) winXX-build BITS=64
+	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON"'
+	$(MAKE) winXX-build BITS=64 BUILD_TARGET=RelWithDebInfo
+
+win64-relative-debug:
+	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USE_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) winXX-build BITS=64 BUILD_TARGET=Debug
 
 pack-winXX:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
@@ -326,6 +341,7 @@ pack-winXX-MOREOPTS:
 	${MAKE} packXX BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 
 winXX-cmake: checkcmake
+	rm -f ./.file-list-js
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
 		-D "ARANGODB_VERSION=${VERSION}" \

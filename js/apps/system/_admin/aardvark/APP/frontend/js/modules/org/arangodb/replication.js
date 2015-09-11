@@ -56,6 +56,32 @@ logger.state = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the tick ranges that can be provided by the replication logger
+////////////////////////////////////////////////////////////////////////////////
+
+logger.tickRanges = function () {
+  var db = internal.db;
+
+  var requestResult = db._connection.GET("/_api/replication/logger-tick-ranges");
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the first tick that can be provided by the replication logger
+////////////////////////////////////////////////////////////////////////////////
+
+logger.firstTick = function () {
+  var db = internal.db;
+
+  var requestResult = db._connection.GET("/_api/replication/logger-first-tick");
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult.firstTick;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -138,7 +164,7 @@ applier.properties = function (config) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief performs a one-time synchronisation with a remote endpoint
+/// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 var sync = function (config) {

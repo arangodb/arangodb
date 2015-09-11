@@ -1,8 +1,8 @@
-shell> curl --dump - http://localhost:8529/_api/replication/server-id
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/server-id</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "serverId" : "181102662252948" 
+  <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"208267300529216"</span> 
 }

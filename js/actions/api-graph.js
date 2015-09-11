@@ -171,7 +171,7 @@ function matchError (req, res, doc, errorCode) {
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been synced to disk.
 ///
-/// @RESTBODYPARAM{graph,json,required}
+/// @RESTALLBODYPARAM{graph,json,required}
 /// The call expects a JSON object as body with the following attributes:
 /// `_key`: The name of the new graph.
 /// `vertices`: The name of the vertices collection.
@@ -197,7 +197,7 @@ function matchError (req, res, doc, errorCode) {
 /// is returned if it failed.
 /// The response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphPostGraph}
 ///     var url = "/_api/graph/";
@@ -257,7 +257,7 @@ function post_graph_graph (req, res) {
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{graph-name,string,optional}
+/// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph.
 ///
 /// @RESTHEADERPARAMETERS
@@ -308,7 +308,7 @@ function post_graph_graph (req, res) {
 /// a different version. This response code may only be returned if `graph-name`
 /// is specified in the request.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// get graph by name
 ///
@@ -406,7 +406,7 @@ function get_graph_graph (req, res) {
 /// "If-Match" header or `rev` is given and the current graph has
 /// a different version
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// delete graph by name
 ///
@@ -483,7 +483,7 @@ function delete_graph_graph (req, res) {
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been sync to disk.
 ///
-/// @RESTBODYPARAM{vertex,json,required}
+/// @RESTALLBODYPARAM{vertex,json,required}
 /// The call expects a JSON object as body with the vertex properties:
 /// - `_key`: The name of the vertex (optional).
 /// - further optional attributes.
@@ -504,7 +504,7 @@ function delete_graph_graph (req, res) {
 /// is returned if the graph was created successfully and `waitForSync` was
 /// `false`.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphCreateVertex}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -606,7 +606,7 @@ function post_graph_vertex (req, res, g) {
 /// "If-None-Match" header or `rev` is given and the current graph has
 /// a different version
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// get vertex properties by name
 ///
@@ -698,7 +698,7 @@ function get_graph_vertex (req, res, g) {
 /// "If-Match" header or `rev` is given and the current vertex has
 /// a different version
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteVertex}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -832,7 +832,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 /// @RESTQUERYPARAM{rev,string,optional}
 /// Revision of a vertex
 ///
-/// @RESTBODYPARAM{vertex,json,required}
+/// @RESTALLBODYPARAM{vertex,json,required}
 /// The call expects a JSON object as body with the new vertex properties.
 ///
 /// @RESTHEADERPARAMETERS
@@ -867,7 +867,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 /// "If-Match" header or `rev` is given and the current vertex has
 /// a different version
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphChangeVertex}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -913,7 +913,7 @@ function put_graph_vertex (req, res, g) {
 /// @RESTQUERYPARAM{keepNull,boolean,optional}
 /// Modify the behavior of the patch command to remove any attribute
 ///
-/// @RESTBODYPARAM{graph,json,required}
+/// @RESTALLBODYPARAM{graph,json,required}
 /// The call expects a JSON object as body with the properties to patch.
 ///
 /// @RESTHEADERPARAMETERS
@@ -956,7 +956,7 @@ function put_graph_vertex (req, res, g) {
 /// "If-Match" header or `rev` is given and the current vertex has
 /// a different version
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphChangepVertex}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -1085,7 +1085,7 @@ function process_labels_filter (data, labels, collname) {
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
 ///
-/// @RESTBODYPARAM{filter,json,required}
+/// @RESTALLBODYPARAM{filter,json,required}
 /// The call expects a JSON object as body to filter the result:
 ///
 /// @RESTDESCRIPTION
@@ -1111,7 +1111,7 @@ function process_labels_filter (data, labels, collname) {
 /// @RESTRETURNCODE{201}
 /// is returned if the cursor was created
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Select all vertices
 ///
@@ -1194,7 +1194,7 @@ function post_graph_all_vertices (req, res, g) {
 /// @RESTURLPARAM{vertex-name,string,required}
 /// The key of the vertex
 ///
-/// @RESTBODYPARAM{graph,json,required}
+/// @RESTALLBODYPARAM{graph,json,required}
 /// The call expects a JSON object as body to filter the result:
 ///
 /// @RESTDESCRIPTION
@@ -1223,7 +1223,7 @@ function post_graph_all_vertices (req, res, g) {
 /// @RESTRETURNCODE{201}
 /// is returned if the cursor was created
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Select all vertices
 ///
@@ -1240,8 +1240,12 @@ function post_graph_all_vertices (req, res, g) {
 ///     g.addEdge(v1,v3, 3);
 ///     g.addEdge(v2,v4, 4);
 ///     var url = "/_api/graph/graph/vertices/v2";
-///     var body = '{"batchSize" : 100, "filter" : {"direction" : "any", "properties":';
-///     body += '[] }}';
+///     var body = {
+///            "batchSize" : 100,
+///            "filter" : {
+///              "direction" : "any",
+///               "properties":[] }};
+///
 ///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);
@@ -1266,8 +1270,15 @@ function post_graph_all_vertices (req, res, g) {
 ///     g.addEdge(v1, v3, 3);
 ///     g.addEdge(v4, v2, 4);
 ///     var url = "/_api/graph/graph/vertices/v2";
-///     var body = '{"batchSize" : 100, "filter" : {"direction" : "out", "properties":';
-///     body += '[ { "key": "optional1", "value": "val2", "compare" : "==" }, ] }}';
+///     var body = {
+///         "batchSize" : 100,
+///         "filter" : {
+///             "direction" : "out",
+///             "properties": [ {
+///                    "key": "optional1",
+///                    "value": "val2",
+///                    "compare" : "==" }, ] }};
+///
 ///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);
@@ -1365,7 +1376,7 @@ function post_graph_vertex_vertices (req, res, g) {
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until edge has been sync to disk.
 ///
-/// @RESTBODYPARAM{edge,json,required}
+/// @RESTALLBODYPARAM{edge,json,required}
 /// The call expects a JSON object as body with the edge properties:
 ///
 /// @RESTDESCRIPTION
@@ -1392,7 +1403,7 @@ function post_graph_vertex_vertices (req, res, g) {
 /// is returned if the edge was created successfully and `waitForSync` was
 /// `false`.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphCreateEdge}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -1505,7 +1516,7 @@ function post_graph_edge (req, res, g) {
 /// "If-None-Match" header or `rev` is given and the current edge has
 /// a different version
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphGetEdge}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -1596,7 +1607,7 @@ function get_graph_edge (req, res, g) {
 /// "If-Match" header or `rev` is given and the current edge has
 /// a different version
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteEdge}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -1733,7 +1744,7 @@ function update_graph_edge (req, res, g, isPatch) {
 /// @RESTQUERYPARAM{rev,string,optional}
 /// Revision of an edge
 ///
-/// @RESTBODYPARAM{edge,json,required}
+/// @RESTALLBODYPARAM{edge,json,required}
 /// The call expects a JSON object as body with the new edge properties.
 ///
 /// @RESTHEADERPARAMETERS
@@ -1770,7 +1781,7 @@ function update_graph_edge (req, res, g, isPatch) {
 /// "If-Match" header or `rev` is given and the current edge has
 /// a different version
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphChangeEdge}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -1818,7 +1829,7 @@ function put_graph_edge (req, res, g) {
 /// @RESTQUERYPARAM{keepNull,boolean,optional}
 /// Modify the behavior of the patch command to remove any attribute
 ///
-/// @RESTBODYPARAM{edge-properties,json,required}
+/// @RESTALLBODYPARAM{edge-properties,json,required}
 /// The call expects a JSON object as body with the properties to patch.
 ///
 /// @RESTHEADERPARAMETERS
@@ -1861,7 +1872,7 @@ function put_graph_edge (req, res, g) {
 /// "If-Match" header or `rev` is given and the current edge has
 /// a different version
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphChangepEdge}
 ///     var Graph = require("org/arangodb/graph-blueprint").Graph;
@@ -1895,7 +1906,7 @@ function patch_graph_edge (req, res, g) {
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
 ///
-/// @RESTBODYPARAM{edge-properties,json,required}
+/// @RESTALLBODYPARAM{edge-properties,json,required}
 /// The call expects a JSON object as body to filter the result:
 ///
 /// @RESTDESCRIPTION
@@ -1922,7 +1933,7 @@ function patch_graph_edge (req, res, g) {
 /// @RESTRETURNCODE{201}
 /// is returned if the cursor was created
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Select all edges
 ///
@@ -2018,7 +2029,7 @@ function post_graph_all_edges (req, res, g) {
 /// @RESTURLPARAM{vertex-name,string,required}
 /// The name of the vertex
 ///
-/// @RESTBODYPARAM{edge-properties,json,required}
+/// @RESTALLBODYPARAM{edge-properties,json,required}
 /// The call expects a JSON object as body to filter the result:
 ///
 /// @RESTDESCRIPTION
@@ -2048,7 +2059,7 @@ function post_graph_all_edges (req, res, g) {
 /// @RESTRETURNCODE{201}
 /// is returned if the cursor was created
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Select all edges
 ///
@@ -2065,7 +2076,7 @@ function post_graph_all_edges (req, res, g) {
 ///     g.addEdge(v2, v4, "edge3", { "optional1" : "val1" });
 ///     g.addEdge(v1, v5, "edge4", { "optional1" : "val1" });
 ///     var url = "/_api/graph/graph/edges/v2";
-///     var body = '{"batchSize" : 100, "filter" : { "direction" : "any" }}';
+///     var body = {"batchSize" : 100, "filter" : { "direction" : "any" }};
 ///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);

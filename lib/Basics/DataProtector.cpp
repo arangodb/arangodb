@@ -34,11 +34,16 @@
 // thread_local int triagens::basics::DataProtector<Nr>::_mySlot = -1;
 thread_local int triagens::basics::DataProtector::_mySlot = -1;
 
-/// We need an explicit template initialisation for each value of the
+// TODO: Make this a template again once everybody has gcc >= 4.9.2
+// template<int Nr> 
+// std::atomic<int> triagens::basics::DataProtector<Nr>::_last(0);
+std::atomic<int> triagens::basics::DataProtector::_last(0);
+
+/// We need an explicit template initialization for each value of the
 /// template parameter, such that the compiler can allocate a thread local
 /// variable for each of them.
 
-// TODO: Reactivate this template instanciation once everybody has gcc >= 4.9.2
+// TODO: Reactivate this template instantiation once everybody has gcc >= 4.9.2
 // template class triagens::basics::DataProtector<64>;
 
 // Local Variables:

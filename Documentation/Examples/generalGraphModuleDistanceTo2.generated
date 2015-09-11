@@ -1,11 +1,11 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> g._distanceTo([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
-........> {weight : 'distance'});
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; g._distanceTo([{_id: <span class="hljs-string">'germanCity/Cologne'</span>},{_id: <span class="hljs-string">'germanCity/Munich'</span>}], <span class="hljs-string">'frenchCity/Lyon'</span>,
+........&gt; {weight : <span class="hljs-string">'distance'</span>});
 [ 
   { 
-    "startVertex" : "germanCity/Cologne", 
-    "vertex" : "frenchCity/Lyon", 
-    "distance" : 1 
+    <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
+    <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
+    <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
   } 
 ]

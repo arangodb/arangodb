@@ -3,8 +3,9 @@
 #define TRIAGENS_VOC_BASE_DOCUMENT_OPERATION_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/headers.h"
+#include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
 
 struct TRI_transaction_collection_s;

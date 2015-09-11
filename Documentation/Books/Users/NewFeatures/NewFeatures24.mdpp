@@ -234,7 +234,7 @@ provides a better overview of the app, e.g.:
 * API documentation
 
 Installing a new Foxx application on the server is made easy using the new
-`Add application` button. The `Add application` dialogue provides all the 
+`Add application` button. The `Add application` dialog provides all the 
 features already available in the `foxx-manager` console application plus some more: 
 
 * install a Foxx application from Github
@@ -272,10 +272,10 @@ easily by setting the `includeSystem` attribute to `false` in the following comm
 * replication.applier.properties({ includeSystem: false });
 
 This will exclude all system collections (including `_aqlfunctions`, `_graphs` etc.)
-from the initial synchronisation and the continuous replication.
+from the initial synchronization and the continuous replication.
 
 If this is also undesired, it is also possible to specify a list of collections to
-exclude from the initial synchronisation and the continuous replication using the
+exclude from the initial synchronization and the continuous replication using the
 `restrictCollections` attribute, e.g.:
       
 ```js

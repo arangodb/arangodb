@@ -6,7 +6,7 @@ convenient SQL-like query language or JavaScript extensions. Use ACID
 transactions if you require them. Scale horizontally with a few mouse clicks.
 The supported data models can be mixed in queries and allow ArangoDB to be the
 aggregation point for your data.
-To get started, try one of our 10 minutes tutorials in your favourite
+To get started, try one of our 10 minutes tutorials in your favorite
 programming language or try one of our ArangoDB_Cookbook_recipes.
 For the impatient: download and install ArangoDB. Start the server arangod and
 point your browser to http://127.0.0.1:8529/.
@@ -25,7 +25,7 @@ Here is an AQL query that makes use of all those features:
   AQL Query Example  AQL Query Example
 Joins and transactions are key features for flexible, secure data designs,
 widely used in relational databases but lacking in many NoSQL products.
-However, there is no need to forego them in ArangoDB. You decide how and when
+However, there is no need to forget them in ArangoDB. You decide how and when
 to use joins and strong consistency guarantees, without sacrificing performance
 and scalability.
 Furthermore, ArangoDB offers a JavaScript framework called Foxx that is
@@ -46,7 +46,7 @@ Other features of ArangoDB include:
 * JavaScript for all: no language zoo, you can use one language from your
   browser to your back-end
 * ArangoDB is multi-threaded - exploit the power of all your cores
-* Flexible data modelling: model your data as combination of key-value pairs,
+* Flexible data modeling: model your data as combination of key-value pairs,
   documents or graphs - perfect for social relations
 * Free index choice: use the correct index for your problem, be it a skip list
   or a fulltext search
@@ -57,7 +57,7 @@ Other features of ArangoDB include:
   transactional consistency and isolation
 * Replication and Sharding: set up the database in a master-slave configuration
   or spread bigger datasets across multiple servers
-* It is open source (Apache Licence 2.0)
+* It is open source (Apache License 2.0)
 
 For more in-depth information read the design_goals_of_ArangoDB
 

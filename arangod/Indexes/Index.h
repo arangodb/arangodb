@@ -31,8 +31,12 @@
 #define ARANGODB_INDEXES_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/JsonHelper.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/VocShaper.h"
 #include "VocBase/voc-types.h"
 
 // -----------------------------------------------------------------------------
@@ -55,11 +59,89 @@ typedef struct TRI_index_search_value_s {
 TRI_index_search_value_t;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       class Index
+// --SECTION--                                              struct index_element
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Unified index element. Do not directly construct it.
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_element_t {
+
+  private:
+    TRI_doc_mptr_t* _document;
+
+     // Do not use new for this struct, use ...
+     TRI_index_element_t () {
+     }
+
+     ~TRI_index_element_t () = delete;
+
+  public: 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get a pointer to the Document's masterpointer.
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_doc_mptr_t* document () const {
+      return _document;
+    }
+     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Set the pointer to the Document's masterpointer.
+////////////////////////////////////////////////////////////////////////////////
+
+    void document (TRI_doc_mptr_t* doc) {
+      _document = doc;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get a pointer to sub objects
+////////////////////////////////////////////////////////////////////////////////
+
+    TRI_shaped_sub_t* subObjects () const {
+      return reinterpret_cast<TRI_shaped_sub_t*>((char*) &_document + sizeof(TRI_doc_mptr_t*));
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Allocate a new index Element
+////////////////////////////////////////////////////////////////////////////////
+
+    static TRI_index_element_t* allocate (size_t numSubs) {
+      void* space = TRI_Allocate(
+        TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numSubs), false
+      );
+      return new (space) TRI_index_element_t();
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Memory usage of an index element
+////////////////////////////////////////////////////////////////////////////////
+
+    static inline size_t memoryUsage (size_t numSubs) {
+      return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numSubs);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Free the index element.
+////////////////////////////////////////////////////////////////////////////////
+
+    static void free (TRI_index_element_t* el) {
+      TRI_ASSERT_EXPENSIVE(el != nullptr);
+      TRI_ASSERT_EXPENSIVE(el->document() != nullptr);
+      TRI_ASSERT_EXPENSIVE(el->subObjects() != nullptr);
+
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, el);
+    }
+
+};
 
 namespace triagens {
   namespace arango {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       class Index
+// -----------------------------------------------------------------------------
 
     class Index {
 
@@ -75,7 +157,7 @@ namespace triagens {
 
         Index (TRI_idx_iid_t,
                struct TRI_document_collection_t*,
-               std::vector<std::string> const&);
+               std::vector<std::vector<triagens::basics::AttributeName> >const&);
 
         virtual ~Index ();
 
@@ -117,8 +199,16 @@ namespace triagens {
 /// @brief return the index fields
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline std::vector<std::string> const& fields () const {
+        inline std::vector<std::vector<triagens::basics::AttributeName>> const& fields () const {
           return _fields;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+        
+        inline struct TRI_document_collection_t* collection () const {
+          return _collection;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,13 +268,14 @@ namespace triagens {
         virtual bool hasSelectivityEstimate () const = 0;
         virtual double selectivityEstimate () const;
         virtual size_t memory () const = 0;
-        virtual triagens::basics::Json toJson (TRI_memory_zone_t*) const;
+        virtual triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const;
+        virtual triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const;
         virtual bool dumpFields () const = 0;
   
         virtual int insert (struct TRI_doc_mptr_t const*, bool) = 0;
         virtual int remove (struct TRI_doc_mptr_t const*, bool) = 0;
         virtual int postInsert (struct TRI_transaction_collection_s*, struct TRI_doc_mptr_t const*);
-        virtual int batchInsert (std::vector<struct TRI_doc_mptr_t const*> const*, size_t);
+        virtual int batchInsert (std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
         // a garbage collection function for the index
         virtual int cleanup ();
@@ -203,11 +294,11 @@ namespace triagens {
 
       protected:
 
-        TRI_idx_iid_t const                      _iid;
+        TRI_idx_iid_t const                                                    _iid;
 
-        struct TRI_document_collection_t*        _collection;
+        struct TRI_document_collection_t*                                      _collection;
 
-        std::vector<std::string> const           _fields;
+        std::vector<std::vector<triagens::basics::AttributeName>> const        _fields;
                
     };
 

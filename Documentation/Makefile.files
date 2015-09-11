@@ -44,7 +44,7 @@ man:
 
 swagger:
 	(python \
-            @srcdir@/Documentation/Scripts/generateSwaggerApi.py \
+            @srcdir@/Documentation/Scripts/generateSwagger.py \
                 @srcdir@ \
                 @srcdir@/js/apps/system/_admin/aardvark/APP/api-docs api-docs \
         ) > @srcdir@/js/apps/system/_admin/aardvark/APP/api-docs.json	
@@ -63,19 +63,18 @@ examples:
 	@rm -f /tmp/arangodb.examples
 
 	python @srcdir@/Documentation/Scripts/generateExamples.py \
-		--output-dir @builddir@/Documentation/Examples \
-		--only-thisone "$(FILTER_EXAMPLE)" \
-		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
-		@srcdir@/js/actions \
-		@srcdir@/js/client \
-		@srcdir@/js/common \
-		@srcdir@/js/server \
-		@srcdir@/js/apps/system/_api/gharial/APP \
-		@srcdir@/Documentation/Books/Users \
-		@srcdir@/arangod/RestHandler \
-		@srcdir@/arangod/V8Server \
-		@srcdir@/lib/Admin \
-		> /tmp/arangosh.examples.js
+		--outputDir @builddir@/Documentation/Examples \
+		--onlyThisOne "$(FILTER_EXAMPLE)" \
+		--outputFile /tmp/arangosh.examples.js \
+		--arangoshSetup @srcdir@/Documentation/Examples/setup-arangosh.js \
+			@srcdir@/js/actions \
+			@srcdir@/js/client \
+			@srcdir@/js/common \
+			@srcdir@/js/server \
+			@srcdir@/js/apps/system/_api/gharial/APP \
+			@srcdir@/Documentation/Books/Users \
+			@srcdir@/arangod/RestHandler \
+			@srcdir@/arangod/V8Server
 
 	if test -z "$(server.endpoint)"; then \
 		$(MAKE) start-server PID=$(PID) \

@@ -62,13 +62,13 @@ static_assert(sizeof(TRI_vector_t) == sizeof(char*) + 4 * sizeof(uint32_t), "inv
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector
+/// @brief initializes a vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVector (TRI_vector_t*, TRI_memory_zone_t*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector, with user-definable settings
+/// @brief initializes a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVector2 (TRI_vector_t*,
@@ -106,13 +106,6 @@ static inline size_t TRI_LengthVector (TRI_vector_t const* vector) {
 
 int TRI_ReserveVector (TRI_vector_t*,
                        size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copies a vector
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_t* TRI_CopyVector (TRI_memory_zone_t*,
-                              TRI_vector_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adjusts the length of the vector
@@ -217,13 +210,13 @@ TRI_vector_pointer_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector
+/// @brief initializes a vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVectorPointer (TRI_vector_pointer_t*, TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector, with user-definable settings
+/// @brief initializes a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVectorPointer (TRI_vector_pointer_t*,
@@ -320,13 +313,13 @@ TRI_vector_string_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a string vector
+/// @brief initializes a string vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVectorString (TRI_vector_string_t*, TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a string vector, with user-definable settings
+/// @brief initializes a string vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVectorString2 (TRI_vector_string_t*,
@@ -348,13 +341,6 @@ void TRI_FreeVectorString (TRI_memory_zone_t*, TRI_vector_string_t*);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copies a vector and all its strings
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t*,
-                                           TRI_vector_string_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns length of vector

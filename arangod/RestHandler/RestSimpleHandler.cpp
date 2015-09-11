@@ -151,10 +151,10 @@ bool RestSimpleHandler::cancelQuery () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the query was cancelled
+/// @brief whether or not the query was canceled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestSimpleHandler::wasCancelled () {
+bool RestSimpleHandler::wasCanceled () {
   MUTEX_LOCKER(_queryLock);
   return _queryKilled;
 }
@@ -165,15 +165,19 @@ bool RestSimpleHandler::wasCancelled () {
 ///
 /// @RESTHEADER{PUT /_api/simple/remove-by-keys, Remove documents by their keys}
 ///
-/// @RESTBODYPARAM{query,json,required}
-/// A JSON object containing an attribute *collection* with the collection name
-/// to look in for the documents to remove, and an attribute *keys*, which must be
-/// an array with the _keys of documents to remove.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// The name of the collection to look in for the documents to remove
 ///
-/// The JSON object can also contain an *options* object, which itself may
-/// contain the *waitForSync* attribute: if set to true, then all removal 
-/// operations will instantly be synchronised to disk. If this is not specified, 
-/// then the collection's default sync behavior will be applied.
+/// @RESTBODYPARAM{keys,array,required,string}
+/// array with the _keys of documents to remove.
+///
+/// @RESTBODYPARAM{options,object,optional,put_api_simple_remove_by_keys_opts}
+/// a json object which can contains following attributes:
+///
+/// @RESTSTRUCT{waitForSync,put_api_simple_remove_by_keys_opts,string,optional,string}
+/// if set to true, then all removal operations will
+/// instantly be synchronized to disk. If this is not specified, then the
+/// collection's default sync behavior will be applied.
 ///
 /// @RESTDESCRIPTION
 /// Looks up the documents in the specified collection using the array of keys
@@ -216,7 +220,7 @@ bool RestSimpleHandler::wasCancelled () {
 ///
 ///     var url = "/_api/simple/remove-by-keys";
 ///     var data = { keys: keys, collection: cn };
-///     var response = logCurlRequest('PUT', url, JSON.stringify(data));
+///     var response = logCurlRequest('PUT', url, data);
 ///
 ///     assert(response.code === 200);
 ///
@@ -235,7 +239,7 @@ bool RestSimpleHandler::wasCancelled () {
 ///
 ///     var url = "/_api/simple/remove-by-keys";
 ///     var data = { keys: [ "foo", "bar", "baz" ], collection: cn };
-///     var response = logCurlRequest('PUT', url, JSON.stringify(data));
+///     var response = logCurlRequest('PUT', url, data);
 ///
 ///     assert(response.code === 200);
 ///
@@ -311,7 +315,7 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCancelled())) {
+          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
       }
 
@@ -363,10 +367,11 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
 ///
 /// @RESTHEADER{PUT /_api/simple/lookup-by-keys, Find documents by their keys}
 ///
-/// @RESTBODYPARAM{payload,json,required}
-/// A JSON object containing an attribute *collection* with the collection name
-/// to look in for the documents, and an attribute *keys*, which must be
-/// an array with the _keys of documents to fetch.
+/// @RESTBODYPARAM{collection,string,required,string}
+/// The name of the collection to look in for the documents
+///
+/// @RESTBODYPARAM{keys,array,required,string}
+/// array with the _keys of documents to remove.
 ///
 /// @RESTDESCRIPTION
 /// Looks up the documents in the specified collection using the array of keys
@@ -407,7 +412,7 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
 ///
 ///     var url = "/_api/simple/lookup-by-keys";
 ///     var data = { keys: keys, collection: cn };
-///     var response = logCurlRequest('PUT', url, JSON.stringify(data));
+///     var response = logCurlRequest('PUT', url, data);
 ///
 ///     assert(response.code === 200);
 ///
@@ -428,7 +433,7 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
 ///
 ///     var url = "/_api/simple/lookup-by-keys";
 ///     var data = { keys: [ "foo", "bar", "baz" ], collection: cn };
-///     var response = logCurlRequest('PUT', url, JSON.stringify(data));
+///     var response = logCurlRequest('PUT', url, data);
 ///
 ///     assert(response.code === 200);
 ///
@@ -473,6 +478,8 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
     triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
     bindVars("@collection", triagens::basics::Json(collectionName));
     bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keys)));
+  
+    triagens::aql::BindParameters::StripCollectionNames(TRI_LookupObjectJson(bindVars.json(), "keys"), collectionName.c_str());
 
     std::string const aql("FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
     
@@ -491,7 +498,7 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCancelled())) {
+          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
       }
 

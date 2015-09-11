@@ -4,6 +4,7 @@ require 'rubygems'
 require 'httparty'
 require 'json'
 require 'rspec'
+require 'rspec/expectations'
 
 
 $address = ENV['ARANGO_SERVER'] || '127.0.0.1:8529'
@@ -42,6 +43,15 @@ RSpec.configure do |config|
   end
 end
 
+################################################################################
+## cross rspec version compatibility tool: 
+################################################################################
+RSpec::Matchers.define :be_nil_or_empty do
+ match do |actual|
+   actual.nil? || actual.empty?
+ end
+end
+
 class ArangoDB
   include HTTParty
 
@@ -63,6 +73,22 @@ class ArangoDB
   # do not verify SSL
   default_options[:verify] = false
 
+################################################################################
+## adjust the global client-side timeout value
+################################################################################
+
+  def self.set_timeout (value) 
+    old_value = default_options[:timeout] 
+    default_options[:timeout] = value
+    old_value
+  end
+
+  def self.set_read_timeout (value) 
+    old_value = default_options[:read_timeout] 
+    default_options[:read_timeout] = value
+    old_value
+  end
+  
 ################################################################################
 ## create a collection
 ################################################################################

@@ -42,12 +42,12 @@
 #include "Basics/tri-strings.h"
 #include "Basics/terminal-utils.h"
 #include "Rest/Endpoint.h"
-#include "Rest/InitialiseRest.h"
+#include "Rest/InitializeRest.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-
 
 using namespace std;
 using namespace triagens::basics;
@@ -81,7 +81,13 @@ triagens::httpclient::SimpleHttpClient* Client = nullptr;
 /// @brief chunk size
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t ChunkSize = 1024 * 1024 * 8;
+static uint64_t ChunkSize = 1024 * 1024 * 2;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief max chunk size
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t MaxChunkSize = 1024 * 1024 * 12;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collections
@@ -173,7 +179,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   description
     ("collection", &Collections, "restrict to collection name (can be specified multiple times)")
-    ("batch-size", &ChunkSize, "maximum size for individual data batches (in bytes)")
+    ("initial-batch-size", &ChunkSize, "initial size for individual data batches (in bytes)")
+    ("batch-size", &MaxChunkSize, "maximum size for individual data batches (in bytes)")
     ("dump-data", &DumpData, "dump collection data")
     ("force", &Force, "continue dumping even in the face of some server-side errors")
     ("include-system-collections", &IncludeSystemCollections, "include system collections")
@@ -206,16 +213,16 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-static void arangodumpEntryFunction ();
-static void arangodumpExitFunction (int, void*);
+static void LocalEntryFunction ();
+static void LocalExitFunction (int, void*);
 
 #ifdef _WIN32
 
 // .............................................................................
-// Call this function to do various initialisations for windows only
+// Call this function to do various initializations for windows only
 // .............................................................................
 
-void arangodumpEntryFunction () {
+static void LocalEntryFunction () {
   int maxOpenFiles = 1024;
   int res = 0;
 
@@ -224,34 +231,34 @@ void arangodumpEntryFunction () {
   // If you familiar with valgrind ... then this is not like that, however
   // you do get some similar functionality.
   // ...........................................................................
-  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
+  //res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
-  res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+  res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
   if (res != 0) {
     _exit(1);
   }
 
-  res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
   if (res != 0) {
     _exit(1);
   }
 
-  res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+  res = initializeWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
   if (res != 0) {
     _exit(1);
   }
 
-  TRI_Application_Exit_SetExit(arangodumpExitFunction);
+  TRI_Application_Exit_SetExit(LocalExitFunction);
 }
 
-static void arangodumpExitFunction (int exitCode, void* data) {
+static void LocalExitFunction (int exitCode, void* data) {
   int res = 0;
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
   // any windows specific stuff.
   // ...........................................................................
 
-  res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
     exit(1);
@@ -261,10 +268,10 @@ static void arangodumpExitFunction (int exitCode, void* data) {
 }
 #else
 
-static void arangodumpEntryFunction () {
+static void LocalEntryFunction () {
 }
 
-static void arangodumpExitFunction (int exitCode, void* data) {
+static void LocalExitFunction (int exitCode, void* data) {
 }
 
 #endif
@@ -277,13 +284,11 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
   StringBuffer const& body = result->getBody();
   string details;
 
-  TRI_json_t* json = JsonHelper::fromString(body.c_str(), body.length());
+  std::unique_ptr<TRI_json_t> json(JsonHelper::fromString(body.c_str(), body.length()));
 
   if (json != nullptr) {
-    const string& errorMessage = JsonHelper::getStringValue(json, "errorMessage", "");
-    const int errorNum = JsonHelper::getNumericValue<int>(json, "errorNum", 0);
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    const string& errorMessage = JsonHelper::getStringValue(json.get(), "errorMessage", "");
+    const int errorNum = JsonHelper::getNumericValue<int>(json.get(), "errorNum", 0);
 
     if (errorMessage != "" && errorNum > 0) {
       details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
@@ -301,19 +306,12 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static string GetArangoVersion () {
-  map<string, string> headers;
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                "/_api/version",
                                                nullptr,
-                                               0,
-                                               headers);
+                                               0));
 
   if (response == nullptr || ! response->isComplete()) {
-    if (response != nullptr) {
-      delete response;
-    }
-
     return "";
   }
 
@@ -324,31 +322,26 @@ static string GetArangoVersion () {
     version = "arango";
 
     // convert response body to json
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                      response->getBody().c_str());
+    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
 
     if (json != nullptr) {
       // look up "server" value
-      const string server = JsonHelper::getStringValue(json, "server", "");
+      std::string const server = JsonHelper::getStringValue(json.get(), "server", "");
 
       // "server" value is a string and content is "arango"
       if (server == "arango") {
         // look up "version" value
-        version = JsonHelper::getStringValue(json, "version", "");
+        version = JsonHelper::getStringValue(json.get(), "version", "");
       }
-
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
   }
   else {
     if (response->wasHttpError()) {
-      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+      Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
     }
 
     Connection->disconnect();
   }
-
-  delete response;
 
   return version;
 }
@@ -358,18 +351,12 @@ static string GetArangoVersion () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool GetArangoIsCluster () {
-  map<string, string> headers;
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                         "/_admin/server/role",
                                         "",
-                                        0,
-                                        headers);
+                                        0));
 
   if (response == nullptr || ! response->isComplete()) {
-    if (response != nullptr) {
-      delete response;
-    }
-
     return false;
   }
 
@@ -377,25 +364,20 @@ static bool GetArangoIsCluster () {
 
   if (response->getHttpReturnCode() == HttpResponse::OK) {
     // convert response body to json
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                      response->getBody().c_str());
+    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
 
     if (json != nullptr) {
       // look up "server" value
-      role = JsonHelper::getStringValue(json, "role", "UNDEFINED");
-
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      role = JsonHelper::getStringValue(json.get(), "role", "UNDEFINED");
     }
   }
   else {
     if (response->wasHttpError()) {
-      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+      Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
     }
 
     Connection->disconnect();
   }
-
-  delete response;
 
   return role == "COORDINATOR";
 }
@@ -405,27 +387,21 @@ static bool GetArangoIsCluster () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int StartBatch (string DBserver, string& errorMsg) {
-  map<string, string> headers;
+  std::string const url = "/_api/replication/batch";
+  std::string const body = "{\"ttl\":300}";
 
-  const string url = "/_api/replication/batch";
-  const string body = "{\"ttl\":300}";
   string urlExt;
   if (! DBserver.empty()) {
     urlExt = "?DBserver="+DBserver;
   }
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_POST,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_POST,
                                                url + urlExt,
                                                body.c_str(),
-                                               body.size(),
-                                               headers);
+                                               body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     if (Force) {
       return TRI_ERROR_NO_ERROR;
@@ -437,14 +413,12 @@ static int StartBatch (string DBserver, string& errorMsg) {
     errorMsg = "got invalid response from server: HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
-    delete response;
 
     return TRI_ERROR_INTERNAL;
   }
 
   // convert response body to json
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str());
-  delete response;
+  std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
 
   if (json == nullptr) {
     errorMsg = "got malformed JSON";
@@ -453,9 +427,7 @@ static int StartBatch (string DBserver, string& errorMsg) {
   }
 
   // look up "id" value
-  const string id = JsonHelper::getStringValue(json, "id", "");
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  std::string const id = JsonHelper::getStringValue(json.get(), "id", "");
 
   BatchId = StringUtils::uint64(id);
 
@@ -469,24 +441,19 @@ static int StartBatch (string DBserver, string& errorMsg) {
 static void ExtendBatch (string DBserver) {
   TRI_ASSERT(BatchId > 0);
 
-  map<string, string> headers;
   const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
   const string body = "{\"ttl\":300}";
   string urlExt;
   if (! DBserver.empty()) {
-    urlExt = "?DBserver="+DBserver;
+    urlExt = "?DBserver=" + DBserver;
   }
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url + urlExt,
                                                body.c_str(),
-                                               body.size(),
-                                               headers);
+                                               body.size()));
 
   // ignore any return value
-  if (response != nullptr) {
-    delete response;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -496,25 +463,20 @@ static void ExtendBatch (string DBserver) {
 static void EndBatch (string DBserver) {
   TRI_ASSERT(BatchId > 0);
 
-  map<string, string> headers;
-  const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
+  std::string const url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
   string urlExt;
   if (! DBserver.empty()) {
-    urlExt = "?DBserver="+DBserver;
+    urlExt = "?DBserver=" + DBserver;
   }
 
   BatchId = 0;
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_DELETE,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_DELETE,
                                                url + urlExt,
                                                nullptr,
-                                               0,
-                                               headers);
+                                               0));
 
   // ignore any return value
-  if (response != nullptr) {
-    delete response;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -525,19 +487,19 @@ static int DumpCollection (int fd,
                            const string& cid,
                            const string& name,
                            TRI_json_t const* parameters,
-                           const uint64_t maxTick,
+                           uint64_t maxTick,
                            string& errorMsg) {
 
-  const string baseUrl = "/_api/replication/dump?collection=" + cid +
-                         "&chunkSize=" + StringUtils::itoa(ChunkSize) +
-                         "&ticks=false&translateIds=true&flush=false";
+  uint64_t chunkSize = ChunkSize;
 
-  map<string, string> headers;
+  std::string const baseUrl = "/_api/replication/dump?collection=" + cid +
+                         "&ticks=false&translateIds=true&flush=false";
 
   uint64_t fromTick = TickStart;
 
-  while (1) {
-    string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
+  while (true) {
+    std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick)
+                              + "&chunkSize=" + StringUtils::itoa(chunkSize);
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
@@ -545,25 +507,19 @@ static int DumpCollection (int fd,
 
     Stats._totalBatches++;
 
-    SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+    std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                  url,
                                                  nullptr,
-                                                 0,
-                                                 headers);
+                                                 0));
 
     if (response == nullptr || ! response->isComplete()) {
       errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-      if (response != nullptr) {
-        delete response;
-      }
 
       return TRI_ERROR_INTERNAL;
     }
 
     if (response->wasHttpError()) {
-      errorMsg = GetHttpErrorMessage(response);
-      delete response;
+      errorMsg = GetHttpErrorMessage(response.get());
 
       return TRI_ERROR_INTERNAL;
     }
@@ -614,8 +570,6 @@ static int DumpCollection (int fd,
       }
     }
 
-    delete response;
-
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -623,6 +577,15 @@ static int DumpCollection (int fd,
     if (! checkMore || fromTick == 0) {
       // done
       return res;
+    }
+
+    if (chunkSize < MaxChunkSize) {
+      // adaptively increase chunksize
+      chunkSize = static_cast<uint64_t>(chunkSize * 1.5);
+
+      if (chunkSize > MaxChunkSize) {
+        chunkSize = MaxChunkSize;
+      }
     }
   }
 
@@ -635,21 +598,15 @@ static int DumpCollection (int fd,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FlushWal () {
-  map<string, string> headers;
-  const string url = "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
+  std::string const url = "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
 
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
                                                nullptr,
-                                               0,
-                                               headers);
+                                               0));
 
   if (response == nullptr || ! response->isComplete() || response->wasHttpError()) {
     cerr << "got invalid response from server: " + Client->getErrorMessage() << endl;
-  }
-
-  if (response != nullptr) {
-    delete response;
   }
 }
 
@@ -658,23 +615,16 @@ static void FlushWal () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int RunDump (string& errorMsg) {
-  map<string, string> headers;
+  std::string const url = "/_api/replication/inventory?includeSystem=" +
+                          string(IncludeSystemCollections ? "true" : "false");
 
-  const string url = "/_api/replication/inventory?includeSystem=" +
-                     string(IncludeSystemCollections ? "true" : "false");
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                url,
                                                nullptr,
-                                               0,
-                                               headers);
+                                               0));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     return TRI_ERROR_INTERNAL;
   }
@@ -683,8 +633,6 @@ static int RunDump (string& errorMsg) {
     errorMsg = "got invalid response from server: HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
-    delete response;
-
     return TRI_ERROR_INTERNAL;
   }
 
@@ -693,47 +641,84 @@ static int RunDump (string& errorMsg) {
   StringBuffer const& data = response->getBody();
 
 
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
+  std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str()));
 
-  delete response;
-
-  if (! JsonHelper::isObject(json)) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
-
+  if (! JsonHelper::isObject(json.get())) {
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_json_t const* collections = JsonHelper::getObjectElement(json, "collections");
+  TRI_json_t const* collections = JsonHelper::getObjectElement(json.get(), "collections");
 
   if (! JsonHelper::isArray(collections)) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
   }
 
-  const string tickString = JsonHelper::getStringValue(json, "tick", "");
+  // read the server's max tick value
+  const string tickString = JsonHelper::getStringValue(json.get(), "tick", "");
 
   if (tickString == "") {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
   }
 
   cout << "Last tick provided by server is: " << tickString << endl;
-
-  // read the server's max tick value
+  
   uint64_t maxTick = StringUtils::uint64(tickString);
-
-  // check if the user specific a max tick value
+  // check if the user specified a max tick value
   if (TickEnd > 0 && maxTick > TickEnd) {
     maxTick = TickEnd;
   }
+
+
+  {
+    TRI_json_t* meta = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+
+    if (meta == nullptr) {
+      errorMsg = "out of memory";
+
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, meta, "database", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, BaseClient.databaseName().c_str(), BaseClient.databaseName().size()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, meta, "lastTickAtDumpStart", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString.c_str(), tickString.size()));
+
+    // save last tick in file
+    string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + "dump.json";
+
+    int fd;
+
+    // remove an existing file first
+    if (TRI_ExistsFile(fileName.c_str())) {
+      TRI_UnlinkFile(fileName.c_str());
+    }
+
+    fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+
+    if (fd < 0) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, meta);
+      errorMsg = "cannot write to file '" + fileName + "'";
+
+      return TRI_ERROR_CANNOT_WRITE_FILE;
+    }
+
+    const string metaString = JsonHelper::toString(meta);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, meta);
+
+    if (! TRI_WritePointer(fd, metaString.c_str(), metaString.size())) {
+      TRI_CLOSE(fd);
+      errorMsg = "cannot write to file '" + fileName + "'";
+
+      return TRI_ERROR_CANNOT_WRITE_FILE;
+    }
+
+    TRI_CLOSE(fd);
+  }
+
 
   // create a lookup table for collections
   map<string, bool> restrictList;
@@ -748,7 +733,6 @@ static int RunDump (string& errorMsg) {
     TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
 
     if (! JsonHelper::isObject(collection)) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -757,7 +741,6 @@ static int RunDump (string& errorMsg) {
     TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
 
     if (! JsonHelper::isObject(parameters)) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -768,7 +751,6 @@ static int RunDump (string& errorMsg) {
     const bool deleted = JsonHelper::getBooleanValue(parameters, "deleted", false);
 
     if (cid == "" || name == "") {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -788,6 +770,8 @@ static int RunDump (string& errorMsg) {
       continue;
     }
 
+    std::string const hexString(triagens::rest::SslInterface::sslMD5(name));
+
     // found a collection!
     if (Progress) {
       cout << "dumping collection '" << name << "'..." << endl;
@@ -798,8 +782,7 @@ static int RunDump (string& errorMsg) {
 
     {
       // save meta data
-      string fileName;
-      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".structure.json";
+      string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" + hexString + ".structure.json";
 
       int fd;
 
@@ -812,7 +795,6 @@ static int RunDump (string& errorMsg) {
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -822,7 +804,6 @@ static int RunDump (string& errorMsg) {
       if (! TRI_WritePointer(fd, collectionInfo.c_str(), collectionInfo.size())) {
         TRI_CLOSE(fd);
         errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -834,7 +815,7 @@ static int RunDump (string& errorMsg) {
     if (DumpData) {
       // save the actual data
       string fileName;
-      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".data.json";
+      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" + hexString + ".data.json";
 
       int fd;
 
@@ -847,7 +828,6 @@ static int RunDump (string& errorMsg) {
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -861,15 +841,11 @@ static int RunDump (string& errorMsg) {
         if (errorMsg.empty()) {
           errorMsg = "cannot write to file '" + fileName + "'";
         }
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return res;
       }
     }
   }
-
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -883,12 +859,10 @@ static int DumpShard (int fd,
                       const string& name,
                       string& errorMsg) {
 
-  const string baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
-                         "&collection=" + name +
-                         "&chunkSize=" + StringUtils::itoa(ChunkSize) +
-                         "&ticks=false&translateIds=true";
-
-  map<string, string> headers;
+  std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
+                              "&collection=" + name +
+                              "&chunkSize=" + StringUtils::itoa(ChunkSize) +
+                              "&ticks=false&translateIds=true";
 
   uint64_t fromTick = 0;
   uint64_t maxTick = UINT64_MAX;
@@ -902,25 +876,19 @@ static int DumpShard (int fd,
 
     Stats._totalBatches++;
 
-    SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+    std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                  url,
                                                  nullptr,
-                                                 0,
-                                                 headers);
+                                                 0));
 
     if (response == nullptr || ! response->isComplete()) {
       errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-      if (response != nullptr) {
-        delete response;
-      }
 
       return TRI_ERROR_INTERNAL;
     }
 
     if (response->wasHttpError()) {
-      errorMsg = GetHttpErrorMessage(response);
-      delete response;
+      errorMsg = GetHttpErrorMessage(response.get());
 
       return TRI_ERROR_INTERNAL;
     }
@@ -931,7 +899,7 @@ static int DumpShard (int fd,
     uint64_t tick;
 
     // TODO: fix hard-coded headers
-    string header = response->getHeaderField("x-arango-replication-checkmore", found);
+    std::string header = response->getHeaderField("x-arango-replication-checkmore", found);
 
     if (found) {
       checkMore = StringUtils::boolean(header);
@@ -971,8 +939,6 @@ static int DumpShard (int fd,
       }
     }
 
-    delete response;
-
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -995,23 +961,16 @@ static int DumpShard (int fd,
 static int RunClusterDump (string& errorMsg) {
   int res;
 
-  map<string, string> headers;
+  std::string const url = "/_api/replication/clusterInventory?includeSystem=" +
+                          std::string(IncludeSystemCollections ? "true" : "false");
 
-  const string url = "/_api/replication/clusterInventory?includeSystem=" +
-                     string(IncludeSystemCollections ? "true" : "false");
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                url,
                                                nullptr,
-                                               0,
-                                               headers);
+                                               0));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     return TRI_ERROR_INTERNAL;
   }
@@ -1020,7 +979,6 @@ static int RunClusterDump (string& errorMsg) {
     errorMsg = "got invalid response from server: HTTP " +
                StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                response->getHttpReturnMessage();
-    delete response;
 
     return TRI_ERROR_INTERNAL;
   }
@@ -1028,25 +986,17 @@ static int RunClusterDump (string& errorMsg) {
 
   StringBuffer const& data = response->getBody();
 
+  std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str()));
 
-  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
-
-  delete response;
-
-  if (! JsonHelper::isObject(json)) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
-
+  if (! JsonHelper::isObject(json.get())) {
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_json_t const* collections = JsonHelper::getObjectElement(json, "collections");
+  TRI_json_t const* collections = JsonHelper::getObjectElement(json.get(), "collections");
 
   if (! JsonHelper::isArray(collections)) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
@@ -1065,7 +1015,6 @@ static int RunClusterDump (string& errorMsg) {
     TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
 
     if (! JsonHelper::isObject(collection)) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -1074,7 +1023,6 @@ static int RunClusterDump (string& errorMsg) {
     TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
 
     if (! JsonHelper::isObject(parameters)) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -1085,7 +1033,6 @@ static int RunClusterDump (string& errorMsg) {
     const bool deleted = JsonHelper::getBooleanValue(parameters, "deleted", false);
 
     if (id == "" || name == "") {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
@@ -1129,7 +1076,6 @@ static int RunClusterDump (string& errorMsg) {
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -1139,7 +1085,6 @@ static int RunClusterDump (string& errorMsg) {
       if (! TRI_WritePointer(fd, collectionInfo.c_str(), collectionInfo.size())) {
         TRI_CLOSE(fd);
         errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -1158,21 +1103,18 @@ static int RunClusterDump (string& errorMsg) {
       // This is now a map from shardIDs to DBservers
 
       // Now set up the output file:
-      string fileName;
-      fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + ".data.json";
-
-      int fd;
+      std::string const hexString(triagens::rest::SslInterface::sslMD5(name));
+      string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" + hexString + ".data.json";
 
       // remove an existing file first
       if (TRI_ExistsFile(fileName.c_str())) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+      int fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
@@ -1187,13 +1129,11 @@ static int RunClusterDump (string& errorMsg) {
         }
         res = StartBatch(DBserver, errorMsg);
         if (res != TRI_ERROR_NO_ERROR) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           TRI_CLOSE(fd);
           return res;
         }
         res = DumpShard(fd, DBserver, shardName, errorMsg);
         if (res != TRI_ERROR_NO_ERROR) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           TRI_CLOSE(fd);
           return res;
         }
@@ -1202,19 +1142,15 @@ static int RunClusterDump (string& errorMsg) {
 
       res = TRI_CLOSE(fd);
 
-      if (res != 0) {
+      if (res != TRI_ERROR_NO_ERROR) {
         if (errorMsg.empty()) {
           errorMsg = "cannot write to file '" + fileName + "'";
         }
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return res;
       }
     }
   }
-
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1244,12 +1180,12 @@ static string rewriteLocation (void* data, const string& location) {
 int main (int argc, char* argv[]) {
   int ret = EXIT_SUCCESS;
 
-  arangodumpEntryFunction();
+  LocalEntryFunction();
 
-  TRIAGENS_C_INITIALISE(argc, argv);
-  TRIAGENS_REST_INITIALISE(argc, argv);
+  TRIAGENS_C_INITIALIZE(argc, argv);
+  TRIAGENS_REST_INITIALIZE(argc, argv);
 
-  TRI_InitialiseLogging(false);
+  TRI_InitializeLogging(false);
 
   // .............................................................................
   // set defaults
@@ -1268,6 +1204,9 @@ int main (int argc, char* argv[]) {
   // use a minimum value for batches
   if (ChunkSize < 1024 * 128) {
     ChunkSize = 1024 * 128;
+  }
+  if (MaxChunkSize < ChunkSize) {
+    MaxChunkSize = ChunkSize;
   }
 
   if (TickStart < TickEnd) {
@@ -1467,7 +1406,7 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
-  arangodumpExitFunction(ret, nullptr);
+  LocalExitFunction(ret, nullptr);
 
   return ret;
 }

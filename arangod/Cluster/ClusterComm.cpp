@@ -1181,7 +1181,7 @@ void ClusterCommThread::run () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the cluster comm background thread
+/// @brief initializes the cluster comm background thread
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ClusterCommThread::init () {

@@ -28,7 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_UnitTest
 /// @brief framework to perform unittests
 ///
 /// This function gets one or two arguments, the first describes which tests
@@ -58,6 +57,7 @@ var optionsDocumentation = [
   '   - `skipGeo`: if set to true the geo index tests are skipped',
   '   - `skipGraph`: if set to true the Graph tests are skipped',
   '   - `skipAql`: if set to true the AQL tests are skipped',
+  '   - `skipArangoB`: if set to true benchmark tests are skipped',
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipMemoryIntense`: tests using lots of resources will be skippet.',
@@ -123,6 +123,7 @@ var optionsDefaults = { "cluster": false,
                         "skipTimeCritical": false,
                         "skipMemoryIntense": false,
                         "skipAql": false,
+                        "skipArangoB": false,
                         "skipRanges": false,
                         "skipLogAnalysis": false,
                         "username": "root",
@@ -269,7 +270,7 @@ function makeTestingArgsClient (options) {
  };
 }
 
-function makeAuthorisationHeaders (options) {
+function makeAuthorizationHeaders (options) {
   return {"headers":
             {"Authorization": "Basic " + base64Encode(options.username+":"+
                                                       options.password)}};
@@ -425,7 +426,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
   while (true) {
     wait(0.5, false);
-    var r = download(url+"/_api/version", "", makeAuthorisationHeaders(options));
+    var r = download(url+"/_api/version", "", makeAuthorizationHeaders(options));
     if (! r.error && r.code === 200) {
       break;
     }
@@ -446,7 +447,13 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       instanceInfo.pid.pid,
       fs.join(tmpDataDir, 'core.dmp')
     ];
-    instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+    try {
+      instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+    }
+    catch (x) {
+      print("failed to start procdump - is it installed?");
+      throw x;
+    }
   }
   return instanceInfo;
 }
@@ -613,7 +620,7 @@ function waitOnServerForGC(instanceInfo, options, waitTime) {
     var r;
     var t;
     t = 'require("internal").wait(' + waitTime + ', true);';
-    var o = makeAuthorisationHeaders(options);
+    var o = makeAuthorizationHeaders(options);
     o.method = "POST";
     o.timeout = waitTime * 10;
     o.returnBodyOnError = true;
@@ -678,7 +685,7 @@ function shutdownInstance (instanceInfo, options) {
   else {
     if (typeof(instanceInfo.exitStatus) === 'undefined') {
       download(instanceInfo.url+"/_admin/shutdown","",
-               makeAuthorisationHeaders(options));
+               makeAuthorizationHeaders(options));
 
       print("Waiting for server shut down");
       var count = 0;
@@ -859,7 +866,7 @@ function runThere (options, instanceInfo, file) {
           '};' +
           '}';
     }
-    var o = makeAuthorisationHeaders(options);
+    var o = makeAuthorizationHeaders(options);
     o.method = "POST";
     o.timeout = 3600;
     o.returnBodyOnError = true;
@@ -1867,6 +1874,12 @@ var benchTodo = [
 ];
 
 testFuncs.arangob = function (options) {
+  print(options);
+  print(options.skipArangoB);
+  if (options.skipArangoB === true) {
+    print("skipping Benchmark tests!");
+    return {};
+  }
   print("arangob tests...");
   var instanceInfo = startInstance("tcp",options, [], "arangob");
   if (instanceInfo === false) {
@@ -2167,7 +2180,7 @@ function UnitTest (which, options) {
   if (which === "all") {
     var n;
     for (n = 0; n < allTests.length; n++) {
-      print("Doing test",allTests[n],"with options",options);
+      print("Doing test", allTests[n], "with options", options);
       results[allTests[n]] = r = testFuncs[allTests[n]](options);
       ok = true;
       for (i in r) {

@@ -35,32 +35,22 @@ var API = "_api/tasks";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_api_tasks
-/// @brief Retrieves all (or one) currently active server task(s)
+/// @brief Retrieves  one currently active server task
 ///
-/// @RESTHEADER{GET /_api/tasks/{id}, Fetch all tasks or one task with id}
+/// @RESTHEADER{GET /_api/tasks/{id}, Fetch one task with id}
 /// 
-/// @RESTURLPARAM{id,string,optional}
+/// @RESTURLPARAM{id,string,required}
 /// The id of the task to fetch.
 ///
 /// @RESTDESCRIPTION
-/// fetches all existing tasks on the server; optionally just the one specified
-/// by *id*
+/// fetches one existing tasks on the server specified by *id*
+///
+/// @RESTRETURNCODE{200}
+/// The requested task
 ///
 /// @EXAMPLES
 ///
-/// Getting all tasks:
-/// @EXAMPLE_ARANGOSH_RUN{RestTasksListAll}
-///     var url = "/_api/tasks";
-///
-///     var response = logCurlRequest('GET', url);
-///
-///     assert(response.code === 200);
-///
-///     logJsonResponse(response);
-///
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
-/// Getting a single task by id:
+/// Fetching a single task by its id
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksListOne}
 ///     var url = "/_api/tasks/statistics-average-collector";
 ///
@@ -71,13 +61,41 @@ var API = "_api/tasks";
 ///
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Fetching a non-existing task:
+/// trying to fetch a non-existing task
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksListNonExisting}
 ///     var url = "/_api/tasks/non-existing-task";
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
 ///     assert(response.code === 404);
+///     logJsonResponse(response);
+///
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_tasks_all
+/// @brief Retrieves all currently active server tasks
+///
+/// @RESTHEADER{GET /_api/tasks/, Fetch all tasks or one task}
+/// 
+/// @RESTDESCRIPTION
+/// fetches all existing tasks on the server
+///
+/// @RESTRETURNCODE{200}
+/// The list of tasks
+///
+/// @EXAMPLES
+///
+/// Fetching all tasks
+/// @EXAMPLE_ARANGOSH_RUN{RestTasksListAll}
+///     var url = "/_api/tasks";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
 ///     logJsonResponse(response);
 ///
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -109,14 +127,20 @@ function get_api_tasks (req, res) {
 ///
 /// @RESTHEADER{POST /_api/tasks, creates a task}
 ///
-/// @RESTBODYPARAM{body,json,required}
-/// A JSON object describing the new task:
+/// @RESTBODYPARAM{name,string,required,string}
+/// The name of the task
 ///
-/// - *name*: name of the task
-/// - *command*: JavaScript code to be executed
-/// - *params*: parameters to be passed into command
-/// - *period*: n seconds between the executions
-/// - *offset*: n seconds initial delay 
+/// @RESTBODYPARAM{command,string,required,string}
+/// The JavaScript code to be executed
+///
+/// @RESTBODYPARAM{params,string,required,string}
+/// The parameters to be passed into command
+///
+/// @RESTBODYPARAM{period,integer,optional,int64}
+/// number of seconds between the executions
+///
+/// @RESTBODYPARAM{offset,integer,optional,int64}
+/// Number of seconds initial delay 
 ///
 /// @RESTDESCRIPTION
 /// creates a new task with a generated id
@@ -139,7 +163,7 @@ function get_api_tasks (req, res) {
 ///       period: 2
 ///     }
 ///     var response = logCurlRequest('POST', url,
-///                                   JSON.stringify(sampleTask));
+///                                   sampleTask);
 ///
 ///     assert(response.code === 200);
 ///
@@ -161,14 +185,20 @@ function get_api_tasks (req, res) {
 /// @RESTURLPARAM{id,string,required}
 /// The id of the task to create
 ///
-/// @RESTBODYPARAM{body,json,required}
-/// A JSON object describing the new task:
+/// @RESTBODYPARAM{name,string,required,string}
+/// The name of the task
 ///
-/// - *name*: name of the task
-/// - *command*: javascript code to be executed
-/// - *params*: parameters to be passed into command
-/// - *period*: n seconds between the executions
-/// - *offset*: n seconds initial delay 
+/// @RESTBODYPARAM{command,string,required,string}
+/// The JavaScript code to be executed
+///
+/// @RESTBODYPARAM{params,string,required,string}
+/// The parameters to be passed into command
+///
+/// @RESTBODYPARAM{period,integer,optional,int64}
+/// number of seconds between the executions
+///
+/// @RESTBODYPARAM{offset,integer,optional,int64}
+/// Number of seconds initial delay 
 ///
 /// @RESTDESCRIPTION
 /// registers a new task with the specified id
@@ -192,7 +222,7 @@ function get_api_tasks (req, res) {
 ///       period: 2
 ///     }
 ///     var response = logCurlRequest('PUT', url + 'sampleTask',
-///                                   JSON.stringify(sampleTask));
+///                                   sampleTask);
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -245,6 +275,8 @@ function post_api_task_register (req, res, byId) {
 ///
 /// @EXAMPLES
 ///
+/// trying to delete non existing task
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksDeleteFail}
 ///     var url = "/_api/tasks/NoTaskWithThatName";
 ///
@@ -254,6 +286,8 @@ function post_api_task_register (req, res, byId) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Remove existing Task
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksDelete}
 ///     var url = "/_api/tasks/";
@@ -268,7 +302,7 @@ function post_api_task_register (req, res, byId) {
 ///     curlRequest('DELETE', url + sampleTask.id);
 ///     // put in something we may delete:
 ///     curlRequest('PUT', url + sampleTask.id,
-///                 JSON.stringify(sampleTask));
+///                 sampleTask);
 ///
 ///     var response = logCurlRequest('DELETE', url + sampleTask.id);
 ///

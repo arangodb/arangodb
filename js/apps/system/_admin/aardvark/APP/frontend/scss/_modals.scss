@@ -1,7 +1,7 @@
 %modal-header {
   background-color: $c-white;
-  border-radius: 3px;
   border-bottom: 0 !important;
+  border-radius: 3px;
   margin-top: 5px;
   padding-left: 5px;
   padding-right: 10px;
@@ -40,23 +40,22 @@
   font-family: 'Open Sans', sans-serif !important;
   font-size: 14px;
   font-weight: 300;
+  max-height: 410px;
 
   .select2-choices {
-    border-radius: 3px;
-    border: 1px solid #aaa;
-    box-shadow: none;
-    -webkit-box-shadow: none;
     background-image: none !important;
+    border: 1px solid $c-dark-grey;
+    border-radius: 3px;
+    -webkit-box-shadow: none;
+    box-shadow: none;
 
     input {
-      box-shadow: none;
-      -webkit-box-shadow: none;
-      outline: transparent !important;
+      @extend %inputs;
     }
 
     input:active {
-      box-shadow: none;
       -webkit-box-shadow: none;
+      box-shadow: none;
       outline: none !important;
     }
 
@@ -65,34 +64,38 @@
     }
 
     li {
-      color: $c-black;
       background-color: $c-white !important;
       background-image: none !important;
+      color: $c-black;
+
       a {
-        margin-top: -1px;
         margin-left: 1px;
+        margin-top: -1px;
       }
     }
 
   }
 
   .select2-choices:active {
-    outline: transparent !important;
-    border: 1px solid #aaa;
-    box-shadow: none !important;
+    border: 1px solid $c-dark-grey;
     -webkit-box-shadow: none !important;
+    box-shadow: none !important;
+    outline: transparent !important;
   }
 
   .nav-tabs {
     margin-top: 15px;
+
+    > li > a:hover {
+      border-color: $c-new-grey;
+    }
   }
 
   input,
   select,
   textarea {
+    @extend %inputs;
     margin-top: 10px;
-    border-radius: 3px;
-    box-shadow: none;
   }
 
   input[type='checkbox'] {
@@ -139,7 +142,7 @@
       }
     }
 
-    div.select2-container {
+    .select2-container {
       margin-bottom: 10px;
       margin-top: 10px;
     }
@@ -185,8 +188,7 @@
   .accordion-toggle {
 
     span {
-
-      b.caret {
+      .caret {
         border-top-color: $c-black;
         float: right;
         margin-top: 5px;
@@ -195,8 +197,7 @@
 
     &.collapsed {
       span {
-
-        b.caret {
+        .caret {
           -ms-transform: rotate(90deg);
           -webkit-transform: rotate(90deg);
           transform: rotate(90deg);
@@ -234,8 +235,8 @@
   }
 
   .errorMessage {
-    background-color: #fff;
-    color: #f00;
+    background-color: $c-white;
+    color: $c-negative;
     font-size: 9pt;
     font-weight: 400;
     margin-bottom: 5px;
@@ -243,7 +244,7 @@
     position: absolute;
   }
 
-  .nav img.tab-icon {
+  .nav .tab-icon {
     margin-right: 5px;
     margin-top: -3px;
     width: 20px;
@@ -263,9 +264,9 @@
 }
 
 .modal {
-  box-shadow: none;
   border: 0 !important;
   border-radius: 3px !important;
+  box-shadow: 0;
 
   .fade.in {
     top: 12.1% !important;
@@ -299,7 +300,7 @@
 }
 
 
-pre.gv-object-view {
+.gv-object-view {
   text-align: left;
   white-space: pre;
 }
@@ -327,16 +328,10 @@ pre.gv-object-view {
   padding-bottom: 9px;
 }
 
-
-
-
-
 .modal table tr,
 .thBorderBottom {
   border-bottom: 1px solid $c-modal-table-border-bottom !important;
 }
-
-
 
 .modal-delete-confirmation {
   display: none;

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertUndefined, fail */
+/*global assertEqual, assertTrue, assertFalse, assertUndefined, assertMatch, aqlQuery, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -837,6 +837,92 @@ function StatementSuite () {
 
       db._useDatabase("_system");
       db._dropDatabase("UnitTestsDatabase0");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string builder
+////////////////////////////////////////////////////////////////////////////////
+
+    testTemplateStringBuilder : function () {
+      var foo = "foo-matic", bar = "BAR o MATIC", what = "' this string \\ \" is ' evil\n`";
+      var result = aqlQuery`FOR ${foo} IN ${bar} RETURN ${what}`;
+      assertEqual("FOR @value0 IN @value1 RETURN @value2", result.query);
+      assertEqual({ value0: foo, value1: bar, value2: what }, result.bindVars);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string builder
+////////////////////////////////////////////////////////////////////////////////
+
+    testTemplateStringBuilderComplexTypes : function () {
+      var list = [ 1, 2, 3, 4 ], what = { foo: "bar", baz: "bark" };
+      var result = aqlQuery`FOR i IN ${list} RETURN ${what}`;
+      assertEqual("FOR i IN @value0 RETURN @value1", result.query);
+      assertEqual({ value0: [ 1, 2, 3, 4 ], value1: { foo: "bar", baz: "bark" } }, result.bindVars);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string builder
+////////////////////////////////////////////////////////////////////////////////
+
+    testTemplateStringBuilderObject : function () {
+      var result = aqlQuery`RETURN ${new Date('2015-01-01').toISOString()}`;
+      assertEqual("RETURN @value0", result.query);
+      assertEqual({ value0 : "2015-01-01T00:00:00.000Z" }, result.bindVars);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string builder
+////////////////////////////////////////////////////////////////////////////////
+
+    testTemplateString : function () {
+      var one = 1, two = 2, three = 3, add = 9;
+      var st = db._createStatement(aqlQuery`FOR u IN [ ${one}, ${two}, ${three} ] RETURN u + ${add}`);
+      var result = st.execute().toArray();
+
+      assertEqual([ 10, 11, 12 ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string builder
+////////////////////////////////////////////////////////////////////////////////
+
+    testTemplateStringStrings : function () {
+      var FOR = "FOR", RETURN = "RETURN", PLUS = "+";
+      try {
+        db._createStatement(aqlQuery`${FOR} i IN 1..2 ${RETURN} i ${PLUS} 1`).execute();
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_QUERY_PARSE.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string builder
+////////////////////////////////////////////////////////////////////////////////
+
+    testTemplateStringString : function () {
+      var a = "FROM TO RETURN INSERT";
+      var st = db._createStatement(aqlQuery`RETURN ${a}`);
+      var result = st.execute().toArray();
+
+      assertEqual([ a ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test string builder
+////////////////////////////////////////////////////////////////////////////////
+
+    testTemplateStringUndefined : function () {
+      try {
+        /*global foo */
+        db._createStatement(aqlQuery`FOR u IN ${foo} RETURN 1`);
+        fail();
+      }
+      catch (err) {
+        assertMatch(/^ReferenceError/, String(err));
+      }
     }
 
   };

@@ -1,40 +1,40 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal <<EOF
-{ "startVertex": "persons/alice", "graphName" : "knows_graph", "direction" : "outbound", "init" : "result.visited = 0; result.myVertices = [ ];", "visitor" : "result.visited++; result.myVertices.push(vertex);"}
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/traversal &lt;&lt;EOF</span>
+{ <span class="hljs-string">"startVertex"</span>: <span class="hljs-string">"persons/alice"</span>, <span class="hljs-string">"graphName"</span> : <span class="hljs-string">"knows_graph"</span>, <span class="hljs-string">"direction"</span> : <span class="hljs-string">"outbound"</span>, <span class="hljs-string">"init"</span> : <span class="hljs-string">"result.visited = 0; result.myVertices = [ ];"</span>, <span class="hljs-string">"visitor"</span> : <span class="hljs-string">"result.visited++; result.myVertices.push(vertex);"</span>}
 EOF
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "result" : { 
-    "visited" : 4, 
-    "myVertices" : [ 
+  <span class="hljs-string">"result"</span> : { 
+    <span class="hljs-string">"visited"</span> : <span class="hljs-number">4</span>, 
+    <span class="hljs-string">"myVertices"</span> : [ 
       { 
-        "_id" : "persons/alice", 
-        "_key" : "alice", 
-        "_rev" : "957162433", 
-        "name" : "Alice" 
+        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
+        <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"968625698"</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
       }, 
       { 
-        "_id" : "persons/bob", 
-        "_key" : "bob", 
-        "_rev" : "957359041", 
-        "name" : "Bob" 
+        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
+        <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"968822306"</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
       }, 
       { 
-        "_id" : "persons/charlie", 
-        "_key" : "charlie", 
-        "_rev" : "957621185", 
-        "name" : "Charlie" 
+        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/charlie"</span>, 
+        <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charlie"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"969084450"</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charlie"</span> 
       }, 
       { 
-        "_id" : "persons/dave", 
-        "_key" : "dave", 
-        "_rev" : "957817793", 
-        "name" : "Dave" 
+        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/dave"</span>, 
+        <span class="hljs-string">"_key"</span> : <span class="hljs-string">"dave"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"969281058"</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"Dave"</span> 
       } 
     ] 
   }, 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

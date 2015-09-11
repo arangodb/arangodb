@@ -38,12 +38,13 @@ var users = require("org/arangodb/users");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_api_user_fetch
+/// @brief fetch the properties of a user.
 ///
 /// @RESTHEADER{GET /_api/user/{user}, Fetch User}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{user,string,optional}
+/// @RESTURLPARAM{user,string,required}
 /// The name of the user
 ///
 /// @RESTDESCRIPTION
@@ -65,6 +66,32 @@ var users = require("org/arangodb/users");
 ///
 /// @RESTRETURNCODE{404}
 /// The user with the specified name does not exist
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_api_user_fetch_list
+/// @brief fetch the properties of a user.
+///
+/// @RESTHEADER{GET /_api/user/, List available Users}
+///
+/// @RESTDESCRIPTION
+///
+/// Fetches data about all users.
+///
+/// The call will return a JSON object with at least the following attributes on success:
+///
+/// - *user*: The name of the user as a string.
+/// - *active*: An optional flag that specifies whether the user is active.
+/// - *extra*: An optional JSON object with arbitrary extra data about the user.
+/// - *changePassword*: An optional flag that specifies whether the user must
+///   change the password or not.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// The users that were found
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,6 +124,7 @@ function get_api_user (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_api_user_create
+/// @brief Create a new user.
 ///
 /// @RESTHEADER{POST /_api/user, Create User}
 ///
@@ -189,12 +217,13 @@ function post_api_user (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_api_user_replace
+/// @brief replace an existing user with a new one.
 ///
 /// @RESTHEADER{PUT /_api/user/{user}, Replace User}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{user,string,optional}
+/// @RESTURLPARAM{user,string,required}
 /// The name of the user
 ///
 /// @RESTDESCRIPTION
@@ -272,12 +301,13 @@ function put_api_user (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_api_user_update
+/// @brief modify attributes of an existing user
 ///
 /// @RESTHEADER{PATCH /_api/user/{user}, Update User}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{user,string,optional}
+/// @RESTURLPARAM{user,string,required}
 /// The name of the user
 ///
 /// @RESTDESCRIPTION
@@ -357,12 +387,13 @@ function patch_api_user (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_api_user_delete
+/// @brief delete a user permanently.
 ///
 /// @RESTHEADER{DELETE /_api/user/{user}, Remove User}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{user,string,optional}
+/// @RESTURLPARAM{user,string,required}
 /// The name of the user
 ///
 /// @RESTDESCRIPTION

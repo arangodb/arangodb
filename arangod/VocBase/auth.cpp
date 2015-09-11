@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase authentication and authorisation
+/// @brief vocbase authentication and authorization
 ///
 /// @file
 ///
@@ -289,7 +289,7 @@ static void ClearAuthInfo (TRI_vocbase_t* vocbase) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the authentication info
+/// @brief initializes the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitAuthInfo (TRI_vocbase_t* vocbase) {
@@ -399,7 +399,7 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
-  LOG_DEBUG("starting to load authentication and authorisation information");
+  LOG_DEBUG("starting to load authentication and authorization information");
 
   TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_USERS);
 
@@ -421,26 +421,17 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
+  auto work = [&](TRI_doc_mptr_t const* ptr) -> void {
+    TRI_vocbase_auth_t* auth = ConvertAuthInfo(vocbase, document, ptr);
+    if (auth != nullptr) {
+      TRI_vocbase_auth_t* old = static_cast<TRI_vocbase_auth_t*>(TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true));
 
-  auto primaryIndex = document->primaryIndex()->internals();
-
-  void** beg = primaryIndex->_table;
-  void** end = beg + primaryIndex->_nrAlloc;
-  void** ptr = beg;
-
-  for (;  ptr < end;  ++ptr) {
-    if (*ptr) {
-      TRI_vocbase_auth_t* auth = ConvertAuthInfo(vocbase, document, (TRI_doc_mptr_t const*) *ptr);
-
-      if (auth != nullptr) {
-        TRI_vocbase_auth_t* old = static_cast<TRI_vocbase_auth_t*>(TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->_username, auth, true));
-
-        if (old != nullptr) {
-          FreeAuthInfo(old);
-        }
+      if (old != nullptr) {
+        FreeAuthInfo(old);
       }
     }
-  }
+  };
+  document->primaryIndex()->invokeOnAllElements(work);
 
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
 

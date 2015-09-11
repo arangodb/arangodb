@@ -174,88 +174,109 @@ function parseBodyForCreateCollection (req, res) {
 ///
 /// @RESTHEADER{POST /_api/collection, Create collection}
 ///
-/// @RESTBODYPARAM{body,json,required}
-/// the body with name and options for a collection.
+/// @RESTBODYPARAM{name,string,required,string}
+/// The name of the collection.
+///
+/// @RESTBODYPARAM{waitForSync,boolean,optional,}
+/// If *true* then the data is synchronized to disk before returning from a
+/// document create, update, replace or removal operation. (default: false)
+///
+/// @RESTBODYPARAM{doCompact,boolean,optional,}
+/// whether or not the collection will be compacted (default is *true*)
+///
+/// @RESTBODYPARAM{journalSize,integer,optional,int64}
+/// The maximal size of a journal or datafile in bytes. The value 
+/// must be at least `1048576` (1 MiB). (The default is a configuration parameter)
+///
+/// @RESTBODYPARAM{isSystem,boolean,optional,}
+/// If *true*, create a  system collection. In this case *collection-name*
+/// should start with an underscore. End users should normally create non-system
+/// collections only. API implementors may be required to create system
+/// collections in very special occasions, but normally a regular collection will do.
+/// (The default is *false*)
+///
+/// @RESTBODYPARAM{isVolatile,boolean,optional,}
+/// If *true* then the collection data is kept in-memory only and not made persistent.
+/// Unloading the collection will cause the collection data to be discarded. Stopping
+/// or re-starting the server will also cause full loss of data in the
+/// collection. Setting this option will make the resulting collection be
+/// slightly faster than regular collections because ArangoDB does not
+/// enforce any synchronization to disk and does not calculate any CRC
+/// checksums for datafiles (as there are no datafiles). This option 
+/// should therefore be used for cache-type collections only, and not 
+/// for data that cannot be re-created otherwise.
+/// (The default is *false*)
+///
+/// @RESTBODYPARAM{keyOptions,object,optional,JSF_post_api_collection_opts}
+/// additional options for key generation. If specified, then *keyOptions*
+/// should be a JSON array containing the following attributes:
+///
+/// @RESTSTRUCT{type,JSF_post_api_collection_opts,string,required,string}
+/// specifies the type of the key generator. The currently available generators are
+/// *traditional* and *autoincrement*.
+///
+/// @RESTSTRUCT{allowUserKeys,JSF_post_api_collection_opts,boolean,required,}
+/// if set to *true*, then it is allowed to supply own key values in the
+/// *_key* attribute of a document. If set to *false*, then the key generator
+/// will solely be responsible for generating keys and supplying own key values
+/// in the *_key* attribute of documents is considered an error.
+///
+/// @RESTSTRUCT{increment,JSF_post_api_collection_opts,integer,required,int64}
+/// increment value for *autoincrement* key generator. Not used for other key
+/// generator types.
+///
+/// @RESTSTRUCT{offset,JSF_post_api_collection_opts,integer,required,int64}
+/// Initial offset value for *autoincrement* key generator.
+/// Not used for other key generator types.
+///
+/// @RESTBODYPARAM{type,integer,optional,int64}
+/// (The default is *2*): the type of the collection to create.
+/// The following values for *type* are valid:
+///
+/// - *2*: document collection
+/// - *3*: edges collection
+///
+/// @RESTBODYPARAM{indexBuckets,integer,optional,int64}
+/// The: number of buckets into which indexes using a hash
+/// table are split. The default is 16 and this number has to be a
+/// power of 2 and less than or equal to 1024. 
+/// 
+/// For very large collections one should increase this to avoid long pauses 
+/// when the hash table has to be initially built or resized, since buckets 
+/// are resized individually and can be initially built in parallel. For 
+/// example, 64 might be a sensible value for a collection with 100
+/// 000 000 documents. Currently, only the edge index respects this
+/// value, but other index types might follow in future ArangoDB versions. 
+/// Changes (see below) are applied when the collection is loaded the next 
+/// time.
+///
+/// @RESTBODYPARAM{numberOfShards,integer,optional,int64}
+/// (The default is *1*): in a cluster, this value determines the
+/// number of shards to create for the collection. In a single
+/// server setup, this option is meaningless.
+///
+/// @RESTBODYPARAM{shardKeys,string,optional,string}
+/// (The default is *[ "_key" ]*): in a cluster, this attribute determines
+/// which document attributes are used to determine the target shard for documents.
+/// Documents are sent to shards based on the values of their shard key attributes.
+/// The values of all shard key attributes in a document are hashed,
+/// and the hash value is used to determine the target shard.
+/// **Note**: Values of shard key attributes cannot be changed once set.
+///   This option is meaningless in a single server setup.
 ///
 /// @RESTDESCRIPTION
 /// Creates an new collection with a given name. The request must contain an
 /// object with the following attributes.
 ///
-/// - *name*: The name of the collection.
 ///
-/// - *waitForSync* (optional, default: false): If *true* then
-///   the data is synchronised to disk before returning from a document create,
-///   update, replace or removal operation.
+/// @RESTRETURNCODE{400}
+/// If the *collection-name* is missing, then a *HTTP 400* is
+/// returned.
 ///
-/// - *doCompact* (optional, default is *true*): whether or not the collection
-///   will be compacted.
+/// @RESTRETURNCODE{404}
+/// If the *collection-name* is unknown, then a *HTTP 404* is returned.
 ///
-/// - *journalSize* (optional, default is a configuration parameter): The 
-///   maximal size of a journal or datafile in bytes. The value 
-///   must be at least `1048576` (1 MiB).
 ///
-/// - *isSystem* (optional, default is *false*): If *true*, create a
-///   system collection. In this case *collection-name* should start with
-///   an underscore. End users should normally create non-system collections
-///   only. API implementors may be required to create system collections in
-///   very special occasions, but normally a regular collection will do.
-///
-/// - *isVolatile* (optional, default is *false*): If *true* then the
-///   collection data is kept in-memory only and not made persistent. Unloading
-///   the collection will cause the collection data to be discarded. Stopping
-///   or re-starting the server will also cause full loss of data in the
-///   collection. Setting this option will make the resulting collection be
-///   slightly faster than regular collections because ArangoDB does not
-///   enforce any synchronisation to disk and does not calculate any CRC
-///   checksums for datafiles (as there are no datafiles). This option 
-///   should threrefore be used for cache-type collections only, and not 
-///   for data that cannot be re-created otherwise.
-///
-/// - *keyOptions* (optional) additional options for key generation. If
-///   specified, then *keyOptions* should be a JSON array containing the
-///   following attributes (note: some of them are optional):
-///   - *type*: specifies the type of the key generator. The currently
-///     available generators are *traditional* and *autoincrement*.
-///   - *allowUserKeys*: if set to *true*, then it is allowed to supply
-///     own key values in the *_key* attribute of a document. If set to
-///     *false*, then the key generator will solely be responsible for
-///     generating keys and supplying own key values in the *_key* attribute
-///     of documents is considered an error.
-///   - *increment*: increment value for *autoincrement* key generator.
-///     Not used for other key generator types.
-///   - *offset*: initial offset value for *autoincrement* key generator.
-///     Not used for other key generator types.
-///
-/// - *type* (optional, default is *2*): the type of the collection to
-///   create. The following values for *type* are valid:
-///   - *2*: document collection
-///   - *3*: edges collection
-///
-/// - *indexBuckets* (optiona): number of buckets into which indexes using a hash
-///   table are split. The default is 16 and this number has to be a
-///   power of 2 and less than or equal to 1024. 
-///   
-///   For very large collections one should increase this to avoid long pauses 
-///   when the hash table has to be initially built or resized, since buckets 
-///   are resized individually and can be initially built in parallel. For 
-///   example, 64 might be a sensible value for a collection with 100
-///   000 000 documents. Currently, only the edge index respects this
-///   value, but other index types might follow in future ArangoDB versions. 
-///   Changes (see below) are applied when the collection is loaded the next 
-///   time.
-///
-/// - *numberOfShards* (optional, default is *1*): in a cluster, this value
-///   determines the number of shards to create for the collection. In a single
-///   server setup, this option is meaningless.
-///
-/// - *shardKeys* (optional, default is *[ "_key" ]*): in a cluster, this
-///   attribute determines which document attributes are used to determine the
-///   target shard for documents. Documents are sent to shards based on the
-///   values of their shard key attributes. The values of all shard
-///   key attributes in a document are hashed, and the hash value is used to
-///   determine the target shard.
-/// **Note**: Values of shard key attributes cannot be changed once set.
-///   This option is meaningless in a single server setup.
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateCollection}
@@ -264,7 +285,7 @@ function parseBodyForCreateCollection (req, res) {
 ///       name: "testCollectionBasics"
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///
@@ -274,7 +295,7 @@ function parseBodyForCreateCollection (req, res) {
 ///       type : 3
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
@@ -295,7 +316,7 @@ function parseBodyForCreateCollection (req, res) {
 ///       }
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
@@ -380,6 +401,11 @@ function post_api_collection (req, res) {
 ///
 /// By providing the optional URL parameter *excludeSystem* with a value of
 /// *true*, all system collections will be excluded from the response.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// The list of collections
 ///
 /// @EXAMPLES
 ///
@@ -473,6 +499,7 @@ function get_api_collections (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_properties
+/// @brief reads the properties of the specified collection
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/properties, Read properties of a collection}
 ///
@@ -487,7 +514,7 @@ function get_api_collections (req, res) {
 /// This is achieved by forcing a load of the underlying collection.
 ///
 /// - *waitForSync*: If *true* then creating, changing or removing
-///   documents will wait until the data has been synchronised to disk.
+///   documents will wait until the data has been synchronized to disk.
 ///
 /// - *doCompact*: Whether or not the collection will be compacted.
 ///
@@ -561,6 +588,7 @@ function get_api_collections (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_count
+/// @brief Counts the documents in a collection
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/count, Return number of documents in a collection}
 ///
@@ -610,6 +638,7 @@ function get_api_collections (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_figures
+/// @brief Fetch the statistics of a collection
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/figures, Return statistics for a collection}
 ///
@@ -625,7 +654,7 @@ function get_api_collections (req, res) {
 ///
 /// - *count*: The number of documents currently present in the collection.
 ///
-/// * *figures.alive.count*: The number of curretly active documents in all datafiles
+/// * *figures.alive.count*: The number of currently active documents in all datafiles
 ///   and journals of the collection. Documents that are contained in the
 ///   write-ahead log only are not reported in this figure.
 ///
@@ -743,6 +772,7 @@ function get_api_collections (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_revision
+/// @brief Retrieve the collections revision id
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/revision, Return collection revision id}
 ///
@@ -791,6 +821,7 @@ function get_api_collections (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_checksum
+/// @brief returns a checksum for the specified collection
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/checksum, Return checksum for the collection}
 ///
@@ -1185,6 +1216,16 @@ function put_api_collection_unload (req, res, collection) {
 /// @RESTDESCRIPTION
 /// Removes all documents from the collection, but leaves the indexes intact.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the *collection-name* is missing, then a *HTTP 400* is
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the *collection-name* is unknown, then a *HTTP 404*
+/// is returned.
+///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierTruncate}
@@ -1232,7 +1273,7 @@ function put_api_collection_truncate (req, res, collection) {
 /// attribute(s)
 ///
 /// - *waitForSync*: If *true* then creating or changing a
-///   document will wait until the data has been synchronised to disk.
+///   document will wait until the data has been synchronized to disk.
 ///
 /// - *journalSize*: The maximal size of a journal or datafile in bytes. 
 ///   The value must be at least `1048576` (1 MB). Note that when
@@ -1276,6 +1317,16 @@ function put_api_collection_truncate (req, res, collection) {
 /// **Note**: some other collection properties, such as *type*, *isVolatile*,
 /// *numberOfShards* or *shardKeys* cannot be changed once a collection is
 /// created.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the *collection-name* is missing, then a *HTTP 400* is
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the *collection-name* is unknown, then a *HTTP 404*
+/// is returned.
 ///
 /// @EXAMPLES
 ///
@@ -1344,6 +1395,15 @@ function put_api_collection_properties (req, res, collection) {
 ///
 /// - *isSystem*: If *true* then the collection is a system collection.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{400}
+/// If the *collection-name* is missing, then a *HTTP 400* is
+/// returned.
+///
+/// @RESTRETURNCODE{404}
+/// If the *collection-name* is unknown, then a *HTTP 404*
+/// is returned.
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierRename}
@@ -1425,7 +1485,7 @@ function put_api_collection_rename (req, res, collection) {
 ///
 /// @EXAMPLES
 ///
-/// Rotating a journal:
+/// Rotating the journal:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionRotate}
 ///     var cn = "products";
@@ -1444,7 +1504,7 @@ function put_api_collection_rename (req, res, collection) {
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Rotating without a journal:
+/// Rotating if no journal exists:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionRotateNoJournal}
 ///     var cn = "products";

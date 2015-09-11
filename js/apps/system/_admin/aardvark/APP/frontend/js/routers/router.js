@@ -17,7 +17,6 @@
       "shell": "shell",
       "query": "query",
       "queryManagement": "queryManagement",
-      "api": "api",
       "databases": "databases",
       "applications": "applications",
       "applications/:mount": "applicationDetail",
@@ -250,17 +249,6 @@
         });
       }
       this.queryManagementView.render();
-      this.naviView.selectMenuItem('tools-menu');
-    },
-
-    api: function () {
-      if (!this.checkUser()) {
-        return;
-      }
-      if (!this.apiView) {
-        this.apiView = new window.ApiView();
-      }
-      this.apiView.render();
       this.naviView.selectMenuItem('tools-menu');
     },
 

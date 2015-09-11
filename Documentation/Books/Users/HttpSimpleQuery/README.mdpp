@@ -2,7 +2,7 @@
 
 !SUBSECTION Simple Queries
 
-This is an introduction to ArangoDB's Http interface for simple queries.
+This is an introduction to ArangoDB's HTTP interface for simple queries.
 
 Simple queries can be used if the query condition is straight forward simple,
 i.e., a document reference, all documents, a query-by-example, or a simple geo
@@ -66,6 +66,9 @@ dispose the server-side cursor afterwards.
 
 <!-- js/actions/api-simple.js -->
 @startDocuBlock JSA_put_api_simple_within
+
+<!-- js/actions/api-simple.js -->
+@startDocuBlock JSA_put_api_simple_within_rectangle
 
 <!-- js/actions/api-simple.js -->
 @startDocuBlock JSA_put_api_simple_fulltext

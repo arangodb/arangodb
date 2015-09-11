@@ -14,11 +14,11 @@
 @mixin border-triangle($width, $color) {
   position: absolute;
   border: {
-    width: $width;
-    style: solid;
-    color: $c-transp;
-    top: none;
     bottom-color: $color;
+    color: $c-transp;
+    style: solid;
+    top: none;
+    width: $width;
   }
   display: inline-block;
   content: '';

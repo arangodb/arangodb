@@ -35,9 +35,9 @@
       else {
         $('#checkProduction').removeAttr('checked');
       }
-      $('#checkDevel').next().removeClass('fa fa-check-circle-o fa-circle-o').addClass('fa');
-      $('#checkSystem').next().removeClass('fa fa-check-circle-o fa-circle-o').addClass('fa');
-      $('#checkProduction').next().removeClass('fa fa-check-circle-o fa-circle-o').addClass('fa');
+      $('#checkDevel').next().removeClass('fa fa-check-square-o fa-square-o').addClass('fa');
+      $('#checkSystem').next().removeClass('fa fa-check-square-o fa-square-o').addClass('fa');
+      $('#checkProduction').next().removeClass('fa fa-check-square-o fa-square-o').addClass('fa');
       arangoHelper.setCheckboxStatus('#foxxDropdown');
     },
 

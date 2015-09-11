@@ -201,7 +201,7 @@ https://www.arangodb.com/2015/05/reusable-foxx-apps-with-configurations/
 And the blog post on Foxx dependencies can be found here:
 https://www.arangodb.com/2015/05/foxx-dependencies-for-more-composable-foxx-apps/
 
-For more information on manifests see the [Manifest chapter](../Foxx/Develop/Manifest.html). More information on using dependencies can be found in the chapter on [Foxx exports](../Foxx/Advanced/Exports.html).
+For more information on manifests see the [Manifest chapter](../Foxx/Develop/Manifest.html). More information on using dependencies can be found in the chapter on [Foxx exports](../Foxx/Develop/Exports.html).
 
 !SUBSECTION Mocha Tests
 

@@ -57,6 +57,10 @@ add_executable(
     ${ProductVersionFiles}
     Actions/actions.cpp
     Actions/RestActionHandler.cpp
+    Admin/ApplicationAdminServer.cpp
+    ApplicationServer/ApplicationFeature.cpp
+    ApplicationServer/ApplicationServer.cpp
+    Aql/AggregateBlock.cpp
     Aql/AggregationOptions.cpp
     Aql/AqlItemBlock.cpp
     Aql/AqlItemBlockManager.cpp
@@ -64,9 +68,14 @@ add_executable(
     Aql/Ast.cpp
     Aql/AstNode.cpp
     Aql/AttributeAccessor.cpp
+    Aql/BasicBlocks.cpp
     Aql/BindParameters.cpp
+    Aql/CalculationBlock.cpp
+    Aql/ClusterBlocks.cpp
     Aql/Collection.cpp
     Aql/CollectionScanner.cpp
+    Aql/EnumerateCollectionBlock.cpp
+    Aql/EnumerateListBlock.cpp
     Aql/ExecutionBlock.cpp
     Aql/ExecutionEngine.cpp
     Aql/ExecutionNode.cpp
@@ -77,6 +86,8 @@ add_executable(
     Aql/Function.cpp
     Aql/Functions.cpp
     Aql/grammar.cpp
+    Aql/IndexRangeBlock.cpp
+    Aql/ModificationBlock.cpp
     Aql/NodeFinder.cpp
     Aql/Optimizer.cpp
     Aql/OptimizerRules.cpp
@@ -90,6 +101,8 @@ add_executable(
     Aql/RestAqlHandler.cpp
     Aql/Scopes.cpp
     Aql/ShortStringStorage.cpp
+    Aql/SortBlock.cpp
+    Aql/SubqueryBlock.cpp
     Aql/tokens.cpp
     Aql/V8Expression.cpp
     Aql/Variable.cpp
@@ -105,6 +118,12 @@ add_executable(
     Cluster/ServerJob.cpp
     Cluster/ServerState.cpp
     Cluster/v8-cluster.cpp
+    Dispatcher/ApplicationDispatcher.cpp
+    Dispatcher/Dispatcher.cpp
+    Dispatcher/DispatcherQueue.cpp
+    Dispatcher/DispatcherThread.cpp
+    Dispatcher/Job.cpp
+    Dispatcher/RequeueTask.cpp
     FulltextIndex/fulltext-handles.cpp
     FulltextIndex/fulltext-index.cpp
     FulltextIndex/fulltext-list.cpp
@@ -112,40 +131,71 @@ add_executable(
     FulltextIndex/fulltext-result.cpp
     FulltextIndex/fulltext-wordlist.cpp
     GeoIndex/GeoIndex.cpp
-    HashIndex/hash-array.cpp
-    HashIndex/hash-array-multi.cpp
+    HttpServer/ApplicationEndpointServer.cpp
+    HttpServer/AsyncJobManager.cpp
+    HttpServer/HttpCommTask.cpp
+    HttpServer/HttpHandler.cpp
+    HttpServer/HttpHandlerFactory.cpp
+    HttpServer/HttpListenTask.cpp
+    HttpServer/HttpServer.cpp
+    HttpServer/HttpServerJob.cpp
+    HttpServer/HttpsCommTask.cpp
+    HttpServer/HttpsServer.cpp
+    HttpServer/PathHandler.cpp
     Indexes/CapConstraint.cpp
     Indexes/EdgeIndex.cpp
     Indexes/FulltextIndex.cpp
     Indexes/GeoIndex2.cpp
     Indexes/HashIndex.cpp
     Indexes/Index.cpp
+    Indexes/PathBasedIndex.cpp
     Indexes/PrimaryIndex.cpp
-    Indexes/SkiplistIndex2.cpp
+    Indexes/SkiplistIndex.cpp
     IndexOperators/index-operator.cpp
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp
     Replication/Syncer.cpp
+    Rest/AnyServer.cpp
+    RestHandler/RestAdminBaseHandler.cpp
+    RestHandler/RestAdminLogHandler.cpp
+    RestHandler/RestBaseHandler.cpp
     RestHandler/RestBatchHandler.cpp
+    RestHandler/RestDebugHelperHandler.cpp
     RestHandler/RestCursorHandler.cpp
     RestHandler/RestDocumentHandler.cpp
     RestHandler/RestEdgeHandler.cpp
     RestHandler/RestExportHandler.cpp
     RestHandler/RestImportHandler.cpp
+    RestHandler/RestJobHandler.cpp
     RestHandler/RestPleaseUpgradeHandler.cpp
     RestHandler/RestQueryCacheHandler.cpp
     RestHandler/RestQueryHandler.cpp
     RestHandler/RestReplicationHandler.cpp
+    RestHandler/RestShutdownHandler.cpp
     RestHandler/RestSimpleHandler.cpp
     RestHandler/RestSimpleQueryHandler.cpp
     RestHandler/RestUploadHandler.cpp
+    RestHandler/RestVersionHandler.cpp
     RestHandler/RestVocbaseBaseHandler.cpp
     RestServer/ArangoServer.cpp
     RestServer/ConsoleThread.cpp
     RestServer/VocbaseContext.cpp
     RestServer/arangod.cpp
-    SkipLists/skiplistIndex.cpp
+    Scheduler/ApplicationScheduler.cpp
+    Scheduler/ListenTask.cpp
+    Scheduler/PeriodicTask.cpp
+    Scheduler/Scheduler.cpp
+    Scheduler/SchedulerLibev.cpp
+    Scheduler/SchedulerThread.cpp
+    Scheduler/SignalTask.cpp
+    Scheduler/SocketTask.cpp
+    Scheduler/Task.cpp
+    Scheduler/TaskManager.cpp
+    Scheduler/TimerTask.cpp
+    Statistics/statistics.cpp
     Utils/CollectionExport.cpp
+    Utils/CollectionKeys.cpp
+    Utils/CollectionKeysRepository.cpp
     Utils/Cursor.cpp
     Utils/CursorRepository.cpp
     Utils/DocumentHelper.cpp
@@ -166,6 +216,7 @@ add_executable(
     V8Server/v8-query.cpp
     V8Server/v8-replication.cpp
     V8Server/v8-shape-conv.cpp
+    V8Server/v8-statistics.cpp
     V8Server/v8-user-structures.cpp
     V8Server/v8-util.cpp
     V8Server/v8-vocbase.cpp
@@ -205,7 +256,7 @@ add_executable(
     Wal/RemoverThread.cpp
     Wal/Slot.cpp
     Wal/Slots.cpp
-    Wal/SynchroniserThread.cpp
+    Wal/SynchronizerThread.cpp
 )
 
 target_link_libraries(
@@ -256,7 +307,7 @@ install_config(arango-dfdb)
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/js
-  DESTINATION share/arangodb/js)
+  DESTINATION share/arangodb)
 
 ################################################################################
 ### @brief install log directory

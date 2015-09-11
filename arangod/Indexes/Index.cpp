@@ -30,8 +30,9 @@
 #include "Index.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/server.h"
+#include "VocBase/VocShaper.h"
+
 
 using namespace triagens::arango;
 
@@ -45,7 +46,7 @@ using namespace triagens::arango;
 
 Index::Index (TRI_idx_iid_t iid,
               TRI_document_collection_t* collection,
-              std::vector<std::string> const& fields) 
+              std::vector<std::vector<triagens::basics::AttributeName>> const& fields) 
   : _iid(iid),
     _collection(collection),
     _fields(fields) {
@@ -330,7 +331,8 @@ std::string Index::context () const {
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json Index::toJson (TRI_memory_zone_t* zone) const {
+triagens::basics::Json Index::toJson (TRI_memory_zone_t* zone,
+                                      bool withFigures) const {
   triagens::basics::Json json(zone, triagens::basics::Json::Object, 4);
 
   json("id", triagens::basics::Json(zone, std::to_string(_iid)))
@@ -340,7 +342,9 @@ triagens::basics::Json Index::toJson (TRI_memory_zone_t* zone) const {
     triagens::basics::Json f(zone, triagens::basics::Json::Array, fields().size());
 
     for (auto const& field : fields()) {
-      f.add(triagens::basics::Json(zone, field));
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString);
+      f.add(triagens::basics::Json(zone, fieldString));
     }
 
     json("fields", f);
@@ -350,6 +354,21 @@ triagens::basics::Json Index::toJson (TRI_memory_zone_t* zone) const {
     json("selectivityEstimate", triagens::basics::Json(selectivityEstimate()));
   }
 
+  if (withFigures) {
+    json("figures", toJsonFigures(zone));
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a JSON representation of the index figures
+/// base functionality (called from derived classes)
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json Index::toJsonFigures (TRI_memory_zone_t* zone) const {
+  triagens::basics::Json json(zone, triagens::basics::Json::Object);
+  json("memory", triagens::basics::Json(static_cast<double>(memory())));
   return json;
 }
 
@@ -365,7 +384,7 @@ double Index::selectivityEstimate () const {
 /// @brief default implementation for selectivityEstimate
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::batchInsert (std::vector<struct TRI_doc_mptr_t const*> const*, size_t) {
+int Index::batchInsert (std::vector<TRI_doc_mptr_t const*> const*, size_t) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

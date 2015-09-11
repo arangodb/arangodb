@@ -51,7 +51,7 @@ encoded body and still let ArangoDB send the non-encoded version, for example:
 
 ```js
 res.body = 'VGhpcyBpcyBhIHRlc3Q=';
-res.transformations = res.transformations || [ ]; // initialise
+res.transformations = res.transformations || [ ]; // initialize
 res.transformations.push('base64decode'); // will base64 decode the response body
 ```
 
@@ -355,7 +355,7 @@ Then we send some curl requests to these sample routes:
     @endDocuBlock MOD_08d_routingCurlToOwnConsoleLog
 
 and the console (and / or the logfile) will show requests and replies.
-*Note that logging doesn't warant the sequence in which these lines
+*Note that logging doesn't warrant the sequence in which these lines
 will appear.*
 
 !SECTION Application Deployment
@@ -406,7 +406,7 @@ header from a client to ArangoDB
 
 then the header *X-My-Value* will have a value of (string) *5* and not (number) *5*.
 
-!SUBSECTION 501 Not Implemented
+!SUBSECTION 404 Not Found
 
 If you defined a URL in the routing and the URL is accessible fine via
 HTTP *GET* but returns an HTTP 501 (not implemented) for other HTTP methods
@@ -459,7 +459,7 @@ whereas this definition allows HTTP *GET*, *POST*, and *PUT*:
     logJsonResponse(response);
 
     var response = logCurlRequest('DELETE', url);
-    assert(response.code === 404); //// TODO: should be 405 - method not allowed
+    assert(response.code === 404);
     logJsonResponse(response);
 
     db._query("FOR route IN _routing FILTER route.url.match == '/hello/world' REMOVE route in _routing");

@@ -1,5 +1,9 @@
 !CHAPTER Command-Line Options for Clusters
 
+!SUBSECTION Node ID
+<!-- arangod/Cluster/ApplicationCluster.h -->
+@startDocuBlock clusterMyLocalInfo
+
 !SUBSECTION Agency endpoint
 <!-- arangod/Cluster/ApplicationCluster.h -->
 @startDocuBlock clusterAgencyEndpoint

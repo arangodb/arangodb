@@ -173,14 +173,14 @@ namespace triagens {
                              void*& oldLegend);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a used slot, allowing its synchronisation
+/// @brief return a used slot, allowing its synchronization
 ////////////////////////////////////////////////////////////////////////////////
 
         void returnUsed (SlotInfo&,
                          bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the next synchronisable region
+/// @brief get the next synchronizable region
 ////////////////////////////////////////////////////////////////////////////////
 
         SyncRegion getSyncRegion ();
@@ -249,7 +249,8 @@ namespace triagens {
 /// specified size
 ////////////////////////////////////////////////////////////////////////////////
 
-        Logfile::StatusType newLogfile (uint32_t);
+        int newLogfile (uint32_t,
+                        Logfile::StatusType& status);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -279,7 +280,7 @@ namespace triagens {
 /// @brief all slots
 ////////////////////////////////////////////////////////////////////////////////
 
-        Slot* const _slots;
+        Slot* _slots;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the total number of slots

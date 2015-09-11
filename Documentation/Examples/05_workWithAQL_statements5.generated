@@ -1,9 +1,9 @@
-arangosh> var stmt = db._createStatement( { "query": "FOR i IN [ @one, @two ] RETURN i * 2" } );
-arangosh> stmt.bind("one", 1);
-arangosh> stmt.bind("two", 2);
-arangosh> c = stmt.execute();
+arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement( { <span class="hljs-string">"query"</span>: <span class="hljs-string">"FOR i IN [ @one, @two ] RETURN i * 2"</span> } );
+arangosh&gt; stmt.bind(<span class="hljs-string">"one"</span>, <span class="hljs-number">1</span>);
+arangosh&gt; stmt.bind(<span class="hljs-string">"two"</span>, <span class="hljs-number">2</span>);
+arangosh&gt; c = stmt.execute();
 [ 
-  2, 
-  4 
+  <span class="hljs-number">2</span>, 
+  <span class="hljs-number">4</span> 
 ]
-[object ArangoQueryCursor, count: 2, hasMore: false]
+[object ArangoQueryCursor, count: <span class="hljs-number">2</span>, hasMore: <span class="hljs-literal">false</span>]

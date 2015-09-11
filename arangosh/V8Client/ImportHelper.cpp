@@ -136,7 +136,7 @@ namespace triagens {
   namespace v8client {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// initialise step value for progress reports
+/// initialize step value for progress reports
 ////////////////////////////////////////////////////////////////////////////////
 
     const double ImportHelper::ProgressStep = 3.0;
@@ -173,7 +173,7 @@ namespace triagens {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief imports a delmiited file
+/// @brief imports a delimited file
 ////////////////////////////////////////////////////////////////////////////////
 
     bool ImportHelper::importDelimited (string const& collectionName,
@@ -513,7 +513,7 @@ namespace triagens {
 
       if (*field == '\0') {
         // do nothing
-        _lineBuffer.appendText("null", strlen("null"));
+        _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
         return;
       }
 

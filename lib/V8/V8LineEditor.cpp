@@ -5,8 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +22,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -31,11 +30,13 @@
 #include "Basics/logging.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Utilities/ShellImplementation.h"
 #include "Utilities/ShellImplFactory.h"
 #include "V8/v8-utils.h"
 
 using namespace std;
 using namespace triagens;
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
@@ -46,30 +47,62 @@ using namespace triagens;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
+
 static void SignalHandler (int signal) {
   // get the instance of the console
-  auto instance = triagens::V8LineEditor::instance();
+  auto instance = V8LineEditor::instance();
 
   if (instance != nullptr) {
+    if (instance->isExecutingCommand()) {
+      v8::Isolate* isolate = instance->isolate();
+  
+      if (! v8::V8::IsExecutionTerminating(isolate)) {
+        v8::V8::TerminateExecution(isolate);
+      }
+    }
+
     instance->signal();
   }
 }
+
 #endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class V8Completer
 // -----------------------------------------------------------------------------
 
-bool V8Completer::isComplete (std::string const& source, size_t lineno, size_t column) {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 Completer methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool V8Completer::isComplete (std::string const& source, size_t lineno) {
   int openParen    = 0;
   int openBrackets = 0;
   int openBraces   = 0;
   int openStrings  = 0;  // only used for template strings, which can be multi-line
   int openComments = 0;
 
+  enum line_parse_state_e {
+    NORMAL,             // start
+    NORMAL_1,           // from NORMAL: seen a single /
+    DOUBLE_QUOTE,       // from NORMAL: seen a single "
+    DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
+    SINGLE_QUOTE,       // from NORMAL: seen a single '
+    SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
+    BACKTICK,           // from NORMAL: seen a single `
+    BACKTICK_ESC,       // from BACKTICK: seen a backslash
+    MULTI_COMMENT,      // from NORMAL_1: seen a *
+    MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
+    SINGLE_COMMENT      // from NORMAL_1; seen a /
+  };
+
   char const* ptr = source.c_str();
   char const* end = ptr + source.length();
-  LineParseState state = NORMAL;
+  line_parse_state_e state = NORMAL;
 
   while (ptr < end) {
     if (state == DOUBLE_QUOTE) {
@@ -133,7 +166,7 @@ bool V8Completer::isComplete (std::string const& source, size_t lineno, size_t c
     else if (state == SINGLE_COMMENT) {
       ++ptr;
 
-      if (ptr == end) {
+      if (ptr == end || *ptr == '\n') {
         state = NORMAL;
         --openComments;
       }
@@ -213,11 +246,12 @@ bool V8Completer::isComplete (std::string const& source, size_t lineno, size_t c
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief  computes all strings which begins with the given text
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Completer::getAlternatives (char const * text, 
-                                   std::vector<std::string>& result) {
+vector<string> V8Completer::alternatives (char const * text) {
+  vector<string> result;
+
   // locate global object or sub-object
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
@@ -235,14 +269,14 @@ void V8Completer::getAlternatives (char const * text,
 
         if (! current->Has(name)) {
           TRI_DestroyVectorString(&splitted);
-          return;
+          return result;
         }
 
         v8::Handle<v8::Value> val = current->Get(name);
 
         if (! val->IsObject()) {
           TRI_DestroyVectorString(&splitted);
-          return;
+          return result;
         }
 
         current = val->ToObject();
@@ -318,11 +352,20 @@ void V8Completer::getAlternatives (char const * text,
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
+  return result;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class V8LineEditor
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          static private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the active instance of the editor
+////////////////////////////////////////////////////////////////////////////////
 
 std::atomic<V8LineEditor*> V8LineEditor::_instance(nullptr);
 
@@ -334,18 +377,18 @@ std::atomic<V8LineEditor*> V8LineEditor::_instance(nullptr);
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8LineEditor::V8LineEditor (v8::Handle<v8::Context> context, 
+V8LineEditor::V8LineEditor (v8::Isolate* isolate,
+                            v8::Handle<v8::Context> context, 
                             std::string const& history) 
   : LineEditor(history), 
+    _isolate(isolate),
     _context(context),  
-    _completer(V8Completer()) {
+    _completer(V8Completer()),
+    _executingCommand(false) {
 
   // register global instance
-  
   TRI_ASSERT(_instance.load() == nullptr);
   _instance.store(this);
-
-  setupCtrlCHandler();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,13 +401,34 @@ V8LineEditor::~V8LineEditor () {
   _instance.store(nullptr);
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell implementation supports colors
+////////////////////////////////////////////////////////////////////////////////
+
+bool V8LineEditor::supportsColors () const {
+  if (_shellImpl == nullptr) {
+    return false;
+  }
+
+  return _shellImpl->supportsColors();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup a signal handler for CTRL-C
 ////////////////////////////////////////////////////////////////////////////////
 
 void V8LineEditor::setupCtrlCHandler () {
 #ifndef _WIN32
-  if (ShellImplFactory::hasCtrlCHandler()) {
+  if (_shellImpl != nullptr &&
+      _shellImpl->supportsCtrlCHandler()) {
     struct sigaction sa;
     sa.sa_flags = 0;
     sigemptyset(&sa.sa_mask);
@@ -385,13 +449,10 @@ void V8LineEditor::setupCtrlCHandler () {
 
 void V8LineEditor::initializeShell () {
   _shellImpl = ShellImplFactory::buildShell(_history, &_completer);
+  
+  setupCtrlCHandler();
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

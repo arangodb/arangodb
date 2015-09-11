@@ -1,14 +1,14 @@
-arangosh> Graph = require("org/arangodb/graph-blueprint").Graph;
-function (name, vertices, edges, waitForSync) {
-  this.initialize(name, vertices, edges, waitForSync);
+arangosh&gt; Graph = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-blueprint"</span>).Graph;
+<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">name, vertices, edges, waitForSync</span>) </span>{
+  <span class="hljs-keyword">this</span>.initialize(name, vertices, edges, waitForSync);
 }
-arangosh> g = new Graph("example", "v", "e");
-Graph("example")
-arangosh> v1 = g.addVertex("1");
-Vertex("1")
-arangosh> v2 = g.addVertex("2");
-Vertex("2")
-arangosh> e = g.addEdge(v1, v2, "1-to-2", "knows");
-Edge("1-to-2")
-arangosh> e.getPeerVertex(v1);
-Vertex("2")
+arangosh&gt; g = <span class="hljs-keyword">new</span> Graph(<span class="hljs-string">"example"</span>, <span class="hljs-string">"v"</span>, <span class="hljs-string">"e"</span>);
+Graph(<span class="hljs-string">"example"</span>)
+arangosh&gt; v1 = g.addVertex(<span class="hljs-string">"1"</span>);
+Vertex(<span class="hljs-string">"1"</span>)
+arangosh&gt; v2 = g.addVertex(<span class="hljs-string">"2"</span>);
+Vertex(<span class="hljs-string">"2"</span>)
+arangosh&gt; e = g.addEdge(v1, v2, <span class="hljs-string">"1-to-2"</span>, <span class="hljs-string">"knows"</span>);
+Edge(<span class="hljs-string">"1-to-2"</span>)
+arangosh&gt; e.getPeerVertex(v1);
+Vertex(<span class="hljs-string">"2"</span>)

@@ -667,10 +667,7 @@ class PropagateConstantAttributesHelper {
       TRI_ASSERT(name.empty());
 
       while (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        char const* attributeName = attribute->getStringValue();
-
-        TRI_ASSERT(attributeName != nullptr);
-        name = std::string(".") + std::string(attributeName) + name;
+        name = std::string(".") + std::string(attribute->getStringValue(), attribute->getStringLength()) + name;
         attribute = attribute->getMember(0);
       }
 
@@ -1760,8 +1757,7 @@ static void FindVarAndAttr (ExecutionPlan const* plan,
     FindVarAndAttr(plan, node->getMember(0), enumCollVar, attr);
 
     if (enumCollVar != nullptr) {
-      char const* attributeName = node->getStringValue();
-      attr.append(attributeName);
+      attr.append(node->getStringValue(), node->getStringLength());
       attr.push_back('.');
     }
     return;
@@ -2364,7 +2360,9 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                         auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
                       
                         for (size_t j = 0; j < idx->fields.size(); j++) {
-                          auto range = map->find(idx->fields[j]);
+                          std::string fieldString;
+                          TRI_AttributeNamesToString(idx->fields[j], fieldString, true);
+                          auto range = map->find(fieldString);
                       
                           if (range == map->end() || ! range->second.is1ValueRangeInfo()) {
                             indexOrCondition.clear();   // not usable
@@ -2408,8 +2406,10 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                       for (size_t k = 0; k < validPos.size(); k++) {
                         auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
 
+                        std::string fieldString;
+                        TRI_AttributeNamesToString(idx->fields[0], fieldString, true);
                         // check if there is a range that contains the first index attribute
-                        auto range = map->find(idx->fields[0]);
+                        auto range = map->find(fieldString);
 
                         if (range == map->end()) { 
                           indexOrCondition.clear();
@@ -2424,7 +2424,9 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                         bool handled = false;
                         size_t j = 0;
                         while (++j < prefixes.at(i) && equality) {
-                          range = map->find(idx->fields[j]);
+                          std::string fieldString;
+                          TRI_AttributeNamesToString(idx->fields[j], fieldString, true);
+                          range = map->find(fieldString);
 
                           if (range == map->end()) { 
                             indexOrCondition.clear();
@@ -2452,7 +2454,9 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                           auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
 
                           for (size_t j = 0; j < idx->fields.size(); j++) {
-                            auto range = map->find(idx->fields[j]);
+                            std::string fieldString;
+                            TRI_AttributeNamesToString(idx->fields[j], fieldString, true);
+                            auto range = map->find(fieldString);
 
                             if (range == map->end()) { 
                               indexOrCondition.clear();
@@ -2492,7 +2496,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                     if (! isEmpty) {
                       // enter index into the index cache
                       {
-                        size_t indexesUsed;
+                        size_t indexesUsed = 0;
                         auto p1 = _doneIndexes.find(en);
 
                         if (p1 != _doneIndexes.end()) {
@@ -3205,7 +3209,7 @@ struct FilterCondition {
               attributeName.push_back('.');
             } 
 
-            attributeName.append(node->getStringValue()); 
+            attributeName.append(node->getStringValue(), node->getStringLength()); 
           }
           else if (node->type == NODE_TYPE_REFERENCE) { 
             auto variable = static_cast<Variable const*>(node->getData());
@@ -4267,7 +4271,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief recognises that a RemoveNode can be moved to the shards.
+/// @brief recognizes that a RemoveNode can be moved to the shards.
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::undistributeRemoveAfterEnumCollRule (Optimizer* opt, 
@@ -4761,6 +4765,73 @@ int triagens::aql::removeDataModificationOutVariablesRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
+  opt->addPlan(plan, rule, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief patch UPDATE statement on single collection that iterates over the
+/// entire collection to operate in batches
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::patchUpdateStatementsRule (Optimizer* opt, 
+                                              ExecutionPlan* plan, 
+                                              Optimizer::Rule const* rule) {
+  bool modified = false;
+
+  // not need to dive into subqueries here, as UPDATE needs to be on the top level
+  std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(EN::UPDATE, false);
+  
+  for (auto const& n : nodes) {
+    // we should only get through here a single time
+    auto node = static_cast<ModificationNode*>(n);
+    TRI_ASSERT(node != nullptr);
+
+    auto& options = node->getOptions();
+    if (! options.readCompleteInput) {
+      // already ok
+      continue;
+    }
+
+    auto const collection = node->collection();
+
+    auto dep = n->getFirstDependency();
+
+    while (dep != nullptr) {
+      auto const type = dep->getType();
+
+      if (type == EN::ENUMERATE_LIST || 
+          type == EN::INDEX_RANGE ||
+          type == EN::SUBQUERY) {
+        // not suitable
+        modified = false;
+        break;
+      }
+
+      if (type == EN::ENUMERATE_COLLECTION) {
+        auto collectionNode = static_cast<EnumerateCollectionNode const*>(dep);
+
+        if (collectionNode->collection() != collection) {
+          // different collection, not suitable
+          modified = false;
+          break;
+        }
+        else {
+          modified = true;
+        }
+      }
+
+      dep = dep->getFirstDependency();
+    }
+
+    if (modified) {
+      options.readCompleteInput = false;
+    }
+  }
+  
+  // always re-add the original plan, be it modified or not
+  // only a flag in the plan will be modified
   opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;

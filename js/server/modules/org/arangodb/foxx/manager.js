@@ -177,7 +177,7 @@ const manifestSchema = {
     )
   ),
   thumbnail: joi.string().optional(),
-  version: joi.string().regex(/^\d+\.\d+(\.\d+)?$/).required(),
+  version: joi.string().required(),
   rootElement: joi.boolean().default(false)
 };
 

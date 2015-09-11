@@ -1,6 +1,5 @@
 <script id="arangoTable.ejs" type="text/template">
 <table class="arango-table" id="<%=content.id%>">
-
   <thead>
     <tr>
       <% var hcounter = 0; %>
@@ -9,7 +8,6 @@
       <% hcounter++; });%>
     </tr>
   </thead>
-
   <tbody>
     <% _.each(content.rows, function(k) { var counter=0;%>
       <tr>
@@ -18,6 +16,12 @@
         <% counter++;});%>
       </tr>
     <%});%>
+
+    <% if (content.rows.length === 0) { %>
+      <tr>
+        <td>No content.</td><td></td><td></td>
+      </tr>
+    <% }; %>
   </tbody>
 </table>
 </script>

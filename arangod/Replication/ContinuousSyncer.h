@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replication continuous data synchroniser
+/// @brief replication continuous data synchronizer
 ///
 /// @file
 ///
@@ -31,7 +31,6 @@
 #define ARANGODB_REPLICATION_CONTINUOUS_SYNCER_H 1
 
 #include "Basics/Common.h"
-
 #include "Replication/Syncer.h"
 #include "Utils/ReplicationTransaction.h"
 #include "VocBase/replication-applier.h"
@@ -51,6 +50,7 @@ namespace triagens {
   }
 
  namespace arango {
+    class ReplicationTransaction;
 
     enum RestrictType : uint32_t {
       RESTRICT_NONE,
@@ -78,7 +78,7 @@ namespace triagens {
                           TRI_vocbase_t*,
                           struct TRI_replication_applier_configuration_s const*,
                           TRI_voc_tick_t,
-                          bool);
+                          bool); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -93,10 +93,18 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run method, performs continuous synchronisation
+/// @brief run method, performs continuous synchronization
 ////////////////////////////////////////////////////////////////////////////////
 
         int run ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the syncer's replication applier
+////////////////////////////////////////////////////////////////////////////////
+        
+        TRI_replication_applier_t* applier () const {
+          return _applier;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -109,6 +117,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void setProgress (char const*);
+        
+        void setProgress (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save the current applier state
@@ -120,7 +130,8 @@ namespace triagens {
 /// @brief whether or not a collection should be excluded
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool excludeCollection (struct TRI_json_t const*) const;
+        bool skipMarker (TRI_voc_tick_t,
+                         struct TRI_json_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a collection should be excluded
@@ -177,6 +188,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int applyLogMarker (struct TRI_json_t const*,
+                            TRI_voc_tick_t,
                             std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,6 +196,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int applyLog (httpclient::SimpleHttpResult*,
+                      TRI_voc_tick_t,
                       std::string&,
                       uint64_t&,
                       uint64_t&);
@@ -195,11 +208,21 @@ namespace triagens {
         int runContinuousSync (std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run the continuous synchronisation
+/// @brief fetch the initial master state
+////////////////////////////////////////////////////////////////////////////////
+
+        int fetchMasterState (std::string&,
+                              TRI_voc_tick_t,
+                              TRI_voc_tick_t,
+                              TRI_voc_tick_t&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run the continuous synchronization
 ////////////////////////////////////////////////////////////////////////////////
 
         int followMasterLog (std::string&,
                              TRI_voc_tick_t&,
+                             TRI_voc_tick_t,
                              uint64_t&,
                              bool&,
                              bool&);
@@ -235,7 +258,7 @@ namespace triagens {
         RestrictType _restrictType;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initial tick for continuous synchronisation
+/// @brief initial tick for continuous synchronization
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_voc_tick_t _initialTick;
@@ -251,6 +274,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _includeSystem;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the specified from tick must be present when fetching
+/// data from a master
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _requireFromPresent;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the applier should be verbose
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _verbose;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief which transactions were open and need to be treated specially
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*> _ongoingTransactions;
 
     };
 

@@ -47,7 +47,7 @@
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
-#include "Rest/InitialiseRest.h"
+#include "Rest/InitializeRest.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -69,6 +69,7 @@ using namespace triagens::rest;
 using namespace triagens::httpclient;
 using namespace triagens::v8client;
 using namespace triagens::arango;
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -272,12 +273,12 @@ static void JS_StopOutputPager (const v8::FunctionCallbackInfo<v8::Value>& args)
 /// @FUN{importCsvFile(@FA{filename}, @FA{collection})}
 ///
 /// Imports data of a CSV file. The data is imported to @FA{collection}.
-////The seperator is @CODE{\,} and the quote is @CODE{"}.
+////The separator is @CODE{\,} and the quote is @CODE{"}.
 ///
 /// @FUN{importCsvFile(@FA{filename}, @FA{collection}, @FA{options})}
 ///
 /// Imports data of a CSV file. The data is imported to @FA{collection}.
-////The seperator is @CODE{\,} and the quote is @CODE{"}.
+////The separator is @CODE{\,} and the quote is @CODE{"}.
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ImportCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1505,7 +1506,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
-  triagens::V8LineEditor console(context, ".arangosh.history");
+  V8LineEditor console(isolate, context, ".arangosh.history");
   console.open(BaseClient.autoComplete());
 
   uint64_t nrCommands = 0;
@@ -1542,9 +1543,10 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
 
 #else
 
-    if (BaseClient.colors()) {
+    if (BaseClient.colors() && console.supportsColors()) {
 
 #ifdef TRI_HAVE_LINENOISE
+
       // linenoise doesn't need escape sequences for escape sequences
       goodPrompt = TRI_SHELL_COLOR_BOLD_GREEN + dynamicPrompt + TRI_SHELL_COLOR_RESET;
       badPrompt  = TRI_SHELL_COLOR_BOLD_RED   + dynamicPrompt + TRI_SHELL_COLOR_RESET;
@@ -1584,33 +1586,28 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     }
 #endif
 
-    char* input = console.prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
+    bool eof;
+    string input = console.prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str(), "arangosh", eof);
 
-    if (input == nullptr) {
+    if (eof) {
       break;
     }
 
-    if (*input == '\0') {
+    if (input.empty()) {
       // input string is empty, but we must still free it
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       continue;
     }
 
-    BaseClient.log("%s%s\n", dynamicPrompt.c_str(), input);
+    BaseClient.log("%s%s\n", dynamicPrompt, input);
 
     string i = triagens::basics::StringUtils::trim(input);
 
     if (i == "exit" || i == "quit" || i == "exit;" || i == "quit;") {
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       break;
     }
 
     if (i == "help" || i == "help;") {
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-      input = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "help()");
-      if (input == nullptr) {
-        LOG_FATAL_AND_EXIT("out of memory");
-      }
+      input = "help()";
     }
 
     console.addHistory(input);
@@ -1622,8 +1619,12 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     // assume the command succeeds
     promptError = false;
 
+    console.isExecutingCommand(true);
+
     // execute command and register its result in __LAST__
-    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STRING(input), name, true);
+    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STRING(input.c_str()), name, true);
+
+    console.isExecutingCommand(false);
 
     if (v.IsEmpty()) {
       context->Global()->Set(TRI_V8_ASCII_STRING("_last"), v8::Undefined(isolate));
@@ -1632,11 +1633,16 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
       context->Global()->Set(TRI_V8_ASCII_STRING("_last"), v);
     }
 
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-
     if (tryCatch.HasCaught()) {
       // command failed
-      string exception(TRI_StringifyV8Exception(isolate, &tryCatch));
+      string exception;
+
+      if (! tryCatch.CanContinue() || tryCatch.HasTerminated()) {
+        exception = "command locally aborted";
+      }
+      else {
+        exception = TRI_StringifyV8Exception(isolate, &tryCatch);
+      }
 
       BaseClient.printErrLine(exception);
       BaseClient.log("%s", exception.c_str());
@@ -1876,18 +1882,18 @@ static bool RunJsLint (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* arangoshResourcesAllocated = nullptr;
-static void arangoshEntryFunction ();
-static void arangoshExitFunction (int, void*);
+static void LocalEntryFunction ();
+static void LocalExitFunction (int, void*);
 
 #ifdef _WIN32
 
 // .............................................................................
-// Call this function to do various initialistions for windows only
+// Call this function to do various initializations for windows only
 //
 // TODO can we move this to a general function for all binaries?
 // .............................................................................
 
-void arangoshEntryFunction() {
+void LocalEntryFunction() {
   int maxOpenFiles = 1024;
   int res = 0;
 
@@ -1896,36 +1902,36 @@ void arangoshEntryFunction() {
   // If you familiar with valgrind ... then this is not like that, however
   // you do get some similar functionality.
   // ...........................................................................
-  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
+  //res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
-  res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
-
-  if (res != 0) {
-    _exit(1);
-  }
-
-  res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+  res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
 
   if (res != 0) {
     _exit(1);
   }
 
-  res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
 
   if (res != 0) {
     _exit(1);
   }
 
-  TRI_Application_Exit_SetExit(arangoshExitFunction);
+  res = initializeWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+
+  if (res != 0) {
+    _exit(1);
+  }
+
+  TRI_Application_Exit_SetExit(LocalExitFunction);
 }
 
-static void arangoshExitFunction (int exitCode, void* data) {
+static void LocalExitFunction (int exitCode, void* data) {
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
   // any windows specific stuff.
   // ...........................................................................
 
-  int res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
     exit(1);
@@ -1935,15 +1941,15 @@ static void arangoshExitFunction (int exitCode, void* data) {
 }
 #else
 
-static void arangoshEntryFunction() {
+static void LocalEntryFunction() {
 }
 
-static void arangoshExitFunction (int exitCode, void* data) {
+static void LocalExitFunction (int exitCode, void* data) {
 }
 
 #endif
 
-static bool printHelo(bool useServer, bool promptError) {
+static bool printHelo (bool useServer, bool promptError) {
   // .............................................................................
   // banner
   // .............................................................................
@@ -2041,26 +2047,10 @@ static bool printHelo(bool useServer, bool promptError) {
     BaseClient.printLine("");
 
     ostringstream s;
-    s << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) ArangoDB GmbH";
+    s << "arangosh (" << triagens::rest::Version::getVerboseVersionString() << ")" << std::endl;
+    s << "Copyright (c) ArangoDB GmbH";
 
     BaseClient.printLine(s.str(), true);
-
-    ostringstream info;
-    info << "Using ";
-
-#ifdef TRI_V8_VERSION
-    info << "Google V8 " << TRI_V8_VERSION << " JavaScript engine";
-#else
-    info << "Google V8 JavaScript engine";
-#endif
-
-#ifdef TRI_READLINE_VERSION
-    info << ", READLINE " << TRI_READLINE_VERSION;
-#endif
-
-    info << ", ICU " << Version::getICUVersion();
-
-    BaseClient.printLine(info.str(), true);
     BaseClient.printLine("", true);
 
     BaseClient.printWelcomeInfo();
@@ -2316,12 +2306,12 @@ int main (int argc, char* args[]) {
     cygwinShell = true;
   }
 #endif
-  arangoshEntryFunction();
+  LocalEntryFunction();
 
-  TRIAGENS_C_INITIALISE(argc, args);
-  TRIAGENS_REST_INITIALISE(argc, args);
+  TRIAGENS_C_INITIALIZE(argc, args);
+  TRIAGENS_REST_INITIALIZE(argc, args);
 
-  TRI_InitialiseLogging(false);
+  TRI_InitializeLogging(false);
         
   {
     std::ostringstream foxxManagerHelp;
@@ -2479,7 +2469,7 @@ int main (int argc, char* args[]) {
   v8::V8::Dispose();
   v8::V8::ShutdownPlatform();
   delete platform;
-  arangoshExitFunction(ret, nullptr);
+  LocalExitFunction(ret, nullptr);
 
   return ret;
 }

@@ -97,23 +97,20 @@ function get_api_aqlfunction (req, res) {
 ///
 /// @RESTHEADER{POST /_api/aqlfunction, Create AQL user function}
 ///
-/// @RESTBODYPARAM{body,json,required}
-/// the body with name and code of the aql user function.
+/// @RESTBODYPARAM{name,string,required,string}
+/// the fully qualified name of the user functions.
+///
+/// @RESTBODYPARAM{code,string,required,string}
+/// a string representation of the function body.
+///
+/// @RESTBODYPARAM{isDeterministic,boolean,optional,}
+/// an optional boolean value to indicate that the function
+/// results are fully deterministic (function return value solely depends on
+/// the input value and return value is the same for repeated calls with same
+/// input). The *isDeterministic* attribute is currently not used but may be
+/// used later for optimisations.
 ///
 /// @RESTDESCRIPTION
-///
-/// The following data need to be passed in a JSON representation in the body of
-/// the POST request:
-///
-/// - *name*: the fully qualified name of the user functions.
-///
-/// - *code*: a string representation of the function body.
-///
-/// - *isDeterministic*: an optional boolean value to indicate that the function
-///   results are fully deterministic (function return value solely depends on
-///   the input value and return value is the same for repeated calls with same
-///   input). The *isDeterministic* attribute is currently not used but may be
-///   used later for optimisations.
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///
@@ -156,7 +153,7 @@ function get_api_aqlfunction (req, res) {
 ///     code : "function (celsius) { return celsius * 1.8 + 32; }"
 ///   };
 ///
-///   var response = logCurlRequest('POST', url, JSON.stringify(body));
+///   var response = logCurlRequest('POST', url, body);
 ///
 ///   assert(response.code === 200 || response.code === 201 || response.code === 202);
 ///
@@ -291,7 +288,7 @@ function delete_api_aqlfunction (req, res) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       initialiser
+// --SECTION--                                                       initializer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

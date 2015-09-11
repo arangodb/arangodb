@@ -52,7 +52,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_closesocket (TRI_socket_t s) {
-  int res = 0;
+  int res = TRI_ERROR_NO_ERROR;
 #ifdef _WIN32
   if (s.fileHandle != TRI_INVALID_SOCKET) {
     res = shutdown(s.fileHandle, SD_SEND);
@@ -91,10 +91,16 @@ int TRI_closesocket (TRI_socket_t s) {
     // }
   }
 #else
-    if (s.fileDescriptor != TRI_INVALID_SOCKET) {
-      res = close(s.fileDescriptor);
+  if (s.fileDescriptor != TRI_INVALID_SOCKET) {
+    res = close(s.fileDescriptor);
+
+    if (res == -1) {
+      int myerrno = errno;
+      LOG_WARNING("socket close error: %d: %s", myerrno, strerror(myerrno));
     }
+  }
 #endif
+
   return res;
 }
 
@@ -102,9 +108,9 @@ int TRI_closesocket (TRI_socket_t s) {
 int TRI_readsocket (TRI_socket_t s, void* buffer, size_t numBytesToRead, int flags) {
   int res;
 #ifdef _WIN32
-    res = recv(s.fileHandle, (char*)(buffer), (int)(numBytesToRead), flags);
+  res = recv(s.fileHandle, (char*)(buffer), (int)(numBytesToRead), flags);
 #else
-    res = read(s.fileDescriptor, buffer, numBytesToRead);
+  res = read(s.fileDescriptor, buffer, numBytesToRead);
 #endif
   return res;
 }
@@ -113,9 +119,9 @@ int TRI_readsocket (TRI_socket_t s, void* buffer, size_t numBytesToRead, int fla
 int TRI_writesocket (TRI_socket_t s, const void* buffer, size_t numBytesToWrite, int flags) {
   int res;
 #ifdef _WIN32
-    res = send(s.fileHandle, (const char*)(buffer), (int)(numBytesToWrite), flags);
+  res = send(s.fileHandle, (const char*)(buffer), (int)(numBytesToWrite), flags);
 #else
-    res = (int) write(s.fileDescriptor, buffer, numBytesToWrite);
+  res = (int) write(s.fileDescriptor, buffer, numBytesToWrite);
 #endif
   return res;
 }
@@ -157,9 +163,8 @@ bool TRI_SetCloseOnExecSocket (TRI_socket_t s) {
 #ifdef TRI_HAVE_WIN32_NON_BLOCKING
 
 bool TRI_SetNonBlockingSocket (TRI_socket_t s) {
-  int res;
   DWORD ul = 1;
-  res = ioctlsocket(s.fileHandle, FIONBIO, &ul);
+  int res = ioctlsocket(s.fileHandle, FIONBIO, &ul);
   return (res == 0);
 }
 
@@ -189,13 +194,13 @@ bool TRI_SetNonBlockingSocket (TRI_socket_t s) {
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton4 (const char *src, unsigned char *dst) {
+int TRI_InetPton4 (char const* src, unsigned char* dst) {
   static const char digits[] = "0123456789";
 
   int saw_digit, octets, ch;
   unsigned char tmp[sizeof(struct in_addr)], *tp;
 
-  if (NULL == src) {
+  if (nullptr == src) {
     return TRI_ERROR_IP_ADDRESS_INVALID;
   }
 
@@ -206,7 +211,7 @@ int TRI_InetPton4 (const char *src, unsigned char *dst) {
   while ((ch = *src++) != '\0') {
     const char *pch;
 
-    if ((pch = strchr(digits, ch)) != NULL) {
+    if ((pch = strchr(digits, ch)) != nullptr) {
       unsigned int nw = (unsigned int) (*tp * 10 + (pch - digits));
 
       if (saw_digit && *tp == 0) {
@@ -244,7 +249,7 @@ int TRI_InetPton4 (const char *src, unsigned char *dst) {
     return TRI_ERROR_IP_ADDRESS_INVALID;
   }
 
-  if (NULL != dst) {
+  if (nullptr != dst) {
     memcpy(dst, tmp, sizeof(struct in_addr));
   }
 
@@ -257,7 +262,7 @@ int TRI_InetPton4 (const char *src, unsigned char *dst) {
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton6 (const char *src, unsigned char *dst) {
+int TRI_InetPton6 (char const* src, unsigned char* dst) {
   static const char xdigits_l[] = "0123456789abcdef";
   static const char xdigits_u[] = "0123456789ABCDEF";
 
@@ -266,13 +271,13 @@ int TRI_InetPton6 (const char *src, unsigned char *dst) {
   int ch, seen_xdigits;
   unsigned int val;
 
-  if (NULL == src) {
+  if (nullptr == src) {
     return TRI_ERROR_IP_ADDRESS_INVALID;
   }
 
   memset((tp = tmp), '\0', sizeof tmp);
   endp = tp + sizeof tmp;
-  colonp = NULL;
+  colonp = nullptr;
 
   /* Leading :: requires some special handling. */
   if (*src == ':') {
@@ -288,11 +293,11 @@ int TRI_InetPton6 (const char *src, unsigned char *dst) {
   while ((ch = *src++) != '\0') {
     const char *pch;
 
-    if ((pch = strchr((xdigits = xdigits_l), ch)) == NULL) {
+    if ((pch = strchr((xdigits = xdigits_l), ch)) == nullptr) {
       pch = strchr((xdigits = xdigits_u), ch);
     }
 
-    if (pch != NULL) {
+    if (pch != nullptr) {
       val <<= 4;
       val |= (pch - xdigits);
 
@@ -352,7 +357,7 @@ int TRI_InetPton6 (const char *src, unsigned char *dst) {
     *tp++ = (unsigned char) val & 0xff;
   }
 
-  if (colonp != NULL) {
+  if (colonp != nullptr) {
     /*
      * Since some memmove()'s erroneously fail to handle
      * overlapping regions, we'll do the shift by hand.
@@ -376,33 +381,11 @@ int TRI_InetPton6 (const char *src, unsigned char *dst) {
     return TRI_ERROR_IP_ADDRESS_INVALID;
   }
 
-  if (NULL != dst) {
+  if (nullptr != dst) {
     memcpy(dst, tmp, sizeof tmp);
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            MODULE
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            modules initialisation
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the sockets components
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitialiseSockets (void) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs the sockets components
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ShutdownSockets (void) {
 }
 
 // -----------------------------------------------------------------------------

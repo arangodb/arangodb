@@ -25,15 +25,15 @@
   </table>
 
   <ul id="infoTab" class="nav nav-tabs">
-    <li class="active"><a href="#newApp" data-toggle="tab" id="tab-new">New Service</a></li>
-    <li><a href="#appstore" data-toggle="tab" id="tab-store"><img src="img/arangodb_logo_small.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
+    <li><a href="#newApp" data-toggle="tab" id="tab-new">New Service</a></li>
+    <li class="active"><a href="#appstore" data-toggle="tab" id="tab-store"><img src="img/arangodb_logo_small.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
     <li><a href="#github" data-toggle="tab" id="tab-git">Github</a></li>
     <li><a href="#zip" data-toggle="tab" id="tab-zip">Zip</a></li>
   </ul>
 
   <div class="tab-content" id="tab-content-application-info">
 
-    <div class="tab-pane active" id="newApp">
+    <div class="tab-pane" id="newApp">
       <table id="new-app-information">
         <tr class="tableRow">
           <th class="collectionInfoTh">
@@ -93,8 +93,11 @@
       </table>
     </div>
 
-    <div class="tab-pane" id="appstore">
+    <div class="tab-pane active" id="appstore">
       <table id="appstore-content">
+        <tr>
+          <td>Fetching data...</td>
+        </tr>
       </table>
     </div>
 

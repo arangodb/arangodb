@@ -1,68 +1,68 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
-........> startVertexCollectionRestriction : 'germanCity'});
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; g._shortestPath({}, {}, {weight : <span class="hljs-string">'distance'</span>, endVertexCollectionRestriction : <span class="hljs-string">'frenchCity'</span>,
+........&gt; startVertexCollectionRestriction : <span class="hljs-string">'germanCity'</span>});
 [ 
   [ 
     { 
-      "vertices" : [ 
-        "germanCity/Berlin", 
-        "frenchCity/Paris" 
+      <span class="hljs-string">"vertices"</span> : [ 
+        <span class="hljs-string">"germanCity/Berlin"</span>, 
+        <span class="hljs-string">"frenchCity/Paris"</span> 
       ], 
-      "edges" : [ 
-        "internationalHighway/1741169601" 
+      <span class="hljs-string">"edges"</span> : [ 
+        <span class="hljs-string">"internationalHighway/1753484834"</span> 
       ], 
-      "distance" : 1 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
     }, 
     { 
-      "vertices" : [ 
-        "germanCity/Berlin", 
-        "frenchCity/Lyon" 
+      <span class="hljs-string">"vertices"</span> : [ 
+        <span class="hljs-string">"germanCity/Berlin"</span>, 
+        <span class="hljs-string">"frenchCity/Lyon"</span> 
       ], 
-      "edges" : [ 
-        "internationalHighway/1740972993" 
+      <span class="hljs-string">"edges"</span> : [ 
+        <span class="hljs-string">"internationalHighway/1753288226"</span> 
       ], 
-      "distance" : 1 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
     }, 
     { 
-      "vertices" : [ 
-        "germanCity/Hamburg", 
-        "frenchCity/Paris" 
+      <span class="hljs-string">"vertices"</span> : [ 
+        <span class="hljs-string">"germanCity/Cologne"</span>, 
+        <span class="hljs-string">"frenchCity/Paris"</span> 
       ], 
-      "edges" : [ 
-        "internationalHighway/1741366209" 
+      <span class="hljs-string">"edges"</span> : [ 
+        <span class="hljs-string">"internationalHighway/1754271266"</span> 
       ], 
-      "distance" : 1 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
     }, 
     { 
-      "vertices" : [ 
-        "germanCity/Hamburg", 
-        "frenchCity/Lyon" 
+      <span class="hljs-string">"vertices"</span> : [ 
+        <span class="hljs-string">"germanCity/Cologne"</span>, 
+        <span class="hljs-string">"frenchCity/Lyon"</span> 
       ], 
-      "edges" : [ 
-        "internationalHighway/1741562817" 
+      <span class="hljs-string">"edges"</span> : [ 
+        <span class="hljs-string">"internationalHighway/1754074658"</span> 
       ], 
-      "distance" : 1 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
     }, 
     { 
-      "vertices" : [ 
-        "germanCity/Cologne", 
-        "frenchCity/Paris" 
+      <span class="hljs-string">"vertices"</span> : [ 
+        <span class="hljs-string">"germanCity/Hamburg"</span>, 
+        <span class="hljs-string">"frenchCity/Paris"</span> 
       ], 
-      "edges" : [ 
-        "internationalHighway/1741956033" 
+      <span class="hljs-string">"edges"</span> : [ 
+        <span class="hljs-string">"internationalHighway/1753681442"</span> 
       ], 
-      "distance" : 1 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
     }, 
     { 
-      "vertices" : [ 
-        "germanCity/Cologne", 
-        "frenchCity/Lyon" 
+      <span class="hljs-string">"vertices"</span> : [ 
+        <span class="hljs-string">"germanCity/Hamburg"</span>, 
+        <span class="hljs-string">"frenchCity/Lyon"</span> 
       ], 
-      "edges" : [ 
-        "internationalHighway/1741759425" 
+      <span class="hljs-string">"edges"</span> : [ 
+        <span class="hljs-string">"internationalHighway/1753878050"</span> 
       ], 
-      "distance" : 1 
+      <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
     } 
   ] 
 ]

@@ -33,6 +33,33 @@ module.isSystem = true;
 var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief builds an example query
+////////////////////////////////////////////////////////////////////////////////
+
+function buildExampleQuery (collection, example, limit) {
+  var parts = [ ]; 
+  var bindVars = { "@collection" : collection.name() };
+  var keys = Object.keys(example);
+
+  for (var i = 0; i < keys.length; ++i) {
+    var key = keys[i];
+    parts.push("doc.@att" + i + " == @value" + i);
+    bindVars["att" + i] = key;
+    bindVars["value" + i] = example[key];
+  }
+  
+  var query = "FOR doc IN @@collection";
+  if (parts.length > 0) {
+    query += " FILTER " + parts.join(" && ", parts);
+  }
+  if (limit > 0) {
+    query += " LIMIT " + parseInt(limit, 10);
+  }
+
+  return { query: query, bindVars: bindVars };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add options from arguments to index specification
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -369,7 +396,6 @@ ArangoCollection.prototype.any = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_ArangoCollection_prototype_first
 /// @brief selects the n first documents in the collection
 /// @startDocuBlock documentsCollectionFirst
 /// `collection.first(count)`
@@ -455,9 +481,8 @@ ArangoCollection.prototype.first = function (count) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_ArangoCollection_prototype_last
-///
 /// @brief selects the n last documents in the collection
+///
 /// @startDocuBlock documentsCollectionLast
 /// `collection.last(count)`
 ///
@@ -543,8 +568,8 @@ ArangoCollection.prototype.last = function (count) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_ArangoCollection_prototype_firstExample
 /// @brief constructs a query-by-example for a collection
+///
 /// @startDocuBlock collectionFirstExample
 /// `collection.firstExample(example)`
 ///
@@ -624,9 +649,10 @@ ArangoCollection.prototype.removeByExample = function (example,
     var tmp_options = waitForSync === null ? {} : waitForSync;
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
-        waitForSync = tmp_options.waitForSync;
+    waitForSync = tmp_options.waitForSync;
     limit = tmp_options.limit;
   }
+  var i;
   var cluster = require("org/arangodb/cluster");
 
   if (cluster.isCoordinator()) {
@@ -659,7 +685,7 @@ ArangoCollection.prototype.removeByExample = function (example,
     });
 
     var deleted = 0;
-    var results = cluster.wait(coord, shards), i;
+    var results = cluster.wait(coord, shards);
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
 
@@ -669,34 +695,11 @@ ArangoCollection.prototype.removeByExample = function (example,
     return deleted;
   }
 
-  return require("internal").db._executeTransaction({
-    collections: {
-      write: this.name()
-    },
-    action: function (params) {
-      var collection = params.c;
-      var documents = collection.byExample(params.example);
-      if (params.limit > 0) {
-        documents = documents.limit(params.limit);
-      }
+  var query = buildExampleQuery(this, example, limit);
+  var opts = { waitForSync : waitForSync };
+  query.query += " REMOVE doc IN @@collection OPTIONS " + JSON.stringify(opts);
 
-      var deleted = 0;
-      while (documents.hasNext()) {
-        var document = documents.next();
-
-        if (collection.remove(document, true, params.wfs)) {
-          deleted++;
-        }
-      }
-      return deleted;
-    },
-    params: {
-      c: this,
-      example: example,
-      limit: limit,
-      wfs: waitForSync
-    }
-  });
+  return require("internal").db._query(query).getExtra().stats.writesExecuted; 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -781,35 +784,12 @@ ArangoCollection.prototype.replaceByExample = function (example,
     return replaced;
   }
 
-  return require("internal").db._executeTransaction({
-    collections: {
-      write: this.name()
-    },
-    action: function (params) {
-      var collection = params.c;
-      var documents = collection.byExample(params.example);
-      if (params.limit > 0) {
-        documents = documents.limit(params.limit);
-      }
+  var query = buildExampleQuery(this, example, limit);
+  var opts = { waitForSync : waitForSync };
+  query.query += " REPLACE doc WITH @newValue IN @@collection OPTIONS " + JSON.stringify(opts);
+  query.bindVars.newValue = newValue;
 
-      var replaced = 0;
-      while (documents.hasNext()) {
-        var document = documents.next();
-
-        if (collection.replace(document, params.newValue, true, params.wfs)) {
-          replaced++;
-        }
-      }
-      return replaced;
-    },
-    params: {
-      c: this,
-      example: example,
-      newValue: newValue,
-      limit: limit,
-      wfs: waitForSync
-    }
-  });
+  return require("internal").db._query(query).getExtra().stats.writesExecuted; 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -900,37 +880,12 @@ ArangoCollection.prototype.updateByExample = function (example,
     return updated;
   }
 
-  return require("internal").db._executeTransaction({
-    collections: {
-      write: this.name()
-    },
-    action: function (params) {
-      var collection = params.c;
-      var documents = collection.byExample(params.example);
-      if (params.limit > 0) {
-        documents = documents.limit(params.limit);
-      }
+  var query = buildExampleQuery(this, example, limit);
+  var opts = { waitForSync : waitForSync, keepNull: keepNull };
+  query.query += " UPDATE doc WITH @newValue IN @@collection OPTIONS " + JSON.stringify(opts);
+  query.bindVars.newValue = newValue;
 
-      var updated = 0;
-      while (documents.hasNext()) {
-        var document = documents.next();
-
-        if (collection.update(document, params.newValue,
-            {overwrite: true, keepNull: params.keepNull, waitForSync: params.wfs})) {
-          updated++;
-        }
-      }
-      return updated;
-    },
-    params: {
-      c: this,
-      example: example,
-      newValue: newValue,
-      keepNull: keepNull,
-      limit: limit,
-      wfs: waitForSync
-    }
-  });
+  return require("internal").db._query(query).getExtra().stats.writesExecuted; 
 };
 
 ////////////////////////////////////////////////////////////////////////////////

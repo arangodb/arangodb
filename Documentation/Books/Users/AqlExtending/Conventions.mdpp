@@ -37,7 +37,7 @@ access to any external data, it must take care to set up the data by
 itself.
 
 All AQL user function-specific variables should be introduced with the `var`
-keyword in order to not accidently access already defined variables from
+keyword in order to not accidentally access already defined variables from
 outer scopes. Not using the `var` keyword for own variables may cause side
 effects when executing the function.
 
@@ -74,12 +74,12 @@ function (values) {
 User functions must only return primitive types (i.e. *null*, boolean
 values, numeric values, string values) or aggregate types (lists or
 documents) composed of these types.
-Returning any other Javascript object type from a user function may lead 
+Returning any other JavaScript object type from a user function may lead 
 to undefined behavior and should be avoided.
 
 !SECTION Miscellaneous
 
 Internally, user functions are stored in a system collection named
 *_aqlfunctions*. That means that by default they are excluded from dumps
-created with [arangodump](../Arangodump/README.md). To include AQL user functions in a dump, the
+created with [arangodump](../HttpBulkImports/Arangodump.md). To include AQL user functions in a dump, the
 dump should be started with the option *--include-system-collections true*.

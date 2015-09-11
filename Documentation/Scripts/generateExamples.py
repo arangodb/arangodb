@@ -66,6 +66,12 @@ OutputDir = "/tmp/"
 RunTests = {}
 
 ################################################################################
+### A list of tests that were skipped by the users request.
+################################################################################
+
+filterTestList = []
+
+################################################################################
 ### @brief arangosh expect
 ###
 ### A list of commands that are here to validate the result.
@@ -120,195 +126,20 @@ OPTION_NORMAL = 0
 OPTION_ARANGOSH_SETUP = 1
 OPTION_OUTPUT_DIR = 2
 OPTION_FILTER = 3
+OPTION_OUTPUT_FILE = 4
 
 fstate = OPTION_NORMAL
 
+escapeBS = re.compile("\\\\")
+doubleBS = "\\\\\\\\"
 
 ################################################################################
 ### @brief generate arangosh example headers with functions etc. needed later
 ################################################################################
 def generateArangoshHeader():
-    print "/*jshint esnext:true, -W051 -W069 */"
-    #print "'use strict'"
-    print '''var internal = require('internal');
-var errors = require("org/arangodb").errors;
-var time = require("internal").time;
-var fs = require('fs');
-var hashes = '%s';
-var ArangoshOutput = {};
-var allErrors = '';
-var output = '';
-var XXX;
-var testFunc;
-var countErrors;
-var collectionAlreadyThere = [];
-var ignoreCollectionAlreadyThere = [];
-internal.startPrettyPrint(true);
-internal.stopColorPrint(true);
-var appender = function(text) {
-  output += text;
-};
-var log = function (a) {
-  internal.startCaptureMode();
-  print(a);
-  appender(internal.stopCaptureMode());
-};
-
-var logCurlRequestRaw = internal.appendCurlRequest(appender);
-var logCurlRequest = function () {
-  var r = logCurlRequestRaw.apply(logCurlRequestRaw, arguments);
-  db._collections();
-  return r;
-};
-
-var curlRequestRaw = internal.appendCurlRequest(function (text) {});
-var curlRequest = function () {
-  return curlRequestRaw.apply(curlRequestRaw, arguments);
-};
-var logJsonResponse = internal.appendJsonResponse(appender);
-var logRawResponse = internal.appendRawResponse(appender);
-var logErrorResponse = function (response) {
-    allErrors += "Server reply was: " + JSON.stringify(response) + "\\n";
-};
-var globalAssert = function(condition, testname, sourceFile) {
-  if (! condition) {
-    internal.output(hashes + '\\nASSERTION FAILED: ' + testname + ' in file ' + sourceFile + '\\n' + hashes + '\\n');
-    throw new Error('assertion ' + testname + ' in file ' + sourceFile + ' failed');
-  }
-};
-
-var createErrorMessage = function(err, line, testName, sourceFN, sourceLine, lineCount, msg) {
- allErrors += '\\n' + hashes + '\\n';
- allErrors += "While executing '" + line + "' - " +
-      testName + 
-      "[" + sourceFN + ":" + sourceLine + "] Testline: " + lineCount +
-      msg + "\\n" + err + "\\n" + err.stack;
- 
-}
-
-var runTestLine = function(line, testName, sourceFN, sourceLine, lineCount, showCmd, expectError, isLoop, fakeVar) {
-  var XXX = undefined;
-  if (showCmd) {
-    print("arangosh> " + (fakeVar?"var ":"") + line.replace(/\\n/g, '\\n........> '));
-  }
-  if ((expectError !== undefined) && !errors.hasOwnProperty(expectError)) {
-    createErrorMessage(new Error(), line, testName, sourceFN, sourceLine, lineCount, " unknown Arangoerror " + expectError);
-    return;
-  }
-  try {
-    // Only care for result if we have to output it
-    if (!showCmd || isLoop) {
-      eval(line);
-    }
-    else {
-      eval("XXX = " + line);
-    }
-    if (expectError !== undefined) {
-       throw new Error("expected to throw with " + expectError + " but didn't!");
-    }
-  }
-  catch (err) {
-    if (expectError !== undefined) {
-      if (err.errorNum === errors[expectError].code) {
-        print(err);
-      }
-      else {
-        print(err);
-        createErrorMessage(err, line, testName, sourceFN, sourceLine, lineCount, " caught unexpected exception!");
-      }
-    }
-    else {
-        createErrorMessage(err, line, testName, sourceFN, sourceLine, lineCount, " caught an exception!\\n");
-        print(err);
-    }
-  }
-  if (showCmd && XXX !== undefined) {
-    print(XXX);
-  }
-}
-
-var runTestFunc = function (execFunction, testName, sourceFile) {
-  try {
-    execFunction();
-    return('done with  ' + testName);
-  } catch (err) {
-    allErrors += '\\nRUN FAILED: ' + testName + ' from testfile: ' + sourceFile + ', ' + err + '\\n' + err.stack + '\\n';
-    return hashes + '\\nfailed with  ' + testName + ', ', err, '\\n' + hashes;
-  }
-};
-
-var runTestFuncCatch = function (execFunction, testName, expectError) {
-  try {
-    execFunction();
-    throw new Error(testName + ': expected to throw '+ expectError + ' but didn\\'t throw');
-  } catch (err) {
-    if (err.num != expectError.code) {
-      allErrors += '\\nRUN FAILED: ' + testName + ', ' + err + '\\n' + err.stack + '\\n';
-      return hashes + '\\nfailed with  ' + testName + ', ', err, '\\n' + hashes;
-    }
-  }
-};
-
-var checkForOrphanTestCollections = function(msg) {
-  var cols = db._collections().map(function(c){return c.name()});
-  var orphanColls = [];
-  var i;
-  for (i = 0; i < cols.length; i++) {
-     if (cols[i][0] != '_') {
-       var found = false;
-       var j = 0;
-       for (j=0; j < collectionAlreadyThere.length; j++) {
-         if (collectionAlreadyThere[j] === cols[i]) {
-            found = true;
-         }
-       }
-       if (!found) {
-          orphanColls.push(cols[i]);
-          collectionAlreadyThere.push(cols[i]);
-       }
-     }
-  }
-  
-  if (orphanColls.length > 0) {
-    allErrors += msg + ' - ' + JSON.stringify(orphanColls) + '\\n';
-  }
-};
-
-var addIgnoreCollection = function(collectionName) {
-  // print("from now on ignoring this collection whether its dropped: "  + collectionName);
-  collectionAlreadyThere.push(collectionName);
-  ignoreCollectionAlreadyThere.push(collectionName);
-};
-
-var removeIgnoreCollection = function(collectionName) {
-  // print("from now on checking again whether this collection dropped: " + collectionName);
-  for (j=0; j < collectionAlreadyThere.length; j++) {
-    if (collectionAlreadyThere[j] === collectionName) {
-      collectionAlreadyThere[j] = undefined;
-    }
-  }
-  for (j=0; j < ignoreCollectionAlreadyThere.length; j++) {
-    if (ignoreCollectionAlreadyThere[j] === collectionName) {
-      ignoreCollectionAlreadyThere[j] = undefined;
-    }
-  }
-
-};
-
-var checkIgnoreCollectionAlreadyThere = function () {
-  if (ignoreCollectionAlreadyThere.length > 0) {
-    allErrors += "some temporarily ignored collections haven't been cleaned up: " +
-                 ignoreCollectionAlreadyThere;
-  }
-
-}
-
-// Set the first available list of already there collections:
-var err = allErrors;
-checkForOrphanTestCollections('Collections already there which we will ignore from now on:');
-print(allErrors + '\\n');
-allErrors = err;
-''' % ('#' * 80)
+    headerF = open("./Documentation/Scripts/exampleHeader.js", "r")
+    print headerF.read()
+    headerF.close()
 
 ################################################################################
 ### @brief Try to match the start of a command section
@@ -317,7 +148,7 @@ regularStartLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
 runLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
     
 def matchStartLine(line, filename):
-    global regularStartLine, errorStartLine, runLine, FilterForTestcase
+    global regularStartLine, errorStartLine, runLine, FilterForTestcase, filterTestList
     errorName = ""
     m = regularStartLine.match(line)
 
@@ -331,7 +162,7 @@ def matchStartLine(line, filename):
             sys.exit(1)
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
-            print >> sys.stderr, "filtering test case %s" %name
+            filterTestList.append(name)
             return("", STATE_BEGIN);
 
         return (name, STATE_ARANGOSH_OUTPUT)
@@ -348,7 +179,7 @@ def matchStartLine(line, filename):
 
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
-            print >> sys.stderr, "filtering test case %s" %name
+            filterTestList.append(name)
             return("", STATE_BEGIN);
 
         ArangoshFiles[name] = True
@@ -424,6 +255,12 @@ def analyzeFile(f, filename):
             if line[0] == "|":
                 if line.startswith("| "):
                     line = line[2:]
+                elif line.startswith("|~ "):
+                    showCmd = False
+                    line = line[3:]
+                elif line.startswith("|~"):
+                    showCmd = False
+                    line = line[2:]
                 else:
                     line = line[1:]
 
@@ -491,8 +328,8 @@ def generateArangoshOutput(testName):
         testName,
         testName,
         value[TESTLINES][0][2],
-        OutputDir,
-        MapSourceFiles[testName]
+        escapeBS.sub(doubleBS, OutputDir),
+        escapeBS.sub(doubleBS, MapSourceFiles[testName])
         )
     except Exception as x:
         print x
@@ -527,7 +364,8 @@ def generateArangoshOutput(testName):
     print '''  var output = internal.stopCaptureMode();
 
   print("[" + (time () - startTime) + "s] done with  " + testName);
-  fs.write(outputDir + '/' + testName + '.generated', output);
+  output = highlight("js", output);
+  fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
 '''
@@ -568,8 +406,8 @@ def generateArangoshRun(testName):
         testName,
         testName,
         startLineNo,
-        OutputDir,
-        MapSourceFiles[testName],
+        escapeBS.sub(doubleBS, OutputDir),
+        escapeBS.sub(doubleBS, MapSourceFiles[testName]),
         value[STRING].lstrip().rstrip())
 
     if testName in ArangoshExpect:
@@ -582,7 +420,8 @@ def generateArangoshRun(testName):
     rc = " FAILED in " + testName;
   }
   print("[" + (time () - startTime) + "s] " + rc);
-  fs.write(outputDir + '/' + testName + '.generated', output);
+  ///output = highlight("js", output);
+  fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
 '''
@@ -609,16 +448,18 @@ def loopDirectories():
     filenames = []
     
     for filename in argv:
-        if filename == "--arangosh-setup":
+        if filename == "--arangoshSetup":
             fstate = OPTION_ARANGOSH_SETUP
             continue
-        if filename == "--only-thisone": 
+        if filename == "--onlyThisOne": 
             fstate = OPTION_FILTER
             continue
-        if filename == "--output-dir":
+        if filename == "--outputDir":
             fstate = OPTION_OUTPUT_DIR
             continue
-    
+        if filename == "--outputFile":
+            fstate = OPTION_OUTPUT_FILE
+            continue
         if fstate == OPTION_NORMAL:
             if os.path.isdir(filename):
                 for root, dirs, files in os.walk(filename):
@@ -645,6 +486,10 @@ def loopDirectories():
         elif fstate == OPTION_OUTPUT_DIR:
             fstate = OPTION_NORMAL
             OutputDir = filename
+        elif fstate == OPTION_OUTPUT_FILE:
+            fstate = OPTION_NORMAL
+            sys.stdout = open(filename, 'w')
+
     for filename in filenames:
         if (filename.find("#") < 0):
             f = open(filename, "r")
@@ -671,6 +516,7 @@ def generateTestCases():
 ### @brief main
 ################################################################################
 loopDirectories()
+print >> sys.stderr, "filtering test cases %s" %(filterTestList)
 
 generateArangoshHeader()
 generateSetupFunction()

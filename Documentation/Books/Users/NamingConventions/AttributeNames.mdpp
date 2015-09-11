@@ -23,7 +23,7 @@ following attribute naming constraints are not violated:
   as desired, provided the name is a valid UTF-8 string.  For maximum
   portability, special characters should be avoided though.  For example,
   attribute names may contain the dot symbol, but the dot has a special meaning
-  in Javascript and also in AQL, so when using such attribute names in one of
+  in JavaScript and also in AQL, so when using such attribute names in one of
   these languages, the attribute name would need to be quoted by the end
   user. This will work but requires more work so it might be better to use
   attribute names which don't require any quoting/escaping in all languages

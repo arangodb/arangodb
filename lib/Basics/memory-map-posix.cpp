@@ -83,7 +83,7 @@ int TRI_FlushMMFile (int fileDescriptor,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MMFile (void* memoryAddress,
-                size_t numOfBytesToInitialise,
+                size_t numOfBytesToInitialize,
                 int memoryProtection,
                 int flags,
                 int fileDescriptor,
@@ -91,11 +91,13 @@ int TRI_MMFile (void* memoryAddress,
                 int64_t offset,
                 void** result) {
 
-  off_t offsetRetyped = (off_t)(offset);
+  TRI_ASSERT(memoryAddress == nullptr);
+  off_t offsetRetyped = (off_t) offset;
+  TRI_ASSERT(offsetRetyped == 0);
 
   *mmHandle = nullptr; // only useful for Windows
 
-  *result = mmap(memoryAddress, numOfBytesToInitialise, memoryProtection, flags, fileDescriptor, offsetRetyped);
+  *result = mmap(memoryAddress, numOfBytesToInitialize, memoryProtection, flags, fileDescriptor, offsetRetyped);
 
   if (*result != MAP_FAILED) {
     return TRI_ERROR_NO_ERROR;
@@ -127,6 +129,9 @@ int TRI_UNMMFile (void* memoryAddress,
   if (errno == ENOSPC) {
     return TRI_ERROR_ARANGO_FILESYSTEM_FULL;
   }
+  if (errno == ENOMEM) {
+    return TRI_ERROR_OUT_OF_MEMORY_MMAP;
+  }
 
   return TRI_ERROR_SYS_ERROR;
 }
@@ -149,6 +154,31 @@ int TRI_ProtectMMFile (void* memoryAddress,
   }
 
   return TRI_ERROR_SYS_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gives hints about upcoming sequential memory usage
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_MMFileAdvise (void* memoryAddress, size_t numOfBytes, int advice) {
+#ifdef __linux__
+  LOG_DEBUG("Doing madvise %d for %llu length %llu", advice,
+            (unsigned long long) memoryAddress, (unsigned long long) numOfBytes);
+  int res = madvise(memoryAddress, numOfBytes, advice);
+
+  if (res == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  else {
+    char buffer[256];
+    char* p = strerror_r(errno, buffer, 256);
+    LOG_INFO("madvise %d for %llu length %llu failed with: %s ",
+             advice, (unsigned long long) memoryAddress, (unsigned long long) numOfBytes, p);
+    return TRI_ERROR_INTERNAL;
+  }
+#else
+  return TRI_ERROR_NO_ERROR;
+#endif
 }
 
 #endif

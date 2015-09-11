@@ -9,15 +9,20 @@ toolbar {
   margin-right: 0;
 
   span:hover {
-    background-color: red;
-    color: white;
+    background-color: $c-negative;
+    color: $c-white;
   }
 
 }
 
 .queryBottomActions {
+  border-top: 1px solid $c-content-border;
   padding: 10px;
-  border-top: 1px solid $c-c2grey;
+}
+
+.queryExecutionTime {
+  margin-left: 10px;
+  margin-top: 15px;
 }
 
 #queryManagementContent {
@@ -25,77 +30,36 @@ toolbar {
 }
 
 .queryManagementBottomActions {
-  margin-top: -2px;
-  border-top: 1px solid $c-c2grey;
-  height: 40px;
-  padding-top: 10px;
+  background-color: $c-white;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
-  background-color: white;
+  border-top: 1px solid $c-c2grey;
+  height: 40px;
+  margin-top: -2px;
+  padding-top: 10px;
 
   button {
     margin-right: 10px;
   }
 }
 
-.editor-toolbar {
-  border-color: $c-editor-toolbar;
-  margin-top: 3px;
-
-  span {
-    border-radius: 3px;
-    float: right;
-    width: 25px;
-    height: 18px;
-    position: relative;
-    padding-top: 3px;
-    padding-right: 0;
-    padding-left: 5px;
-    padding-bottom: 6px;
-    margin-left: 3px;
-    top: 0px;
-  }
-
-  span:hover {
-    background-color: $c-positive;
-    color: white;
-  }
-
-  i {
-    margin-right: 5px;
-    margin-top: 3px;
-
-    &:hover {
-      cursor: pointer;
-    }
-  }
-
-  .icon_arangodb {
-    font-size: 14pt;
-  }
-
-  .icon_arangodb_trash {
-    margin-left: 5px;
-    margin-right: 10px;
-  }
-
-  .fa-comment,
-  .fa-comment-o {
-    font-size: 15px;
-    position: relative;
-    right: -2px;
-    top: -2px;
-  }
-
-  .arango-icon-disk {
-    margin-top: 1px;
-  }
-}
 
 .queryMethods {
+
+  border-top: 1px solid $c-content-border;
+  padding-bottom: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 10px;
+
+  input {
+    line-height: 0;
+    margin-top: 5px;
+  }
+
   button {
     a {
-      color: #fff;
+      color: $c-white;
     }
   }
 }
@@ -108,7 +72,7 @@ toolbar {
   @extend %toolbar;
   border-color: $c-editor-toolbar;
   border-left: 0 !important;
-  border-top: 0 !important;
+  border-top: 1px solid $c-content-border !important;
   height: 200px;
   margin-bottom: 5px;
   min-height: 100px;
@@ -179,16 +143,16 @@ toolbar {
   height: 30px !important;
   margin-right: 10px;
   width: 130px !important;
-}
 
-.querySizeDiv select {
-  height: 30px !important;
+  select {
+    height: 30px !important;
+  }
 }
 
 .wide-button-div {
-  margin-top: -10px;
   height: 36px;
   margin-bottom: 15px;
+  margin-top: -10px;
   padding-top: 5px;
   width: 100%;
 }
@@ -242,26 +206,14 @@ toolbar {
 }
 
 .query-select {
-  border: 0 !important;border-radius: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
   line-height: 20px !important;
   margin-bottom: 0;
   z-index: 9999 !important;
 
   option {
     z-index: 9999 !important;
-  }
-}
-
-.editor-label {
-  background-color: #ddd;
-  height: 1px;
-  width: 100%;
-
-  h6 {
-    font-family: 'Open Sans', sans-serif;
-    font-size: 16px;
-    font-weight: 400;
-    margin-bottom: 5px;
   }
 }
 
@@ -313,12 +265,16 @@ toolbar {
 
   margin-top: 18px;
 
-  .arango-tab a {
-    border-bottom-color: #ddd;
-  }
+  .arango-tab {
 
-  .arango-tab .active {
-    border-bottom-color: #fff !important;
+    a {
+      border-bottom-color: $c-tab-bottom-border;
+      font-weight: 100;
+    }
+
+    .active {
+      border-bottom-color: $c-white !important;
+    }
   }
 }
 
@@ -326,8 +282,8 @@ toolbar {
   display: none;
   min-height: 360px;
 
-  &> * {
-    border: 0 !important;
+  .ace-tm .ace_comment {
+    color: $c-positive;
   }
 
   .icon_arangodb {
@@ -336,6 +292,7 @@ toolbar {
   }
 
   .arango-table {
+    border-top: 1px solid $c-content-border;
     max-width: 100%;
     table-layout: fixed;
     width: 100%;
@@ -386,7 +343,7 @@ toolbar {
   width: 100%;
 }
 
-svg.explain-tree {
+.explain-tree {
   width: 100%;
 
   .node text {
@@ -395,7 +352,70 @@ svg.explain-tree {
 
   .link {
     fill: none;
-    stroke: #ccc;
+    stroke: $c-accordion-heading;
     stroke-width: 1.5px;
+  }
+}
+
+.editor-toolbar {
+  border-color: $c-editor-toolbar;
+  height: 33px;
+  margin-top: 5px;
+
+  span {
+    border-radius: 3px;
+    float: right;
+    height: 18px;
+    margin-left: 3px;
+    padding-bottom: 6px;
+    padding-left: 5px;
+    padding-right: 0;
+    padding-top: 3px;
+    position: relative;
+    top: 0;
+    width: 25px;
+  }
+
+  span:hover {
+    background-color: $c-positive;
+    color: $c-white;
+  }
+
+  i {
+    margin-right: 5px;
+    margin-top: 3px;
+
+    &:hover {
+      cursor: pointer;
+    }
+  }
+
+  .fa {
+    margin-left: 1px;
+    margin-top: 2px;
+
+    &.fa-upload {
+      margin-top: 1px;
+    }
+  }
+
+  .icon_arangodb {
+    font-size: 14pt;
+
+    &:first-child {
+      margin-right: 10px;
+    }
+  }
+
+  .fa-comment,
+  .fa-comment-o {
+    font-size: 15px;
+    position: relative;
+    right: -2px;
+    top: -2px;
+  }
+
+  .arango-icon-disk {
+    margin-top: 1px;
   }
 }

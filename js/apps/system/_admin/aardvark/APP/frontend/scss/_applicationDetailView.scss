@@ -5,55 +5,66 @@
 
     .header {
       height: 200px;
-      margin-bottom: 10px;
+      margin-bottom: 0;
       position: relative;
 
       div.header-icon-container {
-        height: 160px;
+        border-radius: 3px;
+        height: 182px;
         left: 0;
         margin: 0 0 4px;
         position: absolute;
-        width: 160px;
+        width: 182px;
 
         img.icon {
+          background-color: $c-white;
           border: 1px solid $c-content-border;
           border-radius: 3px;
           height: auto;
           max-height: 160px;
           max-width: 160px;
+          padding: 10px;
           width: auto;
         }
 
       }
 
-      .header_left {
-        left: 170px;
-        position: absolute;
-        width: 120px;
+      .header_right {
         padding-top: 1px;
+        position: absolute;
+        right: -10px;
+        width: 150px;
 
         input.delete,
         input.upgrade,
+        input.switch-docu,
         input.switch-mode {
-          margin-top: (160px - 4 * 30px) / 3;
+          margin-top: (173.5px - 5 * 30px) / 3;
+          padding-left: 10px;
+          padding-right: 10px;
         }
 
         input {
-          width: 90px;
+          width: 130px;
         }
       }
 
-      .header_right {
-        margin-left: 300px;
-        padding: 5px;
+      .header_left {
+        margin-left: 190px;
+        margin-right: 145px;
+        padding-left: 10px;
+        padding-top: 1px;
 
         input {
           margin-left: 0;
+          margin-top: -4px;
         }
 
         .header_line {
           h3 {
             float: left;
+            margin-bottom: 0;
+            margin-top: 0;
             padding-right: 5px;
           }
 
@@ -62,80 +73,108 @@
             @include border-radius(3px);
 
             background-color: $c-white;
-            border: 1px solid $c-editor-toolbar;
+            border: 1px solid $c-content-border;
             color: $c-editor-toolbar;
             font-size: .6em;
+            font-weight: 400;
             padding: 0 8px 2px;
             position: relative;
-            top: -2px;
+            top: -3px;
           }
 
           &:after {
+            clear: both;
             content: '';
             display: table;
-            clear: both;
           }
         }
       }
 
       .app-warning {
-        position: absolute;
-        top: 0;
-        right: 20px;
-        @include border-radius(6px);
-        border: 1px solid $c-negative-hover;
-        color: $c-negative;
-        background: $c-negative-bg;
-        padding: 4px 8px;
+        @include border-radius(3px);
+        background: $c-negative;
+        color: $c-white;
+        padding: 6px 8px;
 
-        h4, p {
-          margin: 0;
+        h4,
+        p {
           font-size: 1em;
+          margin: 0;
         }
       }
     }
 
-    .swagger {
-      iframe {
-        border: 1px solid $c-content-border;
-        border-radius: 3px;
-        height: 600px;
-        width: 100%;
-      }
-    }
-
-    .readme {
-      border: 1px solid black;
-      background: white;
-      padding: 1em 2em;
-    }
   }
 
   aside.meta {
-    background-color: #fff; 
+    background-color: $c-white;
     border: 1px solid $c-content-border;
     border-radius: 3px;
     clear: right;
     float: left;
-    width: 198px;
+    height: 182px;
+    margin-top: 12px;
+    max-height: 182px;
+    max-width: 182px;
+    overflow-x: hidden;
+    position: relative;
+    right: -16px;
+    width: 182px;
 
     dl {
+      margin-bottom: 0;
+      margin-top: 0;
       padding-left: 7px;
       padding-top: 5px;
-      margin-top: 0;
     }
   }
 }
 
+main {
+  background-color: $c-white;
+  border: 1px solid $c-content-border;
+  border-radius: 3px;
+  margin-top: 220px;
+
+  .app-info {
+    @include border-radius(3px);
+    background: $c-info-blue;
+    color: $c-white;
+    margin: 10px;
+    padding: 6px 8px;
+
+    h4,
+    p {
+      font-size: 1em;
+      margin: 0;
+    }
+  }
+
+  .swagger {
+    iframe {
+      border: 0;
+      border-radius: 3px;
+      height: 600px;
+      width: 100%;
+    }
+  }
+
+  .readme {
+    background: $c-white;
+    padding: 1em 2em;
+  }
+
+}
 
 .tests-result {
   .stack {
-    border-color: #f04;
-    margin: 5px 0;
-    line-height: 1.5;
+    border-color: $c-negative;
+    color: $c-negative;
     font-size: 12px;
-    color: #802;
+    line-height: 1.5;
+    margin: 5px 0;
   }
+
   &-stats {
     .pass,
     .fail,
@@ -143,6 +182,7 @@
       padding: 0 2px;
     }
   }
+
   &-spec {
     margin-bottom: 0;
 
@@ -150,25 +190,29 @@
       & & {
         margin-left: 20px;
       }
+
       dd {
-        margin-left: 0;
         margin-bottom: 20px;
+        margin-left: 0;
       }
     }
+
     &-tests {
       margin-left: 20px;
     }
+
     &-test {
       &-title {
         padding-left: 20px;
 
         .fa {
-          position: absolute;
+          line-height: 18px;
           margin-left: -20px;
           margin-top: 2px;
-          line-height: 18px;
+          position: absolute;
 
         }
+
         .fa-circle {
           font-size: 50%;
           margin-left: -16px;
@@ -176,13 +220,17 @@
       }
     }
   }
+
   .pass {
-    color: #4c0;
+    color: $c-positive;
   }
+
   .fail {
-    color: #f04;
+    color: $c-negative;
   }
+
   .pending {
-    color: #888;
+    color: $c-darker-grey;
   }
+
 }

@@ -1,15 +1,15 @@
-arangosh> db._routing.save({
-........>    url: {
-........>      match: "/hello/world",
-........>      methods: [ "get", "post", "put" ]
-........>    },
-........>    action: {
-........>      do: "org/arangodb/actions/echoRequest"
-........>    }
-........> });
+arangosh&gt; db._routing.save({
+........&gt;    url: {
+........&gt;      match: <span class="hljs-string">"/hello/world"</span>,
+........&gt;      methods: [ <span class="hljs-string">"get"</span>, <span class="hljs-string">"post"</span>, <span class="hljs-string">"put"</span> ]
+........&gt;    },
+........&gt;    action: {
+........&gt;      <span class="hljs-keyword">do</span>: <span class="hljs-string">"org/arangodb/actions/echoRequest"</span>
+........&gt;    }
+........&gt; });
 { 
-  "_id" : "_routing/604054465", 
-  "_rev" : "604054465", 
-  "_key" : "604054465" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/621088290"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"621088290"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"621088290"</span> 
 }
-arangosh> require("internal").reloadRouting()
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).reloadRouting()

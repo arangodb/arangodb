@@ -1,21 +1,21 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation <<EOF
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial/social/edge/relation &lt;&lt;EOF</span>
 { 
-  "type" : "friend", 
-  "_from" : "female/alice", 
-  "_to" : "female/diana" 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span>, 
+  <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
+  <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span> 
 }
 EOF
 
-HTTP/1.1 202 Accepted
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json
-etag: 504374209
+etag: <span class="hljs-number">514461218</span>
 
 { 
-  "error" : false, 
-  "code" : 202, 
-  "edge" : { 
-    "_id" : "relation/504374209", 
-    "_rev" : "504374209", 
-    "_key" : "504374209" 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span>, 
+  <span class="hljs-string">"edge"</span> : { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/514461218"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"514461218"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"514461218"</span> 
   } 
 }

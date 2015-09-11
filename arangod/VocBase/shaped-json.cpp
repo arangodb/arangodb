@@ -86,17 +86,9 @@ shape_cache_t;
 /// @brief prints a TRI_shape_t for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PrintShape (VocShaper* shaper, TRI_shape_t const* shape, int indent) {
-  TRI_array_shape_t const* array;
-  TRI_homogeneous_list_shape_t const* homList;
-  TRI_homogeneous_sized_list_shape_t const* homSizedList;
-  TRI_shape_aid_t const* aids;
-  TRI_shape_sid_t const* sids;
-  TRI_shape_size_t const* offsets;
-  char const* ptr;
-  size_t i;
-  uint64_t n;
+#ifdef DEBUG_JSON_SHAPER
 
+void TRI_PrintShape (VocShaper* shaper, TRI_shape_t const* shape, int indent) {
   if (shape == nullptr) {
     printf("%*sUNKNOWN\n", indent, "");
     return;
@@ -133,9 +125,9 @@ void TRI_PrintShape (VocShaper* shaper, TRI_shape_t const* shape, int indent) {
              (unsigned int) shape->_dataSize);
       break;
 
-    case TRI_SHAPE_ARRAY:
-      array = (TRI_array_shape_t const*) shape;
-      n = array->_fixedEntries + array->_variableEntries;
+    case TRI_SHAPE_ARRAY: {
+      TRI_array_shape_t const* array = (TRI_array_shape_t const*) shape;
+      uint64_t n = array->_fixedEntries + array->_variableEntries;
 
       printf("%*sARRAY sid: %u, fixed: %u, variable: %u, data size: %u\n", indent, "",
              (unsigned int) shape->_sid,
@@ -143,18 +135,18 @@ void TRI_PrintShape (VocShaper* shaper, TRI_shape_t const* shape, int indent) {
              (unsigned int) array->_variableEntries,
              (unsigned int) shape->_dataSize);
 
-      ptr = (char const*) shape;
+      char const* ptr = (char const*) shape;
       ptr += sizeof(TRI_array_shape_t);
 
-      sids = (TRI_shape_sid_t const*) ptr;
+      TRI_shape_sid_t const* sids = (TRI_shape_sid_t const*) ptr;
       ptr += n * sizeof(TRI_shape_sid_t);
 
-      aids = (TRI_shape_aid_t const*) ptr;
+      TRI_shape_aid_t const* aids = (TRI_shape_aid_t const*) ptr;
       ptr += n * sizeof(TRI_shape_aid_t);
 
-      offsets = (TRI_shape_size_t const*) ptr;
+      TRI_shape_size_t const* offsets = (TRI_shape_size_t const*) ptr;
 
-      for (i = 0;  i < array->_fixedEntries;  ++i, ++sids, ++aids, ++offsets) {
+      for (size_t i = 0;  i < array->_fixedEntries;  ++i, ++sids, ++aids, ++offsets) {
         char const* m = shaper->lookupAttributeId(*aids);
 
         if (n == 0) {
@@ -172,7 +164,7 @@ void TRI_PrintShape (VocShaper* shaper, TRI_shape_t const* shape, int indent) {
         TRI_PrintShape(shaper, shaper->lookupShapeId(*sids), indent + 4);
       }
 
-      for (i = 0;  i < array->_variableEntries;  ++i, ++sids, ++aids) {
+      for (size_t i = 0;  i < array->_variableEntries;  ++i, ++sids, ++aids) {
         char const* m = shaper->lookupAttributeId(*aids);
 
         if (n == 0) {
@@ -187,26 +179,28 @@ void TRI_PrintShape (VocShaper* shaper, TRI_shape_t const* shape, int indent) {
 
         TRI_PrintShape(shaper, shaper->lookupShapeId(*sids), indent + 4);
       }
-
       break;
+    }
 
-    case TRI_SHAPE_LIST:
+    case TRI_SHAPE_LIST: {
       printf("%*sLIST sid: %u, data size: %u\n", indent, "",
              (unsigned int) shape->_sid,
              (unsigned int) shape->_dataSize);
       break;
+    }
 
-    case TRI_SHAPE_HOMOGENEOUS_LIST:
-      homList = (TRI_homogeneous_list_shape_t const*) shape;
+    case TRI_SHAPE_HOMOGENEOUS_LIST: {
+      TRI_homogeneous_list_shape_t const* homList = (TRI_homogeneous_list_shape_t const*) shape;
 
       printf("%*sHOMOGENEOUS LIST sid: %u, entry sid: %u, data size: %u\n", indent, "",
              (unsigned int) shape->_sid,
              (unsigned int) homList->_sidEntry,
              (unsigned int) shape->_dataSize);
       break;
+    }
 
-    case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-      homSizedList = (TRI_homogeneous_sized_list_shape_t const*) shape;
+    case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST: {
+      TRI_homogeneous_sized_list_shape_t const* homSizedList = (TRI_homogeneous_sized_list_shape_t const*) shape;
 
       printf("%*sHOMOGENEOUS SIZED LIST sid: %u, entry sid: %u, entry size: %u, data size: %u\n", indent, "",
              (unsigned int) shape->_sid,
@@ -214,8 +208,11 @@ void TRI_PrintShape (VocShaper* shaper, TRI_shape_t const* shape, int indent) {
              (unsigned int) homSizedList->_sizeEntry,
              (unsigned int) shape->_dataSize);
       break;
+    }
   }
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a list of TRI_shape_value_t for debugging
@@ -2636,7 +2633,7 @@ void TRI_PrintShapeValues (TRI_shape_value_t* values,
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief explicit instanciation of the two functions
+/// @brief explicit instantiation of the two functions
 ////////////////////////////////////////////////////////////////////////////////
 
 template bool TRI_StringifyArrayShapedJson<VocShaper> (VocShaper*, struct TRI_string_buffer_s*, TRI_shaped_json_t const*, bool);

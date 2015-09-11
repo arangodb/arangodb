@@ -124,7 +124,7 @@ struct VertexFilterInfo {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief typedef the template instanciation of the PathFinder
+/// @brief typedef the template instantiation of the PathFinder
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef triagens::basics::PathFinder<VertexId, EdgeId, double> 

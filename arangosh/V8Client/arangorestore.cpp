@@ -31,19 +31,20 @@
 #include <iostream>
 
 #include "ArangoShell/ArangoClient.h"
+#include "Basics/files.h"
 #include "Basics/FileUtils.h"
+#include "Basics/init.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/logging.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
-#include "Basics/files.h"
-#include "Basics/init.h"
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
 #include "Basics/terminal-utils.h"
+#include "Basics/tri-strings.h"
 #include "Rest/Endpoint.h"
-#include "Rest/InitialiseRest.h"
+#include "Rest/InitializeRest.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -131,7 +132,7 @@ static bool Progress = true;
 static bool Overwrite = true;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief re-use revision ids on import
+/// @brief re-use collection ids and revision ids on import
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool RecycleIds = false;
@@ -212,15 +213,16 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 /// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-static void arangorestoreEntryFunction ();
-static void arangorestoreExitFunction (int, void*);
+static void LocalEntryFunction ();
+static void LocalExitFunction (int, void*);
 
 #ifdef _WIN32
 
 // .............................................................................
-// Call this function to do various initialisations for windows only
+// Call this function to do various initializations for windows only
 // .............................................................................
-void arangorestoreEntryFunction () {
+
+static void LocalEntryFunction () {
   int maxOpenFiles = 1024;
   int res = 0;
 
@@ -229,35 +231,35 @@ void arangorestoreEntryFunction () {
   // If you familiar with valgrind ... then this is not like that, however
   // you do get some similar functionality.
   // ...........................................................................
-  //res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
+  //res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
-  res = initialiseWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
+  res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
   if (res != 0) {
     _exit(1);
   }
 
-  res = initialiseWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
+  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,(const char*)(&maxOpenFiles));
   if (res != 0) {
     _exit(1);
   }
 
-  res = initialiseWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
+  res = initializeWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
   if (res != 0) {
     _exit(1);
   }
 
-  TRI_Application_Exit_SetExit(arangorestoreExitFunction);
+  TRI_Application_Exit_SetExit(LocalExitFunction);
 
 }
 
-static void arangorestoreExitFunction (int exitCode, void* data) {
+static void LocalExitFunction (int exitCode, void* data) {
   int res = 0;
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
   // any windows specific stuff.
   // ...........................................................................
 
-  res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
     exit(1);
@@ -267,10 +269,10 @@ static void arangorestoreExitFunction (int exitCode, void* data) {
 }
 #else
 
-static void arangorestoreEntryFunction () {
+static void LocalEntryFunction () {
 }
 
-static void arangorestoreExitFunction (int exitCode, void* data) {
+static void LocalExitFunction (int exitCode, void* data) {
 }
 
 #endif
@@ -323,18 +325,12 @@ static int TryCreateDatabase (std::string const& name) {
                                                
   std::string const body(triagens::basics::JsonHelper::toString(json.json()));
 
-  map<string, string> headers;
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_POST,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_POST,
                                                "/_api/database",
                                                body.c_str(),
-                                               body.size(),
-                                               headers);
+                                               body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
-    if (response != nullptr) {
-      delete response;
-    }
-
     return TRI_ERROR_INTERNAL;
   }
 
@@ -343,20 +339,17 @@ static int TryCreateDatabase (std::string const& name) {
   if (returnCode == HttpResponse::OK ||
       returnCode == HttpResponse::CREATED) {
     // all ok
-    delete response;
     return TRI_ERROR_NO_ERROR;
   }
   else if (returnCode == HttpResponse::UNAUTHORIZED ||
            returnCode == HttpResponse::FORBIDDEN) {
     // invalid authorization
-    Client->setErrorMessage(GetHttpErrorMessage(response), false);
-    delete response;
+    Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
     return TRI_ERROR_FORBIDDEN;
   }
 
   // any other error
-  Client->setErrorMessage(GetHttpErrorMessage(response), false);
-  delete response;
+  Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
   return TRI_ERROR_INTERNAL;
 }
 
@@ -365,19 +358,12 @@ static int TryCreateDatabase (std::string const& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static string GetArangoVersion () {
-  map<string, string> headers;
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                "/_api/version",
                                                nullptr,
-                                               0,
-                                               headers);
+                                               0));
 
   if (response == nullptr || ! response->isComplete()) {
-    if (response != nullptr) {
-      delete response;
-    }
-
     return "";
   }
 
@@ -406,13 +392,11 @@ static string GetArangoVersion () {
   }
   else {
     if (response->wasHttpError()) {
-      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+      Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
     }
 
     Connection->disconnect();
   }
-
-  delete response;
 
   return version;
 }
@@ -422,18 +406,12 @@ static string GetArangoVersion () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool GetArangoIsCluster () {
-  map<string, string> headers;
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_GET,
                                         "/_admin/server/role",
                                         "",
-                                        0,
-                                        headers);
+                                        0));
 
   if (response == nullptr || ! response->isComplete()) {
-    if (response != nullptr) {
-      delete response;
-    }
-
     return false;
   }
 
@@ -453,13 +431,11 @@ static bool GetArangoIsCluster () {
   }
   else {
     if (response->wasHttpError()) {
-      Client->setErrorMessage(GetHttpErrorMessage(response), false);
+      Client->setErrorMessage(GetHttpErrorMessage(response.get()), false);
     }
 
     Connection->disconnect();
   }
-
-  delete response;
 
   return role == "COORDINATOR";
 }
@@ -470,39 +446,29 @@ static bool GetArangoIsCluster () {
 
 static int SendRestoreCollection (TRI_json_t const* json,
                                   string& errorMsg) {
-  map<string, string> headers;
+  std::string const url = "/_api/replication/restore-collection"
+                          "?overwrite=" + string(Overwrite ? "true" : "false") +
+                          "&recycleIds=" + string(RecycleIds ? "true" : "false") +
+                          "&force=" + string(Force ? "true" : "false");
 
-  const string url = "/_api/replication/restore-collection"
-                     "?overwrite=" + string(Overwrite ? "true" : "false") +
-                     "&recycleIds=" + string(RecycleIds ? "true" : "false") +
-                     "&force=" + string(Force ? "true" : "false");
+  std::string const body = JsonHelper::toString(json);
 
-  const string body = JsonHelper::toString(json);
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
                                                body.c_str(),
-                                               body.size(),
-                                               headers);
+                                               body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     return TRI_ERROR_INTERNAL;
   }
 
   if (response->wasHttpError()) {
-    errorMsg = GetHttpErrorMessage(response);
-    delete response;
+    errorMsg = GetHttpErrorMessage(response.get());
 
     return TRI_ERROR_INTERNAL;
   }
-
-  delete response;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -513,35 +479,25 @@ static int SendRestoreCollection (TRI_json_t const* json,
 
 static int SendRestoreIndexes (TRI_json_t const* json,
                                string& errorMsg) {
-  map<string, string> headers;
+  std::string const url = "/_api/replication/restore-indexes?force=" + string(Force ? "true" : "false");
+  std::string const body = JsonHelper::toString(json);
 
-  const string url = "/_api/replication/restore-indexes?force=" + string(Force ? "true" : "false");
-  const string body = JsonHelper::toString(json);
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
                                                body.c_str(),
-                                               body.size(),
-                                               headers);
+                                               body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     return TRI_ERROR_INTERNAL;
   }
 
   if (response->wasHttpError()) {
-    errorMsg = GetHttpErrorMessage(response);
-    delete response;
+    errorMsg = GetHttpErrorMessage(response.get());
 
     return TRI_ERROR_INTERNAL;
   }
-
-  delete response;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -554,38 +510,27 @@ static int SendRestoreData (string const& cname,
                             char const* buffer,
                             size_t bufferSize,
                             string& errorMsg) {
-  map<string, string> headers;
+  std::string const url = "/_api/replication/restore-data?collection=" +
+                          StringUtils::urlEncode(cname) +
+                          "&recycleIds=" + (RecycleIds ? "true" : "false") +
+                          "&force=" + (Force ? "true" : "false");
 
-  const string url = "/_api/replication/restore-data?collection=" +
-                     StringUtils::urlEncode(cname) +
-                     "&recycleIds=" + (RecycleIds ? "true" : "false") +
-                     "&force=" + (Force ? "true" : "false");
-
-  SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_PUT,
+  std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
                                                buffer,
-                                               bufferSize,
-                                               headers);
-
+                                               bufferSize));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     return TRI_ERROR_INTERNAL;
   }
 
   if (response->wasHttpError()) {
-    errorMsg = GetHttpErrorMessage(response);
-    delete response;
+    errorMsg = GetHttpErrorMessage(response.get());
 
     return TRI_ERROR_INTERNAL;
   }
-
-  delete response;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -619,7 +564,6 @@ static int SortCollections (const void* l,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ProcessInputDirectory (string& errorMsg) {
-
   // create a lookup table for collections
   map<string, bool> restrictList;
   for (size_t i = 0; i < Collections.size(); ++i) {
@@ -638,8 +582,7 @@ static int ProcessInputDirectory (string& errorMsg) {
     const vector<string> files = FileUtils::listFiles(InputDirectory);
     const size_t n = files.size();
 
-    // TODO: externalise file extension
-    const string suffix = string(".structure.json");
+    const string suffix = std::string(".structure.json");
 
     // loop over all files in InputDirectory, and look for all structure.json files
     for (size_t i = 0; i < n; ++i) {
@@ -653,15 +596,9 @@ static int ProcessInputDirectory (string& errorMsg) {
 
       // found a structure.json file
 
-      const string name = files[i].substr(0, files[i].size() - suffix.size());
+      string name = files[i].substr(0, files[i].size() - suffix.size());
 
       if (name[0] == '_' && ! IncludeSystemCollections) {
-        continue;
-      }
-
-      if (restrictList.size() > 0 &&
-          restrictList.find(name) == restrictList.end()) {
-        // collection name not in list
         continue;
       }
 
@@ -674,7 +611,7 @@ static int ProcessInputDirectory (string& errorMsg) {
       if (! JsonHelper::isObject(json) ||
           ! JsonHelper::isObject(parameters) ||
           ! JsonHelper::isArray(indexes)) {
-        errorMsg = "could not read collection structure file '" + name + "'";
+        errorMsg = "could not read collection structure file '" + fqn + "'";
 
         if (json != nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -687,12 +624,12 @@ static int ProcessInputDirectory (string& errorMsg) {
 
       const string cname = JsonHelper::getStringValue(parameters, "name", "");
 
-      if (cname != name) {
+      if (cname != name && name != (cname + "_" + triagens::rest::SslInterface::sslMD5(cname))) {
         // file has a different name than found in structure file
 
         if (ImportStructure) {
           // we cannot go on if there is a mismatch
-          errorMsg = "collection name mismatch in collection structure file '" + name + "' (offending value: '" + cname + "')";
+          errorMsg = "collection name mismatch in collection structure file '" + fqn + "' (offending value: '" + cname + "')";
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
 
@@ -700,7 +637,7 @@ static int ProcessInputDirectory (string& errorMsg) {
         }
         else {
           // we can patch the name in our array and go on
-          cout << "ignoring collection name mismatch in collection structure file '" + name + "' (offending value: '" + cname + "')" << endl;
+          cout << "ignoring collection name mismatch in collection structure file '" + fqn + "' (offending value: '" + cname + "')" << endl;
 
           TRI_json_t* nameAttribute = TRI_LookupObjectJson(parameters, "name");
 
@@ -714,6 +651,13 @@ static int ProcessInputDirectory (string& errorMsg) {
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
           }
         }
+      }
+
+      if (! restrictList.empty() &&
+          restrictList.find(cname) == restrictList.end()) {
+        // collection name not in list
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        continue;
       }
 
       TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, collections, json);
@@ -765,8 +709,10 @@ static int ProcessInputDirectory (string& errorMsg) {
 
       if (ImportData) {
         // import data. check if we have a datafile
-        // TODO: externalise file extension
-        const string datafile = InputDirectory + TRI_DIR_SEPARATOR_STR + cname + ".data.json";
+        std::string datafile = InputDirectory + TRI_DIR_SEPARATOR_STR + cname + "_" + triagens::rest::SslInterface::sslMD5(cname) + ".data.json";
+        if (! TRI_ExistsFile(datafile.c_str())) {
+          datafile = InputDirectory + TRI_DIR_SEPARATOR_STR + cname + ".data.json";
+        }
 
         if (TRI_ExistsFile(datafile.c_str())) {
           // found a datafile
@@ -933,12 +879,12 @@ static string rewriteLocation (void* data, const string& location) {
 int main (int argc, char* argv[]) {
   int ret = EXIT_SUCCESS;
 
-  arangorestoreEntryFunction();
+  LocalEntryFunction();
 
-  TRIAGENS_C_INITIALISE(argc, argv);
-  TRIAGENS_REST_INITIALISE(argc, argv);
+  TRIAGENS_C_INITIALIZE(argc, argv);
+  TRIAGENS_REST_INITIALIZE(argc, argv);
 
-  TRI_InitialiseLogging(false);
+  TRI_InitializeLogging(false);
 
   // .............................................................................
   // set defaults
@@ -1113,7 +1059,7 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
-  arangorestoreExitFunction(ret, nullptr);
+  LocalExitFunction(ret, nullptr);
 
   return ret;
 }

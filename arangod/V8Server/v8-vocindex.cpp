@@ -37,7 +37,7 @@
 #include "Indexes/HashIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
-#include "Indexes/SkiplistIndex2.h"
+#include "Indexes/SkiplistIndex.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
@@ -339,7 +339,7 @@ static int EnhanceJsonIndexCap (v8::Isolate* isolate,
   if (obj->Has(TRI_V8_ASCII_STRING("size")) && obj->Get(TRI_V8_ASCII_STRING("size"))->IsNumber()) {
     int64_t value = TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("size")));
 
-    if (value < 0 || value > UINT32_MAX) {
+    if (value < 0 || value > INT64_MAX) {
       return TRI_ERROR_BAD_PARAMETER;
     }
     count = (size_t) value;
@@ -699,7 +699,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::SkiplistIndex2*>(TRI_EnsureSkiplistIndexDocumentCollection(document,
+        idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_EnsureSkiplistIndexDocumentCollection(document,
                                                                                                        iid,
                                                                                                        attributes,
                                                                                                        sparse,
@@ -707,7 +707,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
                                                                                                        &created));
       }
       else {
-        idx = static_cast<triagens::arango::SkiplistIndex2*>(TRI_LookupSkiplistIndexDocumentCollection(document,
+        idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_LookupSkiplistIndexDocumentCollection(document,
                                                                                                        attributes,
                                                                                                        sparsity,
                                                                                                        unique));
@@ -786,7 +786,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
   }
 
   // found some index to return
-  auto indexJson = idx->toJson(TRI_UNKNOWN_MEM_ZONE);
+  auto indexJson = idx->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
   if (indexJson.json() == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -1069,7 +1069,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   // create a dummy primary index
   std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(new triagens::arango::PrimaryIndex(nullptr));
 
-  auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE);
+  auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
 
@@ -1077,7 +1077,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
     // create a dummy edge index
     std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(id, nullptr));
 
-    auto idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE);
+    auto idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
   }
@@ -1322,12 +1322,11 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-
   string const databaseName(collection->_dbName);
   string const cid = StringUtils::itoa(collection->_cid);
   string const collectionName(collection->_name);
 
-  shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, cid);
+  std::shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, cid);
 
   if ((*c).empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1336,6 +1335,7 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
   v8::Handle<v8::Array> ret = v8::Array::New(isolate);
 
   TRI_json_t const* json = (*c).getIndexes();
+
   if (TRI_IsArrayJson(json)) {
     uint32_t j = 0;
     size_t const n = TRI_LengthArrayJson(json);
@@ -1359,7 +1359,7 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
 ///
 /// Returns an array of all indexes defined for the collection.
 /// 
-/// Note that `_key` implicitely has an index assigned to it.
+/// Note that `_key` implicitly has an index assigned to it.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionGetIndexes}
 /// ~db._create("test");
@@ -1387,6 +1387,11 @@ static void JS_GetIndexesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
     return;
   }
 
+  bool withFigures = false;
+  if (args.Length() > 0) {
+    withFigures = TRI_ObjectToBoolean(args[0]);
+  }
+
   SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
@@ -1402,7 +1407,7 @@ static void JS_GetIndexesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
   std::string const& collectionName = std::string(collection->_name);
 
   // get list of indexes
-  auto&& indexes = TRI_IndexesDocumentCollection(document);
+  auto&& indexes = TRI_IndexesDocumentCollection(document, withFigures);
 
   trx.finish(res);
   // READ-LOCK end
@@ -1847,3 +1852,4 @@ void TRI_InitV8indexCollection (v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("lookupIndex"), JS_LookupIndexVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getIndexes"), JS_GetIndexesVocbaseCol);
 }
+

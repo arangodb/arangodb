@@ -42,28 +42,36 @@ using namespace std;
 namespace triagens {
   namespace httpclient {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief empty map, used for headers
+////////////////////////////////////////////////////////////////////////////////
+
+    std::map<std::string, std::string> const SimpleHttpClient::NoHeaders;
+
 // -----------------------------------------------------------------------------
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
     SimpleHttpClient::SimpleHttpClient (GeneralClientConnection* connection,
                                         double requestTimeout,
-                                        bool warn) :
-      _connection(connection),
-      _keepConnectionOnDestruction(false),
-      _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
-      _readBuffer(TRI_UNKNOWN_MEM_ZONE),
-      _readBufferOffset(0),
-      _requestTimeout(requestTimeout),
-      _warn(warn),
-      _state(IN_CONNECT),
-      _written(0),
-      _errorMessage(""),
-      _locationRewriter({nullptr, nullptr}),
-      _nextChunkedSize(0),
-      _result(nullptr),
-      _maxPacketSize(128 * 1024 * 1024),
-      _keepAlive(true) {
+                                        bool warn) 
+      : _connection(connection),
+        _writeBuffer(TRI_UNKNOWN_MEM_ZONE),
+        _readBuffer(TRI_UNKNOWN_MEM_ZONE),
+        _readBufferOffset(0),
+        _requestTimeout(requestTimeout),
+        _state(IN_CONNECT),
+        _written(0),
+        _errorMessage(""),
+        _locationRewriter({nullptr, nullptr}),
+        _nextChunkedSize(0),
+        _result(nullptr),
+        _maxPacketSize(128 * 1024 * 1024),
+        _keepConnectionOnDestruction(false),
+        _warn(warn),
+        _keepAlive(true),
+        _exposeArangoDB(true),
+        _supportDeflate(true) {
 
       TRI_ASSERT(connection != nullptr);
 
@@ -82,7 +90,7 @@ namespace triagens {
     }
 
 // -----------------------------------------------------------------------------
-    // public methods
+// public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,14 +109,38 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send out a request, creating a new HttpResult object
+/// this version does not allow specifying custom headers
 ////////////////////////////////////////////////////////////////////////////////
 
-    SimpleHttpResult* SimpleHttpClient::request (
-      rest::HttpRequest::HttpRequestType method,
-      std::string const& location,
-      char const* body,
-      size_t bodyLength,
-      std::map<std::string, std::string> const& headerFields) {
+    SimpleHttpResult* SimpleHttpClient::request (rest::HttpRequest::HttpRequestType method,
+                                                 std::string const& location,
+                                                 char const* body,
+                                                 size_t bodyLength) {
+      return doRequest(method, location, body, bodyLength, NoHeaders);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send out a request, creating a new HttpResult object
+/// this version allows specifying custom headers
+////////////////////////////////////////////////////////////////////////////////
+
+    SimpleHttpResult* SimpleHttpClient::request (rest::HttpRequest::HttpRequestType method,
+                                                 std::string const& location,
+                                                 char const* body,
+                                                 size_t bodyLength,
+                                                 std::map<std::string, std::string> const& headers) {
+      return doRequest(method, location, body, bodyLength, headers);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send out a request, worker function
+////////////////////////////////////////////////////////////////////////////////
+
+    SimpleHttpResult* SimpleHttpClient::doRequest (rest::HttpRequest::HttpRequestType method,
+                                                   std::string const& location,
+                                                   char const* body,
+                                                   size_t bodyLength,
+                                                   std::map<std::string, std::string> const& headers) {
       
       // ensure connection has not yet been invalidated
       TRI_ASSERT(_connection != nullptr);
@@ -123,7 +155,7 @@ namespace triagens {
       _errorMessage = "";
 
       // set body
-      setRequest(method, rewriteLocation(location), body, bodyLength, headerFields);
+      setRequest(method, rewriteLocation(location), body, bodyLength, headers);
 
       // ensure state
       TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
@@ -152,6 +184,7 @@ namespace triagens {
           case (IN_WRITE): {
             size_t bytesWritten = 0;
 
+            TRI_ASSERT(_writeBuffer.length() >= _written);
             TRI_set_errno(TRI_ERROR_NO_ERROR);
 
             bool res = _connection->handleWrite(
@@ -286,7 +319,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the connection
+/// @brief initialize the connection
 ////////////////////////////////////////////////////////////////////////////////
 
       void SimpleHttpClient::handleConnect () {
@@ -380,7 +413,7 @@ namespace triagens {
                                        std::string const& location,
                                        char const* body,
                                        size_t bodyLength,
-                                       std::map<std::string, std::string> const& headerFields) {
+                                       std::map<std::string, std::string> const& headers) {
       // clear read-buffer (no pipeling!)
       _readBufferOffset = 0;
       _readBuffer.reset();
@@ -403,27 +436,30 @@ namespace triagens {
       _writeBuffer.appendText(l);
 
       // append protocol
-      static char const* ProtocolHeader = " HTTP/1.1\r\n";
-      _writeBuffer.appendText(ProtocolHeader, strlen(ProtocolHeader));
+      _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(" HTTP/1.1\r\n"));
 
       // append hostname
       string&& hostname = _connection->getEndpoint()->getHost();
 
-      static char const* HostHeader = "Host: ";
-      _writeBuffer.appendText(HostHeader, strlen(HostHeader));
+      _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Host: "));
       _writeBuffer.appendText(hostname);
-      _writeBuffer.appendText("\r\n", 2);
+      _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
 
       if (_keepAlive) {
-        static char const* ConnectionKeepAliveHeader = "Connection: Keep-Alive\r\n";
-        _writeBuffer.appendText(ConnectionKeepAliveHeader, strlen(ConnectionKeepAliveHeader));
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
       }
       else {
-        static char const* ConnectionCloseHeader = "Connection: Close\r\n";
-        _writeBuffer.appendText(ConnectionCloseHeader, strlen(ConnectionCloseHeader));
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
       }
-      _writeBuffer.appendText("User-Agent: ArangoDB\r\n");
-      _writeBuffer.appendText("Accept-Encoding: deflate\r\n");
+
+      if (_exposeArangoDB) {
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("User-Agent: ArangoDB\r\n"));
+      }
+
+      // do not automatically advertise deflate support
+      if (_supportDeflate) {
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Accept-Encoding: deflate\r\n"));
+      }
 
       // do basic authorization
       if (! _pathToBasicAuth.empty()) {
@@ -444,28 +480,26 @@ namespace triagens {
         }
 
         if (! foundValue.empty()) {
-          _writeBuffer.appendText("Authorization: Basic ");
+          _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Basic "));
           _writeBuffer.appendText(foundValue);
-          _writeBuffer.appendText("\r\n", 2);
+          _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
         }
       }
 
-      for (auto const& header : headerFields) {
-        // TODO: check Header name and value
+      for (auto const& header : headers) {
         _writeBuffer.appendText(header.first);
-        _writeBuffer.appendText(": ", strlen(": "));
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(": "));
         _writeBuffer.appendText(header.second);
-        _writeBuffer.appendText("\r\n", 2);
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
       }
 
       if (method != HttpRequest::HTTP_REQUEST_GET) {
-        static char const* ContentLengthHeader = "Content-Length: ";
-        _writeBuffer.appendText(ContentLengthHeader, strlen(ContentLengthHeader));
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
         _writeBuffer.appendInteger(bodyLength);
-        _writeBuffer.appendText("\r\n\r\n", 4);
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
       }
       else {
-        _writeBuffer.appendText("\r\n", 2);
+        _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
       }
 
       if (body != nullptr) {
@@ -615,7 +649,6 @@ namespace triagens {
 
 
     void SimpleHttpClient::processBody () {
-
       // HEAD requests may be responded to without a body...
       if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
         _result->setResultType(SimpleHttpResult::COMPLETE);
@@ -758,9 +791,14 @@ namespace triagens {
 
           return;
         }
-
-        _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
-                                      (size_t) _nextChunkedSize);
+      
+        if (_result->isDeflated()) {
+          _readBuffer.inflate(_result->getBody(), 16384, _readBufferOffset);
+        }
+        else {
+          _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
+                                        (size_t) _nextChunkedSize);
+        }
 
         _readBufferOffset += (size_t) _nextChunkedSize + 2;
         _state = IN_READ_CHUNKED_HEADER;
@@ -798,13 +836,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     std::string SimpleHttpClient::getServerVersion () {
-      std::map<string, string> headers;
-
       std::unique_ptr<SimpleHttpResult> response(request(HttpRequest::HTTP_REQUEST_GET,
                                                           "/_api/version",
                                                           nullptr,
-                                                          0,
-                                                          headers));
+                                                          0));
 
       if (response == nullptr || ! response->isComplete()) {
         return "";

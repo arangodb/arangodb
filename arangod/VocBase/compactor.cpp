@@ -37,6 +37,7 @@
 #include "Basics/files.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
+#include "Basics/memory-map.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -121,7 +122,7 @@ typedef struct compaction_blocker_s {
 compaction_blocker_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief auxiliary struct used when initialising compaction
+/// @brief auxiliary struct used when initializing compaction
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct compaction_intial_context_s {
@@ -763,6 +764,12 @@ static compaction_initial_context_t InitCompaction (TRI_document_collection_t* d
     compaction_info_t* compaction = static_cast<compaction_info_t*>(TRI_AtVector(compactions, i));
     TRI_datafile_t* df = compaction->_datafile;
 
+    // We will sequentially scan the logfile for collection:
+    if (df->isPhysical(df)) {
+      TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_SEQUENTIAL);
+      TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_WILLNEED);
+    }
+
     if (i == 0) {
       // extract and store fid
       context._fid = compaction->_datafile->_fid;
@@ -771,6 +778,10 @@ static compaction_initial_context_t InitCompaction (TRI_document_collection_t* d
     context._keepDeletions = compaction->_keepDeletions;
 
     bool ok = TRI_IterateDatafile(df, CalculateSize, &context);
+
+    if (df->isPhysical(df)) {
+      TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_RANDOM);
+    }
 
     if (! ok) {
       context._failed = true;
@@ -802,7 +813,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   initial = InitCompaction(document, compactions);
 
   if (initial._failed) {
-    LOG_ERROR("could not create initialise compaction");
+    LOG_ERROR("could not create initialize compaction");
 
     return;
   }
@@ -987,7 +998,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 //  }
 
   // if we cannot acquire the read lock instantly, we will exit directly.
-  // otherwise we'll risk a multi-thread deadlock between synchroniser,
+  // otherwise we'll risk a multi-thread deadlock between synchronizer,
   // compactor and data-modification threads (e.g. POST /_api/document)
   if (! TRI_TRY_READ_LOCK_DATAFILES_DOC_COLLECTION(document)) {
     return false;
@@ -1204,7 +1215,7 @@ static bool CheckAndLockCompaction (TRI_vocbase_t* vocbase) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the compaction blockers structure
+/// @brief initialize the compaction blockers structure
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitCompactorVocBase (TRI_vocbase_t* vocbase) {

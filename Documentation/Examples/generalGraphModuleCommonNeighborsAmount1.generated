@@ -1,20 +1,20 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("routeplanner");
-arangosh> var example = { isCapital: true };
-arangosh> var options = { includeData: true };
-arangosh> graph._countCommonNeighbors(example, example, options, options);
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> example = { isCapital: <span class="hljs-literal">true</span> };
+arangosh&gt; <span class="hljs-keyword">var</span> options = { includeData: <span class="hljs-literal">true</span> };
+arangosh&gt; graph._countCommonNeighbors(example, example, options, options);
 [ 
   { 
-    "germanCity/Berlin" : [ 
+    <span class="hljs-string">"germanCity/Berlin"</span> : [ 
       { 
-        "frenchCity/Paris" : 3 
+        <span class="hljs-string">"frenchCity/Paris"</span> : <span class="hljs-number">3</span> 
       } 
     ] 
   }, 
   { 
-    "frenchCity/Paris" : [ 
+    <span class="hljs-string">"frenchCity/Paris"</span> : [ 
       { 
-        "germanCity/Berlin" : 3 
+        <span class="hljs-string">"germanCity/Berlin"</span> : <span class="hljs-number">3</span> 
       } 
     ] 
   } 

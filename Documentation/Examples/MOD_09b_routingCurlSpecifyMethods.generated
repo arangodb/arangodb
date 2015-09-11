@@ -1,143 +1,143 @@
-shell> curl --dump - http://localhost:8529/hello/world
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/hello/world</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "request" : { 
-    "user" : null, 
-    "database" : "_system", 
-    "url" : "/hello/world", 
-    "protocol" : "http", 
-    "server" : { 
-      "address" : "127.0.0.1", 
-      "port" : 39893 
+  <span class="hljs-string">"request"</span> : { 
+    <span class="hljs-string">"user"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
+    <span class="hljs-string">"url"</span> : <span class="hljs-string">"/hello/world"</span>, 
+    <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
+    <span class="hljs-string">"server"</span> : { 
+      <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">33754</span> 
     }, 
-    "client" : { 
-      "address" : "127.0.0.1", 
-      "port" : 36302, 
-      "id" : "11" 
+    <span class="hljs-string">"client"</span> : { 
+      <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">28371</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"11"</span> 
     }, 
-    "internals" : { 
+    <span class="hljs-string">"internals"</span> : { 
     }, 
-    "headers" : { 
-      "accept-encoding" : "deflate", 
-      "authorization" : "Basic cm9vdDo=", 
-      "connection" : "Keep-Alive", 
-      "content-length" : "0", 
-      "host" : "127.0.0.1", 
-      "user-agent" : "ArangoDB" 
+    <span class="hljs-string">"headers"</span> : { 
+      <span class="hljs-string">"accept-encoding"</span> : <span class="hljs-string">"deflate"</span>, 
+      <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
+      <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
+      <span class="hljs-string">"content-length"</span> : <span class="hljs-string">"0"</span>, 
+      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
+      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span> 
     }, 
-    "requestType" : "GET", 
-    "parameters" : { 
+    <span class="hljs-string">"requestType"</span> : <span class="hljs-string">"GET"</span>, 
+    <span class="hljs-string">"parameters"</span> : { 
     }, 
-    "cookies" : { 
+    <span class="hljs-string">"cookies"</span> : { 
     }, 
-    "compatibility" : 20700, 
-    "urlParameters" : { 
+    <span class="hljs-string">"compatibility"</span> : <span class="hljs-number">20700</span>, 
+    <span class="hljs-string">"urlParameters"</span> : { 
     } 
   }, 
-  "options" : { 
+  <span class="hljs-string">"options"</span> : { 
   } 
 }
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/hello/world <<EOF
-{hello: 'world'}
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/hello/world &lt;&lt;EOF</span>
+{hello: <span class="hljs-string">'world'</span>}
 EOF
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "request" : { 
-    "user" : null, 
-    "database" : "_system", 
-    "url" : "/hello/world", 
-    "protocol" : "http", 
-    "server" : { 
-      "address" : "127.0.0.1", 
-      "port" : 39893 
+  <span class="hljs-string">"request"</span> : { 
+    <span class="hljs-string">"user"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
+    <span class="hljs-string">"url"</span> : <span class="hljs-string">"/hello/world"</span>, 
+    <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
+    <span class="hljs-string">"server"</span> : { 
+      <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">33754</span> 
     }, 
-    "client" : { 
-      "address" : "127.0.0.1", 
-      "port" : 36302, 
-      "id" : "11" 
+    <span class="hljs-string">"client"</span> : { 
+      <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">28371</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"11"</span> 
     }, 
-    "internals" : { 
+    <span class="hljs-string">"internals"</span> : { 
     }, 
-    "headers" : { 
-      "accept-encoding" : "deflate", 
-      "authorization" : "Basic cm9vdDo=", 
-      "connection" : "Keep-Alive", 
-      "content-length" : "16", 
-      "host" : "127.0.0.1", 
-      "user-agent" : "ArangoDB" 
+    <span class="hljs-string">"headers"</span> : { 
+      <span class="hljs-string">"accept-encoding"</span> : <span class="hljs-string">"deflate"</span>, 
+      <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
+      <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
+      <span class="hljs-string">"content-length"</span> : <span class="hljs-string">"16"</span>, 
+      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
+      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span> 
     }, 
-    "requestType" : "POST", 
-    "requestBody" : "{hello: 'world'}", 
-    "parameters" : { 
+    <span class="hljs-string">"requestType"</span> : <span class="hljs-string">"POST"</span>, 
+    <span class="hljs-string">"requestBody"</span> : <span class="hljs-string">"{hello: 'world'}"</span>, 
+    <span class="hljs-string">"parameters"</span> : { 
     }, 
-    "cookies" : { 
+    <span class="hljs-string">"cookies"</span> : { 
     }, 
-    "compatibility" : 20700, 
-    "urlParameters" : { 
+    <span class="hljs-string">"compatibility"</span> : <span class="hljs-number">20700</span>, 
+    <span class="hljs-string">"urlParameters"</span> : { 
     } 
   }, 
-  "options" : { 
+  <span class="hljs-string">"options"</span> : { 
   } 
 }
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/hello/world <<EOF
-{hello: 'world'}
+shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/hello/world &lt;&lt;EOF</span>
+{hello: <span class="hljs-string">'world'</span>}
 EOF
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "request" : { 
-    "user" : null, 
-    "database" : "_system", 
-    "url" : "/hello/world", 
-    "protocol" : "http", 
-    "server" : { 
-      "address" : "127.0.0.1", 
-      "port" : 39893 
+  <span class="hljs-string">"request"</span> : { 
+    <span class="hljs-string">"user"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
+    <span class="hljs-string">"url"</span> : <span class="hljs-string">"/hello/world"</span>, 
+    <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
+    <span class="hljs-string">"server"</span> : { 
+      <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">33754</span> 
     }, 
-    "client" : { 
-      "address" : "127.0.0.1", 
-      "port" : 36302, 
-      "id" : "11" 
+    <span class="hljs-string">"client"</span> : { 
+      <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">28371</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"11"</span> 
     }, 
-    "internals" : { 
+    <span class="hljs-string">"internals"</span> : { 
     }, 
-    "headers" : { 
-      "accept-encoding" : "deflate", 
-      "authorization" : "Basic cm9vdDo=", 
-      "connection" : "Keep-Alive", 
-      "content-length" : "16", 
-      "host" : "127.0.0.1", 
-      "user-agent" : "ArangoDB" 
+    <span class="hljs-string">"headers"</span> : { 
+      <span class="hljs-string">"accept-encoding"</span> : <span class="hljs-string">"deflate"</span>, 
+      <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
+      <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
+      <span class="hljs-string">"content-length"</span> : <span class="hljs-string">"16"</span>, 
+      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
+      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span> 
     }, 
-    "requestType" : "PUT", 
-    "requestBody" : "{hello: 'world'}", 
-    "parameters" : { 
+    <span class="hljs-string">"requestType"</span> : <span class="hljs-string">"PUT"</span>, 
+    <span class="hljs-string">"requestBody"</span> : <span class="hljs-string">"{hello: 'world'}"</span>, 
+    <span class="hljs-string">"parameters"</span> : { 
     }, 
-    "cookies" : { 
+    <span class="hljs-string">"cookies"</span> : { 
     }, 
-    "compatibility" : 20700, 
-    "urlParameters" : { 
+    <span class="hljs-string">"compatibility"</span> : <span class="hljs-number">20700</span>, 
+    <span class="hljs-string">"urlParameters"</span> : { 
     } 
   }, 
-  "options" : { 
+  <span class="hljs-string">"options"</span> : { 
   } 
 }
-shell> curl -X DELETE --dump - http://localhost:8529/hello/world
+shell&gt; curl -X DELETE --dump - http:<span class="hljs-comment">//localhost:8529/hello/world</span>
 
-HTTP/1.1 404 Not Found
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> Not Found
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : true, 
-  "code" : 404, 
-  "errorNum" : 404, 
-  "errorMessage" : "unknown path '/hello/world'" 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">404</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"unknown path '/hello/world'"</span> 
 }

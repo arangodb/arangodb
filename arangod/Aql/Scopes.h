@@ -107,7 +107,8 @@ namespace triagens {
 /// @brief checks if a variable exists in the scope
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool existsVariable (char const*) const;
+        bool existsVariable (char const*,
+                             size_t) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a variable exists in the scope
@@ -119,13 +120,23 @@ namespace triagens {
 /// @brief return a variable
 ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* getVariable (char const*) const;
+        Variable const* getVariable (char const*,
+                                     size_t) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a variable
 ////////////////////////////////////////////////////////////////////////////////
 
         Variable const* getVariable (std::string const&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable, allowing usage of special pseudo vars such
+/// as OLD and NEW
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* getVariable (char const*, 
+                                     size_t, 
+                                     bool) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -234,13 +245,30 @@ namespace triagens {
 /// @brief checks whether a variable exists in any scope
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool existsVariable (char const*) const;
+        bool existsVariable (char const*, 
+                             size_t) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a variable by name - this respects the current scopes
 ////////////////////////////////////////////////////////////////////////////////
         
-        Variable const* getVariable (char const*) const;
+        Variable const* getVariable (char const*,
+                                     size_t) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable by name - this respects the current scopes
+////////////////////////////////////////////////////////////////////////////////
+        
+        Variable const* getVariable (std::string const&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable by name - this respects the current scopes
+/// this also allows using special pseudo vars such as OLD and NEW
+////////////////////////////////////////////////////////////////////////////////
+        
+        Variable const* getVariable (char const*, 
+                                     size_t,
+                                     bool) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the $CURRENT variable

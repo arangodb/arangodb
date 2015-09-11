@@ -42,7 +42,7 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 #define INIT_MULTI \
-  triagens::basics::AssocMulti<void, void, uint32_t> a1( \
+  triagens::basics::AssocMulti<void, void, uint32_t, true> a1( \
       HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElementByKey);
 
 #define DESTROY_MULTI ;
@@ -126,7 +126,7 @@ struct CMultiPointerSetup {
 BOOST_FIXTURE_TEST_SUITE(CMultiPointerTest, CMultiPointerSetup)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test initialisation
+/// @brief test initialization
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (tst_init) {

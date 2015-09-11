@@ -1,23 +1,23 @@
-arangosh> db._routing.save({
-........>  urlPrefix: "/test",
-........>  routes: [
-........>    {
-........>      url: "/url1",
-........>      content: "route 1"
-........>    },
-........>    {
-........>      url: "/url2",
-........>      content: "route 2"
-........>    },
-........>    {
-........>      url: "/url3",
-........>      content: "route 3"
-........>    }
-........>  ]
-........> });
+arangosh&gt; db._routing.save({
+........&gt;  urlPrefix: <span class="hljs-string">"/test"</span>,
+........&gt;  routes: [
+........&gt;    {
+........&gt;      url: <span class="hljs-string">"/url1"</span>,
+........&gt;      content: <span class="hljs-string">"route 1"</span>
+........&gt;    },
+........&gt;    {
+........&gt;      url: <span class="hljs-string">"/url2"</span>,
+........&gt;      content: <span class="hljs-string">"route 2"</span>
+........&gt;    },
+........&gt;    {
+........&gt;      url: <span class="hljs-string">"/url3"</span>,
+........&gt;      content: <span class="hljs-string">"route 3"</span>
+........&gt;    }
+........&gt;  ]
+........&gt; });
 { 
-  "_id" : "_routing/599401409", 
-  "_rev" : "599401409", 
-  "_key" : "599401409" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/615845410"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"615845410"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"615845410"</span> 
 }
-arangosh> require("internal").reloadRouting()
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).reloadRouting()

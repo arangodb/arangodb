@@ -279,7 +279,8 @@ namespace triagens {
 
 ($?[a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
   /* unquoted string */
-  yylval->strval = yyextra->query()->registerString(yytext, yyleng, false);
+  yylval->strval.value = yyextra->query()->registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_STRING; 
 }
 
@@ -292,7 +293,9 @@ namespace triagens {
 <BACKTICK>` {
   /* end of backtick-enclosed string */
   BEGIN(INITIAL);
-  yylval->strval = yyextra->query()->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
+  size_t outLength;
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, outLength);
+  yylval->strval.length = outLength;
   return T_STRING;
 }
 
@@ -319,7 +322,9 @@ namespace triagens {
 <DOUBLE_QUOTE>\" {
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
-  yylval->strval = yyextra->query()->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
+  size_t outLength;
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, outLength);
+  yylval->strval.length = outLength;
   return T_QUOTED_STRING;
 }
 
@@ -346,7 +351,9 @@ namespace triagens {
 <SINGLE_QUOTE>' {
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
-  yylval->strval = yyextra->query()->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
+  size_t outLength;
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, outLength);
+  yylval->strval.length = outLength;
   return T_QUOTED_STRING;
 }
 
@@ -417,7 +424,8 @@ namespace triagens {
 @@?(_+[a-zA-Z0-9]+[a-zA-Z0-9_]*|[a-zA-Z0-9][a-zA-Z0-9_]*) {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name parameter */
-  yylval->strval = yyextra->query()->registerString(yytext + 1, yyleng - 1, false); 
+  yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1); 
+  yylval->strval.length = yyleng - 1;
   return T_PARAMETER;
 }
 

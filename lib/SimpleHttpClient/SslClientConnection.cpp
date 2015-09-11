@@ -49,7 +49,6 @@
 
 #include "Basics/ssl-helper.h"
 #include "Basics/socket-utils.h"
-#include "HttpServer/HttpsServer.h"
 
 #ifdef _WIN32
 #define STR_ERROR()                             \

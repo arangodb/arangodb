@@ -47,6 +47,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/threads.h"
 #include "Basics/Exceptions.h"
+#include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/transactions.h"
 #include "VocBase/auth.h"
@@ -1486,7 +1487,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 
   if (vocbase->_replicationApplier == nullptr) {
     // TODO
-    LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", vocbase->_name);
+    LOG_FATAL_AND_EXIT("initializing replication applier for database '%s' failed", vocbase->_name);
   }
 
 
@@ -1501,12 +1502,17 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // stop replication
   if (vocbase->_replicationApplier != nullptr) {
-    TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
+    vocbase->_replicationApplier->stop(false);
   }
 
   // mark all cursors as deleted so underlying collections can be freed soon
   if (vocbase->_cursorRepository != nullptr) {
-    static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository)->garbageCollect(true);
+    vocbase->_cursorRepository->garbageCollect(true);
+  }
+  
+  // mark all collection keys as deleted so underlying collections can be freed soon
+  if (vocbase->_collectionKeys != nullptr) {
+    vocbase->_collectionKeys->garbageCollect(true);
   }
 
   std::vector<TRI_vocbase_col_t*> collections;
@@ -1523,7 +1529,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     TRI_UnloadCollectionVocBase(vocbase, collection, true);
   }
 
-  // this will signal the synchroniser and the compactor threads to do one last iteration
+  // this will signal the synchronizer and the compactor threads to do one last iteration
   vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
   
   TRI_LockCondition(&vocbase->_compactorCondition);
@@ -2381,14 +2387,16 @@ TRI_vocbase_t::TRI_vocbase_t (TRI_server_t* server,
     _userStructures(nullptr),
     _queries(nullptr),
     _cursorRepository(nullptr),
+    _collectionKeys(nullptr),
     _authInfoLoaded(false),
     _hasCompactor(false),
     _isOwnAppsDirectory(true),
     _oldTransactions(nullptr),
     _replicationApplier(nullptr) {
 
-  _queries = new triagens::aql::QueryList(this);
+  _queries          = new triagens::aql::QueryList(this);
   _cursorRepository = new triagens::arango::CursorRepository(this);
+  _collectionKeys   = new triagens::arango::CollectionKeysRepository(this);
  
   _path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
   _name = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
@@ -2433,7 +2441,7 @@ TRI_vocbase_t::~TRI_vocbase_t () {
 
   // free replication
   if (_replicationApplier != nullptr) {
-    TRI_FreeReplicationApplier(_replicationApplier);
+    delete _replicationApplier;
   }
 
   delete _oldTransactions;
@@ -2446,8 +2454,9 @@ TRI_vocbase_t::~TRI_vocbase_t () {
   TRI_DestroyAssociativePointer(&_collectionsByName);
   TRI_DestroyAssociativePointer(&_collectionsById);
 
-  delete static_cast<triagens::arango::CursorRepository*>(_cursorRepository);
-  delete static_cast<triagens::aql::QueryList*>(_queries);
+  delete _cursorRepository;
+  delete _collectionKeys;
+  delete _queries;
   
   // free name and path
   if (_path != nullptr) {
@@ -2456,6 +2465,49 @@ TRI_vocbase_t::~TRI_vocbase_t () {
   if (_name != nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, _name);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief note the progress of a connected replication client
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_vocbase_t::updateReplicationClient (TRI_server_id_t serverId, 
+                                             TRI_voc_tick_t lastFetchedTick) {
+  WRITE_LOCKER(_replicationClientsLock);
+
+  try {
+    auto it = _replicationClients.find(serverId);
+
+    if (it == _replicationClients.end()) {
+      _replicationClients.emplace(serverId, std::make_pair(TRI_microtime(), lastFetchedTick));
+    }
+    else {
+      (*it).second.first = TRI_microtime();
+      if (lastFetchedTick > 0) {
+        (*it).second.second = lastFetchedTick;
+      }
+    }
+  }
+  catch (...) {
+    // silently fail...
+    // all we would be missing is the progress information of a slave
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the progress of all replication clients
+////////////////////////////////////////////////////////////////////////////////
+  
+std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> TRI_vocbase_t::getReplicationClients () {
+
+  std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> result;
+
+  READ_LOCKER(_replicationClientsLock);
+
+  for (auto& it : _replicationClients) {
+    result.emplace_back(std::make_tuple(it.first, it.second.first, it.second.second));
+  }
+  return result;
 }
 
 // -----------------------------------------------------------------------------

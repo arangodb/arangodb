@@ -1,8 +1,8 @@
-arangosh> db.example.save({ Hello : "world" });
+arangosh&gt; db.example.save({ Hello : <span class="hljs-string">"world"</span> });
 { 
-  "_id" : "example/446440385", 
-  "_rev" : "446440385", 
-  "_key" : "446440385" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/450367010"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"450367010"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"450367010"</span> 
 }
-arangosh> db.example.replaceByExample({ Hello: "world" }, {Hello: "mars"}, false, 5);
-1
+arangosh&gt; db.example.replaceByExample({ Hello: <span class="hljs-string">"world"</span> }, {Hello: <span class="hljs-string">"mars"</span>}, <span class="hljs-literal">false</span>, <span class="hljs-number">5</span>);
+<span class="hljs-number">1</span>

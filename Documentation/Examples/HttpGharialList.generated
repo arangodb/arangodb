@@ -1,64 +1,64 @@
-shell> curl --dump - http://localhost:8529/_api/gharial
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial</span>
 
-HTTP/1.1 200 OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json
 
 { 
-  "error" : false, 
-  "code" : 202, 
-  "graphs" : [ 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span>, 
+  <span class="hljs-string">"graphs"</span> : [ 
     { 
-      "_id" : "_graphs/social", 
-      "_key" : "social", 
-      "_rev" : "544744385", 
-      "edgeDefinitions" : [ 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"social"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"560401954"</span>, 
+      <span class="hljs-string">"edgeDefinitions"</span> : [ 
         { 
-          "collection" : "relation", 
-          "from" : [ 
-            "female", 
-            "male" 
+          <span class="hljs-string">"collection"</span> : <span class="hljs-string">"relation"</span>, 
+          <span class="hljs-string">"from"</span> : [ 
+            <span class="hljs-string">"female"</span>, 
+            <span class="hljs-string">"male"</span> 
           ], 
-          "to" : [ 
-            "female", 
-            "male" 
+          <span class="hljs-string">"to"</span> : [ 
+            <span class="hljs-string">"female"</span>, 
+            <span class="hljs-string">"male"</span> 
           ] 
         } 
       ], 
-      "orphanCollections" : [ ] 
+      <span class="hljs-string">"orphanCollections"</span> : [ ] 
     }, 
     { 
-      "_id" : "_graphs/routeplanner", 
-      "_key" : "routeplanner", 
-      "_rev" : "548086721", 
-      "orphanCollections" : [ ], 
-      "edgeDefinitions" : [ 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/routeplanner"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"routeplanner"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"563744290"</span>, 
+      <span class="hljs-string">"orphanCollections"</span> : [ ], 
+      <span class="hljs-string">"edgeDefinitions"</span> : [ 
         { 
-          "collection" : "germanHighway", 
-          "from" : [ 
-            "germanCity" 
+          <span class="hljs-string">"collection"</span> : <span class="hljs-string">"germanHighway"</span>, 
+          <span class="hljs-string">"from"</span> : [ 
+            <span class="hljs-string">"germanCity"</span> 
           ], 
-          "to" : [ 
-            "germanCity" 
+          <span class="hljs-string">"to"</span> : [ 
+            <span class="hljs-string">"germanCity"</span> 
           ] 
         }, 
         { 
-          "collection" : "frenchHighway", 
-          "from" : [ 
-            "frenchCity" 
+          <span class="hljs-string">"collection"</span> : <span class="hljs-string">"frenchHighway"</span>, 
+          <span class="hljs-string">"from"</span> : [ 
+            <span class="hljs-string">"frenchCity"</span> 
           ], 
-          "to" : [ 
-            "frenchCity" 
+          <span class="hljs-string">"to"</span> : [ 
+            <span class="hljs-string">"frenchCity"</span> 
           ] 
         }, 
         { 
-          "collection" : "internationalHighway", 
-          "from" : [ 
-            "frenchCity", 
-            "germanCity" 
+          <span class="hljs-string">"collection"</span> : <span class="hljs-string">"internationalHighway"</span>, 
+          <span class="hljs-string">"from"</span> : [ 
+            <span class="hljs-string">"frenchCity"</span>, 
+            <span class="hljs-string">"germanCity"</span> 
           ], 
-          "to" : [ 
-            "frenchCity", 
-            "germanCity" 
+          <span class="hljs-string">"to"</span> : [ 
+            <span class="hljs-string">"frenchCity"</span>, 
+            <span class="hljs-string">"germanCity"</span> 
           ] 
         } 
       ] 

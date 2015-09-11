@@ -114,6 +114,7 @@ HttpHandler::status_t RestQueryHandler::execute () {
 ///
 /// @RESTHEADER{GET /_api/query/properties, Returns the properties for the AQL query tracking}
 ///
+/// @RESTDESCRIPTION
 /// Returns the current query tracking configuration. The configuration is a
 /// JSON object with the following properties:
 /// 
@@ -188,6 +189,7 @@ bool RestQueryHandler::readQueryProperties () {
 ///
 /// @RESTHEADER{GET /_api/query/current, Returns the currently running AQL queries}
 ///
+/// @RESTDESCRIPTION
 /// Returns an array containing the AQL queries currently running in the selected
 /// database. Each query is a JSON object with the following attributes:
 ///
@@ -217,6 +219,7 @@ bool RestQueryHandler::readQueryProperties () {
 ///
 /// @RESTHEADER{GET /_api/query/slow, Returns the list of slow AQL queries}
 ///
+/// @RESTDESCRIPTION
 /// Returns an array containing the last AQL queries that exceeded the slow 
 /// query threshold in the selected database. 
 /// The maximum amount of queries in the list can be controlled by setting
@@ -322,6 +325,9 @@ bool RestQueryHandler::readQuery () {
 ///
 /// @RESTHEADER{DELETE /_api/query/slow, Clears the list of slow AQL queries}
 ///
+/// @RESTDESCRIPTION
+/// Clears the list of slow AQL queries
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -360,7 +366,8 @@ bool RestQueryHandler::deleteQuerySlow () {
 /// @RESTURLPARAM{query-id,string,required}
 /// The id of the query.
 ///
-/// Kills a running query. The query will be terminated at the next cancellation
+/// @RESTDESCRIPTION
+/// Kills a running query. The query will be terminated at the next cancelation
 /// point.
 ///
 /// @RESTRETURNCODES
@@ -431,34 +438,36 @@ bool RestQueryHandler::deleteQuery () {
 ///
 /// @RESTHEADER{PUT /_api/query/properties, Changes the properties for the AQL query tracking}
 ///
-/// @RESTBODYPARAM{properties,json,required}
-/// The properties for query tracking in the current database. 
+/// @RESTBODYPARAM{enabled,boolean,required,}
+/// If set to *true*, then queries will be tracked. If set to 
+/// *false*, neither queries nor slow queries will be tracked.
 ///
+/// @RESTBODYPARAM{trackSlowQueries,boolean,required,}
+/// If set to *true*, then slow queries will be tracked
+/// in the list of slow queries if their runtime exceeds the value set in 
+/// *slowQueryThreshold*. In order for slow queries to be tracked, the *enabled*
+/// property must also be set to *true*.
+/// 
+/// @RESTBODYPARAM{maxSlowQueries,integer,required,int64}
+/// The maximum number of slow queries to keep in the list
+/// of slow queries. If the list of slow queries is full, the oldest entry in
+/// it will be discarded when additional slow queries occur.
+///
+/// @RESTBODYPARAM{slowQueryThreshold,integer,required,int64}
+/// The threshold value for treating a query as slow. A
+/// query with a runtime greater or equal to this threshold value will be
+/// put into the list of slow queries when slow query tracking is enabled.
+/// The value for *slowQueryThreshold* is specified in seconds.
+///
+/// @RESTBODYPARAM{maxQueryStringLength,integer,required,int64}
+/// The maximum query string length to keep in the list of queries.
+/// Query strings can have arbitrary lengths, and this property
+/// can be used to save memory in case very long query strings are used. The
+/// value is specified in bytes.
+///
+/// @RESTDESCRIPTION
 /// The properties need to be passed in the attribute *properties* in the body
-/// of the HTTP request. *properties* needs to be a JSON object with the following
-/// properties:
-/// 
-/// - *enabled*: if set to *true*, then queries will be tracked. If set to 
-///   *false*, neither queries nor slow queries will be tracked.
-///
-/// - *trackSlowQueries*: if set to *true*, then slow queries will be tracked
-///   in the list of slow queries if their runtime exceeds the value set in 
-///   *slowQueryThreshold*. In order for slow queries to be tracked, the *enabled*
-///   property must also be set to *true*.
-/// 
-/// - *maxSlowQueries*: the maximum number of slow queries to keep in the list
-///   of slow queries. If the list of slow queries is full, the oldest entry in
-///   it will be discarded when additional slow queries occur.
-///
-/// - *slowQueryThreshold*: the threshold value for treating a query as slow. A
-///   query with a runtime greater or equal to this threshold value will be
-///   put into the list of slow queries when slow query tracking is enabled.
-///   The value for *slowQueryThreshold* is specified in seconds.
-///
-/// - *maxQueryStringLength*: the maximum query string length to keep in the
-///   list of queries. Query strings can have arbitrary lengths, and this property
-///   can be used to save memory in case very long query strings are used. The
-///   value is specified in bytes.
+/// of the HTTP request. *properties* needs to be a JSON object.
 ///
 /// After the properties have been changed, the current set of properties will
 /// be returned in the HTTP response.
@@ -546,7 +555,62 @@ bool RestQueryHandler::replaceProperties () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock PostApiQueryProperties
 /// @brief parse an AQL query and return information about it
+///
+/// @RESTHEADER{POST /_api/query, Parse an AQL query}
+///
+/// @RESTBODYPARAM{query,string,required,string}
+/// To validate a query string without executing it, the query string can be
+/// passed to the server via an HTTP POST request.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// If the query is valid, the server will respond with *HTTP 200* and
+/// return the names of the bind parameters it found in the query (if any) in
+/// the *bindVars* attribute of the response. It will also return an array
+/// of the collections used in the query in the *collections* attribute. 
+/// If a query can be parsed successfully, the *ast* attribute of the returned
+/// JSON will contain the abstract syntax tree representation of the query.
+/// The format of the *ast* is subject to change in future versions of 
+/// ArangoDB, but it can be used to inspect how ArangoDB interprets a given
+/// query. Note that the abstract syntax tree will be returned without any
+/// optimizations applied to it.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request,
+/// or if the query contains a parse error. The body of the response will
+/// contain the error details embedded in a JSON object.
+///
+/// @EXAMPLES
+///
+/// a Valid query
+///
+///     @EXAMPLE_ARANGOSH_RUN{RestQueryValid}
+///     var url = "/_api/query";
+///     var body = '{ "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     @END_EXAMPLE_ARANGOSH_RUN
+///
+/// an Invalid query
+///
+///     @EXAMPLE_ARANGOSH_RUN{RestQueryInvalid}
+///     var url = "/_api/query";
+///     var body = '{ "query" : "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 400);
+///
+///     logJsonResponse(response);
+///     @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestQueryHandler::parseQuery () {

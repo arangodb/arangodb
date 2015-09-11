@@ -270,7 +270,9 @@ namespace triagens {
 /// @brief log output, with prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-        void log (const char*, const char*, const char*);
+        void log (const std::string& format,
+		  const std::string& prompt,
+		  const std::string& str);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush log

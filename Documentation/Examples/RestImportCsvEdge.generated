@@ -1,17 +1,17 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=links <<EOF
-[ "_from", "_to", "name" ]
-[ "products/123", "products/234", "some name" ]
-[ "products/332", "products/abc", "other name" ]
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/import?collection=links &lt;&lt;EOF</span>
+[ <span class="hljs-string">"_from"</span>, <span class="hljs-string">"_to"</span>, <span class="hljs-string">"name"</span> ]
+[ <span class="hljs-string">"products/123"</span>, <span class="hljs-string">"products/234"</span>, <span class="hljs-string">"some name"</span> ]
+[ <span class="hljs-string">"products/332"</span>, <span class="hljs-string">"products/abc"</span>, <span class="hljs-string">"other name"</span> ]
 EOF
 
-HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : false, 
-  "created" : 2, 
-  "errors" : 0, 
-  "empty" : 0, 
-  "updated" : 0, 
-  "ignored" : 0 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"errors"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"empty"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"updated"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"ignored"</span> : <span class="hljs-number">0</span> 
 }

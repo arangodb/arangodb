@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief implementation of basis class ShellImplementation
+/// @brief implementation of the base class ShellImplementation
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,17 +23,20 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShellImplementation.h"
 
-#include "Basics/tri-strings.h"
+#include <iostream>
+
+#include "Basics/StringUtils.h"
+#include "Utilities/Completer.h"
 
 using namespace std;
-
-namespace triagens {
+using namespace arangodb;
+using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         class ShellImplementation
@@ -44,7 +47,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new editor
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 ShellImplementation::ShellImplementation (string const& history, 
@@ -64,88 +67,8 @@ ShellImplementation::~ShellImplementation () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                            virtual public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor prompt
-////////////////////////////////////////////////////////////////////////////////
-
-char* ShellImplementation::prompt (char const* the_prompt) {
-  string dotdot;
-  char const* p = the_prompt;
-  size_t len1 = strlen(the_prompt);
-  size_t len2 = len1;
-  size_t lineno = 0;
-
-  if (len1 < 3) {
-    dotdot = "> ";
-    len2 = 2;
-  }
-  else {
-    dotdot = string(len1 - 2, '.') + "> ";
-  }
-
-  char const* sep = "";
-
-  while (true) {
-    // calling concrete implmentation of the shell
-    char* result = getLine(p);
-
-    p = dotdot.c_str();
-
-    if (result == nullptr) {
-
-      // give up, if the user pressed control-D on the top-most level
-      if (_current.empty()) {
-        return nullptr;
-      }
-
-      // otherwise clear current content
-      _current.clear();
-      break;
-    }
-
-    _current += sep;
-    sep = "\n";
-    ++lineno;
-
-    // remove any the_prompt at the beginning of the line
-    char* originalLine = result;
-    bool c1 = strncmp(result, the_prompt, len1) == 0;
-    bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-
-    while (c1 || c2) {
-      if (c1) {
-        result += len1;
-      }
-      else if (c2) {
-        result += len2;
-      }
-
-      c1 = strncmp(result, the_prompt, len1) == 0;
-      c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-    }
-
-    // extend line and check
-    _current += result;
-
-    bool ok = _completer->isComplete(_current, lineno, strlen(result));
-
-    // cannot use TRI_Free, because it was allocated by the system call inside readline
-    TRI_SystemFree(originalLine);
-
-    // stop if line is complete
-    if (ok) {
-      break;
-    }
-  }
-
-  char* line = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, _current.c_str());
-  _current.clear();
-
-  return line;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a signal
@@ -155,13 +78,87 @@ void ShellImplementation::signal () {
   // do nothing special
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief line editor prompt
+////////////////////////////////////////////////////////////////////////////////
+
+string ShellImplementation::prompt (const string& prompt,
+				    const string& plain,
+				    bool& eof) {
+  size_t lineno = 0;
+  string dotdot = "...> ";
+  string p = prompt;
+  string sep = "";
+  string line;
+
+  eof = false;
+
+  while (true) {
+
+    // calling concrete implementation of the shell
+    line = getLine(p, eof);
+    p = dotdot;
+
+    if (eof) {
+
+      // give up, if the user pressed control-D on the top-most level
+      if (_current.empty()) {
+        return "";
+      }
+
+      // otherwise clear current content
+      _current.clear();
+      eof = false;
+      break;
+    }
+
+    _current += sep;
+    sep = "\n";
+    ++lineno;
+
+    // remove any prompt at the beginning of the line
+    size_t pos = string::npos;
+
+    if (StringUtils::isPrefix(line, plain)) {
+      pos = line.find('>');
+    }
+    else if (StringUtils::isPrefix(line, "...")) {
+      pos = line.find('>');
+    }
+
+    if (pos != string::npos) {
+      pos = line.find_first_not_of(" \t", pos + 1);
+
+      if (pos != string::npos) {
+	line = line.substr(pos);
+      }
+      else {
+	line.clear();
+      }
+    }
+
+    // extend line and check
+    _current += line;
+
+    // stop if line is complete
+    bool ok = _completer->isComplete(_current, lineno);
+
+    if (ok) {
+      break;
+    }
+  }
+
+  // clear current line
+  line = _current;
+  _current.clear();
+
+  return line;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -108,7 +108,7 @@ extern size_t PageSize;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a server instance with configuration
+/// @brief initialize a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer (TRI_server_t*,
@@ -145,7 +145,7 @@ int TRI_StartServer (TRI_server_t*,
                      bool performUpgrade);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises all databases
+/// @brief initializes all databases
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitDatabasesServer (TRI_server_t*);
@@ -239,13 +239,6 @@ TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t*,
 
 TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t*,
                                       char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup a database by its id
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_t* TRI_LookupDatabaseByIdServer (TRI_server_t*,
-                                             TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a database by its name

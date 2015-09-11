@@ -50,7 +50,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector
+/// @brief initializes a vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVector (TRI_vector_t* vector, TRI_memory_zone_t* zone, size_t elementSize) {
@@ -62,7 +62,7 @@ void TRI_InitVector (TRI_vector_t* vector, TRI_memory_zone_t* zone, size_t eleme
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector, with user-definable settings
+/// @brief initializes a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVector2 (TRI_vector_t* vector,
@@ -136,43 +136,6 @@ int TRI_ReserveVector (TRI_vector_t* vector,
   vector->_capacityX = static_cast<uint32_t>(newSize);
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copies a vector
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_t* TRI_CopyVector (TRI_memory_zone_t* zone,
-                              TRI_vector_t const* vector) {
-  TRI_vector_t* copy = static_cast<TRI_vector_t*>(TRI_Allocate(zone, sizeof(TRI_vector_t), false));
-
-  if (copy == nullptr) {
-    return nullptr;
-  }
-
-  copy->_elementSizeX = vector->_elementSizeX;
-  copy->_memoryZoneX  = TRI_MemoryZoneId(zone);
-
-  if (vector->_capacityX == 0) {
-    copy->_buffer     = nullptr;
-    copy->_lengthX    = 0;
-    copy->_capacityX  = 0;
-  }
-  else {
-    copy->_buffer = static_cast<char*>(TRI_Allocate(zone, static_cast<size_t>(vector->_lengthX * vector->_elementSizeX), false));
-
-    if (copy->_buffer == nullptr) {
-      TRI_Free(zone, copy);
-      return nullptr;
-    }
-
-    copy->_capacityX = vector->_lengthX;
-    copy->_lengthX   = vector->_lengthX;
-
-    memcpy(copy->_buffer, vector->_buffer, static_cast<size_t>(vector->_lengthX * vector->_elementSizeX));
-  }
-
-  return copy;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -390,7 +353,7 @@ void* TRI_BeginVector (TRI_vector_t const* vector) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector
+/// @brief initializes a vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVectorPointer (TRI_vector_pointer_t* vector,
@@ -402,7 +365,7 @@ void TRI_InitVectorPointer (TRI_vector_pointer_t* vector,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector, with user-definable settings
+/// @brief initializes a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVectorPointer (TRI_vector_pointer_t* vector,
@@ -635,7 +598,7 @@ void* TRI_AtVectorPointer (TRI_vector_pointer_t const* vector, size_t pos) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a string vector
+/// @brief initializes a string vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVectorString (TRI_vector_string_t* vector, TRI_memory_zone_t* zone) {
@@ -646,7 +609,7 @@ void TRI_InitVectorString (TRI_vector_string_t* vector, TRI_memory_zone_t* zone)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a string vector, with user-definable settings
+/// @brief initializes a string vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVectorString2 (TRI_vector_string_t* vector,
@@ -694,64 +657,6 @@ void TRI_FreeVectorString (TRI_memory_zone_t* zone, TRI_vector_string_t* vector)
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copies a vector and all its strings
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t* zone,
-                                           TRI_vector_string_t const* vector) {
-  TRI_vector_string_t* copy = static_cast<TRI_vector_string_t*>(TRI_Allocate(zone, sizeof(TRI_vector_t), false));
-
-  if (copy == nullptr) {
-    return nullptr;
-  }
-
-  copy->_memoryZone = zone;
-
-  if (vector->_capacity == 0) {
-    copy->_buffer = nullptr;
-    copy->_length = 0;
-    copy->_capacity = 0;
-  }
-  else {
-    char** ptr;
-    char** end;
-    char** qtr;
-
-    copy->_buffer = static_cast<char**>(TRI_Allocate(zone, vector->_length * sizeof(char*), false));
-
-    if (copy->_buffer == nullptr) {
-      TRI_Free(zone, copy);
-      return nullptr;
-    }
-
-    copy->_capacity = vector->_length;
-    copy->_length = vector->_length;
-
-    ptr = vector->_buffer;
-    end = vector->_buffer + vector->_length;
-    qtr = copy->_buffer;
-
-    for (;  ptr < end;  ++ptr, ++qtr) {
-      *qtr = TRI_DuplicateStringZ(zone, *ptr);
-
-      if (*qtr == nullptr) {
-        char** xtr = copy->_buffer;
-
-        for (;  xtr < qtr;  ++xtr) {
-          TRI_Free(zone, *xtr);
-        }
-
-        TRI_Free(zone, copy->_buffer);
-        TRI_Free(zone, copy);
-        return nullptr;
-      }
-    }
-  }
-
-  return copy;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element at the end

@@ -422,10 +422,6 @@ void RestVocbaseBaseHandler::generateTransactionError (string const& collectionN
       generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
       return;
 
-    case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
-      generateError(HttpResponse::CONFLICT, res, "geo constraint violated");
-      return;
-
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
       generateError(HttpResponse::BAD, res, "invalid document key");
       return;

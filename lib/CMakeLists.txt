@@ -47,6 +47,7 @@ add_library(
     ${LIB_ARANGO_POSIX}
     Basics/application-exit.cpp
     Basics/associative.cpp
+    Basics/AttributeNameParser.cpp
     Basics/Barrier.cpp
     Basics/ConditionLocker.cpp
     Basics/ConditionVariable.cpp
@@ -62,7 +63,7 @@ add_library(
     Basics/fpconv.cpp
     Basics/hashes.cpp
     Basics/init.cpp
-    Basics/InitialiseBasics.cpp
+    Basics/InitializeBasics.cpp
     Basics/json.cpp
     Basics/json-utilities.cpp
     Basics/JsonHelper.cpp
@@ -82,7 +83,6 @@ add_library(
     Basics/ReadLocker.cpp
     Basics/ReadUnlocker.cpp
     Basics/ReadWriteLock.cpp
-    Basics/SkipList.cpp
     Basics/socket-utils.cpp
     Basics/SpinLock.cpp
     Basics/SpinLocker.cpp
@@ -105,22 +105,19 @@ add_library(
     Basics/xxhash.cpp
     JsonParser/json-parser.cpp
     ProgramOptions/program-options.cpp
-    Rest/AnyServer.cpp
     Rest/EndpointList.cpp
     Rest/Endpoint.cpp
     Rest/EndpointIp.cpp
     Rest/EndpointIpV4.cpp
     Rest/EndpointIpV6.cpp
-    Rest/Handler.cpp
     Rest/HttpRequest.cpp
     Rest/HttpResponse.cpp
-    Rest/InitialiseRest.cpp
+    Rest/InitializeRest.cpp
     Rest/SslInterface.cpp
     Rest/Version.cpp
-    Statistics/statistics.cpp
-    Utilities/ScriptLoader.cpp
-    Utilities/ShellImplementation.cpp
+    Utilities/DummyShell.cpp
     Utilities/LineEditor.cpp
+    Utilities/ScriptLoader.cpp
     Utilities/ShellImplementation.cpp
     Utilities/ShellImplFactory.cpp
     Zip/ioapi.cpp
@@ -141,54 +138,6 @@ add_library(
     SimpleHttpClient/SslClientConnection.cpp
     SimpleHttpClient/SimpleHttpClient.cpp
     SimpleHttpClient/SimpleHttpResult.cpp
-)
-
-################################################################################
-### @brief LIB_ARANGO_FE
-################################################################################
-
-add_library(
-    ${LIB_ARANGO_FE}
-    STATIC
-    Admin/ApplicationAdminServer.cpp
-    Admin/RestAdminBaseHandler.cpp
-    Admin/RestAdminLogHandler.cpp
-    Admin/RestBaseHandler.cpp
-    Admin/RestDebugHelperHandler.cpp
-    Admin/RestJobHandler.cpp
-    Admin/RestShutdownHandler.cpp
-    Admin/RestVersionHandler.cpp
-    ApplicationServer/ApplicationFeature.cpp
-    ApplicationServer/ApplicationServer.cpp
-    Dispatcher/ApplicationDispatcher.cpp
-    Dispatcher/Dispatcher.cpp
-    Dispatcher/DispatcherQueue.cpp
-    Dispatcher/DispatcherThread.cpp
-    Dispatcher/Job.cpp
-    Dispatcher/RequeueTask.cpp
-    HttpServer/ApplicationEndpointServer.cpp
-    HttpServer/AsyncJobManager.cpp
-    HttpServer/HttpCommTask.cpp
-    HttpServer/HttpHandler.cpp
-    HttpServer/HttpHandlerFactory.cpp
-    HttpServer/HttpListenTask.cpp
-    HttpServer/HttpServer.cpp
-    HttpServer/HttpServerJob.cpp
-    HttpServer/HttpsCommTask.cpp
-    HttpServer/HttpsServer.cpp
-    HttpServer/PathHandler.cpp
-    Scheduler/ApplicationScheduler.cpp
-    Scheduler/AsyncTask.cpp
-    Scheduler/ListenTask.cpp
-    Scheduler/PeriodicTask.cpp
-    Scheduler/Scheduler.cpp
-    Scheduler/SchedulerLibev.cpp
-    Scheduler/SchedulerThread.cpp
-    Scheduler/SignalTask.cpp
-    Scheduler/SocketTask.cpp
-    Scheduler/Task.cpp
-    Scheduler/TaskManager.cpp
-    Scheduler/TimerTask.cpp
 )
 
 ################################################################################

@@ -975,6 +975,8 @@ bool ApplicationV8::prepare2 () {
   _platform = v8::platform::CreateDefaultPlatform();
   v8::V8::InitializePlatform(_platform);
   v8::V8::Initialize();
+  
+  v8::V8::SetArrayBufferAllocator(&_bufferAllocator);
 
   // setup instances
   {
@@ -1176,7 +1178,7 @@ bool ApplicationV8::prepareV8Instance (size_t i, bool useActions) {
 
   vector<string> files;
 
-  files.push_back("server/initialise.js");
+  files.push_back("server/initialize.js");
 
   v8::Isolate* isolate = v8::Isolate::New();
   
@@ -1225,7 +1227,7 @@ bool ApplicationV8::prepareV8Instance (size_t i, bool useActions) {
 
     TRI_InitV8Cluster(isolate, localContext);
     if (_dispatcher->dispatcher() != nullptr) {
-      // don't initialise dispatcher if there is no scheduler (server started with --no-server option)
+      // don't initialize dispatcher if there is no scheduler (server started with --no-server option)
       TRI_InitV8Dispatcher(isolate, localContext, _vocbase, _scheduler, _dispatcher, this);
     }
 
@@ -1291,12 +1293,12 @@ bool ApplicationV8::prepareV8Instance (size_t i, bool useActions) {
   // this avoids collecting all contexts at the very same time
   double const randomWait = fmod(static_cast<double>(TRI_UInt32Random()), 15.0);
 
-  // initialise garbage collection for context
+  // initialize garbage collection for context
   context->_numExecutions      = 0;
   context->_hasActiveExternals = true;
   context->_lastGcStamp        = TRI_microtime() + randomWait;
 
-  LOG_TRACE("initialised V8 context #%d", (int) i);
+  LOG_TRACE("initialized V8 context #%d", (int) i);
 
   _freeContexts.emplace_back(context);
 
@@ -1353,8 +1355,8 @@ void ApplicationV8::prepareV8Server (const size_t i, const string& startupFile) 
   delete context->_locker;
   context->_locker = nullptr;
 
-  // initialise garbage collection for context
-  LOG_TRACE("initialised V8 server #%d", (int) i);
+  // initialize garbage collection for context
+  LOG_TRACE("initialized V8 server #%d", (int) i);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

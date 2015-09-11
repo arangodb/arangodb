@@ -148,7 +148,7 @@ void ClearQueryCache (TRI_transaction_t* trx) {
     }
   }
   catch (...) {
-    // in case something goes wrong, we have to disable the query cache
+    // in case something goes wrong, we have to remove all queries from the cache
     triagens::aql::QueryCache::instance()->invalidate(trx->_vocbase);
   }
 }
@@ -188,11 +188,12 @@ static void FreeOperations (TRI_transaction_t* trx) {
 
   for (size_t i = 0; i < n; ++i) {
     auto trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
-    TRI_document_collection_t* document = trxCollection->_collection->_collection;
-
+    
     if (trxCollection->_operations == nullptr) {
       continue;
     }
+
+    TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
     if (mustRollback) {
       // revert all operations
@@ -315,7 +316,7 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
     return nullptr;
   }
 
-  // initialise collection properties
+  // initialize collection properties
   trxCollection->_transaction      = trx;
   trxCollection->_cid              = cid;
   trxCollection->_accessType       = accessType;
@@ -399,10 +400,10 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
             "read-locking collection %llu",
             (unsigned long long) trxCollection->_cid);
     if (trx->_timeout == 0) {
-      res = document->beginRead(document);
+      res = document->beginRead();
     }
     else {
-      res = document->beginReadTimed(document, trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+      res = document->beginReadTimed(trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
     }
   }
   else {
@@ -411,10 +412,10 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
             "write-locking collection %llu",
             (unsigned long long) trxCollection->_cid);
     if (trx->_timeout == 0) {
-      res = document->beginWrite(document);
+      res = document->beginWrite();
     }
     else {
-      res = document->beginWriteTimed(document, trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+      res = document->beginWriteTimed(trx->_timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
     }
   }
 
@@ -481,14 +482,14 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
             nestingLevel,
             "read-unlocking collection %llu",
             (unsigned long long) trxCollection->_cid);
-    document->endRead(document);
+    document->endRead();
   }
   else {
     LOG_TRX(trxCollection->_transaction,
             nestingLevel,
             "write-unlocking collection %llu",
             (unsigned long long) trxCollection->_cid);
-    document->endWrite(document);
+    document->endWrite();
   }
 
   trxCollection->_lockType = TRI_TRANSACTION_NONE;
@@ -666,17 +667,8 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
   int res;
 
   try {
-    if (trx->_externalId > 0) {
-      // remotely started trx
-      triagens::wal::BeginRemoteTransactionMarker marker(trx->_vocbase->_id, trx->_id, trx->_externalId);
-      res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
-    }
-    else {
-      // local trx
-      triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
-      res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
-    }
-  
+    triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
     
     if (res == TRI_ERROR_NO_ERROR) {
       trx->_beginWritten = true;
@@ -718,16 +710,8 @@ static int WriteAbortMarker (TRI_transaction_t* trx) {
   int res;
 
   try {
-    if (trx->_externalId > 0) {
-      // remotely started trx
-      triagens::wal::AbortRemoteTransactionMarker marker(trx->_vocbase->_id, trx->_id, trx->_externalId);
-      res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
-    }
-    else {
-      // local trx
-      triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
-      res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
-    }
+    triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   }
   catch (triagens::basics::Exception const& ex) {
     res = ex.code();
@@ -761,16 +745,8 @@ static int WriteCommitMarker (TRI_transaction_t* trx) {
   int res;
 
   try {
-    if (trx->_externalId > 0) {
-      // remotely started trx
-      triagens::wal::CommitRemoteTransactionMarker marker(trx->_vocbase->_id, trx->_id, trx->_externalId);
-      res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
-    }
-    else {
-      // local trx
-      triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
-      res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
-    }
+    triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   }
   catch (triagens::basics::Exception const& ex) {
     res = ex.code();
@@ -827,7 +803,6 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
 
   // note: the real transaction id will be acquired on transaction start
   trx->_id                = 0;           // local trx id
-  trx->_externalId        = externalId;  // remote trx id (used in replication)
   trx->_status            = TRI_TRANSACTION_CREATED;
   trx->_type              = TRI_TRANSACTION_READ;
   trx->_hints             = 0;
@@ -842,11 +817,6 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
   }
   else if (timeout == 0.0) {
     trx->_timeout         = (uint64_t) 0;
-  }
-
-  if (trx->_externalId != 0) {
-    // replication transaction is always a write transaction
-    trx->_type = TRI_TRANSACTION_WRITE;
   }
 
   TRI_InitVectorPointer(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
@@ -1412,6 +1382,7 @@ int TRI_CommitTransaction (TRI_transaction_t* trx,
 
     // if a write query, clear the query cache for the participating collections
     if (trx->_type == TRI_TRANSACTION_WRITE &&
+        trx->_collections._length > 0 && 
         triagens::aql::QueryCache::instance()->mayBeActive()) {
       ClearQueryCache(trx);
     }

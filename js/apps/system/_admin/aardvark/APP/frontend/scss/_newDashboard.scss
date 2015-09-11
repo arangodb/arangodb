@@ -32,6 +32,15 @@
 
 .dashboard-sub-bar {
   @extend %clear-float;
+  @extend %pull-left;
+  background-color: $c-bar-bg;
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
+  color: $c-white;
+  height: 24px;
+  line-height: 24px;
+  margin: 0;
+  padding: 0 6px;
 
   .dashboard-sub-bar-title {
     @extend %pull-left;
@@ -41,9 +50,9 @@
 
 .dashboard-large-chart {
   @extend %dashboard-chart-basic;
-  margin-right: 12px;
-  border: 1px solid rgba(104, 103, 102, 0.10);
+  border: 1px solid rgba(104, 103, 102, .10);
   border-radius: 3px;
+  margin-right: 12px;
 
   .dashboard-large-chart-inner {
     @extend %dashboard-chart-box;
@@ -52,8 +61,8 @@
     border-left: $dashboard-borderwidth solid $c-white;
     border-right: $dashboard-borderwidth solid $c-white;
     border-top: $dashboard-borderwidth solid $c-white;
-    padding-top: $dashboard-padding + 2px;
     padding-bottom: $dashboard-padding;
+    padding-top: $dashboard-padding + 2px;
 
     .dashboard-interior-chart {
       @extend %pull-left;
@@ -65,7 +74,7 @@
 
 .dashboard-small-chart {
   @extend %dashboard-chart-basic;
-  border: 1px solid rgba(104, 103, 102, 0.10);
+  border: 1px solid rgba(104, 103, 102, .10);
   border-radius: 3px;
 
   .dashboard-small-chart-inner {
@@ -83,21 +92,22 @@
 
       .nv-bar rect {
         fill-opacity: .15;
-        stroke-opacity: 0.8;
-        stroke-width: 0.5px;
+        stroke-opacity: .8;
+        stroke-width: .5px;
       }
     }
   }
 }
 
 .dashboard-medium-chart-outer {
-  border: 1px solid rgba(104, 103, 102, 0.10);
+  border: 1px solid rgba(104, 103, 102, .10);
   border-radius: 3px;
 
   &:first-child {
     margin-right: 10px;
   }
 }
+
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
@@ -105,8 +115,8 @@
   border-left: $dashboard-borderwidth solid $c-white;
   border-right: $dashboard-borderwidth solid $c-white;
   border-top: $dashboard-borderwidth solid $c-white;
-  padding-top: $dashboard-padding;
   margin-bottom: 0;
+  padding-top: $dashboard-padding;
 
   &:first-child {
     margin-right: 12px;
@@ -118,7 +128,7 @@
   }
 
   .dashboard-medium-chart-outer {
-    border: 1px solid rgba(104, 103, 102, 0.10);
+    border: 1px solid rgba(104, 103, 102, .10);
     border-radius: 3px;
   }
 
@@ -155,18 +165,17 @@
 .dashboard-tendency-container {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
-  border: 1px solid rgba(104, 103, 102, 0.10);
+  border: 1px solid rgba(104, 103, 102, .10);
   border-radius: 3px;
 
   .dashboard-tendency-chart {
     @extend %clear-float;
     background-color: $c-white;
-    border-top-left-radius: 3px;
-    border-top-right-radius: 3px;
-    border-top: $dashboard-borderwidth solid $c-white;
     border-left: 5px solid $c-white;
     border-right: 5px solid $c-white;
-    border-top: 5px solid $c-white;
+    border-top: $dashboard-borderwidth solid $c-white;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
     padding-bottom: $dashboard-padding-tendency;
 
     .dashboard-tendency {
@@ -174,7 +183,7 @@
       background-color: $c-white;
       margin-top: 5px;
       padding: 0 8px;
-      
+
       &:first-child {
         border-right: 1px solid $c-e1grey;
       }
@@ -197,7 +206,7 @@
 .dashboard-bar-chart-container {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
-  border: 1px solid rgba(104, 103, 102, 0.10);
+  border: 1px solid rgba(104, 103, 102, .10);
   border-radius: 3px;
 
   .dashboard-bar-chart {
@@ -232,7 +241,7 @@
       .nv-bar rect {
         fill-opacity: .15;
         stroke-opacity: .8;
-        stroke-width: 0.5px;
+        stroke-width: .5px;
       }
     }
   }
@@ -247,29 +256,13 @@
   }
 }
 
-
-.dashboard-sub-bar {
-  @extend %pull-left;
-  background-color: $c-bar-bg;
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
-  color: $c-white;
-  height: 24px;
-  line-height: 24px;
-  margin: 0;
-  padding: 0 6px;
-}
-
-
 .dashboard-spacer {
   margin: 0 12px;
 }
 
-
 .headerBar.dashboard-headerbar {
-  margin: 15px 0 10px;
+  margin: 20px 0;
 }
-
 
 .modal-chart-detail {
   @extend %pull-left;
@@ -333,7 +326,7 @@
 
 
 .dygraph-axis-label {
-  &.dygraph-axis-label-y, 
+  &.dygraph-axis-label-y,
   &.dygraph-axis-label-x {
     color: $c-darker-grey;
   }

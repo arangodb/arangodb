@@ -17,3 +17,7 @@ configuration of an ArangoDB database's replication applier.
 
 <!-- arangod/RestHandler/RestReplicationHandler.cpp -->
 @startDocuBlock JSF_get_api_replication_applier_state
+
+<!-- arangod/RestHandler/RestReplicationHandler.cpp -->
+@startDocuBlock JSF_put_api_replication_makeSlave
+

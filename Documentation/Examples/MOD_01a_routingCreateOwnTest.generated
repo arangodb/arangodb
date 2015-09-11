@@ -1,14 +1,14 @@
-arangosh> db._modules.save({
-........>  path: "/db:/ownTest",
-........>  content:
-........>     "exports.do = function(req, res, options, next) {"+
-........>     "  res.body = 'test';" +
-........>     "  res.responseCode = 200;" +
-........>     "  res.contentType = 'text/plain';" +
-........>     "};"
-........> });
+arangosh&gt; db._modules.save({
+........&gt;  path: <span class="hljs-string">"/db:/ownTest"</span>,
+........&gt;  content:
+........&gt;     <span class="hljs-string">"exports.do = function(req, res, options, next) {"</span>+
+........&gt;     <span class="hljs-string">"  res.body = 'test';"</span> +
+........&gt;     <span class="hljs-string">"  res.responseCode = 200;"</span> +
+........&gt;     <span class="hljs-string">"  res.contentType = 'text/plain';"</span> +
+........&gt;     <span class="hljs-string">"};"</span>
+........&gt; });
 { 
-  "_id" : "_modules/595731393", 
-  "_rev" : "595731393", 
-  "_key" : "595731393" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_modules/612175394"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"612175394"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"612175394"</span> 
 }

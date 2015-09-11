@@ -151,9 +151,8 @@ var stringifyFunction = function (code, name) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_aqlfunctions_unregister
-/// @brief delete an existing AQL user function
 /// @startDocuBlock aqlFunctionsUnregister
+/// @brief delete an existing AQL user function
 /// `aqlfunctions.unregister(name)`
 ///
 /// Unregisters an existing AQL user function, identified by the fully qualified
@@ -198,9 +197,8 @@ var unregisterFunction = function (name) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_aqlfunctions_unregister_group
-/// @brief delete a group of AQL user functions
 /// @startDocuBlock aqlFunctionsUnregisterGroup
+/// @brief delete a group of AQL user functions
 /// `aqlfunctions.unregisterGroup(prefix)`
 ///
 /// Unregisters a group of AQL user function, identified by a common function
@@ -244,9 +242,8 @@ var unregisterFunctionsGroup = function (group) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_aqlfunctions_register
-/// @brief register an AQL user function
 /// @startDocuBlock aqlFunctionsRegister
+/// @brief register an AQL user function
 /// `aqlfunctions.register(name, code, isDeterministic)`
 ///
 /// Registers an AQL user function, identified by a fully qualified function
@@ -350,9 +347,8 @@ var registerFunction = function (name, code, isDeterministic) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_aqlfunctions_toArray
-/// @brief list all AQL user functions
 /// @startDocuBlock aqlFunctionsToArray
+/// @brief list all AQL user functions
 /// `aqlfunctions.toArray()`
 ///
 /// Returns all previously registered AQL user functions, with their fully

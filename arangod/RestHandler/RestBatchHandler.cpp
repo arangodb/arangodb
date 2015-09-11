@@ -60,15 +60,15 @@ RestBatchHandler::~RestBatchHandler () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
+// --SECTION--                                               HttpHandler methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a batch request
 ///
-/// @RESTHEADER{POST /_api/batch,executes a batch request}
+/// @RESTHEADER{POST /_api/batch,executes a batch request} /// TODOSWAGGER: contentype
 ///
-/// @RESTBODYPARAM{body,string,required}
+/// @RESTALLBODYPARAM{body,string,required}
 /// The multipart batch request, consisting of the envelope and the individual
 /// batch parts.
 ///
@@ -184,13 +184,13 @@ RestBatchHandler::~RestBatchHandler () {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::status_t RestBatchHandler::execute () {
+HttpHandler::status_t RestBatchHandler::execute () {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
 
   if (type != HttpRequest::HTTP_REQUEST_POST && type != HttpRequest::HTTP_REQUEST_PUT) {
     generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return status_t(Handler::HANDLER_DONE);
+    return status_t(HttpHandler::HANDLER_DONE);
   }
 
   string boundary;
@@ -198,7 +198,7 @@ Handler::status_t RestBatchHandler::execute () {
   // invalid content-type or boundary sent
   if (! getBoundary(&boundary)) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid content-type or boundary received");
-    return status_t(Handler::HANDLER_FAILED);
+    return status_t(HttpHandler::HANDLER_FAILED);
   }
 
   LOG_TRACE("boundary of multipart-message is '%s'", boundary.c_str());
@@ -230,7 +230,7 @@ Handler::status_t RestBatchHandler::execute () {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid multipart message received");
       LOG_WARNING("received a corrupted multipart message");
 
-      return status_t(Handler::HANDLER_FAILED);
+      return status_t(HttpHandler::HANDLER_FAILED);
     }
 
     // split part into header & body
@@ -273,7 +273,7 @@ Handler::status_t RestBatchHandler::execute () {
     if (request == nullptr) {
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
 
-      return status_t(Handler::HANDLER_FAILED);
+      return status_t(HttpHandler::HANDLER_FAILED);
     }
 
     // we do not have a client task id here
@@ -301,10 +301,10 @@ Handler::status_t RestBatchHandler::execute () {
 
       generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "could not create handler for batch part processing");
 
-      return status_t(Handler::HANDLER_FAILED);
+      return status_t(HttpHandler::HANDLER_FAILED);
     }
 
-    Handler::status_t status(Handler::HANDLER_FAILED);
+    HttpHandler::status_t status(HttpHandler::HANDLER_FAILED);
 
     do {
       handler->prepareExecute();
@@ -324,15 +324,15 @@ Handler::status_t RestBatchHandler::execute () {
       }
       handler->finalizeExecute();
     }
-    while (status.status == Handler::HANDLER_REQUEUE);
+    while (status.status == HttpHandler::HANDLER_REQUEUE);
 
 
-    if (status.status == Handler::HANDLER_FAILED) {
+    if (status.status == HttpHandler::HANDLER_FAILED) {
       // one of the handlers failed, we must exit now
       delete handler;
       generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "executing a handler for batch part failed");
 
-      return status_t(Handler::HANDLER_FAILED);
+      return status_t(HttpHandler::HANDLER_FAILED);
     }
 
     HttpResponse* partResponse = handler->getResponse();
@@ -341,7 +341,7 @@ Handler::status_t RestBatchHandler::execute () {
       delete handler;
       generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "could not create a response for batch part request");
 
-      return status_t(Handler::HANDLER_FAILED);
+      return status_t(HttpHandler::HANDLER_FAILED);
     }
 
     const HttpResponse::HttpResponseCode code = partResponse->responseCode();
@@ -360,17 +360,17 @@ Handler::status_t RestBatchHandler::execute () {
       _response->body().appendText("\r\nContent-Id: " + string(helper.contentId, helper.contentIdLength));
     }
 
-    _response->body().appendText("\r\n\r\n", 4);
+    _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
 
     // remove some headers we don't need
-    partResponse->setHeader("connection", 10, "");
-    partResponse->setHeader("server", 6, "");
+    partResponse->setHeader(TRI_CHAR_LENGTH_PAIR("connection"), "");
+    partResponse->setHeader(TRI_CHAR_LENGTH_PAIR("server"), "");
 
     // append the part response header
     partResponse->writeHeader(&_response->body());
     // append the part response body
     _response->body().appendText(partResponse->body());
-    _response->body().appendText("\r\n", 2);
+    _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
 
     delete handler;
 
@@ -389,7 +389,7 @@ Handler::status_t RestBatchHandler::execute () {
   }
 
   // success
-  return status_t(Handler::HANDLER_DONE);
+  return status_t(HttpHandler::HANDLER_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

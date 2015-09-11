@@ -1,19 +1,19 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/male <<EOF
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial/social/vertex/male &lt;&lt;EOF</span>
 { 
-  "name" : "Francis" 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Francis"</span> 
 }
 EOF
 
-HTTP/1.1 202 Accepted
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json
-etag: 512697281
+etag: <span class="hljs-number">522784290</span>
 
 { 
-  "error" : false, 
-  "code" : 202, 
-  "vertex" : { 
-    "_id" : "male/512697281", 
-    "_rev" : "512697281", 
-    "_key" : "512697281" 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span>, 
+  <span class="hljs-string">"vertex"</span> : { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/522784290"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"522784290"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"522784290"</span> 
   } 
 }

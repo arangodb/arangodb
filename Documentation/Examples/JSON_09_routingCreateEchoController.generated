@@ -1,11 +1,11 @@
-arangosh> db._routing.save({ 
-........>  url: "/hello/echo",
-........>  action: { 
-........>    controller: "org/arangodb/actions/echoController" 
-........>  } 
-........> });
+arangosh&gt; db._routing.save({ 
+........&gt;  url: <span class="hljs-string">"/hello/echo"</span>,
+........&gt;  action: { 
+........&gt;    controller: <span class="hljs-string">"org/arangodb/actions/echoController"</span> 
+........&gt;  } 
+........&gt; });
 { 
-  "_id" : "_routing/592520129", 
-  "_rev" : "592520129", 
-  "_key" : "592520129" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/608964130"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"608964130"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"608964130"</span> 
 }

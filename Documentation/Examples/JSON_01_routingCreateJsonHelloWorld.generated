@@ -1,13 +1,13 @@
-arangosh> db._routing.save({ 
-........>  url: "/hello/json", 
-........>  content: { 
-........>  contentType: "application/json", 
-........>    body: '{"hello" : "world"}'
-........>  }
-........> });
+arangosh&gt; db._routing.save({ 
+........&gt;  url: <span class="hljs-string">"/hello/json"</span>, 
+........&gt;  content: { 
+........&gt;  contentType: <span class="hljs-string">"application/json"</span>, 
+........&gt;    body: <span class="hljs-string">'{"hello" : "world"}'</span>
+........&gt;  }
+........&gt; });
 { 
-  "_id" : "_routing/590226369", 
-  "_rev" : "590226369", 
-  "_key" : "590226369" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/606670370"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"606670370"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"606670370"</span> 
 }
-arangosh> require("internal").reloadRouting()
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).reloadRouting()

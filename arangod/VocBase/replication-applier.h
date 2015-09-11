@@ -71,6 +71,8 @@ typedef struct TRI_replication_applier_configuration_s {
   bool          _autoStart;
   bool          _adaptivePolling;
   bool          _includeSystem;
+  bool          _requireFromPresent;
+  bool          _verbose;
   std::string   _restrictType;
   std::unordered_map<std::string, bool> _restrictCollections;
 }
@@ -95,6 +97,7 @@ struct TRI_replication_applier_state_t {
   TRI_voc_tick_t                           _lastProcessedContinuousTick;
   TRI_voc_tick_t                           _lastAppliedContinuousTick;
   TRI_voc_tick_t                           _lastAvailableContinuousTick;
+  TRI_voc_tick_t                           _safeResumeTick;
   bool                                     _active;
   char*                                    _progressMsg;
   char                                     _progressTime[24];
@@ -111,55 +114,103 @@ struct TRI_replication_applier_state_t {
 /// @brief replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_replication_applier_t {
-  TRI_replication_applier_t (TRI_server_t* server,
-                             TRI_vocbase_t* vocbase) 
-    : _server(server),
-      _vocbase(vocbase),
-      _terminateThread(false),
-      _databaseName(TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name)) {
-  }
+class TRI_replication_applier_t {
+  public:
 
-  ~TRI_replication_applier_t () {
-    for (auto it = _runningRemoteTransactions.begin(); it != _runningRemoteTransactions.end(); ++it) {
-      auto trx = (*it).second;
+    TRI_replication_applier_t (TRI_server_t*,
+                               TRI_vocbase_t*);
 
-      // do NOT write abort markers so we can resume running transactions later
-      trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
-      delete trx;
+    ~TRI_replication_applier_t ();
+
+  public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pauses and checks whether the apply thread should terminate
+////////////////////////////////////////////////////////////////////////////////
+
+    bool wait (uint64_t);
+
+    bool isTerminated () {
+      return _terminateThread.load();
+    }
+  
+    void setTermination (bool value) {
+      _terminateThread.store(value);
     }
 
-    TRI_FreeString(TRI_CORE_MEM_ZONE, _databaseName);
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database name
+////////////////////////////////////////////////////////////////////////////////
 
-  void addRemoteTransaction (triagens::arango::ReplicationTransaction* trx) {
-    _runningRemoteTransactions.insert(std::make_pair(trx->externalId(), trx));
-  }
-
-  void abortRunningRemoteTransactions () {
-    size_t const n = _runningRemoteTransactions.size();
-    triagens::arango::TransactionBase::increaseNumbers((int) n, (int) n);
-
-    for (auto it = _runningRemoteTransactions.begin(); it != _runningRemoteTransactions.end(); ++it) {
-      auto trx = (*it).second;
-
-      // do NOT write abort markers so we can resume running transactions later
-      trx->removeHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
-      delete trx;
+    char const* databaseName () const {
+      return _databaseName.c_str();
     }
 
-    _runningRemoteTransactions.clear();
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start the replication applier
+////////////////////////////////////////////////////////////////////////////////
 
-  TRI_server_t*                            _server;
-  TRI_vocbase_t*                           _vocbase;
-  triagens::basics::ReadWriteLock          _statusLock;
-  std::atomic<bool>                        _terminateThread;
-  TRI_replication_applier_state_t          _state;
-  TRI_replication_applier_configuration_t  _configuration;
-  char*                                    _databaseName;
-  TRI_thread_t                             _thread;
-  std::unordered_map<TRI_voc_tid_t, triagens::arango::ReplicationTransaction*> _runningRemoteTransactions;
+    int start (TRI_voc_tick_t, 
+               bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+    int stop (bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the applier and "forget" everything
+////////////////////////////////////////////////////////////////////////////////
+
+    int forget ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shuts down the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+    int shutdown ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the progress with or without a lock
+////////////////////////////////////////////////////////////////////////////////
+
+    void setProgress (char const*,
+                      bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an applier error
+////////////////////////////////////////////////////////////////////////////////
+
+    int setError (int,
+                  char const*);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+  
+  private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an applier error
+////////////////////////////////////////////////////////////////////////////////
+
+    int doSetError (int,
+                    char const*);
+
+  private:
+    
+    std::string                              _databaseName;
+
+  public:
+
+    TRI_server_t*                            _server;
+    TRI_vocbase_t*                           _vocbase;
+    triagens::basics::ReadWriteLock          _statusLock;
+    std::atomic<bool>                        _terminateThread;
+    TRI_replication_applier_state_t          _state;
+    TRI_replication_applier_configuration_t  _configuration;
+    TRI_thread_t                             _thread;
 };
 
 // -----------------------------------------------------------------------------
@@ -173,55 +224,15 @@ struct TRI_replication_applier_t {
 TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t*,
                                                          TRI_vocbase_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy a replication applier
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyReplicationApplier (TRI_replication_applier_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a replication applier
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeReplicationApplier (TRI_replication_applier_t*);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether the apply thread should terminate
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_WaitReplicationApplier (TRI_replication_applier_t*,
-                                 uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a JSON representation of the replication apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_json_t* TRI_JsonConfigurationReplicationApplier (TRI_replication_applier_configuration_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start the replication applier
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_StartReplicationApplier (TRI_replication_applier_t*,
-                                 TRI_voc_tick_t,
-                                 bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the replication applier
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_StopReplicationApplier (TRI_replication_applier_t*,
-                                bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down the replication applier
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ShutdownReplicationApplier (TRI_replication_applier_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configure the replication applier
@@ -244,23 +255,7 @@ int TRI_StateReplicationApplier (TRI_replication_applier_t*,
 struct TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register an applier error
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_SetErrorReplicationApplier (TRI_replication_applier_t*,
-                                    int,
-                                    char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the progress with or without a lock
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetProgressReplicationApplier (TRI_replication_applier_t*,
-                                        char const*,
-                                        bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise an apply state struct
+/// @brief initialize an apply state struct
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitStateReplicationApplier (TRI_replication_applier_state_t*);
@@ -293,7 +288,7 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t*,
                                      TRI_replication_applier_state_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise an apply configuration
+/// @brief initialize an apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configuration_t*);
@@ -324,12 +319,6 @@ int TRI_RemoveConfigurationReplicationApplier (TRI_vocbase_t*);
 int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t*,
                                              TRI_replication_applier_configuration_t const*,
                                              bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the applier and "forget" everything
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ForgetReplicationApplier (TRI_replication_applier_t*);
 
 #endif
 

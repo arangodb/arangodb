@@ -46,10 +46,20 @@
 struct TRI_col_info_s;
 struct TRI_document_collection_t;
 struct TRI_json_t;
-struct TRI_replication_applier_t;
+class TRI_replication_applier_t;
 struct TRI_server_t;
 struct TRI_vocbase_col_s;
 struct TRI_vocbase_defaults_s;
+
+namespace triagens {
+  namespace aql {
+    class QueryList;
+  }
+  namespace arango {
+    class CollectionKeysRepository;
+    class CursorRepository;
+  }
+}
 
 extern bool IGNORE_DATAFILE_ERRORS;
 
@@ -211,18 +221,6 @@ extern bool IGNORE_DATAFILE_ERRORS;
 
 #define TRI_INDEX_HANDLE_SEPARATOR_STR "/"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief no limit
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_QRY_NO_LIMIT ((TRI_voc_size_t) (4294967295U))
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief no skip
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_QRY_NO_SKIP ((TRI_voc_ssize_t) 0)
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -287,8 +285,9 @@ struct TRI_vocbase_t {
 
   // structures for user-defined volatile data
   void*                                   _userStructures;
-  void*                                   _queries;
-  void*                                   _cursorRepository;
+  triagens::aql::QueryList*               _queries;
+  triagens::arango::CursorRepository*     _cursorRepository;
+  triagens::arango::CollectionKeysRepository*  _collectionKeys;
 
   TRI_associative_pointer_t               _authInfo;
   TRI_associative_pointer_t               _authCache;
@@ -299,12 +298,15 @@ struct TRI_vocbase_t {
 
   std::set<TRI_voc_tid_t>*                _oldTransactions;
 
-  struct TRI_replication_applier_t*       _replicationApplier;
+  class TRI_replication_applier_t*        _replicationApplier;
+
+  triagens::basics::ReadWriteLock         _replicationClientsLock;
+  std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>> _replicationClients;
 
   // state of the database
   // 0 = inactive
   // 1 = normal operation/running
-  // 2 = shutdown in progress/waiting for compactor/synchroniser thread to finish
+  // 2 = shutdown in progress/waiting for compactor/synchronizer thread to finish
   // 3 = shutdown in progress/waiting for cleanup thread to finish
   // 4 = version check failed
 
@@ -321,6 +323,10 @@ struct TRI_vocbase_t {
 
   TRI_condition_t                         _compactorCondition;
   TRI_condition_t                         _cleanupCondition;
+      
+  public:
+    void updateReplicationClient (TRI_server_id_t, TRI_voc_tick_t);
+    std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> getReplicationClients();
 };
 
 ////////////////////////////////////////////////////////////////////////////////

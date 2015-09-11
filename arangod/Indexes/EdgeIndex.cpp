@@ -46,6 +46,8 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementKey (void const* data) {
+  TRI_ASSERT_EXPENSIVE(data != nullptr);
+
   TRI_edge_header_t const* h = static_cast<TRI_edge_header_t const*>(data);
   char const* key = h->_key;
 
@@ -61,6 +63,8 @@ static uint64_t HashElementKey (void const* data) {
 
 static uint64_t HashElementEdgeFrom (void const* data,
                                      bool byKey) {
+  TRI_ASSERT_EXPENSIVE(data != nullptr);
+
   uint64_t hash;
 
   if (! byKey) {
@@ -99,6 +103,8 @@ static uint64_t HashElementEdgeFrom (void const* data,
 
 static uint64_t HashElementEdgeTo (void const* data,
                                    bool byKey) {
+  TRI_ASSERT_EXPENSIVE(data != nullptr);
+
   uint64_t hash;
 
   if (! byKey) {
@@ -137,6 +143,9 @@ static uint64_t HashElementEdgeTo (void const* data,
 
 static bool IsEqualKeyEdgeFrom (void const* left,
                                 void const* right) {
+  TRI_ASSERT_EXPENSIVE(left != nullptr);
+  TRI_ASSERT_EXPENSIVE(right != nullptr);
+
   // left is a key
   // right is an element, that is a master pointer
   TRI_edge_header_t const* l = static_cast<TRI_edge_header_t const*>(left);
@@ -170,6 +179,9 @@ static bool IsEqualKeyEdgeFrom (void const* left,
 
 static bool IsEqualKeyEdgeTo (void const* left,
                               void const* right) {
+  TRI_ASSERT_EXPENSIVE(left != nullptr);
+  TRI_ASSERT_EXPENSIVE(right != nullptr);
+
   // left is a key
   // right is an element, that is a master pointer
   TRI_edge_header_t const* l = static_cast<TRI_edge_header_t const*>(left);
@@ -213,6 +225,9 @@ static bool IsEqualElementEdge (void const* left,
 
 static bool IsEqualElementEdgeFromByKey (void const* left,
                                          void const* right) {
+  TRI_ASSERT_EXPENSIVE(left != nullptr);
+  TRI_ASSERT_EXPENSIVE(right != nullptr);
+
   char const* lKey = nullptr;
   char const* rKey = nullptr;
   TRI_voc_cid_t lCid = 0;
@@ -264,6 +279,9 @@ static bool IsEqualElementEdgeFromByKey (void const* left,
 
 static bool IsEqualElementEdgeToByKey (void const* left,
                                        void const* right) {
+  TRI_ASSERT_EXPENSIVE(left != nullptr);
+  TRI_ASSERT_EXPENSIVE(right != nullptr);
+
   char const* lKey = nullptr;
   char const* rKey = nullptr;
   TRI_voc_cid_t lCid = 0;
@@ -315,16 +333,16 @@ static bool IsEqualElementEdgeToByKey (void const* left,
 
 EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                       TRI_document_collection_t* collection) 
-  : Index(iid, collection, std::vector<std::string>({ TRI_VOC_ATTRIBUTE_FROM, TRI_VOC_ATTRIBUTE_TO })),
+  : Index(iid, collection, std::vector<std::vector<triagens::basics::AttributeName>>({ { { TRI_VOC_ATTRIBUTE_FROM, false } }, { { TRI_VOC_ATTRIBUTE_TO , false } } })),
     _edgesFrom(nullptr),
-    _edgesTo(nullptr) {
+    _edgesTo(nullptr),
+    _numBuckets(1) {
   
   TRI_ASSERT(iid != 0);
 
-  uint32_t indexBuckets = 1;
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    indexBuckets = collection->_info._indexBuckets;
+    _numBuckets = static_cast<size_t>(collection->_info._indexBuckets);
   }
 
   auto context = [this] () -> std::string {
@@ -336,7 +354,7 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                                        IsEqualKeyEdgeFrom,
                                        IsEqualElementEdge,
                                        IsEqualElementEdgeFromByKey,
-                                       indexBuckets, 
+                                       _numBuckets, 
                                        64,
                                        context);
 
@@ -345,7 +363,7 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                                      IsEqualKeyEdgeTo,
                                      IsEqualElementEdge,
                                      IsEqualElementEdgeToByKey,
-                                     indexBuckets,
+                                     _numBuckets,
                                      64,
                                      context);
 }
@@ -378,12 +396,26 @@ size_t EdgeIndex::memory () const {
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
       
-triagens::basics::Json EdgeIndex::toJson (TRI_memory_zone_t* zone) const {
-  auto json = Index::toJson(zone);
+triagens::basics::Json EdgeIndex::toJson (TRI_memory_zone_t* zone,
+                                          bool withFigures) const {
+  auto json = Index::toJson(zone, withFigures);
   
   // hard-coded
   json("unique", triagens::basics::Json(false))
       ("sparse", triagens::basics::Json(false));
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the index figures
+////////////////////////////////////////////////////////////////////////////////
+      
+triagens::basics::Json EdgeIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
+  triagens::basics::Json json(triagens::basics::Json::Object);
+  
+  json("memory", triagens::basics::Json(static_cast<double>(memory())));
+  json("buckets", triagens::basics::Json(static_cast<double>(_numBuckets)));
 
   return json;
 }
@@ -414,8 +446,8 @@ int EdgeIndex::remove (TRI_doc_mptr_t const* doc,
         
 int EdgeIndex::batchInsert (std::vector<TRI_doc_mptr_t const*> const* documents, 
                             size_t numThreads) {
-  _edgesFrom->batchInsert(reinterpret_cast<std::vector<void const*> const*>(documents), numThreads);
-  _edgesTo->batchInsert(reinterpret_cast<std::vector<void const*> const*>(documents), numThreads);
+  _edgesFrom->batchInsert(reinterpret_cast<std::vector<void*> const*>(documents), numThreads);
+  _edgesTo->batchInsert(reinterpret_cast<std::vector<void*> const*>(documents), numThreads);
   
   return TRI_ERROR_NO_ERROR;
 }

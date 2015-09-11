@@ -1,23 +1,23 @@
-arangosh> result = db.users.all().toArray();
+arangosh&gt; result = db.users.all().toArray();
 [ 
   { 
-    "name" : "Angela", 
-    "_id" : "users/1178608577", 
-    "_rev" : "1178608577", 
-    "_key" : "1178608577" 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Helmut"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/1188498978"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1188498978"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1188498978"</span> 
   }, 
   { 
-    "name" : "Helmut", 
-    "_id" : "users/1178411969", 
-    "_rev" : "1178411969", 
-    "_key" : "1178411969" 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Gerhard"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/1188236834"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1188236834"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1188236834"</span> 
   }, 
   { 
-    "name" : "Gerhard", 
-    "_id" : "users/1178149825", 
-    "_rev" : "1178149825", 
-    "_key" : "1178149825" 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/1188695586"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1188695586"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1188695586"</span> 
   } 
 ]
-arangosh> q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
+arangosh&gt; q = db.users.all(); q.execute(); result = [ ]; <span class="hljs-keyword">while</span> (q.hasNext()) { result.push(q.next()); }
 SimpleQueryAll(users)

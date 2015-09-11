@@ -7,8 +7,8 @@ newVersionNumber = $(shell cat ../../VERSION)
 ################################################################################
 # per book targets
 check-summary:
-	@find . -name \*.md |grep -v books/ |sed -e "s;./$(NAME)/;;" |grep -vf SummaryBlacklist.txt |sort > /tmp/is_md.txt
-	@cat $(NAME)/SUMMARY.md |sed -e "s;.*(;;" -e "s;).*;;" |sort |grep -v '# Summary' > /tmp/is_summary.txt
+	@find ppbooks/$(NAME) -name \*.md |sed -e "s;ppbooks/$(NAME)/;;" |grep -vf SummaryBlacklist.txt |sort > /tmp/is_md.txt
+	@cat $(NAME)/SUMMARY.md |grep '(' |sed -e "s;.*(;;" -e "s;).*;;" |sort |grep -v '# Summary' > /tmp/is_summary.txt
 	@if test "`comm -3 /tmp/is_md.txt /tmp/is_summary.txt|wc -l`" -ne 0; then \
 		echo "not all files are mapped to the summary!"; \
 		echo " files found       |    files in summary"; \
@@ -30,6 +30,11 @@ book-check-markdown-leftovers:
 		find books/$(NAME) -name '*.html' -exec grep '##' {} \; -print; \
 		exit 1; \
 	fi
+	@if test "`find books/$(NAME) -name '*.html' -exec grep '\.md\"' {} \; -print | wc -l`" -gt 0; then \
+		echo "found dangling markdown links: "; \
+		find books/$(NAME) -name '*.html' -exec grep '\.md"' {} \; -print; \
+		exit 1; \
+	fi
 
 build-book-symlinks:
 	echo "generate backwards compatibility symlinks:"
@@ -41,11 +46,26 @@ build-book-symlinks:
 
 build-book:
 	test -d ppbooks/$(NAME) || mkdir -p ppbooks/$(NAME)
-	cd ppbooks/$(NAME); test -l SUMMARY.md || ln -s ../../$(NAME)/SUMMARY.md .
-	cd ppbooks/$(NAME); test -l book.json || ln -s ../../$(NAME)/book.json .
-	cd ppbooks/$(NAME); test d styles || cp -a ../../$(NAME)/styles .
-	cd ppbooks/$(NAME) && sed -ie 's/VERSION_NUMBER/$(newVersionNumber)/g' styles/header.js
+	WD=`pwd`; \
+	for dir in `find $(NAME) -type d `; do \
+		cd $${WD}/ppbooks; \
+		test -d $${dir} || mkdir -p $${dir}; \
+	done
+	cd ppbooks/$(NAME); test -L SUMMARY.md || ln -s ../../$(NAME)/SUMMARY.md .
+	cd ppbooks/$(NAME); test -L book.json || ln -s ../../$(NAME)/book.json .
+	cd ppbooks/$(NAME); cp -a ../../$(NAME)/styles/* styles/
+	WD=`pwd`; \
+	for pic in `find $(NAME) -name \*.png`; do \
+		cd $${WD}/ppbooks; \
+		echo cd $${WD}/ppbooks; \
+		echo cp $${WD}/$${pic} $${pic}; \
+		cp $${WD}/$${pic} $${pic}; \
+	done
 	python generateMdFiles.py $(NAME) ppbooks/
+
+	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' styles/header.js
+	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' README.md
+	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' book.json
 
 	test -d books/$(NAME) || mkdir -p books/$(NAME)
 
@@ -53,6 +73,7 @@ build-book:
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	python deprecated.py
 
+	make check-summary
 	make book-check-leftover-docublocks
 	make book-check-markdown-leftovers
 
@@ -66,32 +87,47 @@ clean-book-intermediate:
 ################################################################################
 # Global targets
 
+
+#************************************************************
+# Check docublocks - checks whether docublock are 
+#  - files in intermediate output directories and temporary
+#    files are excludes (with # in their names)
+#  - uniq in the source 
+#  - all docublocks are used somewhere in the documentation
+#  
 check-docublocks:
-	grep -R '@startDocuBlock' . |\
+	grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v '@startDocuBlockInline' |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\
 		grep -v codeBlockReader.py |\
-		grep -v generateMdFiles.py \
+		grep -v generateMdFiles.py |\
+		grep -v '.*~:.*' |\
+		grep -v '.*#.*:.*' \
 		   > /tmp/rawindoc.txt
-	grep -R '@startDocuBlockInline' . |\
+	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\
 		grep -v codeBlockReader.py |\
-		grep -v generateMdFiles.py \
+		grep -v generateMdFiles.py |\
+		grep -v '.*~:.*' |\
+		grep -v '.*#.*:.*' \
 		   >> /tmp/rawindoc.txt
 	cat /tmp/rawindoc.txt | sed  -e "s;.*ck ;;" -e "s;.*ne ;;" |sort -u > /tmp/indoc.txt
-	grep -R '^/// @startDocuBlock' ../../lib ../../arangod ../../arangosh ../../js |grep -v aardvark > /tmp/rawinprog.txt
+	grep -R '^/// @startDocuBlock' ../../lib ../../arangod ../../arangosh ../../js --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" |grep -v aardvark > /tmp/rawinprog.txt
 # searching the Inline docublocks needs some more blacklisting:
-	grep -R '@startDocuBlockInline' . |\
+	grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\
 		grep -v codeBlockReader.py |\
-		grep -v generateMdFiles.py \
+		grep -v generateMdFiles.py |\
+		grep -v '.*~:.*' |\
+		grep -v '.*#.*:.*' \
 		   >> /tmp/rawinprog.txt
+	echo "Generated: @startDocuBlockInline errorCodes">> /tmp/rawinprog.txt
 	cat /tmp/rawinprog.txt |sed -e "s;.*ck ;;" -e "s;.*ne ;;" |sort > /tmp/inprog_raw.txt
 	@cat /tmp/inprog_raw.txt |sort -u > /tmp/inprog.txt
 	@if test "`cat /tmp/inprog.txt |wc -l`" -ne "`cat /tmp/inprog_raw.txt|wc -l`"; then \
@@ -110,7 +146,7 @@ check-docublocks:
 			done; \
 		fi; \
 		if test "`comm -1 -3 /tmp/indoc.txt /tmp/inprog.txt |wc -l`" -gt 0; then \
-			echo "Programm code:"; \
+			echo "Program code:"; \
 			for grepit in `comm -1 -3 /tmp/indoc.txt /tmp/inprog.txt`; do \
 				grep "$$grepit" /tmp/rawinprog.txt | sed "s;/// @startDocuBlock;\t\t;"; \
 			done; \
@@ -133,4 +169,4 @@ build-books-keep-md:
 	python codeBlockReader.py
 	make build-book NAME=Users
 
-build-books: clean-intermediate build-books-keep-md #check-docublocks
+build-books: clean-intermediate build-books-keep-md check-docublocks

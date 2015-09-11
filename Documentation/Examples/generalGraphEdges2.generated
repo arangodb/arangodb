@@ -1,13 +1,13 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_EDGES("
-........> +"'routeplanner', 'germanCity/Hamburg', {direction : 'outbound', maxDepth : 2}) RETURN e"
-........> ).toArray();
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_EDGES("</span>
+........&gt; +<span class="hljs-string">"'routeplanner', 'germanCity/Hamburg', {direction : 'outbound', maxDepth : 2}) RETURN e"</span>
+........&gt; ).toArray();
 [ 
-  "germanHighway/1363485633", 
-  "internationalHighway/1364927425", 
-  "internationalHighway/1365124033", 
-  "internationalHighway/1364534209", 
-  "frenchHighway/1363813313", 
-  "internationalHighway/1364730817" 
+  <span class="hljs-string">"germanHighway/1374883362"</span>, 
+  <span class="hljs-string">"internationalHighway/1376325154"</span>, 
+  <span class="hljs-string">"internationalHighway/1376521762"</span>, 
+  <span class="hljs-string">"internationalHighway/1375931938"</span>, 
+  <span class="hljs-string">"frenchHighway/1375211042"</span>, 
+  <span class="hljs-string">"internationalHighway/1376128546"</span> 
 ]

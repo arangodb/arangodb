@@ -2902,8 +2902,8 @@ Graph.prototype._getEdgeCollectionByName = function(name) {
     return this.__edgeCollections[name];
   }
   var err = new ArangoError();
-  err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
-  err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + name;
+  err.errorNum = arangodb.errors.ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST.code;
+  err.errorMessage = arangodb.errors.ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST.message + ": " + name;
   throw err;
 };
 
@@ -4299,6 +4299,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
+
 Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
   edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;

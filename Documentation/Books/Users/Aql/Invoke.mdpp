@@ -3,7 +3,7 @@
 !SECTION Executing queries
 
 You can run AQL queries from your application via the HTTP REST API. The full
-API description is available at [Http Interface for AQL Query Cursors](../HttpAqlQueryCursor/README.md). 
+API description is available at [HTTP Interface for AQL Query Cursors](../HttpAqlQueryCursor/README.md).
 
 You can also run AQL queries from arangosh. To do so, you can use the *_query* method 
 of the *db* object. This will run the specified query in the context of the currently
@@ -31,9 +31,31 @@ To pass bind parameters into a query, they can be specified as second argument t
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 02_workWithAQL_bindValues
 
-Data-modifying AQL queries do not return a result, so the *toArray* method will always
-return an empty array. To retrieve statistics for a data-modification query, use the
-*getExtra* method:
+It is also possible to use ES6 template strings for generating AQL queries. There is
+a template string generator function named *aqlQuery*:
+
+    @startDocuBlockInline 02_workWithAQL_aqlQuery
+    @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_aqlQuery}
+      var key = 'testKey';
+      db._query(aqlQuery`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`).toArray();
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 02_workWithAQL_aqlQuery
+
+Arbitrary JavaScript expressions can be used in queries that are generated with the 
+*aqlQuery* template string generator. Collection objects are handled automatically:
+
+    @startDocuBlockInline 02_workWithAQL_aqlQueryCollection
+    @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_aqlQueryCollection}
+      var key = 'testKey';
+      db._query(aqlQuery`FOR doc IN ${ db.mycollection } RETURN doc`).toArray();
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 02_workWithAQL_aqlQueryCollection
+
+Note: data-modification AQL queries normally do not return a result (unless the AQL query 
+contains an extra *RETURN* statement). When not using a *RETURN* statement in the query, the 
+*toArray* method will return an empty array. 
+
+It is always possible to retrieve statistics for a query with the *getExtra* method:
 
     @startDocuBlockInline 03_workWithAQL_getExtra
     @EXAMPLE_ARANGOSH_OUTPUT{03_workWithAQL_getExtra}
@@ -204,10 +226,10 @@ The meaning of the statistics attributes is as follows:
 * *writesIgnored*: the total number of data-modification operations that were unsuccessful,
   but have been ignored because of query option `ignoreErrors`.
 * *scannedFull*: the total number of documents iterated over when scanning a collection 
-  without an index. Documents scanned by sub-queries will be included in the result, but not
+  without an index. Documents scanned by subqueries will be included in the result, but not
   no operations triggered by built-in or user-defined AQL functions.
 * *scannedIndex*: the total number of documents iterated over when scanning a collection using
-  an index. Documents scanned by sub-queries will be included in the result, but not
+  an index. Documents scanned by subqueries will be included in the result, but not
   no operations triggered by built-in or user-defined AQL functions.
 * *filtered*: the total number of documents that were removed after executing a filter condition
   in a `FilterNode`. Note that `IndexRangeNode`s can also filter documents by selecting only
@@ -231,7 +253,7 @@ return the execution plan and some information about what optimizations could be
 the query. The query will not be executed.
 
 Explaining a query can be achieved by calling the [HTTP REST API](../HttpAqlQuery/README.md).
-A query can also be explained from the ArangoShell using `ArangoStatement`s `explain` method. 
+A query can also be explained from the ArangoShell using `ArangoStatement`s `explain` method.
 
 By default, the query optimizer will return what it considers to be the *optimal plan*. The
 optimal plan will be returned in the `plan` attribute of the result. If `explain` is
@@ -321,7 +343,7 @@ The following example disables all optimizer rules but `remove-redundant-calcula
 
 
 The contents of an execution plan are meant to be machine-readable. To get a human-readable
-version of a query's execution plan, the following commnands can be used:
+version of a query's execution plan, the following commands can be used:
 
     @startDocuBlockInline 10_workWithAQL_statementsPlansOptimizer3
     @EXAMPLE_ARANGOSH_OUTPUT{10_workWithAQL_statementsPlansOptimizer3}
@@ -345,8 +367,8 @@ return the some information about the query.
 
 The return value is an object with the collection names used in the query listed in the
 `collections` attribute, and all bind parameters listed in the `bindVars` attribute.
-Addtionally, the internal representation of the query, the query's abstract syntax tree, will
-be returned in the `ast` attribute of the result. Please note that the abstract syntax tree 
+Additionally, the internal representation of the query, the query's abstract syntax tree, will
+be returned in the `AST` attribute of the result. Please note that the abstract syntax tree
 will be returned without any optimizations applied to it.
 
     @startDocuBlockInline 11_workWithAQL_parseQueries

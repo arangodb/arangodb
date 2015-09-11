@@ -42,24 +42,33 @@ var ERRORS = require("internal").errors;
 ///
 /// @RESTHEADER{POST /_api/explain, Explain an AQL query}
 ///
-/// @RESTBODYPARAM{body,json,required}
-/// The query string needs to be passed in the attribute *query* of a JSON
-/// object as the body of the POST request. If the query references any bind
-/// variables, these must also be passed in the attribute *bindVars*. Additional
+/// A JSON object describing the query and query parameters.
+///
+/// @RESTBODYPARAM{query,string,required,string}
+/// the query which you want explained; If the query references any bind variables,
+/// these must also be passed in the attribute *bindVars*. Additional
 /// options for the query can be passed in the *options* attribute.
 ///
-/// The currently supported options are:
-/// - *allPlans*: if set to *true*, all possible execution plans will be returned.
-///   The default is *false*, meaning only the optimal plan will be returned.
+/// @RESTBODYPARAM{bindVars,array,optional,object}
+/// key/value pairs representing the bind values
 ///
-/// - *maxNumberOfPlans*: an optional maximum number of plans that the optimizer is 
-///   allowed to generate. Setting this attribute to a low value allows to put a
-///   cap on the amount of work the optimizer does.
+/// @RESTBODYPARAM{options,object,optional,explain_options}
+/// Options for the query
 ///
-/// - *optimizer.rules*: an array of to-be-included or to-be-excluded optimizer rules
-///   can be put into this attribute, telling the optimizer to include or exclude
-///   specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
-///   with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
+/// @RESTSTRUCT{allPlans,explain_options,boolean,optional,}
+/// if set to *true*, all possible execution plans will be returned.
+/// The default is *false*, meaning only the optimal plan will be returned.
+///
+/// @RESTSTRUCT{maxNumberOfPlans,explain_options,integer,optional,int64}
+/// an optional maximum number of plans that the optimizer is 
+/// allowed to generate. Setting this attribute to a low value allows to put a
+/// cap on the amount of work the optimizer does.
+///
+/// @RESTSTRUCT{optimizer.rules,explain_options,array,optional,string}
+/// an array of to-be-included or to-be-excluded optimizer rules
+/// can be put into this attribute, telling the optimizer to include or exclude
+/// specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
+/// with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
 ///
 /// @RESTDESCRIPTION
 ///
@@ -121,7 +130,7 @@ var ERRORS = require("internal").errors;
 ///
 /// @EXAMPLES
 ///
-/// Valid query:
+/// Valid query
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainValid}
 ///     var url = "/_api/explain";
@@ -133,7 +142,7 @@ var ERRORS = require("internal").errors;
 ///       query : "FOR p IN products RETURN p"
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///
@@ -141,7 +150,7 @@ var ERRORS = require("internal").errors;
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// A plan with some optimizer rules applied:
+/// A plan with some optimizer rules applied
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainOptimizerRules}
 ///     var url = "/_api/explain";
@@ -154,7 +163,7 @@ var ERRORS = require("internal").errors;
 ///       query : "FOR p IN products LET a = p.id FILTER a == 4 LET name = p.name SORT p.id LIMIT 1 RETURN name",
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///
@@ -162,7 +171,7 @@ var ERRORS = require("internal").errors;
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Using some options:
+/// Using some options
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainOptions}
 ///     var url = "/_api/explain";
@@ -182,7 +191,7 @@ var ERRORS = require("internal").errors;
 ///       }
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///
@@ -190,7 +199,7 @@ var ERRORS = require("internal").errors;
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Returning all plans:
+/// Returning all plans
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainAllPlans}
 ///     var url = "/_api/explain";
@@ -205,7 +214,7 @@ var ERRORS = require("internal").errors;
 ///       }
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///
@@ -213,7 +222,7 @@ var ERRORS = require("internal").errors;
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// A query that produces a warning:
+/// A query that produces a warning
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainWarning}
 ///     var url = "/_api/explain";
@@ -221,14 +230,14 @@ var ERRORS = require("internal").errors;
 ///       query : "FOR i IN 1..10 RETURN 1 / 0"
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Invalid query (missing bind parameter):
+/// Invalid query (missing bind parameter)
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainInvalid}
 ///     var url = "/_api/explain";
@@ -249,11 +258,11 @@ var ERRORS = require("internal").errors;
 ///
 /// The data returned in the *plan* attribute of the result contains one
 /// element per AQL top-level statement (i.e. *FOR*, *RETURN*,
-/// *FILTER* etc.). If the query optimiser removed some unnecessary statements,
+/// *FILTER* etc.). If the query optimizer removed some unnecessary statements,
 /// the result might also contain less elements than there were top-level
 /// statements in the AQL query.
 /// The following example shows a query with a non-sensible filter condition that
-/// the optimiser has removed so that there are less top-level statements:
+/// the optimizer has removed so that there are less top-level statements.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainEmpty}
 ///     var url = "/_api/explain";
@@ -312,7 +321,7 @@ function post_api_explain (req, res) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       initialiser
+// --SECTION--                                                       initializer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

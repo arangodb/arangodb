@@ -1,227 +1,227 @@
-arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+use-index-range" ] } });
+arangosh&gt; stmt.explain({ optimizer: { rules: [ <span class="hljs-string">"-all"</span>, <span class="hljs-string">"+use-index-range"</span> ] } });
 { 
-  "plan" : { 
-    "nodes" : [ 
+  <span class="hljs-string">"plan"</span> : { 
+    <span class="hljs-string">"nodes"</span> : [ 
       { 
-        "type" : "SingletonNode", 
-        "dependencies" : [ ], 
-        "id" : 1, 
-        "estimatedCost" : 1, 
-        "estimatedNrItems" : 1 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"SingletonNode"</span>, 
+        <span class="hljs-string">"dependencies"</span> : [ ], 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">1</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">1</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span> 
       }, 
       { 
-        "type" : "IndexRangeNode", 
-        "dependencies" : [ 
-          1 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"IndexRangeNode"</span>, 
+        <span class="hljs-string">"dependencies"</span> : [ 
+          <span class="hljs-number">1</span> 
         ], 
-        "id" : 9, 
-        "estimatedCost" : 48, 
-        "estimatedNrItems" : 47, 
-        "database" : "_system", 
-        "collection" : "test", 
-        "outVariable" : { 
-          "id" : 0, 
-          "name" : "i" 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">9</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">48</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">47</span>, 
+        <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
+        <span class="hljs-string">"collection"</span> : <span class="hljs-string">"test"</span>, 
+        <span class="hljs-string">"outVariable"</span> : { 
+          <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span> 
         }, 
-        "ranges" : [ 
+        <span class="hljs-string">"ranges"</span> : [ 
           [ 
             { 
-              "variable" : "i", 
-              "attr" : "value", 
-              "lowConst" : { 
-                "bound" : 97, 
-                "include" : false, 
-                "isConstant" : true 
+              <span class="hljs-string">"variable"</span> : <span class="hljs-string">"i"</span>, 
+              <span class="hljs-string">"attr"</span> : <span class="hljs-string">"value"</span>, 
+              <span class="hljs-string">"lowConst"</span> : { 
+                <span class="hljs-string">"bound"</span> : <span class="hljs-number">97</span>, 
+                <span class="hljs-string">"include"</span> : <span class="hljs-literal">false</span>, 
+                <span class="hljs-string">"isConstant"</span> : <span class="hljs-literal">true</span> 
               }, 
-              "highConst" : { 
-                "include" : false, 
-                "isConstant" : true 
+              <span class="hljs-string">"highConst"</span> : { 
+                <span class="hljs-string">"include"</span> : <span class="hljs-literal">false</span>, 
+                <span class="hljs-string">"isConstant"</span> : <span class="hljs-literal">true</span> 
               }, 
-              "lows" : [ ], 
-              "highs" : [ ], 
-              "valid" : true, 
-              "equality" : false 
+              <span class="hljs-string">"lows"</span> : [ ], 
+              <span class="hljs-string">"highs"</span> : [ ], 
+              <span class="hljs-string">"valid"</span> : <span class="hljs-literal">true</span>, 
+              <span class="hljs-string">"equality"</span> : <span class="hljs-literal">false</span> 
             } 
           ] 
         ], 
-        "index" : { 
-          "type" : "skiplist", 
-          "id" : "498541505", 
-          "unique" : false, 
-          "sparse" : false, 
-          "fields" : [ 
-            "value" 
+        <span class="hljs-string">"index"</span> : { 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+          <span class="hljs-string">"id"</span> : <span class="hljs-string">"503057954"</span>, 
+          <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+          <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+          <span class="hljs-string">"fields"</span> : [ 
+            <span class="hljs-string">"value"</span> 
           ] 
         }, 
-        "reverse" : false 
+        <span class="hljs-string">"reverse"</span> : <span class="hljs-literal">false</span> 
       }, 
       { 
-        "type" : "CalculationNode", 
-        "dependencies" : [ 
-          9 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"CalculationNode"</span>, 
+        <span class="hljs-string">"dependencies"</span> : [ 
+          <span class="hljs-number">9</span> 
         ], 
-        "id" : 3, 
-        "estimatedCost" : 95, 
-        "estimatedNrItems" : 47, 
-        "expression" : { 
-          "type" : "compare >", 
-          "subNodes" : [ 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">3</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">95</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">47</span>, 
+        <span class="hljs-string">"expression"</span> : { 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"compare &gt;"</span>, 
+          <span class="hljs-string">"subNodes"</span> : [ 
             { 
-              "type" : "attribute access", 
-              "name" : "value", 
-              "subNodes" : [ 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
+              <span class="hljs-string">"name"</span> : <span class="hljs-string">"value"</span>, 
+              <span class="hljs-string">"subNodes"</span> : [ 
                 { 
-                  "type" : "reference", 
-                  "name" : "i", 
-                  "id" : 0 
+                  <span class="hljs-string">"type"</span> : <span class="hljs-string">"reference"</span>, 
+                  <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span>, 
+                  <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
                 } 
               ] 
             }, 
             { 
-              "type" : "value", 
-              "value" : 97 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"value"</span>, 
+              <span class="hljs-string">"value"</span> : <span class="hljs-number">97</span> 
             } 
           ] 
         }, 
-        "outVariable" : { 
-          "id" : 2, 
-          "name" : "1" 
+        <span class="hljs-string">"outVariable"</span> : { 
+          <span class="hljs-string">"id"</span> : <span class="hljs-number">2</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"1"</span> 
         }, 
-        "canThrow" : false, 
-        "expressionType" : "simple" 
+        <span class="hljs-string">"canThrow"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"expressionType"</span> : <span class="hljs-string">"simple"</span> 
       }, 
       { 
-        "type" : "FilterNode", 
-        "dependencies" : [ 
-          3 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"FilterNode"</span>, 
+        <span class="hljs-string">"dependencies"</span> : [ 
+          <span class="hljs-number">3</span> 
         ], 
-        "id" : 4, 
-        "estimatedCost" : 142, 
-        "estimatedNrItems" : 47, 
-        "inVariable" : { 
-          "id" : 2, 
-          "name" : "1" 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">4</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">142</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">47</span>, 
+        <span class="hljs-string">"inVariable"</span> : { 
+          <span class="hljs-string">"id"</span> : <span class="hljs-number">2</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"1"</span> 
         } 
       }, 
       { 
-        "type" : "CalculationNode", 
-        "dependencies" : [ 
-          4 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"CalculationNode"</span>, 
+        <span class="hljs-string">"dependencies"</span> : [ 
+          <span class="hljs-number">4</span> 
         ], 
-        "id" : 5, 
-        "estimatedCost" : 189, 
-        "estimatedNrItems" : 47, 
-        "expression" : { 
-          "type" : "attribute access", 
-          "name" : "value", 
-          "subNodes" : [ 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">5</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">189</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">47</span>, 
+        <span class="hljs-string">"expression"</span> : { 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"value"</span>, 
+          <span class="hljs-string">"subNodes"</span> : [ 
             { 
-              "type" : "reference", 
-              "name" : "i", 
-              "id" : 0 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"reference"</span>, 
+              <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span>, 
+              <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
             } 
           ] 
         }, 
-        "outVariable" : { 
-          "id" : 4, 
-          "name" : "3" 
+        <span class="hljs-string">"outVariable"</span> : { 
+          <span class="hljs-string">"id"</span> : <span class="hljs-number">4</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"3"</span> 
         }, 
-        "canThrow" : false, 
-        "expressionType" : "attribute" 
+        <span class="hljs-string">"canThrow"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"expressionType"</span> : <span class="hljs-string">"attribute"</span> 
       }, 
       { 
-        "type" : "SortNode", 
-        "dependencies" : [ 
-          5 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"SortNode"</span>, 
+        <span class="hljs-string">"dependencies"</span> : [ 
+          <span class="hljs-number">5</span> 
         ], 
-        "id" : 6, 
-        "estimatedCost" : 369.95693728037276, 
-        "estimatedNrItems" : 47, 
-        "elements" : [ 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">6</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">369.95693728037276</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">47</span>, 
+        <span class="hljs-string">"elements"</span> : [ 
           { 
-            "inVariable" : { 
-              "id" : 4, 
-              "name" : "3" 
+            <span class="hljs-string">"inVariable"</span> : { 
+              <span class="hljs-string">"id"</span> : <span class="hljs-number">4</span>, 
+              <span class="hljs-string">"name"</span> : <span class="hljs-string">"3"</span> 
             }, 
-            "ascending" : true 
+            <span class="hljs-string">"ascending"</span> : <span class="hljs-literal">true</span> 
           } 
         ], 
-        "stable" : false 
+        <span class="hljs-string">"stable"</span> : <span class="hljs-literal">false</span> 
       }, 
       { 
-        "type" : "CalculationNode", 
-        "dependencies" : [ 
-          6 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"CalculationNode"</span>, 
+        <span class="hljs-string">"dependencies"</span> : [ 
+          <span class="hljs-number">6</span> 
         ], 
-        "id" : 7, 
-        "estimatedCost" : 416.95693728037276, 
-        "estimatedNrItems" : 47, 
-        "expression" : { 
-          "type" : "attribute access", 
-          "name" : "value", 
-          "subNodes" : [ 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">7</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">416.95693728037276</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">47</span>, 
+        <span class="hljs-string">"expression"</span> : { 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"value"</span>, 
+          <span class="hljs-string">"subNodes"</span> : [ 
             { 
-              "type" : "reference", 
-              "name" : "i", 
-              "id" : 0 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"reference"</span>, 
+              <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span>, 
+              <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
             } 
           ] 
         }, 
-        "outVariable" : { 
-          "id" : 6, 
-          "name" : "5" 
+        <span class="hljs-string">"outVariable"</span> : { 
+          <span class="hljs-string">"id"</span> : <span class="hljs-number">6</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"5"</span> 
         }, 
-        "canThrow" : false, 
-        "expressionType" : "attribute" 
+        <span class="hljs-string">"canThrow"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"expressionType"</span> : <span class="hljs-string">"attribute"</span> 
       }, 
       { 
-        "type" : "ReturnNode", 
-        "dependencies" : [ 
-          7 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"ReturnNode"</span>, 
+        <span class="hljs-string">"dependencies"</span> : [ 
+          <span class="hljs-number">7</span> 
         ], 
-        "id" : 8, 
-        "estimatedCost" : 463.95693728037276, 
-        "estimatedNrItems" : 47, 
-        "inVariable" : { 
-          "id" : 6, 
-          "name" : "5" 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">8</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">463.95693728037276</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">47</span>, 
+        <span class="hljs-string">"inVariable"</span> : { 
+          <span class="hljs-string">"id"</span> : <span class="hljs-number">6</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"5"</span> 
         } 
       } 
     ], 
-    "rules" : [ 
-      "use-index-range" 
+    <span class="hljs-string">"rules"</span> : [ 
+      <span class="hljs-string">"use-index-range"</span> 
     ], 
-    "collections" : [ 
+    <span class="hljs-string">"collections"</span> : [ 
       { 
-        "name" : "test", 
-        "type" : "read" 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"test"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"read"</span> 
       } 
     ], 
-    "variables" : [ 
+    <span class="hljs-string">"variables"</span> : [ 
       { 
-        "id" : 6, 
-        "name" : "5" 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">6</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"5"</span> 
       }, 
       { 
-        "id" : 4, 
-        "name" : "3" 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">4</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"3"</span> 
       }, 
       { 
-        "id" : 2, 
-        "name" : "1" 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"1"</span> 
       }, 
       { 
-        "id" : 0, 
-        "name" : "i" 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span> 
       } 
     ], 
-    "estimatedCost" : 463.95693728037276, 
-    "estimatedNrItems" : 47 
+    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">463.95693728037276</span>, 
+    <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">47</span> 
   }, 
-  "warnings" : [ ], 
-  "stats" : { 
-    "rulesExecuted" : 1, 
-    "rulesSkipped" : 21, 
-    "plansCreated" : 1 
+  <span class="hljs-string">"warnings"</span> : [ ], 
+  <span class="hljs-string">"stats"</span> : { 
+    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">22</span>, 
+    <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span> 
   } 
 }

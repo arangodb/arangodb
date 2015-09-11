@@ -711,24 +711,6 @@ static int OpenDatabases (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the replication appliers in all databases
-////////////////////////////////////////////////////////////////////////////////
-
-static void StopReplicationAppliers (TRI_server_t* server) {
-  MUTEX_LOCKER(server->_databasesMutex);  // Only one should do this at a time
-  // No need for the thread protector here, because we have the mutex
-  
-  for (auto& p : server->_databasesLists.load()->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
-    if (vocbase->_replicationApplier != nullptr) {
-      TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief close all opened databases
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1367,7 +1349,7 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the list of databases
+/// @brief initialize the list of databases
 ////////////////////////////////////////////////////////////////////////////////
 
 static int InitDatabases (TRI_server_t* server,
@@ -1647,7 +1629,7 @@ static void DatabaseManager (void* data) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a server instance with configuration
+/// @brief initialize a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer (TRI_server_t* server,
@@ -1865,7 +1847,7 @@ int TRI_StartServer (TRI_server_t* server,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("unable to initialise databases: %s",
+    LOG_ERROR("unable to initialize databases: %s",
               TRI_errno_string(res));
     return res;
   }
@@ -1905,7 +1887,7 @@ int TRI_StartServer (TRI_server_t* server,
 #endif
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("unable to initialise databases: %s",
+    LOG_ERROR("unable to initialize databases: %s",
               TRI_errno_string(res));
     return res;
   }
@@ -1944,7 +1926,7 @@ int TRI_StartServer (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises all databases
+/// @brief initializes all databases
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitDatabasesServer (TRI_server_t* server) {
@@ -1957,7 +1939,7 @@ int TRI_InitDatabasesServer (TRI_server_t* server) {
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
 
-    // initialise the authentication data for the database
+    // initialize the authentication data for the database
     TRI_ReloadAuthInfo(vocbase);
 
     // start the compactor for the database
@@ -1971,7 +1953,7 @@ int TRI_InitDatabasesServer (TRI_server_t* server) {
         LOG_INFO("replication applier explicitly deactivated for database '%s'", vocbase->_name);
       }
       else {
-        int res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
+        int res = vocbase->_replicationApplier->start(0, false);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_WARNING("unable to start replication applier for database '%s': %s",
@@ -2008,7 +1990,17 @@ int TRI_StopServer (TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_StopReplicationAppliersServer (TRI_server_t* server) {
-  StopReplicationAppliers(server);
+  MUTEX_LOCKER(server->_databasesMutex);  // Only one should do this at a time
+  // No need for the thread protector here, because we have the mutex
+  
+  for (auto& p : server->_databasesLists.load()->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+    if (vocbase->_replicationApplier != nullptr) {
+      vocbase->_replicationApplier->stop(false);
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2211,7 +2203,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
           LOG_INFO("replication applier explicitly deactivated for database '%s'", name);
         }
         else {
-          res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
+          res = vocbase->_replicationApplier->start(0, false);
 
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_WARNING("unable to start replication applier for database '%s': %s",
@@ -2498,26 +2490,6 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
   }
 
   return vocbase;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup a database by its id
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vocbase_t* TRI_LookupDatabaseByIdServer (TRI_server_t* server,
-                                             TRI_voc_tick_t id) {
-  auto unuser(server->_databasesProtector.use());
-  auto theLists = server->_databasesLists.load();
-
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-
-    if (vocbase->_id == id) {
-      return vocbase;
-    }
-  }
-
-  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,41 +1,45 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor <<EOF
-{"query":"FOR p IN products LIMIT 5 RETURN p","count":true,"batchSize":2}
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/cursor &lt;&lt;EOF</span>
+{ 
+  <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR p IN products LIMIT 5 RETURN p"</span>, 
+  <span class="hljs-string">"count"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"batchSize"</span> : <span class="hljs-number">2</span> 
+}
 EOF
 
-shell> curl -X PUT --dump - http://localhost:8529/_api/cursor/645276609
+shell&gt; curl -X PUT --dump - http:<span class="hljs-comment">//localhost:8529/_api/cursor/659885602</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "result" : [ 
+  <span class="hljs-string">"result"</span> : [ 
     { 
-      "hello1" : "world1", 
-      "_id" : "products/643769281", 
-      "_rev" : "643769281", 
-      "_key" : "643769281" 
+      <span class="hljs-string">"hello5"</span> : <span class="hljs-string">"world1"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/659688994"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"659688994"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"659688994"</span> 
     }, 
     { 
-      "hello5" : "world1", 
-      "_id" : "products/645080001", 
-      "_rev" : "645080001", 
-      "_key" : "645080001" 
+      <span class="hljs-string">"hello1"</span> : <span class="hljs-string">"world1"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/658378274"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"658378274"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"658378274"</span> 
     } 
   ], 
-  "hasMore" : true, 
-  "id" : "645276609", 
-  "count" : 5, 
-  "extra" : { 
-    "stats" : { 
-      "writesExecuted" : 0, 
-      "writesIgnored" : 0, 
-      "scannedFull" : 5, 
-      "scannedIndex" : 0, 
-      "filtered" : 0 
+  <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"659885602"</span>, 
+  <span class="hljs-string">"count"</span> : <span class="hljs-number">5</span>, 
+  <span class="hljs-string">"extra"</span> : { 
+    <span class="hljs-string">"stats"</span> : { 
+      <span class="hljs-string">"writesExecuted"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"writesIgnored"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">5</span>, 
+      <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span> 
     }, 
-    "warnings" : [ ] 
+    <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
-  "cached" : false, 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"cached"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

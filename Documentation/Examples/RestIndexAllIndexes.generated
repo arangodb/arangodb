@@ -1,71 +1,71 @@
-shell> curl --dump - http://localhost:8529/_api/index?collection=products
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/index?collection=products</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "indexes" : [ 
+  <span class="hljs-string">"indexes"</span> : [ 
     { 
-      "id" : "products/0", 
-      "type" : "primary", 
-      "fields" : [ 
-        "_key" 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/0"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
+      <span class="hljs-string">"fields"</span> : [ 
+        <span class="hljs-string">"_key"</span> 
       ], 
-      "selectivityEstimate" : 1, 
-      "unique" : true, 
-      "sparse" : false 
+      <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
     }, 
     { 
-      "id" : "products/811606977", 
-      "type" : "hash", 
-      "fields" : [ 
-        "name" 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/826871330"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
+      <span class="hljs-string">"fields"</span> : [ 
+        <span class="hljs-string">"name"</span> 
       ], 
-      "selectivityEstimate" : 1, 
-      "unique" : false, 
-      "sparse" : false 
+      <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
     }, 
     { 
-      "id" : "products/811869121", 
-      "type" : "skiplist", 
-      "fields" : [ 
-        "price" 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/827395618"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+      <span class="hljs-string">"fields"</span> : [ 
+        <span class="hljs-string">"price"</span> 
       ], 
-      "unique" : false, 
-      "sparse" : true 
+      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span> 
     } 
   ], 
-  "identifiers" : { 
-    "products/0" : { 
-      "id" : "products/0", 
-      "type" : "primary", 
-      "fields" : [ 
-        "_key" 
+  <span class="hljs-string">"identifiers"</span> : { 
+    <span class="hljs-string">"products/0"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/0"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
+      <span class="hljs-string">"fields"</span> : [ 
+        <span class="hljs-string">"_key"</span> 
       ], 
-      "selectivityEstimate" : 1, 
-      "unique" : true, 
-      "sparse" : false 
+      <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
     }, 
-    "products/811606977" : { 
-      "id" : "products/811606977", 
-      "type" : "hash", 
-      "fields" : [ 
-        "name" 
+    <span class="hljs-string">"products/826871330"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/826871330"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
+      <span class="hljs-string">"fields"</span> : [ 
+        <span class="hljs-string">"name"</span> 
       ], 
-      "selectivityEstimate" : 1, 
-      "unique" : false, 
-      "sparse" : false 
+      <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
     }, 
-    "products/811869121" : { 
-      "id" : "products/811869121", 
-      "type" : "skiplist", 
-      "fields" : [ 
-        "price" 
+    <span class="hljs-string">"products/827395618"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/827395618"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+      <span class="hljs-string">"fields"</span> : [ 
+        <span class="hljs-string">"price"</span> 
       ], 
-      "unique" : false, 
-      "sparse" : true 
+      <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span> 
     } 
   }, 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

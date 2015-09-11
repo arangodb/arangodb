@@ -1,6 +1,91 @@
 v2.7.0-alpha3 (XXXX-XX-XX)
 -------------------
 
+* new WAL logfiles and datafiles are now created non-sparse
+    
+  This prevents SIGBUS signals being raised when memory of a sparse datafile is accessed 
+  and the disk is full and the accessed file part is not actually disk-backed. In
+  this case the mapped memory region is not necessarily backed by physical memory, and
+  accessing the memory may raise SIGBUS and crash arangod.
+
+* the `internal.download()` function and the module `org/arangodb/request` used some 
+  internal library function that handled the sending of HTTP requests from inside of
+  ArangoDB. This library unconditionally set an HTTP header `Accept-Encoding: gzip`
+  in all outgoing HTTP requests. 
+
+  This has been fixed in 2.7, so `Accept-Encoding: gzip` is not set automatically anymore.
+  Additionally, the header `User-Agent: ArangoDB` is not set automatically either. If
+  client applications desire to send these headers, they are free to add it when
+  constructing the requests using the `download` function or the request module.
+  
+* fixed issue #1436: org/arangodb/request advertises deflate without supporting it 
+
+* added template string generator function `aqlQuery` for generating AQL queries
+
+  This can be used to generate safe AQL queries with JavaScript parameter
+  variables or expressions easily:
+
+      var name = 'test';
+      var attributeName = '_key';
+      var query = aqlQuery`FOR u IN users FILTER u.name == ${name} RETURN u.${attributeName}`;
+      db._query(query);
+
+* report memory usage for document header data (revision id, pointer to data etc.)
+  in `db.collection.figures()`. The memory used for document headers will now
+  show up in the already existing attribute `indexes.size`. Due to that, the index
+  sizes reported by `figures()` in 2.7 will be higher than those reported by 2.6,
+  but the 2.7 values are more accurate.
+
+* IMPORTANT CHANGE: the filenames in dumps created by arangodump now contain
+  not only the name of the dumped collection, but also an additional 32-digit hash
+  value. This is done to prevent overwriting dump files in case-insensitive file
+  systems when there exist multiple collections with the same name (but with
+  different cases). 
+  
+  For example, if a database has two collections: `test` and `Test`, previous
+  versions of ArangoDB created the files 
+  
+  * `test.structure.json` and `test.data.json` for collection `test`
+  * `Test.structure.json` and `Test.data.json` for collection `Test`
+
+  This did not work for case-insensitive filesystems, because the files for the
+  second collection would have overwritten the files of the first. arangodump in 
+  2.7 will create the following filenames instead:
+
+  * `test_098f6bcd4621d373cade4e832627b4f6.structure.json` and `test_098f6bcd4621d373cade4e832627b4f6.data.json`
+  * `Test_0cbc6611f5540bd0809a388dc95a615b.structure.json` and `Test_0cbc6611f5540bd0809a388dc95a615b.data.json`
+
+  These filenames will be unambiguous even in case-insensitive filesystems.
+
+* IMPORTANT CHANGE: make arangod actually close lingering client connections 
+  when idle for at least the duration specified via `--server.keep-alive-timeout`. 
+  In previous versions of ArangoDB, connections were not closed by the server 
+  when the timeout was reached and the client was still connected. Now the 
+  connection is properly closed by the server in case of timeout. Client
+  applications relying on the old behavior may now need to reconnect to the
+  server when their idle connections time out and get closed (note: connections 
+  being idle for a long time may be closed by the OS or firewalls anyway - 
+  client applications should be aware of that and try to reconnect).
+
+* IMPORTANT CHANGE: when starting arangod, the server will drop the process 
+  privileges to the specified values in options `--server.uid` and `--server.gid` 
+  instantly after parsing the startup options.
+
+  That means when either `--server.uid` or `--server.gid` are set, the privilege
+  change will happen earlier. This may prevent binding the server to an endpoint 
+  with a port number lower than 1024 if the arangodb user has no privileges
+  for that. Previous versions of ArangoDB changed the privileges later, so some
+  startup actions were still carried out under the invoking user (i.e. likely 
+  *root* when started via init.d or system scripts) and especially binding to
+  low port numbers was still possible there.
+
+  The default privileges for user *arangodb* will not be sufficient for binding
+  to port numbers lower than 1024. To have an ArangoDB 2.7 bind to a port number 
+  lower than 1024, it needs to be started with either a different privileged user,
+  or the privileges of the *arangodb* user have to raised manually beforehand.
+
+* added AQL optimizer rule `patch-update-statements`
+
 * Linux startup scripts and systemd configuration for arangod now try to
   adjust the NOFILE (number of open files) limits for the process. The limit
   value is set to 131072 (128k) when ArangoDB is started via start/stop 
@@ -45,26 +130,31 @@ v2.7.0-alpha3 (XXXX-XX-XX)
   CTRL-C again will reset the prompt if something was entered before, or quit
   arangosh if no command was entered directly before.
   
-  This affects the arangosh version build with Readline-support only.
+  This affects the arangosh version build with Readline-support only (Linux 
+  and MacOS).
 
   The MacOS version of ArangoDB for Homebrew now depends on Readline, too. The
   Homebrew formula has been changed accordingly.
   When self-compiling ArangoDB on MacOS without Homebrew, Readline now is a
   prerequisite.
 
-* increased default value collection-specific `indexBuckets` value from 1 to 16
+* increased default value for collection-specific `indexBuckets` value from 1 to 8
 
-  Collections created from 2.7 on will use the new default if not overriden on
-  collection creation or later using `collection.properties({ indexBuckets: ... })`.
+  Collections created from 2.7 on will use the new default value of `8` if not 
+  overridden on collection creation or later using 
+  `collection.properties({ indexBuckets: ... })`.
 
-  The `indexBuckets` value determines the number of buckets to use when creating
-  an edges index in the collection, and it may be used in future versions of ArangoDB
-  for other index types, too.
+  The `indexBuckets` value determines the number of buckets to use for indexes of
+  type `primary`, `hash` and `edge`. Having multiple index buckets allows splitting
+  an index into smaller components, which can be filled in parallel when a collection
+  is loading. Additionally, resizing and reallocation of indexes are faster and
+  less intrusive if the index uses multiple buckets, because resize and reallocation
+  will affect only data in a single bucket instead of all index values.
 
-* allow parallel processing of multiple buckets when loading edge indexes
-
-  Buckets will be built in parallel if the collection has an `indexBuckets` value
-  greater than 1 and the collection contains a significant amount of documents/edges.
+  The index buckets will be filled in parallel when loading a collection if the collection 
+  has an `indexBuckets` value greater than 1 and the collection contains a significant 
+  amount of documents/edges (the current threshold is 256K documents but this value
+  may change in future versions of ArangoDB).
 
 * changed HTTP client to use poll instead of select on Linux and MacOS
 
@@ -77,14 +167,23 @@ v2.7.0-alpha3 (XXXX-XX-XX)
 
 * implemented AQL `LIKE` function using ICU regexes
 
-* add `RETURN DISTINCT` for AQL queries to return unique results:
+* added `RETURN DISTINCT` for AQL queries to return unique results:
 
       FOR doc IN collection
-        RETURN DISTINCT doc.status 
+        RETURN DISTINCT doc.status
+        
+  This change also introduces `DISTINCT` as an AQL keyword. 
 
 * removed `createNamedQueue()` and `addJob()` functions from org/arangodb/tasks
 
-* moved dispatcher to atomic implementation
+* use less locks and more atomic variables in the internal dispatcher
+  and V8 context handling implementations. This leads to improved throughput in 
+  some ArangoDB internals and allows for higher HTTP request throughput for
+  many operations.
+
+  A short overview of the improvements can be found here:
+
+  https://www.arangodb.com/2015/08/throughput-enhancements/
 
 * added shorthand notation for attribute names in AQL object literals:
 
@@ -104,7 +203,12 @@ v2.7.0-alpha3 (XXXX-XX-XX)
 
 * removed configure option `--enable-figures`
 
-  This option was removed to simplify some statistics code.
+  This option previously controlled whether HTTP request statistics code was
+  compiled into ArangoDB or not. The previous default value was `true` so 
+  statistics code was available in official packages. Setting the option to 
+  `false` led to compile errors so it is doubtful the default value was
+  ever changed. By removing the option some internal statistics code was also
+  simplified.
 
 * removed run-time manipulation methods for server endpoints:
 
@@ -141,11 +245,11 @@ v2.7.0-alpha3 (XXXX-XX-XX)
 
 * do not link arangoimp against V8
 
-* AQL functon call arguments optimization
+* AQL function call arguments optimization
 
-  This will lead to arguments in function calls inside AQL queries will not be copied but passed
+  This will lead to arguments in function calls inside AQL queries not being copied but passed
   by reference. This may speed up calls to functions with bigger argument values or queries that
-  calls functions a lot of times.
+  call functions a lot of times.
 
 * upgraded V8 version to 4.3.61
 
@@ -166,29 +270,129 @@ v2.7.0-alpha3 (XXXX-XX-XX)
 
 * the `skip()` function for simple queries does not accept negative input any longer. 
   This feature was deprecated in 2.6.0.
+
+* fix exception handling
+
+  In some cases JavaScript exceptions would re-throw without information of the original problem.
+  Now the original exception is logged for failure analysis.
  
-* based REST API method PUT `/_api/simple/all` on the cursor API and make its use AQL internally.
+* based REST API method PUT `/_api/simple/all` on the cursor API and make it use AQL internally.
 
   The change speeds up this REST API method and will lead to additional query information being
   returned by the REST API. Clients can use this extra information or ignore it.
 
 * Foxx Queue job success/failure handlers arguments have changed from `(jobId, jobData, result, jobFailures)` to `(result, jobData, job)`.
 
-* added Foxx Queue job options `repeatTimes`, `repeatUntil` and `repeatDelay`.
+* added Foxx Queue job options `repeatTimes`, `repeatUntil` and `repeatDelay` to automatically re-schedule jobs when they are completed.
 
-* added Foxx manifest configuration type `password`.
+* added Foxx manifest configuration type `password` to mask values in the web interface.
 
-* fixed handling of default values in Foxx manifest configurations
+* fixed default values in Foxx manifest configurations sometimes not being used as defaults.
 
-* fixed handling of optional parameters in Foxx manifest configurations
+* fixed optional parameters in Foxx manifest configurations sometimes not being cleared correctly.
 
-* added verbose Foxx manifest dependency format
+* Foxx dependencies can now be marked as optional using a slightly more verbose syntax in your manifest file.
 
-* added optional Foxx dependencies
+* converted Foxx constructors to ES6 classes so you can extend them using class syntax.
 
-* converted Foxx constructors to classes
+* updated aqb to 2.0.
 
 * updated chai to 3.0.
+
+* Use more madvise calls to speed up things when memory is tight, in particular
+  at load time but also for random accesses later.
+
+* Overhauled web interface
+  
+  The web interface now has a new design.
+
+  The API documentation for ArangoDB has been moved from "Tools" to "Links" in the web interface.
+
+  The "Applications" tab in the web interfaces has been renamed to "Services".
+
+
+v2.6.8 (XXXX-XX-XX)
+-------------------
+
+* ARM only:
+
+  The ArangoDB packages for ARM require the kernel to allow unaligned memory access.
+  How the kernel handles unaligned memory access is configurable at runtime by
+  checking and adjusting the contents `/proc/cpu/alignment`.
+
+  In order to operate on ARM, ArangoDB requires the bit 1 to be set. This will
+  make the kernel trap and adjust unaligned memory accesses. If this bit is not
+  set, the kernel may send a SIGBUS signal to ArangoDB and terminate it.
+
+  To set bit 1 in `/proc/cpu/alignment` use the following command as a privileged
+  user (e.g. root):
+
+      echo "2" > /proc/cpu/alignment
+
+  Note that this setting affects all user processes and not just ArangoDB. Setting
+  the alignment with the above command will also not make the setting permanent,
+  so it will be lost after a restart of the system. In order to make the setting
+  permanent, it should be executed during system startup or before starting arangod.
+
+  The ArangoDB start/stop scripts do not adjust the alignment setting, but rely on 
+  the environment to have the correct alignment setting already. The reason for this
+  is that the alignment settings also affect all other user processes (which ArangoDB
+  is not aware of) and thus may have side-effects outside of ArangoDB. It is therefore
+  more reasonable to have the system administrator carry out the change.
+
+
+v2.6.7 (2015-08-25)
+-------------------
+
+* improved AssocMulti index performance when resizing. 
+
+  This makes the edge index perform less I/O when under memory pressure.
+
+
+v2.6.6 (2015-08-23)
+-------------------
+
+* added startup option `--server.additional-threads` to create separate queues
+  for slow requests.
+
+
+v2.6.5 (2015-08-17)
+-------------------
+
+* added startup option `--database.throw-collection-not-loaded-error`
+
+  Accessing a not-yet loaded collection will automatically load a collection
+  on first access. This flag controls what happens in case an operation
+  would need to wait for another thread to finalize loading a collection. If
+  set to *true*, then the first operation that accesses an unloaded collection
+  will load it. Further threads that try to access the same collection while
+  it is still loading immediately fail with an error (1238, *collection not loaded*). 
+  This is to prevent all server threads from being blocked while waiting on the
+  same collection to finish loading. When the first thread has completed loading 
+  the collection, the collection becomes regularly available, and all operations
+  from that point on can be carried out normally, and error 1238 will not be
+  thrown anymore for that collection.
+
+  If set to *false*, the first thread that accesses a not-yet loaded collection
+  will still load it. Other threads that try to access the collection while
+  loading will not fail with error 1238 but instead block until the collection
+  is fully loaded. This configuration might lead to all server threads being
+  blocked because they are all waiting for the same collection to complete
+  loading. Setting the option to *true* will prevent this from happening, but
+  requires clients to catch error 1238 and react on it (maybe by scheduling 
+  a retry for later).
+
+  The default value is *false*.
+
+* fixed busy wait loop in scheduler threads that sometimes consumed 100% CPU while
+  waiting for events on connections closed unexpectedly by the client side
+
+* handle attribute `indexBuckets` when restoring collections via arangorestore. 
+  Previously the `indexBuckets` attribute value from the dump was ignored, and the
+   server default value for `indexBuckets` was used when restoring a collection.
+
+* fixed "EscapeValue already set error" crash in V8 actions that might have occurred when
+  canceling V8-based operations.
 
 
 v2.6.4 (2015-08-01)
@@ -857,8 +1061,8 @@ v2.6.0 (2015-06-20)
 
 * Added the following JavaScript methods for file access:
   * fs.copyFile() to copy single files
-  * fs.copyRecursive() to copy diretory trees
-  * fs.chmod() to set the file permissions (non-Windows onnly)
+  * fs.copyRecursive() to copy directory trees
+  * fs.chmod() to set the file permissions (non-Windows only)
 
 * Added process.env for accessing the process environment from JavaScript code
 
@@ -1013,7 +1217,7 @@ v2.5.2 (2015-04-11)
 
 * added `Foxx.Repository#exists`
 
-* parallelise initialization of V8 context in multiple threads
+* parallelize initialization of V8 context in multiple threads
 
 * fixed a possible crash when the debug-level was TRACE
 
@@ -1072,7 +1276,7 @@ v2.5.1 (2015-03-19)
   collections from happening.
 
 * datafiles and `parameter.json` files written by arangod are now created with read and write
-  privileges for the arangod process user, and with read and write prileges for the arangod
+  privileges for the arangod process user, and with read and write privileges for the arangod
   process group. 
   
   Previously, these files were created with user read and write permissions only.
@@ -1095,7 +1299,7 @@ v2.5.1 (2015-03-19)
 
 * add system error strings for Windows on many places
 
-* rework service startup so we anounce 'RUNNING' only when we're finished starting.
+* rework service startup so we announce 'RUNNING' only when we're finished starting.
 
 * use the Windows eventlog for FATAL and ERROR - log messages
 
@@ -1173,8 +1377,8 @@ v2.5.0-beta2 (2015-02-23)
   * Rewrite of Foxx routing
 
     The routing of Foxx has been exposed to major internal changes we adjusted because of user feedback.
-    This allows us to set the development mode per mountpoint without having to change pathes and hold
-    apps at seperate locations.
+    This allows us to set the development mode per mountpoint without having to change paths and hold
+    apps at separate locations.
 
   * Foxx Development mode
 
@@ -1204,7 +1408,7 @@ v2.5.0-beta2 (2015-02-23)
 
     Until 2.4 the errors produced by Foxx were not optimal. Often, the error message was just
     `unable to parse manifest` and contained only an internal stack trace.
-    In 2.5 we made major improvements there, including a much more finegrained error output that
+    In 2.5 we made major improvements there, including a much more fine-grained error output that
     helps you debug your Foxx apps. The error message printed is now much closer to its source and 
     should help you track it down.
 
@@ -1311,7 +1515,7 @@ v2.5.0-beta2 (2015-02-23)
   will not make use of a sparse index in a query in order to produce correct results.
  
   For example, the following queries cannot use a sparse index on `attr` because the optimizer
-  will not know beforehand whether the comparsion values for `doc.attr` will include `null`:
+  will not know beforehand whether the comparison values for `doc.attr` will include `null`:
 
       FOR doc In collection 
         FILTER doc.attr == SOME_FUNCTION(...) 
@@ -1331,7 +1535,7 @@ v2.5.0-beta2 (2015-02-23)
 
   Executing the two in lockstep allows using much smaller buffers for intermediate results 
   and starts the actual data-modification operations much earlier than if the two phases
-  were executed seperately.
+  were executed separately.
 
 * Allow dynamic attribute names in AQL object literals
   
@@ -1355,7 +1559,7 @@ v2.5.0-beta2 (2015-02-23)
 
       FOR doc IN collection FILTER doc.value1 == 1 && doc.value2 == 2 SORT doc.value1, doc.value2 RETURN doc
 
-* make AQL optimizer rule "use-index-for-sort" remove sort also in case the sort critieria
+* make AQL optimizer rule "use-index-for-sort" remove sort also in case the sort criteria
   excludes the left-most index attributes, but the left-most index attributes are used
   by the index for equality-only lookups.
 
@@ -1475,7 +1679,7 @@ v2.4.6 (2015-03-18)
   collections from happening.
 
 * datafiles and `parameter.json` files written by arangod are now created with read and write
-  privileges for the arangod process user, and with read and write prileges for the arangod
+  privileges for the arangod process user, and with read and write privileges for the arangod
   process group. 
   
   Previously, these files were created with user read and write permissions only.
@@ -1597,7 +1801,7 @@ v2.4.2 (2015-01-30)
   It will not state any information about your Application.
   Before it was a 404 Not Found without any information and not distinguishable from a correct not found on your route.
 
-  In Development Mode the html page also contains information about the error occured.
+  In Development Mode the html page also contains information about the error occurred.
 
 * Unhandled errors thrown in Foxx routes are now handled by the Foxx framework itself.
   
@@ -1718,7 +1922,7 @@ v2.4.0-beta1 (2014-12-26)
   * download links
   * API documentation
 
-  To install a new application, a new dialogue is now available. 
+  To install a new application, a new dialog is now available. 
   It provides the features already available in the console application `foxx-manager` plus some more: 
   * install an application from Github
   * install an application from a zip file
@@ -1836,10 +2040,10 @@ v2.4.0-beta1 (2014-12-26)
   * replication.applier.properties({ includeSystem: false });
 
   This will exclude all system collections (including `_aqlfunctions`, `_graphs` etc.)
-  from the initial synchronisation and the continuous replication.
+  from the initial synchronization and the continuous replication.
 
   If this is also undesired, it is also possible to specify a list of collections to
-  exclude from the initial synchronisation and the continuous replication using the
+  exclude from the initial synchronization and the continuous replication using the
   `restrictCollections` attribute, e.g.:
   
       replication.applier.properties({ 
@@ -1896,7 +2100,7 @@ v2.3.4 (2014-12-23)
 v2.3.3 (2014-12-17)
 -------------------
 
-* fixed error handling in instanciation of distributed AQL queries, this 
+* fixed error handling in instantiation of distributed AQL queries, this 
   also fixes a bug in cluster startup with many servers
 
 * issue #1185: parse non-fractional JSON numbers with exponent (e.g. `4e-261`)
@@ -1990,7 +2194,7 @@ v2.3.0 (2014-11-18)
 * fixed syslog flags. `--log.syslog` is deprecated and setting it has no effect, 
   `--log.facility` now works as described. Application name has been changed from
   `triagens` to `arangod`. It can be changed using `--log.application`. The syslog
-  will only contain the actual log message. The datetime prefix is omiited.
+  will only contain the actual log message. The datetime prefix is omitted.
 
 * fixed deflate in SimpleHttpClient
 
@@ -2064,7 +2268,7 @@ v2.3.0-beta2 (2014-11-08)
 * fixed issue #1075: Aardvark: user name required even if auth is off #1075 
 
   The fix for this prefills the username input field with the current user's
-  accout name if any and `root` (the default username) otherwise. Additionally,
+  account name if any and `root` (the default username) otherwise. Additionally,
   the tooltip text has been slightly adjusted.
 
 * fixed issue #1069: Add 'raw' link to swagger ui so that the raw swagger 
@@ -2146,7 +2350,7 @@ v2.3.0-beta1 (2014-11-01)
   thus been removed in ArangoDB 2.3. It is not possible to create indexes of type
   "bitarray" with ArangoDB 2.3.
 
-  When a collection is openend that contains a bitarray index definition created 
+  When a collection is opened that contains a bitarray index definition created 
   with a previous version of ArangoDB, ArangoDB will ignore it and log the following
   warning:
 
@@ -2284,7 +2488,7 @@ v2.3.0-beta1 (2014-11-01)
 
 * front-end: now using the new graph api including multi-collection support
 
-* front-end: foxx apps are now deleteable
+* front-end: foxx apps are now deletable
 
 * front-end: foxx apps are now installable and updateable through github, if github is their
   origin.
@@ -2789,7 +2993,7 @@ v2.2.0 (2014-07-10)
 
   Cross-collection transactions in ArangoDB should benefit considerably by this
   change, as less writes than in previous versions are required to ensure the data 
-  of multiple collections are atomcially and durably committed. All data-modifying 
+  of multiple collections are atomically and durably committed. All data-modifying 
   operations inside transactions (insert, update, remove) will write their 
   operations into the write-ahead log directly, making transactions with multiple 
   operations also require less physical memory than in previous versions of ArangoDB,
@@ -2902,7 +3106,7 @@ v2.2.0 (2014-07-10)
 * fixed a bug in arangodump which got the collection name in _from and _to
   attributes of edges wrong (all were "_unknown")
 
-* fixed a bug in arangorestore which did not recognise wrong _from and _to
+* fixed a bug in arangorestore which did not recognize wrong _from and _to
   attributes of edges
 
 * improved error detection and reporting in arangorestore
@@ -2965,7 +3169,7 @@ v2.1.0-rc1 (XXXX-XX-XX)
   the previous undocumented function `internal.definePeriodic` is now
   deprecated and will be removed in a future release.
 
-* decrease the size of some seldomly used system collections on creation. 
+* decrease the size of some seldom used system collections on creation. 
 
   This will make these collections use less disk space and mapped memory.
 
@@ -3042,7 +3246,7 @@ v2.1.0-rc1 (XXXX-XX-XX)
 * added REST API method HTTP GET `/_api/job/job-id` to query the status of an
   async job without potentially fetching it from the list of done jobs
 
-* fixed non-intuitive behaviour in jobs API: previously, querying the status
+* fixed non-intuitive behavior in jobs API: previously, querying the status
   of an async job via the API HTTP PUT `/_api/job/job-id` removed a currently 
   executing async job from the list of queryable jobs on the server.
   Now, when querying the result of an async job that is still executing, 
@@ -3458,9 +3662,9 @@ v1.4.16 (XXXX-XX-XX)
 v1.4.15 (2014-04-19)
 --------------------
 
-* bugfix for AQL query optimiser
+* bugfix for AQL query optimizer
        
-  the following type of query was too eagerly optimised, leading to errors in code-generation:
+  the following type of query was too eagerly optimized, leading to errors in code-generation:
               
       LET a = (FOR i IN [] RETURN i) LET b = (FOR i IN [] RETURN i) RETURN 1
                            
@@ -3473,7 +3677,7 @@ v1.4.14 (2014-04-05)
 
 * fixed race conditions during shape / attribute insertion
 
-  A race condition could have led to spurios `cannot find attribute #xx` or
+  A race condition could have led to spurious `cannot find attribute #xx` or
   `cannot find shape #xx` (where xx is a number) warning messages being logged 
   by the server. This happened when a new attribute was inserted and at the same 
   time was queried by another thread.
@@ -3482,7 +3686,7 @@ v1.4.14 (2014-04-05)
   access the shapes / attributes hash tables while they were resized. In this
   cases, the shape / attribute may have been hashed to a wrong slot.
 
-* fixed a memory barrier / cpu synchronisation problem with libev, affecting
+* fixed a memory barrier / cpu synchronization problem with libev, affecting
   Windows with Visual Studio 2013 (probably earlier versions are affected, too)
   
   The issue is described in detail here:
@@ -3545,9 +3749,9 @@ v1.4.11 (2014-02-27)
 
 * fixed bug in Graph.pathTo function
 
-* fixed small memleak in AQL optimiser
+* fixed small memleak in AQL optimizer
 
-* fixed access to potentially uninitialised variable when collection had a cap constraint
+* fixed access to potentially uninitialized variable when collection had a cap constraint
 
 
 v1.4.10 (2014-02-21)
@@ -3610,7 +3814,7 @@ v1.4.9 (2014-02-07)
         RETURN doc
 
   The function requires a skiplist index with the exact same attributes to 
-  be present on the specified colelction. All attributes present in the skiplist
+  be present on the specified collection. All attributes present in the skiplist
   index must be specified in the conditions specified for the `SKIPLIST` function.
   Attribute declaration order is important, too: attributes must be specified in the 
   same order in the condition as they have been declared in the skiplist index.
@@ -3777,7 +3981,7 @@ v1.4.4 (2013-12-24)
 v1.4.3 (2013-11-25)
 -------------------
 
-* fixed a segfault in the AQL optimiser, occurring when a constant non-list value was
+* fixed a segfault in the AQL optimizer, occurring when a constant non-list value was
   used on the right-hand side of an IN operator that had a collection attribute on the
   left-hand side
 
@@ -3816,7 +4020,7 @@ v1.4.2 (2013-11-20)
 
 * fixed startup of server in daemon mode (`--daemon` startup option)
 
-* fixed a segfault in the AQL optimiser
+* fixed a segfault in the AQL optimizer
 
 * issue #671: Method graph.measurement does not exist
 
@@ -3899,7 +4103,7 @@ v1.4.1-rc1 (2013-11-07)
 
 * fixed issue #653: Slow query
 
-* fixed issue #650: Randonmess of any() should be improved
+* fixed issue #650: Randomness of any() should be improved
 
 * made AQL `DOCUMENT()` function polymorphic and work with just one parameter.
 
@@ -3939,7 +4143,7 @@ v1.4.1-rc1 (2013-11-07)
 v1.4.0 (2013-10-29)
 -------------------
 
-* fixed issue #648: /batch API is missing from Web Interface API Docummentation (Swagger)
+* fixed issue #648: /batch API is missing from Web Interface API Documentation (Swagger)
 
 * fixed issue #647: Icon tooltips missing
 
@@ -4005,7 +4209,7 @@ v1.4.0 (2013-10-29)
 
 * added function to manage indexes (web interface)
 
-* improved server shutdown time by signalling shutdown to applicationserver,
+* improved server shutdown time by signaling shutdown to applicationserver,
   logging, cleanup and compactor threads
 
 * added foxx-manager `replace` command
@@ -4073,7 +4277,7 @@ v1.4.0-beta2 (2013-10-14)
   name of a collection for each replication event.
 
   The replication applier will now look for the collection name attribute in logged
-  events preferrably.
+  events preferably.
 
 * added database selection to arango-dfdb
 
@@ -4109,7 +4313,7 @@ v1.4.0-beta2 (2013-10-14)
   the import completely fail if at least one of documents cannot be imported successfully.
 
   It defaults to `false`, which will make ArangoDB continue importing the other documents
-  from the import even if some documents cannot be imported. This is the same behaviour that
+  from the import even if some documents cannot be imported. This is the same behavior that
   previous ArangoDB versions exposed.
 
 * added missing swagger documentation for `/_api/log`
@@ -4210,7 +4414,7 @@ v1.4.0-beta1 (2013-10-01)
 
   arangorestore can be used to restore data from a dump created with arangodump.
   arangorestore currently does not re-create any indexes, and doesn't yet handle
-  referenced documents in edges propertly when doing just partial restores.
+  referenced documents in edges properly when doing just partial restores.
   This will be fixed until 1.4 stable.
   
 * introduced `--server.database` option for arangosh, arangoimp, and arangob.
@@ -4671,7 +4875,7 @@ v1.4.0-alpha1 (2013-08-02)
 
 * issue #523: Graph and vertex methods for the javascript api
  
-* issue #517: Foxx: Route parameters with captial letters fail
+* issue #517: Foxx: Route parameters with capital letters fail
 
 * issue #512: Binded Parameters for LIMIT
 
@@ -4864,7 +5068,7 @@ v1.3.alpha1 (2013-04-05)
   required.
 
 * added AQL functions VARIANCE_POPULATION(), VARIANCE_SAMPLE(), STDDEV_POPULATION(),
-  STDDEV_SAMPLE(), AVERAGE(), MEDIAN() to calculate stastical values for lists
+  STDDEV_SAMPLE(), AVERAGE(), MEDIAN() to calculate statistical values for lists
 
 * added AQL SQRT() function
 
@@ -4905,7 +5109,7 @@ v1.2.3 (XXXX-XX-XX)
 
 * fixed firstExample() query with `_id` and `_key` attributes
 
-* issue triAGENS/ArangoDB-PHP#55: AQL optimiser may have mis-optimised duplicate 
+* issue triAGENS/ArangoDB-PHP#55: AQL optimizer may have mis-optimized duplicate 
   filter statements with limit
 
 
@@ -5186,7 +5390,7 @@ v1.2.beta1 (2013-02-01)
   additionally return the number of shapes used in the collection in the
   extra attribute "shapes.count"
 
-* added AQL TRAVERSAL_TREE() function to return a hierchical result from a traversal
+* added AQL TRAVERSAL_TREE() function to return a hierarchical result from a traversal
 
 * added AQL TRAVERSAL() function to return the results from a traversal
 
@@ -5283,11 +5487,11 @@ v1.2.beta1 (2013-02-01)
 
 * issue #338: arangosh cursor positioning problems
 
-* issue #326: use limit optimisation with filters
+* issue #326: use limit optimization with filters
 
 * issue #325: use index to avoid sorting
 
-* issue #324: add limit optimisation to AQL
+* issue #324: add limit optimization to AQL
 
 * removed arango-password script and added Javascript functionality to add/delete
   users instead. The functionality is contained in module `users` and can be invoked
@@ -5343,7 +5547,7 @@ v1.2.beta1 (2013-02-01)
   * any other characters, especially multi-byte sequences, whitespace or
     punctuation characters cannot be used inside key values
 
-  Specifiying a document key is optional when creating new documents. If no
+  Specifying a document key is optional when creating new documents. If no
   document key is specified, ArangoDB will create a document key itself.
   There are no guarantees about the format and pattern of auto-generated document
   keys other than the above restrictions.
@@ -5409,7 +5613,7 @@ v1.1.3 (2013-XX-XX)
 
 * fixed issue #379: arango-password fatal issue javscript.startup-directory 
 
-* fixed issue #372: Command-Line Options for the Authentication and Authorisation
+* fixed issue #372: Command-Line Options for the Authentication and Authorization
 
 
 v1.1.2 (2013-01-20)
@@ -5565,7 +5769,7 @@ v1.1.0 (2012-12-05)
 
 * fixed issue #281: documentation for skip lists shows wrong example
 
-* fixed AQL optimiser bug, related to OR-combined conditions that filtered on the
+* fixed AQL optimizer bug, related to OR-combined conditions that filtered on the
   same attribute but with different conditions
 
 * fixed issue #277: allow usage of collection names when creating edges
@@ -5585,7 +5789,7 @@ v1.1.beta2 (2012-11-13)
 v1.1.beta1 (2012-10-24)
 -----------------------
 
-* fixed AQL optimiser bug
+* fixed AQL optimizer bug
 
 * WARNING:
   - the user has changed from "arango" to "arangodb", the start script has changed from
@@ -5619,9 +5823,9 @@ v1.1.beta1 (2012-10-24)
     and will close the connection if the client does not send the remaining data
 
   - if Content-Length is bigger than the maximum allowed size (512 MB), the server will 
-    fail with HTTP 413 (request entitiy too large).
+    fail with HTTP 413 (request entity too large).
 
-  - if the length of the HTTP headers is greated than the maximum allowed size (1 MB),
+  - if the length of the HTTP headers is greater than the maximum allowed size (1 MB),
     the server will fail with HTTP 431 (request header fields too large)
 
 * issue #265: allow optional base64 encoding/decoding of action response data
@@ -5633,7 +5837,7 @@ v1.1.beta1 (2012-10-24)
   --javascript.v8-options. Using this option, the Harmony features or other settings in
   v8 can be enabled if the end user requires them
 
-* issue #248: allow AQL optimiser to pull out completely uncorrelated subqueries to the
+* issue #248: allow AQL optimizer to pull out completely uncorrelated subqueries to the
   top level, resulting in less repeated evaluation of the subquery
 
 * upgraded to Doxygen 1.8.0
@@ -5668,9 +5872,9 @@ v1.1.beta1 (2012-10-24)
 
 * issue #219: continue in case of "document not found" error in PATHS() function
 
-* issue #213: make waitForSync overridable on specifc actions
+* issue #213: make waitForSync overridable on specific actions
 
-* changed AQL optimiser to use indexes in more cases. Previously, indexes might
+* changed AQL optimizer to use indexes in more cases. Previously, indexes might
   not have been used when in a reference expression the inner collection was 
   specified last. Example: FOR u1 IN users FOR u2 IN users FILTER u1._id == u2._id
   Previously, this only checked whether an index could be used for u2._id (not
@@ -5679,7 +5883,7 @@ v1.1.beta1 (2012-10-24)
   above as above, indexes are checked for both sides.
   
 * issue #204: extend the CSV import by TSV and by user configurable 
-  seperator character(s)
+  separator character(s)
 
 * issue #180: added support for batch operations
 
@@ -5788,7 +5992,7 @@ v1.0.4 (2012-11-12)
 v1.0.3 (2012-11-08)
 -------------------
 
-* fixed AQL optimiser bug
+* fixed AQL optimizer bug
 
 * issue #273: fixed segfault in arangosh on HTTP 40x 
 
@@ -5894,7 +6098,7 @@ v1.0.beta3 (2012-08-10)
   if set to false, shape data is synched to disk if waitForSync for the collection is
   set to true, otherwise, shape data is not synched.
   
-* fix for issue #145: strange issue on Travis: added epsilon for numeric comparion in
+* fix for issue #145: strange issue on Travis: added epsilon for numeric comparison in
   geo index
 
 * fix for issue #136: adjusted message during indexing
@@ -5926,7 +6130,7 @@ v1.0.beta1 (2012-07-29)
   for arangosh and arangoimp to "--server.connect-timeout" and "--server.request-timeout"
 
 * INCOMPATIBLE CHANGE: authorization is now required on the server side
-  Clients sending requests without HTTP autorization will be rejected with HTTP 401
+  Clients sending requests without HTTP authorization will be rejected with HTTP 401
   To allow backwards compatibility, the server can be started with the option
   "--server.disable-authentication"
 
@@ -5984,7 +6188,7 @@ v1.0.beta1 (2012-07-29)
     "keep-alive" if the request was an HTTP/1.1 request, and "close" if the
     request was an HTTP/1.0 request
 
-* (minimal) internal optimisations for HTTP request parsing and response header 
+* (minimal) internal optimizations for HTTP request parsing and response header 
   handling
 
 * fixed Unicode unescaping bugs for \f and surrogate pairs in BasicsC/strings.c
@@ -6062,9 +6266,9 @@ v1.0.alpha2 (2012-06-24)
 
 * added option SKIP_RANGES=1 for make unittests
 
-* fixed several range-related assertion failures in the AQL query optimiser
+* fixed several range-related assertion failures in the AQL query optimizer
 
-* fixed AQL query optimisations for some edge cases (e.g. nested subqueries with
+* fixed AQL query optimizations for some edge cases (e.g. nested subqueries with
   invalid constant filter expressions)
 
 

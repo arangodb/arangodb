@@ -1,12 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a basis class which defines the methods for determining
-///        when an input is "complete"
+/// @brief shell factory
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +23,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -33,12 +32,30 @@
 
 #include "Basics/Common.h"
 
-namespace triagens {
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
 
+namespace arangodb {
   class ShellImplementation;
   class Completer;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                            class ShellImplFactory
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ShellImplFactory
+////////////////////////////////////////////////////////////////////////////////
+
   class ShellImplFactory {
+    ShellImplFactory () = delete;
+    ShellImplFactory (const ShellImplFactory&) = delete;
+    ShellImplFactory& operator= (const ShellImplFactory&) = delete;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
 
      public:
 
@@ -46,22 +63,19 @@ namespace triagens {
 /// @brief creates a shell
 ////////////////////////////////////////////////////////////////////////////////
 
-    static ShellImplementation* buildShell (std::string const& history, Completer*);
+      static ShellImplementation* buildShell (std::string const& history,
+					      Completer*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the shell will have a CTRL-C handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    static bool hasCtrlCHandler ();
-
+      static bool hasCtrlCHandler ();
   };
 }
+
 #endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

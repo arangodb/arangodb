@@ -107,6 +107,93 @@ function SimpleQueryLookupByKeysSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection with document ids
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentIds : function () {
+      var keys = [ ];
+
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+        keys.push(c.name() + "/test" + i);
+      }
+
+      // should have matches
+      var result = c.documents(keys);
+      assertEqual(100, result.documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection with document ids
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentIdDuplicates : function () {
+      var keys = [ ];
+
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+        // each document is here exactly twice
+        keys.push(c.name() + "/test" + i);
+        keys.push(c.name() + "/test" + i);
+      }
+
+      // should have matches
+      var result = c.documents(keys);
+      assertEqual(100, result.documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection with document ids
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentIdNonExisting : function () {
+      var keys = [ ];
+
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+        keys.push(c.name() + "/foo" + i);
+      }
+
+      // should not have matches
+      var result = c.documents(keys);
+      assertEqual(0, result.documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection with document ids
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentIdsInvalid : function () {
+      var keys = [ ];
+
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+        keys.push(c.name() + "/");
+      }
+
+      // should not have matches
+      var result = c.documents(keys);
+      assertEqual(0, result.documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup in collection with document ids
+////////////////////////////////////////////////////////////////////////////////
+
+    testDocumentIdsOtherCollection : function () {
+      var keys = [ ];
+
+      for (var i = 0; i < 100; ++i) {
+        c.insert({ _key: "test" + i });
+        keys.push("Another" + c.name() + "/test" + i);
+      }
+
+      // should not have matches
+      var result = c.documents(keys);
+      assertEqual(0, result.documents.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup in collection with numeric keys
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1376,9 +1463,13 @@ function SimpleQueryByExampleSuite () {
 
       // not existing documents
       replaced = collection.replaceByExample({ meow : true }, { });
+
       assertEqual(0, replaced);
 
-      replaced = collection.replaceByExample({ value : null }, { });
+      replaced = collection.replaceByExample({ value : 142 }, { });
+      assertEqual(0, replaced);
+
+      replaced = collection.replaceByExample({ value : "peng!" }, { });
       assertEqual(0, replaced);
 
       collection.truncate();
@@ -1415,7 +1506,10 @@ function SimpleQueryByExampleSuite () {
       replaced = collection.replaceByExample({ meow : true }, { });
       assertEqual(0, replaced);
 
-      replaced = collection.replaceByExample({ value : null }, { });
+      replaced = collection.replaceByExample({ value : 142 }, { });
+      assertEqual(0, replaced);
+
+      replaced = collection.replaceByExample({ value : "peng!" }, { });
       assertEqual(0, replaced);
 
       collection.truncate();
@@ -1460,7 +1554,10 @@ function SimpleQueryByExampleSuite () {
       replaced = collection.replaceByExample({ meow : true }, { }, false, 99);
       assertEqual(0, replaced);
 
-      replaced = collection.replaceByExample({ value : null }, { }, false, 99);
+      replaced = collection.replaceByExample({ value : 42 }, { }, false, 99);
+      assertEqual(0, replaced);
+
+      replaced = collection.replaceByExample({ value : "peng!" }, { }, false, 99);
       assertEqual(0, replaced);
 
       // check counts
@@ -1520,7 +1617,10 @@ function SimpleQueryByExampleSuite () {
       updated = collection.updateByExample({ meow : true }, { });
       assertEqual(0, updated);
 
-      updated = collection.updateByExample({ value : null }, { });
+      updated = collection.updateByExample({ value : 142 }, { });
+      assertEqual(0, updated);
+
+      updated = collection.updateByExample({ value : "peng!" }, { });
       assertEqual(0, updated);
 
       collection.truncate();
@@ -1585,7 +1685,7 @@ function SimpleQueryByExampleSuite () {
       updated = collection.updateByExample({ meow : true }, { });
       assertEqual(0, updated);
 
-      updated = collection.updateByExample({ not_existent_null_value : null }, { });
+      updated = collection.updateByExample({ nonExistentValue : "foo" }, { });
       assertEqual(0, updated);
 
       collection.truncate();
@@ -1593,11 +1693,11 @@ function SimpleQueryByExampleSuite () {
       assertEqual(0, updated);
 
       for (i = 0; i < 50; ++i) {
-        collection.save({ test : i , limit_test : 1});
+        collection.save({ test : i , limitTest : 1});
       }
       // update and remove old values keep null values
       updated = collection.updateByExample(
-        { limit_test : 1 },
+        { limitTest : 1 },
         { foo : "bart", bar : "baz", value : null },
         {keepNull: true, limit : 30});
       assertEqual(30, updated);
@@ -1666,7 +1766,10 @@ function SimpleQueryByExampleSuite () {
       updated = collection.updateByExample({ meow : true }, { }, false, false, 99);
       assertEqual(0, updated);
 
-      updated = collection.updateByExample({ value : null }, { }, false, false, 99);
+      updated = collection.updateByExample({ value : 42 }, { }, false, false, 99);
+      assertEqual(0, updated);
+
+      updated = collection.updateByExample({ value : "peng!" }, { }, false, false, 99);
       assertEqual(0, updated);
 
       collection.truncate();

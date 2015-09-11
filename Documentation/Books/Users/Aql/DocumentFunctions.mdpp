@@ -30,8 +30,8 @@ AQL supports the following functions to operate on document values:
   This will return *2*, because the third example matches, and because the 
   *return-index* flag is set to *true*.
 
-- *MERGE(document1, document2, ... documentn)*: Merges the documents
-  in *document1* to *documentn* into a single document. If document attribute
+- *MERGE(document1, document2, ... documentN)*: Merges the documents
+  in *document1* to *documentN* into a single document. If document attribute
   keys are ambiguous, the merged result will contain the values of the documents 
   contained later in the argument list.
 
@@ -56,8 +56,8 @@ AQL supports the following functions to operate on document values:
   Please note that merging will only be done for top-level attributes. If you wish to
   merge sub-attributes, you should consider using *MERGE_RECURSIVE* instead.
 
-- *MERGE_RECURSIVE(document1, document2, ... documentn)*: Recursively
-  merges the documents in *document1* to *documentn* into a single document. If 
+- *MERGE_RECURSIVE(document1, document2, ... documentN)*: Recursively
+  merges the documents in *document1* to *documentN* into a single document. If
   document attribute keys are ambiguous, the merged result will contain the values of the 
   documents contained later in the argument list.
 

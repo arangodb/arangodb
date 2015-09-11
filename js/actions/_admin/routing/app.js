@@ -39,6 +39,7 @@ var actions = require("org/arangodb/actions");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_admin_routing_reloads
+/// @brief Reload the routing table.
 ///
 /// @RESTHEADER{POST /_admin/routing/reload, Reloads the routing information}
 ///

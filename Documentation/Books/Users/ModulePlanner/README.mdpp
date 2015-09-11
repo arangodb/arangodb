@@ -36,6 +36,9 @@ Here are the details of the functionality:
 <!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_launch
 
+!SUBSECTION Check Cluster Health
+@startDocuBlock JSF_Kickstarter_prototype_isHealthy
+
 !SUBSECTION Shutdown
 <!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_shutdown
@@ -51,3 +54,4 @@ Here are the details of the functionality:
 !SUBSECTION Cleanup
 <!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_cleanup
+

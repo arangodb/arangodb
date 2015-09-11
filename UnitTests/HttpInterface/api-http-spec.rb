@@ -6,12 +6,56 @@ require 'arangodb.rb'
 describe ArangoDB do
   prefix = "api-http"
 
-  context "dealing with HTTP methods:" do
+  context "dealing with timeouts:" do
+    before do
+      # load the most current routing information
+      @old_timeout = ArangoDB.set_timeout(2)
+    end
 
+    after do
+      ArangoDB.set_timeout(@old_timeout)
+    end
+
+    it "calls an action and times out" do
+      cmd = "/_admin/execute"
+      body = "require('internal').wait(4);"
+      begin 
+        ArangoDB.log_post("#{prefix}-http-timeout", cmd, :body => body)
+      rescue Timeout::Error
+        # if we get any different error, the rescue block won't catch it and
+        # the test will fail
+      end
+    end
+  end
+
+  context "dealing with read timeouts:" do
+    before do
+      # load the most current routing information
+      @old_timeout = ArangoDB.set_read_timeout(2)
+    end
+
+    after do
+      ArangoDB.set_read_timeout(@old_timeout)
+    end
+
+    it "calls an action and times out" do
+      cmd = "/_admin/execute"
+      body = "require('internal').wait(4);"
+      begin 
+        ArangoDB.log_post("#{prefix}-http-timeout", cmd, :body => body)
+      rescue Timeout::Error 
+        # if we get any different error, the rescue block won't catch it and
+        # the test will fail
+      end
+    end
+  end
+
+  context "dealing with HTTP methods:" do
 
 ################################################################################
 ## checking HTTP HEAD responses
 ################################################################################
+
     context "head requests:" do
       it "checks whether HEAD returns a body on 2xx" do
         cmd = "/_api/version"
@@ -130,7 +174,7 @@ describe ArangoDB do
         doc.headers['allow'].should eq(@headers)
 
         doc.code.should eq(200)
-        doc.response.body.should be_nil
+        doc.response.body.should be_nil_or_empty
       end
 
       it "checks handling of an OPTIONS request, with body" do
@@ -139,7 +183,7 @@ describe ArangoDB do
         doc.headers['allow'].should eq(@headers)
 
         doc.code.should eq(200)
-        doc.response.body.should be_nil
+        doc.response.body.should be_nil_or_empty
       end
     end
 
@@ -248,7 +292,7 @@ describe ArangoDB do
         doc.headers['access-control-max-age'].should eq("1800")
         doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
-        doc.response.body.should be_nil
+        doc.response.body.should be_nil_or_empty
       end
 
       it "checks handling of a CORS OPTIONS preflight request, empty headers" do
@@ -263,7 +307,7 @@ describe ArangoDB do
         doc.headers['access-control-max-age'].should eq("1800")
         doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
-        doc.response.body.should be_nil
+        doc.response.body.should be_nil_or_empty
       end
 
       it "checks handling of a CORS OPTIONS preflight request, populated headers" do
@@ -278,7 +322,7 @@ describe ArangoDB do
         doc.headers['access-control-max-age'].should eq("1800")
         doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
-        doc.response.body.should be_nil
+        doc.response.body.should be_nil_or_empty
       end
 
       it "checks handling of a CORS GET request, with credentials" do
@@ -316,7 +360,7 @@ describe ArangoDB do
         doc.headers['access-control-max-age'].should eq("1800")
         doc.headers['allow'].should eq(@headers)
         doc.headers['content-length'].should eq("0")
-        doc.response.body.should be_nil
+        doc.response.body.should be_nil_or_empty
       end
 
     end

@@ -1,35 +1,43 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/within-rectangle <<EOF
-{"collection":"products","latitude1":0,"longitude1":0,"latitude2":0.2,"longitude2":0.2,"skip":1,"limit":2}
+shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/simple/within-rectangle &lt;&lt;EOF</span>
+{ 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"latitude1"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"longitude1"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"latitude2"</span> : <span class="hljs-number">0.2</span>, 
+  <span class="hljs-string">"longitude2"</span> : <span class="hljs-number">0.2</span>, 
+  <span class="hljs-string">"skip"</span> : <span class="hljs-number">1</span>, 
+  <span class="hljs-string">"limit"</span> : <span class="hljs-number">2</span> 
+}
 EOF
 
-HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "result" : [ 
+  <span class="hljs-string">"result"</span> : [ 
     { 
-      "_id" : "products/893068225", 
-      "_key" : "893068225", 
-      "_rev" : "893068225", 
-      "name" : "Name/0.008/", 
-      "loc" : [ 
-        0.008, 
-        0 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/904531490"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"904531490"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904531490"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.008/"</span>, 
+      <span class="hljs-string">"loc"</span> : [ 
+        <span class="hljs-number">0.008</span>, 
+        <span class="hljs-number">0</span> 
       ] 
     }, 
     { 
-      "_id" : "products/892871617", 
-      "_key" : "892871617", 
-      "_rev" : "892871617", 
-      "name" : "Name/0.006/", 
-      "loc" : [ 
-        0.006, 
-        0 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/904334882"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"904334882"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"904334882"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.006/"</span>, 
+      <span class="hljs-string">"loc"</span> : [ 
+        <span class="hljs-number">0.006</span>, 
+        <span class="hljs-number">0</span> 
       ] 
     } 
   ], 
-  "hasMore" : false, 
-  "count" : 2, 
-  "error" : false, 
-  "code" : 201 
+  <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"count"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }

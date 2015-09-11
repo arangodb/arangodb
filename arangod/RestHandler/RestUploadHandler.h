@@ -54,7 +54,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestUploadHandler (rest::HttpRequest*);
+        explicit RestUploadHandler (rest::HttpRequest*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -63,7 +63,7 @@ namespace triagens {
         ~RestUploadHandler ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
+// --SECTION--                                               HttpHandler methods
 // -----------------------------------------------------------------------------
 
       public:
@@ -72,7 +72,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        Handler::status_t execute ();
+        HttpHandler::status_t execute ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a multi-part request body and determines the boundaries of

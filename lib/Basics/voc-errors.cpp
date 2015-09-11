@@ -5,7 +5,7 @@
 #include "Basics/Common.h"
 #include "./lib/Basics/voc-errors.h"
 
-void TRI_InitialiseErrorMessages () {
+void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_NO_ERROR, "no error");
   REG_ERROR(ERROR_FAILED, "failed");
   REG_ERROR(ERROR_SYS_ERROR, "system error");
@@ -75,7 +75,6 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
   REG_ERROR(ERROR_ARANGO_NO_INDEX, "no suitable index known");
   REG_ERROR(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
-  REG_ERROR(ERROR_ARANGO_GEO_INDEX_VIOLATED, "geo index violated");
   REG_ERROR(ERROR_ARANGO_INDEX_NOT_FOUND, "index not found");
   REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
   REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");
@@ -118,6 +117,7 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_REPLICATION_RUNNING, "cannot change applier configuration while running");
   REG_ERROR(ERROR_REPLICATION_APPLIER_STOPPED, "replication stopped");
   REG_ERROR(ERROR_REPLICATION_NO_START_TICK, "no start tick");
+  REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");
   REG_ERROR(ERROR_CLUSTER_NO_AGENCY, "could not connect to agency");
   REG_ERROR(ERROR_CLUSTER_NO_COORDINATOR_HEADER, "missing coordinator header");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, "could not lock plan in agency");
@@ -228,10 +228,10 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION, "malformed edge definition");
   REG_ERROR(ERROR_GRAPH_NOT_FOUND, "graph not found");
   REG_ERROR(ERROR_GRAPH_DUPLICATE, "graph already exists");
-  REG_ERROR(ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST, "collection does not exist");
+  REG_ERROR(ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST, "vertex collection does not exist or is not part of the graph");
   REG_ERROR(ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX, "not a vertex collection");
   REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "not in orphan collection");
-  REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF, "collection used in edge def");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF, "collection already used in edge def");
   REG_ERROR(ERROR_GRAPH_EDGE_COLLECTION_NOT_USED, "edge collection not used in graph");
   REG_ERROR(ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION, " is not an ArangoCollection");
   REG_ERROR(ERROR_GRAPH_NO_GRAPH_COLLECTION, "collection _graphs does not exist");
@@ -241,6 +241,7 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_GRAPH_INVALID_PARAMETER, "Invalid parameter type.");
   REG_ERROR(ERROR_GRAPH_INVALID_ID, "Invalid id");
   REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS, "collection used in orphans");
+  REG_ERROR(ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST, "edge collection does not exist or is not part of the graph");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");

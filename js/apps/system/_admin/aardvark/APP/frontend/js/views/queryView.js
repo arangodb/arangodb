@@ -42,13 +42,18 @@
       'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
       'click #confirmQueryImport': 'importCustomQueries',
       'click #confirmQueryExport': 'exportCustomQueries',
-      'click #downloadQueryResult': 'downloadQueryResult',
-      'click #importQueriesToggle': 'showImportMenu'
+      'click #export-query': 'exportCustomQueries',
+      'click #import-query': 'openExportDialog',
+      'click #closeQueryModal': 'closeExportDialog',
+      'click #downloadQueryResult': 'downloadQueryResult'
     },
 
-    showImportMenu: function(e) {
-      $('#importQueriesToggle').toggleClass('activated');
-      $('#importHeader').slideToggle(200);
+    openExportDialog: function() {
+      $('#queryImportDialog').modal('show'); 
+    },
+
+    closeExportDialog: function() {
+      $('#queryImportDialog').modal('hide'); 
     },
 
     createCustomQueryModal: function(){
@@ -200,12 +205,12 @@
       outputEditor.setReadOnly(true);
       outputEditor.setHighlightActiveLine(false);
       outputEditor.getSession().setMode("ace/mode/json");
-      outputEditor.setFontSize("16px");
+      outputEditor.setFontSize("13px");
       outputEditor.setValue('');
 
       var inputEditor = ace.edit("aqlEditor");
       inputEditor.getSession().setMode("ace/mode/aql");
-      inputEditor.setFontSize("16px");
+      inputEditor.setFontSize("13px");
       inputEditor.commands.addCommand({
         name: "togglecomment",
         bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
@@ -221,7 +226,7 @@
         inputEditor.setValue(query);
       }
 
-      inputEditor.getSession().selection.on('changeCursor', function (e) {
+      inputEditor.getSession().selection.on('changeCursor', function () {
         var inputEditor = ace.edit("aqlEditor");
         var session = inputEditor.getSession();
         var cursor = inputEditor.getCursorPosition();
@@ -303,11 +308,12 @@
         self.file = self.files[0];
 
         self.allowUpload = true;
+        $('#confirmQueryImport').removeClass('disabled');
       });
     },
 
     importCustomQueries: function () {
-      var result, self = this;
+      var self = this;
       if (this.allowUpload === true) {
 
         var callback = function() {
@@ -320,6 +326,8 @@
         };
 
         self.collection.saveImportQueries(self.file, callback.bind(this));
+        $('#confirmQueryImport').addClass('disabled');
+        $('#queryImportDialog').modal('hide'); 
       }
     },
 
@@ -930,7 +938,7 @@
             try {
               var temp = JSON.parse(data.responseText);
               outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
-              arangoHelper.arangoError("Query error", temp.errorNum);
+              arangoHelper.arangoError("Query error", temp.errorNum, temp.errorMessage);
             }
             catch (e) {
               outputEditor.setValue('ERROR');
@@ -951,6 +959,7 @@
         outputEditor.resize();
         var inputEditor = ace.edit("aqlEditor");
         this.deselect(inputEditor);
+        $('#downloadQueryResult').show();
       },
 
       explainQuery: function() {

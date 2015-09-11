@@ -161,7 +161,6 @@ LIBS = \
 noinst_LIBRARIES = \
 	lib/libarango.a \
 	lib/libarango_v8.a \
-	lib/libarango_fe.a \
 	lib/libarango_client.a \
 	arangod/libarangod.a
 
@@ -250,6 +249,8 @@ nobase_pkgdataJS09_DATA = $(wordlist 8001,   9000, $(JS_FILE_LIST))
 nobase_pkgdataJS10_DATA = $(wordlist 9001, 100000, $(JS_FILE_LIST))
 
 nobase_pkgdata_DATA =
+
+CLEANUP += @srcdir@/.file-list-js
 
 ################################################################################
 ### @brief /var data

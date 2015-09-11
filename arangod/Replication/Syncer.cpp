@@ -548,22 +548,16 @@ int Syncer::dropIndex (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::getMasterState (string& errorMsg) {
-  map<string, string> headers;
   string const url = BaseUrl + "/logger-state?serverId=" + _localServerIdString;
 
-  SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET,
+  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
                                                 url,
                                                 nullptr,
-                                                0,
-                                                headers);
+                                                0));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + std::string(_masterInfo._endpoint) +
                ": " + _client->getErrorMessage();
-
-    if (response != nullptr) {
-      delete response;
-    }
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
@@ -578,13 +572,10 @@ int Syncer::getMasterState (string& errorMsg) {
                ": " + response->getHttpReturnMessage();
   }
   else {
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                      response->getBody().c_str());
+    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
 
-    if (JsonHelper::isObject(json)) {
-      res = handleStateResponse(json, errorMsg);
-
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    if (JsonHelper::isObject(json.get())) {
+      res = handleStateResponse(json.get(), errorMsg);
     }
     else {
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -593,8 +584,6 @@ int Syncer::getMasterState (string& errorMsg) {
         ": invalid JSON";
     }
   }
-
-  delete response;
 
   return res;
 }

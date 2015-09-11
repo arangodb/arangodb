@@ -40,7 +40,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new mutex
+/// @brief initializes a new mutex
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitMutex (TRI_mutex_t* mutex) {
@@ -137,7 +137,7 @@ void TRI_UnlockMutex (TRI_mutex_t* mutex) {
 // -----------------------------------------------------------------------------
 #ifndef TRI_FAKE_SPIN_LOCKS
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new spin
+/// @brief initializes a new spin
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitSpin (TRI_spin_t* spin) {
@@ -232,7 +232,7 @@ static void DecrementReaders (TRI_read_write_lock_t* lock) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new read-write lock
+/// @brief initializes a new read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock) {
@@ -568,7 +568,7 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new condition variable
+/// @brief initializes a new condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitCondition (TRI_condition_t* cond) {

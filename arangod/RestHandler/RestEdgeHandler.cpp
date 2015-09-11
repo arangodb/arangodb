@@ -74,7 +74,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 ///
 /// @RESTHEADER{POST /_api/edge,Create edge}
 ///
-/// @RESTBODYPARAM{edge-document,json,required}
+/// @RESTALLBODYPARAM{edge-document,json,required}
 /// A JSON representation of the edge document must be passed as the body of
 /// the POST request. This JSON object may contain the edge's document key in
 /// the *_key* attribute if needed.
@@ -483,7 +483,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTHEADER{PUT /_api/edge/{document-handle},replaces an edge}
 ///
-/// @RESTBODYPARAM{edge,json,required}
+/// @RESTALLBODYPARAM{edge,json,required}
 /// A JSON representation of the new edge data.
 ///
 /// @RESTURLPARAMETERS
@@ -523,14 +523,14 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// *_from* and *_to* of an edge are immutable and cannot be updated either.
 ///
 /// Optionally, the URL parameter *waitForSync* can be used to force
-/// synchronisation of the edge document replacement operation to disk even in case
+/// synchronization of the edge document replacement operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* URL parameter can be used to force synchronisation
+/// Thus, the *waitForSync* URL parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* URL parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// The body of the response contains a JSON object with the information about
@@ -568,7 +568,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// id, then by default a *HTTP 412* conflict is returned and no replacement is
 /// performed.
 ///
-/// The conditional update behavior can be overriden with the *policy* URL query parameter:
+/// The conditional update behavior can be overridden with the *policy* URL query parameter:
 ///
 /// - PUT /_api/document/*document-handle*?policy=*policy*
 ///
@@ -612,7 +612,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTHEADER{PATCH /_api/edge/{document-handle}, Patches edge}
 ///
-/// @RESTBODYPARAM{document,json,required}
+/// @RESTALLBODYPARAM{document,json,required}
 /// A JSON representation of the edge update.
 ///
 /// @RESTURLPARAMETERS
@@ -666,14 +666,14 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// once set and cannot be updated.
 ///
 /// Optionally, the URL parameter *waitForSync* can be used to force
-/// synchronisation of the edge document update operation to disk even in case
+/// synchronization of the edge document update operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* URL parameter can be used to force synchronisation
+/// Thus, the *waitForSync* URL parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* URL parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// The body of the response contains a JSON object with the information about
@@ -758,7 +758,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* URL parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// @RESTRETURNCODES

@@ -113,7 +113,7 @@ Here is the meaning of these rules in context of this query:
   is calculated multiple times, but each calculation inside a loop iteration would
   produce the same value. Therefore, the expression result is shared by several nodes.
 * `remove-unnecessary-calculations`: removes *CalculationNode*s whose result values are
-  not used in the query. In the example this happenes due to the `remove-redundant-calculations`
+  not used in the query. In the example this happens due to the `remove-redundant-calculations`
   rule having made some calculations unnecessary.
 * `use-index-range`: use an index to iterate over a collection instead of performing a
   full collection scan. In the example case this makes sense, as the index can be
@@ -145,7 +145,7 @@ access type, which can be either `read` or `write`.
 !SUBSUBSECTION Variables used in a query
 
 The optimizer will also return a list of variables used in a plan (and query). This
-list will contain auxilliary variables created by the optimizer itself. This list 
+list will contain auxiliary variables created by the optimizer itself. This list
 can be ignored by end users in most cases.
 
 
@@ -188,7 +188,7 @@ This will return an unoptimized plan in the `plan`:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock AQLEXP_06_explainUnoptimizedPlans
 
-Note that some optimisations are already done at parse time (i.e. evaluate simple constant
+Note that some optimizations are already done at parse time (i.e. evaluate simple constant
 calculation as `1 + 1`)
 
 
@@ -277,12 +277,12 @@ The following execution node types will appear in the output of `explain`:
   appear once per *LIMIT* statement.
 * *CalculationNode*: evaluates an expression. The expression result may be used by
   other nodes, e.g. *FilterNode*, *EnumerateListNode*, *SortNode* etc.
-* *SubqueryNode*: executes a sub-query.
+* *SubqueryNode*: executes a subquery.
 * *SortNode*: performs a sort of its input values.
 * *AggregateNode*: aggregates its input and produces new output variables. This will
   appear once per *COLLECT* statement.
 * *ReturnNode*: returns data to the caller. Will appear in each read-only query at
-  least once. Sub-queries will also contain *ReturnNode*s.
+  least once. Subqueries will also contain *ReturnNode*s.
 * *InsertNode*: inserts documents into a collection (given in its *collection* 
   attribute). Will appear exactly once in a query that contains an *INSERT* statement.
 * *RemoveNode*: removes documents from a collection (given in its *collection* 
@@ -292,7 +292,7 @@ The following execution node types will appear in the output of `explain`:
 * *UpdateNode*: updates documents in a collection (given in its *collection* 
   attribute). Will appear exactly once in a query that contains an *UPDATE* statement.
 * *NoResultsNode*: will be inserted if *FILTER* statements turn out to be never
-  satisfyable. The *NoResultsNode* will pass an empty result set into the processing
+  satisfiable. The *NoResultsNode* will pass an empty result set into the processing
   pipeline. 
 
 For queries in the cluster, the following nodes may appear in execution plans:
@@ -302,7 +302,7 @@ For queries in the cluster, the following nodes may appear in execution plans:
   into a combined stream of results.
 * *DistributeNode*: used on a coordinator to fan-out data to one or multiple shards,
   taking into account a collection's shard key.
-* *RemoteNode*: a *RemoteNode* will perfom communication with another ArangoDB 
+* *RemoteNode*: a *RemoteNode* will perform communication with another ArangoDB
   instances in the cluster. For example, the cluster coordinator will need to 
   communicate with other servers to fetch the actual data from the shards. It 
   will do so via *RemoteNode*s. The data servers themselves might again pull
@@ -360,12 +360,16 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   The intention of this rule is to move calculations down in the processing pipeline
   as far as possible (below *FILTER*, *LIMIT* and *SUBQUERY* nodes) so they are executed 
   as late as possible and not before their results are required.
+* `patch-update-statements`: will appear if an *UpdateNode* was patched to not buffer
+  its input completely, but to process it in smaller batches. The rule will fire for an
+  *UPDATE* query that is fed by a full collection scan, and that does not use any other
+  indexes and subqueries.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 
 * `distribute-in-cluster`: will appear when query parts get distributed in a cluster.
   This is not an optimization rule, and it cannot be turned off. 
-* `scatter-in-cluster`: will appear when scatter, gatter, and remote nodes are inserted
+* `scatter-in-cluster`: will appear when scatter, gather, and remote nodes are inserted
   into a distributed query. This is not an optimization rule, and it cannot be turned off.
 * `distribute-filtercalc-to-cluster`: will appear when filters are moved up in a 
   distributed execution plan. Filters are moved as far up in the plan as possible to 

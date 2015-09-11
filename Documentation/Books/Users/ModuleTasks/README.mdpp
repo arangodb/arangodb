@@ -92,7 +92,7 @@ outside of its own scope. The callback function can still define and
 use its own variables.
 
 To pass parameters to a task, the *params* attribute can be set when
-registering a task. Note that the parameters are limited to datatypes
+registering a task. Note that the parameters are limited to data types
 usable in JSON (meaning no callback functions can be passed as parameters
 into a task):
 

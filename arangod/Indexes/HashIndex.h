@@ -31,12 +31,14 @@
 #define ARANGODB_INDEXES_HASH_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "HashIndex/hash-array.h"
-#include "HashIndex/hash-array-multi.h"
-#include "Indexes/Index.h"
+#include "Basics/AssocMulti.h"
+#include "Basics/AssocUnique.h"
+#include "Indexes/PathBasedIndex.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/VocShaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class HashIndex
@@ -45,7 +47,7 @@
 namespace triagens {
   namespace arango {
 
-    class HashIndex : public Index {
+    class HashIndex : public PathBasedIndex {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -57,8 +59,7 @@ namespace triagens {
 
         HashIndex (TRI_idx_iid_t,
                    struct TRI_document_collection_t*,
-                   std::vector<std::string> const&,
-                   std::vector<TRI_shape_pid_t> const&,
+                   std::vector<std::vector<triagens::basics::AttributeName>> const&,
                    bool,
                    bool);
 
@@ -80,45 +81,27 @@ namespace triagens {
 
         double selectivityEstimate () const override final;
 
-        bool dumpFields () const override final {
-          return true;
-        }
-        
         size_t memory () const override final;
 
-        triagens::basics::Json toJson (TRI_memory_zone_t*) const override final;
+        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
+        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
         int insert (struct TRI_doc_mptr_t const*, bool) override final;
          
         int remove (struct TRI_doc_mptr_t const*, bool) override final;
         
+        int batchInsert (std::vector<TRI_doc_mptr_t const*> const*,
+                         size_t) override final;
+
         int sizeHint (size_t) override final;
+
+        bool hasBatchInsert () const override final {
+          return true;
+        }
         
-        std::vector<TRI_shape_pid_t> const& paths () const {
+        std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths () const {
           return _paths;
         }
-
-        struct TRI_document_collection_t* collection () const {
-          return _collection;
-        }
-
-        bool sparse () const {
-          return _sparse;
-        }
-        
-        bool unique () const {
-          return _unique;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the memory needed for an index key entry
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t keyEntrySize () const {
-          return _paths.size() * sizeof(TRI_shaped_json_t);
-        }
-
-        TRI_vector_pointer_t lookup (TRI_index_search_value_t*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
@@ -133,7 +116,7 @@ namespace triagens {
 
         int lookup (TRI_index_search_value_t*,
                     std::vector<TRI_doc_mptr_copy_t>&,
-                    struct TRI_hash_index_element_multi_s*&,
+                    TRI_index_element_t*&,
                     size_t batchSize) const;
 
 // -----------------------------------------------------------------------------
@@ -144,11 +127,118 @@ namespace triagens {
 
         int insertUnique (struct TRI_doc_mptr_t const*, bool);
 
-        int insertMulti (struct TRI_doc_mptr_t const*, bool);
-        
-        int removeUnique (struct TRI_doc_mptr_t const*);
+        int batchInsertUnique (std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
-        int removeMulti (struct TRI_doc_mptr_t const*);
+        int insertMulti (struct TRI_doc_mptr_t const*, bool);
+
+        int batchInsertMulti (std::vector<TRI_doc_mptr_t const*> const*, size_t);
+
+        int removeUniqueElement(TRI_index_element_t*, bool);
+
+        int removeUnique (struct TRI_doc_mptr_t const*, bool);
+
+        int removeMultiElement(TRI_index_element_t*, bool);
+
+        int removeMulti (struct TRI_doc_mptr_t const*, bool);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private classes
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief given an element generates a hash integer
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        class HashElementFunc {
+
+            size_t _numFields;
+
+          public:
+
+            HashElementFunc (size_t n) 
+              : _numFields(n) {
+            }
+
+            uint64_t operator() (TRI_index_element_t const* element,
+                                 bool byKey = true) {
+              uint64_t hash = 0x0123456789abcdef;
+
+              for (size_t j = 0;  j < _numFields;  j++) {
+                char const* data;
+                size_t length;
+                TRI_InspectShapedSub(&element->subObjects()[j], 
+                                     element->document(), data, length);
+
+                // ignore the sid for hashing
+                // only hash the data block
+                hash = fasthash64(data, length, hash);
+              }
+
+              if (byKey) {
+                return hash;
+              }
+
+              TRI_doc_mptr_t* ptr = element->document();
+              return fasthash64(&ptr, sizeof(TRI_doc_mptr_t*), hash);
+            }
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines if a key corresponds to an element
+////////////////////////////////////////////////////////////////////////////////
+
+        class IsEqualElementElementByKey {
+
+            size_t _numFields;
+
+          public:
+
+            IsEqualElementElementByKey (size_t n) 
+              : _numFields(n) {
+            }
+
+            bool operator() (TRI_index_element_t const* left,
+                             TRI_index_element_t const* right) {
+              TRI_ASSERT_EXPENSIVE(left->document() != nullptr);
+              TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
+
+              if (left->document() == right->document()) {
+                return true;
+              }
+
+              for (size_t j = 0;  j < _numFields;  ++j) {
+                TRI_shaped_sub_t* leftSub  = &left->subObjects()[j];
+                TRI_shaped_sub_t* rightSub = &right->subObjects()[j];
+
+                if (leftSub->_sid != rightSub->_sid) {
+                  return false;
+                }
+
+                char const* leftData;
+                size_t leftLength;
+                TRI_InspectShapedSub(leftSub, left->document(),
+                                     leftData, leftLength);
+
+                char const* rightData;
+                size_t rightLength;
+                TRI_InspectShapedSub(rightSub, right->document(),
+                                     rightData, rightLength);
+
+                if (leftLength != rightLength) {
+                  return false;
+                }
+
+                if (leftLength > 0 && 
+                    memcmp(leftData, rightData, leftLength) != 0) {
+                  return false;
+                }
+              }
+
+              return true;
+            }
+        };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -157,31 +247,49 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the attribute paths
-////////////////////////////////////////////////////////////////////////////////
-        
-        std::vector<TRI_shape_pid_t> const  _paths;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual hash index
+/// @brief the actual hash index (unique type)
 ////////////////////////////////////////////////////////////////////////////////
   
-        union {
-          TRI_hash_array_t       _hashArray;        // the hash array itself, unique values
-          TRI_hash_array_multi_t _hashArrayMulti;   // the hash array itself, non-unique values
+        typedef triagens::basics::AssocUnique<TRI_index_search_value_t,
+                                              TRI_index_element_t>
+                TRI_HashArray_t;
+          
+        struct UniqueArray {
+          UniqueArray () = delete;
+          UniqueArray (TRI_HashArray_t*, HashElementFunc*, IsEqualElementElementByKey*);
+
+          ~UniqueArray ();
+
+          TRI_HashArray_t*            _hashArray;   // the hash array itself, unique values
+          HashElementFunc*            _hashElement; // hash function for elements
+          IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
         };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether the index is unique
+/// @brief the actual hash index (multi type)
 ////////////////////////////////////////////////////////////////////////////////
+        
+        typedef triagens::basics::AssocMulti<TRI_index_search_value_t,
+                                             TRI_index_element_t,
+                                             uint32_t, true>
+                TRI_HashArrayMulti_t;
 
-        bool const _unique;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether the index is sparse
-////////////////////////////////////////////////////////////////////////////////
+        struct MultiArray {
+          MultiArray () = delete;
+          MultiArray (TRI_HashArrayMulti_t*, HashElementFunc*, IsEqualElementElementByKey*);
+          ~MultiArray ();
 
-        bool const _sparse;
+          TRI_HashArrayMulti_t*       _hashArray;   // the hash array itself, non-unique values
+          HashElementFunc*            _hashElement; // hash function for elements
+          IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
+        };
+
+        union {
+          UniqueArray* _uniqueArray;
+          MultiArray* _multiArray;
+        };
+
     };
 
   }

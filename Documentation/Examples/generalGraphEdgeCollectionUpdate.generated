@@ -1,14 +1,14 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("social");
-arangosh> graph.relation.save("female/alice", "female/diana", {type: "knows", _key: "aliceAndDiana"});
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
+arangosh&gt; graph.relation.save(<span class="hljs-string">"female/alice"</span>, <span class="hljs-string">"female/diana"</span>, {type: <span class="hljs-string">"knows"</span>, _key: <span class="hljs-string">"aliceAndDiana"</span>});
 { 
-  "_id" : "relation/aliceAndDiana", 
-  "_rev" : "1353589697", 
-  "_key" : "aliceAndDiana" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndDiana"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1364987426"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndDiana"</span> 
 }
-arangosh> graph.relation.update("relation/aliceAndDiana", {type: "quarrelled", _key: "aliceAndDiana"});
+arangosh&gt; graph.relation.update(<span class="hljs-string">"relation/aliceAndDiana"</span>, {type: <span class="hljs-string">"quarrelled"</span>, _key: <span class="hljs-string">"aliceAndDiana"</span>});
 { 
-  "_id" : "relation/aliceAndDiana", 
-  "_rev" : "1353786305", 
-  "_key" : "aliceAndDiana" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndDiana"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1365184034"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndDiana"</span> 
 }

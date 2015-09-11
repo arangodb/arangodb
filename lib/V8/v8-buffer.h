@@ -318,7 +318,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the buffer module
+/// @brief initializes the buffer module
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8Buffer (v8::Isolate* isolate, v8::Handle<v8::Context> context);

@@ -1,19 +1,15 @@
 $c-body-color: #333;
+$c-login-bg: #dee8d0;
 
 $c-lightgreen-bg: rgba(222, 233, 207, 1);
-/*
-$c-lightgreen-2-bg: #e4ecd9;;
-$c-lightgreen-transp-bg: rgba(222, 233, 207, 0.8);
-$c-lightgreen-2-transp-bg: rgba(228, 236, 217, 0.8);
-*/
-$c-lightgreen-2-bg: #F5F8F0;
-$c-lightgreen-transp-bg: #F5F8F0;
-$c-lightgreen-2-transp-bg: rgba(245, 248, 240, 0.95);
+$c-lightgreen-2-bg: #f5f8f0;
+$c-lightgreen-transp-bg: #f5f8f0;
+$c-lightgreen-2-transp-bg: rgba(245, 248, 240, .95);
 
 $c-positive: #8aa051;
 $c-positive-hover: #788f3d;
 
-$c-table-odd-color: rgba(104, 103, 102, 0.05);
+$c-table-odd-color: rgba(104, 103, 102, .05);
 
 $c-negative: #da4f49;
 $c-negative-hover: #be342e;
@@ -53,7 +49,8 @@ $c-dark-grey: #999;
 $c-darker-grey: #666;
 
 $c-new-grey: #8c8a89;
-$c-content-border: rgba(104, 103, 102, 0.1);
+$c-content-border: rgba(140, 138, 137, .25);
+$c-tile-border: rgba(140, 138, 137, .25);
 
 $c-transp: transparent;
 $c-low-transp: rgba(0, 0, 0, .7);
@@ -67,17 +64,17 @@ $c-arangodb-locked: rgba(0, 0, 0, .5);
 
 $c-content-row-active: #bdcc92;
 
-$c-odd : #d9d9d9;
-$c-even : #fff;
+$c-odd: #d9d9d9;
+$c-even: #fff;
 
-$c-navbar-spacer : #a0a0a0;
-$c-navbar-spacer-shadow : #c8c8c8;
+$c-navbar-spacer: #a0a0a0;
+$c-navbar-spacer-shadow: #c8c8c8;
 
-$c-btn-inverse : #736b68;
+$c-btn-inverse: #736b68;
 
-$c-shell-error : #f06;
-$c-shell-success : #6f0;
-$c-shell-bg : #808080;
+$c-shell-error: #f06;
+$c-shell-success: #6f0;
+$c-shell-bg: #808080;
 $c-shell-losing-focus: #c4cccc;
 
 $c-shell-prompt: #b91;
@@ -87,8 +84,10 @@ $c-slider-bg: #f6f6f6;
 $c-shell-input: #dd0;
 $c-shell-old-input: #bb0;
 
-$c-notification-red: #c00;
+$c-notification-red: $c-negative;
 $c-invalid-red: rgba(234, 23, 23, .6);
+
+$c-info-blue: #5bc0de;
 
 $c-cluster-button-green: #617e2b;
 $c-cluster-button-green-hover: #8ba142;
@@ -105,9 +104,6 @@ $c-state-ok: #aa0;
 $c-state-warning: #070;
 $c-state-critical: #700;
 $c-icon-grey: #686766;
-
-$c-login-window-bg: #f4f4f4;
-$c-login-window-border: #868686;
 
 $c-toolbar-bg: #f0f0f0;
 
@@ -132,7 +128,7 @@ $c-api-docs-bg-input: #8f8d8c;
 
 $c-breadcrumb-bg: #f5f5f5;
 $c-breadcrumb-a-active-bread: #7da817;
-$c-breadcrumb-a-active-bread-transp: rgba(185, 211, 117, 0.2);
+$c-breadcrumb-a-active-bread-transp: rgba(185, 211, 117, .2);
 
 $c-logs-table-id-thead-bg: #f9f9f9;
 
@@ -141,3 +137,15 @@ $c-viewer-border: rgba(0, 0, 0, .125);
 $c-modal-header: #fff;
 $c-modal-table-border-bottom: #f7f3f2;
 $c-collection-tab-border-bottom: #888;
+
+$c-sh-number: #044;
+$c-sh-symbol: #00f;
+$c-sh-cbracket: #c7a317;
+$c-sh-keyword: #c12dad;
+$c-sh-string: #ce2f30;
+$c-sh-object: #00f;
+$c-sh-array: #00f;
+
+$c-progress-shadow: #353c39;
+$c-progress-shadow-2: #8cdb8b;
+$c-progress-bg: #363c39;

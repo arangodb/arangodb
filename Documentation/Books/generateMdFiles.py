@@ -15,17 +15,30 @@ def _mkdir_recursive(path):
 
 def replaceCode(lines):
   lines = re.sub(r"<!--(\s*.+\s)-->","", lines)
+  # remove the placeholder BR's again:
+  lines = re.sub(r"<br />\n", "\n", lines)
+  # multi line bullet lists should become one:
+  lines = re.sub(r"\n\n-", "\n-", lines)
+
   #HTTP API changing code
+  # unwrap multi-line-briefs: (up to 3 lines supported by now ;-)
+  lines = re.sub(r"@brief(.+)\n(.+)\n(.+)\n\n", r"@brief\g<1> \g<2> \g<3>\n\n", lines)
+  lines = re.sub(r"@brief(.+)\n(.+)\n\n", r"@brief\g<1> \g<2>\n\n", lines)
+  # if there is an @brief above a RESTHEADER, swap the sequence:
+  lines = re.sub(r"@brief(.+\n*)\n\n@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}",r"###\g<3>\n\g<1>\n\n`\g<2>`", lines)
+  # else simply put it into the text:
   lines = re.sub(r"@brief(.+)",r"\g<1>", lines)
-  lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
+  # there should be no RESTHEADER without brief, so we will fail offensively if by not doing:
+  #lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
+
   lines = re.sub(r"@RESTDESCRIPTION","", lines)
-  lines = re.sub(r"@RESTURLPARAM(\s+)","**URL Parameters**\n", lines)
-  lines = re.sub(r"@RESTQUERYPARAM(\s+)","**Query Parameters**\n", lines)
-  lines = re.sub(r"@RESTHEADERPARAM(\s+)","**Header Parameters**\n", lines)
-  lines = re.sub(r"@RESTBODYPARAM(\s+)","**Body Parameters**\n", lines)
-  lines = re.sub(r"@RESTRETURNCODES","**Return Codes**\n", lines)
+  lines = re.sub(r"@RESTURLPARAM(\s+)","\n**URL Parameters**\n", lines)
+  lines = re.sub(r"@RESTQUERYPARAM(\s+)","\n**Query Parameters**\n", lines)
+  lines = re.sub(r"@RESTHEADERPARAM(\s+)","\n**Header Parameters**\n", lines)
+  lines = re.sub(r"@RESTBODYPARAM(\s+)","\n**Body Parameters**\n", lines)
+  lines = re.sub(r"@RESTRETURNCODES","\n**Return Codes**\n", lines)
   lines = re.sub(r"@RESTURLPARAM", "@RESTPARAM", lines)
-  lines = re.sub(r"@PARAMS", "**Parameters**\n", lines)
+  lines = re.sub(r"@PARAMS", "\n**Parameters**\n", lines)
   lines = re.sub(r"@PARAM", "@RESTPARAM", lines)
   lines = re.sub(r"@RESTHEADERPARAM", "@RESTPARAM", lines)
   lines = re.sub(r"@RESTQUERYPARAM", "@RESTPARAM", lines)
@@ -34,7 +47,8 @@ def replaceCode(lines):
   lines = re.sub(r"@RESTPARAM{([\s\w-]*),([\s\w\_\|-]*),\s*(\w+)}", r"* *\g<1>*:", lines)
   lines = re.sub(r"@RESTRETURNCODE{(.*)}", r"* *\g<1>*:", lines)
   lines = re.sub(r"@RESTBODYPARAMS{(.*)}", r"*(\g<1>)*", lines)
-  lines = lines.replace("@EXAMPLES","**Examples**")
+  lines = lines.replace("@EXAMPLES","\n**Examples**\n")  
+  lines = lines.replace("@EXAMPLES","\n**Examples**\n")
   lines = lines.replace("@RESTPARAMETERS","")
   lines = lines.replace("@RESTPARAMS","")
   # Error codes replace
@@ -46,8 +60,8 @@ def replaceCode(lines):
 def replaceCodeIndex(lines):
   lines = re.sub(r"<!--(\s*.+\s)-->","", lines)
   #HTTP API changing code
-  lines = re.sub(r"@brief(.+)",r"\g<1>", lines)
-  lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
+  #lines = re.sub(r"@brief(.+)",r"\g<1>", lines)
+  #lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
   return lines
 
 ################################################################################
@@ -58,7 +72,7 @@ def walk_on_files(inDirPath, outDirPath):
         for file in files:
             if file.endswith(".mdpp"):
                 inFileFull = os.path.join(root, file)
-                outFileFull = os.path.join(outDirPath, re.sub(r'mdpp$', 'md', inFileFull));
+                outFileFull = os.path.join(outDirPath, re.sub(r'mdpp$', 'md', inFileFull))
                 print "%s -> %s" % (inFileFull, outFileFull)
                 _mkdir_recursive(os.path.join(outDirPath, root))
                 mdpp = open(inFileFull, "r")
@@ -66,7 +80,7 @@ def walk_on_files(inDirPath, outDirPath):
                 MarkdownPP.MarkdownPP(input=mdpp, output=md, modules=MarkdownPP.modules.keys())
                 mdpp.close()
                 md.close()
-                findStartCode(md, outFileFull);
+                findStartCode(md, outFileFull)
 
 def findStartCode(fd,full_path):
     inFD = open(full_path, "r")
@@ -121,8 +135,9 @@ def replaceTextInline(text, pathOfFile, searchText):
       print '*' * 80
       print text
       exit(1)
-  rePattern = r'\s*@startDocuBlockInline\s+'+ searchText +'.*@endDocuBlock\s' + searchText
-  match = re.search(rePattern, text, flags=re.DOTALL);
+  rePattern = r'(?s)\s*@startDocuBlockInline\s+'+ searchText +'.*@endDocuBlock\s' + searchText
+  # (?s) is equivalent to flags=re.DOTALL but works in Python 2.6
+  match = re.search(rePattern, text)
 
   if (match == None): 
       print "failed to match with '%s' for %s in file %s in: \n%s" % (rePattern, searchText, pathOfFile, text)
@@ -131,9 +146,9 @@ def replaceTextInline(text, pathOfFile, searchText):
   subtext = match.group(0)
   if (len(re.findall('@startDocuBlock', subtext)) > 1):
       print "failed to snap with '%s' on end docublock for %s in %s our match is:\n%s" % (rePattern, searchText, pathOfFile, subtext)
-      exit(1);
+      exit(1)
 
-  return re.sub(rePattern, dokuBlocks[1][searchText], text, flags=re.DOTALL)
+  return re.sub(rePattern, dokuBlocks[1][searchText], text)
 
 ################################################################################
 # Read the docublocks into memory
@@ -172,7 +187,7 @@ def readNextLine(line):
 def loadDokuBlocks():
     state = STATE_SEARCH_START
     f=open("allComments.txt", 'rU')
-    count = 0;
+    count = 0
     for line in f.readlines():
         if state == STATE_SEARCH_START:
             state = readStartLine(line)

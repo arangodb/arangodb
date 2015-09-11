@@ -1,26 +1,26 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction <<EOF
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/transaction &lt;&lt;EOF</span>
 { 
-  "collections" : { 
-    "read" : "products" 
+  <span class="hljs-string">"collections"</span> : { 
+    <span class="hljs-string">"read"</span> : <span class="hljs-string">"products"</span> 
   }, 
-  "action" : "function () { return true; }" 
+  <span class="hljs-string">"action"</span> : <span class="hljs-string">"function () { return true; }"</span> 
 }
 EOF
 
-HTTP/1.1 404 Not Found
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> Not Found
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "exception" : "[ArangoError 1203: collection not found]", 
-  "stacktrace" : [ 
-    "[ArangoError 1203: collection not found]", 
-    "  at Error (native)", 
-    "  at post_api_transaction (js/actions/api-transaction.js:268:16)", 
-    "  at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)" 
+  <span class="hljs-string">"exception"</span> : <span class="hljs-string">"[ArangoError 1203: collection not found]"</span>, 
+  <span class="hljs-string">"stacktrace"</span> : [ 
+    <span class="hljs-string">"[ArangoError 1203: collection not found]"</span>, 
+    <span class="hljs-string">"  at Error (native)"</span>, 
+    <span class="hljs-string">"  at post_api_transaction (js/actions/api-transaction.js:268:16)"</span>, 
+    <span class="hljs-string">"  at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)"</span> 
   ], 
-  "message" : "collection not found", 
-  "error" : true, 
-  "code" : 404, 
-  "errorNum" : 1203, 
-  "errorMessage" : "collection not found" 
+  <span class="hljs-string">"message"</span> : <span class="hljs-string">"collection not found"</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1203</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"collection not found"</span> 
 }

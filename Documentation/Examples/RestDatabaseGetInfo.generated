@@ -1,15 +1,15 @@
-shell> curl --dump - http://localhost:8529/_api/database/current
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/database/current</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "result" : { 
-    "name" : "_system", 
-    "id" : "74689", 
-    "path" : "/tmp/vocdir.49893/databases/database-74689", 
-    "isSystem" : true 
+  <span class="hljs-string">"result"</span> : { 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"_system"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"69154"</span>, 
+    <span class="hljs-string">"path"</span> : <span class="hljs-string">"/tmp/vocdir.23754/databases/database-69154"</span>, 
+    <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span> 
   }, 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

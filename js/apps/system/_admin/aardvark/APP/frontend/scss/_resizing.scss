@@ -1,5 +1,5 @@
-div.resizecontainer {
-  @extend %clear-float; 
+.resizecontainer {
+  @extend %clear-float;
   margin: 0 auto;
 }
 
@@ -140,7 +140,7 @@ div.resizecontainer {
   }
 
   @media (min-width: $min + $white-space) and (max-width: $min + $tile-width - 1 + $white-space) {
-    div.resizecontainer {
+    .resizecontainer {
       width: $content-size;
     }
 
@@ -166,8 +166,8 @@ div.resizecontainer {
 
     .dashboard-medium-chart-outer {
       $int-width: ($content-size / 2) - 16px - 2px + 10px;
-      width: $int-width;
       float: left;
+      width: $int-width;
     }
 
     .dashboard-medium-chart {
@@ -189,14 +189,14 @@ div.resizecontainer {
         left: $int-width - $tendency-name-font - 3px;
         top: 0;
       }
-      
+
       #clusterGraphs svg {
         height: $dashboard-height - $dashboard-padding - 5px;
         width: $int-width;
-      }
 
-      #clusterGraphs svg text {
-        font-size: $legend-font;
+        text {
+          font-size: $legend-font;
+        }
       }
     }
 
@@ -228,9 +228,9 @@ div.resizecontainer {
 
     .dashboard-tendency-container {
       $int-width: ($content-size / 3) - 22px;
-  
+
       .dashboard-tendency-chart {
-        $int-height: (($dashboard-height - 29px)  / 2) - $tendency-height-corrector;
+        $int-height: (($dashboard-height - 29px) / 2) - $tendency-height-corrector;
         height: $int-height;
 
         .dashboard-tendency,
@@ -260,7 +260,7 @@ div.resizecontainer {
 
     .dashboard-bar-chart-container {
       $int-width: ($content-size / 3) - 18px - 2px;
-      $int-height: (($dashboard-height - 30px)  / 2) - $tendency-height-corrector;
+      $int-height: (($dashboard-height - 30px) / 2) - $tendency-height-corrector;
       height: $int-height + 2px;
 
       .dashboard-bar-chart {
@@ -346,8 +346,8 @@ div.resizecontainer {
 
       .dashboard-medium-chart-outer {
         $int-width: ($content-size / 2) - 21px - 2px;
-        width: $int-width;
         float: left;
+        width: $int-width;
       }
 
       .dashboard-medium-chart {
@@ -456,9 +456,9 @@ div.resizecontainer {
       font-size: $tendency-figure-font - 2px;
       font-weight: $tendency-name-weight;
     }
-    
+
     .dygraph-axis-label {
-      &.dygraph-axis-label-y, 
+      &.dygraph-axis-label-y,
       &.dygraph-axis-label-x {
         font: {
           size: $axis-font;
@@ -508,14 +508,14 @@ div.resizecontainer {
 
 div.centralRow {
   margin: {
-    top: 40px;
     bottom: 40px;
+    top: 40px;
   }
 }
 
 div.centralContent {
   @extend %pull-left;
-  background-color: rgba(0,0,0,0);
+  background-color: rgba(0, 0, 0, 0);
   height: 100%;
   margin-left: -5px;
   margin-right: -5px;
@@ -544,7 +544,7 @@ div.centralContent {
     @extend %clickable;
     padding: {
       left: 5px;
-      right:5px;
+      right: 5px;
       top: 10px;
     }
   }

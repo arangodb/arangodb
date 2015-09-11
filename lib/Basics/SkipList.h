@@ -31,6 +31,8 @@
 #define ARANGODB_BASICS_C_SKIP__LIST_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
+#include "Basics/random.h"
 
 // We will probably never see more than 2^48 documents in a skip list
 #define TRI_SKIPLIST_MAX_HEIGHT 48
@@ -50,23 +52,45 @@ namespace triagens {
 /// @brief type of a skiplist node
 ////////////////////////////////////////////////////////////////////////////////
 
+    template<class Key, class Element>
+    class SkipList;
+
+    template<class Key, class Element>
     class SkipListNode {
-      friend class SkipList;
-        SkipListNode** _next;
-        SkipListNode* _prev;
-        void* _doc;
+      friend class SkipList<Key, Element>;
+        SkipListNode<Key, Element>** _next;
+        SkipListNode<Key, Element>* _prev;
+        Element* _doc;
         int _height;
+
       public:
-        void* document () const {
+
+        SkipListNode<Key, Element> (int height, char* ptr) 
+          : _next(reinterpret_cast<SkipListNode<Key, Element>**>(ptr + sizeof(SkipListNode<Key, Element>))),
+            _prev(nullptr),
+            _doc(nullptr),
+            _height(height) {
+              for (int i = 0; i < _height; i++) {
+                _next[i] = nullptr;
+              }
+            }
+
+        Element* document () const {
           return _doc;
         }
-        SkipListNode* nextNode () const {
+
+        SkipListNode<Key, Element>* nextNode () const {
+          if (_height == 0) {
+            // _next[0] is uninitialized
+            return nullptr;
+          }
           return _next[0];
         }
+
         // Note that the prevNode of the first data node is the artificial
         // _start node not containing data. This is contrary to the prevNode
         // method of the SkipList class, which returns nullptr in that case.
-        SkipListNode* prevNode () const {
+        SkipListNode<Key, Element>* prevNode () const {
           return _prev;
         }
     };
@@ -79,6 +103,21 @@ namespace triagens {
       SKIPLIST_CMP_PREORDER,
       SKIPLIST_CMP_TOTORDER
     };
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type of a skiplist
+/// _end always points to the last node in the skiplist, this can be the
+/// same as the _start node. If a node does not have a successor on a certain
+/// level, then the corresponding _next pointer is a nullptr.
+////////////////////////////////////////////////////////////////////////////////
+
+    template <class Key, class Element>
+    class SkipList {
+
+      typedef SkipListNode<Key, Element> Node;
+
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a function pointer to a comparison function for a skiplist.
@@ -97,33 +136,28 @@ namespace triagens {
 /// to the key and the third is a pointer to an element.
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef int (*SkipListCmpElmElm)(void*, void*, void*, SkipListCmpType);
-    typedef int (*SkipListCmpKeyElm)(void*, void*, void*);
+        typedef std::function<int(Element const*, Element const*, SkipListCmpType)> CmpElmElmFuncType;
+        typedef std::function<int(Key const*, Element const*)> CmpKeyElmFuncType;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Type of a pointer to a function that is called whenever a
 /// document is removed from a skiplist.
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef void (*SkipListFreeFunc)(void*);
+        typedef std::function<void(Element*)> FreeElementFuncType;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type of a skiplist
-/// _end always points to the last node in the skiplist, this can be the
-/// same as the _start node. If a node does not have a successor on a certain
-/// level, then the corresponding _next pointer is a nullptr.
-////////////////////////////////////////////////////////////////////////////////
+      private:
 
-    class SkipList {
-        SkipListNode* _start;
-        SkipListNode* _end;
-        SkipListCmpElmElm _cmp_elm_elm;
-        SkipListCmpKeyElm _cmp_key_elm;
-        void* _cmpdata;   // will be the first argument
-        SkipListFreeFunc _free;
+        Node* _start;
+        Node* _end;
+        CmpElmElmFuncType      _cmp_elm_elm;
+        CmpKeyElmFuncType      _cmp_key_elm;
+        FreeElementFuncType    _free;
         bool _unique;     // indicates whether multiple entries that
                           // are equal in the preorder are allowed in
         uint64_t _nrUsed;
+        bool _isArray;    // indicates whether this index is used to
+                          // index arrays.
         size_t _memoryUsed;
 
       public:
@@ -139,17 +173,47 @@ namespace triagens {
 /// otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkipList (SkipListCmpElmElm cmp_elm_elm,
-                  SkipListCmpKeyElm cmp_key_elm,
-                  void* cmpdata,
-                  SkipListFreeFunc freefunc,
-                  bool unique);
+        SkipList (CmpElmElmFuncType   cmp_elm_elm,
+                  CmpKeyElmFuncType   cmp_key_elm,
+                  FreeElementFuncType freefunc,
+                  bool unique,
+                  bool isArray)
+          : _cmp_elm_elm(cmp_elm_elm), _cmp_key_elm(cmp_key_elm), 
+            _free(freefunc), _unique(unique), _nrUsed(0), _isArray(isArray) {
+
+          // Set the initial memory
+          _memoryUsed = sizeof(SkipList);
+
+          _start = allocNode(TRI_SKIPLIST_MAX_HEIGHT);
+            // Note that this can throw
+          _end = _start;
+
+          _start->_height = 1;
+          _start->_next[0] = nullptr;
+          _start->_prev = nullptr;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a skiplist and all its documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~SkipList ();
+        ~SkipList () {
+          Node* p;
+          Node* next;
+
+          // First call free for all documents and free all nodes other than start:
+          p = _start->_next[0];
+          while (nullptr != p) {
+            if (nullptr != _free) {
+              _free(p->_doc);
+            }
+            next = p->_next[0];
+            freeNode(p);
+            p = next;
+          }
+          freeNode(_start);
+        }
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -158,11 +222,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the start node, note that this does not return the first 
 /// data node but the (internal) artificial node stored under _start. This
-/// is consistent behaviour with the leftLookup method given a key value
+/// is consistent behavior with the leftLookup method given a key value
 /// of -infinity.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkipListNode* startNode () const {
+        Node* startNode () const {
           return _start;
         }
 
@@ -173,7 +237,7 @@ namespace triagens {
 /// containing data.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkipListNode* endNode () const {
+        Node* endNode () const {
           return nullptr;
         }
 
@@ -181,7 +245,7 @@ namespace triagens {
 /// @brief return the successor node or nullptr if last node
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkipListNode* nextNode (SkipListNode* node) {
+        Node* nextNode (Node* node) const {
           return node->_next[0];
         }
 
@@ -191,7 +255,7 @@ namespace triagens {
 /// containing data, if there is one.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkipListNode* prevNode (SkipListNode* node) const {
+        Node* prevNode (Node* node) const {
           return nullptr == node ? _end : node->_prev;
         }
 
@@ -199,22 +263,136 @@ namespace triagens {
 /// @brief inserts a new document into a skiplist
 ///
 /// Comparison is done using proper order comparison. If the skiplist
-/// is unique then no two documents that compare equal in the preorder
-/// can be inserted. Returns 0 if all is well, -1 if allocation failed
-/// and -2 if the unique constraint would have been violated by the
-/// insert. In the latter two cases nothing is inserted.
+/// is unique then no two documents that compare equal in the
+/// preorder can be inserted. Returns TRI_ERROR_NO_ERROR if all
+/// is well, TRI_ERROR_OUT_OF_MEMORY if allocation failed and
+/// TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED if the unique constraint
+/// would have been violated by the insert or if there is already a
+/// document in the skip list that compares equal to doc in the proper
+/// total order. In the latter two cases nothing is inserted.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int insert (void* doc);
+        int insert (Element* doc) {
+          int lev;
+          Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
+          Node* next = nullptr;  // to please the compiler
+          Node* newNode;
+          int cmp;
+
+          cmp = lookupLess(doc,&pos,&next,SKIPLIST_CMP_TOTORDER);
+          // Now pos[0] points to the largest node whose document is less than
+          // doc. next is the next node and can be nullptr if there is none. doc is
+          // in the skiplist iff next != nullptr and cmp == 0 and in this case it
+          // is stored at the node next.
+          if (nullptr != next && 0 == cmp) {
+            // We have found a duplicate in the proper total order!
+            return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+          }
+
+          // Uniqueness test if wanted:
+          if (_unique) {
+            if ((pos[0] != _start &&
+                  0 == _cmp_elm_elm(doc,pos[0]->_doc, SKIPLIST_CMP_PREORDER)) ||
+                (nullptr != next &&
+                 0 == _cmp_elm_elm(doc,next->_doc, SKIPLIST_CMP_PREORDER))) {
+              return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+            }
+          }
+
+          try {
+            newNode = allocNode(0);
+          }
+          catch (...) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          if (newNode->_height > _start->_height) {
+            // The new levels where not considered in the above search,
+            // therefore pos is not set on these levels.
+            for (lev = _start->_height; lev < newNode->_height; lev++) {
+              pos[lev] = _start;
+            }
+            // Note that _start is already initialized with nullptr to the top!
+            _start->_height = newNode->_height;
+          }
+
+          newNode->_doc = doc;
+
+          // Now insert between newNode and next:
+          newNode->_next[0] = pos[0]->_next[0];
+          pos[0]->_next[0] = newNode;
+          newNode->_prev = pos[0];
+          if (newNode->_next[0] == nullptr) {
+            // a new last node
+            _end = newNode;
+          }
+          else {
+            newNode->_next[0]->_prev = newNode;
+          }
+
+          // Now the element is successfully inserted, the rest is performance
+          // optimisation:
+          for (lev = 1; lev < newNode->_height; lev++) {
+            newNode->_next[lev] = pos[lev]->_next[lev];
+            pos[lev]->_next[lev] = newNode;
+          }
+
+          _nrUsed++;
+
+          return TRI_ERROR_NO_ERROR;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document from a skiplist
 ///
-/// Comparison is done using proper order comparison. Returns 0 if all
-/// is well and TRI_ERROR_DOCUMENT_NOT_FOUND if the document was not found.
+/// Comparison is done using proper order comparison.
+/// Returns TRI_ERROR_NO_ERROR if all is well and
+/// TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND if the document was not found.
+/// In the latter two cases nothing is removed.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int remove (void* doc);
+        int remove (Element* doc) {
+          int lev;
+          Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
+          Node* next = nullptr;  // to please the compiler
+          int cmp;
+
+          cmp = lookupLess(doc,&pos,&next,SKIPLIST_CMP_TOTORDER);
+          // Now pos[0] points to the largest node whose document is less than
+          // doc. next points to the next node and can be nullptr if there is none.
+          // doc is in the skiplist iff next != nullptr and cmp == 0 and in this
+          // case it is stored at the node next.
+
+          if (nullptr == next || 0 != cmp) {
+            return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+          }
+
+          if (nullptr != _free) {
+            _free(next->_doc);
+          }
+
+          // Now delete where next points to:
+          for (lev = next->_height-1; lev >= 0; lev--) {
+            // Note the order from top to bottom. The element remains in the
+            // skiplist as long as we are at a level > 0, only some optimisations
+            // in performance vanish before that. Only when we have removed it at
+            // level 0, it is really gone.
+            pos[lev]->_next[lev] = next->_next[lev];
+          }
+          if (next->_next[0] == nullptr) {
+            // We were the last, so adjust _end
+            _end = next->_prev;
+          }
+          else {
+            next->_next[0]->_prev = next->_prev;
+          }
+
+          freeNode(next);
+
+          _nrUsed--;
+
+          return TRI_ERROR_NO_ERROR;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of entries in the skiplist.
@@ -233,6 +411,22 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns if this indexed is used for arrays
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isArray () const {
+          return _isArray;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Appends information about statistics in the given json.
+////////////////////////////////////////////////////////////////////////////////
+          
+        void appendToJson (TRI_memory_zone_t* zone, Json& json) {
+          json("nrUsed", Json(static_cast<double>(_nrUsed)));
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up doc in the skiplist using the proper order
 /// comparison.
 ///
@@ -240,7 +434,21 @@ namespace triagens {
 /// Returns nullptr if doc is not in the skiplist.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkipListNode* lookup (void* doc) const;
+        Node* lookup (Element const* doc) const {
+          Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
+          Node* next = nullptr; // to please the compiler
+          int cmp;
+
+          cmp = lookupLess(doc,&pos,&next,SKIPLIST_CMP_TOTORDER);
+          // Now pos[0] points to the largest node whose document is less than
+          // doc. next points to the next node and can be nullptr if there is none.
+          // doc is in the skiplist iff next != nullptr and cmp == 0 and in this
+          // case it is stored at the node next.
+          if (nullptr == next || 0 != cmp) {
+            return nullptr;
+          }
+          return next;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds the last document that is less to doc in the preorder
@@ -249,7 +457,18 @@ namespace triagens {
 /// Only comparisons using the preorder are done using cmp_elm_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkipListNode* leftLookup (void* doc) const;
+        Node* leftLookup (Element const* doc) const {
+          Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
+          Node* next;
+
+          pos[0] = nullptr; // initialize to satisfy scan-build
+          lookupLess(doc, &pos, &next, SKIPLIST_CMP_PREORDER);
+          // Now pos[0] points to the largest node whose document is less than
+          // doc in the preorder. next points to the next node and can be nullptr
+          // if there is none. doc is in the skiplist iff next != nullptr and cmp
+          // == 0 and in this case it is stored at the node next.
+          return pos[0];
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds the last document that is less or equal to doc in
@@ -258,7 +477,18 @@ namespace triagens {
 /// Only comparisons using the preorder are done using cmp_elm_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkipListNode* rightLookup (void* doc) const;
+        Node* rightLookup (Element const* doc) const {
+          Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
+          Node* next;
+
+          pos[0] = nullptr; // initialize to satisfy scan-build
+          lookupLessOrEq(doc, &pos, &next, SKIPLIST_CMP_PREORDER);
+          // Now pos[0] points to the largest node whose document is less than
+          // or equal to doc in the preorder. next points to the next node and
+          // can be nullptr if there is none. doc is in the skiplist iff next !=
+          // nullptr and cmp == 0 and in this case it is stored at the node next.
+          return pos[0];
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds the last document whose key is less to key in the preorder
@@ -267,7 +497,18 @@ namespace triagens {
 /// Only comparisons using the preorder are done using cmp_key_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkipListNode* leftKeyLookup (void* key) const;
+        Node* leftKeyLookup (Key const* key) const {
+          Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
+          Node* next;
+
+          pos[0] = nullptr; // initialize to satisfy scan-build
+          lookupKeyLess(key,&pos,&next);
+          // Now pos[0] points to the largest node whose document is less than
+          // key in the preorder. next points to the next node and can be nullptr
+          // if there is none. doc is in the skiplist iff next != nullptr and cmp
+          // == 0 and in this case it is stored at the node next.
+          return pos[0];
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds the last document that is less or equal to doc in
@@ -276,7 +517,18 @@ namespace triagens {
 /// Only comparisons using the preorder are done using cmp_key_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkipListNode* rightKeyLookup (void* key) const;
+        Node* rightKeyLookup (Key const* key) const {
+          Node* pos[TRI_SKIPLIST_MAX_HEIGHT];
+          Node* next;
+
+          pos[0] = nullptr; // initialize to satisfy scan-build
+          lookupKeyLessOrEq(key, &pos, &next);
+          // Now pos[0] points to the largest node whose document is less than
+          // or equal to key in the preorder. next points to the next node and
+          // can be nullptr if there is none. doc is in the skiplist iff next !=
+          // nullptr and cmp == 0 and in this case it is stored at the node next.
+          return pos[0];
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -289,13 +541,49 @@ namespace triagens {
 /// then a random height is taken.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkipListNode* allocNode (int height);
+        Node* allocNode (int height) {
+          if (0 == height) {
+            height = RandomHeight();
+          }
+
+          // allocate enough memory for skiplist node plus all the next nodes in one go
+          void* ptr = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(Node) + sizeof(Node*) * height, false);
+
+          if (ptr == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+
+          Node* newNode;
+
+          try {
+            // use placement new
+            newNode = new(ptr) Node(height, static_cast<char*>(ptr));
+          }
+          catch (...) {
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, ptr);
+            throw;
+          }
+
+          _memoryUsed += sizeof(Node) +
+            sizeof(Node*) * newNode->_height;
+
+          return newNode;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @brief Free function for a node.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void freeNode (SkipListNode* node);
+        void freeNode (Node* node) {
+          // update memory usage
+          _memoryUsed -= sizeof(Node) +
+            sizeof(Node*) * node->_height;
+
+          // we have used placement new to construct the skiplist node,
+          // so now we have to manually call its dtor and free the underlying memory
+          node->~Node();
+          TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookupLess
@@ -314,10 +602,33 @@ namespace triagens {
 /// lev.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lookupLess (void* doc,
-                        SkipListNode* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                        SkipListNode** next,
-                        SkipListCmpType cmptype) const;
+        int lookupLess (Element const* doc,
+                        Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+                        Node** next,
+                        SkipListCmpType cmptype) const {
+          int lev;
+          int cmp = 0;  // just in case to avoid undefined values
+
+          Node* cur = _start;
+          for (lev = _start->_height - 1; lev >= 0; lev--) {
+            while (true) {   // will be left by break
+              *next = cur->_next[lev];
+              if (nullptr == *next) {
+                break;
+              }
+              cmp = _cmp_elm_elm((*next)->_doc, doc, cmptype);
+              if (cmp >= 0) {
+                break;
+              }
+              cur = *next;
+            }
+            (*pos)[lev] = cur;
+          }
+          // Now cur == (*pos)[0] points to the largest node whose document
+          // is less than doc. *next is the next node and can be nullptr if there
+          // is none.
+          return cmp;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookupLessOrEq
@@ -333,10 +644,33 @@ namespace triagens {
 /// that have height > lev.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lookupLessOrEq (void* doc,
-                            SkipListNode* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                            SkipListNode** next,
-                            SkipListCmpType cmptype) const;
+        int lookupLessOrEq (Element const* doc,
+                            Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+                            Node** next,
+                            SkipListCmpType cmptype) const {
+          int lev;
+          int cmp = 0;  // just in case to avoid undefined values
+
+          Node* cur = _start;
+          for (lev = _start->_height-1; lev >= 0; lev--) {
+            while (true) {   // will be left by break
+              *next = cur->_next[lev];
+              if (nullptr == *next) {
+                break;
+              }
+              cmp = _cmp_elm_elm((*next)->_doc, doc, cmptype);
+              if (cmp > 0) {
+                break;
+              }
+              cur = *next;
+            }
+            (*pos)[lev] = cur;
+          }
+          // Now cur == (*pos)[0] points to the largest node whose document
+          // is less than or equal to doc. *next is the next node and can be nullptr
+          // is if there none.
+          return cmp;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookupKeyLess
@@ -346,19 +680,84 @@ namespace triagens {
 /// as the two previous ones.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lookupKeyLess (void* key,
-                           SkipListNode* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                           SkipListNode** next) const;
+        int lookupKeyLess (Key const* key,
+                           Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+                           Node** next) const {
+          int lev;
+          int cmp = 0;  // just in case to avoid undefined values
+
+          Node* cur = _start;
+          for (lev = _start->_height - 1; lev >= 0; lev--) {
+            while (true) {   // will be left by break
+              *next = cur->_next[lev];
+              if (nullptr == *next) {
+                break;
+              }
+              cmp = _cmp_key_elm(key, (*next)->_doc);
+              if (cmp <= 0) {
+                break;
+              }
+              cur = *next;
+            }
+            (*pos)[lev] = cur;
+          }
+          // Now cur == (*pos)[0] points to the largest node whose document is
+          // less than key in the preorder. *next is the next node and can be
+          // nullptr if there is none.
+          return cmp;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookupKeyLessOrEq
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lookupKeyLessOrEq (void* key,
-                               SkipListNode* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                               SkipListNode** next) const;
+        int lookupKeyLessOrEq (Key const* key,
+                               Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+                               Node** next) const {
+          int lev;
+          int cmp = 0;  // just in case to avoid undefined values
 
-    };  // struct SkipList
+          Node* cur = _start;
+          for (lev = _start->_height - 1; lev >= 0; lev--) {
+            while (true) {   // will be left by break
+              *next = cur->_next[lev];
+              if (nullptr == *next) {
+                break;
+              }
+              cmp = _cmp_key_elm(key, (*next)->_doc);
+              if (cmp < 0) {
+                break;
+              }
+              cur = *next;
+            }
+            (*pos)[lev] = cur;
+          }
+          // Now cur == (*pos)[0] points to the largest node whose document is
+          // less than or equal to key in the preorder. *next is the next node
+          // and can be nullptr is if there none.
+          return cmp;
+        } 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief randomHeight, select a node height randomly
+////////////////////////////////////////////////////////////////////////////////
+
+        int RandomHeight () {
+          int height = 1;
+          int count;
+          while (true) {   // will be left by return when the right height is found
+            uint32_t r = TRI_UInt32Random();
+            for (count = 32; count > 0; count--) {
+              if (0 != (r & 1UL) || height == TRI_SKIPLIST_MAX_HEIGHT) {
+                return height;
+              }
+              r = r >> 1;
+              height++;
+            }
+          }
+        }
+
+    };  // class SkipList
 
   }   // namespace triagens::basics
 }   // namespace triagens

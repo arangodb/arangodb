@@ -1,6 +1,9 @@
 .fixedDropdown {
-  @include border-radius(0 !important);
-  margin: 37px 0 0 0 !important;
+  background: $c-white !important;
+  border-color: $c-content-border !important;
+  border-radius: 3px !important;
+  margin: 10px -3px 0 !important;
+  right: -1px !important;
   width: 210px;
 
   &:after {
@@ -13,7 +16,12 @@
 
   .dropdown-header {
     border-bottom: 1px solid $c-semi-transp;
+    margin-left: -1px;
     padding: 0 !important;
+
+    a {
+      color: $c-black;
+    }
   }
 
   a {
@@ -41,6 +49,8 @@
     color: $c-black;
 
     .notificationItemTitle {
+      color: $c-black;
+      font-weight: 400;
       max-width: 165px;
       overflow-wrap: break-word;
       white-space: normal;
@@ -48,7 +58,7 @@
     }
 
     .notificationItemTitle:hover {
-      color: #000;
+      background-color: $c-transp;
       cursor: default;
     }
 
@@ -77,7 +87,7 @@
   height: 220px !important;
   min-height: 220px;
   overflow-x: hidden;
-  overflow-y: scroll;
+  overflow-y: auto;
   width: 100%;
 
   .dropdown-item:hover {
@@ -92,23 +102,27 @@
 
 #stat_hd {
   @include border-radius(3px);
-  background-color: $c-nav-bg;
-  border: 1px solid rgba(104, 103, 102, 0.10);
-  height: 24px;
+  background-color: $c-white;
+  border: 1px solid $c-content-border;
+  height: 25px;
   margin-top: 3px;
   text-align: center;
-  width: 24px;
+  width: 25px;
 
   #stat_hd_counter {
     color: $c-c2grey;
-    line-height: 24px;
-    margin-left: 1px;
+    line-height: 25px;
+    text-align: center;
   }
 }
 
 .fullNotification {
   background-color: $c-notification-red !important;
-  border: 2px solid $c-notification-red !important;
+  border: 1px solid $c-notification-red !important;
+
+  p {
+    color: $c-white !important;
+  }
 
   &:hover {
     @extend %clickable;

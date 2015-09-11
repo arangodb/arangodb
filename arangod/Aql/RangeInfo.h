@@ -32,6 +32,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
+#include "IndexOperators/index-operator.h"
 
 class VocShaper;
 
@@ -315,7 +316,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _bound as Json, this is either for constant values 
-/// (_isConstant==true) or for JSON-serialised subexpressions
+/// (_isConstant==true) or for JSON-serialized subexpressions
 /// (_isConstant==false).
 ////////////////////////////////////////////////////////////////////////////////
 

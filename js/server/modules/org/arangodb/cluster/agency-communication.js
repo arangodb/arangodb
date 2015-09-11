@@ -843,8 +843,8 @@ exports.Communication = function() {
   };
 };
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_agency-communication_agency
-/// @brief A wrapper around the Agency initialisation
+/// @start Docu Block JSF_agency-communication_agency
+/// @brief A wrapper around the Agency initialization
 ///
 /// @FUN{_createAgency()}
 ///
@@ -855,6 +855,7 @@ exports.Communication = function() {
 /// @code
 ///     agency  = communication._createAgency();
 /// @endcode
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 exports._createAgency = function() {
   'use strict';

@@ -34,9 +34,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
-#include "Indexes/HashIndex.h"
 #include "Indexes/Index.h"
-#include "Indexes/SkiplistIndex2.h"
+#include "Indexes/PathBasedIndex.h"
 
 namespace triagens {
   namespace aql {
@@ -67,15 +66,11 @@ namespace triagens {
         if (type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
           unique = true;
         }
-        else if (type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
-          auto hashIndex = static_cast<triagens::arango::HashIndex const*>(idx);
-          sparse = hashIndex->sparse();
-          unique = hashIndex->unique();
-        }
-        else if (type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-          auto skiplistIndex = static_cast<triagens::arango::SkiplistIndex2 const*>(idx);
-          sparse = skiplistIndex->sparse();
-          unique = skiplistIndex->unique();
+        else if (type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX ||
+                 type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+          auto pathBasedIndex = static_cast<triagens::arango::PathBasedIndex const*>(idx);
+          sparse = pathBasedIndex->sparse();
+          unique = pathBasedIndex->unique();
         }
       }
       
@@ -97,7 +92,9 @@ namespace triagens {
             auto * name = static_cast<TRI_json_t const*>(TRI_AtVector(&f->_value._objects, i));
 
             if (TRI_IsStringJson(name)) {
-              fields.emplace_back(std::string(name->_value._string.data, name->_value._string.length - 1));
+              std::vector<triagens::basics::AttributeName> parsedAttributes;
+              TRI_ParseAttributeString(std::string(name->_value._string.data, name->_value._string.length - 1), parsedAttributes);
+              fields.emplace_back(parsedAttributes);
             }
           }
         }
@@ -123,7 +120,9 @@ namespace triagens {
 
         triagens::basics::Json f(triagens::basics::Json::Array);
         for (auto const& field : fields) {
-          f.add(triagens::basics::Json(field));
+          std::string tmp;
+          TRI_AttributeNamesToString(field, tmp); 
+          f.add(triagens::basics::Json(tmp));
         }
 
         json("fields", f);
@@ -168,15 +167,15 @@ namespace triagens {
 
       public:
 
-        TRI_idx_iid_t const                  id;
-        triagens::arango::Index::IndexType   type;
-        bool                                 unique;
-        bool                                 sparse;
-        std::vector<std::string>             fields;
+        TRI_idx_iid_t const                                              id;
+        triagens::arango::Index::IndexType                               type;
+        bool                                                             unique;
+        bool                                                             sparse;
+        std::vector<std::vector<triagens::basics::AttributeName>>  fields;
 
       private:
 
-        triagens::arango::Index*             internals;
+        triagens::arango::Index*                      internals;
 
     };
 

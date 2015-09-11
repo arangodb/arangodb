@@ -196,7 +196,7 @@ describe("Graph Viewer", function() {
       );
     });
 
-    it('should throw an error if initialised with an invalid adapter', function() {
+    it('should throw an error if initialized with an invalid adapter', function() {
       var adapterConfig = {type: "unknown"};
       expect(function() {
         var gv = new GraphViewer(svg, 10, 10, adapterConfig);

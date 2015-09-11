@@ -1,26 +1,26 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge <<EOF
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/graph/graph/edge &lt;&lt;EOF</span>
 { 
-  "_key" : "edge1", 
-  "_from" : "vert2", 
-  "_to" : "vert1", 
-  "optional1" : "val1" 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge1"</span>, 
+  <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vert2"</span>, 
+  <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vert1"</span>, 
+  <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
 }
 EOF
 
-HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: 749282241
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+etag: <span class="hljs-number">764546594</span>
 
 { 
-  "edge" : { 
-    "_id" : "edges/edge1", 
-    "_key" : "edge1", 
-    "_rev" : "749282241", 
-    "_from" : "vertices/vert2", 
-    "_to" : "vertices/vert1", 
-    "$label" : null, 
-    "optional1" : "val1" 
+  <span class="hljs-string">"edge"</span> : { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge1"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge1"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"764546594"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/vert2"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/vert1"</span>, 
+    <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
   }, 
-  "error" : false, 
-  "code" : 202 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

@@ -1,12 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a basis class which defines the methods for determining
-///        when an input is "complete"
+/// @brief shell factory
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +23,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,14 +35,33 @@
 #include "LinenoiseShell.h"
 #elif defined TRI_HAVE_READLINE
 #include "ReadlineShell.h"
-#else 
-#include "DummyShell.h"
 #endif
+#include "DummyShell.h"
 
 using namespace triagens;
+using namespace arangodb;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            class ShellImplFactory
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+#include <iostream>
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a shell
+////////////////////////////////////////////////////////////////////////////////
 
 ShellImplementation* ShellImplFactory::buildShell (std::string const& history, 
                                                    Completer* completer) {
+  if (! isatty(STDIN_FILENO)) {
+    // no keyboard input. use low-level shell without fancy color codes 
+    // and with proper pipe handling
+    return new DummyShell(history, completer);
+  }
+
 #ifdef _WIN32
   // under Windows the readline is not compilable
   return new LinenoiseShell(history, completer);
@@ -57,7 +75,15 @@ ShellImplementation* ShellImplFactory::buildShell (std::string const& history,
 #endif
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell will have a CTRL-C handler
+////////////////////////////////////////////////////////////////////////////////
+
 bool ShellImplFactory::hasCtrlCHandler () {
+  if (! isatty(STDIN_FILENO)) {
+    return false;
+  }
+
 #ifdef _WIN32
   // under Windows the readline is not compilable
   return false;
@@ -73,8 +99,3 @@ bool ShellImplFactory::hasCtrlCHandler () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -829,6 +829,63 @@ function DocumentationAndConstraintsSpec () {
       assertTrue(called);
     },
 
+    testSetParamForJoiBodyParamWithAllowUnknownTrue: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = 'flurb',
+        description = stub(),
+        requestBody = {x: 1, y: 2},
+        schema = {x: joi.number().integer().required()},
+        called = false;
+
+      schema = joi.object().keys(schema).options({allowUnknown: true});
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      app.get('/foxx', function (providedReq) {
+        called = _.isEqual(providedReq.parameters[paramName], {x: 1, y: 2});
+      }).bodyParam(paramName, {
+        description: description,
+        type: schema
+      });
+
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
+
+      assertTrue(called);
+    },
+
+    testSetParamForJoiBodyParamWithAllowUnknownFalse: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = 'flurb',
+        description = stub(),
+        requestBody = {x: 1, y: 2},
+        schema = {x: joi.number().integer().required()},
+        called = false;
+
+      schema = joi.object().keys(schema).options({allowUnknown: false});
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      app.get('/foxx', function (providedReq) {
+        called = true;
+      }).bodyParam(paramName, {
+        description: description,
+        type: schema
+      });
+
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
+
+      assertFalse(called);
+      assertEqual(res.responseCode, 422);
+    },
+
     testSetParamForPureJoiBodyParam: function () {
       var req = { parameters: {} },
         res = {},

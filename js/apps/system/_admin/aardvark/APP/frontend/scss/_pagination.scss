@@ -6,15 +6,15 @@
 }
 
 .pagination-line {
-  margin: 20px 0;
-  margin-bottom: 0;
-  padding-top: 12px;
-  text-align: center;
-  margin-top: 0;
-  border-top: 1px solid rgba(104, 103, 102, 0.1);;
-  background-color: white;
+  background-color: $c-white;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
+  border-top: 1px solid rgba(104, 103, 102, .1);
+  margin: 20px 0;
+  margin-bottom: 0;
+  margin-top: 0;
+  padding-top: 12px;
+  text-align: center;
 
   %pg-active {
     background-color: $c-neutral;
@@ -43,9 +43,9 @@
     @extend %clear-float;
     display: inline-block;
     margin-left: 11px;
-    
+
     a {
-      @extend %clickable; 
+      @extend %clickable;
       @extend %pg-inner;
       border-width: 0;
       min-width: 12pt;
@@ -83,7 +83,6 @@
       }
     }
 
-    
     &.disabled {
       &:last-child,
       &:first-child {

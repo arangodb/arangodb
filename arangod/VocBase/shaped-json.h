@@ -32,6 +32,7 @@
 #define ARANGODB_VOC_BASE_SHAPED_JSON_H 1
 
 #include "Basics/Common.h"
+#include "Basics/fasthash.h"
 #include "Basics/json.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -863,6 +864,57 @@ typedef struct TRI_shaped_json_s {
 TRI_shaped_json_t;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Hash and Equal comparison for a vector of TRI_shaped_json_t
+////////////////////////////////////////////////////////////////////////////////
+
+namespace std {
+
+  template<> struct hash<std::vector<TRI_shaped_json_t>> {
+    size_t operator () (std::vector<TRI_shaped_json_t> const& x) const {
+      std::hash<TRI_shape_sid_t> sidHash;
+      size_t res = 0xdeadbeef;
+      for (auto& el : x) {
+        res ^= sidHash(el._sid);
+        if (el._data.data != nullptr) {
+          res ^= fasthash64(el._data.data, el._data.length, 0xdeadbeef);
+        }
+      }
+      return res;
+    }
+  };
+
+  template<> struct equal_to<std::vector<TRI_shaped_json_t>> {
+    bool operator () (std::vector<TRI_shaped_json_t> const& a,
+                      std::vector<TRI_shaped_json_t> const& b) const {
+      size_t size = a.size();
+      if (size != b.size()) {
+        return false;
+      }
+      for (size_t i = 0; i < size; ++i) {
+        if (a[i]._sid != b[i]._sid) {
+          return false;
+        }
+        if (a[i]._data.data == nullptr || b[i]._data.data == nullptr) {
+          // TODO FIXME
+          return false;
+        }
+        if (a[i]._data.length != b[i]._data.length) {
+          return false;
+        }
+        if (memcmp(a[i]._data.data, b[i]._data.data, a[i]._data.length) != 0) {
+          return false;
+        }
+      }
+      return true;
+    }
+  };
+
+} //closes namespace std
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief shaped json sub-object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1032,9 +1084,13 @@ bool TRI_AtHomogeneousSizedListShapedJson (TRI_homogeneous_sized_list_shape_t co
 /// @brief prints a TRI_shape_t for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef DEBUG_JSON_SHAPER
+
 void TRI_PrintShape (VocShaper*,
                      TRI_shape_t const* shape,
                      int indent);
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string value encoded in a shaped json

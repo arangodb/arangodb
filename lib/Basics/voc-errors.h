@@ -163,8 +163,6 @@
 ///   Will be raised when no suitable index for the query is known.
 /// - 1210: @LIT{unique constraint violated}
 ///   Will be raised when there is a unique constraint violation.
-/// - 1211: @LIT{geo index violated}
-///   Will be raised when an illegal coordinate is used.
 /// - 1212: @LIT{index not found}
 ///   Will be raised when an index with a given identifier is unknown.
 /// - 1213: @LIT{cross collection request not allowed}
@@ -270,8 +268,11 @@
 ///   Special error code used to indicate the replication applier was stopped
 ///   by a user.
 /// - 1413: @LIT{no start tick}
-///   Will be raised when the replication error is started without a known
+///   Will be raised when the replication applier is started without a known
 ///   start tick value.
+/// - 1414: @LIT{start tick not present}
+///   Will be raised when the replication applier fetches data using a start
+///   tick, but that start tick is not present on the logger server anymore.
 /// - 1450: @LIT{could not connect to agency}
 ///   Will be raised when none of the agency servers can be connected to.
 /// - 1451: @LIT{missing coordinator header}
@@ -554,13 +555,14 @@
 ///   a graph with this name could not be found.
 /// - 1925: @LIT{graph already exists}
 ///   a graph with this name already exists.
-/// - 1926: @LIT{collection does not exist}
-///    does not exist.
+/// - 1926: @LIT{vertex collection does not exist or is not part of the graph}
+///   the specified vertex collection does not exist or is not part of the
+///   graph.
 /// - 1927: @LIT{not a vertex collection}
 ///   the collection is not a vertex collection.
 /// - 1928: @LIT{not in orphan collection}
 ///   Vertex collection not in orphan collection of the graph.
-/// - 1929: @LIT{collection used in edge def}
+/// - 1929: @LIT{collection already used in edge def}
 ///   The collection is already used in an edge definition of the graph.
 /// - 1930: @LIT{edge collection not used in graph}
 ///   The edge collection is not used in any edge definition of the graph.
@@ -580,6 +582,8 @@
 ///   Invalid id
 /// - 1938: @LIT{collection used in orphans}
 ///   The collection is already used in the orphans of the graph.
+/// - 1939: @LIT{edge collection does not exist or is not part of the graph}
+///   the specified edge collection does not exist or is not part of the graph.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -667,7 +671,7 @@
 /// @brief register all errors for ArangoDB
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseErrorMessages ();
+void TRI_InitializeErrorMessages ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 0: ERROR_NO_ERROR
@@ -1374,16 +1378,6 @@ void TRI_InitialiseErrorMessages ();
 #define TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED                       (1210)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1211: ERROR_ARANGO_GEO_INDEX_VIOLATED
-///
-/// geo index violated
-///
-/// Will be raised when an illegal coordinate is used.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED                               (1211)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 1212: ERROR_ARANGO_INDEX_NOT_FOUND
 ///
 /// index not found
@@ -1819,11 +1813,22 @@ void TRI_InitialiseErrorMessages ();
 ///
 /// no start tick
 ///
-/// Will be raised when the replication error is started without a known start
-/// tick value.
+/// Will be raised when the replication applier is started without a known
+/// start tick value.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_NO_START_TICK                               (1413)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1414: ERROR_REPLICATION_START_TICK_NOT_PRESENT
+///
+/// start tick not present
+///
+/// Will be raised when the replication applier fetches data using a start
+/// tick, but that start tick is not present on the logger server anymore.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT                      (1414)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1450: ERROR_CLUSTER_NO_AGENCY
@@ -2985,9 +2990,9 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1926: ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST
 ///
-/// collection does not exist
+/// vertex collection does not exist or is not part of the graph
 ///
-///  does not exist.
+/// the specified vertex collection does not exist or is not part of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST                         (1926)
@@ -3015,7 +3020,7 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1929: ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF
 ///
-/// collection used in edge def
+/// collection already used in edge def
 ///
 /// The collection is already used in an edge definition of the graph.
 ////////////////////////////////////////////////////////////////////////////////
@@ -3111,6 +3116,16 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS                        (1938)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1939: ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST
+///
+/// edge collection does not exist or is not part of the graph
+///
+/// the specified edge collection does not exist or is not part of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST                           (1939)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN

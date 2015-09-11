@@ -59,32 +59,32 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
     */
     icons = {
       expand: {
-        icon: "expand",
-        title: "SPOT"
+        icon: "hand-pointer-o",
+        title: "Expand a node."
       },
       add: {
-        icon: "plus-square-o",
-        title: "NODE"
+        icon: "plus-square",
+        title: "Add a node."
       },
       trash: {
-        icon: "trash-o",
-        title: "TRASH"
+        icon: "minus-square",
+        title: "Remove a node/edge."
       },
       drag: {
-        icon: "arrows",
-        title: "DRAG"
+        icon: "hand-rock-o",
+        title: "Drag a node."
       },
       edge: {
-        icon: "link",
-        title: "EDGE"
+        icon: "external-link-square",
+        title: "Create an edge between two nodes."
       },
       edit: {
-        icon: "pencil",
-        title: "EDIT"
+        icon: "pencil-square",
+        title: "Edit attributes of a node."
       },
       view: {
         icon: "search",
-        title: "VIEW"
+        title: "View attributes of a node."
       }
     },
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
@@ -519,12 +519,12 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
   };
 
   this.addAll = function () {
+    self.addControlExpand();
     self.addControlDrag();
     self.addControlView();
     self.addControlEdit();
-    self.addControlExpand();
-    self.addControlDelete();
     self.addControlConnect();
     self.addControlNewNode();
+    self.addControlDelete();
   };
 }

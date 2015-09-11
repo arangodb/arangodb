@@ -81,7 +81,7 @@ coordinators below.
 
 More interesting is that such a cluster plan document can be used to
 start up the cluster conveniently using a *Kickstarter* object. Please
-note that the *launch* method of the kickstarter shown below initialises
+note that the *launch* method of the kickstarter shown below initializes
 all data directories and log files, so if you have previously used the
 same cluster plan you will lose all your data. Use the *relaunch* method
 described below instead in that case.

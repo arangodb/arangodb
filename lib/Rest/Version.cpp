@@ -51,10 +51,10 @@ using namespace triagens::rest;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise
+/// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-void Version::initialise () {
+void Version::initialize () {
   if (! Values.empty()) {
     return;
   }
@@ -79,7 +79,17 @@ void Version::initialise () {
   Values["maintainer-mode"] = "false";
 #endif
 
-#ifdef TRI_HAVE_LINUX_POLL
+#ifdef TRI_READLINE_VERSION
+  Values["readline-version"] = getReadlineVersion();
+#endif
+
+#ifdef TRI_HAVE_TCMALLOC
+  Values["tcmalloc"] = "true";
+#else
+  Values["tcmalloc"] = "false";
+#endif
+
+#ifdef TRI_HAVE_POLL_H
   Values["fd-client-event-handler"] = "poll";
 #else
   Values["fd-client-event-handler"] = "select";
@@ -172,6 +182,22 @@ std::string Version::getZLibVersion () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get readline version
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Version::getReadlineVersion () {
+#ifdef TRI_READLINE_VERSION
+  std::string const value(TRI_READLINE_VERSION);
+
+  if (value.size() >= 2) {
+    return value;
+  }
+  // fallthrough
+#endif
+  return std::string("unknown version");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get ICU version
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -245,14 +271,20 @@ std::string Version::getVerboseVersionString () {
   std::ostringstream version;
 
   version << "ArangoDB "
-          << getServerVersion()
+          << TRI_VERSION_FULL
           << " " << (sizeof(void*) == 4 ? "32" : "64") << "bit"
 #ifdef TRI_ENABLE_MAINTAINER_MODE
           << " maintainer mode"
 #endif
-          << " -- "
+          << ", using "
+#ifdef TRI_HAVE_TCMALLOC
+          << "tcmalloc, "
+#endif
           << "ICU " << getICUVersion() << ", "
           << "V8 " << getV8Version() << ", "
+#ifdef TRI_READLINE_VERSION
+          << "Readline " << getReadlineVersion() << ", "
+#endif
           << getOpenSSLVersion();
 
   return version.str();

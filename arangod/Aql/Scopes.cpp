@@ -95,8 +95,9 @@ void Scope::addVariable (Variable* variable) {
 /// @brief checks if a variable exists in the scope
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Scope::existsVariable (char const* name) const {
-  return (getVariable(name) != nullptr);
+bool Scope::existsVariable (char const* name,
+                            size_t nameLength) const {
+  return (getVariable(name, nameLength) != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,8 +112,9 @@ bool Scope::existsVariable (std::string const& name) const {
 /// @brief returns a variable
 ////////////////////////////////////////////////////////////////////////////////
 
-Variable const* Scope::getVariable (char const* name) const {
-  std::string const varname(name);
+Variable const* Scope::getVariable (char const* name,
+                                    size_t nameLength) const {
+  std::string const varname(name, nameLength);
 
   auto it = _variables.find(varname);
 
@@ -135,6 +137,30 @@ Variable const* Scope::getVariable (std::string const& name) const {
   }
 
   return (*it).second;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable, allowing usage of special pseudo vars such
+/// as OLD and NEW
+////////////////////////////////////////////////////////////////////////////////
+
+Variable const* Scope::getVariable (char const* name,
+                                    size_t nameLength,
+                                    bool allowSpecial) const {
+  auto variable = getVariable(name, nameLength);
+
+  if (variable == nullptr && allowSpecial) {
+    // variable does not exist
+    // now try variable aliases OLD (= $OLD) and NEW (= $NEW)
+    if (strcmp(name, "OLD") == 0) {
+      variable = getVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD));
+    }
+    else if (strcmp(name, "NEW") == 0) {
+      variable = getVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW));
+    }
+  }
+
+  return variable;
 }
 
 // -----------------------------------------------------------------------------
@@ -246,19 +272,59 @@ void Scopes::addVariable (Variable* variable) {
 /// @brief checks whether a variable exists in any scope
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Scopes::existsVariable (char const* name) const {
-  return (getVariable(name) != nullptr);
+bool Scopes::existsVariable (char const* name,
+                             size_t nameLength) const {
+  return (getVariable(name, nameLength) != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a variable by name - this respects the current scopes
 ////////////////////////////////////////////////////////////////////////////////
         
-Variable const* Scopes::getVariable (char const* name) const {
+Variable const* Scopes::getVariable (char const* name,
+                                     size_t nameLength) const {
+  TRI_ASSERT(! _activeScopes.empty());
+
+  for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
+    auto variable = (*it)->getVariable(name, nameLength);
+
+    if (variable != nullptr) {
+      return variable;
+    }
+  }
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable by name - this respects the current scopes
+////////////////////////////////////////////////////////////////////////////////
+        
+Variable const* Scopes::getVariable (std::string const& name) const {
   TRI_ASSERT(! _activeScopes.empty());
 
   for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
     auto variable = (*it)->getVariable(name);
+
+    if (variable != nullptr) {
+      return variable;
+    }
+  }
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable by name - this respects the current scopes
+////////////////////////////////////////////////////////////////////////////////
+        
+Variable const* Scopes::getVariable (char const* name, 
+                                     size_t nameLength,
+                                     bool allowSpecial) const {
+  TRI_ASSERT(! _activeScopes.empty());
+
+  for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
+    auto variable = (*it)->getVariable(name, nameLength, allowSpecial);
 
     if (variable != nullptr) {
       return variable;

@@ -168,16 +168,16 @@ TRI_log_appender_t::~TRI_log_appender_t () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief already initialised
+/// @brief already initialized
 ////////////////////////////////////////////////////////////////////////////////
 
-static volatile int Initialised = 0;
+static volatile int Initialized = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function already installed
 ////////////////////////////////////////////////////////////////////////////////
 
-static volatile bool ShutdownInitalised = false;
+static volatile bool ShutdownInitalized = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of first log file
@@ -1812,15 +1812,15 @@ char const* TRI_GetFilenameLogging () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the logging components
+/// @brief initializes the logging components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseLogging (bool threaded) {
-  if (Initialised > 0) {
+void TRI_InitializeLogging (bool threaded) {
+  if (Initialized > 0) {
     return;
   }
 
-  Initialised = 1;
+  Initialized = 1;
 
   UseFileBasedLogging = false;
   memset(FilesToLog, 0, sizeof(FilesToLog));
@@ -1845,9 +1845,9 @@ void TRI_InitialiseLogging (bool threaded) {
   }
 
   // always close logging at the end
-  if (! ShutdownInitalised) {
+  if (! ShutdownInitalized) {
     atexit((void (*)(void)) TRI_ShutdownLogging);
-    ShutdownInitalised = true;
+    ShutdownInitalized = true;
   }
 }
 
@@ -1856,8 +1856,8 @@ void TRI_InitialiseLogging (bool threaded) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ShutdownLogging (bool clearBuffers) {
-  if (Initialised != 1) {
-    if (Initialised == 0) {
+  if (Initialized != 1) {
+    if (Initialized == 0) {
       return ThreadedLogging;
     }
     
@@ -1865,7 +1865,7 @@ bool TRI_ShutdownLogging (bool clearBuffers) {
     return false;
   }
 
-  Initialised = 1;
+  Initialized = 1;
 
   // logging is now inactive (this will terminate the logging thread)
   LoggingActive = 0;
@@ -1915,7 +1915,7 @@ bool TRI_ShutdownLogging (bool clearBuffers) {
     }
   }
 
-  Initialised = 0;
+  Initialized = 0;
 
   return ThreadedLogging;
 }
@@ -1943,7 +1943,7 @@ void TRI_ReopenLogging () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FlushLogging () {
-  if (Initialised != 1) {
+  if (Initialized != 1) {
     return;
   }
 

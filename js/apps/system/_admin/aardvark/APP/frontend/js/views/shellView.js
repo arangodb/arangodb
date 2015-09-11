@@ -28,7 +28,9 @@
         self.resize();
       });
 
-      this.executeJs("start_pretty_print()");
+      // enables pretty printing, fetches the list of collections and returns undefined
+      // (in order to not print anything to the user)
+      this.executeJs("start_pretty_print(); try { db._collections(); } catch (err) { } undefined;");
 
       return this;
     },

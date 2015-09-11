@@ -101,7 +101,7 @@ int TRI_FlushMMFile (int fileDescriptor,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MMFile (void* memoryAddress, 
-                size_t numOfBytesToInitialise, 
+                size_t numOfBytesToInitialize, 
                 int memoryProtection,
                 int flags, 
                 int fileDescriptor, 
@@ -118,7 +118,7 @@ int TRI_MMFile (void* memoryAddress,
   // Set the high and low order 32 bits for using a 64 bit integer
   // ...........................................................................
 
-  mmLength.QuadPart = numOfBytesToInitialise;
+  mmLength.QuadPart = numOfBytesToInitialize;
 
   // ...........................................................................
   // Whenever we talk to the memory map functions, we require a file handle
@@ -230,7 +230,7 @@ int TRI_MMFile (void* memoryAddress,
   // ...........................................................................
   if (*mmHandle == nullptr) {
     DWORD errorCode = GetLastError();
-    LOG_DEBUG("File descriptor converted to an invalid handle",errorCode);
+    LOG_DEBUG("File descriptor converted to an invalid handle: %d", errorCode);
     return TRI_ERROR_SYS_ERROR;
   }
 
@@ -240,7 +240,7 @@ int TRI_MMFile (void* memoryAddress,
   // ........................................................................
 
   //TODO: fix the viewProtection above *result = MapViewOfFile(*mmHandle, viewProtection, 0, 0, 0);
-  *result = MapViewOfFile(*mmHandle, FILE_MAP_ALL_ACCESS, 0, 0, numOfBytesToInitialise);
+  *result = MapViewOfFile(*mmHandle, FILE_MAP_ALL_ACCESS, 0, 0, numOfBytesToInitialize);
 
   // ........................................................................
   // The map view of file has failed.
@@ -252,10 +252,10 @@ int TRI_MMFile (void* memoryAddress,
     // we have failure for some reason
     // TODO: map the error codes of windows to the TRI_ERROR (see function DWORD WINAPI GetLastError(void) );
     if (errorCode == ERROR_NOT_ENOUGH_MEMORY) {
-      LOG_DEBUG("MapViewOfFile failed with out of memory error %d",errorCode);
+      LOG_DEBUG("MapViewOfFile failed with out of memory error %d", (int) errorCode);
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    LOG_DEBUG("MapViewOfFile failed with error code = %d",errorCode);
+    LOG_DEBUG("MapViewOfFile failed with error code = %d", (int) errorCode);
     return TRI_ERROR_SYS_ERROR;
   }
 
@@ -332,6 +332,15 @@ int TRI_ProtectMMFile (void* memoryAddress,
     viewProtection   = FILE_MAP_ALL_ACCESS;
   }
 
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gives hints about upcoming sequential memory usage
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_MMFileAdvise (void*, size_t, int) {
+  // Not on Windows
   return TRI_ERROR_NO_ERROR;
 }
 

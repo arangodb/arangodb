@@ -33,15 +33,13 @@
 #include "Basics/Common.h"
 
 #ifdef _WIN32
-  #include "Basics/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
+#include "Aql/QueryRegistry.h"
 #include "Rest/AnyServer.h"
 #include "Rest/OperationMode.h"
-
 #include "VocBase/vocbase.h"
-#include "HttpServer/HttpHandlerFactory.h"
-#include "Aql/QueryRegistry.h"
 
 struct TRI_server_t;
 struct TRI_vocbase_defaults_s;
@@ -60,6 +58,8 @@ namespace triagens {
     class ApplicationEndpointServer;
     class ApplicationScheduler;
     class AsyncJobManager;
+    class Dispatcher;
+    class HttpHandlerFactory;
     class HttpServer;
     class HttpsServer;
   }
@@ -127,6 +127,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run arbitrary checks at startup
+////////////////////////////////////////////////////////////////////////////////
+
+        void runStartupChecks ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for the heartbeat thread to run
@@ -325,6 +331,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int _dispatcherThreads;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of additional dispatcher threads
+////////////////////////////////////////////////////////////////////////////////
+
+	std::vector<int> _additionalThreads;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum size of the dispatcher queue for asynchronous requests
@@ -595,8 +607,10 @@ namespace triagens {
 /// If *true*, the Foxx queues will be available and jobs in the queues will
 /// be executed asynchronously.
 ///
-/// The default is *true*. It should only be changed if Foxx queues are not
-/// used at all
+/// The default is *true*.
+/// When set to `false` the queue manager will be disabled and any jobs
+/// are prevented from being processed, which may improve CPU load if you do not
+/// plan to use Foxx queues at all.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -693,7 +707,13 @@ namespace triagens {
 /// this will be removed once we have a global struct with "everything useful"
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::pair<ApplicationV8*, aql::QueryRegistry*>* _pairForAql;
+        std::pair<ApplicationV8*, aql::QueryRegistry*>* _pairForAqlHandler;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ptr to pair used for job manager rest handler
+////////////////////////////////////////////////////////////////////////////////
+
+        std::pair<triagens::rest::Dispatcher*, triagens::rest::AsyncJobManager*>* _pairForJobHandler;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief thread pool for background parallel index creation
@@ -706,6 +726,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _threadAffinity;
+
     };
   }
 }

@@ -5,8 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,19 +22,26 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_REST_SERVER_CONSOLE_THREAD_H
 #define ARANGODB_REST_SERVER_CONSOLE_THREAD_H 1
 
-#include "Basics/Common.h"
 #include "Basics/Thread.h"
-#include "V8/V8LineEditor.h"
+
 #include "V8Server/ApplicationV8.h"
 
 struct TRI_vocbase_t;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+namespace arangodb {
+    class V8LineEditor;
+}
 
 namespace triagens {
   namespace rest {
@@ -43,26 +49,37 @@ namespace triagens {
   }
 
   namespace arango {
+    class ApplicationV8;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ConsoleThread
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the line editor object for use in debugging
-////////////////////////////////////////////////////////////////////////////////
-
-    extern std::atomic<V8LineEditor*> serverConsole;
-    extern triagens::basics::Mutex serverConsoleMutex;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB server
+/// @brief ConsoleThread
 ////////////////////////////////////////////////////////////////////////////////
 
     class ConsoleThread : public basics::Thread {
-      private:
-        ConsoleThread (const ConsoleThread&);
-        ConsoleThread& operator= (const ConsoleThread&);
+      ConsoleThread (const ConsoleThread&) = delete;
+      ConsoleThread& operator= (const ConsoleThread&) = delete;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           static public variables
+// -----------------------------------------------------------------------------
+
+    public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the line editor object for use in debugging
+////////////////////////////////////////////////////////////////////////////////
+
+      static arangodb::V8LineEditor* serverConsole;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mutex for console access
+////////////////////////////////////////////////////////////////////////////////
+
+      static triagens::basics::Mutex serverConsoleMutex;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -75,14 +92,24 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ConsoleThread (triagens::rest::ApplicationServer*,
-                       ApplicationV8*,
-                       TRI_vocbase_t*);
+		       ApplicationV8*,
+		       TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
         ~ConsoleThread ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    Thread methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs the thread
+////////////////////////////////////////////////////////////////////////////////
+
+        void run () override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -95,7 +122,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool done () const {
-          return (_done == 1);
+          return _done;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,18 +137,12 @@ namespace triagens {
 /// @brief whether or not the thread is chatty on shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isSilent () {
+        bool isSilent () override {
           return true;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs the thread
-////////////////////////////////////////////////////////////////////////////////
-
-        void run ();
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
       private:
@@ -138,18 +159,41 @@ namespace triagens {
 
       private:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief application server
+////////////////////////////////////////////////////////////////////////////////
+
         rest::ApplicationServer* _applicationServer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief V8 dealer
+////////////////////////////////////////////////////////////////////////////////
 
         ApplicationV8* _applicationV8;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief currently used V8 context
+////////////////////////////////////////////////////////////////////////////////
+
         ApplicationV8::V8Context* _context;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief vocbase
+////////////////////////////////////////////////////////////////////////////////
 
         TRI_vocbase_t* _vocbase;
 
-        sig_atomic_t _done;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief done flag
+////////////////////////////////////////////////////////////////////////////////
+
+	std::atomic<bool> _done;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief user aborted flag
+////////////////////////////////////////////////////////////////////////////////
 
         bool _userAborted;
-
     };
   }
 }
@@ -159,8 +203,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
