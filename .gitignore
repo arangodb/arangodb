@@ -16,6 +16,7 @@ js-*.h
 
 *.diff
 *.patch
+*.lnk
 
 .libev-build-64
 .v8-build-64
