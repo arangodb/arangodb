@@ -68,7 +68,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateDayOfWeekInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFWEEK()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFWEEK(1, 1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFWEEK(null)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFWEEK(null)");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFWEEK(false)");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFWEEK([])");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFWEEK({})");
@@ -131,7 +131,7 @@ function ahuacatlDateFunctionsTestSuite () {
       values.forEach(function (value) {
         var actual = getQueryResults("RETURN DATE_DAYOFWEEK(@value)", { value: value[0] });
         assertEqual([ value[1] ], actual);
-      }); 
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -656,6 +656,325 @@ function ahuacatlDateFunctionsTestSuite () {
         assertEqual([ value[1] ], actual);
       }); 
     },
+
+// TODO: verify all assertions of the following functions below are actually correct:
+// DATE_DAYOFYEAR(), DATE_ISOWEEK(), DATE_LEAPYEAR(), DATE_QUARTER(), DATE_ADD(),
+// DATE_SUBTRACT(), DATE_DIFF(). Unaffected should be: DATE_COMPARE(), DATE_FORMAT().
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_dayofyear function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDateDayOfYearInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFYEAR()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFYEAR(1, 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFYEAR(null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFYEAR(false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFYEAR([])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFYEAR({})");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_dayofyear function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDateDayOfYear : function () {
+      var values = [
+        [ "2000-04-29", 120 ],
+        [ "2000-04-29Z", 120 ],
+        [ "2000-12-31", 366 ],
+        [ "2000-12-31Z", 366 ],
+        [ "2100-12-31", 365 ],
+        [ "2100-12-31Z", 365 ],
+        [ "2400-12-31", 366 ],
+        [ "2400-12-31Z", 366 ],
+        [ "2012-02-12 13:24:12", 43 ],
+        [ "2012-02-12 13:24:12Z", 43 ],
+        [ "2012-02-12 23:59:59.991", 43 ],
+        [ "2012-02-12 23:59:59.991Z", 43 ],
+        [ "2012-02-12", 43 ],
+        [ "2012-02-12Z", 43 ],
+        [ "2012-02-12T13:24:12Z", 43 ],
+        [ "2012-02-12Z", 43 ],
+        [ "2012-2-12Z", 43 ],
+        [ "1910-01-02T03:04:05Z", 2 ],
+        [ "1910-01-02 03:04:05Z", 2 ],
+        [ "1910-01-02", 2 ],
+        [ "1910-01-02Z", 2 ],
+        [ "1970-01-01T01:05:27", 1 ],
+        [ "1970-01-01T01:05:27Z", 1 ],
+        [ "1970-01-01 01:05:27Z", 1 ],
+        [ "1970-1-1Z", 1 ],
+        [ "1221-02-28T23:59:59Z", 59 ],
+        [ "1221-02-28 23:59:59Z", 59 ],
+        [ "1221-02-28Z", 59 ],
+        [ "1221-2-28Z", 59 ],
+        /* 1000 was historically a leap year, but we do Gregorian calendar here */
+        [ "1000-12-24T04:12:00Z", 358 ],
+        [ "1000-12-24Z", 358 ],
+        [ "1000-12-24 04:12:00Z", 358 ],
+        [ "3456-12-31T23:59:58.99Z", 366 ],
+        [ "3456-12-31Z", 366 ],
+        [ "9999-12-31T23:59:59.999Z", 365 ],
+        [ "9999-12-31Z", 365 ],
+        [ "9999-12-31z", 365 ],
+        [ "9999-12-31", 365 ],
+        [ "2012Z", 1 ],
+        [ "2012z", 1 ],
+        [ "2012", 1 ],
+        [ "2012-1Z", 1 ],
+        [ "2012-1z", 1 ],
+        [ "2012-1-1z", 1 ],
+        [ "2012-01-01Z", 1 ],
+        [ "2012-01-01Z", 1 ],
+        [ "  2012-01-01Z", 1 ],
+        [ "  2012-01-01z", 1 ],
+        [ 1399395674000, 126 ],
+        [ 60123, 1 ],
+        [ 1, 1 ],
+        [ 0, 1 ]
+      ];
+
+      values.forEach(function (value) {
+        var actual = getQueryResults("RETURN DATE_DAYOFYEAR(@value)", { value: value[0] });
+        assertEqual([ value[1] ], actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_isoweek function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDateISOWeekInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISOWEEK()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISOWEEK(1, 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ISOWEEK(null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ISOWEEK(false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ISOWEEK([])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ISOWEEK({})");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_isoweek function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDateISOWeek : function () {
+      var values = [
+        [ "2000-04-29", 17 ],
+        [ "2000-04-29Z", 17 ],
+        [ "2000-12-31", 52 ],
+        [ "2000-12-31Z", 52 ],
+        [ "2100-12-31", 52 ],
+        [ "2100-12-31Z", 52 ],
+        [ "2400-12-31", 52 ],
+        [ "2400-12-31Z", 52 ],
+        [ "2012-02-12 13:24:12", 6 ],
+        [ "2012-02-12 13:24:12Z", 6 ],
+        [ "2012-02-12 23:59:59.991", 6 ],
+        [ "2012-02-12 23:59:59.991Z", 6 ],
+        [ "2012-02-12", 6 ],
+        [ "2012-02-12Z", 6 ],
+        [ "2012-02-12T13:24:12Z", 6 ],
+        [ "2012-02-12Z", 6 ],
+        [ "2012-2-12Z", 6 ],
+        [ "1910-01-02T03:04:05Z", 52 ],
+        [ "1910-01-02 03:04:05Z", 52 ],
+        [ "1910-01-02", 52 ],
+        [ "1910-01-02Z", 52 ],
+        [ "1970-01-01T01:05:27", 1 ],
+        [ "1970-01-01T01:05:27Z", 1 ],
+        [ "1970-01-01 01:05:27Z", 1 ],
+        [ "1970-1-1Z", 1 ],
+        [ "1221-02-28T23:59:59Z", 8 ],
+        [ "1221-02-28 23:59:59Z", 8 ],
+        [ "1221-02-28Z", 8 ],
+        [ "1221-2-28Z", 8 ],
+        [ "1000-12-24T04:12:00Z", 52 ],
+        [ "1000-12-24Z", 52 ],
+        [ "1000-12-24 04:12:00Z", 52 ],
+        [ "2016Z", 53 ],
+        [ "2016z", 53 ],
+        [ "2016", 53 ],
+        [ "2016-1Z", 53 ],
+        [ "2016-1z", 53 ],
+        [ "2016-1-1z", 53 ],
+        [ "2016-01-01Z", 53 ],
+        [ "2016-01-01Z", 53 ],
+        [ "  2016-01-01Z", 53 ],
+        [ "  2016-01-01z", 53 ],
+        [ 1399395674000, 19 ],
+        [ 60123, 1 ],
+        [ 1, 1 ],
+        [ 0, 1 ]
+      ];
+
+      values.forEach(function (value) {
+        var actual = getQueryResults("RETURN DATE_ISOWEEK(@value)", { value: value[0] });
+        assertEqual([ value[1] ], actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_leapyear function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDateLeapYearInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_LEAPYEAR()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_LEAPYEAR(1, 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_LEAPYEAR(null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_LEAPYEAR(false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_LEAPYEAR([])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_LEAPYEAR({})");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_leapyear function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDateLeapYear : function () {
+      var values = [
+        [ "2000-04-29", true ],
+        [ "2000-04-29Z", true ],
+        [ "2000-12-31", true ],
+        [ "2000-12-31Z", true ],
+        [ "2100-12-31", false ],
+        [ "2100-12-31Z", false ],
+        [ "2400-12-31", true ],
+        [ "2400-12-31Z", true ],
+        [ "2012-02-12 13:24:12", true ],
+        [ "2012-02-12 13:24:12Z", true ],
+        [ "2012-02-12 23:59:59.991", true ],
+        [ "2012-02-12 23:59:59.991Z", true ],
+        [ "2012-02-12", true ],
+        [ "2012-02-12Z", true ],
+        [ "2012-02-12T13:24:12Z", true ],
+        [ "2012-02-12Z", true ],
+        [ "2012-2-12Z", true ],
+        [ "1910-01-02T03:04:05Z", false ],
+        [ "1910-01-02 03:04:05Z", false ],
+        [ "1910-01-02", false ],
+        [ "1910-01-02Z", false ],
+        [ "1970-01-01T01:05:27", false ],
+        [ "1970-01-01T01:05:27Z", false ],
+        [ "1970-01-01 01:05:27Z", false ],
+        [ "1970-1-1Z", false ],
+        [ "1221-02-28T23:59:59Z", false ],
+        [ "1221-02-28 23:59:59Z", false ],
+        [ "1221-02-28Z", false ],
+        [ "1221-2-28Z", false ],
+        [ "1000-12-24T04:12:00Z", false ],
+        [ "1000-12-24Z", false ],
+        [ "1000-12-24 04:12:00Z", false ],
+        [ "2016Z", true ],
+        [ "2016z", true ],
+        [ "2016", true ],
+        [ "2016-1Z", true ],
+        [ "2016-1z", true ],
+        [ "2016-1-1z", true ],
+        [ "2016-01-01Z", true ],
+        [ "2016-01-01Z", true ],
+        [ "  2016-01-01Z", true ],
+        [ "  2016-01-01z", true ],
+        [ 1399395674000, false ],
+        [ 60123, false ],
+        [ 1, false ],
+        [ 0, false ]
+      ];
+
+      values.forEach(function (value) {
+        var actual = getQueryResults("RETURN DATE_LEAPYEAR(@value)", { value: value[0] });
+        assertEqual([ value[1] ], actual);
+      });
+    },
+
+// TODO: DATE_QUARTER()
+
+// TODO: additional ISO duration tests for DATE_ADD() / DATE_SUBTRACT()
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_add function
+////////////////////////////////////////////////////////////////////////////////
+    testDateAddInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD(1, 1, 1, 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(1, 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(1, 1, 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(1, 'P1Y', 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(null, 1, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(false, 1, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD([], 1, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD({}, 1, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'sugar')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 1, '')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), '', 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), '1', 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 'one', 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), null, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), false, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), [], 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), {}, 'year')");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_add function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDateAdd : function () {
+      var values = [
+        [ ["2000-04-29", 2, "days"], "2000-05-01T00:00:00.000Z" ],
+        [ ["2000-04-29Z", 2, "days"], "2000-05-01T00:00:00.000Z" ],
+        [ ["2000-12-31", 1, "day"], "2001-01-01T00:00:00.000Z" ],
+        [ ["2000-12-31Z", 1, "day"], "2001-01-01T00:00:00.000Z" ],
+        [ ["2000-12-31Z", 1, "d"], "2001-01-01T00:00:00.000Z" ],
+        [ ["2100-12-31", 3, "months"], "2101-03-31T00:00:00.000Z" ],
+        [ ["2100-12-31Z", 3, "month"], "2101-03-31T00:00:00.000Z" ],
+        [ ["2100-12-31", 3, "m"], "2101-03-31T00:00:00.000Z" ],
+        [ ["2100-12-31Z", -3, "m"], "2100-10-01T00:00:00.000Z" ], /* which is 2100-09-30T24:00:00.000Z*/
+        [ ["2012-02-12 13:24:12", 10, "minutes"], "2012-02-12T13:34:12.000Z" ],
+        [ ["2012-02-12 13:24:12Z", 10, "i"], "2012-02-12T13:34:12.000Z" ],
+        [ ["2012-02-12 23:59:59.991", 9, "milliseconds"], "2012-02-13T00:00:00.000Z" ],
+        [ ["2012-02-12 23:59:59.991Z", 9, "ms"], "2012-02-13T00:00:00.000Z" ],
+        [ ["2012-02-12", 8, "years"], "2020-02-12T00:00:00.000Z" ],
+        [ ["2012-02-12Z", 8, "year"], "2020-02-12T00:00:00.000Z" ],
+        [ ["2012-02-12T13:24:12Z", 8, "y"], "2020-02-12T13:24:12.000Z" ],
+        [ ["2012-02-12Z", -100, "years"], "1912-02-12T00:00:00.000Z" ],
+        [ ["2012-2-12Z", -100, "years"], "1912-02-12T00:00:00.000Z" ],
+        [ ["1910-01-02T03:04:05Z", 5, "hours"], "1910-01-02T08:04:05.000Z" ],
+        [ ["1910-01-02 03:04:05Z", 5, "hour"], "1910-01-02T08:04:05.000Z" ],
+        [ ["1910-01-02", 5, "5"], null ],
+        [ ["1910-01-02Z", 5, "5"], null ], 
+        [ ["1221-02-28T23:59:59Z", 800*12, "months"], "2021-02-28T23:59:59.000Z" ],
+        [ ["1221-02-28 23:59:59Z", 800, "years"], "2021-02-28T23:59:59.000Z" ],
+        [ ["1221-02-28Z", 1000*(60*60*24-1), "ms"], "1221-02-28T23:59:59.000Z" ],
+        [ ["1221-2-28Z", 1, "day"], "1221-03-01T00:00:00.000Z" ],
+        [ ["2016Z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["2016z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["2016", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["2016-1Z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["2016-1z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["2016-1-1z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["2016-01-01Z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["  2016-01-01Z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ ["  2016-01-01z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
+        [ [1399395674000, 365, "days"], "2015-05-06T17:01:14.000Z" ],
+        [ [1430931674000, 365, "days"], "2016-05-05T17:01:14.000Z" ], /* leap year */
+        [ [60123, 7, "days"], "1970-01-08T00:01:00.123Z" ],
+        [ [1, -1, "ms"], "1970-01-01T00:00:00.000Z" ],
+        [ [0, 0, "ms"], "1970-01-01T00:00:00.000Z" ]
+      ];
+
+      values.forEach(function (value) {
+        var actual = getQueryResults("RETURN DATE_ADD(@value, @amount, @unit)", {
+          value: value[0][0],
+          amount: value[0][1],
+          unit: value[0][2],
+        });
+        assertEqual([ value[1] ], actual);
+      }); 
+    },
+
+// TODO: DATE_SUBTRACT()
+// TODO: DATE_DIFF()
+// TODO: DATE_COMPARE()
+// TODO: DATE_FORMAT()
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test date_timestamp function

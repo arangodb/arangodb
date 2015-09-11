@@ -1,20 +1,20 @@
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/female/alice <<EOF
+shell&gt; curl -X PATCH --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial/social/vertex/female/alice &lt;&lt;EOF</span>
 { 
-  "age" : 26 
+  <span class="hljs-string">"age"</span> : <span class="hljs-number">26</span> 
 }
 EOF
 
-HTTP/1.1 202 Accepted
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json
-etag: 574878603
+etag: <span class="hljs-number">579735074</span>
 
 { 
-  "error" : false, 
-  "code" : 202, 
-  "vertex" : { 
-    "_id" : "female/alice", 
-    "_rev" : "574878603", 
-    "_oldRev" : "572715915", 
-    "_key" : "alice" 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span>, 
+  <span class="hljs-string">"vertex"</span> : { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"579735074"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"577572386"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span> 
   } 
 }

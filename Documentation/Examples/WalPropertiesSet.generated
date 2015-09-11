@@ -1,12 +1,12 @@
-arangosh> require("internal").wal.properties({ allowOverSizeEntries: true, logfileSize: 32 * 1024 * 1024 });
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).wal.properties({ allowOverSizeEntries: <span class="hljs-literal">true</span>, logfileSize: <span class="hljs-number">32</span> * <span class="hljs-number">1024</span> * <span class="hljs-number">1024</span> });
 { 
-  "allowOversizeEntries" : true, 
-  "logfileSize" : 33554432, 
-  "historicLogfiles" : 10, 
-  "reserveLogfiles" : 1, 
-  "syncInterval" : 100, 
-  "throttleWait" : 15000, 
-  "throttleWhenPending" : 0, 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"allowOversizeEntries"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"logfileSize"</span> : <span class="hljs-number">33554432</span>, 
+  <span class="hljs-string">"historicLogfiles"</span> : <span class="hljs-number">10</span>, 
+  <span class="hljs-string">"reserveLogfiles"</span> : <span class="hljs-number">1</span>, 
+  <span class="hljs-string">"syncInterval"</span> : <span class="hljs-number">100</span>, 
+  <span class="hljs-string">"throttleWait"</span> : <span class="hljs-number">15000</span>, 
+  <span class="hljs-string">"throttleWhenPending"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

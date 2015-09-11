@@ -1,13 +1,13 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products <<EOF
-{ "_key": "foo", "value1": "bar" }
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/import?collection=products &lt;&lt;EOF</span>
+{ <span class="hljs-string">"_key"</span>: <span class="hljs-string">"foo"</span>, <span class="hljs-string">"value1"</span>: <span class="hljs-string">"bar"</span> }
 EOF
 
-HTTP/1.1 400 Bad Request
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : true, 
-  "errorMessage" : "no JSON array found in second line", 
-  "code" : 400, 
-  "errorNum" : 400 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"no JSON array found in second line"</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">400</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">400</span> 
 }

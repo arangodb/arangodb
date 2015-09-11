@@ -114,6 +114,7 @@ HttpHandler::status_t RestQueryHandler::execute () {
 ///
 /// @RESTHEADER{GET /_api/query/properties, Returns the properties for the AQL query tracking}
 ///
+/// @RESTDESCRIPTION
 /// Returns the current query tracking configuration. The configuration is a
 /// JSON object with the following properties:
 /// 
@@ -188,6 +189,7 @@ bool RestQueryHandler::readQueryProperties () {
 ///
 /// @RESTHEADER{GET /_api/query/current, Returns the currently running AQL queries}
 ///
+/// @RESTDESCRIPTION
 /// Returns an array containing the AQL queries currently running in the selected
 /// database. Each query is a JSON object with the following attributes:
 ///
@@ -217,6 +219,7 @@ bool RestQueryHandler::readQueryProperties () {
 ///
 /// @RESTHEADER{GET /_api/query/slow, Returns the list of slow AQL queries}
 ///
+/// @RESTDESCRIPTION
 /// Returns an array containing the last AQL queries that exceeded the slow 
 /// query threshold in the selected database. 
 /// The maximum amount of queries in the list can be controlled by setting
@@ -322,6 +325,9 @@ bool RestQueryHandler::readQuery () {
 ///
 /// @RESTHEADER{DELETE /_api/query/slow, Clears the list of slow AQL queries}
 ///
+/// @RESTDESCRIPTION
+/// Clears the list of slow AQL queries
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -360,6 +366,7 @@ bool RestQueryHandler::deleteQuerySlow () {
 /// @RESTURLPARAM{query-id,string,required}
 /// The id of the query.
 ///
+/// @RESTDESCRIPTION
 /// Kills a running query. The query will be terminated at the next cancelation
 /// point.
 ///
@@ -458,6 +465,7 @@ bool RestQueryHandler::deleteQuery () {
 /// can be used to save memory in case very long query strings are used. The
 /// value is specified in bytes.
 ///
+/// @RESTDESCRIPTION
 /// The properties need to be passed in the attribute *properties* in the body
 /// of the HTTP request. *properties* needs to be a JSON object.
 ///
@@ -577,7 +585,7 @@ bool RestQueryHandler::replaceProperties () {
 ///
 /// @EXAMPLES
 ///
-/// Valid query:
+/// a Valid query
 ///
 ///     @EXAMPLE_ARANGOSH_RUN{RestQueryValid}
 ///     var url = "/_api/query";
@@ -590,7 +598,7 @@ bool RestQueryHandler::replaceProperties () {
 ///     logJsonResponse(response);
 ///     @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Invalid query:
+/// an Invalid query
 ///
 ///     @EXAMPLE_ARANGOSH_RUN{RestQueryInvalid}
 ///     var url = "/_api/query";

@@ -1,6 +1,6 @@
-arangosh> queries.clearSlow();
+arangosh&gt; queries.clearSlow();
 { 
-  "code" : 200 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }
-arangosh> queries.slow();
+arangosh&gt; queries.slow();
 [ ]

@@ -1,16 +1,16 @@
-arangosh> db._routing.save({
-........>  url: "/redirectMe",
-........>  action: {
-........>    do: "org/arangodb/actions/redirectRequest",
-........>    options: {
-........>      permanently: true,
-........>      destination: "/somewhere.else/"
-........>    }
-........>  }
-........> });
+arangosh&gt; db._routing.save({
+........&gt;  url: <span class="hljs-string">"/redirectMe"</span>,
+........&gt;  action: {
+........&gt;    <span class="hljs-keyword">do</span>: <span class="hljs-string">"org/arangodb/actions/redirectRequest"</span>,
+........&gt;    options: {
+........&gt;      permanently: <span class="hljs-literal">true</span>,
+........&gt;      destination: <span class="hljs-string">"/somewhere.else/"</span>
+........&gt;    }
+........&gt;  }
+........&gt; });
 { 
-  "_id" : "_routing/609350539", 
-  "_rev" : "609350539", 
-  "_key" : "609350539" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/614141474"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"614141474"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"614141474"</span> 
 }
-arangosh> require("internal").reloadRouting()
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).reloadRouting()

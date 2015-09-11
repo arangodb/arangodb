@@ -1,13 +1,13 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=list <<EOF
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/import?collection=products&amp;type=list &lt;&lt;EOF</span>
 { }
 EOF
 
-HTTP/1.1 400 Bad Request
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : true, 
-  "errorMessage" : "expecting a JSON array in the request", 
-  "code" : 400, 
-  "errorNum" : 400 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"expecting a JSON array in the request"</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">400</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">400</span> 
 }

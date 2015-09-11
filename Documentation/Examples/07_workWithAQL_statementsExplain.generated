@@ -1,65 +1,65 @@
-arangosh> var stmt = db._createStatement("FOR user IN _users RETURN user");
-arangosh> stmt.explain();
+arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement(<span class="hljs-string">"FOR user IN _users RETURN user"</span>);
+arangosh&gt; stmt.explain();
 { 
-  "plan" : { 
-    "nodes" : [ 
+  <span class="hljs-string">"plan"</span> : { 
+    <span class="hljs-string">"nodes"</span> : [ 
       { 
-        "type" : "SingletonNode", 
-        "dependencies" : [ ], 
-        "id" : 1, 
-        "estimatedCost" : 1, 
-        "estimatedNrItems" : 1 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"SingletonNode"</span>, 
+        <span class="hljs-string">"dependencies"</span> : [ ], 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">1</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">1</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span> 
       }, 
       { 
-        "type" : "EnumerateCollectionNode", 
-        "dependencies" : [ 
-          1 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"EnumerateCollectionNode"</span>, 
+        <span class="hljs-string">"dependencies"</span> : [ 
+          <span class="hljs-number">1</span> 
         ], 
-        "id" : 2, 
-        "estimatedCost" : 2, 
-        "estimatedNrItems" : 1, 
-        "database" : "_system", 
-        "collection" : "_users", 
-        "outVariable" : { 
-          "id" : 0, 
-          "name" : "user" 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
+        <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
+        <span class="hljs-string">"collection"</span> : <span class="hljs-string">"_users"</span>, 
+        <span class="hljs-string">"outVariable"</span> : { 
+          <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"user"</span> 
         }, 
-        "random" : false 
+        <span class="hljs-string">"random"</span> : <span class="hljs-literal">false</span> 
       }, 
       { 
-        "type" : "ReturnNode", 
-        "dependencies" : [ 
-          2 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"ReturnNode"</span>, 
+        <span class="hljs-string">"dependencies"</span> : [ 
+          <span class="hljs-number">2</span> 
         ], 
-        "id" : 3, 
-        "estimatedCost" : 3, 
-        "estimatedNrItems" : 1, 
-        "inVariable" : { 
-          "id" : 0, 
-          "name" : "user" 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">3</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">3</span>, 
+        <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
+        <span class="hljs-string">"inVariable"</span> : { 
+          <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"user"</span> 
         } 
       } 
     ], 
-    "rules" : [ ], 
-    "collections" : [ 
+    <span class="hljs-string">"rules"</span> : [ ], 
+    <span class="hljs-string">"collections"</span> : [ 
       { 
-        "name" : "_users", 
-        "type" : "read" 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"_users"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"read"</span> 
       } 
     ], 
-    "variables" : [ 
+    <span class="hljs-string">"variables"</span> : [ 
       { 
-        "id" : 0, 
-        "name" : "user" 
+        <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
+        <span class="hljs-string">"name"</span> : <span class="hljs-string">"user"</span> 
       } 
     ], 
-    "estimatedCost" : 3, 
-    "estimatedNrItems" : 1 
+    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">3</span>, 
+    <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span> 
   }, 
-  "warnings" : [ ], 
-  "stats" : { 
-    "rulesExecuted" : 22, 
-    "rulesSkipped" : 0, 
-    "plansCreated" : 1 
+  <span class="hljs-string">"warnings"</span> : [ ], 
+  <span class="hljs-string">"stats"</span> : { 
+    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">23</span>, 
+    <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span> 
   } 
 }

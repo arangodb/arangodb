@@ -1,10 +1,11 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=832304011&chunkSize=400
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-follow?from=837684770&amp;chunkSize=400</span>
 
-HTTP/1.1 200 OK
-content-type: application/x-arango-dump; charset=utf-8
-x-arango-replication-active: true
-x-arango-replication-checkmore: true
-x-arango-replication-lastincluded: 832893835
-x-arango-replication-lasttick: 834139019
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/x-arango-dump; charset=utf-<span class="hljs-number">8</span>
+x-arango-replication-active: <span class="hljs-literal">true</span>
+x-arango-replication-checkmore: <span class="hljs-literal">true</span>
+x-arango-replication-frompresent: <span class="hljs-literal">true</span>
+x-arango-replication-lastincluded: <span class="hljs-number">838143522</span>
+x-arango-replication-lasttick: <span class="hljs-number">838929954</span>
 
-"{\"tick\":\"832369547\",\"type\":2001,\"database\":\"127883\",\"cid\":\"830469003\"}\n{\"tick\":\"832435083\",\"type\":2001,\"database\":\"127883\",\"cid\":\"831452043\"}\n{\"tick\":\"832566155\",\"type\":2000,\"database\":\"127883\",\"cid\":\"832500619\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"832500619\",\"indexBuckets\":8,\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"832893835\",\"type\":2300,\"database\":\"127883\",\"cid\":\"832500619\",\"tid\":\"0\",\"key\":\"p1\",\"rev\":\"832828299\",\"data\":{\"_key\":\"p1\",\"_rev\":\"832828299\",\"name\":\"flux compensator\"}}\n"
+<span class="hljs-string">"{\"tick\":\"837815842\",\"type\":2000,\"database\":\"69154\",\"cid\":\"837750306\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"837750306\",\"indexBuckets\":8,\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"838143522\",\"type\":2300,\"database\":\"69154\",\"cid\":\"837750306\",\"tid\":\"0\",\"key\":\"p1\",\"rev\":\"838077986\",\"data\":{\"_key\":\"p1\",\"_rev\":\"838077986\",\"name\":\"flux compensator\"}}\n"</span>

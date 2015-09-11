@@ -1,14 +1,14 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("social");
-arangosh> graph.relation.save("female/alice", "female/diana", {_key: "aliceAndDiana"});
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
+arangosh&gt; graph.relation.save(<span class="hljs-string">"female/alice"</span>, <span class="hljs-string">"female/diana"</span>, {_key: <span class="hljs-string">"aliceAndDiana"</span>});
 { 
-  "_id" : "relation/aliceAndDiana", 
-  "_rev" : "1345254283", 
-  "_key" : "aliceAndDiana" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndDiana"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1348537890"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndDiana"</span> 
 }
-arangosh> db._exists("relation/aliceAndDiana")
-true
-arangosh> graph.relation.remove("relation/aliceAndDiana")
-true
-arangosh> db._exists("relation/aliceAndDiana")
-false
+arangosh&gt; db._exists(<span class="hljs-string">"relation/aliceAndDiana"</span>)
+<span class="hljs-literal">true</span>
+arangosh&gt; graph.relation.remove(<span class="hljs-string">"relation/aliceAndDiana"</span>)
+<span class="hljs-literal">true</span>
+arangosh&gt; db._exists(<span class="hljs-string">"relation/aliceAndDiana"</span>)
+<span class="hljs-literal">false</span>

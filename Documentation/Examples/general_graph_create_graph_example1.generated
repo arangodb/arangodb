@@ -1,11 +1,11 @@
-arangosh> var graph_module = require("org/arangodb/general-graph");
-arangosh> var edgeDefinitions = graph_module._edgeDefinitions();
-arangosh> graph_module._extendEdgeDefinitions(edgeDefinitions, graph_module._relation("friend_of", "Customer", "Customer"));
-arangosh> graph_module._extendEdgeDefinitions(
-........> edgeDefinitions, graph_module._relation(
-........> "has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
-arangosh> graph_module._create("myStore", edgeDefinitions);
+arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/general-graph"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> edgeDefinitions = graph_module._edgeDefinitions();
+arangosh&gt; graph_module._extendEdgeDefinitions(edgeDefinitions, graph_module._relation(<span class="hljs-string">"friend_of"</span>, <span class="hljs-string">"Customer"</span>, <span class="hljs-string">"Customer"</span>));
+arangosh&gt; graph_module._extendEdgeDefinitions(
+........&gt; edgeDefinitions, graph_module._relation(
+........&gt; <span class="hljs-string">"has_bought"</span>, [<span class="hljs-string">"Customer"</span>, <span class="hljs-string">"Company"</span>], [<span class="hljs-string">"Groceries"</span>, <span class="hljs-string">"Electronics"</span>]));
+arangosh&gt; graph_module._create(<span class="hljs-string">"myStore"</span>, edgeDefinitions);
 [ Graph myStore EdgeDefinitions: [ 
-  "friend_of: [Customer] -> [Customer]", 
-  "has_bought: [Company, Customer] -> [Electronics, Groceries]" 
+  <span class="hljs-string">"friend_of: [Customer] -&gt; [Customer]"</span>, 
+  <span class="hljs-string">"has_bought: [Company, Customer] -&gt; [Electronics, Groceries]"</span> 
 ] VertexCollections: [ ] ]

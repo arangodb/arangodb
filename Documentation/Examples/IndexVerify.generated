@@ -1,34 +1,34 @@
-arangosh> var explain = require("org/arangodb/aql/explainer").explain;
-arangosh> db.example.ensureSkiplist("a", "b");
+arangosh&gt; <span class="hljs-keyword">var</span> explain = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/aql/explainer"</span>).explain;
+arangosh&gt; db.example.ensureSkiplist(<span class="hljs-string">"a"</span>, <span class="hljs-string">"b"</span>);
 { 
-  "id" : "example/600634251", 
-  "type" : "skiplist", 
-  "fields" : [ 
-    "a", 
-    "b" 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/605490722"</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+  <span class="hljs-string">"fields"</span> : [ 
+    <span class="hljs-string">"a"</span>, 
+    <span class="hljs-string">"b"</span> 
   ], 
-  "unique" : false, 
-  "sparse" : false, 
-  "isNewlyCreated" : true, 
-  "code" : 201 
+  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }
-arangosh> explain("FOR doc IN example FILTER doc.a < 23 RETURN doc", {colors:false});
+arangosh&gt; explain(<span class="hljs-string">"FOR doc IN example FILTER doc.a &lt; 23 RETURN doc"</span>, {colors:<span class="hljs-literal">false</span>});
 Query string:
- FOR doc IN example FILTER doc.a < 23 RETURN doc
+ FOR doc IN example FILTER doc.a &lt; <span class="hljs-number">23</span> RETURN doc
 
 Execution plan:
  Id   NodeType         Est.   Comment
-  1   SingletonNode       1   * ROOT
-  6   IndexRangeNode      1     - FOR doc IN example   /* skiplist index scan */
-  5   ReturnNode          1       - RETURN doc
+  <span class="hljs-number">1</span>   SingletonNode       <span class="hljs-number">1</span>   * ROOT
+  <span class="hljs-number">6</span>   IndexRangeNode      <span class="hljs-number">1</span>     - FOR doc IN example   <span class="hljs-comment">/* skiplist index scan */</span>
+  <span class="hljs-number">5</span>   ReturnNode          <span class="hljs-number">1</span>       - RETURN doc
 
 Indexes used:
  Id   Type       Collection   Unique   Sparse   Selectivity Est.   Fields     Ranges
-  6   skiplist   example      false    false                 n/a   `a`, `b`   [ `a` < 23 ]
+  <span class="hljs-number">6</span>   skiplist   example      <span class="hljs-literal">false</span>    <span class="hljs-literal">false</span>                 n/a   <span class="hljs-string">`a`</span>, <span class="hljs-string">`b`</span>   [ <span class="hljs-string">`a`</span> &lt; <span class="hljs-number">23</span> ]
 
 Optimization rules applied:
  Id   RuleName
-  1   use-index-range
-  2   remove-filter-covered-by-index
+  <span class="hljs-number">1</span>   use-index-range
+  <span class="hljs-number">2</span>   remove-filter-covered-by-index
 
 

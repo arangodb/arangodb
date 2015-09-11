@@ -1,11 +1,11 @@
-arangosh> db._routing.save({ 
-........>  url: "/hello/echo",
-........>  action: { 
-........>    callback: "function(req,res) {res.statusCode=200; res.body='Hello'}" 
-........>  } 
-........> });
+arangosh&gt; db._routing.save({ 
+........&gt;  url: <span class="hljs-string">"/hello/echo"</span>,
+........&gt;  action: { 
+........&gt;    callback: <span class="hljs-string">"function(req,res) {res.statusCode=200; res.body='Hello'}"</span> 
+........&gt;  } 
+........&gt; });
 { 
-  "_id" : "_routing/604173195", 
-  "_rev" : "604173195", 
-  "_key" : "604173195" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/609816098"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"609816098"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"609816098"</span> 
 }

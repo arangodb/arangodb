@@ -396,7 +396,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// impact for some queries so this option is turned off by default, and "count"
 /// is only returned when requested.
 ///
-/// @RESTBODYPARAM{batchSize,integer,roptional,int64}
+/// @RESTBODYPARAM{batchSize,integer,optional,int64}
 /// maximum number of result documents to be transferred from
 /// the server to the client in one roundtrip. If this attribute is
 /// not set, a server-controlled default value will be used. A *batchSize* value of
@@ -408,7 +408,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// is useful to ensure garbage collection of cursors that are not fully fetched
 /// by clients. If not set, a server-defined value will be used.
 ///
-/// @RESTBODYPARAM{cache,boolean,optionas,}
+/// @RESTBODYPARAM{cache,boolean,optional,}
 /// flag to determine whether the AQL query cache
 /// shall be used. If set to *false*, then any query cache lookup will be skipped
 /// for the query. If set to *true*, it will lead to the query cache being checked
@@ -521,7 +521,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///
 /// @EXAMPLES
 ///
-/// Executes a query and extract the result in a single go:
+/// Execute a query and extract the result in a single go
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorForLimitReturnSingle}
 ///     var cn = "products";
@@ -546,7 +546,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Executes a query and extracts part of the result:
+/// Execute a query and extract a part of the result
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorForLimitReturn}
 ///     var cn = "products";
@@ -574,7 +574,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Using query option "fullCount":
+/// Using the query option "fullCount"
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorOption}
 ///     var url = "/_api/cursor";
@@ -593,7 +593,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Enabling and disabling optimizer rules:
+/// Enabling and disabling optimizer rules
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorOptimizerRules}
 ///     var url = "/_api/cursor";
@@ -615,8 +615,8 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Executes a data-modification query and retrieves the number of
-/// modified documents:
+/// Execute a data-modification query and retrieve the number of
+/// modified documents
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteQuery}
 ///     var cn = "products";
@@ -641,7 +641,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Executes a data-modification query with option *ignoreErrors*:
+/// Execute a data-modification query with option *ignoreErrors*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteIgnore}
 ///     var cn = "products";
@@ -665,9 +665,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Bad queries:
-///
-/// Missing body:
+/// Bad query - Missing body
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorMissingBody}
 ///     var url = "/_api/cursor";
@@ -679,7 +677,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Unknown collection:
+/// Bad query - Unknown collection
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorUnknownCollection}
 ///     var url = "/_api/cursor";
@@ -696,8 +694,8 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Executes a data-modification query that attempts to remove a non-existing
-/// document:
+/// Bad query - Execute a data-modification query that attempts to remove a non-existing
+/// document
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteQueryFail}
 ///     var cn = "products";
@@ -799,7 +797,7 @@ void RestCursorHandler::createCursor () {
 ///
 /// @EXAMPLES
 ///
-/// Valid request for next batch:
+/// Valid request for next batch
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorForLimitReturnCont}
 ///     var url = "/_api/cursor";

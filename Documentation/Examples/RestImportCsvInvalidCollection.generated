@@ -1,15 +1,15 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products <<EOF
-[ "_key", "value1", "value2" ]
-[ "abc", 25, "test" ]
-[ "foo", "bar", "baz" ]
+shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/import?collection=products &lt;&lt;EOF</span>
+[ <span class="hljs-string">"_key"</span>, <span class="hljs-string">"value1"</span>, <span class="hljs-string">"value2"</span> ]
+[ <span class="hljs-string">"abc"</span>, <span class="hljs-number">25</span>, <span class="hljs-string">"test"</span> ]
+[ <span class="hljs-string">"foo"</span>, <span class="hljs-string">"bar"</span>, <span class="hljs-string">"baz"</span> ]
 EOF
 
-HTTP/1.1 404 Not Found
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> Not Found
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : true, 
-  "errorMessage" : "collection 'products' not found", 
-  "code" : 404, 
-  "errorNum" : 1203 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"collection 'products' not found"</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1203</span> 
 }

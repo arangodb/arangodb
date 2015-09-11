@@ -1,9 +1,9 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("social");
-arangosh> graph._fromVertex("relation/aliceAndBob")
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
+arangosh&gt; graph._fromVertex(<span class="hljs-string">"relation/aliceAndBob"</span>)
 { 
-  "name" : "Alice", 
-  "_id" : "female/alice", 
-  "_rev" : "1517810571", 
-  "_key" : "alice" 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1521946146"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span> 
 }

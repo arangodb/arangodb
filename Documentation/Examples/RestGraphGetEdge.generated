@@ -1,19 +1,19 @@
-shell> curl --dump - http://localhost:8529/_api/graph/graph/edge/edge1
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/graph/graph/edge/edge1</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
-etag: 771879819
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+etag: <span class="hljs-number">776670754</span>
 
 { 
-  "edge" : { 
-    "_id" : "edges/edge1", 
-    "_key" : "edge1", 
-    "_rev" : "771879819", 
-    "_from" : "vertices/vert1", 
-    "_to" : "vertices/vert2", 
-    "$label" : null, 
-    "optional1" : "val1" 
+  <span class="hljs-string">"edge"</span> : { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge1"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge1"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"776670754"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/vert1"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/vert2"</span>, 
+    <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
   }, 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

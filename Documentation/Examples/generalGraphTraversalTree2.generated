@@ -1,38 +1,38 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/Hamburg',"+
-........> " 'outbound', 'connnection', {maxDepth : 1}) RETURN e"
-........> ).toArray();
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/Hamburg',"</span>+
+........&gt; <span class="hljs-string">" 'outbound', 'connnection', {maxDepth : 1}) RETURN e"</span>
+........&gt; ).toArray();
 [ 
   [ 
     [ 
       { 
-        "_id" : "germanCity/Hamburg", 
-        "_key" : "Hamburg", 
-        "_rev" : "1836512139", 
-        "isCapital" : false, 
-        "population" : 1000000, 
-        "connnection" : [ 
+        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
+        <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Hamburg"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1840647714"</span>, 
+        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span>, 
+        <span class="hljs-string">"connnection"</span> : [ 
           { 
-            "_id" : "germanCity/Cologne", 
-            "_key" : "Cologne", 
-            "_rev" : "1836315531", 
-            "isCapital" : false, 
-            "population" : 1000000 
+            <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
+            <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
+            <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1840451106"</span>, 
+            <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
+            <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span> 
           }, 
           { 
-            "_id" : "frenchCity/Paris", 
-            "_key" : "Paris", 
-            "_rev" : "1837101963", 
-            "isCapital" : true, 
-            "population" : 4000000 
+            <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
+            <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Paris"</span>, 
+            <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1841237538"</span>, 
+            <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
+            <span class="hljs-string">"population"</span> : <span class="hljs-number">4000000</span> 
           }, 
           { 
-            "_id" : "frenchCity/Lyon", 
-            "_key" : "Lyon", 
-            "_rev" : "1836905355", 
-            "isCapital" : false, 
-            "population" : 80000 
+            <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
+            <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
+            <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1841040930"</span>, 
+            <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
+            <span class="hljs-string">"population"</span> : <span class="hljs-number">80000</span> 
           } 
         ] 
       } 

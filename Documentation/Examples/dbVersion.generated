@@ -1,2 +1,2 @@
-arangosh> require("internal").db._version();
-2.7.0-devel
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).db._version();
+<span class="hljs-number">2.7</span>.0-devel

@@ -1,43 +1,43 @@
-shell> curl --dump - http://localhost:8529/_api/graph
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/graph</span>
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "graphs" : [ 
+  <span class="hljs-string">"graphs"</span> : [ 
     { 
-      "_id" : "_graphs/graph2", 
-      "_key" : "graph2", 
-      "_rev" : "782037899", 
-      "edgeDefinitions" : [ 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/graph1"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"graph1"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"785845794"</span>, 
+      <span class="hljs-string">"edgeDefinitions"</span> : [ 
         { 
-          "collection" : "edges2", 
-          "from" : [ 
-            "vertices2" 
+          <span class="hljs-string">"collection"</span> : <span class="hljs-string">"edges1"</span>, 
+          <span class="hljs-string">"from"</span> : [ 
+            <span class="hljs-string">"vertices1"</span> 
           ], 
-          "to" : [ 
-            "vertices2" 
+          <span class="hljs-string">"to"</span> : [ 
+            <span class="hljs-string">"vertices1"</span> 
           ] 
         } 
       ] 
     }, 
     { 
-      "_id" : "_graphs/graph1", 
-      "_key" : "graph1", 
-      "_rev" : "781054859", 
-      "edgeDefinitions" : [ 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/graph2"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"graph2"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"786828834"</span>, 
+      <span class="hljs-string">"edgeDefinitions"</span> : [ 
         { 
-          "collection" : "edges1", 
-          "from" : [ 
-            "vertices1" 
+          <span class="hljs-string">"collection"</span> : <span class="hljs-string">"edges2"</span>, 
+          <span class="hljs-string">"from"</span> : [ 
+            <span class="hljs-string">"vertices2"</span> 
           ], 
-          "to" : [ 
-            "vertices1" 
+          <span class="hljs-string">"to"</span> : [ 
+            <span class="hljs-string">"vertices2"</span> 
           ] 
         } 
       ] 
     } 
   ], 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

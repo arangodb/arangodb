@@ -1,3 +1,3 @@
-arangosh> var stmt = db._createStatement("FOR user IN _users FILTER user.user == 'root' RETURN user");
-arangosh> stmt.explain({ allPlans: true }).plans.length;
-1
+arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement(<span class="hljs-string">"FOR user IN _users FILTER user.user == 'root' RETURN user"</span>);
+arangosh&gt; stmt.explain({ allPlans: <span class="hljs-literal">true</span> }).plans.length;
+<span class="hljs-number">1</span>

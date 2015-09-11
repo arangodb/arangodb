@@ -327,7 +327,7 @@ setupIndexQueries();
 ///     collection.save({"Hello5" : "World5" });
 ///
 ///     var url = "/_api/simple/any";
-///     var body = '{ "collection": "products" }';
+///     var body = { "collection": "products" };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -423,6 +423,7 @@ actions.defineHttp({
 /// way for retrieving documents from a collection using the near operator is
 /// to issue an [AQL query](../Aql/GeoFunctions.md) using the *NEAR* function as follows: 
 ///
+///
 ///     FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit)
 ///       RETURN doc`
 ///
@@ -441,7 +442,7 @@ actions.defineHttp({
 ///
 /// @EXAMPLES
 ///
-/// Without distance:
+/// Without distance
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleNear}
 ///     var cn = "products";
@@ -453,13 +454,13 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"latitude" : 0, ' +
-///       '"longitude" : 0, ' +
-///       '"skip" : 1, ' +
-///       '"limit" : 2 ' +
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "latitude" : 0,
+///       "longitude" : 0,
+///       "skip" : 1,
+///       "limit" : 2
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -469,7 +470,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// With distance:
+/// With distance
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleNearDistance}
 ///     var cn = "products";
@@ -481,14 +482,14 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"latitude" : 0, ' +
-///       '"longitude" : 0, ' +
-///       '"skip" : 1, ' +
-///       '"limit" : 3, ' +
-///       '"distance" : "distance" ' +
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "latitude" : 0,
+///       "longitude" : 0,
+///       "skip" : 1,
+///       "limit" : 3,
+///       "distance" : "distance"
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -616,6 +617,7 @@ actions.defineHttp({
 /// way for retrieving documents from a collection using the near operator is
 /// to issue an [AQL query](../Aql/GeoFunctions.md) using the *WITHIN* function as follows: 
 ///
+///
 ///     FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
 ///       RETURN doc
 ///
@@ -634,7 +636,7 @@ actions.defineHttp({
 ///
 /// @EXAMPLES
 ///
-/// Without distance:
+/// Without distance
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleWithin}
 ///     var cn = "products";
@@ -646,14 +648,14 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"latitude" : 0, ' +
-///       '"longitude" : 0, ' +
-///       '"skip" : 1, ' +
-///       '"limit" : 2, ' +
-///       '"radius" : 500 ' +
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "latitude" : 0,
+///       "longitude" : 0,
+///       "skip" : 1,
+///       "limit" : 2,
+///       "radius" : 500
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -663,7 +665,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// With distance:
+/// With distance
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleWithinDistance}
 ///     var cn = "products";
@@ -675,8 +677,8 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ "collection": "products", "latitude" : 0, "longitude" : 0, ' +
-///                '"skip" : 1, "limit" : 3, "distance" : "distance", "radius" : 300 }';
+///     var body = { "collection": "products", "latitude" : 0, "longitude" : 0,
+///                "skip" : 1, "limit" : 3, "distance" : "distance", "radius" : 300 };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -952,6 +954,7 @@ actions.defineHttp({
 /// to issue an AQL query using the *FULLTEXT* [AQL function](../Aql/FulltextFunctions.md) 
 /// as follows:
 ///
+///
 ///     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
 ///       RETURN doc
 ///
@@ -979,7 +982,7 @@ actions.defineHttp({
 ///     products.save({"text" : "this is nothing" });
 ///     var loc = products.ensureFulltextIndex("text");
 ///     var url = "/_api/simple/fulltext";
-///     var body = '{ "collection": "products", "attribute" : "text", "query" : "word" }';
+///     var body = { "collection": "products", "attribute" : "text", "query" : "word" };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1084,7 +1087,7 @@ actions.defineHttp({
 ///
 /// @EXAMPLES
 ///
-/// Matching an attribute:
+/// Matching an attribute
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleByExample}
 ///     var cn = "products";
@@ -1095,7 +1098,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/by-example";
-///     var body = '{ "collection": "products", "example" :  { "i" : 1 }  }';
+///     var body = { "collection": "products", "example" :  { "i" : 1 }  };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1105,7 +1108,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Matching an attribute which is a sub-document:
+/// Matching an attribute which is a sub-document
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleByExample2}
 ///     var cn = "products";
@@ -1116,7 +1119,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/by-example";
-///     var body = '{ "collection": "products", "example" : { "a.j" : 1 } }';
+///     var body = { "collection": "products", "example" : { "a.j" : 1 } };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1126,7 +1129,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Matching an attribute within a sub-document:
+/// Matching an attribute within a sub-document
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleByExample3}
 ///     var cn = "products";
@@ -1137,7 +1140,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } } }';
+///     var body = { "collection": "products", "example" : { "a" : { "j" : 1 } } };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1235,7 +1238,7 @@ actions.defineHttp({
 ///
 /// @EXAMPLES
 ///
-/// If a matching document was found:
+/// If a matching document was found
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirstExample}
 ///     var cn = "products";
@@ -1246,7 +1249,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/first-example";
-///     var body = '{ "collection": "products", "example" :  { "i" : 1 }  }';
+///     var body = { "collection": "products", "example" :  { "i" : 1 }  };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1256,7 +1259,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// If no document was found:
+/// If no document was found
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirstExampleNotFound}
 ///     var cn = "products";
@@ -1267,7 +1270,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/first-example";
-///     var body = '{ "collection": "products", "example" :  { "l" : 1 }  }';
+///     var body = { "collection": "products", "example" :  { "l" : 1 }  };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1362,7 +1365,7 @@ actions.defineHttp({
 ///
 /// @EXAMPLES
 ///
-/// Retrieving the first n documents:
+/// Retrieving the first n documents
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirst}
 ///     var cn = "products";
@@ -1373,7 +1376,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/first";
-///     var body = '{ "collection": "products", "count" : 2 }';
+///     var body = { "collection": "products", "count" : 2 };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1383,7 +1386,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Retrieving the first document:
+/// Retrieving the first document
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirstSingle}
 ///     var cn = "products";
@@ -1394,7 +1397,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/first";
-///     var body = '{ "collection": "products" }';
+///     var body = { "collection": "products" };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1479,7 +1482,7 @@ actions.defineHttp({
 ///
 /// @EXAMPLES
 ///
-/// Retrieving the last n documents:
+/// Retrieving the last n documents
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleLast}
 ///     var cn = "products";
@@ -1490,7 +1493,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/last";
-///     var body = '{ "collection": "products", "count" : 2 }';
+///     var body = { "collection": "products", "count" : 2 };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1500,7 +1503,7 @@ actions.defineHttp({
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Retrieving the first document:
+/// Retrieving the first document
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleLastSingle}
 ///     var cn = "products";
@@ -1511,7 +1514,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/last";
-///     var body = '{ "collection": "products" }';
+///     var body = { "collection": "products" };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1596,6 +1599,7 @@ actions.defineHttp({
 /// way for retrieving documents from a collection within a specific range
 /// is to use an AQL query as follows: 
 ///
+///
 ///     FOR doc IN @@collection 
 ///       FILTER doc.value >= @left && doc.value < @right 
 ///       LIMIT @skip, @limit 
@@ -1627,7 +1631,7 @@ actions.defineHttp({
 ///     products.save({ "i": 3});
 ///     products.save({ "i": 4});
 ///     var url = "/_api/simple/range";
-///     var body = '{ "collection": "products", "attribute" : "i", "left" : 2, "right" : 4 }';
+///     var body = { "collection": "products", "attribute" : "i", "left" : 2, "right" : 4 };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1754,7 +1758,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/remove-by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } } }';
+///     var body = { "collection": "products", "example" : { "a" : { "j" : 1 } } };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1763,7 +1767,9 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
 /// Using Parameter: waitForSync and limit
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample_1}
 ///     var cn = "products";
 ///     db._drop(cn);
@@ -1773,8 +1779,8 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/remove-by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } },' +
-///                 '"waitForSync": true, "limit": 2 }';
+///     var body = { "collection": "products", "example" : { "a" : { "j" : 1 } },
+///                 "waitForSync": true, "limit": 2 };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1783,7 +1789,9 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
 /// Using Parameter: waitForSync and limit with new signature
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample_2}
 ///     var cn = "products";
 ///     db._drop(cn);
@@ -1793,11 +1801,11 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/remove-by-example";
-///     var body = '{'+
-///                '"collection": "products",' +
-///                '"example" : { "a" : { "j" : 1 } },' +
-///                '"options": {"waitForSync": true, "limit": 2} ' +
-///                '}';
+///     var body = {
+///                "collection": "products",
+///                "example" : { "a" : { "j" : 1 } },
+///                "options": {"waitForSync": true, "limit": 2}
+///                };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1920,12 +1928,12 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/replace-by-example";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"example" : { "a" : { "j" : 1 } }, ' +
-///       '"newValue" : {"foo" : "bar"}, ' +
-///       '"limit" : 3 ' +
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "example" : { "a" : { "j" : 1 } },
+///       "newValue" : {"foo" : "bar"},
+///       "limit" : 3
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -1934,7 +1942,9 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
 /// Using new Signature for attributes WaitForSync and limit
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleReplaceByExampleWaitForSync}
 ///     var cn = "products";
 ///     db._drop(cn);
@@ -1944,12 +1954,12 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/replace-by-example";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"example" : { "a" : { "j" : 1 } }, ' +
-///       '"newValue" : {"foo" : "bar"}, ' +
-///       '"options": {"limit" : 3,  "waitForSync": true  }'+
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "example" : { "a" : { "j" : 1 } },
+///       "newValue" : {"foo" : "bar"},
+///       "options": {"limit" : 3,  "waitForSync": true  }
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -2073,7 +2083,9 @@ actions.defineHttp({
 /// response body contains an error document in this case.
 ///
 /// @EXAMPLES
+///
 /// using old syntax for options
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample}
 ///     var cn = "products";
 ///     db._drop(cn);
@@ -2083,12 +2095,12 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/update-by-example";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"example" : { "a" : { "j" : 1 } }, ' +
-///       '"newValue" : { "a" : { "j" : 22 } }, ' +
-///       '"limit" : 3 ' +
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "example" : { "a" : { "j" : 1 } },
+///       "newValue" : { "a" : { "j" : 22 } },
+///       "limit" : 3
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///
@@ -2097,7 +2109,9 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
 /// using new signature for options
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample_1}
 ///     var cn = "products";
 ///     db._drop(cn);
@@ -2107,12 +2121,12 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/update-by-example";
-///     var body = '{ ' +
-///       '"collection": "products", ' +
-///       '"example" : { "a" : { "j" : 1 } }, ' +
-///       '"newValue" : { "a" : { "j" : 22 } }, ' +
-///       '"options" :  { "limit" : 3, "waitForSync": true }  ' +
-///     '}';
+///     var body = {
+///       "collection": "products",
+///       "example" : { "a" : { "j" : 1 } },
+///       "newValue" : { "a" : { "j" : 22 } },
+///       "options" :  { "limit" : 3, "waitForSync": true }
+///     };
 ///
 ///     var response = logCurlRequest('PUT', url, body);
 ///

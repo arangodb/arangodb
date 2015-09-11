@@ -170,7 +170,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///
 /// @EXAMPLES
 ///
-/// Create a document given a collection named *products*. Note that the
+/// Create a document in a collection named *products*. Note that the
 /// revision identifier might or might not by equal to the auto-generated
 /// key.
 ///
@@ -245,7 +245,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Unknown collection name:
+/// Unknown collection name
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostUnknownCollection1}
 ///     var cn = "products";
@@ -261,7 +261,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Illegal document:
+/// Illegal document
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostBadJson1}
 ///     var cn = "products";
@@ -709,7 +709,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///
 /// @EXAMPLES
 ///
-/// Returns all document paths
+/// Return all document paths
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentAllPath}
 ///     var cn = "products";
@@ -729,7 +729,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Returns all document keys
+/// Return all document keys
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentAllKey}
 ///     var cn = "products";
@@ -749,7 +749,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Collection does not exist.
+/// Collection does not exist
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentAllCollectionDoesNotExist}
 ///     var cn = "doesnotexist";
@@ -1000,6 +1000,7 @@ bool RestDocumentHandler::checkDocument () {
 /// these attributes will be ignored. Only the URI and the "ETag" header are
 /// relevant in order to avoid confusion when using proxies.
 ///
+///
 /// Optionally, the URL parameter *waitForSync* can be used to force
 /// synchronization of the document replacement operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
@@ -1010,6 +1011,7 @@ bool RestDocumentHandler::checkDocument () {
 /// applied. The *waitForSync* URL parameter cannot be used to disable
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
+///
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
@@ -1027,6 +1029,7 @@ bool RestDocumentHandler::checkDocument () {
 /// - specifying the target revision in the *rev* URL query parameter
 /// - specifying the target revision in the *if-match* HTTP header
 ///
+///
 /// Specifying a target revision is optional, however, if done, only one of the
 /// described mechanisms must be used (either the *rev* URL parameter or the
 /// *if-match* HTTP header).
@@ -1037,7 +1040,9 @@ bool RestDocumentHandler::checkDocument () {
 /// For example, to conditionally replace a document based on a specific revision
 /// id, you can use the following request:
 ///
+///
 /// `PUT /_api/document/document-handle?rev=etag`
+///
 ///
 /// If a target revision id is provided in the request (e.g. via the *etag* value
 /// in the *rev* URL query parameter above), ArangoDB will check that
@@ -1046,9 +1051,12 @@ bool RestDocumentHandler::checkDocument () {
 /// id, then by default a *HTTP 412* conflict is returned and no replacement is
 /// performed.
 ///
+///
 /// The conditional update behavior can be overridden with the *policy* URL query parameter:
 ///
+///
 /// `PUT /_api/document/document-handle?policy=policy`
+///
 ///
 /// If *policy* is set to *error*, then the behavior is as before: replacements
 /// will fail if the revision id found in the database does not match the target
@@ -1083,7 +1091,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// @EXAMPLES
 ///
-/// Using document handle:
+/// Using a document handle
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocument}
 ///     var cn = "products";
@@ -1101,7 +1109,7 @@ bool RestDocumentHandler::checkDocument () {
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Unknown document handle:
+/// Unknown document handle
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocumentUnknownHandle}
 ///     var cn = "products";
@@ -1120,7 +1128,7 @@ bool RestDocumentHandler::checkDocument () {
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Produce a revision conflict:
+/// Produce a revision conflict
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocumentIfMatchOther}
 ///     var cn = "products";
@@ -1140,7 +1148,7 @@ bool RestDocumentHandler::checkDocument () {
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Last write wins:
+/// Last write wins
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocumentIfMatchOtherLastWriteWins}
 ///     var cn = "products";
@@ -1159,7 +1167,7 @@ bool RestDocumentHandler::checkDocument () {
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Alternative to header field:
+/// Alternative to header fields
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocumentRevOther}
 ///     var cn = "products";

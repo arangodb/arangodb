@@ -174,7 +174,8 @@ function parseBodyForCreateCollection (req, res) {
 ///
 /// @RESTHEADER{POST /_api/collection, Create collection}
 ///
-/// @RESTBODYPARAM{name,string,required,string} The name of the collection.
+/// @RESTBODYPARAM{name,string,required,string}
+/// The name of the collection.
 ///
 /// @RESTBODYPARAM{waitForSync,boolean,optional,}
 /// If *true* then the data is synchronized to disk before returning from a
@@ -232,8 +233,8 @@ function parseBodyForCreateCollection (req, res) {
 /// (The default is *2*): the type of the collection to create.
 /// The following values for *type* are valid:
 ///
-///   - *2*: document collection
-///   - *3*: edges collection
+/// - *2*: document collection
+/// - *3*: edges collection
 ///
 /// @RESTBODYPARAM{indexBuckets,integer,optional,int64}
 /// The: number of buckets into which indexes using a hash
@@ -1484,7 +1485,7 @@ function put_api_collection_rename (req, res, collection) {
 ///
 /// @EXAMPLES
 ///
-/// Rotating a journal:
+/// Rotating the journal:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionRotate}
 ///     var cn = "products";
@@ -1503,7 +1504,7 @@ function put_api_collection_rename (req, res, collection) {
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Rotating without a journal:
+/// Rotating if no journal exists:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionRotateNoJournal}
 ///     var cn = "products";

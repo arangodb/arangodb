@@ -1,27 +1,27 @@
-arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a" ], sparse: true });
+arangosh&gt; db.test.ensureIndex({ type: <span class="hljs-string">"hash"</span>, fields: [ <span class="hljs-string">"a"</span> ], sparse: <span class="hljs-literal">true</span> });
 { 
-  "id" : "test/1130951563", 
-  "type" : "hash", 
-  "fields" : [ 
-    "a" 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/1134890530"</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
+  <span class="hljs-string">"fields"</span> : [ 
+    <span class="hljs-string">"a"</span> 
   ], 
-  "selectivityEstimate" : 1, 
-  "unique" : false, 
-  "sparse" : true, 
-  "isNewlyCreated" : true, 
-  "code" : 201 
+  <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
+  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }
-arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a", "b" ], unique: true });
+arangosh&gt; db.test.ensureIndex({ type: <span class="hljs-string">"hash"</span>, fields: [ <span class="hljs-string">"a"</span>, <span class="hljs-string">"b"</span> ], unique: <span class="hljs-literal">true</span> });
 { 
-  "id" : "test/1131213707", 
-  "type" : "hash", 
-  "fields" : [ 
-    "a", 
-    "b" 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/1135152674"</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
+  <span class="hljs-string">"fields"</span> : [ 
+    <span class="hljs-string">"a"</span>, 
+    <span class="hljs-string">"b"</span> 
   ], 
-  "selectivityEstimate" : 1, 
-  "unique" : true, 
-  "sparse" : false, 
-  "isNewlyCreated" : true, 
-  "code" : 201 
+  <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
+  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }

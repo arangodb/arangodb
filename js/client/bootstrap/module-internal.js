@@ -159,13 +159,15 @@ exports.executeServer = function (body) {
 /// @brief logs a request in curl format
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.appendCurlRequest = function (appender) {
+exports.appendCurlRequest = function (shellAppender,jsonAppender, rawAppender) {
   return function (method, url, body, headers) {
     var response;
     var curl;
     var i;
+    var jsonBody = false;
 
     if ((typeof body !== 'string') && (body !== undefined)) {
+      jsonBody = true;
       body = exports.inspect(body);
     }
 
@@ -212,14 +214,19 @@ exports.appendCurlRequest = function (appender) {
 
     curl += "--dump - http://localhost:8529" + url;
 
-    appender(curl);
+    shellAppender(curl);
 
     if (body !== undefined && body !== "" && body) {
-      appender(" <<EOF\n");
-      appender(body);
-      appender("\nEOF");
+      rawAppender(" &lt;&lt;EOF\n");
+      if (jsonBody) {
+        jsonAppender(body);
+      }
+      else {
+        rawAppender(body);
+      }
+      rawAppender("\nEOF");
     }
-    appender("\n\n");
+    rawAppender("\n\n");
     return response;
   };
 };

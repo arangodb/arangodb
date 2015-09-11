@@ -1,5 +1,5 @@
 /*jshint strict:false, esnext:true  */
-/*global db, curlRequestRaw */
+/*global db */
 // 'use strict'
 /*exported
  time,
@@ -59,16 +59,17 @@ function normalize(lang) {
 }
 
 function highlight(lang, code) {
-    if(!lang) return code;
-
-    // Normalize lang
-    lang = normalize(lang);
-
-    try {
-        return hljs.highlight(lang, code).value;
-    } catch(e) { }
-
+  if(!lang) {
     return code;
+  }
+  // Normalize lang
+  lang = normalize(lang);
+
+  try {
+    return hljs.highlight(lang, code).value;
+  } catch(e) { }
+
+  return code;
 }
 
 
@@ -77,13 +78,22 @@ internal.stopColorPrint(true);
 var appender = function(text) {
   output += text;
 };
+var jsonAppender = function(text) {
+  output += highlight("js", text);
+};
+var rawAppender = function(text) {
+  output += text;
+};
+var shellAppender = function(text) {
+  output += highlight("shell", text);
+};
 var log = function (a) {
   internal.startCaptureMode();
   print(a);
   appender(internal.stopCaptureMode());
 };
 
-var logCurlRequestRaw = internal.appendCurlRequest(appender);
+var logCurlRequestRaw = internal.appendCurlRequest(shellAppender,jsonAppender, rawAppender);
 var logCurlRequest = function () {
   if ((arguments.length > 1) &&
       (arguments[1] !== undefined) &&
@@ -96,14 +106,13 @@ var logCurlRequest = function () {
   return r;
 };
 
-/* jshint ignore:start */
-var curlRequestRaw = internal.appendCurlRequest(function (text) {});
-/* jshint ignore:end */
+var swallowText = function () {};
+var curlRequestRaw = internal.appendCurlRequest(swallowText, swallowText, swallowText);
 var curlRequest = function () {
   return curlRequestRaw.apply(curlRequestRaw, arguments);
 };
-var logJsonResponse = internal.appendJsonResponse(appender);
-var logRawResponse = internal.appendRawResponse(appender);
+var logJsonResponse = internal.appendJsonResponse(jsonAppender);
+var logRawResponse = internal.appendRawResponse(rawAppender);
 var logErrorResponse = function (response) {
     allErrors += "Server reply was: " + JSON.stringify(response) + "\n";
 };

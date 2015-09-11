@@ -1,10 +1,10 @@
-arangosh> db._query('FOR user IN example FILTER user.name == "Jane Smith" RETURN user').toArray()
+arangosh&gt; db._query(<span class="hljs-string">'FOR user IN example FILTER user.name == "Jane Smith" RETURN user'</span>).toArray()
 [ 
   { 
-    "age" : 31, 
-    "name" : "Jane Smith", 
-    "_id" : "example/466285451", 
-    "_rev" : "466285451", 
-    "_key" : "466285451" 
+    <span class="hljs-string">"age"</span> : <span class="hljs-number">31</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Jane Smith"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/467340834"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"467340834"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"467340834"</span> 
   } 
 ]
