@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Replication/Syncer.h"
+#include "Utils/transactions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -72,8 +73,7 @@ namespace triagens {
           PHASE_VALIDATE,
           PHASE_DROP,
           PHASE_CREATE,
-          PHASE_DUMP,
-          PHASE_SYNC
+          PHASE_DUMP
         }
         sync_phase_e;
 
@@ -135,8 +135,6 @@ namespace triagens {
               return "create";
             case PHASE_DUMP:
               return "dump";
-            case PHASE_SYNC:
-              return "sync";
             case PHASE_NONE: 
               break;
           }
@@ -211,8 +209,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleCollectionSync (std::string const&, 
-                                  struct TRI_document_collection_t*,
-                                  struct TRI_transaction_collection_s*,
+                                  SingleCollectionWriteTransaction<UINT64_MAX>&,
                                   std::string const&,
                                   TRI_voc_tick_t,
                                   std::string&);
@@ -223,8 +220,7 @@ namespace triagens {
 
         int handleSyncKeys (std::string const&,
                             std::string const&, 
-                            struct TRI_document_collection_t*,
-                            struct TRI_transaction_collection_s*,
+                            SingleCollectionWriteTransaction<UINT64_MAX>&,
                             std::string const&,
                             TRI_voc_tick_t,
                             std::string&);
@@ -235,6 +231,7 @@ namespace triagens {
 
         int handleCollection (struct TRI_json_t const*,
                               struct TRI_json_t const*,
+                              bool,
                               std::string&,
                               sync_phase_e);
 
@@ -251,6 +248,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int iterateCollections (std::vector<std::pair<struct TRI_json_t const*, struct TRI_json_t const*>> const&,
+                                bool,
                                 std::string&,
                                 sync_phase_e);
 

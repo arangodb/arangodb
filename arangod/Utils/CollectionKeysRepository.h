@@ -91,8 +91,7 @@ namespace triagens {
 /// it must be returned later using release() 
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionKeys* find (CollectionKeysId,
-                              bool&);
+        CollectionKeys* find (CollectionKeysId);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a cursor

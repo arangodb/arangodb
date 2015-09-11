@@ -158,10 +158,8 @@ bool CollectionKeysRepository::remove (CollectionKeysId id) {
 /// they must be returned later using release() 
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionKeys* CollectionKeysRepository::find (CollectionKeysId id,
-                                                bool& busy) {
+CollectionKeys* CollectionKeysRepository::find (CollectionKeysId id) {
   triagens::arango::CollectionKeys* collectionKeys = nullptr;
-  busy = false;
 
   {
     MUTEX_LOCKER(_lock);
@@ -177,11 +175,6 @@ CollectionKeys* CollectionKeysRepository::find (CollectionKeysId id,
 
     if (collectionKeys->isDeleted()) { 
       // already deleted
-      return nullptr;
-    }
-
-    if (collectionKeys->isUsed()) {
-      busy = true;
       return nullptr;
     }
 

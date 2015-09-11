@@ -30,8 +30,10 @@
 #include "Utils/CollectionKeys.h"
 #include "Basics/hashes.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/StringUtils.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionReadLocker.h"
+#include "Utils/DocumentHelper.h"
 #include "Utils/transactions.h"
 #include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"
@@ -194,6 +196,125 @@ std::tuple<std::string, std::string, uint64_t> CollectionKeys::hashChunk (size_t
   
   return std::make_tuple(first, last, hash);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dumps keys into the JSON
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectionKeys::dumpKeys (triagens::basics::Json& json, 
+                               size_t chunk,
+                               size_t chunkSize) const {
+  size_t from = chunk * chunkSize;
+  size_t to   = (chunk + 1) * chunkSize;
+
+  if (to > _markers->size()) {
+    to = _markers->size();
+  }
+
+  if (from >= _markers->size() || from >= to || to == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  for (size_t i = from; i < to; ++i) {
+    auto marker = _markers->at(i);
+
+    triagens::basics::Json array(triagens::basics::Json::Array, 2);
+    array.add(triagens::basics::Json(std::string(TRI_EXTRACT_MARKER_KEY(marker))));
+    array.add(triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
+
+    json.add(array);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dumps documents into the JSON
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectionKeys::dumpDocs (triagens::basics::Json& json, 
+                               size_t chunk,
+                               size_t chunkSize,
+                               TRI_json_t const* ids) const {
+  if (! TRI_IsArrayJson(ids)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+       
+  
+  auto shaper = _document->getShaper(); 
+  CollectionNameResolver resolver(_vocbase);
+  
+
+  size_t const n = TRI_LengthArrayJson(ids);
+  
+  for (size_t i = 0; i < n; ++i) {
+    auto valueJson = static_cast<TRI_json_t const*>(TRI_AtVector(&ids->_value._objects, i));
+
+    if (! TRI_IsNumberJson(valueJson)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+    }
+
+    size_t position = chunk * chunkSize + static_cast<size_t>(valueJson->_value._number);
+
+    if (position >= _markers->size()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+    }
+
+    auto df = _markers->at(position);
+    
+    TRI_shaped_json_t shapedJson;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, df);
+
+    auto doc = TRI_JsonShapedJson(shaper, &shapedJson);
+
+    if (! TRI_IsObjectJson(doc)) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    
+    char const* key = TRI_EXTRACT_MARKER_KEY(df);
+    TRI_json_t* keyJson = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, key, strlen(key));
+
+    if (keyJson != nullptr) {
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_KEY, keyJson);
+    }
+
+    // convert rid from uint64_t to string
+    std::string const&& rid = triagens::basics::StringUtils::itoa(TRI_EXTRACT_MARKER_RID(df));
+    TRI_json_t* revJson = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
+
+    if (revJson != nullptr) {
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_REV, revJson);
+    }
+
+    TRI_df_marker_type_t type = df->_type; 
+
+    if (type == TRI_DOC_MARKER_KEY_EDGE) {
+      TRI_doc_edge_key_marker_t const* marker = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(df);
+      std::string const&& from = DocumentHelper::assembleDocumentId(resolver.getCollectionNameCluster(marker->_fromCid), std::string((char*) marker + marker->_offsetFromKey));
+      std::string const&& to = DocumentHelper::assembleDocumentId(resolver.getCollectionNameCluster(marker->_toCid), std::string((char*) marker +  marker->_offsetToKey));
+
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_TO, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
+    }
+    else if (type == TRI_WAL_MARKER_EDGE) {
+      triagens::wal::edge_marker_t const* marker = reinterpret_cast<triagens::wal::edge_marker_t const*>(df);  // PROTECTED by trx passed from above
+      std::string const&& from = DocumentHelper::assembleDocumentId(resolver.getCollectionNameCluster(marker->_fromCid), std::string((char*) marker + marker->_offsetFromKey));
+      std::string const&& to = DocumentHelper::assembleDocumentId(resolver.getCollectionNameCluster(marker->_toCid), std::string((char*) marker +  marker->_offsetToKey));
+
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_TO, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
+    }
+
+    json.transfer(doc);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

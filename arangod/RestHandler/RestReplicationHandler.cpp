@@ -166,6 +166,7 @@ HttpHandler::status_t RestReplicationHandler::execute () {
     else if (command == "keys") {
       if (type != HttpRequest::HTTP_REQUEST_GET &&
           type != HttpRequest::HTTP_REQUEST_POST &&
+          type != HttpRequest::HTTP_REQUEST_PUT &&
           type != HttpRequest::HTTP_REQUEST_DELETE) {
         goto BAD_CALL;
       }
@@ -179,6 +180,9 @@ HttpHandler::status_t RestReplicationHandler::execute () {
       }
       else if (type == HttpRequest::HTTP_REQUEST_GET) {
         handleCommandGetKeys();
+      }
+      else if (type == HttpRequest::HTTP_REQUEST_PUT) {
+        handleCommandFetchKeys();
       }
       else if (type == HttpRequest::HTTP_REQUEST_DELETE) {
         handleCommandRemoveKeys();
@@ -3183,6 +3187,9 @@ void RestReplicationHandler::handleCommandGetKeys () {
     if (chunkSize < 100) {
       chunkSize = DefaultChunkSize;
     }
+    else if (chunkSize > 20000) {
+      chunkSize = 20000;
+    }
   }
   
   std::string const& id = suffix[1];
@@ -3195,16 +3202,10 @@ void RestReplicationHandler::handleCommandGetKeys () {
  
     auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(triagens::basics::StringUtils::uint64(id));
   
-    bool busy;
-    auto collectionKeys = keysRepository->find(collectionKeysId, busy);
+    auto collectionKeys = keysRepository->find(collectionKeysId);
 
     if (collectionKeys == nullptr) {
-      if (busy) {
-        generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_BUSY), TRI_ERROR_CURSOR_BUSY); // TODO: Fix error code
-      }
-      else {
-        generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND); // TODO: fix error code
-      }
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND); // TODO: fix error code
       return;
     }
 
@@ -3216,9 +3217,11 @@ void RestReplicationHandler::handleCommandGetKeys () {
 
       for (TRI_voc_tick_t from = 0; from < max; from += chunkSize) {
         TRI_voc_tick_t to = from + chunkSize;
+
         if (to > max) {
           to = max;
         }
+
         auto result = collectionKeys->hashChunk(from, to);
 
         triagens::basics::Json chunk(triagens::basics::Json::Object, 3);
@@ -3227,6 +3230,110 @@ void RestReplicationHandler::handleCommandGetKeys () {
         chunk.set("hash", triagens::basics::Json(std::to_string(std::get<2>(result))));
         
         json.add(chunk);
+      }
+
+      collectionKeys->release();
+
+      generateResult(HttpResponse::OK, json.json());
+    }
+    catch (...) {
+      collectionKeys->release();
+      throw;
+    }
+  }
+  catch (triagens::basics::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::SERVER_ERROR, res);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns date for a key range
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandFetchKeys () {
+  std::vector<std::string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 2) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting PUT /_api/replication/keys/<keys-id>");
+    return;
+  }
+      
+  static TRI_voc_tick_t const DefaultChunkSize = 5000;
+  TRI_voc_tick_t chunkSize = DefaultChunkSize;
+
+  // determine chunk size
+  bool found;
+  char const* value = _request->value("chunkSize", found);
+
+  if (found) {
+    chunkSize = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+    if (chunkSize < 100) {
+      chunkSize = DefaultChunkSize;
+    }
+    else if (chunkSize > 20000) {
+      chunkSize = 20000;
+    }
+  }
+  
+  value = _request->value("chunk", found);
+
+  size_t chunk = 0;
+
+  if (found) {
+    chunk = static_cast<size_t>(StringUtils::uint64(value));
+  }
+
+  value = _request->value("type", found);
+
+  bool keys = true;
+  if (strcmp(value, "keys") == 0) {
+    keys = true;
+  }
+  else if (strcmp(value, "docs") == 0) {
+    keys = false;
+  }
+  else {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid 'type' value");
+    return;
+  }
+
+  std::string const& id = suffix[1];
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    auto keysRepository = static_cast<triagens::arango::CollectionKeysRepository*>(_vocbase->_collectionKeys);
+    TRI_ASSERT(keysRepository != nullptr);
+ 
+    auto collectionKeysId = static_cast<triagens::arango::CollectionKeysId>(triagens::basics::StringUtils::uint64(id));
+  
+    auto collectionKeys = keysRepository->find(collectionKeysId);
+
+    if (collectionKeys == nullptr) {
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND); // TODO: fix error code
+      return;
+    }
+
+    try {  
+      triagens::basics::Json json(triagens::basics::Json::Array, chunkSize);
+  
+      if (keys) {      
+        collectionKeys->dumpKeys(json, chunk, chunkSize);
+      }
+      else {
+        std::unique_ptr<TRI_json_t> idsJson(parseJsonBody());
+        collectionKeys->dumpDocs(json, chunk, chunkSize, idsJson.get());
       }
 
       collectionKeys->release();

@@ -31,6 +31,7 @@
 #define ARANGODB_ARANGO_COLLECTION_KEYS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/voc-types.h"
 
@@ -122,6 +123,23 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::tuple<std::string, std::string, uint64_t> hashChunk (size_t, size_t) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dumps keys into the JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        void dumpKeys (triagens::basics::Json&,
+                       size_t,
+                       size_t) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dumps documents into the JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        void dumpDocs (triagens::basics::Json&,
+                       size_t,
+                       size_t,
+                       TRI_json_t const*) const;
         
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
