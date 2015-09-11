@@ -99,6 +99,88 @@ collections.
 
 !SECTION AQL improvements
 
+!SUBSECTION Additional date functions
+
+ArangoDB 2.7 provides the several extra AQL functions for date and time 
+calculation and manipulation. These functions were contributed by Github users 
+@CoDEmanX and @friday. A big thanks for their work! 
+
+The following extra date functions are available from 2.7 on:
+
+* `DATE_DAYOFYEAR(date)`: Returns the day of year number of *date*.
+   The return values range from 1 to 365, or 366 in a leap year respectively.
+
+* `DATE_ISOWEEK(date)`: Returns the ISO week date of *date*. 
+   The return values range from 1 to 53. Monday is considered the first day of the week. 
+   There are no fractional weeks, thus the last days in December may belong to the first 
+   week of the next year, and the first days in January may be part of the previous year's
+   last week.
+
+* `DATE_LEAPYEAR(date)`: Returns whether the year of *date* is a leap year.
+
+* `DATE_QUARTER(date)`: Returns the quarter of the given date (1-based):
+   * 1: January, February, March
+   * 2: April, May, June
+   * 3: July, August, September
+   * 4: October, November, December
+
+* `DATE_ADD(date, amount, unit)`: Adds *amount* given in *unit* to *date* and
+  returns the calculated date.
+
+  *unit* can be either of the following to specify the time unit to add or
+  subtract (case-insensitive):
+  - y, year, years
+  - m, month, months
+  - w, week, weeks
+  - d, day, days
+  - h, hour, hours
+  - i, minute, minutes
+  - s, second, seconds
+  - f, millisecond, milliseconds
+
+  *amount* is the number of *unit*s to add (positive value) or subtract
+  (negative value).
+
+* `DATE_SUBTRACT(date, amount, unit)`: Subtracts *amount* given in *unit* from
+  *date* and returns the calculated date.
+  
+  It works the same as `DATE_ADD()`, except that it subtracts. It is equivalent
+  to calling `DATE_ADD()` with a negative amount, except that `DATE_SUBTRACT()`
+  can also subtract ISO durations. Note that negative ISO durations are not
+  supported (i.e. starting with `-P`, like `-P1Y`).
+
+* `DATE_DIFF(date1, date2, unit, asFloat)`: Calculate the difference
+  between two dates in given time *unit*, optionally with decimal places.
+  Returns a negative value if *date1* is greater than *date2*.
+
+* `DATE_COMPARE(date1, date2, unitRangeStart, unitRangeEnd)`: Compare two
+  partial dates and return true if the match, false otherwise. The parts to
+  compare are defined by a range of time units.
+  
+  The full range is: years, months, days, hours, minutes, seconds, milliseconds.
+  Pass the unit to start from as *unitRangeStart*, and the unit to end with as
+  *unitRangeEnd*. All units in between will be compared. Leave out *unitRangeEnd*
+  to only compare *unitRangeStart*.
+
+* `DATE_FORMAT(date, format)`: Format a date according to the given format string.
+  It supports the following placeholders (case-insensitive):
+  - %t: timestamp
+  - %o: ISO date (0000-00-00T00:00:00.000Z)
+  - %w: day of week (0..6)
+  - %y: year (0000..9999)
+  - %m: month (01..12)
+  - %d: day (01..31)
+  - %h: hour (00..23)
+  - %i: minute (00..59)
+  - %s: second (00..59)
+  - %f: millisecond (000..999)
+  - %x: day of year (001..366)
+  - %k: ISO week date (01..53)
+  - %l: leap year (0 or 1)
+  - %q: quarter (1..4)
+  - %%: literal %
+
+
 !SUBSECTION RETURN DISTINCT
 
 To return unique values from a query, AQL now provides the `DISTINCT` keyword.
