@@ -278,6 +278,13 @@ static void JS_SynchronizeReplication (const v8::FunctionCallbackInfo<v8::Value>
       config._requireFromPresent = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("requireFromPresent")));
     }
   }
+  
+  bool incremental = false;
+  if (object->Has(TRI_V8_ASCII_STRING("incremental"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("incremental"))->IsBoolean()) {
+      incremental = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("incremental")));
+    }
+  }
 
   string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType, verbose);
@@ -287,7 +294,7 @@ static void JS_SynchronizeReplication (const v8::FunctionCallbackInfo<v8::Value>
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   try {
-    res = syncer.run(errorMsg);
+    res = syncer.run(errorMsg, incremental);
 
     result->Set(TRI_V8_ASCII_STRING("lastLogTick"), V8TickId(isolate, syncer.getLastLogTick()));
 

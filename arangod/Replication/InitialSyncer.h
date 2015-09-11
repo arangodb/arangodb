@@ -72,7 +72,8 @@ namespace triagens {
           PHASE_VALIDATE,
           PHASE_DROP,
           PHASE_CREATE,
-          PHASE_DUMP
+          PHASE_DUMP,
+          PHASE_SYNC
         }
         sync_phase_e;
 
@@ -108,7 +109,7 @@ namespace triagens {
 /// @brief run method, performs a full synchronization
 ////////////////////////////////////////////////////////////////////////////////
 
-        int run (std::string&);
+        int run (std::string&, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the last log tick of the master at start
@@ -134,6 +135,8 @@ namespace triagens {
               return "create";
             case PHASE_DUMP:
               return "dump";
+            case PHASE_SYNC:
+              return "sync";
             case PHASE_NONE: 
               break;
           }
@@ -204,6 +207,29 @@ namespace triagens {
                                   std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief incrementally fetch data from a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int handleCollectionSync (std::string const&, 
+                                  struct TRI_document_collection_t*,
+                                  struct TRI_transaction_collection_s*,
+                                  std::string const&,
+                                  TRI_voc_tick_t,
+                                  std::string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief incrementally fetch data from a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int handleSyncKeys (std::string const&,
+                            std::string const&, 
+                            struct TRI_document_collection_t*,
+                            struct TRI_transaction_collection_s*,
+                            std::string const&,
+                            TRI_voc_tick_t,
+                            std::string&);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the information about a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -217,6 +243,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleInventoryResponse (struct TRI_json_t const*,
+                                     bool,
                                      std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////

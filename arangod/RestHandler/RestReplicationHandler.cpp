@@ -3158,7 +3158,7 @@ void RestReplicationHandler::handleCommandCreateKeys () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a key range
+/// @brief returns all key ranges
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandGetKeys () {
@@ -3170,31 +3170,22 @@ void RestReplicationHandler::handleCommandGetKeys () {
                   "expecting GET /_api/replication/keys/<keys-id>");
     return;
   }
+      
+  static TRI_voc_tick_t const DefaultChunkSize = 5000;
+  TRI_voc_tick_t chunkSize = DefaultChunkSize;
+
+  // determine chunk size
+  bool found;
+  char const* value = _request->value("chunkSize", found);
+
+  if (found) {
+    chunkSize = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
+    if (chunkSize < 100) {
+      chunkSize = DefaultChunkSize;
+    }
+  }
   
   std::string const& id = suffix[1];
-
-  TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd = 0;
-
-  // determine start and end tick for keys
-  bool found;
-  char const* value = _request->value("from", found);
-
-  if (found) {
-    tickStart = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
-  }
-  
-  value = _request->value("to", found);
-  if (found) {
-    tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
-  }
-
-  if (tickStart > tickEnd || tickEnd == 0) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid from/to values");
-    return;
-  }
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -3218,14 +3209,27 @@ void RestReplicationHandler::handleCommandGetKeys () {
     }
 
     try {  
-      auto result = collectionKeys->hashChunk(tickStart, tickEnd);
+    
+      triagens::basics::Json json(triagens::basics::Json::Array, 200);
+        
+      TRI_voc_tick_t max = static_cast<TRI_voc_tick_t>(collectionKeys->count());
+
+      for (TRI_voc_tick_t from = 0; from < max; from += chunkSize) {
+        TRI_voc_tick_t to = from + chunkSize;
+        if (to > max) {
+          to = max;
+        }
+        auto result = collectionKeys->hashChunk(from, to);
+
+        triagens::basics::Json chunk(triagens::basics::Json::Object, 3);
+        chunk.set("low", triagens::basics::Json(std::get<0>(result)));
+        chunk.set("high", triagens::basics::Json(std::get<1>(result)));
+        chunk.set("hash", triagens::basics::Json(std::to_string(std::get<2>(result))));
+        
+        json.add(chunk);
+      }
 
       collectionKeys->release();
-    
-      triagens::basics::Json json(triagens::basics::Json::Object, 3);
-      json.set("low", triagens::basics::Json(std::get<0>(result)));
-      json.set("high", triagens::basics::Json(std::get<1>(result)));
-      json.set("hash", triagens::basics::Json(std::to_string(std::get<2>(result))));
 
       generateResult(HttpResponse::OK, json.json());
     }
@@ -3816,7 +3820,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
     res = TRI_ERROR_NO_ERROR;
 
     try {
-      res = syncer.run(errorMsg);
+      res = syncer.run(errorMsg, false);
     }
     catch (...) {
       errorMsg = "caught an exception";
@@ -4003,7 +4007,7 @@ void RestReplicationHandler::handleCommandSync () {
   string errorMsg = "";
 
   try {
-    res = syncer.run(errorMsg);
+    res = syncer.run(errorMsg, false);
   }
   catch (...) {
     errorMsg = "caught an exception";
