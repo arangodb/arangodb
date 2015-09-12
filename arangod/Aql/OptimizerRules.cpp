@@ -2068,7 +2068,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                             IndexCache& doneIndexes)
       : _rangeInfoMapVec(nullptr),
         _plan(plan), 
-        _varIds({ var->id }),
+        _varIds(),
         _modified(false),
         _canThrow(false),
         _changesPlaces(changesPlaces),
@@ -2076,6 +2076,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         _doneCollections(doneCollections),
         _doneIndexes(doneIndexes) {
 
+      _varIds.emplace(var->id);
     }
 
     ~FilterToEnumCollFinder () {
