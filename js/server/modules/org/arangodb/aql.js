@@ -260,6 +260,59 @@ var dayOfLeapYearOffsets = [
 ];
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup array for days in month calculation (leap year aware)
+////////////////////////////////////////////////////////////////////////////////
+
+var daysInMonth = [
+  29, // Feb (in leap year)
+  31, // Jan
+  28, // Feb (in non-leap year)
+  31, // Mar
+  30, // Apr
+  31, // May
+  30, // Jun
+  31, // Jul
+  31, // Aug
+  30, // Sep
+  31, // Oct
+  30, // Nov
+  31  // Dec
+];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief English month names (1-based)
+////////////////////////////////////////////////////////////////////////////////
+
+var monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December"
+];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief English weekday names
+////////////////////////////////////////////////////////////////////////////////
+
+var weekdayNames = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday"
+];
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constants for date difference function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4863,7 +4916,26 @@ function AQL_DATE_QUARTER (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief internal function to add or subtract from date
+/// @brief return number of days in month of date passed (leap year aware)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_DAYS_IN_MONTH (value) {
+  'use strict';
+
+  try {
+    var date = MAKE_DATE([ value ], "DATE_DAYS_IN_MONTH");
+    var month = date.getUTCMonth() + 1;
+    var ly = AQL_DATE_LEAPYEAR(date.getTime());
+    return daysInMonth[month === 2 && ly ? 0 : month];
+  }
+  catch (err) {
+    WARN("DATE_DAYS_IN_MONTH", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to add to or subtract from given date
 ////////////////////////////////////////////////////////////////////////////////
 
 function DATE_CALC (value, amount, unit, func) {
@@ -5079,26 +5151,31 @@ function AQL_DATE_FORMAT (value, format) {
     var dateStr = date.toISOString();
     var offset = date.getUTCFullYear() < 0 ? 3 : 0;
     var dateMap = {
-      "%t": date.getTime(),
-      "%o": dateStr,
-      "%w": AQL_DATE_DAYOFWEEK(dateStr),
-      "%y": dateStr.slice(0, 4 + offset),
-      "%m": dateStr.slice(5 + offset, 7 + offset),
-      "%d": dateStr.slice(8 + offset, 10 + offset),
-      "%h": dateStr.slice(11 + offset, 13 + offset),
-      "%i": dateStr.slice(14 + offset, 16 + offset),
-      "%s": dateStr.slice(17 + offset, 19 + offset),
-      "%f": dateStr.slice(20 + offset, 23 + offset),
-      "%x": zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3),
-      "%k": zeropad(AQL_DATE_ISOWEEK(dateStr), 2),
-      "%l": +AQL_DATE_LEAPYEAR(dateStr),
-      "%q": AQL_DATE_QUARTER(dateStr),
-      "%%": "%" // Allow for literal "%Y" using "%%Y"
+      "%t": function(){ return date.getTime() },
+      "%z": function(){ return dateStr },
+      "%w": function(){ return AQL_DATE_DAYOFWEEK(dateStr) },
+      "%y": function(){ return dateStr.slice(0, 4 + offset) },
+      "%m": function(){ return dateStr.slice(5 + offset, 7 + offset) },
+      "%d": function(){ return dateStr.slice(8 + offset, 10 + offset) },
+      "%h": function(){ return dateStr.slice(11 + offset, 13 + offset) },
+      "%i": function(){ return dateStr.slice(14 + offset, 16 + offset) },
+      "%s": function(){ return dateStr.slice(17 + offset, 19 + offset) },
+      "%f": function(){ return dateStr.slice(20 + offset, 23 + offset) },
+      "%x": function(){ return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3) },
+      "%k": function(){ return zeropad(AQL_DATE_ISOWEEK(dateStr), 2) },
+      "%l": function(){ return +AQL_DATE_LEAPYEAR(dateStr) },
+      "%q": function(){ return AQL_DATE_QUARTER(dateStr) },
+      "%a": function(){ return zeropad(AQL_DATE_DAYS_IN_MONTH(dateStr), 2) },
+      "%n": function(){ return monthNames[date.getUTCMonth()] },
+      "%o": function(){ return monthNames[date.getUTCMonth()].substring(0, 3) },
+      "%e": function(){ return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)] },
+      "%g": function(){ return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3) },
+      "%%": function(){ return "%" } // Allow for literal "%Y" using "%%Y"
       //"%": "" // Not reliable, because Object.keys() does not guarantee order
     };
     var exp = new RegExp(Object.keys(dateMap).join("|"), "gi"); 
     format = format.replace(exp, function(match){
-      return dateMap[match.toLowerCase()];
+      return dateMap[match.toLowerCase()]();
     });
     return format;
   } catch (err) {
@@ -9059,6 +9136,7 @@ exports.AQL_DATE_DAYOFYEAR = AQL_DATE_DAYOFYEAR;
 exports.AQL_DATE_ISOWEEK = AQL_DATE_ISOWEEK;
 exports.AQL_DATE_LEAPYEAR = AQL_DATE_LEAPYEAR;
 exports.AQL_DATE_QUARTER = AQL_DATE_QUARTER;
+exports.AQL_DATE_DAYS_IN_MONTH = AQL_DATE_DAYS_IN_MONTH;
 exports.AQL_DATE_ADD = AQL_DATE_ADD;
 exports.AQL_DATE_SUBTRACT = AQL_DATE_SUBTRACT;
 exports.AQL_DATE_DIFF = AQL_DATE_DIFF;

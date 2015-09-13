@@ -2,7 +2,8 @@
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.7. ArangoDB 2.7 also contains several bugfixes that are not listed
-here. For a list of bugfixes, please consult the [CHANGELOG](https://github.com/arangodb/arangodb/blob/devel/CHANGELOG).
+here. For a list of bugfixes, please consult the
+[CHANGELOG](https://github.com/arangodb/arangodb/blob/devel/CHANGELOG).
 
 !SECTION Performance improvements
 
@@ -101,8 +102,8 @@ collections.
 
 !SUBSECTION Additional date functions
 
-ArangoDB 2.7 provides the several extra AQL functions for date and time 
-calculation and manipulation. These functions were contributed by Github users 
+ArangoDB 2.7 provides several extra AQL functions for date and time 
+calculation and manipulation. These functions were contributed by GitHub users 
 @CoDEmanX and @friday. A big thanks for their work! 
 
 The following extra date functions are available from 2.7 on:
@@ -124,6 +125,8 @@ The following extra date functions are available from 2.7 on:
    * 3: July, August, September
    * 4: October, November, December
 
+- *DATE_DAYS_IN_MONTH(date)*: Returns the number of days in *date*'s month (28..31).
+   
 * `DATE_ADD(date, amount, unit)`: Adds *amount* given in *unit* to *date* and
   returns the calculated date.
 
@@ -154,7 +157,7 @@ The following extra date functions are available from 2.7 on:
   Returns a negative value if *date1* is greater than *date2*.
 
 * `DATE_COMPARE(date1, date2, unitRangeStart, unitRangeEnd)`: Compare two
-  partial dates and return true if the match, false otherwise. The parts to
+  partial dates and return true if they match, false otherwise. The parts to
   compare are defined by a range of time units.
   
   The full range is: years, months, days, hours, minutes, seconds, milliseconds.
@@ -165,7 +168,7 @@ The following extra date functions are available from 2.7 on:
 * `DATE_FORMAT(date, format)`: Format a date according to the given format string.
   It supports the following placeholders (case-insensitive):
   - %t: timestamp
-  - %o: ISO date (0000-00-00T00:00:00.000Z)
+  - %z: ISO date (0000-00-00T00:00:00.000Z)
   - %w: day of week (0..6)
   - %y: year (0000..9999)
   - %m: month (01..12)
@@ -178,6 +181,11 @@ The following extra date functions are available from 2.7 on:
   - %k: ISO week date (01..53)
   - %l: leap year (0 or 1)
   - %q: quarter (1..4)
+  - %a: days in month (28..31)
+  - %n: English name of month (January..December)
+  - %o: abbreviated English name of month (Jan..Dec)
+  - %e: English name of weekday (Sunday..Saturday)
+  - %g: abbreviated English name of weekday (Sun..Sat)
   - %%: literal %
 
 
