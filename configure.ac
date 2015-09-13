@@ -114,6 +114,8 @@ if test "x$tr_INTERNAL_GO" = "xno"; then
     BASIC_INFO="$BASIC_INFO|GO BINARY: $GO"
   fi
   GOPROG=$GO
+else
+  GOPROG=go
 fi
 
 AM_CONDITIONAL(GO_AVAILABLE, test "x$GOPROG" != x)
