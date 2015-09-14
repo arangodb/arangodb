@@ -4955,9 +4955,9 @@ function DATE_CALC (value, amount, unit, func) {
     var sign = (func === "DATE_ADD" || func === undefined) ? 1 : -1;
     var m;
     
-    // if amount is not a number, than it must be an ISO duration string
-    if (TYPEWEIGHT(amount) !== TYPEWEIGHT_NUMBER) {
-      if (TYPEWEIGHT(unit) !== TYPEWEIGHT_STRING) {
+    // if amount is not a number, then it must be an ISO duration string
+    if (TYPEWEIGHT(unit) === TYPEWEIGHT_NULL) {
+      if (TYPEWEIGHT(amount) !== TYPEWEIGHT_STRING) {
         WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
@@ -4993,6 +4993,10 @@ function DATE_CALC (value, amount, unit, func) {
       return date.toISOString(); 
     } else {
       if (TYPEWEIGHT(unit) !== TYPEWEIGHT_STRING) {
+        WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
+      }
+      if (TYPEWEIGHT(amount) !== TYPEWEIGHT_NUMBER) {
         WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
@@ -5159,26 +5163,26 @@ function AQL_DATE_FORMAT (value, format) {
     var yr = date.getUTCFullYear();
     var offset = yr < 0 || yr > 9999 ? 3 : 0;
     var dateMap = {
-      "%t": function(){ return date.getTime() },
-      "%z": function(){ return dateStr },
-      "%w": function(){ return AQL_DATE_DAYOFWEEK(dateStr) },
-      "%y": function(){ return dateStr.slice(0, 4 + offset) },
-      "%m": function(){ return dateStr.slice(5 + offset, 7 + offset) },
-      "%d": function(){ return dateStr.slice(8 + offset, 10 + offset) },
-      "%h": function(){ return dateStr.slice(11 + offset, 13 + offset) },
-      "%i": function(){ return dateStr.slice(14 + offset, 16 + offset) },
-      "%s": function(){ return dateStr.slice(17 + offset, 19 + offset) },
-      "%f": function(){ return dateStr.slice(20 + offset, 23 + offset) },
-      "%x": function(){ return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3) },
-      "%k": function(){ return zeropad(AQL_DATE_ISOWEEK(dateStr), 2) },
-      "%l": function(){ return +AQL_DATE_LEAPYEAR(dateStr) },
-      "%q": function(){ return AQL_DATE_QUARTER(dateStr) },
-      "%a": function(){ return zeropad(AQL_DATE_DAYS_IN_MONTH(dateStr), 2) },
-      "%n": function(){ return monthNames[date.getUTCMonth()] },
-      "%o": function(){ return monthNames[date.getUTCMonth()].substring(0, 3) },
-      "%e": function(){ return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)] },
-      "%g": function(){ return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3) },
-      "%%": function(){ return "%" } // Allow for literal "%Y" using "%%Y"
+      "%t": function(){ return date.getTime(); },
+      "%z": function(){ return dateStr; },
+      "%w": function(){ return AQL_DATE_DAYOFWEEK(dateStr); },
+      "%y": function(){ return dateStr.slice(0, 4 + offset); },
+      "%m": function(){ return dateStr.slice(5 + offset, 7 + offset); },
+      "%d": function(){ return dateStr.slice(8 + offset, 10 + offset); },
+      "%h": function(){ return dateStr.slice(11 + offset, 13 + offset); },
+      "%i": function(){ return dateStr.slice(14 + offset, 16 + offset); },
+      "%s": function(){ return dateStr.slice(17 + offset, 19 + offset); },
+      "%f": function(){ return dateStr.slice(20 + offset, 23 + offset); },
+      "%x": function(){ return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3); },
+      "%k": function(){ return zeropad(AQL_DATE_ISOWEEK(dateStr), 2); },
+      "%l": function(){ return +AQL_DATE_LEAPYEAR(dateStr); },
+      "%q": function(){ return AQL_DATE_QUARTER(dateStr); },
+      "%a": function(){ return zeropad(AQL_DATE_DAYS_IN_MONTH(dateStr), 2); },
+      "%n": function(){ return monthNames[date.getUTCMonth()]; },
+      "%o": function(){ return monthNames[date.getUTCMonth()].substring(0, 3); },
+      "%e": function(){ return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)]; },
+      "%g": function(){ return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3); },
+      "%%": function(){ return "%"; } // Allow for literal "%Y" using "%%Y"
       //"%": "" // Not reliable, because Object.keys() does not guarantee order
     };
     var exp = new RegExp(dateMapRegExp, "gi"); 

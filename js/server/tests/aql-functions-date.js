@@ -906,13 +906,13 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD({}, 1, 'year')");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'sugar')");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 1, '')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), '', 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), '1', 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 'one', 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), null, 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), false, 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), [], 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), {}, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), '', 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), '1', 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 'one', 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), null, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), false, 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), [], 'year')");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), {}, 'year')");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -940,7 +940,7 @@ function ahuacatlDateFunctionsTestSuite () {
         [ ["2012-02-12 23:59:59.991", 9, "f"], "2012-02-13T00:00:00.000Z" ],
         [ ["2012-02-12 23:59:59.991Z", 9, "ms"], "2012-02-13T00:00:00.000Z" ],
         [ ["2012-02-12 23:59:59.991Z", "PT0.009S"], "2012-02-13T00:00:00.000Z" ],
-        [ ["2012-02-12", "p1y"], "2020-02-12T00:00:00.000Z" ], /* lower-case ISO durations currently allowed */
+        [ ["2012-02-12", "p1y"], "2013-02-12T00:00:00.000Z" ], /* lower-case ISO durations currently allowed */
         [ ["2012-02-12", 8, "years"], "2020-02-12T00:00:00.000Z" ],
         [ ["2012-02-12Z", 8, "year"], "2020-02-12T00:00:00.000Z" ],
         [ ["2012-02-12T13:24:12Z", 8, "y"], "2020-02-12T13:24:12.000Z" ],
@@ -957,8 +957,8 @@ function ahuacatlDateFunctionsTestSuite () {
         [ ["2015-02-22Z", 1, "weeks"], "2015-03-01T00:00:00.000Z" ],
         [ ["2015-02-22Z", 1, "week"], "2015-03-01T00:00:00.000Z" ],
         [ ["2015-02-22Z", "P1W"], "2015-03-01T00:00:00.000Z" ],
-        [ ["2016-02-22Z", 1, "week"], "2015-02-29T00:00:00.000Z" ],
-        [ ["2016-02-22Z", "P1W"], "2015-02-29T00:00:00.000Z" ],
+        [ ["2016-02-22Z", 1, "week"], "2016-02-29T00:00:00.000Z" ],
+        [ ["2016-02-22Z", "P1W"], "2016-02-29T00:00:00.000Z" ],
         [ ["1221-02-28T23:59:59Z", 800*12, "months"], "2021-02-28T23:59:59.000Z" ],
         [ ["1221-02-28 23:59:59Z", 800, "years"], "2021-02-28T23:59:59.000Z" ],
         [ ["1221-02-28Z", 1000*(60*60*24-1), "ms"], "1221-02-28T23:59:59.000Z" ],
@@ -990,11 +990,20 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
 
       values.forEach(function (value) {
-        var actual = getQueryResults("RETURN DATE_ADD(@value, @amount, @unit)", {
-          value: value[0][0],
-          amount: value[0][1],
-          unit: value[0][2],
-        });
+        var actual;
+        if (value[0][2] === undefined) {
+          actual = getQueryResults("RETURN DATE_ADD(@value, @amount)", {
+            value: value[0][0],
+            amount: value[0][1]
+          });
+        }
+        else {
+          actual = getQueryResults("RETURN DATE_ADD(@value, @amount, @unit)", {
+            value: value[0][0],
+            amount: value[0][1],
+            unit: value[0][2],
+          });
+        }
         assertEqual([ value[1] ], actual);
       }); 
     },
