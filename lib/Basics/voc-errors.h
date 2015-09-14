@@ -66,6 +66,8 @@
 ///   the user.
 /// - 27: @LIT{file exists}
 ///   Will be raised when a file already exists.
+/// - 28: @LIT{locked}
+///   Will be raised when a resource or an operation is locked.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -255,15 +257,12 @@
 ///   Will be raised when an invalid replication applier state file is found.
 /// - 1408: @LIT{invalid transaction}
 ///   Will be raised when an unexpected transaction id is found.
-/// - 1409: @LIT{invalid replication logger configuration}
-///   Will be raised when the configuration for the replication logger is
-///   invalid.
 /// - 1410: @LIT{invalid replication applier configuration}
 ///   Will be raised when the configuration for the replication applier is
 ///   invalid.
-/// - 1411: @LIT{cannot change applier configuration while running}
-///   Will be raised when there is an attempt to change the configuration for
-///   the replication applier while it is running.
+/// - 1411: @LIT{cannot perform operation while applier is running}
+///   Will be raised when there is an attempt to perform an operation while the
+///   replication applier is running.
 /// - 1412: @LIT{replication stopped}
 ///   Special error code used to indicate the replication applier was stopped
 ///   by a user.
@@ -956,6 +955,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_FILE_EXISTS                                             (27)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 28: ERROR_LOCKED
+///
+/// locked
+///
+/// Will be raised when a resource or an operation is locked.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LOCKED                                                  (28)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -1766,16 +1775,6 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION                      (1408)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1409: ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION
-///
-/// invalid replication logger configuration
-///
-/// Will be raised when the configuration for the replication logger is invalid.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION                (1409)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 1410: ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION
 ///
 /// invalid replication applier configuration
@@ -1789,10 +1788,10 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1411: ERROR_REPLICATION_RUNNING
 ///
-/// cannot change applier configuration while running
+/// cannot perform operation while applier is running
 ///
-/// Will be raised when there is an attempt to change the configuration for the
-/// replication applier while it is running.
+/// Will be raised when there is an attempt to perform an operation while the
+/// replication applier is running.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_RUNNING                                     (1411)

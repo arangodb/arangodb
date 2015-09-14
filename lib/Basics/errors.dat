@@ -30,6 +30,7 @@ ERROR_LEGEND_INCOMPLETE,24,"internal error if a legend could not be created","Wi
 ERROR_IP_ADDRESS_INVALID,25,"IP address is invalid","Will be raised when the structure of an IP address is invalid."
 ERROR_LEGEND_NOT_IN_WAL_FILE,26,"internal error if a legend for a marker does not yet exist in the same WAL file","Will be raised internally, then fixed internally, and never come out to the user."
 ERROR_FILE_EXISTS,27,"file exists","Will be raised when a file already exists."
+ERROR_LOCKED,28,"locked","Will be raised when a resource or an operation is locked."
 
 ################################################################################
 ## HTTP standard errors
@@ -147,9 +148,8 @@ ERROR_REPLICATION_LOOP,1405,"loop detected","Will be raised when the replication
 ERROR_REPLICATION_UNEXPECTED_MARKER,1406,"unexpected marker","Will be raised when an unexpected marker is found in the replication log stream."
 ERROR_REPLICATION_INVALID_APPLIER_STATE,1407,"invalid applier state","Will be raised when an invalid replication applier state file is found."
 ERROR_REPLICATION_UNEXPECTED_TRANSACTION,1408,"invalid transaction","Will be raised when an unexpected transaction id is found."
-ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION,1409,"invalid replication logger configuration","Will be raised when the configuration for the replication logger is invalid."
 ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,1410,"invalid replication applier configuration","Will be raised when the configuration for the replication applier is invalid."
-ERROR_REPLICATION_RUNNING,1411,"cannot change applier configuration while running","Will be raised when there is an attempt to change the configuration for the replication applier while it is running."
+ERROR_REPLICATION_RUNNING,1411,"cannot perform operation while applier is running","Will be raised when there is an attempt to perform an operation while the replication applier is running."
 ERROR_REPLICATION_APPLIER_STOPPED,1412,"replication stopped","Special error code used to indicate the replication applier was stopped by a user."
 ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the replication applier is started without a known start tick value."
 ERROR_REPLICATION_START_TICK_NOT_PRESENT,1414,"start tick not present","Will be raised when the replication applier fetches data using a start tick, but that start tick is not present on the logger server anymore."

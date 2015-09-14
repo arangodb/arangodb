@@ -172,9 +172,17 @@ int InitialSyncer::run (string& errorMsg,
     return TRI_ERROR_INTERNAL;
   }
 
+  int res = _vocbase->_replicationApplier->preventStart();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  TRI_DEFER(_vocbase->_replicationApplier->allowStart());
+
   setProgress("fetching master state");
 
-  int res = getMasterState(errorMsg);
+  res = getMasterState(errorMsg);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -185,7 +193,6 @@ int InitialSyncer::run (string& errorMsg,
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-
 
   string url = BaseUrl + "/inventory?serverId=" + _localServerIdString;
   if (_includeSystem) {
@@ -636,9 +643,13 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
                                          string& errorMsg) {
 
   string const baseUrl = BaseUrl + "/keys";
+  string url = baseUrl + "?collection=" + cid + "&to=" + std::to_string(maxTick);
+  
+  std::string progress = "fetching collection keys from " + url;
+  setProgress(progress);
    
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_POST,
-                                                              baseUrl + "?collection=" + cid + "&to=" + std::to_string(maxTick),
+                                                              url,
                                                               nullptr,
                                                               0));
 
@@ -718,9 +729,13 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   }
   
   {
+    url = baseUrl + "/" + id;
+    string progress = "deleting remote collection keys object from " + url;
+    setProgress(progress);
+
     // now delete the keys we ordered
     std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_DELETE,
-                                                                baseUrl + "/" + id,
+                                                                url,
                                                                 nullptr,
                                                                 0));
 
@@ -750,6 +765,9 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   auto shaper = trx.documentCollection()->getShaper();
           
   bool const isEdge = (trx.documentCollection()->_info._type == TRI_COL_TYPE_EDGE);
+    
+  string progress = "collecting local keys";
+  setProgress(progress);
 
   // fetch all local keys from primary index
   std::vector<TRI_df_marker_t const*> markers;
@@ -771,13 +789,11 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
       void const* marker = ptr->getDataPtr();
       auto df = static_cast<TRI_df_marker_t const*>(marker);
-
-      if (df->_tick >= maxTick) {
-        continue;
-      }
-
       markers.emplace_back(df);
     }
+  
+    string progress = "sorting " + std::to_string(markers.size()) + " local key(s)";
+    setProgress(progress);
     
     // sort all our local keys
     std::sort(markers.begin(), markers.end(), [] (TRI_df_marker_t const* lhs, TRI_df_marker_t const* rhs) -> bool {
@@ -791,9 +807,13 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
   TRI_voc_tick_t const chunkSize = 5000;
   string const baseUrl = BaseUrl + "/keys";
+    
+  string url = baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
+  progress = "fetching remote keys chunks from " + url;
+  setProgress(progress);
    
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
-                                                              baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize),
+                                                              url,
                                                               nullptr,
                                                               0));
 
@@ -927,9 +947,13 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
     else {
       // no match
       // must transfer keys for non-matching range
+  
+      std::string url = baseUrl + "/" + keysId + "?type=keys&chunk=" + std::to_string(i) + "&chunkSize=" + std::to_string(chunkSize);
+      progress = "fetching keys from " + url;
+      setProgress(progress);
 
       std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
-                                                                  baseUrl + "/" + keysId + "?type=keys&chunk=" + std::to_string(i) + "&chunkSize=" + std::to_string(chunkSize),
+                                                                  url,
                                                                   nullptr,
                                                                   0));
 
@@ -997,8 +1021,12 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         // key
         auto keyJson = static_cast<TRI_json_t const*>(TRI_AtVector(&chunk->_value._objects, 0));
         // rid
-        auto ridJson = static_cast<TRI_json_t const*>(TRI_AtVector(&chunk->_value._objects, 1));
-
+        if (markers.empty()) {
+          // no local markers
+          toFetch.emplace_back(i);
+          continue;
+        }
+        
         while (nextStart < markers.size()) {
           auto df = markers[nextStart];
           char const* localKey = TRI_EXTRACT_MARKER_KEY(df);
@@ -1016,6 +1044,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           }
         }
 
+        auto ridJson = static_cast<TRI_json_t const*>(TRI_AtVector(&chunk->_value._objects, 1));
         auto mptr = idx->lookupKey(keyJson->_value._string.data);
 
         if (mptr == nullptr) {
@@ -1032,16 +1061,18 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       }
       
       // calculate next starting point
-      BinarySearch(markers, highJson->_value._string.data, nextStart);
-      while (nextStart < markers.size()) {
-        TRI_ASSERT(nextStart < markers.size());
-        char const* key = TRI_EXTRACT_MARKER_KEY(markers.at(nextStart));
-        int res = strcmp(key, highJson->_value._string.data);
-        if (res <= 0) {
-          ++nextStart;
-        }
-        else {
-          break;
+      if (! markers.empty()) {
+        BinarySearch(markers, highJson->_value._string.data, nextStart);
+        while (nextStart < markers.size()) {
+          TRI_ASSERT(nextStart < markers.size());
+          char const* key = TRI_EXTRACT_MARKER_KEY(markers.at(nextStart));
+          int res = strcmp(key, highJson->_value._string.data);
+          if (res <= 0) {
+            ++nextStart;
+          }
+          else {
+            break;
+          }
         }
       }
 
@@ -1058,10 +1089,14 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           keysJson.add(triagens::basics::Json(static_cast<double>(it)));
         }
       
+        std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" + std::to_string(currentChunkId) + "&chunkSize=" + std::to_string(chunkSize);
+        progress = "fetching documents from " + url;
+        setProgress(progress);
+
         auto const keyJsonString = triagens::basics::JsonHelper::toString(keysJson.json());
 
         std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
-                                                                    baseUrl + "/" + keysId + "?type=docs&chunk=" + std::to_string(currentChunkId) + "&chunkSize=" + std::to_string(chunkSize),
+                                                                    url,
                                                                     keyJsonString.c_str(),
                                                                     keyJsonString.size()));
 
@@ -1395,7 +1430,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
       if (n > 0) {
         string const progress = "creating indexes for " + collectionMsg;
-        setProgress(progress.c_str());
+        setProgress(progress);
 
         READ_LOCKER(_vocbase->_inventoryLock);
 

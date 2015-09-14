@@ -179,6 +179,27 @@ var sync = function (config) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief performs a one-time synchronization with a remote endpoint, for
+/// a single collection
+////////////////////////////////////////////////////////////////////////////////
+
+var syncCollection = function (collection, config) {
+  var db = internal.db;
+
+  var body = JSON.stringify(config || { });
+  body.restrictType = "include";
+  body.restrictCollections = [ collection ];
+  body.includeSystem = true;
+  body.incremental = true;
+
+  var requestResult = db._connection.PUT("/_api/replication/sync", body);
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief fetches a server's id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -196,10 +217,11 @@ var serverId = function () {
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
-exports.logger   = logger;
-exports.applier  = applier;
-exports.sync     = sync;
-exports.serverId = serverId;
+exports.logger         = logger;
+exports.applier        = applier;
+exports.sync           = sync;
+exports.syncCollection = syncCollection;
+exports.serverId       = serverId;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

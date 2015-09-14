@@ -34,6 +34,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_IP_ADDRESS_INVALID, "IP address is invalid");
   REG_ERROR(ERROR_LEGEND_NOT_IN_WAL_FILE, "internal error if a legend for a marker does not yet exist in the same WAL file");
   REG_ERROR(ERROR_FILE_EXISTS, "file exists");
+  REG_ERROR(ERROR_LOCKED, "locked");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -112,9 +113,8 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_REPLICATION_UNEXPECTED_MARKER, "unexpected marker");
   REG_ERROR(ERROR_REPLICATION_INVALID_APPLIER_STATE, "invalid applier state");
   REG_ERROR(ERROR_REPLICATION_UNEXPECTED_TRANSACTION, "invalid transaction");
-  REG_ERROR(ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION, "invalid replication logger configuration");
   REG_ERROR(ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid replication applier configuration");
-  REG_ERROR(ERROR_REPLICATION_RUNNING, "cannot change applier configuration while running");
+  REG_ERROR(ERROR_REPLICATION_RUNNING, "cannot perform operation while applier is running");
   REG_ERROR(ERROR_REPLICATION_APPLIER_STOPPED, "replication stopped");
   REG_ERROR(ERROR_REPLICATION_NO_START_TICK, "no start tick");
   REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");

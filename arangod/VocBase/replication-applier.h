@@ -99,6 +99,7 @@ struct TRI_replication_applier_state_t {
   TRI_voc_tick_t                           _lastAvailableContinuousTick;
   TRI_voc_tick_t                           _safeResumeTick;
   bool                                     _active;
+  bool                                     _preventStart;
   char*                                    _progressMsg;
   char                                     _progressTime[24];
   TRI_server_id_t                          _serverId;
@@ -145,6 +146,24 @@ class TRI_replication_applier_t {
     char const* databaseName () const {
       return _databaseName.c_str();
     }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test if the replication applier is running
+////////////////////////////////////////////////////////////////////////////////
+  
+    bool isRunning () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief block the replication applier from starting
+////////////////////////////////////////////////////////////////////////////////
+
+    int preventStart ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unblock the replication applier from starting
+////////////////////////////////////////////////////////////////////////////////
+
+    int allowStart ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication applier
@@ -206,7 +225,7 @@ class TRI_replication_applier_t {
 
     TRI_server_t*                            _server;
     TRI_vocbase_t*                           _vocbase;
-    triagens::basics::ReadWriteLock          _statusLock;
+    mutable triagens::basics::ReadWriteLock  _statusLock;
     std::atomic<bool>                        _terminateThread;
     TRI_replication_applier_state_t          _state;
     TRI_replication_applier_configuration_t  _configuration;

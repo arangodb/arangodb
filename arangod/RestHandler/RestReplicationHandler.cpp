@@ -3997,9 +3997,10 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 /// if set to *true*, then an incremental synchronization method will be used
 /// for synchronizing data in collections. This method is useful when 
 /// collections already exist locally, and only the remaining differences need
-/// to be transferred from the remote endpoint. The default value is *false*,
-/// meaning that the complete data from the remote collection will be 
-/// transferred.
+/// to be transferred from the remote endpoint. In this case, the incremental
+/// synchronization can be faster than a full synchronization. 
+/// The default value is *false*, meaning that the complete data from the remote 
+/// collection will be transferred.
 ///
 /// @RESTBODYPARAM{restrictType,string,optional,string}
 /// an optional string value for collection filtering. When
