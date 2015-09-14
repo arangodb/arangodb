@@ -375,7 +375,7 @@ will be returned without any optimizations applied to it.
     @EXAMPLE_ARANGOSH_OUTPUT{11_workWithAQL_parseQueries}
     var stmt = db._createStatement("FOR doc IN @@collection FILTER doc.foo == @bar RETURN doc");
     stmt.parse();
-    ~addIgnoreCollection("mycollection")
+    ~removeIgnoreCollection("mycollection")
     ~db._drop("mycollection")
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 11_workWithAQL_parseQueries
