@@ -112,7 +112,7 @@ SERVER_OPT := \
 	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
-	--log.level error \
+	--log.level fatal \
         --wal.reserve-logfiles 1 \
 	--server.threads 4 \
 	$(SERVER_START)
@@ -120,7 +120,7 @@ SERVER_OPT := \
 CLIENT_OPT := \
 	--configuration none \
 	--javascript.startup-directory @top_srcdir@/js \
-	--log.level error \
+	--log.level fatal \
 	--no-colors \
 	--quiet
 
@@ -156,7 +156,8 @@ start-server:
 	@(test "$(PROTO)" == "unix" && \
 		while ! @builddir@/bin/arangosh $(CLIENT_OPT)  \
 			--server.endpoint unix://$(VOCDIR)/arango.sock \
-			 --javascript.execute-string 'if (arango.GET("/_api/version").server === "arango") { 0; } else {1; }'; do \
+                        --server.disable-authentication true \
+                        --javascript.execute-string 'if (arango.GET("/_api/version").server === "arango") { 0; } else {1; }'; do \
 		    sleep 1; \
 		    echo .; \
 		done;) ||\
@@ -214,7 +215,7 @@ if ENABLE_FAILURE_TESTS
 execute-recovery-test:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
-	@builddir@/bin/arangod "$(VOCDIR)" --no-server $(SERVER_OPT) --server.threads 1 --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup --log.level warning || true # the server will crash with segfault intentionally in this test
+	@builddir@/bin/arangod "$(VOCDIR)" --no-server $(SERVER_OPT) --server.threads 1 --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup --log.level fatal || true # the server will crash with segfault intentionally in this test
 	@rm -f core
 	$(VALGRIND) @builddir@/bin/arangod --no-server "$(VOCDIR)" $(SERVER_OPT) --server.threads 1 --wal.ignore-logfile-errors true --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter recover || test "x$(FORCE)" == "x1"
 
