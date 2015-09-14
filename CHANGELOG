@@ -1,6 +1,14 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* additionally allow the following characters in document keys:
+
+  `(` `)` `+` `,` `=` `;` `$` `!` `*` `'` `%`
+
+
+v2.7.0-rc1 (XXXX-XX-XX)
+-----------------------
+
 * added extra AQL functions for date and time calculation and manipulation. 
   These functions were contributed by GitHub users @CoDEmanX and @friday. 
   A big thanks for their work! 
