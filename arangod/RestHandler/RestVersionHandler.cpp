@@ -87,20 +87,23 @@ bool RestVersionHandler::isDirect () const {
 /// Returns the server name and version number. The response is a JSON object
 /// with the following attributes:
 ///
-/// - *server*: will always contain *arango*
-///
-/// - *version*: the server version string. The string has the format
-///   "*major*.*minor*.*sub*". *major* and *minor* will be numeric, and *sub*
-///   may contain a number or a textual version.
-///
-/// - *details*: an optional JSON object with additional details. This is
-///   returned only if the *details* URL parameter is set to *true* in the
-///   request.
-///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
 /// is returned in all cases.
+///
+/// @RESTREPLYBODY{server,string,required,string}
+/// will always contain *arango*
+///
+/// @RESTREPLYBODY{version,string,required,string}
+/// the server version string. The string has the format
+/// "*major*.*minor*.*sub*". *major* and *minor* will be numeric, and *sub*
+/// may contain a number or a textual version.
+///
+/// @RESTREPLYBODY{details,object,optional,}
+/// an optional JSON object with additional details. This is
+/// returned only if the *details* URL parameter is set to *true* in the
+/// request.
 ///
 /// @EXAMPLES
 ///

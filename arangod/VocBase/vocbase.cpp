@@ -2396,7 +2396,7 @@ TRI_vocbase_t::TRI_vocbase_t (TRI_server_t* server,
 
   _queries          = new triagens::aql::QueryList(this);
   _cursorRepository = new triagens::arango::CursorRepository(this);
-  _collectionKeys   = new triagens::arango::CollectionKeysRepository(this);
+  _collectionKeys   = new triagens::arango::CollectionKeysRepository();
  
   _path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
   _name = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
