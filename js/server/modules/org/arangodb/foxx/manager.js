@@ -36,7 +36,6 @@
 // -----------------------------------------------------------------------------
 
 const R = require('ramda');
-const internal = require('internal');
 const fs = require('fs');
 const joi = require('joi');
 const util = require('util');
@@ -60,6 +59,7 @@ const cluster = require('org/arangodb/cluster');
 const download = require('internal').download;
 const executeGlobalContextFunction = require('internal').executeGlobalContextFunction;
 const actions = require('org/arangodb/actions');
+const plainServerVersion = require("org/arangodb").plainServerVersion;
 const _ = require('underscore');
 
 const throwDownloadError = arangodb.throwDownloadError;
@@ -337,17 +337,14 @@ function checkManifest(filename, manifest) {
     }
   });
 
-  let version = internal.version;
-  let devel = version.match(/(.*)-(rc[0-9]*|devel)$/);
+  let serverVersion = plainServerVersion();
 
-  if (devel !== null) {
-    version = devel[1];
-  }
-
-  if (manifest.engines && manifest.engines.arangodb && !semver.satisfies(version, manifest.engines.arangodb)) {
+  if (manifest.engines 
+   && manifest.engines.arangodb
+   && !semver.satisfies(serverVersion, manifest.engines.arangodb)) {
     console.warn(
       `Manifest "${filename}" for app "${manifest.name}":`
-      + ` ArangoDB version ${internal.version} probably not compatible`
+      + ` ArangoDB version ${serverVersion} probably not compatible`
       + ` with expected version ${manifest.engines.arangodb}.`
     );
   }

@@ -834,8 +834,8 @@ int CollectorThread::collect (Logfile* logfile) {
   // We will sequentially scan the logfile for collection:
   TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_SEQUENTIAL);
   TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_WILLNEED);
-  TRI_DEFER (TRI_MMFileAdvise(df->_data, df->_maximalSize,
-                              TRI_MADVISE_RANDOM));
+  TRI_DEFER(TRI_MMFileAdvise(df->_data, df->_maximalSize,
+                             TRI_MADVISE_RANDOM));
 
   // create a state for the collector, beginning with the list of failed transactions
   CollectorState state;
