@@ -337,7 +337,14 @@ function checkManifest(filename, manifest) {
     }
   });
 
-  if (manifest.engines && manifest.engines.arangodb && !semver.satisfies(internal.version, manifest.engines.arangodb)) {
+  let version = internal.version;
+  let devel = version.match(/(.*)-(rc[0-9]*|devel)$/);
+
+  if (devel !== null) {
+    version = devel[1];
+  }
+
+  if (manifest.engines && manifest.engines.arangodb && !semver.satisfies(version, manifest.engines.arangodb)) {
     console.warn(
       `Manifest "${filename}" for app "${manifest.name}":`
       + ` ArangoDB version ${internal.version} probably not compatible`
