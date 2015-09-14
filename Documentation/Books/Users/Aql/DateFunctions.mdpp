@@ -123,13 +123,6 @@ The following date functions can be used with dates created by *DATE_TIMESTAMP* 
 
 - *DATE_LEAPYEAR(date)*: Returns whether the year of *date* is a leap year.
 
-  It can be used to determine the number of days in a month:
-
-```js
-LET daysInMonth = [29, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-RETURN daysInMonth[DATE_MONTH(date) == 2 && DATE_LEAPYEAR(date) ? 0 : DATE_MONTH(date)]
-```
-
 - *DATE_QUARTER(date)*: Returns the quarter of the given date (1-based):
 
   - 1: January, February, March
@@ -137,6 +130,8 @@ RETURN daysInMonth[DATE_MONTH(date) == 2 && DATE_LEAPYEAR(date) ? 0 : DATE_MONTH
   - 3: July, August, September
   - 4: October, November, December
 
+- *DATE_DAYS_IN_MONTH(date)*: Returns the number of days in *date*'s month (28..31).
+  
 The following other date functions are also available:
 
 - *DATE_NOW()*: Returns the current time as a timestamp.
@@ -161,7 +156,8 @@ The following other date functions are also available:
   - f, millisecond, milliseconds
 
   *amount* is the number of *unit*s to add (positive value) or subtract
-  (negative value).
+  (negative value). It is recommended to use positive values only, and use
+  `DATE_SUBTRACT()` for subtractions instead.
   
   Examples:
 
@@ -221,7 +217,7 @@ DATE_SUBTRACT(DATE_NOW(), "PT1H3M") // 1 hour and 30 minutes ago
 
 - *DATE_DIFF(date1, date2, unit, asFloat)*: Calculate the difference
   between two dates in given time *unit*, optionally with decimal places.
-  Returns a negative value if *date1* is greater than *date2*.
+  Returns a negative value if *date1* is greater than / after *date2*.
 
   *unit* can be either of the following to specify the time unit to return the
   difference in (case-insensitive):
@@ -235,7 +231,7 @@ DATE_SUBTRACT(DATE_NOW(), "PT1H3M") // 1 hour and 30 minutes ago
   - f, millisecond, milliseconds
 
 - *DATE_COMPARE(date1, date2, unitRangeStart, unitRangeEnd)*: Compare two
-  partial dates and return true if the match, false otherwise. The parts to
+  partial dates and return true if they match, false otherwise. The parts to
   compare are defined by a range of time units.
   
   The full range is: years, months, days, hours, minutes, seconds, milliseconds.
@@ -315,7 +311,7 @@ FOR user IN users
 - *DATE_FORMAT(date, format)*: Format a date according to the given format string.
   It supports the following placeholders (case-insensitive):
   - %t: timestamp
-  - %o: ISO date (0000-00-00T00:00:00.000Z)
+  - %z: ISO date (0000-00-00T00:00:00.000Z)
   - %w: day of week (0..6)
   - %y: year (0000..9999)
   - %m: month (01..12)
@@ -328,10 +324,15 @@ FOR user IN users
   - %k: ISO week date (01..53)
   - %l: leap year (0 or 1)
   - %q: quarter (1..4)
+  - %a: days in month (28..31)
+  - %n: English name of month (January..December)
+  - %o: abbreviated English name of month (Jan..Dec)
+  - %e: English name of weekday (Sunday..Saturday)
+  - %g: abbreviated English name of weekday (Sun..Sat)
   - %%: literal %
 
-  Month, day, hour, minute, second and ISO week date are zero-padded to 2
-  characters, millisecond and day of year to 3 characters. Year is zero-padded
+  Month, day, hour, minute, second, ISO week date and days in month are zero-padded
+  to 2 characters, millisecond and day of year to 3 characters. Year is zero-padded
   to 4 characters, or 6 if year is negative (it will be 7 chars long however
   because of the leading minus character, and is not suitable for comparisons
   with 4-chars positive years). Timestamp is not padded.
@@ -344,8 +345,8 @@ FOR user IN users
   datasets (like over 1 million dates). If possible, avoid formatting dates on
   server-side and leave it up to the client to do so. This function should only
   be used for special date comparisons or to store the formatted dates in the
-  database. Use the primitive `DATE_*()` functions together with `CONCAT()` if
-  possible for better performance.
+  database. For better performance, use the primitive `DATE_*()` functions
+  together with `CONCAT()` if possible.
 
   Examples:
   

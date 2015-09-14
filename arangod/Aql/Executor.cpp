@@ -249,6 +249,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "DATE_ISOWEEK",                Function("DATE_ISOWEEK",                "AQL_DATE_ISOWEEK", "ns", true, true, false, true, true) },
   { "DATE_LEAPYEAR",               Function("DATE_LEAPYEAR",               "AQL_DATE_LEAPYEAR", "ns", true, true, false, true, true) },
   { "DATE_QUARTER",                Function("DATE_QUARTER",                "AQL_DATE_QUARTER", "ns", true, true, false, true, true) },
+  { "DATE_DAYS_IN_MONTH",          Function("DATE_DAYS_IN_MONTH",          "AQL_DATE_DAYS_IN_MONTH", "ns", true, true, false, true, true) },
   { "DATE_ADD",                    Function("DATE_ADD",                    "AQL_DATE_ADD", "ns,ns|n", true, true, false, true, true) },
   { "DATE_SUBTRACT",               Function("DATE_SUBTRACT",               "AQL_DATE_SUBTRACT", "ns,ns|n", true, true, false, true, true) },
   { "DATE_DIFF",                   Function("DATE_DIFF",                   "AQL_DATE_DIFF", "ns,ns,s|b", true, true, false, true, true) },
