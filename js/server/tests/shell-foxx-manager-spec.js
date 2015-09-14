@@ -39,7 +39,7 @@ describe("Foxx Manager", function() {
   });
 
   it("should fetch apps from the appstore", function() {
-    var list = FoxxManager.availableJson();
+    var list = FoxxManager.availableJson("match-engines");
     var i, app, l = list.length;
     expect(l).toBeGreaterThan(0);
     for (i = 0; i < l; ++i) {
@@ -57,7 +57,7 @@ describe("Foxx Manager", function() {
       FoxxManager.uninstall(mount, { force: true });
     } catch(e) {
     }
-    var list = FoxxManager.availableJson();
+    var list = FoxxManager.availableJson("match-engines");
     var i, app, l = list.length;
     for (i = 0; i < l; ++i) {
       app = list[i];

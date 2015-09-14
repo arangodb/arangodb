@@ -88,11 +88,21 @@ exports.ShapedJson = ShapedJson;
 
 exports.db = internal.db;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the server version
+////////////////////////////////////////////////////////////////////////////////
+
+exports.plainServerVersion = function() {
+  let version = internal.version;
+  let devel = version.match(/(.*)-(rc[0-9]*|devel)$/);
+
+  if (devel !== null) {
+    version = devel[1];
+  }
+
+  return version;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
-// End:
