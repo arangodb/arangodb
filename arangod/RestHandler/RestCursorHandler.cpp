@@ -451,37 +451,47 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// bind parameters. These values need to be passed in a JSON representation in
 /// the body of the POST request.
 ///
-/// If the result set can be created by the server, the server will respond with
-/// *HTTP 201*. The body of the response will contain a JSON object with the
-/// result set.
+/// @RESTRETURNCODES
 ///
-/// The returned JSON object has the following attributes:
+/// @RESTRETURNCODE{201}
+/// is returned if the result set can be created by the server.
 ///
-/// - *error*: boolean flag to indicate that an error occurred (*false*
-///   in this case)
+/// @RESTREPLYBODY{error,boolean,required,}
+/// A flag to indicate that an error occurred (*false* in this case)
 ///
-/// - *code*: the HTTP status code
+/// @RESTREPLYBODY{code,integer,required,integer}
+/// the HTTP status code
 ///
-/// - *result*: an array of result documents (might be empty if query has no results)
+/// @RESTREPLYBODY{result,array,optional,}
+/// an array of result documents (might be empty if query has no results)
 ///
-/// - *hasMore*: a boolean indicator whether there are more results
-///   available for the cursor on the server
+/// @RESTREPLYBODY{hasMore,boolean,required,}
+/// A boolean indicator whether there are more results
+/// available for the cursor on the server
 ///
-/// - *count*: the total number of result documents available (only
-///   available if the query was executed with the *count* attribute set)
+/// @RESTREPLYBODY{count,integer,optional,int64}
+/// the total number of result documents available (only
+/// available if the query was executed with the *count* attribute set)
 ///
-/// - *id*: id of temporary cursor created on the server (optional, see above)
+/// @RESTREPLYBODY{id,string,required,string}
+/// id of temporary cursor created on the server (optional, see above)
 ///
-/// - *extra*: an optional JSON object with extra information about the query result
-///   contained in its *stats* sub-attribute. For data-modification queries, the 
-///   *extra.stats* sub-attribute will contain the number of modified documents and 
-///   the number of documents that could not be modified
-///   due to an error (if *ignoreErrors* query option is specified)
+/// @RESTREPLYBODY{extra,object,optional,}
+/// an optional JSON object with extra information about the query result
+/// contained in its *stats* sub-attribute. For data-modification queries, the 
+/// *extra.stats* sub-attribute will contain the number of modified documents and 
+/// the number of documents that could not be modified
+/// due to an error (if *ignoreErrors* query option is specified)
 ///
-/// - *cached*: a boolean flag indicating whether the query result was served 
-///   from the query cache or not. If the query result is served from the query
-///   cache, the *extra* return attribute will not contain any *stats* sub-attribute
-///   and no *profile* sub-attribute.
+/// @RESTREPLYBODY{cached,boolean,required,}
+/// a boolean flag indicating whether the query result was served 
+/// from the query cache or not. If the query result is served from the query
+/// cache, the *extra* return attribute will not contain any *stats* sub-attribute
+/// and no *profile* sub-attribute.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the JSON representation is malformed or the query specification is
+/// missing from the request.
 ///
 /// If the JSON representation is malformed or the query specification is
 /// missing from the request, the server will respond with *HTTP 400*.
@@ -489,13 +499,17 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:
 ///
-/// - *error*: boolean flag to indicate that an error occurred (*true* in this case)
+/// @RESTREPLYBODY{error,boolean,required,}
+/// boolean flag to indicate that an error occurred (*true* in this case)
 ///
-/// - *code*: the HTTP status code
+/// @RESTREPLYBODY{code,integer,required,int64}
+/// the HTTP status code
 ///
-/// - *errorNum*: the server error number
+/// @RESTREPLYBODY{errorNum,integer,required,int64}
+/// the server error number
 ///
-/// - *errorMessage*: a descriptive error message
+/// @RESTREPLYBODY{errorMessage,string,required,string}
+/// a descriptive error message
 ///
 /// If the query specification is complete, the server will process the query. If an
 /// error occurs during query processing, the server will respond with *HTTP 400*.
@@ -503,14 +517,6 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///
 /// A list of query errors can be found (../ArangoErrors/README.md) here.
 ///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{201}
-/// is returned if the result set can be created by the server.
-///
-/// @RESTRETURNCODE{400}
-/// is returned if the JSON representation is malformed or the query specification is
-/// missing from the request.
 ///
 /// @RESTRETURNCODE{404}
 /// The server will respond with *HTTP 404* in case a non-existing collection is
