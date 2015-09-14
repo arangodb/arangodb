@@ -5144,36 +5144,61 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
 /// @brief format a date (numerical values only)
 ////////////////////////////////////////////////////////////////////////////////
 
+// special escape sequence first, rest ordered by length
+var dateMapRegExp = [
+  "%&", "%yyyyyy", "%yyyy", "%mmmm", "%wwww", "%mmm", "%www", "%fff", "%xxx",
+  "%mm", "%dd", "%hh", "%ii", "%ss", "%kk", "%t", "%z", "%w", "%y", "%m",
+  "%d", "%h", "%i", "%s", "%f", "%x", "%k", "%l", "%q", "%a", "%%", "%"
+].join("|");
+
 function AQL_DATE_FORMAT (value, format) {
   'use strict';
   try {
     var date = MAKE_DATE([ value ], "DATE_FORMAT");
     var dateStr = date.toISOString();
-    var offset = date.getUTCFullYear() < 0 ? 3 : 0;
+    var yr = date.getUTCFullYear();
+    var offset = yr < 0 || yr > 9999 ? 3 : 0;
     var dateMap = {
       "%t": function(){ return date.getTime() },
       "%z": function(){ return dateStr },
       "%w": function(){ return AQL_DATE_DAYOFWEEK(dateStr) },
-      "%y": function(){ return dateStr.slice(0, 4 + offset) },
-      "%m": function(){ return dateStr.slice(5 + offset, 7 + offset) },
-      "%d": function(){ return dateStr.slice(8 + offset, 10 + offset) },
-      "%h": function(){ return dateStr.slice(11 + offset, 13 + offset) },
-      "%i": function(){ return dateStr.slice(14 + offset, 16 + offset) },
-      "%s": function(){ return dateStr.slice(17 + offset, 19 + offset) },
-      "%f": function(){ return dateStr.slice(20 + offset, 23 + offset) },
-      "%x": function(){ return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3) },
-      "%k": function(){ return zeropad(AQL_DATE_ISOWEEK(dateStr), 2) },
+      "%y": function(){ return date.getUTCFullYear() },
+      // preserves full negative years (-000753 is not reduced to -753 or -0753)
+      "%yyyy": function(){ return dateStr.slice(0, 4 + offset) },
+      // zero-pad 4 digit years to length of 6 and add "+" prefix, keep negative as-is
+      "%yyyyyy": function(){ 
+        return (yr >= 0 && yr <= 9999)
+          ? "+" + zeropad(dateStr.slice(0, 4 + offset), 6)
+          : dateStr.slice(0, 7)
+      },
+      "%m": function(){ return date.getUTCMonth() + 1 },
+      "%mm": function(){ return dateStr.slice(5 + offset, 7 + offset) },
+      "%d": function(){ return date.getUTCDate() },
+      "%dd": function(){ return dateStr.slice(8 + offset, 10 + offset) },
+      "%h": function(){ return date.getUTCHours() },
+      "%hh": function(){ return dateStr.slice(11 + offset, 13 + offset) },
+      "%i": function(){ return date.getUTCMinutes() },
+      "%ii": function(){ return dateStr.slice(14 + offset, 16 + offset) },
+      "%s": function(){ return date.getUTCSeconds() },
+      "%ss": function(){ return dateStr.slice(17 + offset, 19 + offset) },
+      "%f": function(){ return date.getUTCMilliseconds() },
+      "%fff": function(){ return dateStr.slice(20 + offset, 23 + offset) },
+      "%x": function(){ return AQL_DATE_DAYOFYEAR(dateStr) },
+      "%xxx": function(){ return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3) },
+      "%k": function(){ return AQL_DATE_ISOWEEK(dateStr) },
+      "%kk": function(){ return zeropad(AQL_DATE_ISOWEEK(dateStr), 2) },
       "%l": function(){ return +AQL_DATE_LEAPYEAR(dateStr) },
       "%q": function(){ return AQL_DATE_QUARTER(dateStr) },
-      "%a": function(){ return zeropad(AQL_DATE_DAYS_IN_MONTH(dateStr), 2) },
-      "%n": function(){ return monthNames[date.getUTCMonth()] },
-      "%o": function(){ return monthNames[date.getUTCMonth()].substring(0, 3) },
-      "%e": function(){ return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)] },
-      "%g": function(){ return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3) },
-      "%%": function(){ return "%" } // Allow for literal "%Y" using "%%Y"
-      //"%": "" // Not reliable, because Object.keys() does not guarantee order
+      "%a": function(){ return AQL_DATE_DAYS_IN_MONTH(dateStr) },
+      "%mmm": function(){ return monthNames[date.getUTCMonth()].substring(0, 3) },
+      "%mmmm": function(){ return monthNames[date.getUTCMonth()] },
+      "%www": function(){ return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3) },
+      "%wwww": function(){ return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)] },
+      "%&": function(){ return "" }, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
+      "%%": function(){ return "%" }, // Allow for literal "%y" using "%%y"
+      "%": function(){ return "" }
     };
-    var exp = new RegExp(Object.keys(dateMap).join("|"), "gi"); 
+    var exp = new RegExp(dateMapRegExp, "gi"); 
     format = format.replace(exp, function(match){
       return dateMap[match.toLowerCase()]();
     });
