@@ -36,7 +36,6 @@
 #include "VocBase/voc-types.h"
 
 struct TRI_json_t;
-struct TRI_vocbase_t;
 
 namespace triagens {
   namespace arango {
@@ -59,7 +58,7 @@ namespace triagens {
 /// @brief create a collection keys repository
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit CollectionKeysRepository (TRI_vocbase_t*);
+        CollectionKeysRepository ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a collection keys repository
@@ -116,12 +115,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex for the repository

@@ -50,9 +50,8 @@ size_t const CollectionKeysRepository::MaxCollectCount = 32;
 /// @brief create a collection keys repository
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionKeysRepository::CollectionKeysRepository (TRI_vocbase_t* vocbase) 
-  : _vocbase(vocbase),
-    _lock(),
+CollectionKeysRepository::CollectionKeysRepository () 
+  : _lock(),
     _keys() {
 
   _keys.reserve(64);
