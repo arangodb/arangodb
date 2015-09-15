@@ -33,6 +33,46 @@
 #include "Zip/zip.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief escape tables
+////////////////////////////////////////////////////////////////////////////////
+
+#define Z16 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief escape values for characters used in JSON string printing
+/// use when forward slashes need no escaping
+////////////////////////////////////////////////////////////////////////////////
+
+static char const JsonEscapeTableWithoutSlash[256] = {
+  //0    1    2    3    4    5    6    7    8    9    A    B    C    D    E    F
+  'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f', 'r', 'u', 'u', // 00
+  'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', // 10
+    0,   0, '"',   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, // 20
+  Z16, Z16,                                                                       // 30~4F
+    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,'\\',   0,   0,   0, // 50
+  Z16, Z16, Z16, Z16, Z16, Z16, Z16, Z16, Z16, Z16                                // 60~FF
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief escape values for characters used in JSON string printing
+/// use when forward slashes need escaping
+////////////////////////////////////////////////////////////////////////////////
+
+static char const JsonEscapeTableWithSlash[256] = {
+  //0    1    2    3    4    5    6    7    8    9    A    B    C    D    E    F
+  'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f', 'r', 'u', 'u', // 00
+  'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', // 10
+    0,   0, '"',   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, '/', // 20
+  Z16, Z16,                                                                       // 30~4F
+    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,'\\',   0,   0,   0, // 50
+  Z16, Z16, Z16, Z16, Z16, Z16, Z16, Z16, Z16, Z16                                // 60~FF
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -62,11 +102,8 @@ static int Reserve (TRI_string_buffer_t * self, size_t size) {
   }
 
   if (size > Remaining(self)) {
-    ptrdiff_t off;
-    size_t len;
-
-    off = self->_current - self->_buffer;
-    len = (size_t) (1.2 * (self->_len + size));
+    ptrdiff_t off = self->_current - self->_buffer;
+    size_t len = (size_t) (1.2 * (self->_len + size));
     TRI_ASSERT(len > 0);
 
     char* ptr = static_cast<char*>(TRI_Reallocate(self->_memoryZone, self->_buffer, len + 1));
@@ -91,9 +128,7 @@ static int Reserve (TRI_string_buffer_t * self, size_t size) {
 
 static int AppendString (TRI_string_buffer_t* self, char const* str, const size_t len) {
   if (0 < len) {
-    int res;
-
-    res = Reserve(self, len);
+    int res = Reserve(self, len);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -111,16 +146,12 @@ static int AppendString (TRI_string_buffer_t* self, char const* str, const size_
 ////////////////////////////////////////////////////////////////////////////////
 
 static void EscapeUtf8Range0000T007F (TRI_string_buffer_t* self, char const** src) {
-  uint8_t c;
-  uint16_t i1;
-  uint16_t i2;
+  uint8_t c = (uint8_t) *(*src);
 
-  c = (uint8_t) *(*src);
+  uint16_t i1 = (((uint16_t) c) & 0xF0) >> 4;
+  uint16_t i2 = (((uint16_t) c) & 0x0F);
 
-  i1 = (((uint16_t) c) & 0xF0) >> 4;
-  i2 = (((uint16_t) c) & 0x0F);
-
-  AppendString(self, "\\u00", 4);
+  AppendString(self, "00", 2);
   AppendChar(self, (i1 < 10) ? ('0' + i1) : ('A' + i1 - 10));
   AppendChar(self, (i2 < 10) ? ('0' + i2) : ('A' + i2 - 10));
 }
@@ -130,28 +161,18 @@ static void EscapeUtf8Range0000T007F (TRI_string_buffer_t* self, char const** sr
 ////////////////////////////////////////////////////////////////////////////////
 
 static void EscapeUtf8Range0080T07FF (TRI_string_buffer_t* self, char const** src) {
-  uint8_t c;
-  uint8_t d;
-
-  c = (uint8_t) *((*src) + 0);
-  d = (uint8_t) *((*src) + 1);
+  uint8_t c = (uint8_t) *((*src) + 0);
+  uint8_t d = (uint8_t) *((*src) + 1);
 
   // correct UTF-8
   if ((d & 0xC0) == 0x80) {
-    uint16_t n;
-
-    uint16_t i1;
-    uint16_t i2;
-    uint16_t i3;
-    uint16_t i4;
-
-    n = ((c & 0x1F) << 6) | (d & 0x3F);
+    uint16_t n = ((c & 0x1F) << 6) | (d & 0x3F);
     TRI_ASSERT(n >= 128);
 
-    i1 = (n & 0xF000) >> 12;
-    i2 = (n & 0x0F00) >>  8;
-    i3 = (n & 0x00F0) >>  4;
-    i4 = (n & 0x000F);
+    uint16_t i1 = (n & 0xF000) >> 12;
+    uint16_t i2 = (n & 0x0F00) >>  8;
+    uint16_t i3 = (n & 0x00F0) >>  4;
+    uint16_t i4 = (n & 0x000F);
 
     AppendChar(self, '\\');
     AppendChar(self, 'u');
@@ -175,31 +196,20 @@ static void EscapeUtf8Range0080T07FF (TRI_string_buffer_t* self, char const** sr
 ////////////////////////////////////////////////////////////////////////////////
 
 static void EscapeUtf8Range0800TFFFF (TRI_string_buffer_t* self, char const** src) {
-  uint8_t c;
-  uint8_t d;
-  uint8_t e;
-
-  c = (uint8_t) *((*src) + 0);
-  d = (uint8_t) *((*src) + 1);
-  e = (uint8_t) *((*src) + 2);
+  uint8_t c = (uint8_t) *((*src) + 0);
+  uint8_t d = (uint8_t) *((*src) + 1);
+  uint8_t e = (uint8_t) *((*src) + 2);
 
   // correct UTF-8 (3-byte sequence UTF-8 1110xxxx 10xxxxxx)
   if ((d & 0xC0) == 0x80 && (e & 0xC0) == 0x80) {
-    uint16_t n;
-
-    uint16_t i1;
-    uint16_t i2;
-    uint16_t i3;
-    uint16_t i4;
-
-    n = ((c & 0x0F) << 12) | ((d & 0x3F) << 6) | (e & 0x3F);
+    uint16_t n = ((c & 0x0F) << 12) | ((d & 0x3F) << 6) | (e & 0x3F);
 
     TRI_ASSERT(n >= 2048 && (n < 55296 || n > 57343));
 
-    i1 = (n & 0xF000) >> 12;
-    i2 = (n & 0x0F00) >>  8;
-    i3 = (n & 0x00F0) >>  4;
-    i4 = (n & 0x000F);
+    uint16_t i1 = (n & 0xF000) >> 12;
+    uint16_t i2 = (n & 0x0F00) >>  8;
+    uint16_t i3 = (n & 0x00F0) >>  4;
+    uint16_t i4 = (n & 0x000F);
 
     AppendChar(self, '\\');
     AppendChar(self, 'u');
@@ -223,42 +233,27 @@ static void EscapeUtf8Range0800TFFFF (TRI_string_buffer_t* self, char const** sr
 ////////////////////////////////////////////////////////////////////////////////
 
 static void EscapeUtf8Range10000T10FFFF (TRI_string_buffer_t* self, char const** src) {
-  uint8_t c;
-  uint8_t d;
-  uint8_t e;
-  uint8_t f;
-
-  c = (uint8_t) *((*src) + 0);
-  d = (uint8_t) *((*src) + 1);
-  e = (uint8_t) *((*src) + 2);
-  f = (uint8_t) *((*src) + 3);
+  uint8_t c = (uint8_t) *((*src) + 0);
+  uint8_t d = (uint8_t) *((*src) + 1);
+  uint8_t e = (uint8_t) *((*src) + 2);
+  uint8_t f = (uint8_t) *((*src) + 3);
 
   // correct UTF-8 (4-byte sequence UTF-8 1110xxxx 10xxxxxx 10xxxxxx)
   if ((d & 0xC0) == 0x80 && (e & 0xC0) == 0x80 && (f & 0xC0) == 0x80) {
-    uint32_t n;
-
-    uint32_t s1;
-    uint32_t s2;
-
-    uint16_t i1;
-    uint16_t i2;
-    uint16_t i3;
-    uint16_t i4;
-
-    n = ((c & 0x0F) << 18) | ((d & 0x3F) << 12) | ((e & 0x3F) << 6) | (f & 0x3F);
+    uint32_t n = ((c & 0x0F) << 18) | ((d & 0x3F) << 12) | ((e & 0x3F) << 6) | (f & 0x3F);
     TRI_ASSERT(n >= 65536 && n <= 1114111);
 
     // construct the surrogate pairs
     n -= 0x10000;
 
-    s1 = ((n & 0xFFC00) >> 10) + 0xD800;
-    s2 = (n & 0x3FF) + 0xDC00;
+    uint32_t s1 = ((n & 0xFFC00) >> 10) + 0xD800;
+    uint32_t s2 = (n & 0x3FF) + 0xDC00;
 
     // encode high surrogate
-    i1 = (s1 & 0xF000) >> 12;
-    i2 = (s1 & 0x0F00) >>  8;
-    i3 = (s1 & 0x00F0) >>  4;
-    i4 = (s1 & 0x000F);
+    uint16_t i1 = (s1 & 0xF000) >> 12;
+    uint16_t i2 = (s1 & 0x0F00) >>  8;
+    uint16_t i3 = (s1 & 0x00F0) >>  4;
+    uint16_t i4 = (s1 & 0x000F);
 
     AppendChar(self, '\\');
     AppendChar(self, 'u');
@@ -305,138 +300,99 @@ static int AppendJsonEncodedValue (TRI_string_buffer_t* self,
     return res;
   }
 
-  switch (*ptr) {
-    case '/':
-      if (escapeSlash) {
-        AppendChar(self, '\\');
+  // next character as unsigned char
+  uint8_t c = (uint8_t) *ptr;
+
+  // character is in the normal latin1 range
+  if ((c & 0x80) == 0) {
+    // special character, escape
+    char esc;
+    if (escapeSlash) {
+      esc = JsonEscapeTableWithSlash[c];
+    }
+    else {
+      esc = JsonEscapeTableWithoutSlash[c];
+    }
+
+    if (esc) {
+      AppendChar(self, '\\');
+      AppendChar(self, esc);
+
+      if (esc == 'u') { 
+        // unicode output, must allocate more memory
+        res = Reserve(self, 4);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+
+        EscapeUtf8Range0000T007F(self, &ptr);
       }
+    }
 
+    // normal latin1
+    else {
       AppendChar(self, *ptr);
-      break;
+    }
+  }
 
-    case '\\':
-    case '"':
-      AppendChar(self, '\\');
-      AppendChar(self, *ptr);
-      break;
-
-    case '\b':
-      AppendChar(self, '\\');
-      AppendChar(self, 'b');
-      break;
-
-    case '\f':
-      AppendChar(self, '\\');
-      AppendChar(self, 'f');
-      break;
-
-    case '\n':
-      AppendChar(self, '\\');
-      AppendChar(self, 'n');
-      break;
-
-    case '\r':
-      AppendChar(self, '\\');
-      AppendChar(self, 'r');
-      break;
-
-    case '\t':
-      AppendChar(self, '\\');
-      AppendChar(self, 't');
-      break;
-
-    case '\0':
+  // unicode range 0080 - 07ff (2-byte sequence UTF-8)
+  else if ((c & 0xE0) == 0xC0) {
+    // hopefully correct UTF-8
+    if (*(ptr + 1) != '\0') {
       res = Reserve(self, 6);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
-      AppendString(self, "\\u0000", 6);
-      break;
+      EscapeUtf8Range0080T07FF(self, &ptr);
+    }
 
-    default: {
-        // next character as unsigned char
-        uint8_t c = (uint8_t) *ptr;
+    // corrupted UTF-8
+    else {
+      AppendChar(self, *ptr);
+    }
+  }
 
-        // character is in the normal latin1 range
-        if ((c & 0x80) == 0) {
-          // special character, escape
-          if (c < 32) {
-            res = Reserve(self, 6);
+  // unicode range 0800 - ffff (3-byte sequence UTF-8)
+  else if ((c & 0xF0) == 0xE0) {
+    // hopefully correct UTF-8
+    if (*(ptr + 1) != '\0' && *(ptr + 2) != '\0') {
+      res = Reserve(self, 6);
 
-            if (res != TRI_ERROR_NO_ERROR) {
-              return res;
-            }
-
-            EscapeUtf8Range0000T007F(self, &ptr);
-          }
-
-          // normal latin1
-          else {
-            AppendChar(self, *ptr);
-          }
-        }
-
-        // unicode range 0080 - 07ff (2-byte sequence UTF-8)
-        else if ((c & 0xE0) == 0xC0) {
-          // hopefully correct UTF-8
-          if (*(ptr + 1) != '\0') {
-            res = Reserve(self, 6);
-
-            if (res != TRI_ERROR_NO_ERROR) {
-              return res;
-            }
-            EscapeUtf8Range0080T07FF(self, &ptr);
-          }
-
-          // corrupted UTF-8
-          else {
-            AppendChar(self, *ptr);
-          }
-        }
-
-        // unicode range 0800 - ffff (3-byte sequence UTF-8)
-        else if ((c & 0xF0) == 0xE0) {
-          // hopefully correct UTF-8
-          if (*(ptr + 1) != '\0' && *(ptr + 2) != '\0') {
-            res = Reserve(self, 6);
-
-            if (res != TRI_ERROR_NO_ERROR) {
-              return res;
-            }
-            EscapeUtf8Range0800TFFFF(self, &ptr);
-          }
-
-          // corrupted UTF-8
-          else {
-            AppendChar(self, *ptr);
-          }
-        }
-
-        // unicode range 10000 - 10ffff (4-byte sequence UTF-8)
-        else if ((c & 0xF8) == 0xF0) {
-          // hopefully correct UTF-8
-          if (*(ptr + 1) != '\0' && *(ptr + 2) != '\0' && *(ptr + 3) != '\0') {
-            res = Reserve(self, 12);
-
-            if (res != TRI_ERROR_NO_ERROR) {
-              return res;
-            }
-            EscapeUtf8Range10000T10FFFF(self, &ptr);
-          }
-
-          // corrupted UTF-8
-          else {
-            AppendChar(self, *ptr);
-          }
-        }
-
-        // unicode range above 10ffff -- NOT IMPLEMENTED
-        else {
-          AppendChar(self, *ptr);
-        }
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
       }
-      break;
+      EscapeUtf8Range0800TFFFF(self, &ptr);
+    }
+
+    // corrupted UTF-8
+    else {
+      AppendChar(self, *ptr);
+    }
+  }
+
+  // unicode range 10000 - 10ffff (4-byte sequence UTF-8)
+  else if ((c & 0xF8) == 0xF0) {
+    // hopefully correct UTF-8
+    if (*(ptr + 1) != '\0' && *(ptr + 2) != '\0' && *(ptr + 3) != '\0') {
+      res = Reserve(self, 12);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+      EscapeUtf8Range10000T10FFFF(self, &ptr);
+    }
+
+    // corrupted UTF-8
+    else {
+      AppendChar(self, *ptr);
+    }
+  }
+
+  // unicode range above 10ffff -- NOT IMPLEMENTED
+  else {
+    AppendChar(self, *ptr);
   }
 
   return TRI_ERROR_NO_ERROR;
