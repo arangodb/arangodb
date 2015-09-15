@@ -1409,11 +1409,9 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       dfi = TRI_FindDatafileInfoDocumentCollection(document, oldData._fid, true);
     }
 
-    if (dfi != nullptr && found->getDataPtr() != nullptr) {  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
-      int64_t size;
-
-      TRI_ASSERT(found->getDataPtr() != nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
-      size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    if (dfi != nullptr && oldData.getDataPtr() != nullptr) {  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+      TRI_ASSERT(oldData.getDataPtr() != nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+      int64_t size = (int64_t) ((TRI_df_marker_t const*) oldData.getDataPtr())->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
       dfi->_numberAlive--;
       dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
@@ -1505,11 +1503,9 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     }
 
     if (dfi != nullptr) {
-      int64_t size;
-
       TRI_ASSERT(found->getDataPtr() != nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
-      size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+      int64_t size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
       dfi->_numberAlive--;
       dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(size);
