@@ -48,6 +48,8 @@ make swagger || exit 1
 
 git add -f Documentation/Examples/*.generated
 
+cd Documentation/Books; make ||exit 1
+
 if [ "$TAG" == "1" ];  then
   git commit -m "release version $VERSION" -a
   git push
