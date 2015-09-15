@@ -111,15 +111,6 @@ describe("Foxx Manager install", function() {
       }
     });
 
-    it("with malformed version", function() {
-      try {
-        FoxxManager.install(fs.join(basePath, "malformed-version"), "/unittest/broken");
-        expect(true).toBeFalsy("Managed to install broken application");
-      } catch(e) {
-        validateError(errors.ERROR_INVALID_APPLICATION_MANIFEST, e);
-      }
-    });
-
     it("with malformed controller file", function() {
       try {
         FoxxManager.install(fs.join(basePath, "malformed-controller-file"), "/unittest/broken");
