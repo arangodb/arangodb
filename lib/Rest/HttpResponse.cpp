@@ -62,13 +62,13 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case OK:                              return "200 OK";
     case CREATED:                         return "201 Created";
     case ACCEPTED:                        return "202 Accepted";
-    case PARTIAL:                         return "203 Partial Information";
+    case PARTIAL:                         return "203 Non-Authoritative Information";
     case NO_CONTENT:                      return "204 No Content";
     case RESET_CONTENT:                   return "205 Reset Content";
     case PARTIAL_CONTENT:                 return "206 Partial Content";
 
     //  Redirection 3xx
-    case MOVED_PERMANENTLY:               return "301 Moved";
+    case MOVED_PERMANENTLY:               return "301 Moved Permanently";
     case FOUND:                           return "302 Found";
     case SEE_OTHER:                       return "303 See Other";
     case NOT_MODIFIED:                    return "304 Not Modified";
@@ -81,14 +81,14 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case PAYMENT_REQUIRED:                return "402 Payment Required";
     case FORBIDDEN:                       return "403 Forbidden";
     case NOT_FOUND:                       return "404 Not Found";
-    case METHOD_NOT_ALLOWED:              return "405 Method Not Supported";
+    case METHOD_NOT_ALLOWED:              return "405 Method Not Allowed";
     case NOT_ACCEPTABLE:                  return "406 Not Acceptable";
     case REQUEST_TIMEOUT:                 return "408 Request Timeout";
     case CONFLICT:                        return "409 Conflict";
     case GONE:                            return "410 Gone";
     case LENGTH_REQUIRED:                 return "411 Length Required";
     case PRECONDITION_FAILED:             return "412 Precondition Failed";
-    case REQUEST_ENTITY_TOO_LARGE:        return "413 Request Entity Too Large";
+    case REQUEST_ENTITY_TOO_LARGE:        return "413 Payload Too Large";
     case REQUEST_URI_TOO_LONG:            return "414 Request-URI Too Long";
     case UNSUPPORTED_MEDIA_TYPE:          return "415 Unsupported Media Type";
     case REQUESTED_RANGE_NOT_SATISFIABLE: return "416 Requested Range Not Satisfiable";
@@ -100,10 +100,10 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case TOO_MANY_REQUESTS:               return "429 Too Many Requests";
     case REQUEST_HEADER_FIELDS_TOO_LARGE: return "431 Request Header Fields Too Large";
 
-    case SERVER_ERROR:                    return "500 Internal Error";
+    case SERVER_ERROR:                    return "500 Internal Server Error";
     case NOT_IMPLEMENTED:                 return "501 Not Implemented";
     case BAD_GATEWAY:                     return "502 Bad Gateway";
-    case SERVICE_UNAVAILABLE:             return "503 Service Temporarily Unavailable";
+    case SERVICE_UNAVAILABLE:             return "503 Service Unavailable";
     case HTTP_VERSION_NOT_SUPPORTED:      return "505 HTTP Version Not Supported";
     case BANDWIDTH_LIMIT_EXCEEDED:        return "509 Bandwidth Limit Exceeded";
     case NOT_EXTENDED:                    return "510 Not Extended";
