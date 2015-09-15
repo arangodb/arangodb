@@ -310,36 +310,48 @@ FOR user IN users
 
 - *DATE_FORMAT(date, format)*: Format a date according to the given format string.
   It supports the following placeholders (case-insensitive):
-  - %t: timestamp
+  - %t: timestamp, in milliseconds since midnight 1970-01-01
   - %z: ISO date (0000-00-00T00:00:00.000Z)
   - %w: day of week (0..6)
-  - %y: year (0000..9999)
-  - %m: month (01..12)
-  - %d: day (01..31)
-  - %h: hour (00..23)
-  - %i: minute (00..59)
-  - %s: second (00..59)
-  - %f: millisecond (000..999)
-  - %x: day of year (001..366)
-  - %k: ISO week date (01..53)
+  - %y: year (0..9999)
+  - %yy: year (00..99), abbreviated (last two digits)
+  - %yyyy: year (0000..9999), padded to length of 4
+  - %yyyyyy: year (-009999 .. +009999), with sign prefix and padded to length of 6
+  - %m: month (1..12)
+  - %mm: month (01..12), padded to length of 2
+  - %d: day (1..31)
+  - %dd: day (01..31), padded to length of 2
+  - %h: hour (0..23)
+  - %hh: hour (00..23), padded to length of 2
+  - %i: minute (0..59)
+  - %ii: minute (00..59), padded to length of 2
+  - %s: second (0..59)
+  - %ss: second (00..59), padded to length of 2
+  - %f: millisecond (0..999)
+  - %fff: millisecond (000..999), padded to length of 3
+  - %x: day of year (1..366)
+  - %xxx: day of year (001..366), padded to length of 3
+  - %k: ISO week date (1..53)
+  - %kk: ISO week date (01..53), padded to length of 2
   - %l: leap year (0 or 1)
   - %q: quarter (1..4)
   - %a: days in month (28..31)
-  - %n: English name of month (January..December)
-  - %o: abbreviated English name of month (Jan..Dec)
-  - %e: English name of weekday (Sunday..Saturday)
-  - %g: abbreviated English name of weekday (Sun..Sat)
+  - %mmm: abbreviated English name of month (Jan..Dec)
+  - %mmmm: English name of month (January..December)
+  - %www: abbreviated English name of weekday (Sun..Sat)
+  - %wwww: English name of weekday (Sunday..Saturday)
+  - %&: special escape sequence for rare occasions
   - %%: literal %
+  - %: ignored
 
-  Month, day, hour, minute, second, ISO week date and days in month are zero-padded
-  to 2 characters, millisecond and day of year to 3 characters. Year is zero-padded
-  to 4 characters, or 6 if year is negative (it will be 7 chars long however
-  because of the leading minus character, and is not suitable for comparisons
-  with 4-chars positive years). Timestamp is not padded.
+  `%yyyy` does not enforce a length of 4 for years before 0 and past 9999.
+  The same format as for `%yyyyyy` will used instead. `%yy` preserves the
+  sign for negative years and thus returns 3 characters in total.
   
-  Single `%` characters will appear as percent characters, as long as they aren't
-  followed by a valid placeholder letter. `%%` is only required to output a
-  placeholder literally.
+  Single `%` characters will be ignored. Use `%%` for a literal `%`. To resolve
+  ambiguities like in `%mmonth` (unpadded month number + the string "month")
+  between `%mm` + "onth" and `%m` + "month", use the escape sequence `%&`:
+  `%m%&month`.
   
   Note that this is a rather costly operation and may not be suitable for large
   datasets (like over 1 million dates). If possible, avoid formatting dates on
@@ -351,10 +363,11 @@ FOR user IN users
   Examples:
   
 ```js
-DATE_FORMAT(DATE_NOW(), "%q/%y") // quarter and year (e.g. "3/2015")
-DATE_FORMAT(DATE_NOW(), "%d.%m.%y %h:%i:%s") // e.g. "18.09.2015 15:30:49"
+DATE_FORMAT(DATE_NOW(), "%q/%yyyy") // quarter and year (e.g. "3/2015")
+DATE_FORMAT(DATE_NOW(), "%dd.%mm.%yyyy %hh:%ii:%ss.%fff") // e.g. "18.09.2015 15:30:49.374"
+DATE_FORMAT("1969", "Summer of '%yy") // "Summer of '69"
 DATE_FORMAT("2016", "%%l = %l") // "%l = 1" (2016 is a leap year)
-DATE_FORMAT("2016-03-01", "% %x %") // "% 063 %"
+DATE_FORMAT("2016-03-01", "%xxx%") // "063", trailing % ignored
 ```
 
 !SECTION Working with dates and indices
@@ -390,6 +403,8 @@ date according to the Gregorian calendar system, even if inappropriate. That
 does not constitute a problem, unless you deal with dates prior to 1583 and
 especially years before Christ. The standard allows negative years, but requires
 special treatment of positive years too, if negative years are used (e.g.
-`+002015-05-15` and `-000753-01-01`). This is rarely used however, and thus not
-handled by AQL. Leap seconds are also ignored, just as they are in JavaScript as per
+`+002015-05-15` and `-000753-01-01`). This is rarely used however, and AQL does
+not use the 7-character version for years between 0 and 9999 in ISO strings.
+Keep in mind that they can't be properly compared to dates outside that range.
+Leap seconds are ignored, just as they are in JavaScript as per
 [ECMAScript Language Specifications](http://www.ecma-international.org/ecma-262/5.1/#sec-15.9.1.1).
