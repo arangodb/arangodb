@@ -81,9 +81,29 @@ actions.defineHttp({
       actions.resultUnsupported(req, res);
       return;
     }
+      
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
 
-    internal.wal.flush(req.parameters.waitForSync === "true",
-                       req.parameters.waitForCollector === "true");
+    var getParam = function (name) {
+      // first check body value
+      if (body.hasOwnProperty(name)) {
+        return body[name];
+      }
+
+      // need to handle strings because URL parameter values are strings
+      return (req.parameters.hasOwnProperty(name) &&
+              (req.parameters[name] === "true" || req.parameters[name] === true));
+    };
+    
+    internal.wal.flush({ 
+      waitForSync:           getParam("waitForSync"),
+      waitForCollector:      getParam("waitForCollector"),
+      waitForCollectorQueue: getParam("waitForCollectorQueue")
+    });
+
     actions.resultOk(req, res, actions.HTTP_OK);
   }
 });

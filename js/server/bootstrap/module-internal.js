@@ -126,7 +126,11 @@ exports.wal = {
   
   transactions: function () {
     return global.WAL_TRANSACTIONS.apply(null, arguments);
-  }
+  },
+
+  waitForCollector: function () {
+    return global.WAL_WAITCOLLECTOR.apply(null, arguments);
+  },
 };
 
 ////////////////////////////////////////////////////////////////////////////////

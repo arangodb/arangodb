@@ -186,11 +186,12 @@ var sync = function (config) {
 var syncCollection = function (collection, config) {
   var db = internal.db;
 
-  var body = JSON.stringify(config || { });
-  body.restrictType = "include";
-  body.restrictCollections = [ collection ];
-  body.includeSystem = true;
-  body.incremental = true;
+  config = config || { };
+  config.restrictType = "include";
+  config.restrictCollections = [ collection ];
+  config.includeSystem = true;
+  config.incremental = true;
+  var body = JSON.stringify(config);
 
   var requestResult = db._connection.PUT("/_api/replication/sync", body);
 

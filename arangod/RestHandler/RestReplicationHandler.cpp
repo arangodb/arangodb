@@ -3117,7 +3117,7 @@ void RestReplicationHandler::handleCommandCreateKeys () {
    
     // turn off the compaction for the collection 
     TRI_voc_tick_t id;
-    res = TRI_InsertBlockerCompactorVocBase(_vocbase, 24.0 * 60.0 * 60.0, &id);
+    res = TRI_InsertBlockerCompactorVocBase(_vocbase, 1200.0, &id);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -3140,7 +3140,6 @@ void RestReplicationHandler::handleCommandCreateKeys () {
     catch (...) {
       throw;
     }
-         
 
     triagens::basics::Json json(triagens::basics::Json::Object);
     json.set("id", triagens::basics::Json(idString));
@@ -3367,7 +3366,7 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
     return;
   }
   
-  std::string const& id = suffix[0];
+  std::string const& id = suffix[1];
 
   auto keys = static_cast<triagens::arango::CollectionKeysRepository*>(_vocbase->_collectionKeys);
   TRI_ASSERT(keys != nullptr);
@@ -3415,7 +3414,10 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
 /// Include system collections in the result. The default value is *true*.
 ///
 /// @RESTQUERYPARAM{ticks,boolean,optional}
-/// Whether or not to include tick values in the dump. Default value is *true*.
+/// Whether or not to include tick values in the dump. The default value is *true*.
+///
+/// @RESTQUERYPARAM{flush,boolean,optional}
+/// Whether or not to flush the WAL before dumping. The default value is *true*.
 ///
 /// @RESTDESCRIPTION
 /// Returns the data from the collection for the requested range.
@@ -4081,7 +4083,9 @@ void RestReplicationHandler::handleCommandSync () {
     return;
   }
 
-  bool includeSystem = JsonHelper::getBooleanValue(json.get(), "includeSystem", true);
+  bool const verbose       = JsonHelper::getBooleanValue(json.get(), "verbose", false);
+  bool const includeSystem = JsonHelper::getBooleanValue(json.get(), "includeSystem", true);
+  bool const incremental   = JsonHelper::getBooleanValue(json.get(), "incremental", false);
 
   std::unordered_map<string, bool> restrictCollections;
   TRI_json_t* restriction = JsonHelper::getObjectElement(json.get(), "restrictCollections");
@@ -4107,8 +4111,6 @@ void RestReplicationHandler::handleCommandSync () {
     return;
   }
   
-  bool incremental = JsonHelper::getBooleanValue(json.get(), "incremental", false);
-
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
   config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
@@ -4116,8 +4118,9 @@ void RestReplicationHandler::handleCommandSync () {
   config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
   config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
   config._includeSystem = includeSystem;
-
-  InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType, false);
+  config._verbose = verbose;
+      
+  InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType, verbose);
   TRI_DestroyConfigurationReplicationApplier(&config);
 
   int res = TRI_ERROR_NO_ERROR;

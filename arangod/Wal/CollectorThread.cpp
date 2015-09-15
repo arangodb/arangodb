@@ -443,6 +443,26 @@ void CollectorThread::run () {
   _stop = 2;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether there are queued operations left
+////////////////////////////////////////////////////////////////////////////////
+
+bool CollectorThread::hasQueuedOperations () {
+  MUTEX_LOCKER(_operationsQueueLock);
+
+  return ! _operationsQueue.empty();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether there are queued operations left
+////////////////////////////////////////////////////////////////////////////////
+
+bool CollectorThread::hasQueuedOperations (TRI_voc_cid_t cid) {
+  MUTEX_LOCKER(_operationsQueueLock);
+
+  return (_operationsQueue.find(cid) != _operationsQueue.end());
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -630,16 +650,6 @@ int CollectorThread::processQueuedOperations (bool& worked) {
   worked = true;
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether there are queued operations left
-////////////////////////////////////////////////////////////////////////////////
-
-bool CollectorThread::hasQueuedOperations () {
-  MUTEX_LOCKER(_operationsQueueLock);
-
-  return ! _operationsQueue.empty();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -861,9 +861,9 @@ unittests-import:
 ### starts two servers (master & slave) and checks for data drift
 ################################################################################
 
-.PHONY: unittests-replication unittests-replication-server unittests-replication-http unittests-replication-static unittests-replication-ongoing
+.PHONY: unittests-replication unittests-replication-server unittests-replication-http unittests-replication-sync unittests-replication-static unittests-replication-ongoing
 
-unittests-replication: unittests-replication-server unittests-replication-http unittests-replication-static unittests-replication-ongoing
+unittests-replication: unittests-replication-server unittests-replication-http unittests-replication-sync unittests-replication-static unittests-replication-ongoing
 
 unittests-replication-server:
 	@echo
@@ -895,6 +895,29 @@ unittests-replication-http:
 	while test -f $(PIDFILE); do sleep 1; done
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 	@rm -rf "$(VOCDIR)"
+	@echo
+
+unittests-replication-sync:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+	$(MAKE) start-slave PID=$(PID) SERVER_START="--server.endpoint tcp://$(SLAVEHOST):$(SLAVEPORT) --server.disable-authentication true" PROTO=http
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< REPLICATION SYNC TESTS                                                     >>"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.execute-string "require('org/arangodb/users').save('replicator-user', 'replicator-password', true); require('org/arangodb/users').reload();"
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/replication-sync.js || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+	kill `cat $(SLAVEPIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+	while test -f $(SLAVEPIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+	@rm -rf "$(VOCDIR)"
+	@rm -rf "$(SLAVEDIR)"
 	@echo
 
 unittests-replication-static:
