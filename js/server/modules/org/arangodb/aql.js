@@ -5165,46 +5165,46 @@ function AQL_DATE_FORMAT (value, format) {
     var yr = date.getUTCFullYear();
     var offset = yr < 0 || yr > 9999 ? 3 : 0;
     var dateMap = {
-      "%t": function(){ return date.getTime() },
-      "%z": function(){ return dateStr },
-      "%w": function(){ return AQL_DATE_DAYOFWEEK(dateStr) },
-      "%y": function(){ return date.getUTCFullYear() },
+      "%t": function() { return date.getTime(); },
+      "%z": function() { return dateStr; },
+      "%w": function() { return AQL_DATE_DAYOFWEEK(dateStr); },
+      "%y": function() { return date.getUTCFullYear(); },
       // there's no really sensible way to handle negative years, but better not drop the sign
-      "%yy": function(){ return (yr < 0 ? "-" : "") + dateStr.slice(2 + offset, 4 + offset) },
+      "%yy": function() { return (yr < 0 ? "-" : "") + dateStr.slice(2 + offset, 4 + offset); },
       // preserves full negative years (-000753 is not reduced to -753 or -0753)
-      "%yyyy": function(){ return dateStr.slice(0, 4 + offset) },
+      "%yyyy": function() { return dateStr.slice(0, 4 + offset); },
       // zero-pad 4 digit years to length of 6 and add "+" prefix, keep negative as-is
-      "%yyyyyy": function(){ 
+      "%yyyyyy": function() { 
         return (yr >= 0 && yr <= 9999)
           ? "+" + zeropad(dateStr.slice(0, 4 + offset), 6)
-          : dateStr.slice(0, 7)
+          : dateStr.slice(0, 7);
       },
-      "%m": function(){ return date.getUTCMonth() + 1 },
-      "%mm": function(){ return dateStr.slice(5 + offset, 7 + offset) },
-      "%d": function(){ return date.getUTCDate() },
-      "%dd": function(){ return dateStr.slice(8 + offset, 10 + offset) },
-      "%h": function(){ return date.getUTCHours() },
-      "%hh": function(){ return dateStr.slice(11 + offset, 13 + offset) },
-      "%i": function(){ return date.getUTCMinutes() },
-      "%ii": function(){ return dateStr.slice(14 + offset, 16 + offset) },
-      "%s": function(){ return date.getUTCSeconds() },
-      "%ss": function(){ return dateStr.slice(17 + offset, 19 + offset) },
-      "%f": function(){ return date.getUTCMilliseconds() },
-      "%fff": function(){ return dateStr.slice(20 + offset, 23 + offset) },
-      "%x": function(){ return AQL_DATE_DAYOFYEAR(dateStr) },
-      "%xxx": function(){ return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3) },
-      "%k": function(){ return AQL_DATE_ISOWEEK(dateStr) },
-      "%kk": function(){ return zeropad(AQL_DATE_ISOWEEK(dateStr), 2) },
-      "%l": function(){ return +AQL_DATE_LEAPYEAR(dateStr) },
-      "%q": function(){ return AQL_DATE_QUARTER(dateStr) },
-      "%a": function(){ return AQL_DATE_DAYS_IN_MONTH(dateStr) },
-      "%mmm": function(){ return monthNames[date.getUTCMonth()].substring(0, 3) },
-      "%mmmm": function(){ return monthNames[date.getUTCMonth()] },
-      "%www": function(){ return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3) },
-      "%wwww": function(){ return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)] },
-      "%&": function(){ return "" }, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
-      "%%": function(){ return "%" }, // Allow for literal "%y" using "%%y"
-      "%": function(){ return "" }
+      "%m": function() { return date.getUTCMonth() + 1; },
+      "%mm": function() { return dateStr.slice(5 + offset, 7 + offset); },
+      "%d": function() { return date.getUTCDate(); },
+      "%dd": function() { return dateStr.slice(8 + offset, 10 + offset); },
+      "%h": function() { return date.getUTCHours(); },
+      "%hh": function() { return dateStr.slice(11 + offset, 13 + offset); },
+      "%i": function() { return date.getUTCMinutes(); },
+      "%ii": function() { return dateStr.slice(14 + offset, 16 + offset); },
+      "%s": function() { return date.getUTCSeconds(); },
+      "%ss": function() { return dateStr.slice(17 + offset, 19 + offset); },
+      "%f": function() { return date.getUTCMilliseconds(); },
+      "%fff": function() { return dateStr.slice(20 + offset, 23 + offset); },
+      "%x": function() { return AQL_DATE_DAYOFYEAR(dateStr); },
+      "%xxx": function() { return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3); },
+      "%k": function() { return AQL_DATE_ISOWEEK(dateStr); },
+      "%kk": function() { return zeropad(AQL_DATE_ISOWEEK(dateStr), 2); },
+      "%l": function() { return +AQL_DATE_LEAPYEAR(dateStr); },
+      "%q": function() { return AQL_DATE_QUARTER(dateStr); },
+      "%a": function() { return AQL_DATE_DAYS_IN_MONTH(dateStr); },
+      "%mmm": function() { return monthNames[date.getUTCMonth()].substring(0, 3); },
+      "%mmmm": function() { return monthNames[date.getUTCMonth()]; },
+      "%www": function() { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3); },
+      "%wwww": function() { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)]; },
+      "%&": function() { return ""; }, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
+      "%%": function() { return "%"; }, // Allow for literal "%y" using "%%y"
+      "%": function() { return ""; }
     };
     var exp = new RegExp(dateMapRegExp, "gi"); 
     format = format.replace(exp, function(match){
