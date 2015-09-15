@@ -155,7 +155,7 @@ function FoxxManagerSuite () {
 
         for (version in entry.versions) {
           if (entry.versions.hasOwnProperty(version)) {
-            assertMatch(/^\d+(\.\d+)*$/, version);
+            assertMatch(/^\d+(\.\d+)*(-.*)?$/, version);
             assertTrue(entry.versions[version].hasOwnProperty("type"));
             assertTrue(entry.versions[version].hasOwnProperty("location"));
           }
@@ -178,7 +178,7 @@ function FoxxManagerSuite () {
       // validate the results structure, simply take the first match
       var entry = result.pop();
 
-      assertEqual("jsteemann", entry.author);
+      assertEqual("Jan Steemann", entry.author);
       assertEqual("itzpapalotl", entry.name);
     },
 
