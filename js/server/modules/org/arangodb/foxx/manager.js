@@ -603,6 +603,7 @@ function uploadToPeerCoordinators(appInfo, coordinators) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Generates an App with the given options into the targetPath
 ////////////////////////////////////////////////////////////////////////////////
+
 function installAppFromGenerator(targetPath, options) {
   var invalidOptions = [];
   // Set default values:
