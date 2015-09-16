@@ -64,6 +64,7 @@ RestBatchHandler::~RestBatchHandler () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_batch_processing
 /// @brief executes a batch request
 ///
 /// @RESTHEADER{POST /_api/batch,executes a batch request} /// TODOSWAGGER: contentype
@@ -182,6 +183,7 @@ RestBatchHandler::~RestBatchHandler () {
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestBatchHandler::execute () {

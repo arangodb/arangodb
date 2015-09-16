@@ -43,6 +43,8 @@ var checkedIndex = false;
 // -----------------------------------------------------------------------------
 
 /*
+THIS MODULE IS UNOFFICIAL AND DEPRECATED
+
 
 Configuration example document:
 
@@ -1194,9 +1196,10 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @start DocuBlock JSF_read_single_document
 /// @brief reads a single document
 ///
-/// @RESTHEADER{GET /_api/structure/`document-handle`,reads a document}
+/// @RESTHEADER{GET /_api/structure/{document-handle},reads a document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1246,7 +1249,7 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version
-///
+/// @end DocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_structure(req, res)  {
@@ -1283,9 +1286,10 @@ function get_api_structure(req, res)  {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @start DocuBlock JSF_read_single_document_head
 /// @brief reads a single document head
 ///
-/// @RESTHEADER{HEAD /_api/structure/`document-handle`,reads a document header}
+/// @RESTHEADER{HEAD /_api/structure/{document-handle},reads a document header}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1324,7 +1328,7 @@ function get_api_structure(req, res)  {
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version
-///
+/// @end DocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function head_api_structure(req, res)  {
@@ -1350,9 +1354,10 @@ function head_api_structure(req, res)  {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @start DocuBlock JSF_delete_single_document
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/structure/`document-handle`,deletes a document}
+/// @RESTHEADER{DELETE /_api/structure/{document-handle},deletes a document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1408,7 +1413,7 @@ function head_api_structure(req, res)  {
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the current
 /// document has a different version
-///
+/// @end DocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_api_structure (req, res) {
@@ -1444,9 +1449,10 @@ function delete_api_structure (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @start DocuBlock JSF_update_single_document
 /// @brief updates a document
 ///
-/// @RESTHEADER{PATCH /_api/structure/`document-handle`,patches a document}
+/// @RESTHEADER{PATCH /_api/structure/{document-handle},patches a document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1540,7 +1546,7 @@ function delete_api_structure (req, res) {
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version
-///
+/// @end DocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function patch_api_structure (req, res) {
@@ -1579,9 +1585,10 @@ function patch_api_structure (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @start DocuBlock JSF_replace_single_document
 /// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/structure/`document-handle`,replaces a document}
+/// @RESTHEADER{PUT /_api/structure/{document-handle},replaces a document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1701,7 +1708,7 @@ function patch_api_structure (req, res) {
 /// @RESTRETURNCODE{412}
 /// is returned if a "If-Match" header or `rev` is given and the found
 /// document has a different version
-///
+/// @end DocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_structure (req, res) {
@@ -1740,6 +1747,7 @@ function put_api_structure (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @start DocuBlock JSF_create_single_document
 /// @brief creates a document
 ///
 /// @RESTHEADER{POST /_api/structure,creates a document}
@@ -1813,6 +1821,7 @@ function put_api_structure (req, res) {
 /// @RESTRETURNCODE{404}
 /// is returned if the collection specified by `collection` is unknown.  The
 /// response body contains an error document in this case.
+/// @end DocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_structure (req, res) {

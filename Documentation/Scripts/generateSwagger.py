@@ -126,7 +126,8 @@ currentTag = ''
 ### @brief current docublock
 ################################################################################
 
-currentDocuBlock = ''
+currentDocuBlock = None
+lastDocuBlock = None
 
 ################################################################################
 ### @brief index of example block we're reading
@@ -536,7 +537,8 @@ def setRequired(where, which):
 ################################################################################
 
 def restheader(cargo, r=Regexen()):
-    global swagger, operation, httpPath, method, restBodyParam, fn, currentExample, currentReturnCode
+    global swagger, operation, httpPath, method, restBodyParam, fn, currentExample, currentReturnCode, currentDocuBlock, lastDocuBlock, restReplyBodyParam
+
     currentReturnCode = 0
     currentExample = 0
     restReplyBodyParam = None
@@ -558,8 +560,18 @@ def restheader(cargo, r=Regexen()):
         swagger['paths'][httpPath] = {}
     if method in swagger['paths'][httpPath]:
         print >> sys.stderr, "duplicate route detected:"
-        print >> sys.stderr, "There already is a route " + ucmethod + " " + httpPath
+        print >> sys.stderr, "There already is a route [" + ucmethod + " " + httpPath + "]: "
+        print >> sys.stderr, json.dumps(swagger['paths'][httpPath], indent=4, separators=(', ',': '), sort_keys=True)
         raise Exception("Duplicate route")
+
+    if currentDocuBlock == None:
+        raise Exception("No docublock started for this restheader: " + ucmethod + " " + path )
+
+    if lastDocuBlock != None and currentDocuBlock == lastDocuBlock:
+        raise Exception("No new docublock started for this restheader: " + ucmethod + " " + path  + ' : ' + currentDocuBlock)
+
+    lastDocuBlock = currentDocuBlock
+
 
     swagger['paths'][httpPath][method] = {
         'x-filename': fn,
@@ -644,13 +656,15 @@ def restheaderparam(cargo, r=Regexen()):
 ################################################################################
 
 def restbodyparam(cargo, r=Regexen()):
-    global swagger, operation, httpPath, method, restBodyParam, fn
+    global swagger, operation, httpPath, method, restBodyParam, fn, currentDocuBlock
     (fp, last) = cargo
 
     try:
         (name, ptype, required, ptype2) = parameters(last).split(',')
     except Exception as x:
         print >> sys.stderr, "RESTBODYPARAM: 4 arguments required. You gave me: " + parameters(last)
+        print >> sys.stderr, "In this docublock: " + currentDocuBlock
+        raise
 
     CheckReqOpt(required)
     if required == 'required':
@@ -961,9 +975,9 @@ def restreturncodes(cargo, r=Regexen()):
 ################################################################################
 
 def restreturncode(cargo, r=Regexen()):
-    global currentReturnCode
+    global currentReturnCode, restReplyBodyParam
     (fp, last) = cargo
-
+    restReplyBodyParam = None
     currentReturnCode = parameters(last)
 
     if not 'responses' in swagger['paths'][httpPath][method]:
@@ -1175,34 +1189,48 @@ def unwrapPostJson(reference, layer):
 
 
 files = { 
-#  "aqlfunction" : [ "js/actions/api-aqlfunction.js" ],
-#  "batch" : [ "arangod/RestHandler/RestBatchHandler.cpp" ],
-#  "collection" : [ "js/actions/_api/collection/app.js" ],
+  "aqlfunction" : [ "js/actions/api-aqlfunction.js" ],
+  "admin" : ["js/actions/_admin/app.js",
+             "js/actions/_admin/routing/app.js",
+             "js/actions/_admin/server/app.js",
+             "js/actions/_admin/database/app.js",
+             "arangod/RestHandler/RestShutdownHandler.cpp"],
+  "batch" : [ "arangod/RestHandler/RestBatchHandler.cpp" ],
+  "collection" : [ "js/actions/_api/collection/app.js" ],
   "cursor" : [ "arangod/RestHandler/RestCursorHandler.cpp" ],
-#  "database" : [ "js/actions/api-database.js" ],
-#  "document" : [ "arangod/RestHandler/RestDocumentHandler.cpp" ],
-#  "edge" : [ "arangod/RestHandler/RestEdgeHandler.cpp" ],
-#  "edges" : [ "js/actions/api-edges.js" ],
-#  "endpoint" : [ "js/actions/api-endpoint.js" ],
-#  "explain" : [ "js/actions/api-explain.js" ],
-#  "export" : [ "arangod/RestHandler/RestExportHandler.cpp" ],
-#  "graph" : [ "js/actions/api-graph.js" ],
-#  "import" : [ "arangod/RestHandler/RestImportHandler.cpp" ],
-#  "index" : [ "js/actions/api-index.js" ],
-#  "job" : [ "arangod/HttpServer/AsyncJobManager.h" ],# TODO: no docu here
-#  "log" : [ "arangod/RestHandler/RestAdminLogHandler.cpp" ],
-#  "query" : [ "arangod/RestHandler/RestQueryHandler.cpp" ],
-#  "replication" : [ "arangod/RestHandler/RestReplicationHandler.cpp" ],
-#  "simple" : [ "js/actions/api-simple.js", "arangod/RestHandler/RestSimpleHandler.cpp" ],
-#  "structure" : [ "js/actions/api-structure.js" ],
-#  "system" : [ "js/actions/api-system.js" ],# TODO: no docu here.
-#  "tasks" : [ "js/actions/api-tasks.js" ],
-#  "transaction" : [ "js/actions/api-transaction.js" ],
-#  "traversal" : [ "js/actions/api-traversal.js" ],
-#  "user" : [ "js/actions/_api/user/app.js" ],
-#  "version" : [ "arangod/RestHandler/RestVersionHandler.cpp" ],
-#  "wal" : [ "js/actions/_admin/wal/app.js" ]
+  "database" : [ "js/actions/api-database.js" ],
+  "cluster" : ["js/actions/api-cluster.js"],
+  "document" : [ "arangod/RestHandler/RestDocumentHandler.cpp" ],
+  "cache" : ["arangod/RestHandler/RestQueryCacheHandler.cpp"],
+  "graphs" : ["js/apps/system/_api/gharial/APP/gharial.js" ],
+  "edge" : [ "arangod/RestHandler/RestEdgeHandler.cpp" ],
+  "edges" : [ "js/actions/api-edges.js" ],
+  "endpoint" : [ "js/actions/api-endpoint.js" ],
+  "explain" : [ "js/actions/api-explain.js" ],
+  "export" : [ "arangod/RestHandler/RestExportHandler.cpp" ],
+  "graph" : [ "js/actions/api-graph.js" ],
+  "import" : [ "arangod/RestHandler/RestImportHandler.cpp" ],
+  "index" : [ "js/actions/api-index.js" ],
+  "job" : [ "arangod/HttpServer/AsyncJobManager.cpp",
+            "arangod/RestHandler/RestJobHandler.cpp"],
+  "log" : [ "arangod/RestHandler/RestAdminLogHandler.cpp" ],
+  "query" : [ "arangod/RestHandler/RestQueryHandler.cpp" ],
+  "replication" : [ "arangod/RestHandler/RestReplicationHandler.cpp" ],
+  "simple" : [ "js/actions/api-simple.js",
+               "arangod/RestHandler/RestSimpleHandler.cpp",
+               "arangod/RestHandler/RestSimpleQueryHandler.cpp" ],
+  "system" : [ "js/actions/api-system.js" ],# TODO: no docu here.
+  "tasks" : [ "js/actions/api-tasks.js" ],
+  "transaction" : [ "js/actions/api-transaction.js" ],
+  "traversal" : [ "js/actions/api-traversal.js" ],
+  "user" : [ "js/actions/_api/user/app.js" ],
+  "version" : [ "arangod/RestHandler/RestVersionHandler.cpp" ],
+  "wal" : [ "js/actions/_admin/wal/app.js" ]
 }
+
+# Intentionaly not there: 
+#  "structure" : [ "js/actions/api-structure.js" ],
+
 
 if len(sys.argv) < 3:
   print >> sys.stderr, "usage: " + sys.argv[0] + " <scriptDir> <outDir> <relDir>"
@@ -1236,6 +1264,8 @@ for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
         infile = open(fn)
         getOneApi(infile, name + " - " + ', '.join(filenames))
         infile.close()
+        currentDocuBlock = None
+        lastDocuBlock = None
 
 for route in swagger['paths'].keys():
     for verb in swagger['paths'][route].keys():
@@ -1263,27 +1293,28 @@ for route in swagger['paths'].keys():
                 thisVerb['description'] = postText
 
         # insert the reply json description into the place we extracted it:
-        for nRC in thisVerb['responses']:
-            if 'x-description-offset' in thisVerb['responses'][nRC]:
+        if 'responses' in thisVerb:
+            for nRC in thisVerb['responses']:
+                if 'x-description-offset' in thisVerb['responses'][nRC]:
 
-                descOffset = thisVerb['responses'][nRC]['x-description-offset']
-                #print descOffset 
-                #print offsetPlus
-                descOffset += offsetPlus
-                addText = ''
-                #print thisVerb['responses'][nRC]['description']
-                postText = thisVerb['description'][:descOffset]
-                #print postText
-                if 'additionalProperties' in thisVerb['responses'][nRC]['schema']:
-                    addText = "free style json body"
-                else:
-                    addText = "<ul class=\"swagger-list\">" + unwrapPostJson(
-                        getReference(thisVerb['responses'][nRC]['schema'], route, verb),0) + "</ul>"
-                #print addText
-                postText += addText
-                postText += thisVerb['responses'][nRC]['description'][descOffset:]
-                offsetPlus += len(addText)
-                thisVerb['description'] = postText
+                    descOffset = thisVerb['responses'][nRC]['x-description-offset']
+                    #print descOffset 
+                    #print offsetPlus
+                    descOffset += offsetPlus
+                    addText = ''
+                    #print thisVerb['responses'][nRC]['description']
+                    postText = thisVerb['description'][:descOffset]
+                    #print postText
+                    if 'additionalProperties' in thisVerb['responses'][nRC]['schema']:
+                        addText = "free style json body"
+                    else:
+                        addText = "<ul class=\"swagger-list\">" + unwrapPostJson(
+                            getReference(thisVerb['responses'][nRC]['schema'], route, verb),0) + "</ul>"
+                    #print addText
+                    postText += addText
+                    postText += thisVerb['responses'][nRC]['description'][descOffset:]
+                    offsetPlus += len(addText)
+                    thisVerb['description'] = postText
 
 
         # Append the examples to the description:

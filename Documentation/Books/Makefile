@@ -61,7 +61,7 @@ build-book:
 		echo cp $${WD}/$${pic} $${pic}; \
 		cp $${WD}/$${pic} $${pic}; \
 	done
-	python generateMdFiles.py $(NAME) ppbooks/
+	python generateMdFiles.py $(NAME) ppbooks/ ../../js/apps/system/_admin/aardvark/APP/api-docs.json
 
 	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' styles/header.js
 	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' README.md
