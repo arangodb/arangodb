@@ -570,6 +570,12 @@ void Optimizer::setupRules () {
                removeRedundantOrRule,
                removeRedundantOrRule_pass6,
                true);
+  
+  // try to find a filter after an enumerate collection and find indexes
+  registerRule("use-indexes",
+               useIndexesRule,
+               useIndexesRule_pass6,
+               true);
 
   // try to find a filter after an enumerate collection and find an index . . . 
   registerRule("use-index-range",
