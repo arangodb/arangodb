@@ -262,6 +262,11 @@ int InitialSyncer::run (string& errorMsg,
 
   sendFinishBatch();
 
+  if (res != TRI_ERROR_NO_ERROR &&
+      errorMsg.empty()) {
+    errorMsg = TRI_errno_string(res);
+  }
+
   return res;
 }
 
@@ -1240,13 +1245,16 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           int res = TRI_ERROR_NO_ERROR;
           auto mptr = idx->lookupKey(documentKey.c_str());
 
-          if (mptr == nullptr) {
+          if (mptr == nullptr || isEdge) {
+            // in case of an edge collection we must always update
             TRI_document_edge_t* e = nullptr;
             TRI_document_edge_t edge;
+            std::string from;
+            std::string to;
 
             if (isEdge) {
-              std::string const from = JsonHelper::getStringValue(documentJson, TRI_VOC_ATTRIBUTE_FROM, "");
-              std::string const to   = JsonHelper::getStringValue(documentJson, TRI_VOC_ATTRIBUTE_TO, "");
+              from = JsonHelper::getStringValue(documentJson, TRI_VOC_ATTRIBUTE_FROM, "");
+              to   = JsonHelper::getStringValue(documentJson, TRI_VOC_ATTRIBUTE_TO, "");
 
               // parse _from
               if (! DocumentHelper::parseDocumentId(*trx.resolver(), from.c_str(), edge._fromCid, &edge._fromKey)) {
@@ -1263,6 +1271,11 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
             // INSERT
             if (res == TRI_ERROR_NO_ERROR) {
+              if (mptr != nullptr && isEdge) {
+                // must remove existing edge first
+                TRI_RemoveShapedJsonDocumentCollection(trx.trxCollection(), (TRI_voc_key_t) documentKey.c_str(), 0, nullptr, &policy, false, false);
+              }
+
               res = TRI_InsertShapedJsonDocumentCollection(trx.trxCollection(), (TRI_voc_key_t) documentKey.c_str(), rid, nullptr, &result, shaped, e, false, false, true);
             }
           }
@@ -1283,6 +1296,40 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief changes the properties of a collection, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+
+int InitialSyncer::changeCollection (TRI_vocbase_col_t* col,
+                                     TRI_json_t const* json) {
+
+  bool waitForSync      = JsonHelper::getBooleanValue(json, "waitForSync", false);
+  bool doCompact        = JsonHelper::getBooleanValue(json, "doCompact", true);
+  int maximalSize       = JsonHelper::getNumericValue<int>(json, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+  uint32_t indexBuckets = JsonHelper::getNumericValue<uint32_t>(json, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
+
+  try {
+    triagens::arango::CollectionGuard guard(_vocbase, col->_cid);
+
+    TRI_col_info_t parameters;
+
+    // only need to set these three properties as the others cannot be updated on the fly
+    parameters._doCompact    = doCompact;
+    parameters._maximalSize  = maximalSize;
+    parameters._waitForSync  = waitForSync;
+    parameters._indexBuckets = indexBuckets;
+
+    bool doSync = _vocbase->_settings.forceSyncProperties;
+    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection, &parameters, doSync);
+  }
+  catch (triagens::basics::Exception const& ex) {
+    return ex.code();
+  }
+  catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1421,7 +1468,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
       if (col != nullptr) {
         // collection is already present
-        return TRI_ERROR_NO_ERROR;
+        return changeCollection(col, parameters);
       }
     }
 

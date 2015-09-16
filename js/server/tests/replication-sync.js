@@ -118,6 +118,211 @@ function ReplicationSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test collection properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testProperties : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn);
+
+          c.properties({ indexBuckets: 32, waitForSync: true, journalSize: 16 * 1024 * 1024 });
+        },
+        function (state) {
+          // don't create the collection on the slave
+        },
+        function (state) {
+          var c = db._collection(cn);
+          var p = c.properties();
+          assertEqual(32, p.indexBuckets);
+          assertTrue(p.waitForSync);
+          assertEqual(16 * 1024 * 1024, p.journalSize);
+        },
+        true
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collection properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testPropertiesOther : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn);
+
+          c.properties({ indexBuckets: 32, waitForSync: true, journalSize: 16 * 1024 * 1024 });
+        },
+        function (state) {
+          // create the collection on the slave, but with default properties
+          db._create(cn);
+        },
+        function (state) {
+          var c = db._collection(cn);
+          var p = c.properties();
+          assertEqual(32, p.indexBuckets);
+          assertTrue(p.waitForSync);
+          assertEqual(16 * 1024 * 1024, p.journalSize);
+        },
+        true
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateIndexes : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          for (i = 0; i < 5000; ++i) {
+            c.save({ _key: "test" + i, "value1" : i, "value2": "test" + i });
+          }
+
+          c.ensureIndex({ type: "hash", fields: [ "value1", "value2" ] });
+          c.ensureIndex({ type: "skiplist", fields: [ "value1" ] });
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+        },
+        function (state) {
+          // already create the collection on the slave
+          var c = db._create(cn);
+          
+          for (var i = 0; i < 5000; ++i) {
+            c.save({ _key: "test" + i, "value1" : "test" + i, "value2": i });
+          }
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+
+          var idx = db._collection(cn).getIndexes();
+          assertEqual(3, idx.length); // primary + hash + skiplist
+          for (var i = 1; i < idx.length; ++i) {
+            assertFalse(idx[i].unique);
+            assertFalse(idx[i].sparse);
+
+            if (idx[i].type === 'hash') {
+              assertEqual("hash", idx[i].type);
+              assertEqual([ "value1", "value2" ], idx[i].fields);
+            }
+            else {
+              assertEqual("skiplist", idx[i].type);
+              assertEqual([ "value1" ], idx[i].fields);
+            }
+          }
+        },
+        true
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with edges
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdges : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._createEdgeCollection(cn), i;
+
+          for (i = 0; i < 100; ++i) {
+            c.save(cn + "/test" + i, cn + "/test" + (i % 10), { _key: "test" + i, "value1" : i, "value2": "test" + i });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(100, state.count);
+        },
+        function (state) {
+          // already create the collection on the slave
+          var c = db._createEdgeCollection(cn);
+          
+          for (var i = 0; i < 100; ++i) {
+            c.save(cn + "/test" + i, cn + "/test" + (i % 10), { _key: "test" + i, "value1" : i, "value2": "test" + i });
+          }
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+
+          var c = db._collection(cn);
+          assertEqual(3, c.type());
+
+          for (var i = 0; i < 100; ++i) {
+            var doc = c.document("test" + i);
+            assertEqual(cn + "/test" + i, doc._from);
+            assertEqual(cn + "/test" + (i % 10), doc._to);
+            assertEqual(i, doc.value1);
+            assertEqual("test" + i, doc.value2);
+          }
+        },
+        true
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with edges differences
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesDifferences : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._createEdgeCollection(cn), i;
+
+          for (i = 0; i < 100; ++i) {
+            c.save(cn + "/test" + i, cn + "/test" + (i % 10), { _key: "test" + i, "value1" : i, "value2": "test" + i });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(100, state.count);
+        },
+        function (state) {
+          // already create the collection on the slave
+          var c = db._createEdgeCollection(cn);
+          
+          for (var i = 0; i < 200; ++i) {
+            c.save(
+              cn + "/test" + (i + 1), 
+              cn + "/test" + (i % 11), 
+              { _key: "test" + i, "value1" : i, "value2": "test" + i }
+            );
+          }
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+
+          var c = db._collection(cn);
+          assertEqual(3, c.type());
+
+          for (var i = 0; i < 100; ++i) {
+            var doc = c.document("test" + i);
+            assertEqual(cn + "/test" + i, doc._from);
+            assertEqual(cn + "/test" + (i % 10), doc._to);
+            assertEqual(i, doc.value1);
+            assertEqual("test" + i, doc.value2);
+          }
+        },
+        true
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test non-present collection
 ////////////////////////////////////////////////////////////////////////////////
 
