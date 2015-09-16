@@ -212,18 +212,10 @@ Content-type: application/json; charset=utf-8
 }
 ```
 
-<!--
-@NAVIGATE_HttpGraph
-@EMBEDTOC{HttpGraphTOC}
+@startDocuBlock JSF_graph_delete
 
-@anchor A_JSF_POST_graph_graph
-@copydetails JSF_post_graph_graph
+@startDocuBlock JSF_graph_post
 
-@CLEARPAGE
-@anchor A_JSF_GET_graph_graph
-@copydetails JSF_get_graph_graph
+@startDocuBlock JSF_graph_properties
 
-@CLEARPAGE
-@anchor A_JSF_DELETE_graph_graph
-@copydetails JSF_delete_graph_graph
--->
+@startDocuBlock JSF_graph_update_edge

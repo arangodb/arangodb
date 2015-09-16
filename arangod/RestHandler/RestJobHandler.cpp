@@ -444,7 +444,7 @@ void RestJobHandler::getJobById (std::string const& value) {
 /// @startDocuBlock JSF_job_getByType
 /// @brief Returns the ids of job results with a specific status
 /// 
-/// @RESTHEADER{GET /_api/job/type, Returns list of async job}
+/// @RESTHEADER{GET /_api/job/type, Returns list of async jobs}
 /// 
 /// @RESTURLPARAMS
 /// 

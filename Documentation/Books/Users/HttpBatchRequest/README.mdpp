@@ -205,3 +205,12 @@ request is determined by scanning the original URL (the URL that contains
 */_api/batch*). It is not possible to override the [database name](../Glossary/index.html#database_name) in
 part operations of a batch. When doing so, any other database name used 
 in a batch part will be ignored.
+
+
+@startDocuBlock JSF_batch_processing
+
+@startDocuBlock JSF_delete_batch_replication
+
+@startDocuBlock JSF_post_batch_replication
+
+@startDocuBlock JSF_put_batch_replication

@@ -385,24 +385,16 @@ Content-type: application/json; charset=utf-8
 }
 ```
 
-<!--
-@CLEARPAGE
-@anchor A_JSF_POST_graph_vertex
-@copydetails JSF_post_graph_vertex
+@startDocuBlock JSF_graph_create_vertex
 
-@CLEARPAGE
-@anchor A_JSF_GET_graph_vertex
-@copydetails JSF_get_graph_vertex
+@startDocuBlock JSF_graph_delete_vertex
 
-@CLEARPAGE
-@anchor A_JSF_PUT_graph_vertex
-@copydetails JSF_put_graph_vertex
+@startDocuBlock JSF_graph_get_vertex
 
-@CLEARPAGE
-@anchor A_JSF_PATCH_graph_vertex
-@copydetails JSF_patch_graph_vertex
+@startDocuBlock JSF_graph_get_vertices
 
-@CLEARPAGE
-@anchor A_JSF_DELETE_graph_vertex
-@copydetails JSF_delete_graph_vertex
--->
+@startDocuBlock JSF_graph_patch_vertex
+
+@startDocuBlock JSF_graph_put_vertex
+
+@startDocuBlock JSF_graph_vertex_get_neighbours

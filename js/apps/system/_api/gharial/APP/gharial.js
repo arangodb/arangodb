@@ -255,15 +255,13 @@
 /// @RESTDESCRIPTION
 /// The creation of a graph requires the name of the graph and a definition of its edges.
 /// 
-/// @RESTBODYPARAMS
-/// 
-/// @RESTPARAM{name, string, required}
+/// @RESTBODYPARAM{name,string,required,string}
 /// Name of the graph.
 /// 
-/// @RESTPARAM{edgeDefinitions, string, optional}
+/// @RESTBODYPARAM{edgeDefinitions,string,optional,string}
 /// An array of definitions for the edges, see [edge definitions](../General-Graphs/Management.md#edge_definitions).
 /// 
-/// @RESTPARAM{orphanCollections, string, optional}
+/// @RESTBODYPARAM{orphanCollections,string,optional,string}
 /// An array of additional vertex collections.
 /// 
 /// @RESTRETURNCODES
@@ -823,15 +821,13 @@
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
 /// 
-/// @RESTBODYPARAMS
-/// 
-/// @RESTPARAM{collection, string, required}
+/// @RESTBODYPARAM{collection,string,required,string}
 /// The name of the edge collection to be used.
 /// 
-/// @RESTPARAM{from, string|array, required}
+/// @RESTBODYPARAM{from,array,required,string}
 /// One or many vertex collections that can contain source vertices.
 /// 
-/// @RESTPARAM{to, string|array, required}
+/// @RESTBODYPARAM{to,array,required,string}
 /// One or many edge collections that can contain target vertices.
 /// 
 /// @RESTRETURNCODES
@@ -925,15 +921,13 @@
 /// @RESTPARAM{definition-name, string, required}
 /// The name of the edge collection used in the definition.
 /// 
-/// @RESTBODYPARAMS
-/// 
-/// @RESTPARAM{collection, string, required}
+/// @RESTBODYPARAM{collection,string,required,string}
 /// The name of the edge collection to be used.
 /// 
-/// @RESTPARAM{from, string|array, required}
+/// @RESTBODYPARAM{from,array,required,string}
 /// One or many vertex collections that can contain source vertices.
 /// 
-/// @RESTPARAM{to, string|array, required}
+/// @RESTBODYPARAM{to,array,required,string}
 /// One or many edge collections that can contain target vertices.
 /// 
 /// @RESTRETURNCODES
@@ -1140,7 +1134,7 @@
 /// @RESTPARAM{waitForSync, boolean, optional}
 /// Define if the request should wait until synced to disk.
 /// 
-/// @RESTBODYPARAMS
+/// @RESTALLBODYPARAM{storeThisObject,object,required}
 /// The body has to be the JSON object to be stored.
 /// 
 /// @RESTRETURNCODES
@@ -1327,7 +1321,7 @@
 /// if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative
 /// you can supply the etag in an attribute rev in the URL.
 /// 
-/// @RESTBODYPARAMS
+/// @RESTALLBODYPARAM{storeThisJsonObject,object,required}
 /// The body has to be the JSON object to be stored.
 /// 
 /// @RESTRETURNCODES
@@ -1441,7 +1435,7 @@
 /// if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative
 /// you can supply the etag in an attribute rev in the URL.
 /// 
-/// @RESTBODYPARAMS
+/// @RESTALLBODYPARAM{replaceAttributes,object,required}
 /// The body has to contain a JSON object containing exactly the attributes that should be replaced.
 /// 
 /// @RESTRETURNCODES
@@ -1649,12 +1643,11 @@
 /// @RESTPARAM{waitForSync, boolean, optional}
 /// Define if the request should wait until synced to disk.
 /// 
-/// @RESTBODYPARAMS
-/// 
 /// @RESTPARAM{_from, string, required}
 /// 
 /// @RESTPARAM{_to, string, required}
 /// 
+/// @RESTALLBODYPARAM{storeThisJsonObject,object,required}
 /// The body has to be the JSON object to be stored.
 /// 
 /// @RESTRETURNCODES
@@ -1866,7 +1859,7 @@
 /// if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative
 /// you can supply the etag in an attribute rev in the URL.
 /// 
-/// @RESTBODYPARAMS
+/// @RESTALLBODYPARAM{storeThisJsonObject,object,required}
 /// The body has to be the JSON object to be stored.
 /// 
 /// @RESTRETURNCODES
@@ -1958,10 +1951,10 @@
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
 /// 
-/// @RESTPARAM{collection-name, string, required} 
+/// @RESTPARAM{collection-name, string, required}
 /// The name of the edge collection the edge belongs to.
 /// 
-/// @RESTPARAM{edge-key, string, required} 
+/// @RESTPARAM{edge-key, string, required}
 /// The *_key* attribute of the vertex.
 /// 
 /// @RESTQUERYPARAMS
@@ -1972,7 +1965,7 @@
 /// @RESTPARAM{keepNull, boolean, optional}
 /// Define if values set to null should be stored. By default the key is removed from the document.
 /// 
-/// @RESTBODYPARAMS
+/// @RESTALLBODYPARAM{updateAttributes,object,required}
 /// The body has to be a JSON object containing the attributes to be updated.
 /// 
 /// @RESTRETURNCODES

@@ -612,7 +612,7 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{POST /_admin/test, Runs tests on server}
 ///
-/// @RESTBODYPARAM{body,javascript,required}
+/// @RESTALLBODYPARAM{body,object,required}
 /// A JSON object containing an attribute *tests* which lists the files
 /// containing the test suites.
 ///
@@ -670,7 +670,7 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{POST /_admin/execute, Execute program}
 ///
-/// @RESTBODYPARAM{body,javascript,required}
+/// @RESTALLBODYPARAM{body,string,required}
 /// The body to be executed.
 ///
 /// @RESTDESCRIPTION
