@@ -261,7 +261,6 @@ var updateFishbowlFromZip = function(filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var searchJson = function (name) {
-
   var fishbowl = getFishbowlStorage();
 
   if (fishbowl.count() === 0) {
@@ -455,25 +454,30 @@ var available = function (matchEngine) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var infoJson = function (name) {
-utils.validateAppName(name);
+  utils.validateAppName(name);
 
-var fishbowl = getFishbowlStorage();
+  var fishbowl = getFishbowlStorage();
 
-if (fishbowl.count() === 0) {
-  arangodb.print("Repository is empty, please use 'update'");
-  return;
-}
+  if (fishbowl.count() === 0) {
+    arangodb.print("Repository is empty, please use 'update'");
+    return;
+  }
 
-var desc;
+  var desc = db._query(
+    "FOR u IN @@storage FILTER u.name == @name OR @name in u.aliases RETURN DISTINCT u",
+    { '@storage': fishbowl.name(), 'name': name }).toArray();
 
-try {
-  desc = fishbowl.document(name);
-  return desc;
-}
-catch (err) {
-  arangodb.print("No application '" + name + "' available, please try 'search'");
-  return;
-}
+  if (desc.length === 0) {
+    arangodb.print("No application '" + name + "' available, please try 'search'");
+    return;
+  }
+  else if (desc.length > 1) {
+    arangodb.print("Multiple applications are named '" + name + "', please try 'search'");
+    return;
+  }
+  else {
+    return desc[0];
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
