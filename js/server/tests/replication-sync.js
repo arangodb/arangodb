@@ -71,7 +71,7 @@ function ReplicationSuite () {
     return res;
   };
 
-  var compare = function (masterFunc, slaveInitFunc, slaveCompareFunc) {
+  var compare = function (masterFunc, slaveInitFunc, slaveCompareFunc, incremental) {
     var state = { };
 
     db._flushCache();
@@ -86,7 +86,7 @@ function ReplicationSuite () {
     var syncResult = replication.syncCollection(cn, {
       endpoint: masterEndpoint,
       verbose: true,
-      incremental: true
+      incremental: incremental
     });
 
     db._flushCache();
@@ -141,7 +141,37 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-        }
+        },
+        false
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test non-present collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testNonPresentIncremental : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          for (i = 0; i < 5000; ++i) {
+            c.save({ "value" : i });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+        },
+        function (state) {
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
       );
     },
 
@@ -171,7 +201,39 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-        }
+        },
+        false
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test existing collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testExistingIncremental : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          for (i = 0; i < 5000; ++i) {
+            c.save({ "value" : i });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+        },
+        function (state) {
+          // already create the collection on the slave
+          db._create(cn);
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
       );
     },
 
@@ -201,7 +263,39 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-        }
+        },
+        false
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with existing documents - but empty on master
+////////////////////////////////////////////////////////////////////////////////
+
+    testExistingEmptyOnMasterIncremental : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(0, state.count);
+        },
+        function (state) {
+          // already create the collection on the slave
+          var c = db._create(cn);
+          
+          for (var i = 0; i < 5000; ++i) {
+            c.save({ "value" : i });
+          }
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
       );
     },
 
@@ -235,7 +329,43 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-        }
+        },
+        false
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with existing documents - less on the slave
+////////////////////////////////////////////////////////////////////////////////
+
+    testExistingDocumentsLessIncremental : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          for (i = 0; i < 5000; ++i) {
+            c.save({ "value" : i });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+        },
+        function (state) {
+          // already create the collection on the slave
+          var c = db._create(cn);
+          
+          for (var i = 0; i < 500; ++i) {
+            c.save({ "value" : i });
+          }
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
       );
     },
 
@@ -269,7 +399,43 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-        }
+        },
+        false
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with existing documents - more on the slave
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoreDocumentsIncremental : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          for (i = 0; i < 5000; ++i) {
+            c.save({ "value" : i });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+        },
+        function (state) {
+          // already create the collection on the slave
+          var c = db._create(cn);
+          
+          for (var i = 0; i < 6000; ++i) {
+            c.save({ "value" : i });
+          }
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
       );
     },
 
@@ -303,7 +469,43 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-        }
+        },
+        false
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with existing documents - same on the slave
+////////////////////////////////////////////////////////////////////////////////
+
+    testSameDocumentsIncremental : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          for (i = 0; i < 5000; ++i) {
+            c.save({ _key: "test" + i, "value" : i });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+        },
+        function (state) {
+          // already create the collection on the slave
+          var c = db._create(cn);
+          
+          for (var i = 0; i < 5000; ++i) {
+            c.save({ _key: "test" + i, "value" : i });
+          }
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
       );
     },
 
@@ -337,7 +539,43 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-        }
+        },
+        false
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with existing documents - same on the slave but different keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testSameSameButDifferentKeysIncremental : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          for (i = 0; i < 5000; ++i) {
+            c.save({ "value" : i });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+        },
+        function (state) {
+          // already create the collection on the slave
+          var c = db._create(cn);
+          
+          for (var i = 0; i < 5000; ++i) {
+            c.save({ "value" : i });
+          }
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
       );
     },
 
@@ -371,7 +609,43 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-        }
+        },
+        false
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with existing documents - same on the slave but different values
+////////////////////////////////////////////////////////////////////////////////
+
+    testSameSameButDifferentValuesIncremental : function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+
+          for (i = 0; i < 5000; ++i) {
+            c.save({ _key: "test" + i, "value1" : i, "value2": "test" + i });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5000, state.count);
+        },
+        function (state) {
+          // already create the collection on the slave
+          var c = db._create(cn);
+          
+          for (var i = 0; i < 5000; ++i) {
+            c.save({ _key: "test" + i, "value1" : "test" + i, "value2": i });
+          }
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
       );
     }
 
