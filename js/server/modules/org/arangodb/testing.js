@@ -65,7 +65,9 @@ var optionsDocumentation = [
   '   - `skipSsl`: ommit the ssl_server rspec tests.',
   '   - `skipLogAnalysis`: don\'t try to crawl the server logs',
   '   - `skipConfig`: ommit the noisy configuration tests',
-  '   - `skipFoxQueues`: ommit the test for the fox queues',
+  '   - `skipFoxxQueues`: ommit the test for the foxx queues',
+  '   - `skipNightly`: ommit the nightly tests',
+  '   - `onlyNightly`: execute only the nightly tests',
   '',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
@@ -121,6 +123,8 @@ var optionsDefaults = { "cluster": false,
                         "skipBoost": false,
                         "skipGeo": false,
                         "skipTimeCritical": false,
+                        "skipNightly": true,
+                        "onlyNightly": false,
                         "skipMemoryIntense": false,
                         "skipAql": false,
                         "skipArangoB": false,
@@ -193,18 +197,23 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     whichFilter.filter = "testcase";
     return testname === options.test;
   }
-  if ((testname.indexOf("-cluster") !== -1) && (options.cluster === false)) {
+  if ((testname.indexOf("-cluster") !== -1) && !options.cluster) {
     whichFilter.filter = 'noncluster';
     return false;
   }
 
-  if (testname.indexOf("-noncluster") !== -1 && (options.cluster === true)) {
+  if (testname.indexOf("-noncluster") !== -1 && options.cluster) {
     whichFilter.filter = 'cluster';
     return false;
   }
 
-  if (testname.indexOf("-timecritical") !== -1 && (options.skipTimeCritical === true)) {
+  if (testname.indexOf("-timecritical") !== -1 && options.skipTimeCritical) {
     whichFilter.filter = 'timecritical';
+    return false;
+  }
+
+  if (testname.indexOf("-nightly") !== -1 && options.skipNightly && ! options.onlyNightly) {
+    whichFilter.filter = 'skip nightly';
     return false;
   }
 
@@ -228,8 +237,13 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf("-memoryintense") !== -1) && (options.skipMemoryIntense === true)) {
+  if ((testname.indexOf("-memoryintense") !== -1) && options.skipMemoryIntense) {
     whichFilter.filter = 'memoryintense';
+    return false;
+  }
+
+  if (testname.indexOf("-nightly") === -1 && options.onlyNightly) {
+    whichFilter.filter = 'only nightly';
     return false;
   }
 
@@ -1672,7 +1686,7 @@ testFuncs.foxx_manager = function (options) {
 
 // TODO write test for 2.6-style queues
 // testFuncs.queue_legacy = function (options) {
-//   if (options.skipFoxQueues) {
+//   if (options.skipFoxxQueues) {
 //     print("skipping test of legacy queue job types");
 //     return {};
 //   }
