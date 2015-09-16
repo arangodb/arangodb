@@ -117,7 +117,8 @@ SIMPL_REPL_DICT = {
 "@RESTRETURNCODES"      : "\n**Return Codes**\n",
 "@PARAMS"               : "\n**Parameters**\n",
 "@RESTPARAMS"           : "",
-"@RESTURLPARAMS"        : "",
+"@RESTURLPARAMS"        : "\n**URL Parameters**\n",
+"@RESTQUERYPARAMS"      : "\n**Query Parameters**\n",
 "@RESTBODYPARAM"        : getRestBodyParam,
 "@RESTREPLYBODY"        : getRestReplyBodyParam,
 "@RESTQUERYPARAM"       : "@RESTPARAM",
@@ -138,11 +139,11 @@ r'''
 @PARAMS|                            # -> \n**Parameters**\n
 @RESTPARAMS|                        # -> <empty>
 @RESTURLPARAMS|                     # -> <empty>
+@RESTQUERYPARAMS|                   # -> <empty>
 @PARAM|                             # -> @RESTPARAM
 @RESTURLPARAM|                      # -> @RESTPARAM
 @RESTQUERYPARAM|                    # -> @RESTPARAM
 @RESTHEADERPARAM|                   # -> @RESTPARAM
-@RESTBODYPARAM|                     # -> @RESTPARAM
 @EXAMPLES|                          # -> \n**Examples**\n
 @RESTPARAMETERS|                    # -> <empty>
 @RESTREPLYBODY\{(.*)\}              # -> call body function
