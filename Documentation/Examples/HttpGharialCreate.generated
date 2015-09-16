@@ -1,4 +1,4 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial &lt;&lt;EOF
 { 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"myGraph"</span>, 
   <span class="hljs-string">"edgeDefinitions"</span> : [ 
@@ -17,7 +17,7 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
 content-type: application/json
-etag: <span class="hljs-number">531041826</span>
+etag: <span class="hljs-number">524526124</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -37,6 +37,6 @@ etag: <span class="hljs-number">531041826</span>
     ], 
     <span class="hljs-string">"orphanCollections"</span> : [ ], 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/myGraph"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"531041826"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"524526124"</span> 
   } 
 }

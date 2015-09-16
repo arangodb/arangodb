@@ -1,18 +1,18 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/test/url1</span>
+shell> curl --dump - http://localhost:8529/test/url1
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/1.1 200 OK
 content-type: text/plain
 
-<span class="hljs-string">"route 1"</span>
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/test/url2</span>
+"route 1"
+shell> curl --dump - http://localhost:8529/test/url2
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/1.1 200 OK
 content-type: text/plain
 
-<span class="hljs-string">"route 2"</span>
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/test/url3</span>
+"route 2"
+shell> curl --dump - http://localhost:8529/test/url3
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/1.1 200 OK
 content-type: text/plain
 
-<span class="hljs-string">"route 3"</span>
+"route 3"

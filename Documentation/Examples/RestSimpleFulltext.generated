@@ -1,5 +1,9 @@
-shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/simple/fulltext &lt;&lt;EOF</span>
-{ <span class="hljs-string">"collection"</span>: <span class="hljs-string">"products"</span>, <span class="hljs-string">"attribute"</span> : <span class="hljs-string">"text"</span>, <span class="hljs-string">"query"</span> : <span class="hljs-string">"word"</span> }
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/fulltext &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"attribute"</span> : <span class="hljs-string">"text"</span>, 
+  <span class="hljs-string">"query"</span> : <span class="hljs-string">"word"</span> 
+}
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
@@ -8,16 +12,16 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/859508258"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"859508258"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"859508258"</span>, 
-      <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text also has a word"</span> 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/853320236"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"853320236"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"853320236"</span>, 
+      <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text contains word"</span> 
     }, 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/859311650"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"859311650"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"859311650"</span>, 
-      <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text contains word"</span> 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/853516844"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"853516844"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"853516844"</span>, 
+      <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text also has a word"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 

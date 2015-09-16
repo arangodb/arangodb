@@ -1,5 +1,10 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/traversal &lt;&lt;EOF</span>
-{ <span class="hljs-string">"startVertex"</span>: <span class="hljs-string">"persons/alice"</span>, <span class="hljs-string">"graphName"</span> : <span class="hljs-string">"knows_graph"</span>, <span class="hljs-string">"direction"</span> : <span class="hljs-string">"outbound"</span>, <span class="hljs-string">"filter"</span> : <span class="hljs-string">"if (vertex.name === \"Bob\") {return \"prune\";}return;"</span>}
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"persons/alice"</span>, 
+  <span class="hljs-string">"graphName"</span> : <span class="hljs-string">"knows_graph"</span>, 
+  <span class="hljs-string">"direction"</span> : <span class="hljs-string">"outbound"</span>, 
+  <span class="hljs-string">"filter"</span> : <span class="hljs-string">"if (vertex.name === \"Bob\") {return \"prune\";}return;"</span> 
+}
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
@@ -12,13 +17,13 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
         { 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"935988770"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"929538604"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         }, 
         { 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"936185378"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"929735212"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
         } 
       ], 
@@ -29,7 +34,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"935988770"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"929538604"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             } 
           ] 
@@ -37,9 +42,9 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/937102882"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"937102882"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"937102882"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/930652716"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"930652716"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"930652716"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/bob"</span> 
             } 
@@ -48,13 +53,13 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"935988770"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"929538604"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/bob"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"936185378"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"929735212"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
             } 
           ] 

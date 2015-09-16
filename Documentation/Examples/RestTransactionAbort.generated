@@ -1,4 +1,4 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/transaction &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction &lt;&lt;EOF
 { 
   <span class="hljs-string">"collections"</span> : { 
     <span class="hljs-string">"read"</span> : <span class="hljs-string">"products"</span> 
@@ -7,7 +7,7 @@ shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment"
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">500</span> Internal <span class="hljs-built_in">Error</span>
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">500</span> Internal Server <span class="hljs-built_in">Error</span>
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 

@@ -1,4 +1,4 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial</span>
+shell> curl --dump - http://localhost:8529/_api/gharial
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json
@@ -10,7 +10,7 @@ content-type: application/json
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"social"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"560401954"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"550412844"</span>, 
       <span class="hljs-string">"edgeDefinitions"</span> : [ 
         { 
           <span class="hljs-string">"collection"</span> : <span class="hljs-string">"relation"</span>, 
@@ -29,7 +29,7 @@ content-type: application/json
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/routeplanner"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"routeplanner"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"563744290"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"553755180"</span>, 
       <span class="hljs-string">"orphanCollections"</span> : [ ], 
       <span class="hljs-string">"edgeDefinitions"</span> : [ 
         { 
