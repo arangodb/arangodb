@@ -34,13 +34,13 @@
 #include "Basics/json.h"
 #include "Basics/string-buffer.h"
 #include "Basics/json-utilities.h"
-#include "Rest/HttpRequest.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/vocbase.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
+#include "Rest/HttpRequest.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/vocbase.h"
 
 using namespace std;
 using namespace triagens::basics;
