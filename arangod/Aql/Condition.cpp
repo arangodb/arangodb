@@ -35,6 +35,8 @@
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 
+#include <iostream>
+
 using namespace triagens::aql;
 using CompareResult = ConditionPart::ConditionPartCompareResult;
 
@@ -365,11 +367,11 @@ void Condition::normalize () {
   _root = fixRoot(_root, 0);
 
   optimize();
-/*
+
 std::cout << "\n";
 dump();
 std::cout << "\n";
-*/
+
   _isNormalized = true;
 }
 

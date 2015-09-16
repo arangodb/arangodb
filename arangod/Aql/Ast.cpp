@@ -786,6 +786,32 @@ AstNode* Ast::createNodeBinaryOperator (AstNodeType type,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST n-ary operator node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeNaryOperator (AstNodeType type) {
+  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND ||
+             type == NODE_TYPE_OPERATOR_NARY_OR);
+
+  return createNode(type);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST n-ary operator node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeNaryOperator (AstNodeType type,
+                                      AstNode const* child) {
+  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND ||
+             type == NODE_TYPE_OPERATOR_NARY_OR);
+
+  AstNode* node = createNode(type);
+  node->addMember(child);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST ternary operator node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1305,7 +1331,6 @@ AstNode* Ast::replaceVariableReference (AstNode* node,
 /// optimizations saves one extra pass over the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 void Ast::validateAndOptimize () {
   struct TraversalContext {
     int64_t stopOptimizationRequests = 0;
@@ -1471,6 +1496,33 @@ void Ast::validateAndOptimize () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract attribute access information from a node
+////////////////////////////////////////////////////////////////////////////////
+
+std::pair<Variable const*, std::string> Ast::extractAttributeAccess (AstNode const* node) {
+  TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+
+  std::string attributeName;
+
+  while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (attributeName.empty()) {
+      attributeName = node->getStringValue();
+    }
+    else {
+      attributeName = node->getStringValue() + '.' + attributeName;
+    }
+    node = node->getMember(0);
+  }
+
+  if (node->type == NODE_TYPE_REFERENCE) {
+    auto variable = static_cast<Variable const*>(node->getData());
+    return std::make_pair(variable, attributeName);
+  }
+
+  return std::make_pair(nullptr, std::string());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determines the variables referenced in an expression
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1627,6 +1679,14 @@ AstNode* Ast::clone (AstNode const* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if an operator is reversible
+////////////////////////////////////////////////////////////////////////////////
+  
+bool Ast::IsReversibleOperator (AstNodeType type) {
+  return (ReversedOperators.find(static_cast<int>(type)) != ReversedOperators.end());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the reversed operator for a comparison operator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1638,6 +1698,24 @@ AstNodeType Ast::ReverseOperator (AstNodeType type) {
   }
   
   return (*it).second;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the n-ary operator type equivalent for a binary operator type
+////////////////////////////////////////////////////////////////////////////////
+
+AstNodeType Ast::NaryOperatorType (AstNodeType old) {
+  TRI_ASSERT(old == NODE_TYPE_OPERATOR_BINARY_AND ||
+             old == NODE_TYPE_OPERATOR_BINARY_OR);
+
+  if (old == NODE_TYPE_OPERATOR_BINARY_AND) {
+    return NODE_TYPE_OPERATOR_NARY_AND;
+  }
+  if (old == NODE_TYPE_OPERATOR_BINARY_OR) {
+    return NODE_TYPE_OPERATOR_NARY_OR;
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type for n-ary operator");
 }
 
 // -----------------------------------------------------------------------------
