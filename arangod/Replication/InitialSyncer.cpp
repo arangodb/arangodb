@@ -820,7 +820,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   auto shaper = trx.documentCollection()->getShaper();
           
   bool const isEdge = (trx.documentCollection()->_info._type == TRI_COL_TYPE_EDGE);
-    
+   
   string progress = "collecting local keys";
   setProgress(progress);
 
@@ -857,7 +857,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       return res < 0;
     });
   }
-      
+
   std::vector<size_t> toFetch;
 
   TRI_voc_tick_t const chunkSize = 5000;
@@ -1004,7 +1004,6 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
     else {
       // no match
       // must transfer keys for non-matching range
-  
       std::string url = baseUrl + "/" + keysId + "?type=keys&chunk=" + std::to_string(i) + "&chunkSize=" + std::to_string(chunkSize);
       progress = "fetching keys from " + url;
       setProgress(progress);
@@ -1061,7 +1060,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           break;
         }
       }
-
+        
       toFetch.clear();
 
       for (size_t i = 0; i < n; ++i) {
@@ -1118,9 +1117,11 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         else if (std::to_string(mptr->_rid) != std::string(ridJson->_value._string.data, ridJson->_value._string.length - 1)) {
           // key found, but rid differs
           toFetch.emplace_back(i);
+          ++nextStart;
         }
         else {
           // a match - nothing to do!
+          ++nextStart;
         }
       }
       
@@ -1129,7 +1130,6 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         BinarySearch(markers, highJson->_value._string.data, nextStart);
 
         while (nextStart < markers.size()) {
-          TRI_ASSERT(nextStart < markers.size());
           char const* key = TRI_EXTRACT_MARKER_KEY(markers.at(nextStart));
           int res = strcmp(key, highJson->_value._string.data);
 
@@ -1238,10 +1238,10 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           TRI_doc_mptr_copy_t result;
 
           int res = TRI_ERROR_NO_ERROR;
-          TRI_document_edge_t* e = nullptr;
           auto mptr = idx->lookupKey(documentKey.c_str());
 
           if (mptr == nullptr) {
+            TRI_document_edge_t* e = nullptr;
             TRI_document_edge_t edge;
 
             if (isEdge) {
@@ -1259,9 +1259,6 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
               }
 
               e = &edge;
-            }
-            else {
-              e = nullptr;
             }
 
             // INSERT
