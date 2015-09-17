@@ -235,7 +235,7 @@ exports.appendCurlRequest = function (shellAppender,jsonAppender, rawAppender) {
 /// @brief logs a raw response
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.appendRawResponse = function (appender) {
+exports.appendRawResponse = function (appender, syntaxAppender) {
   return function (response) {
     var key;
     var headers = response.headers;
@@ -256,7 +256,7 @@ exports.appendRawResponse = function (appender) {
 
     // append body
     if (response.body !== undefined) {
-      appender(exports.inspect(response.body));
+      syntaxAppender(exports.inspect(response.body));
       appender("\n");
     }
   };
@@ -266,15 +266,15 @@ exports.appendRawResponse = function (appender) {
 /// @brief logs a response in JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.appendJsonResponse = function (appender) {
+exports.appendJsonResponse = function (appender, syntaxAppender) {
   return function (response) {
-    var rawAppend = exports.appendRawResponse(appender);
+    var syntaxAppend = exports.appendRawResponse(syntaxAppender, syntaxAppender);
 
     // copy original body (this is necessary because "response" is passed by reference)
     var copy = response.body;
     // overwrite body with parsed JSON && append
     response.body = JSON.parse(response.body);
-    rawAppend(response);
+    syntaxAppend(response);
     // restore original body
     response.body = copy;
   };
