@@ -162,9 +162,6 @@ Jasmine tests cover two important usecase:
 aardvark
 
 
-
-
-
 UnitTests/Makefile.unittests
 
 
@@ -445,9 +442,10 @@ generate
        --server.endpoint 'tcp://127.0.0.1:8529'
        --withPython 3rdParty/V8-4.3.61/third_party/python_26/python26.exe 
        --onlyThisOne 'MOD.*'
-
+ - `make examples-inspect-file` generates a file where you can inspect all examples for readability.
  - make swagger - on top level to generate the documentation interactively with the server
  - cd Documentation/Books; make - to generate the HTML documentation
+
 
 write markdown
 --------------
