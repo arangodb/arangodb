@@ -112,7 +112,15 @@ var manifestSchema = {
   dependencies: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.string().required())
+    .pattern(RE_NOT_EMPTY, joi.alternatives().try(
+      joi.string().required(),
+      joi.object().required()
+      .keys({
+        name: joi.string().default('*'),
+        version: joi.string().default('*'),
+        required: joi.boolean().default(true)
+      })
+    ))
   ),
   description: joi.string().allow("").default(""),
   engines: (
@@ -365,6 +373,28 @@ var checkManifest = function(filename, manifest) {
       errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
       errorMessage: validationErrors.join('\n')
     });
+  } else {
+    if (manifest.dependencies) {
+      Object.keys(manifest.dependencies).forEach(function (key) {
+        const dependency = manifest.dependencies[key];
+        if (typeof dependency === 'string') {
+          const tokens = dependency.split(':');
+          manifest.dependencies[key] = {
+            name: tokens[0] || '*',
+            version: tokens[1] || '*',
+            required: true
+          };
+        }
+      });
+    }
+
+    if (typeof manifest.controllers === 'string') {
+      manifest.controllers = {'/': manifest.controllers};
+    }
+
+    if (typeof manifest.tests === 'string') {
+      manifest.tests = [manifest.tests];
+    }
   }
 };
 
