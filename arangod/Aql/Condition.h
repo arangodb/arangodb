@@ -59,12 +59,14 @@ namespace triagens {
     struct ConditionPart {
 
       enum ConditionPartCompareResult {
-        IMPOSSIBLE,
-        SELF_CONTAINED_IN_OTHER,
-        OTHER_CONTAINED_IN_SELF,
-        DISJOINT,
-        UNKNOWN
+        IMPOSSIBLE = 0,
+        SELF_CONTAINED_IN_OTHER = 1,
+        OTHER_CONTAINED_IN_SELF = 2,
+        DISJOINT = 3,
+        CONVERT_EQUAL = 4,
+        UNKNOWN = 5
       };
+      static ConditionPartCompareResult ResultsTable[3][7][7];
 
       ConditionPart () = delete;
 
@@ -76,17 +78,33 @@ namespace triagens {
 
       ~ConditionPart ();
 
-      ConditionPartCompareResult compare (ConditionPart const&) const;
+      inline uint whichCompareOperation() const {
+        switch (operatorType) {
+        case NODE_TYPE_OPERATOR_BINARY_EQ:
+          return 0;
+        case NODE_TYPE_OPERATOR_BINARY_NE:
+          return 1;
+        case NODE_TYPE_OPERATOR_BINARY_LT:
+          return 2;
+        case NODE_TYPE_OPERATOR_BINARY_LE:
+          return 3;
+        case NODE_TYPE_OPERATOR_BINARY_GE:
+          return 4;
+        case NODE_TYPE_OPERATOR_BINARY_GT:
+          return 5;
+        default:
+          return 6; // not a compare operator.
+        }
+      }
 
       void dump () const;
       
-      Variable const*   variable;
-      std::string const attributeName;
-      size_t            sourcePosition;
-      AstNodeType       operatorType;
-      AstNode const*    operatorNode;
-      AstNode const*    valueNode;
-
+      Variable const*             variable;
+      std::string const           attributeName;
+      size_t                      sourcePosition;
+      AstNodeType                 operatorType;
+      AstNode const*              operatorNode;
+      AstNode const*              valueNode;
     };
 
 // -----------------------------------------------------------------------------
@@ -135,13 +153,25 @@ namespace triagens {
 /// this will convert the condition into its disjunctive normal form
 ////////////////////////////////////////////////////////////////////////////////
 
-        void normalize ();
+        void normalize (ExecutionPlan* plan);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimize the condition expression tree
 ////////////////////////////////////////////////////////////////////////////////
 
-        void optimize ();
+        void optimize (ExecutionPlan* plan);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the resulting structure for the node
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* getConditions () {return _root;};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locate indices which can be used for conditions
+////////////////////////////////////////////////////////////////////////////////
+
+        void findIndices ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the condition

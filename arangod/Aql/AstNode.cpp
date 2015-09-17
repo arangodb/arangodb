@@ -257,6 +257,10 @@ static TRI_json_type_e GetNodeCompareType (AstNode const* node) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two nodes
+/// @return range from -1 to +1 depending:
+///  - -1 LHS being  less then   RHS, 
+///  -  0 LHS being     equal    RHS
+///  -  1 LHS being greater then RHS
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::CompareAstNodes (AstNode const* lhs, 

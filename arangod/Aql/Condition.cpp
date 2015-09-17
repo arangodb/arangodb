@@ -30,6 +30,7 @@
 #include "Condition.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
@@ -68,53 +69,7 @@ ConditionPart::ConditionPart (Variable const* variable,
 }
 
 ConditionPart::~ConditionPart () {
-}
-      
-CompareResult ConditionPart::compare (ConditionPart const& other) const {
-  if (! valueNode->isConstant() || ! other.valueNode->isConstant()) {
-    return CompareResult::UNKNOWN;
-  }
-  
-  if (operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
-    if (other.operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
-        other.operatorType == NODE_TYPE_OPERATOR_BINARY_NE) {
-      int cmp = CompareAstNodes(valueNode, other.valueNode, false);
-      if ((other.operatorType == NODE_TYPE_OPERATOR_BINARY_EQ && cmp != 0) ||
-          (other.operatorType == NODE_TYPE_OPERATOR_BINARY_NE && cmp == 0)) {
-        // a == x && a == y
-        // a == x && a != y
-        return CompareResult::IMPOSSIBLE;
-      }
-      if (other.operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
-        return CompareResult::SELF_CONTAINED_IN_OTHER;
-      }
-      return CompareResult::DISJOINT;
-    }
-    if (other.operatorType == NODE_TYPE_OPERATOR_BINARY_GT ||
-        other.operatorType == NODE_TYPE_OPERATOR_BINARY_GE) {
-      int cmp = CompareAstNodes(valueNode, other.valueNode, true);
-      if ((other.operatorType == NODE_TYPE_OPERATOR_BINARY_GT && cmp <= 0) ||
-          (other.operatorType == NODE_TYPE_OPERATOR_BINARY_GE && cmp < 0)) {
-        // a == x && a > y
-        // a == x && a >= y
-        return CompareResult::IMPOSSIBLE;
-      }
-      return CompareResult::OTHER_CONTAINED_IN_SELF;
-    }
-    if (other.operatorType == NODE_TYPE_OPERATOR_BINARY_LT ||
-        other.operatorType == NODE_TYPE_OPERATOR_BINARY_LE) {
-      int cmp = CompareAstNodes(valueNode, other.valueNode, true);
-      if ((other.operatorType == NODE_TYPE_OPERATOR_BINARY_LT && cmp >= 0) ||
-          (other.operatorType == NODE_TYPE_OPERATOR_BINARY_LE && cmp > 0)) {
-        // a == x && a < y
-        // a == x && a <= y
-        return CompareResult::IMPOSSIBLE;
-      }
-      return CompareResult::OTHER_CONTAINED_IN_SELF;
-    }
-  }
-  
-  return CompareResult::UNKNOWN;
+
 }
 
 void ConditionPart::dump () const {
@@ -177,11 +132,17 @@ void Condition::andCombine (AstNode const* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief locate indices for each condition
+////////////////////////////////////////////////////////////////////////////////
+void Condition::findIndices() {
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
 ////////////////////////////////////////////////////////////////////////////////
 
-void Condition::normalize () {
+void Condition::normalize (ExecutionPlan* plan) {
   if (_isNormalized) {
     // already normalized
     return;
@@ -366,11 +327,11 @@ void Condition::normalize () {
   _root = collapseNesting(_root);
   _root = fixRoot(_root, 0);
 
-  optimize();
+  optimize(plan);
 
-std::cout << "\n";
-dump();
-std::cout << "\n";
+  std::cout << "\n";
+  dump();
+  std::cout << "\n";
 
   _isNormalized = true;
 }
@@ -379,7 +340,70 @@ std::cout << "\n";
 /// @brief optimize the condition's expression tree
 ////////////////////////////////////////////////////////////////////////////////
 
-void Condition::optimize () {
+//        |         | a == y | a != y | a <  y | a <= y | a >= y | a > y  
+// -------|------------------|--------|--------|--------|--------|--------
+// x  < y |         |   IMP  |   OIS  |   OIS  |  OIS   |   IMP  |  IMP   
+// x == y |  a == x |   OIS  |   IMP  |   IMP  |  OIS   |   OIS  |  IMP   
+// x  > y |         |   IMP  |   OIS  |   IMP  |  IMP   |   OIS  |  OIS   
+// -------|------------------|--------|--------|--------|--------|--------
+// x  < y |         |   SIO  |   DIJ  |   DIJ  |  DIJ   |   SIO  |  SIO   
+// x == y |  a != x |   IMP  |   OIS  |   SIO  |  DIJ   |   DIJ  |  SIO   
+// x  > y |         |   SIO  |   DIJ  |   SIO  |  SIO   |   DIJ  |  DIJ   
+// -------|------------------|--------|--------|--------|--------|--------
+// x  < y |         |   IMP  |   OIS  |   OIS  |  OIS   |   IMP  |  IMP   
+// x == y |  a <  x |   IMP  |   OIS  |   OIS  |  OIS   |   IMP  |  IMP   
+// x  > y |         |   SIO  |   DIJ  |   SIO  |  SIO   |   DIJ  |  DIJ   
+// -------|------------------|--------|--------|--------|--------|--------
+// x  < y |         |   IMP  |   OIS  |   OIS  |  OIS   |   IMP  |  IMP   
+// x == y |  a <= x |   SIO  |   DIJ  |   SIO  |  OIS   |   CEQ  |  IMP   
+// x  > y |         |   SIO  |   DIJ  |   SIO  |  SIO   |   DIJ  |  DIJ   
+// -------|------------------|--------|--------|--------|--------|--------
+// x  < y |         |   SIO  |   DIJ  |   DIJ  |  DIJ   |   SIO  |  SIO   
+// x == y |  a >= x |   SIO  |   DIJ  |   IMP  |  CEQ   |   OIS  |  SIO   
+// x  > y |         |   IMP  |   OIS  |   IMP  |  IMP   |   OIS  |  OIS   
+// -------|------------------|--------|--------|--------|--------|--------
+// x  < y |         |   SIO  |   DIJ  |   DIJ  |   DIJ  |   SIO  |  SIO   
+// x == y |  a >  x |   IMP  |   OIS  |   IMP  |   IMP  |   OIS  |  OIS   
+// x  > y |         |   IMP  |   OIS  |   IMP  |   IMP  |   OIS  |  OIS   
+// the 7th column is here as fallback if the operation is not in the table above.
+// IMP -> IMPOSSIBLE -> empty result -> the complete AND set of conditions can be dropped.
+// CEQ -> CONVERT_EQUAL -> both conditions can be combined to a equals x.
+// DIJ -> DISJOINT -> neither condition is a consequence of the other -> both have to stay in place.
+// SIO -> SELF_CONTAINED_IN_OTHER -> the left condition is a consequence of the right condition
+// OIS -> OTHER_CONTAINED_IN_SELF -> the right condition is a consequence of the left condition
+// If a condition (A) is a consequence of another (B), the solution set of A is larger than that of B
+//  -> A can be dropped.
+
+ConditionPart::ConditionPartCompareResult ConditionPart::ResultsTable[3][7][7] = {
+  { // X < Y
+    {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, DISJOINT},
+    {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT, SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT},
+    {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, DISJOINT},
+    {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, DISJOINT},
+    {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT, SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT},
+    {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT, SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT},
+    {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}
+  },
+  { // X == Y
+    {OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, DISJOINT},
+    {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, SELF_CONTAINED_IN_OTHER, DISJOINT},
+    {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, DISJOINT},
+    {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER, OTHER_CONTAINED_IN_SELF, CONVERT_EQUAL, IMPOSSIBLE, DISJOINT},
+    {SELF_CONTAINED_IN_OTHER, DISJOINT, IMPOSSIBLE, CONVERT_EQUAL, OTHER_CONTAINED_IN_SELF, SELF_CONTAINED_IN_OTHER, DISJOINT},
+    {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
+    {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}
+  },
+  { // X > Y
+    {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
+    {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT},
+    {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT},
+    {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT},
+    {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
+    {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
+    {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}
+  }
+};
+void Condition::optimize (ExecutionPlan* plan) {
 
 //  normalize();
   typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
@@ -425,17 +449,17 @@ void Condition::optimize () {
   // handle sub nodes or top-level OR node
   size_t const n = _root->numMembers();
 
-  for (size_t i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) { // foreach OR-Node
     auto andNode = _root->getMemberUnchecked(i);
-
     TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
+  restartThisOrItem:
     size_t const andNumMembers = andNode->numMembers();
 
     if (andNumMembers > 1) {
       // optimization is only necessary if an AND node has members
       VariableUsageType variableUsage;
-
+ 
       for (size_t j = 0; j < andNumMembers; ++j) {
         auto operand = andNode->getMemberUnchecked(j);
 
@@ -453,10 +477,10 @@ void Condition::optimize () {
       }
 
       // now find the variables and attributes for which there are multiple conditions
-      for (auto const& it : variableUsage) {
+      for (auto const& it : variableUsage) { // foreach sub-and-node
         auto variable = it.first;
 
-        for (auto const& it2 : it.second) {
+        for (auto const& it2 : it.second) { // cross compare sub-and-nodes
           auto const& attributeName = it2.first;
           auto const& positions = it2.second;
 
@@ -466,38 +490,75 @@ void Condition::optimize () {
           }
 
           // multiple occurrences of the same attribute
-          // std::cout << "ATTRIBUTE " << attributeName << " occurs in " << positions.size() << " positions\n";
+          std::cout << "ATTRIBUTE " << attributeName << " occurs in " << positions.size() << " positions\n";
 
           ConditionPart current(variable, attributeName, 0, andNode->getMemberUnchecked(positions[0].first), positions[0].second);
           // current.dump();
           size_t j = 1;
 
           while (j < positions.size()) {
+
             ConditionPart other(variable, attributeName, j, andNode->getMemberUnchecked(positions[j].first), positions[j].second);
 
-            switch (current.compare(other)) {
-              case CompareResult::IMPOSSIBLE:
-                // std::cout << "IMPOSSIBLE WHERE\n";
-                break;
-              case CompareResult::SELF_CONTAINED_IN_OTHER:
-                // std::cout << "SELF IS CONTAINED IN OTHER\n";
-                break;
-              case CompareResult::OTHER_CONTAINED_IN_SELF:
-                // std::cout << "OTHER IS CONTAINED IN SELF\n";
-                break;
-              case CompareResult::DISJOINT:
-                // std::cout << "DISJOINT\n";
-                break;
-              case CompareResult::UNKNOWN:
-                // std::cout << "UNKNOWN\n";
-                break;
+            if (! current.valueNode->isConstant() || ! other.valueNode->isConstant()) {
+              continue;
+            }
+            ConditionPart::ConditionPartCompareResult res = ConditionPart::ResultsTable
+              // Results are -1, 0, 1, move to 0,1,2 for the lookup:
+              [CompareAstNodes(current.valueNode, other.valueNode, false) + 1] 
+              [current.whichCompareOperation()]
+              [other.whichCompareOperation()];
+
+            switch (res) {
+            case CompareResult::IMPOSSIBLE: /// geht weg
+              std::cout << "IMPOSSIBLE WHERE\n";
+              j = positions.size(); 
+              // we remove this one, so fast forward the loops to their end:
+              /// TODO: does an empty _root imply false?
+              /// or do we need to replace this and node by a false node?
+              // while (!it.end()) it++;
+              // while (!it2.end()) it++; TODOx
+              _root->removeMemberUnchecked(i);
+              /// i -= 1; <- wenn wir das ohne goto machen...
+              goto fastForwardToNextOrItem;
+              break;
+            case CompareResult::SELF_CONTAINED_IN_OTHER: /// self kann weg
+              std::cout << "SELF IS CONTAINED IN OTHER\n";
+              andNode->removeMemberUnchecked(positions[0].first);
+              goto restartThisOrItem;
+              break;
+            case CompareResult::OTHER_CONTAINED_IN_SELF: /// other kann weg 
+              std::cout << "OTHER IS CONTAINED IN SELF\n";
+              andNode->removeMemberUnchecked(positions[j].first);
+              goto restartThisOrItem;
+              break;
+            case CompareResult::CONVERT_EQUAL: { /// beide gehen, werden umgeformt zu a == x (== y)
+              andNode->removeMemberUnchecked(positions[j].first);
+              auto origNode = andNode->getMemberUnchecked(positions[0].first);
+              auto newNode = plan->getAst()->createNode(NODE_TYPE_OPERATOR_BINARY_EQ);
+              for (uint32_t iMemb = 0; iMemb < origNode->numMembers(); iMemb++) {
+                newNode->addMember(origNode->getMemberUnchecked(iMemb));
+              }
+
+              andNode->changeMember(positions[0].first, newNode);
+              
+              std::cout << "RESULT equals X/Y\n";
+            }
+              break;
+            case CompareResult::DISJOINT: /// beide bleiben
+              std::cout << "DISJOINT\n";
+              break;
+            case CompareResult::UNKNOWN: //// beide bleiben
+              std::cout << "UNKNOWN\n";
+              break;
             }
 
             ++j;
           }
-        }
-      }
-
+        } // cross compare sub-and-nodes
+      } // foreach sub-and-node
+    fastForwardToNextOrItem:
+      true;
     }
   }
 

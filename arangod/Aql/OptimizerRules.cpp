@@ -2118,7 +2118,7 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
         case EN::ENUMERATE_COLLECTION: {
           // auto node = static_cast<EnumerateCollectionNode*>(en);
           // auto var = node->getVariablesSetHere()[0];  // should only be 1
-          _condition->normalize();
+          _condition->normalize(_plan);
           break;
         }
       }
