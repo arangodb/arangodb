@@ -172,6 +172,7 @@ int Logfile::judge (std::string const& filename) {
     ++ptr;
   }
 
+  TRI_CLOSE(fd);
   return TRI_ERROR_ARANGO_DATAFILE_EMPTY;
 }
 
