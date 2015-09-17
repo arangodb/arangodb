@@ -17,11 +17,18 @@ check-summary:
 	fi
 
 book-check-leftover-docublocks:
-	@if test "`grep -r \"@startDocuBlock\" --include \"*.html\" books/$(NAME) | wc -l`" -ne 0; then \
+	@if test "`grep -r \"@startDocuBlock\" --include \"*.md\" ppbooks/$(NAME) | wc -l`" -ne 0; then \
 	  echo ; \
 	  echo "@startDocuBlock markers still found in generated output files:"; \
-	  grep -rl "@startDocuBlock" --include "*.html" books/$(NAME) | sed -e "s/^/- /g"; \
+	  grep -rl "@startDocuBlock" --include "*.md" ppbooks/$(NAME) | sed -e "s/^/- /g"; \
 	  exit 1; \
+	fi
+
+book-check-restheader-leftovers:
+	@if test "`find ppbooks/$(NAME) -name '*.md' -exec grep -- '^@[A-Z]*' {} \; -print | wc -l`" -gt 0; then \
+		echo "found these unconverted Swagger Restapi tags: "; \
+		find ppbooks/$(NAME) -name '*.md' -exec grep '^@[A-Z]*' {} \; -print; \
+		exit 1; \
 	fi
 
 book-check-markdown-leftovers:
@@ -69,12 +76,14 @@ build-book:
 
 	test -d books/$(NAME) || mkdir -p books/$(NAME)
 
+	make check-summary
+	make book-check-leftover-docublocks
+	make book-check-restheader-leftovers
+
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
 	python deprecated.py
 
-	make check-summary
-	make book-check-leftover-docublocks
 	make book-check-markdown-leftovers
 
 clean-book:

@@ -102,9 +102,6 @@ var findOrCreateEdgeCollectionByName = function (name) {
 ///
 /// Changes or sets the property *name* an *edges* to *value*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-set-property
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -140,9 +137,6 @@ Edge.prototype.setProperty = function (name, value) {
 ///
 /// Returns a list of in- or outbound edges of the *vertex*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-edges
 /// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -161,9 +155,6 @@ Vertex.prototype.edges = function () {
 ///
 /// Returns a list of inbound edges of the *vertex* with given label(s).
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-get-in-edges
 /// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -187,9 +178,6 @@ Vertex.prototype.getInEdges = function () {
 ///
 /// Returns a list of outbound edges of the *vertex* with given label(s).
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-get-out-edges
 /// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -235,10 +223,6 @@ Vertex.prototype.getEdges = function () {
 /// `vertex.inbound()`
 ///
 /// Returns a list of inbound edges of the *vertex*.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-inbound
 /// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -257,9 +241,6 @@ Vertex.prototype.inbound = function () {
 ///
 /// Returns a list of outbound edges of the *vertex*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-outbound
 /// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -278,9 +259,6 @@ Vertex.prototype.outbound = function () {
 ///
 /// Changes or sets the property *name* a *vertex* to *value*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-set-property
 /// @end Docu BLock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -319,9 +297,6 @@ Vertex.prototype.setProperty = function (name, value) {
 ///
 /// Returns a known graph.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-constructor
 /// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -612,9 +587,6 @@ Graph.prototype._replaceEdge = function (edge_id, data) {
 ///
 /// Returns the vertex identified by *id* or *null*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-get-vertex
 /// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -635,9 +607,6 @@ Graph.prototype.getVertex = function (id) {
 /// Returns an iterator for all vertices of the graph. The iterator supports the
 /// methods *hasNext* and *next*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-get-vertices
 /// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -658,9 +627,6 @@ Graph.prototype.getVertices = function () {
 ///
 /// Returns the edge identified by *id* or *null*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-get-edge
 /// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -694,9 +660,6 @@ Graph.prototype.getEdge = function (id) {
 /// Returns an iterator for all edges of the graph. The iterator supports the
 /// methods *hasNext* and *next*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-get-edges
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -716,9 +679,6 @@ Graph.prototype.getEdges = function () {
 ///
 /// Deletes the *vertex* and all its edges.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-remove-vertex
 /// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -749,9 +709,6 @@ Graph.prototype.removeVertex = function (vertex, waitForSync) {
 ///
 /// Deletes the *edge*. Note that the in and out vertices are left untouched.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-remove-edge
 /// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 

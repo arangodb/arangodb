@@ -328,6 +328,15 @@ def replaceCodeIndex(lines):
   #lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
   return lines
 
+
+RXFinal = [
+    (re.compile(r"@anchor (.*)"), "<a name=\"\g<1>\">#</a>")
+]
+def replaceCodeFullFile(lines):
+    for (oneRX, repl) in RXFinal:
+        lines = oneRX.sub(repl, lines)
+    return lines
+
 ################################################################################
 # main loop over all files
 ################################################################################
@@ -367,11 +376,11 @@ def findStartCode(fd,full_path):
             textFile = replaceText(textFile, full_path, find)
             #print textFile
 
-    #try:
-    #    textFile = replaceCode(textFile)
-    #except:
-    #    print >>sys.stderr, "while parsing :\n"  + textFile
-    #    raise
+    try:
+        textFile = replaceCodeFullFile(textFile)
+    except:
+        print >>sys.stderr, "while parsing :\n"  + textFile
+        raise
     #print "9" * 80
     #print textFile
     outFD = open(full_path, "w")

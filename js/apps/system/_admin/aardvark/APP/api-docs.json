@@ -2133,16 +2133,25 @@
                 "x-filename": "admin - js/actions/_admin/app.js, js/actions/_admin/routing/app.js, js/actions/_admin/server/app.js, js/actions/_admin/database/app.js, arangod/RestHandler/RestShutdownHandler.cpp"
             }
         }, 
-        "/_admin/sleep?duration=5": {
+        "/_admin/sleep": {
             "get": {
                 "description": "\n\n<br> The call returns an object with the attribute <strong>duration</strong>. This takes as many seconds as the duration argument says. <br>", 
-                "parameters": [], 
+                "parameters": [
+                    {
+                        "description": "wait `duration` seconds until the reply is sent. <br>", 
+                        "format": "integer", 
+                        "in": "path", 
+                        "name": "duration", 
+                        "required": true, 
+                        "type": "integer"
+                    }
+                ], 
                 "responses": {
                     "200": {
                         "description": "Sleep was conducted successfully. <br>"
                     }
                 }, 
-                "summary": " Sleep for 5 seconds", 
+                "summary": " Sleep for a specified amount of seconds", 
                 "tags": [
                     "admin"
                 ], 

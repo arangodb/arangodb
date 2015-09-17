@@ -103,8 +103,8 @@ collections.
 !SUBSECTION Additional date functions
 
 ArangoDB 2.7 provides several extra AQL functions for date and time 
-calculation and manipulation. These functions were contributed by GitHub users 
-@CoDEmanX and @friday. A big thanks for their work! 
+calculation and manipulation. These functions were contributed 
+by GitHub users @CoDEmanX and @friday. A big thanks for their work! 
 
 The following extra date functions are available from 2.7 on:
 

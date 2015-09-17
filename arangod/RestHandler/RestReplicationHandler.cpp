@@ -3676,6 +3676,8 @@ void RestReplicationHandler::handleCommandDump () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_api_replication_makeSlave
+/// @brief Changes role to slave
+///
 /// @RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a slave of another}
 ///
 /// @RESTBODYPARAM{endpoint,string,required,string}

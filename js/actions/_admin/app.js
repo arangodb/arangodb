@@ -75,7 +75,12 @@ actions.defineHttp({
 /// @startDocuBlock JSF_get_admin_sleep
 /// @brief Suspend the execution for a specified duration before returnig
 ///
-/// @RESTHEADER{GET /_admin/sleep?duration=5, Sleep for 5 seconds}
+/// @RESTHEADER{GET /_admin/sleep, Sleep for a specified amount of seconds}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTURLPARAM{duration,integer,required}
+/// wait `duration` seconds until the reply is sent.
 ///
 /// @RESTDESCRIPTION
 ///
