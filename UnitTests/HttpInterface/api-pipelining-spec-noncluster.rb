@@ -8,7 +8,7 @@ def read_socket (socket)
   response = ""
         
   while true
-    rs = IO.select([socket], [ ], [ ], 5)
+    rs = IO.select([socket], [ ], [ ], 1.0)
 
     if rs === nil 
       break
@@ -26,6 +26,19 @@ def read_socket (socket)
   response
 end
 
+def await_response (n)
+  response = ""
+  while true
+    part = read_socket @socket
+    if part != ""
+      response += part
+      if response.scan(/HTTP\/1\.1 20[012]/).length === n
+        break
+      end
+    end
+  end
+  response
+end
 
 describe ArangoDB, :ssl => true do
 
@@ -62,7 +75,7 @@ describe ArangoDB, :ssl => true do
 
         @socket.send requests, 0
 
-        response = read_socket @socket
+        response = await_response n
         response.scan(/HTTP\/1\.1 200/).length.should eq(n)
       end
       
@@ -77,7 +90,7 @@ describe ArangoDB, :ssl => true do
 
         @socket.send requests, 0
 
-        response = read_socket @socket
+        response = await_response n
         response.scan(/HTTP\/1\.1 200/).length.should eq(n)
       end
       
@@ -92,7 +105,7 @@ describe ArangoDB, :ssl => true do
 
         @socket.send requests, 0
 
-        response = read_socket @socket
+        response = await_response n
         response.scan(/HTTP\/1\.1 200/).length.should eq(n)
       end
       
@@ -129,7 +142,7 @@ describe ArangoDB, :ssl => true do
 
         @socket.send requests, 0
 
-        response = read_socket @socket
+        response = await_response n
         response.scan(/HTTP\/1\.1 201/).length.should eq(n)
       end
       
@@ -154,7 +167,7 @@ describe ArangoDB, :ssl => true do
 
         @socket.send requests, 0
 
-        response = read_socket @socket
+        response = await_response n * 2
         response.scan(/HTTP\/1\.1 20[012]/).length.should eq(n * 2)
       end
       
