@@ -25,8 +25,6 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-
 #include "Aql/ExecutionNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
@@ -785,6 +783,7 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
 /// @brief static analysis debugger
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
   RegisterPlanningDebugger () 
     : indent(0) {
@@ -826,6 +825,8 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
     std::cout << std::endl;
   }
 };
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief planRegisters

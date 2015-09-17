@@ -1305,7 +1305,6 @@ AstNode* Ast::replaceVariableReference (AstNode* node,
 /// optimizations saves one extra pass over the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 void Ast::validateAndOptimize () {
   struct TraversalContext {
     int64_t stopOptimizationRequests = 0;
