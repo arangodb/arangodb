@@ -31,6 +31,15 @@ book-check-restheader-leftovers:
 		exit 1; \
 	fi
 
+# Check for all lines starting with exclamation marks, except image links which are exclamation mar + bracket
+book-check-mdpp-leftovers:
+	@if test "`find ppbooks/$(NAME) -name '*.md' -exec grep -- '^![^\[]' {} \; -print | wc -l`" -gt 0; then \
+		echo "found these unconverted Markdown-PP tags: "; \
+		find ppbooks/$(NAME) -name '*.md' -exec grep '^![^\[]' {} \; -print; \
+		exit 1; \
+	fi
+
+
 book-check-markdown-leftovers:
 	@if test "`find books/$(NAME) -name '*.html' -exec grep -- '##' {} \; -print | wc -l`" -gt 0; then \
 		echo "found these unconverted markdown titles: "; \
@@ -79,6 +88,7 @@ build-book:
 	make check-summary
 	make book-check-leftover-docublocks
 	make book-check-restheader-leftovers
+	make book-check-mdpp-leftovers
 
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)

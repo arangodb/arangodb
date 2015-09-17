@@ -8,16 +8,16 @@ env maps the systems environment to an associative array.
 
 <!--
 these are copied from node, but don't serve any specific purpose over here
-! SUB SECTION domain
+x! SUB SECTION domain
 
 
-! SUB SECTION _events
+x! SUB SECTION _events
 
-! SUB SECTION argv
+x! SUB SECTION argv
 
-! SUB SECTION stdout
+x! SUB SECTION stdout
 
-! SUB SECTION CMD
+x! SUB SECTION CMD
 
-! SUB SECTION nextTick
+x! SUB SECTION nextTick
 -->

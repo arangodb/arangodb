@@ -237,8 +237,8 @@ object literals:
 
 This is equivalent to the previously available canonical form, which is still
 available and supported:
-     
-``` 
+
+```
     LET name = "Peter"
     LET age = 42
     RETURN { name : name, age : age }
