@@ -268,7 +268,6 @@ exports.appendRawResponse = function (appender, syntaxAppender) {
 
 exports.appendJsonResponse = function (appender, syntaxAppender) {
   return function (response) {
-    var rawAppend = exports.appendRawResponse(appender, appender);
     var syntaxAppend = exports.appendRawResponse(syntaxAppender, syntaxAppender);
 
     // copy original body (this is necessary because "response" is passed by reference)
