@@ -1,7 +1,7 @@
-arangosh> db.five.all().next();
+arangosh&gt; db.five.all().next();
 { 
-  "_id" : "five/479186163", 
-  "_key" : "479186163", 
-  "_rev" : "479186163", 
-  "name" : "one" 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"three"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/1145741868"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1145741868"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1145741868"</span> 
 }

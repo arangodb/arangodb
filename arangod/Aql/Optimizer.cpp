@@ -594,7 +594,7 @@ void Optimizer::setupRules () {
                moveCalculationsDownRule,
                moveCalculationsDownRule_pass9,
                true);
-
+  
   // fuse calculations 
 #if 0
   registerRule("fuse-calculations",
@@ -602,6 +602,12 @@ void Optimizer::setupRules () {
                fuseCalculationsRule_pass9,
                true);
 #endif
+  
+  // patch update statements
+  registerRule("patch-update-statements",
+               patchUpdateStatementsRule,
+               patchUpdateStatementsRule_pass9,
+               true);
 
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // distribute operations in cluster

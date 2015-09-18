@@ -1,27 +1,31 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/fulltext <<EOF
-{ "collection": "products", "attribute" : "text", "query" : "word" }
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/fulltext &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"attribute"</span> : <span class="hljs-string">"text"</span>, 
+  <span class="hljs-string">"query"</span> : <span class="hljs-string">"word"</span> 
+}
 EOF
 
-HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "result" : [ 
+  <span class="hljs-string">"result"</span> : [ 
     { 
-      "_id" : "products/1499909363", 
-      "_key" : "1499909363", 
-      "_rev" : "1499909363", 
-      "text" : "this text contains word" 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/853320236"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"853320236"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"853320236"</span>, 
+      <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text contains word"</span> 
     }, 
     { 
-      "_id" : "products/1500105971", 
-      "_key" : "1500105971", 
-      "_rev" : "1500105971", 
-      "text" : "this text also has a word" 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/853516844"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"853516844"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"853516844"</span>, 
+      <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text also has a word"</span> 
     } 
   ], 
-  "hasMore" : false, 
-  "count" : 2, 
-  "error" : false, 
-  "code" : 201 
+  <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"count"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }

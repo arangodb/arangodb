@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-
 var actions = require("org/arangodb/actions");
 
 // -----------------------------------------------------------------------------
@@ -38,16 +37,17 @@ var actions = require("org/arangodb/actions");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_admin_wal_flush
+/// @brief Sync the WAL to disk.
 ///
 /// @RESTHEADER{PUT /_admin/wal/flush, Flushes the write-ahead log}
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{waitForSync,boolean,optional}
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Whether or not the operation should block until the not-yet synchronized
 /// data in the write-ahead log was synchronized to disk.
 ///
-/// @RESTURLPARAM{waitForCollector,boolean,optional}
+/// @RESTQUERYPARAM{waitForCollector,boolean,optional}
 /// Whether or not the operation should block until the data in the flushed
 /// log has been collected by the write-ahead log garbage collector. Note that
 /// setting this option to *true* might block for a long time if there are
@@ -81,15 +81,36 @@ actions.defineHttp({
       actions.resultUnsupported(req, res);
       return;
     }
+      
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
 
-    internal.wal.flush(req.parameters.waitForSync === "true",
-                       req.parameters.waitForCollector === "true");
+    var getParam = function (name) {
+      // first check body value
+      if (body.hasOwnProperty(name)) {
+        return body[name];
+      }
+
+      // need to handle strings because URL parameter values are strings
+      return (req.parameters.hasOwnProperty(name) &&
+              (req.parameters[name] === "true" || req.parameters[name] === true));
+    };
+    
+    internal.wal.flush({ 
+      waitForSync:           getParam("waitForSync"),
+      waitForCollector:      getParam("waitForCollector"),
+      waitForCollectorQueue: getParam("waitForCollectorQueue")
+    });
+
     actions.resultOk(req, res, actions.HTTP_OK);
   }
 });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_admin_wal_properties
+/// @brief configure parameters of the wal
 ///
 /// @RESTHEADER{PUT /_admin/wal/properties, Configures the write-ahead log}
 ///
@@ -129,7 +150,7 @@ actions.defineHttp({
 ///       logfileSize: 32 * 1024 * 1024,
 ///       allowOversizeEntries: true
 ///     };
-///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
+///     var response = logCurlRequest('PUT', url, body);
 ///
 ///     assert(response.code === 200);
 ///
@@ -140,13 +161,14 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_admin_wal_properties
+/// @brief fetch the current configuration.
 ///
 /// @RESTHEADER{GET /_admin/wal/properties, Retrieves the configuration of the write-ahead log}
 ///
 /// @RESTDESCRIPTION
 ///
 /// Retrieves the configuration of the write-ahead log. The result is a JSON
-/// array with the following attributes:
+/// object with the following attributes:
 /// - *allowOversizeEntries*: whether or not operations that are bigger than a
 ///   single logfile can be executed and stored
 /// - *logfileSize*: the size of each write-ahead logfile
@@ -201,6 +223,63 @@ actions.defineHttp({
     }
     else if (req.requestType === actions.GET) {
       result = internal.wal.properties();
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    else {
+      actions.resultUnsupported(req, res);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_admin_wal_transactions
+/// @brief returns information about the currently running transactions
+///
+/// @RESTHEADER{GET /_admin/wal/transactions, Returns information about the currently running transactions}
+///
+/// @RESTDESCRIPTION
+///
+/// Returns information about the currently running transactions. The result
+/// is a JSON object with the following attributes:
+/// - *runningTransactions*: number of currently running transactions
+/// - *minLastCollected*: minimum id of the last collected logfile (at the
+///   start of each running transaction). This is *null* if no transaction is
+///   running.
+/// - *minLastSealed*: minimum id of the last sealed logfile (at the
+///   start of each running transaction). This is *null* if no transaction is
+///   running.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned if the operation succeeds.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+/// @endDocuBlock
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestWalTransactionsGet}
+///     var url = "/_admin/wal/transactions";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/wal/transactions",
+  prefix : false,
+
+  callback : function (req, res) {
+    var result;
+
+    if (req.requestType === actions.GET) {
+      result = internal.wal.transactions();
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
     else {

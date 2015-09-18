@@ -1,87 +1,87 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query <<EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query &lt;&lt;EOF
 { "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }
 EOF
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : false, 
-  "code" : 200, 
-  "parsed" : true, 
-  "collections" : [ 
-    "products" 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
+  <span class="hljs-string">"parsed"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"collections"</span> : [ 
+    <span class="hljs-string">"products"</span> 
   ], 
-  "bindVars" : [ 
-    "name" 
+  <span class="hljs-string">"bindVars"</span> : [ 
+    <span class="hljs-string">"name"</span> 
   ], 
-  "ast" : [ 
+  <span class="hljs-string">"ast"</span> : [ 
     { 
-      "type" : "root", 
-      "subNodes" : [ 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"root"</span>, 
+      <span class="hljs-string">"subNodes"</span> : [ 
         { 
-          "type" : "for", 
-          "subNodes" : [ 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"for"</span>, 
+          <span class="hljs-string">"subNodes"</span> : [ 
             { 
-              "type" : "variable", 
-              "name" : "p", 
-              "id" : 0 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"variable"</span>, 
+              <span class="hljs-string">"name"</span> : <span class="hljs-string">"p"</span>, 
+              <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
             }, 
             { 
-              "type" : "collection", 
-              "name" : "products" 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"collection"</span>, 
+              <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span> 
             } 
           ] 
         }, 
         { 
-          "type" : "filter", 
-          "subNodes" : [ 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"filter"</span>, 
+          <span class="hljs-string">"subNodes"</span> : [ 
             { 
-              "type" : "compare ==", 
-              "subNodes" : [ 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"compare =="</span>, 
+              <span class="hljs-string">"subNodes"</span> : [ 
                 { 
-                  "type" : "attribute access", 
-                  "name" : "name", 
-                  "subNodes" : [ 
+                  <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
+                  <span class="hljs-string">"name"</span> : <span class="hljs-string">"name"</span>, 
+                  <span class="hljs-string">"subNodes"</span> : [ 
                     { 
-                      "type" : "reference", 
-                      "name" : "p", 
-                      "id" : 0 
+                      <span class="hljs-string">"type"</span> : <span class="hljs-string">"reference"</span>, 
+                      <span class="hljs-string">"name"</span> : <span class="hljs-string">"p"</span>, 
+                      <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
                     } 
                   ] 
                 }, 
                 { 
-                  "type" : "parameter", 
-                  "name" : "name" 
+                  <span class="hljs-string">"type"</span> : <span class="hljs-string">"parameter"</span>, 
+                  <span class="hljs-string">"name"</span> : <span class="hljs-string">"name"</span> 
                 } 
               ] 
             } 
           ] 
         }, 
         { 
-          "type" : "limit", 
-          "subNodes" : [ 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"limit"</span>, 
+          <span class="hljs-string">"subNodes"</span> : [ 
             { 
-              "type" : "value", 
-              "value" : 0 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"value"</span>, 
+              <span class="hljs-string">"value"</span> : <span class="hljs-number">0</span> 
             }, 
             { 
-              "type" : "value", 
-              "value" : 2 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"value"</span>, 
+              <span class="hljs-string">"value"</span> : <span class="hljs-number">2</span> 
             } 
           ] 
         }, 
         { 
-          "type" : "return", 
-          "subNodes" : [ 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"return"</span>, 
+          <span class="hljs-string">"subNodes"</span> : [ 
             { 
-              "type" : "attribute access", 
-              "name" : "n", 
-              "subNodes" : [ 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
+              <span class="hljs-string">"name"</span> : <span class="hljs-string">"n"</span>, 
+              <span class="hljs-string">"subNodes"</span> : [ 
                 { 
-                  "type" : "reference", 
-                  "name" : "p", 
-                  "id" : 0 
+                  <span class="hljs-string">"type"</span> : <span class="hljs-string">"reference"</span>, 
+                  <span class="hljs-string">"name"</span> : <span class="hljs-string">"p"</span>, 
+                  <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
                 } 
               ] 
             } 
@@ -90,5 +90,5 @@ content-type: application/json; charset=utf-8
       ] 
     } 
   ], 
-  "warnings" : [ ] 
+  <span class="hljs-string">"warnings"</span> : [ ] 
 }

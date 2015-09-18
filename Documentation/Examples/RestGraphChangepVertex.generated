@@ -1,40 +1,40 @@
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1 <<EOF
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1 &lt;&lt;EOF
 { 
-  "optional1" : "vertexPatch" 
+  <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"vertexPatch"</span> 
 }
 EOF
 
-HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: 1366936819
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+etag: <span class="hljs-number">752394796</span>
 
 { 
-  "vertex" : { 
-    "_id" : "vertices/v1", 
-    "_key" : "v1", 
-    "_rev" : "1366936819", 
-    "optional1" : "vertexPatch" 
+  <span class="hljs-string">"vertex"</span> : { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertices/v1"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"v1"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"752394796"</span>, 
+    <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"vertexPatch"</span> 
   }, 
-  "error" : false, 
-  "code" : 202 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1 <<EOF
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1 &lt;&lt;EOF
 { 
-  "optional1" : null 
+  <span class="hljs-string">"optional1"</span> : <span class="hljs-literal">null</span> 
 }
 EOF
 
-HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: 1367461107
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+etag: <span class="hljs-number">752919084</span>
 
 { 
-  "vertex" : { 
-    "_id" : "vertices/v1", 
-    "_key" : "v1", 
-    "_rev" : "1367461107", 
-    "optional1" : null 
+  <span class="hljs-string">"vertex"</span> : { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"vertices/v1"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"v1"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"752919084"</span>, 
+    <span class="hljs-string">"optional1"</span> : <span class="hljs-literal">null</span> 
   }, 
-  "error" : false, 
-  "code" : 202 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

@@ -108,7 +108,7 @@ namespace triagens {
           TRI_vocbase_col_t const* collection = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
 
           if (collection != nullptr) {
-            _resolvedNames.emplace(std::make_pair(name, collection));
+            _resolvedNames.emplace(name, collection);
           }
 
           return collection;
@@ -190,7 +190,7 @@ namespace triagens {
             name = "_unknown";
           }
 
-          _resolvedIds.emplace(std::make_pair(cid, name));
+          _resolvedIds.emplace(cid, name);
 
           return name;
         }
@@ -239,7 +239,7 @@ namespace triagens {
             return;
           }
 
-          std::string&& name(getCollectionName(cid));
+          std::string name(std::move(getCollectionName(cid)));
           buffer.appendText(name.c_str(), name.size());
         }
 

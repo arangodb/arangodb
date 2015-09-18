@@ -28,7 +28,7 @@
 @startDocuBlock keep_alive_timeout
 
 
-!SUBSECTION Default api compatibility
+!SUBSECTION Default API compatibility
 @startDocuBlock serverDefaultApi
 
 
@@ -105,6 +105,10 @@ the option *--disable-figures*.
 
 !SUBSECTION Disable AQL query tracking
 @startDocuBlock databaseDisableQueryTracking
+
+
+!SUBSECTION Throw collection not loaded error
+@startDocuBlock databaseThrowCollectionNotLoadedError
 
 
 !SUBSECTION AQL Query caching mode

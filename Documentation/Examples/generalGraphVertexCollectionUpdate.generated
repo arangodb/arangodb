@@ -1,14 +1,14 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("social");
-arangosh> graph.female.save({name: "Lynda", _key: "linda"});
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
+arangosh&gt; graph.female.save({name: <span class="hljs-string">"Lynda"</span>, _key: <span class="hljs-string">"linda"</span>});
 { 
-  "_id" : "female/linda", 
-  "_rev" : "1214041331", 
-  "_key" : "linda" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/linda"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1850647084"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"linda"</span> 
 }
-arangosh> graph.female.update("female/linda", {name: "Linda", _key: "linda"});
+arangosh&gt; graph.female.update(<span class="hljs-string">"female/linda"</span>, {name: <span class="hljs-string">"Linda"</span>, _key: <span class="hljs-string">"linda"</span>});
 { 
-  "_id" : "female/linda", 
-  "_rev" : "1214237939", 
-  "_key" : "linda" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/linda"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1850843692"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"linda"</span> 
 }

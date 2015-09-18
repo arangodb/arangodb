@@ -285,7 +285,7 @@ void HeartbeatThread::run () {
     if (shouldSleep) {
       double const remain = interval - (TRI_microtime() - start);
 
-      // sleep for a while if apropriate
+      // sleep for a while if appropriate
       if (remain > 0.0) {
         usleep((unsigned long) (remain * 1000.0 * 1000.0));
       }
@@ -303,7 +303,7 @@ void HeartbeatThread::run () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the heartbeat
+/// @brief initializes the heartbeat
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::init () {
@@ -492,24 +492,16 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
     }
 
     // get the list of databases that we know about locally
-    TRI_voc_tick_t* localIds = TRI_GetIdsCoordinatorDatabaseServer(_server);
+    std::vector<TRI_voc_tick_t> localIds
+        = TRI_GetIdsCoordinatorDatabaseServer(_server);
 
-    if (localIds != nullptr) {
-      TRI_voc_tick_t* p = localIds;
+    for (auto id : localIds) {
+      auto r = std::find(ids.begin(), ids.end(), id);
 
-      // now check which of the local databases are also in the plan
-      while (*p != 0) {
-        std::vector<TRI_voc_tick_t>::const_iterator r = std::find(ids.begin(), ids.end(), *p);
-
-        if (r == ids.end()) {
-          // local database not found in the plan...
-          TRI_DropByIdCoordinatorDatabaseServer(_server, *p, false);
-        }
-
-        ++p;
+      if (r == ids.end()) {
+        // local database not found in the plan...
+        TRI_DropByIdCoordinatorDatabaseServer(_server, id, false);
       }
-
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, localIds);
     }
   }
   else {

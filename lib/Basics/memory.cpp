@@ -107,10 +107,10 @@ static TRI_memory_zone_t TriUnknownMemZone;
 static void* CoreReserve;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the core was intialised
+/// @brief whether or not the core was initialized
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CoreInitialised = 0;
+static int CoreInitialized = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configuration parameters for memory error tests
@@ -223,7 +223,7 @@ static char* FailRealloc (TRI_memory_zone_t* zone,
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise failing malloc
+/// @brief initialize failing malloc
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
@@ -330,15 +330,10 @@ void* TRI_AllocateZ (TRI_memory_zone_t* zone, uint64_t n, bool set, char const* 
 #else
 void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 #endif
-  char* m;
-
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   CheckSize(n, file, line);
-
-  m = static_cast<char*>(MALLOC_WRAPPER(zone, (size_t) n + sizeof(uintptr_t)));
-#else
-  m = static_cast<char*>(MALLOC_WRAPPER(zone, (size_t) n));
 #endif
+  char* m = static_cast<char*>(MALLOC_WRAPPER(zone, (size_t) n));
 
   if (m == nullptr) {
     if (zone->_failable) {
@@ -371,24 +366,14 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 #endif
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-  else if (set) {
-    memset(m, 0, (size_t) n + sizeof(uintptr_t));
-  }
-  else {
-    // prefill with 0xA5 (magic value, same as Valgrind will use)
-    memset(m, 0xA5, (size_t) n + sizeof(uintptr_t));
-  }
-#else
-  else if (set) {
+  if (set) {
     memset(m, 0, (size_t) n);
   }
-#endif
-
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  * (uintptr_t*) m = zone->_zid;
-  // zone->_zid is a uint32_t but we'll advance sizeof(uintptr_t) bytes for good alignment everywhere
-  m += sizeof(uintptr_t);
+  else {
+    // prefill with 0xA5 (magic value, same as Valgrind will use)
+    memset(m, 0xA5, (size_t) n);
+  }
 #endif
 
   return m;
@@ -403,7 +388,6 @@ void* TRI_ReallocateZ (TRI_memory_zone_t* zone, void* m, uint64_t n, char const*
 #else
 void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 #endif
-  char* p;
 
   if (m == nullptr) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -413,26 +397,13 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 #endif
   }
 
-  p = (char*) m;
+  char* p = (char*) m;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  p -= sizeof(uintptr_t);
-
   CheckSize(n, file, line);
-
-  if (* (uintptr_t*) p != zone->_zid) {
-    fprintf(stderr,
-            "memory zone mismatch in TRI_Reallocate" ZONE_DEBUG_LOCATION ", old zone %d, new zone %d"
-            ZONE_DEBUG_PARAMS,
-            (int) * (uintptr_t*) p,
-            (int) zone->_zid);
-    TRI_ASSERT(false);
-  }
-
-  p = static_cast<char*>(REALLOC_WRAPPER(zone, p, (size_t) n + sizeof(uintptr_t)));
-#else
-  p = static_cast<char*>(REALLOC_WRAPPER(zone, p, (size_t) n));
 #endif
+
+  p = static_cast<char*>(REALLOC_WRAPPER(zone, p, (size_t) n));
 
   if (p == nullptr) {
     if (zone->_failable) {
@@ -465,11 +436,6 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 #endif
   }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-  // zone->_zid is a uint32_t but we'll advance sizeof(uintptr_t) bytes for good alignment everywhere
-  p += sizeof(uintptr_t);
-#endif
-
   return p;
 }
 
@@ -483,11 +449,9 @@ void TRI_FreeZ (TRI_memory_zone_t* zone, void* m, char const* file, int line) {
 void TRI_Free (TRI_memory_zone_t* zone, void* m) {
 #endif
 
+  char* p = (char*) m;
+
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  char* p;
-
-  p = (char*) m;
-
   if (p == nullptr) {
     fprintf(stderr,
             "freeing nil ptr " ZONE_DEBUG_LOCATION
@@ -495,23 +459,9 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
     // crash intentionally
     TRI_ASSERT(false);
   }
-
-  // zone->_zid is a uint32_t but we'll decrease by sizeof(uintptr_t) bytes for good alignment everywhere
-  p -= sizeof(uintptr_t);
-
-  if (* (uintptr_t*) p != zone->_zid) {
-    fprintf(stderr,
-            "memory zone mismatch in TRI_Free" ZONE_DEBUG_LOCATION ", old zone %d, new %d\n"
-            ZONE_DEBUG_PARAMS,
-            (int) * (uintptr_t*) p,
-            (int) zone->_zid);
-    TRI_ASSERT(false);
-  }
+#endif
 
   free(p);
-#else
-  free(m);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -559,8 +509,8 @@ void* TRI_WrappedReallocate (void* ptr, long size) {
 /// @brief initialize memory subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseMemory () {
-  if (CoreInitialised == 0) {
+void TRI_InitializeMemory () {
+  if (CoreInitialized == 0) {
     static size_t const ReserveSize = 1024 * 1024 * 10;
 
     TriCoreMemZone._zid      = 0;
@@ -583,7 +533,7 @@ void TRI_InitialiseMemory () {
               (unsigned long long) ReserveSize);
     }
     else {
-      CoreInitialised = 1;
+      CoreInitialized = 1;
     }
   }
 }
@@ -593,9 +543,9 @@ void TRI_InitialiseMemory () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownMemory () {
-  if (CoreInitialised == 1) {
+  if (CoreInitialized == 1) {
     free(CoreReserve);
-    CoreInitialised = 0;
+    CoreInitialized = 0;
   }
 }
 

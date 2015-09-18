@@ -67,7 +67,7 @@ function EdgeShaperControls(list, shaper) {
   this.addControlOpticLabel = function() {
     var prefix = "control_edge_label",
       idprefix = prefix + "_";
-    uiComponentsHelper.createButton(list, "Label", prefix, function() {
+    uiComponentsHelper.createButton(list, "Configure Label", prefix, function() {
       modalDialogHelper.createModalDialog("Switch Label Attribute",
         idprefix, [{
           type: "text",
@@ -87,7 +87,7 @@ function EdgeShaperControls(list, shaper) {
   this.addControlOpticLabelList = function() {
     var prefix = "control_edge_label",
       idprefix = prefix + "_";
-    uiComponentsHelper.createButton(list, "Label", prefix, function() {
+    uiComponentsHelper.createButton(list, "Configure Label", prefix, function() {
       modalDialogHelper.createModalDialog("Change Label Attribute",
         idprefix, [{
           type: "extendable",

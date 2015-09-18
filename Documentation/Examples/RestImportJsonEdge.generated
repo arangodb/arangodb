@@ -1,16 +1,16 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=links&type=documents <<EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=links&type=documents &lt;&lt;EOF
 { "_from": "products/123", "_to": "products/234" }
 { "_from": "products/332", "_to": "products/abc", "name": "other name" }
 EOF
 
-HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : false, 
-  "created" : 2, 
-  "errors" : 0, 
-  "empty" : 0, 
-  "updated" : 0, 
-  "ignored" : 0 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"errors"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"empty"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"updated"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"ignored"</span> : <span class="hljs-number">0</span> 
 }

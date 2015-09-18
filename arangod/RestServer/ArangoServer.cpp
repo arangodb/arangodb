@@ -35,8 +35,6 @@
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
 #include "Admin/ApplicationAdminServer.h"
-#include "Admin/RestHandlerCreator.h"
-#include "Admin/RestShutdownHandler.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/RestAqlHandler.h"
@@ -60,22 +58,29 @@
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/AsyncJobManager.h"
-#include "Rest/InitialiseRest.h"
+#include "HttpServer/HttpHandlerFactory.h"
+#include "Rest/InitializeRest.h"
 #include "Rest/OperationMode.h"
 #include "Rest/Version.h"
+#include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
+#include "RestHandler/RestDebugHelperHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestExportHandler.h"
+#include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
+#include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestReplicationHandler.h"
+#include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestUploadHandler.h"
+#include "RestHandler/RestVersionHandler.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/ApplicationScheduler.h"
@@ -85,6 +90,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
 
@@ -127,13 +133,7 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
 
   // First the "_api" handlers:
  
-  // add "/version" handler
-  _applicationAdminServer->addBasicHandlers(
-      factory, "/_api",
-      _applicationDispatcher->dispatcher(),
-      _jobManager);
-
-  // add a upgrade warning
+  // add an upgrade warning
   factory->addPrefixHandler("/_msg/please-upgrade",
                             RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
 
@@ -144,7 +144,7 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/cursor" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::CURSOR_PATH,
                             RestHandlerCreator<RestCursorHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAql);
+                            _pairForAqlHandler);
 
   // add "/document" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,
@@ -169,17 +169,17 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/simple/all" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
                             RestHandlerCreator<RestSimpleQueryHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAql);
+                            _pairForAqlHandler);
   
   // add "/simple/lookup-by-key" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
                             RestHandlerCreator<RestSimpleHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAql);
+                            _pairForAqlHandler);
   
   // add "/simple/remove-by-key" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
                             RestHandlerCreator<RestSimpleHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAql);
+                            _pairForAqlHandler);
 
   // add "/upload" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
@@ -193,7 +193,7 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/aql" handler
   factory->addPrefixHandler("/_api/aql",
                             RestHandlerCreator<aql::RestAqlHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-                            _pairForAql);
+                            _pairForAqlHandler);
 
   factory->addPrefixHandler("/_api/query",
                             RestHandlerCreator<RestQueryHandler>::createData<ApplicationV8*>,
@@ -202,21 +202,40 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   factory->addPrefixHandler("/_api/query-cache",
                             RestHandlerCreator<RestQueryCacheHandler>::createNoData);
 
-  // And now the "_admin" handlers
+  // And now some handlers which are registered in both /_api and /_admin
+  factory->addPrefixHandler("/_api/job",
+                            RestHandlerCreator<triagens::admin::RestJobHandler>::createData<pair<Dispatcher*, AsyncJobManager*>*>,
+                            _pairForJobHandler);
 
-  // add "/_admin/version" handler
-  _applicationAdminServer->addBasicHandlers(
-      factory, "/_admin", 
-      _applicationDispatcher->dispatcher(),
-      _jobManager);
+  factory->addHandler("/_api/version", 
+                      RestHandlerCreator<triagens::admin::RestVersionHandler>::createNoData, 
+                      nullptr);
 
-  // add "/_admin/shutdown" handler
+  factory->addHandler("/_api/debug-helper", 
+                      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData, 
+                      nullptr);
+
+  // And now the _admin handlers
+  factory->addPrefixHandler("/_admin/job",
+                            RestHandlerCreator<triagens::admin::RestJobHandler>::createData<pair<Dispatcher*, AsyncJobManager*>*>,
+                            _pairForJobHandler);
+
+  factory->addHandler("/_admin/version", 
+                      RestHandlerCreator<triagens::admin::RestVersionHandler>::createNoData, 
+                      nullptr);
+
+  factory->addHandler("/_admin/debug-helper", 
+                      RestHandlerCreator<triagens::admin::RestDebugHelperHandler>::createNoData, 
+                      nullptr);
+
+  // further admin handlers
+  factory->addHandler("/_admin/log", 
+                      RestHandlerCreator<triagens::admin::RestAdminLogHandler>::createNoData, 
+                      nullptr);
+
   factory->addPrefixHandler("/_admin/shutdown",
-                   RestHandlerCreator<RestShutdownHandler>::createData<void*>,
-                   static_cast<void*>(_applicationServer));
-
-  // add admin handlers
-  _applicationAdminServer->addHandlers(factory, "/_admin");
+                            RestHandlerCreator<triagens::admin::RestShutdownHandler>::createData<void*>,
+                            static_cast<void*>(_applicationServer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,15 +247,15 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
 static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* request,
                                                  TRI_server_t* server) {
   // get the request endpoint
-  ConnectionInfo ci = request->connectionInfo();
-  const string& endpoint = ci.endpoint;
+  ConnectionInfo const& ci = request->connectionInfo();
+  std::string const& endpoint = ci.endpoint;
 
   // get the databases mapped to the endpoint
   ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(server->_applicationEndpointServer);
-  const vector<string> databases = s->getEndpointMapping(endpoint);
+  std::vector<std::string> const& databases = s->getEndpointMapping(endpoint);
 
   // get database name from request
-  string dbName = request->databaseName();
+  std::string dbName = request->databaseName();
 
   if (databases.empty()) {
     // no databases defined. this means all databases are accessible via the endpoint
@@ -248,11 +267,12 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
     }
   }
   else {
-
     // only some databases are allowed for this endpoint
     if (dbName.empty()) {
       // no specific database requested, so use first mapped database
-      dbName = databases.at(0);
+      TRI_ASSERT(! databases.empty());
+
+      dbName = databases[0];
       request->setDatabaseName(dbName);
     }
     else {
@@ -260,6 +280,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
 
       for (size_t i = 0; i < databases.size(); ++i) {
         if (dbName == databases.at(i)) {
+          request->setDatabaseName(dbName);
           found = true;
           break;
         }
@@ -352,11 +373,13 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _ignoreDatafileErrors(false),
     _disableReplicationApplier(false),
     _disableQueryTracking(false),
+    _throwCollectionNotLoadedError(false),
     _foxxQueues(true),
     _foxxQueuesPollInterval(1.0),
     _server(nullptr),
     _queryRegistry(nullptr),
-    _pairForAql(nullptr),
+    _pairForAqlHandler(nullptr),
+    _pairForJobHandler(nullptr),
     _indexPool(nullptr),
     _threadAffinity(0) {
 
@@ -411,8 +434,8 @@ void ArangoServer::buildApplicationServer () {
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
-  // initialise the server's write ahead log
-  wal::LogfileManager::initialise(&_databasePath, _server);
+  // initialize the server's write ahead log
+  wal::LogfileManager::initialize(&_databasePath, _server);
 
   // and add the feature to the application server
   _applicationServer->addFeature(wal::LogfileManager::instance());
@@ -481,7 +504,6 @@ void ArangoServer::buildApplicationServer () {
   _applicationAdminServer = new ApplicationAdminServer();
 
   _applicationServer->addFeature(_applicationAdminServer);
-  _applicationAdminServer->allowLogViewer();
 
   // .............................................................................
   // define server options
@@ -506,7 +528,7 @@ void ArangoServer::buildApplicationServer () {
 
   if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
     char const* ICU_env = getenv("ICU_DATA");
-    LOG_FATAL_AND_EXIT("failed to initialise ICU; ICU_DATA='%s'", (ICU_env) ? ICU_env : "");
+    LOG_FATAL_AND_EXIT("failed to initialize ICU; ICU_DATA='%s'", (ICU_env) ? ICU_env : "");
   }
 
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
@@ -574,6 +596,7 @@ void ArangoServer::buildApplicationServer () {
     ("database.query-cache-mode", &_queryCacheMode, "mode for the AQL query cache (on, off, demand)")
     ("database.query-cache-max-results", &_queryCacheMaxResults, "maximum number of results in query cache per database")
     ("database.index-threads", &_indexThreads, "threads to start for parallel background index creation")
+    ("database.throw-collection-not-loaded-error", &_throwCollectionNotLoadedError, "throw an error when accessing a collection that is still loading")
   ;
 
   // .............................................................................
@@ -600,6 +623,7 @@ void ArangoServer::buildApplicationServer () {
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
     ("server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS, "allow change of database in REST actions, only needed for unittests")
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
+    ("server.additional-threads", &_additionalThreads, "number of threads in additional queues")
     ("server.foxx-queues", &_foxxQueues, "enable Foxx queues")
     ("server.foxx-queues-poll-interval", &_foxxQueuesPollInterval, "Foxx queue manager poll interval (in seconds)")
     ("server.session-timeout", &VocbaseContext::ServerSessionTtl, "timeout of web interface server sessions (in seconds)")
@@ -700,6 +724,8 @@ void ArangoServer::buildApplicationServer () {
     LOG_FATAL_AND_EXIT("no database path has been supplied, giving up");
   }
 
+  runStartupChecks(); 
+
   // strip trailing separators
   _databasePath = StringUtils::rTrim(_databasePath, TRI_DIR_SEPARATOR_STR);
 
@@ -709,10 +735,16 @@ void ArangoServer::buildApplicationServer () {
   // disable certain options in unittest or script mode
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
 
+  if (mode == OperationMode::MODE_CONSOLE) {
+    _applicationScheduler->disableControlCHandler();
+  }
+ 
   if (mode == OperationMode::MODE_SCRIPT || mode == OperationMode::MODE_UNITTESTS) {
     // testing disables authentication
     _disableAuthentication = true;
   }
+ 
+  TRI_SetThrowCollectionNotLoadedVocBase(nullptr, _throwCollectionNotLoadedError);
   
   // set global query tracking flag
   triagens::aql::Query::DisableQueryTracking(_disableQueryTracking);
@@ -821,13 +853,16 @@ int ArangoServer::startupServer () {
 
   if (! wal::LogfileManager::instance()->prepare() ||
       ! wal::LogfileManager::instance()->start()) {
-    // unable to initialise & start WAL logfile manager
+    // unable to initialize & start WAL logfile manager
     LOG_FATAL_AND_EXIT("unable to start WAL logfile manager");
   }
+
 
   // .............................................................................
   // prepare the various parts of the Arango server
   // .............................................................................
+
+  KeyGenerator::Initialize();
 
   if (_dispatcherThreads < 1) {
     _dispatcherThreads = 1;
@@ -859,7 +894,7 @@ int ArangoServer::startupServer () {
 
   startupProgress();
 
-  // initialise V8
+  // initialize V8
   if (! _applicationServer->programOptions().has("javascript.v8-contexts")) {
     // the option was added recently so it's not always set
     // the behavior in older ArangoDB was to create one V8 context per dispatcher thread
@@ -908,7 +943,7 @@ int ArangoServer::startupServer () {
 
   startupProgress();
 
-  const auto role = ServerState::instance()->getRole();
+  auto const role = ServerState::instance()->getRole();
 
   // now we can create the queues
   if (startServer) {
@@ -920,6 +955,19 @@ int ArangoServer::startupServer () {
         role == ServerState::ROLE_SECONDARY) {
       _applicationDispatcher->buildAQLQueue(_dispatcherThreads,
                                             (int) _dispatcherQueueSize);
+    }
+
+    for (size_t i = 0;  i < _additionalThreads.size();  ++i) {
+      int n = _additionalThreads[i];
+
+      if (n < 1) {
+	n = 1;
+      }
+
+      _additionalThreads[i] = n;
+
+      _applicationDispatcher->buildExtraQueue(
+        i + 1, n, (int) _dispatcherQueueSize);
     }
   }
 
@@ -948,9 +996,8 @@ int ArangoServer::startupServer () {
 
   startupProgress();
 
-  _pairForAql = new std::pair<ApplicationV8*, aql::QueryRegistry*>;
-  _pairForAql->first = _applicationV8;
-  _pairForAql->second = _queryRegistry;
+  _pairForAqlHandler = new std::pair<ApplicationV8*, aql::QueryRegistry*>(_applicationV8, _queryRegistry);
+  _pairForJobHandler = new std::pair<Dispatcher*, AsyncJobManager*>(_applicationDispatcher->dispatcher(), _jobManager);
 
   // ...........................................................................
   // create endpoints and handlers
@@ -1131,14 +1178,21 @@ int ArangoServer::startupServer () {
 
   shutDownBegins();
 
+#if 0
+  // stop the replication appliers so all replication transactions can end
+  TRI_StopReplicationAppliersServer(_server);
+#endif
+
   _applicationServer->stop();
 
   _server->_queryRegistry = nullptr;
 
   delete _queryRegistry;
   _queryRegistry = nullptr;
-  delete _pairForAql;
-  _pairForAql = nullptr;
+  delete _pairForAqlHandler;
+  _pairForAqlHandler = nullptr;
+  delete _pairForJobHandler;
+  _pairForJobHandler = nullptr;
 
   closeDatabases();
 
@@ -1152,6 +1206,82 @@ int ArangoServer::startupServer () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run arbitrary checks at startup
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoServer::runStartupChecks () {
+#ifdef __arm__
+  // detect alignment settings for ARM
+  {
+    // To change the alignment trap behavior, simply echo a number into
+    // /proc/cpu/alignment.  The number is made up from various bits:
+    // 
+    // bit             behavior when set
+    // ---             -----------------
+    // 
+    // 0               A user process performing an unaligned memory access
+    //                 will cause the kernel to print a message indicating
+    //                 process name, pid, pc, instruction, address, and the
+    //                 fault code.
+    // 
+    // 1               The kernel will attempt to fix up the user process
+    //                 performing the unaligned access.  This is of course
+    //                 slow (think about the floating point emulator) and
+    //                 not recommended for production use.
+    //
+    // 2               The kernel will send a SIGBUS signal to the user process
+    //                 performing the unaligned access.
+    bool alignmentDetected = false;
+
+    std::string const filename("/proc/cpu/alignment");
+    try {
+      std::string const cpuAlignment = triagens::basics::FileUtils::slurp(filename);
+      auto start = cpuAlignment.find("User faults:");
+
+      if (start != std::string::npos) {
+        start += strlen("User faults:");
+        size_t end = start;
+        while (end < cpuAlignment.size()) {
+          if (cpuAlignment[end] == ' ' || cpuAlignment[end] == '\t') {
+            ++end;
+          }
+          else {
+            break;
+          }
+        }
+        while (end < cpuAlignment.size()) {
+          ++end;
+          if (cpuAlignment[end] < '0' || cpuAlignment[end] > '9') {
+            break;
+          }
+        }
+      
+        int64_t alignment = std::stol(std::string(cpuAlignment.c_str() + start, end - start));
+        if ((alignment & 2) == 0) {
+          LOG_FATAL_AND_EXIT("possibly incompatible CPU alignment settings found in '%s'. this may cause arangod to abort with SIGBUS. please set the value in '%s' to 2", 
+                             filename.c_str(), 
+                             filename.c_str());
+        }
+
+        alignmentDetected = true;
+      }
+
+    }
+    catch (...) {
+      // ignore that we cannot detect the alignment
+      LOG_TRACE("unable to detect CPU alignment settings. could not process file '%s'", filename.c_str());
+    }
+
+    if (! alignmentDetected) {
+      LOG_WARNING("unable to detect CPU alignment settings. could not process file '%s'. this may cause arangod to abort with SIGBUS. it may be necessary to set the value in '%s' to 2", 
+        filename.c_str(),
+        filename.c_str());
+    }
+  }
+#endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for the heartbeat thread to run

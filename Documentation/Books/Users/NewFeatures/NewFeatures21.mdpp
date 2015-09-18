@@ -30,7 +30,7 @@ guaranteed any result order either.
 
 !SECTION AQL Improvements
 
-AQL offers functionality to work with dates. Dates are no datatypes of their own
+AQL offers functionality to work with dates. Dates are no data types of their own
 in AQL (neither they are in JSON, which is often used as a format to ship data
 into and out of ArangoDB). Instead, dates in AQL are internally represented by
 either numbers (timestamps) or strings. The date functions in AQL provide
@@ -213,7 +213,7 @@ also supports the installation of ArangoDB as a service.
 
 !SECTION Fixes for 32 bit systems
 
-Several issues have been fixed that occured only when using ArangoDB on a 32 bits
+Several issues have been fixed that occurred only when using ArangoDB on a 32 bits
 operating system, specifically:
 
 - a crash in a third party component used to manage cluster data
@@ -244,9 +244,9 @@ source. For instance GNU CC of at least version 4.8.
 !SECTION Miscellaneous Improvements
 
 - Cancelable asynchronous jobs: several potentially long-running jobs can now be
-  cancelled via an explicit cancel operation. This allows stopping long-running
+  canceled via an explicit cancel operation. This allows stopping long-running
   queries, traversals or scripts without shutting down the complete ArangoDB
-  process. Job cancellation is provided for asynchronously executed jobs as is
+  process. Job cancelation is provided for asynchronously executed jobs as is
   described in @ref HttpJobCancel.
 
 - Server-side periodic task management: an ArangoDB server now provides

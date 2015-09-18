@@ -4,20 +4,20 @@
       <div class="headerButtonBar">
         <ul class="headerButtonList">
           <li>
-            <a id="app-config" class="headerButton <%= _.isEmpty(app.get('config')) ? 'disabled' : '' %>">
+            <a id="app-config" class="headerButton <%= _.isEmpty(app.get('config')) ? 'disabled' : '' %> <%= app.needsConfiguration() ? 'error' : '' %>">
               <span class="icon_arangodb_settings2" title="Configure"></span>
             </a>
           </li>
           <li>
-            <a id="app-deps" class="headerButton <%= _.isEmpty(app.get('deps')) ? 'disabled' : '' %>">
+            <a id="app-deps" class="headerButton <%= _.isEmpty(app.get('deps')) ? 'disabled' : '' %> <%= app.hasUnconfiguredDependencies() ? 'error' : '' %>">
               <span class="fa fa-cubes" title="Dependencies"></span>
             </a>
           </li>
           <li id="app-scripts" class="dropdown">
             <a class="headerButton <%= _.isEmpty(app.get('scripts')) ? 'disabled' : '' %>" title="Scripts">
-              <i class="fa fa-cogs"></i>
+              <i class="fa fa-code"></i>
             </a>
-            <ul class="script-dropdown-menu dropdown-menu" id="scripts_dropdown">
+            <ul class="script-dropdown-menu dropdown-toolbar dropdown-menu" id="scripts_dropdown">
             <% _.each(app.get('scripts'), function (title, name) { %>
               <li class="dropdown-item">
                 <a class="tab" data-script="<%= name %>"><%= title %></a>
@@ -56,13 +56,28 @@
         <div class="header-icon-container">
           <img src="foxxes/thumbnail?mount=<%= app.encodedMount() %>" alt="Icon for Service" class="icon" />
         </div>
-        <div class="header_left">
-          <input type="button" class="open button-success" disabled="true" value="Open" />
-          <input id="app-upgrade" type="button" class="upgrade button-warning" value="Upgrade" <%=app.isSystem()?"disabled":"" %>/>
-          <input id="app-switch-mode" type="button" class="switch-mode button-warning" value="<%=app.get('development')?'Set Pro':'Set Dev'%>" />
-          <input type="button" class="delete button-danger" value="Delete" <%=app.isSystem()?"disabled":""%> />
-        </div>
         <div class="header_right">
+          <input type="button" class="open button-success" disabled="true" value="Open" />
+          <input id="app-replace" type="button" class="upgrade button-warning" value="Replace" <%=app.isSystem()?"disabled":"" %>/>
+          <input id="app-switch-mode" type="button" class="switch-mode button-warning" value="<%=app.get('development')?'Set Production':'Set Development'%>" />
+          <input type="button" class="delete button-danger" value="Delete" <%=app.isSystem()?"disabled":""%> />
+          <% if (mode !== 'swagger') { %>
+            <input id="app-show-swagger" type="button" class="switch-docu button-success" value="Show API" />
+          <% } %>
+          <% if (mode !== 'readme' && app.attributes.readme) { %>
+            <input id="app-show-readme" type="button" class="switch-docu button-success" value="Show README" />
+          <% } %>
+          <% if (mode !== 'readme' && !app.attributes.readme) { %>
+            <input id="app-show-readme" type="button" class="switch-docu button-success" disabled value="Show README" />
+          <% } %>
+        </div>
+        <div class="header_left">
+          <div id="app-warning" class="app-warning" style="display:<%=app.needsAttention()?'block':'none' %>;">
+            <h4>Out of order</h4>
+            <p id="app-warning-broken" style="display:<%=app.isBroken()?'block':'none' %>;">This service has failed to mount due to an error.</p>
+            <p id="app-warning-config" style="display:<%=app.needsConfiguration()?'block':'none' %>;">This service has not yet been configured properly.</p>
+            <p id="app-warning-deps" style="display:<%=app.hasUnconfiguredDependencies()?'block':'block' %>;">Some dependencies have not yet been set up.</p>
+          </div>
           <div class="header_line">
             <h3>
               <%= app.attributes.name %>
@@ -77,33 +92,8 @@
             </h3>
           </div>
           <p class="description"><%= app.attributes.description %></p>
-          <% if (mode !== 'swagger') { %>
-            <input id="app-show-swagger" type="button" class="button-success" value="Show API" />
-          <% } %>
-          <% if (mode !== 'readme' && app.attributes.readme) { %>
-            <input id="app-show-readme" type="button" class="button-success" value="Show README" />
-          <% } %>
-        </div>
-        <div id="app-warning" class="app-warning" style="display:<%=app.needsAttention()?'block':'none' %>;">
-          <h4>Out of order</h4>
-          <p id="app-warning-broken" style="display:<%=app.isBroken()?'block':'none' %>;">This app has failed to mount due to an error.</p>
-          <p id="app-warning-config" style="display:<%=app.needsConfiguration()?'block':'none' %>;">This app has not yet been configured properly.</p>
-          <p id="app-warning-deps" style="display:<%=app.hasUnconfiguredDependencies()?'block':'block' %>;">Some dependencies have not yet been set up.</p>
         </div>
       </div>
-      <% if (mode === 'swagger') { %>
-      <div class="swagger">
-        <iframe src="/_db/<%= db%>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
-      </div>
-      <% } else if (mode === 'readme') { %>
-      <div class="readme">
-        <% if (app.get('readme')) { %>
-        <%= app.get('readme') %>
-        <% } else { %>
-        <p>ERROR: No README data found!</p>
-        <% } %>
-      </div>
-      <% } %>
     </section>
     <aside class="meta">
       <dl>
@@ -125,12 +115,12 @@
         <dd>
           <ul>
             <li>
-              <a href="./foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+              <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
                 API Documentation
               </a>
             </li>
             <li>
-              <a href="./foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+              <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
                 Swagger JSON
               </a>
             </li>
@@ -141,5 +131,24 @@
         </dd>
       </dl>
     </aside>
+    <main>
+      <div id="app-info" class="app-info" style="display: none;">
+        <h4>Info</h4>
+        <p id="app-info-swagger">Documentation for this service is not yet configured.</p>
+      </div>
+      <% if (mode === 'swagger') { %>
+      <div class="swagger">
+        <iframe src="/_db/<%= db %>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
+      </div>
+      <% } else if (mode === 'readme') { %>
+      <div class="readme">
+        <% if (app.get('readme')) { %>
+        <%= app.get('readme') %>
+        <% } else { %>
+        <p>ERROR: No README data found!</p>
+        <% } %>
+      </div>
+      <% } %>
+    </main>
   </div>
 </script>

@@ -32,18 +32,16 @@
 #endif
 
 #include "datafile.h"
-
 #include "Basics/conversions.h"
+#include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/logging.h"
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
-#include "Basics/files.h"
 #include "VocBase/server.h"
 
-
 // #define DEBUG_DATAFILE 1
-
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -228,33 +226,78 @@ static bool CheckCrcMarker (TRI_df_marker_t const* marker,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new sparse datafile
+/// @brief creates a new datafile
 ///
 /// returns the file descriptor or -1 if the file cannot be created
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CreateSparseFile (char const* filename,
-                             const TRI_voc_size_t maximalSize) {
+static int CreateDatafile (char const* filename,
+                           TRI_voc_size_t maximalSize) {
   TRI_ERRORBUF;
-  TRI_lseek_t offset;
-  char zero;
-  ssize_t res;
-  int fd;
-
+  
   // open the file
-  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+  int fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+  
+  TRI_IF_FAILURE("CreateDatafile1") {
+    // intentionally fail
+    TRI_CLOSE(fd);
+    fd = -1;
+    errno = ENOSPC;
+  }
 
   if (fd < 0) {
-    TRI_SYSTEM_ERROR();
+    if (errno == ENOSPC) {
+      TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
+      LOG_ERROR("cannot create datafile '%s': %s", filename, TRI_last_error());
+    }
+    else {
+      TRI_SYSTEM_ERROR();
 
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
-    LOG_ERROR("cannot create datafile '%s': %s", filename, TRI_GET_ERRORBUF);
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      LOG_ERROR("cannot create datafile '%s': %s", filename, TRI_GET_ERRORBUF);
+    }
     return -1;
   }
 
-  // create sparse file
-  offset = TRI_LSEEK(fd, (TRI_lseek_t) (maximalSize - 1), SEEK_SET);
+  // fill file with zeros from FileNullBuffer
+  size_t written = 0;
+  while (written < maximalSize) { 
+    size_t writeSize = TRI_GetNullBufferSizeFiles();
+
+    if (writeSize +written > maximalSize) {
+      writeSize = maximalSize - written;
+    }
+  
+    ssize_t writeResult = TRI_WRITE(fd, TRI_GetNullBufferFiles(), (TRI_write_t) writeSize);
+    
+    TRI_IF_FAILURE("CreateDatafile2") {
+      // intentionally fail
+      writeResult = -1;
+      errno = ENOSPC;
+    }
+
+    if (writeResult < 0) {
+      if (errno == ENOSPC) {
+        TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
+        LOG_ERROR("cannot create datafile '%s': %s", filename, TRI_last_error());
+      }
+      else {
+        TRI_SYSTEM_ERROR();
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        LOG_ERROR("cannot create datafile '%s': %s", filename, TRI_GET_ERRORBUF);
+      }
+    
+      TRI_CLOSE(fd);
+      TRI_UnlinkFile(filename);
+
+      return -1;
+    }
+
+    written += static_cast<size_t>(writeResult);
+  }
+  
+  // go back to offset 0
+  TRI_lseek_t offset = TRI_LSEEK(fd, (TRI_lseek_t) 0, SEEK_SET);
 
   if (offset == (TRI_lseek_t) -1) {
     TRI_SYSTEM_ERROR();
@@ -268,26 +311,11 @@ static int CreateSparseFile (char const* filename,
     return -1;
   }
 
-  zero = 0;
-  res = TRI_WRITE(fd, &zero, 1);
-
-  if (res < 0) {
-    TRI_SYSTEM_ERROR();
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    TRI_CLOSE(fd);
-
-    // remove empty file
-    TRI_UnlinkFile(filename);
-
-    LOG_ERROR("cannot create sparse datafile '%s': '%s'", filename, TRI_GET_ERRORBUF);
-    return -1;
-  }
-
   return fd;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a datafile
+/// @brief initializes a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InitDatafile (TRI_datafile_t* datafile,
@@ -336,7 +364,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
   datafile->_dataMin     = 0;
   datafile->_dataMax     = 0;
 
-  // initialise function pointers
+  // initialize function pointers
   datafile->isPhysical   = &IsPhysicalDatafile;
   datafile->getName      = &GetNameDatafile;
   datafile->close        = &CloseDatafile;
@@ -355,8 +383,6 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
                                     TRI_voc_size_t vocSize) {
   TRI_ERRORBUF;
   char* oldname;
-  char zero;
-  int res;
   void* data;
   void* mmHandle;
 
@@ -368,7 +394,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
 
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > maximalSize) {
-    LOG_ERROR("cannot create datafile '%s', maximal size '%u' is too small", datafile->getName(datafile), (unsigned int) maximalSize);
+    LOG_ERROR("cannot create datafile '%s', maximal size %u is too small", datafile->getName(datafile), (unsigned int) maximalSize);
     return TRI_set_errno(TRI_ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL);
   }
 
@@ -379,13 +405,13 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
 
   if (fd < 0) {
     TRI_SYSTEM_ERROR();
-    LOG_ERROR("cannot create new datafile '%s': '%s'", filename, TRI_GET_ERRORBUF);
+    LOG_ERROR("cannot create new datafile '%s': %s", filename, TRI_GET_ERRORBUF);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  // create sparse file
+  // go back to the beginning of the file
   TRI_lseek_t offset = TRI_LSEEK(fd, (TRI_lseek_t) (maximalSize - 1), SEEK_SET);
 
   if (offset == (TRI_lseek_t) -1) {
@@ -396,14 +422,14 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
     // remove empty file
     TRI_UnlinkFile(filename);
 
-    LOG_ERROR("cannot seek in new datafile '%s': '%s'", filename, TRI_GET_ERRORBUF);
+    LOG_ERROR("cannot seek in new datafile '%s': %s", filename, TRI_GET_ERRORBUF);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return TRI_ERROR_SYS_ERROR;
   }
 
-  zero = 0;
-  res = TRI_WRITE(fd, &zero, 1);
+  char zero = 0;
+  int res = TRI_WRITE(fd, &zero, 1);
 
   if (res < 0) {
     TRI_SYSTEM_ERROR();
@@ -413,7 +439,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
     // remove empty file
     TRI_UnlinkFile(filename);
 
-    LOG_ERROR("cannot create sparse datafile '%s': '%s'", filename, TRI_GET_ERRORBUF);
+    LOG_ERROR("cannot create datafile '%s': %s", filename, TRI_GET_ERRORBUF);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return TRI_ERROR_SYS_ERROR;
@@ -430,7 +456,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
     // remove empty file
     TRI_UnlinkFile(filename);
 
-    LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_GET_ERRORBUF);
+    LOG_ERROR("cannot memory map file '%s': %s", filename, TRI_GET_ERRORBUF);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return TRI_errno();
@@ -1250,7 +1276,6 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
     return nullptr;
   }
 
-
   datafile->_state = TRI_DF_STATE_WRITE;
 
   if (withInitialMarkers) {
@@ -1358,12 +1383,9 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t fid,
 TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
                                             TRI_voc_fid_t fid,
                                             TRI_voc_size_t maximalSize) {
-  void* data;
-  void* mmHandle;
-
   TRI_ASSERT(filename != nullptr);
 
-  int fd = CreateSparseFile(filename, maximalSize);
+  int fd = CreateDatafile(filename, maximalSize);
 
   if (fd < 0) {
     // an error occurred
@@ -1371,7 +1393,14 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
   }
 
   // memory map the data
-  ssize_t res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
+  void* data;
+  void* mmHandle;
+  int flags = MAP_SHARED;
+#ifdef __linux__
+  // try populating the mapping already
+  flags |= MAP_POPULATE;
+#endif
+  ssize_t res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, flags, fd, &mmHandle, 0, &data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
@@ -1403,6 +1432,10 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
                0,
                fid,
                static_cast<char*>(data));
+
+  // Advise OS that sequential access is going to happen:
+  TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
+                   TRI_MADVISE_SEQUENTIAL);
 
   return datafile;
 }
@@ -1509,7 +1542,7 @@ char const* TRI_NameMarkerDatafile (TRI_df_marker_t const* marker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a marker with the most basic information
+/// @brief initializes a marker with the most basic information
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitMarkerDatafile (char* marker,
@@ -1520,7 +1553,7 @@ void TRI_InitMarkerDatafile (char* marker,
   TRI_ASSERT(type > TRI_MARKER_MIN && type < TRI_MARKER_MAX);
   TRI_ASSERT(size > 0);
 
-  // initialise the basic bytes
+  // initialize the basic bytes
   memset(marker, 0, size);
 
   TRI_df_marker_t* df = reinterpret_cast<TRI_df_marker_t*>(marker);
@@ -1616,7 +1649,7 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 
     LOG_TRACE("cannot write marker, not enough space");
 
-    return datafile->_lastError;
+    return TRI_ERROR_ARANGO_DATAFILE_FULL;
   }
 
   *position = (TRI_df_marker_t*) datafile->_next;
@@ -1893,37 +1926,11 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename,
     TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &datafile->_mmHandle);
   }
 
-  return datafile;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief opens an existing, possibly corrupt datafile
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_datafile_t* TRI_ForcedOpenDatafile (char const* filename) {
-  // this function must not be called for non-physical datafiles
-  TRI_ASSERT(filename != nullptr);
-
-  TRI_datafile_t* datafile = OpenDatafile(filename, true);
-
-  if (datafile == nullptr) {
-    return nullptr;
-  }
-
-  // check the current marker
-  bool ok = CheckDatafile(datafile, true);
-
-  if (! ok) {
-    LOG_ERROR("datafile '%s' is corrupt", datafile->getName(datafile));
-  }
-
-  // change to read-write if no footer has been found
-  else {
-    if (! datafile->_isSealed) {
-      datafile->_state = TRI_DF_STATE_WRITE;
-      TRI_ProtectMMFile(datafile->_data, datafile->_maximalSize, PROT_READ | PROT_WRITE, datafile->_fd, &datafile->_mmHandle);
-    }
-  }
+  // Advise on sequential use:
+  TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
+                   TRI_MADVISE_SEQUENTIAL);
+  TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
+                   TRI_MADVISE_WILLNEED);
 
   return datafile;
 }
@@ -1934,9 +1941,7 @@ TRI_datafile_t* TRI_ForcedOpenDatafile (char const* filename) {
 
 bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
   if (datafile->_state == TRI_DF_STATE_READ || datafile->_state == TRI_DF_STATE_WRITE) {
-    int res;
-
-    res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &datafile->_mmHandle);
+    int res = TRI_UNMMFile(datafile->_data, datafile->_maximalSize, datafile->_fd, &datafile->_mmHandle);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("munmap failed with: %d", res);
@@ -2091,6 +2096,12 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
 
   if (! ok) {
     return datafile->_lastError;
+  }
+
+  if (datafile->isPhysical(datafile)) {
+    // From now on we predict random access (until collection or compaction):
+    TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
+                     TRI_MADVISE_RANDOM);
   }
 
   return TRI_ERROR_NO_ERROR;

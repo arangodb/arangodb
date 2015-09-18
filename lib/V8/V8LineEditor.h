@@ -5,8 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,61 +22,67 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_V8_V8LINE_EDITOR_H
 #define ARANGODB_V8_V8LINE_EDITOR_H 1
 
-#include "Basics/Common.h"
-
 #include "Utilities/LineEditor.h"
 #include "Utilities/Completer.h"
 
 #include <v8.h>
 
+namespace arangodb {
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class V8Completer
 // -----------------------------------------------------------------------------
 
-namespace triagens {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief V8Completer
+////////////////////////////////////////////////////////////////////////////////
 
   class V8Completer : public Completer {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
     public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
 
       V8Completer () {
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
       ~V8Completer () {
       }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 Completer methods
+// -----------------------------------------------------------------------------
+
     public: 
     
-      bool isComplete (std::string const&, 
-                       size_t lineno, 
-                       size_t column) override final;
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
-      void getAlternatives (char const*, 
-                            std::vector<std::string>&) override final;
+      bool isComplete (std::string const&, size_t lineno) override final;
 
-    private:
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
-      enum LineParseState {
-        NORMAL,             // start
-        NORMAL_1,           // from NORMAL: seen a single /
-        DOUBLE_QUOTE,       // from NORMAL: seen a single "
-        DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
-        SINGLE_QUOTE,       // from NORMAL: seen a single '
-        SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
-        BACKTICK,           // from NORMAL: seen a single `
-        BACKTICK_ESC,       // from BACKTICK: seen a backslash
-        MULTI_COMMENT,      // from NORMAL_1: seen a *
-        MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
-        SINGLE_COMMENT      // from NORMAL_1; seen a /
-      };
-
+      std::vector<std::string> alternatives (char const*) override final;
   };
 
 // -----------------------------------------------------------------------------
@@ -85,11 +90,10 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor
+/// @brief V8LineEditor
 ////////////////////////////////////////////////////////////////////////////////
 
   class V8LineEditor : public LineEditor {
-
     V8LineEditor (LineEditor const&) = delete;
     V8LineEditor& operator= (LineEditor const&) = delete;
 
@@ -103,7 +107,9 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      V8LineEditor (v8::Handle<v8::Context>, std::string const& history);
+      V8LineEditor (v8::Isolate*,
+                    v8::Handle<v8::Context>, 
+                    std::string const& history);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -112,16 +118,84 @@ namespace triagens {
       ~V8LineEditor ();
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+    
+    public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the editor's isolate
+////////////////////////////////////////////////////////////////////////////////
+
+      v8::Isolate* isolate () const {
+        return _isolate;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test whether we are executing a command
+////////////////////////////////////////////////////////////////////////////////
+
+      bool isExecutingCommand () { 
+        return _executingCommand.load();
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief note whether we are executing a command
+////////////////////////////////////////////////////////////////////////////////
+
+      void isExecutingCommand (bool value) { 
+        _executingCommand.store(value);
+      }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+    public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the global instance of the editor
+////////////////////////////////////////////////////////////////////////////////
+
+      static V8LineEditor* instance () {
+        return _instance.load();
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell implementation supports colors
+////////////////////////////////////////////////////////////////////////////////
+
+      bool supportsColors () const;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief     creates a concrete Shell with the correct parameter (Completer!!)
-////////////////////////////////////////////////////////////////////////////////
-
     protected:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setup a signal handler for CTRL-C
+////////////////////////////////////////////////////////////////////////////////
+
+      void setupCtrlCHandler ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a concrete Shell with the correct completer
+////////////////////////////////////////////////////////////////////////////////
+
       void initializeShell () override;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          static private variables
+// -----------------------------------------------------------------------------
+
+    private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the active instance of the editor
+////////////////////////////////////////////////////////////////////////////////
+
+      static std::atomic<V8LineEditor*> _instance;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -130,14 +204,29 @@ namespace triagens {
     private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief isolate
+////////////////////////////////////////////////////////////////////////////////
+
+      v8::Isolate* _isolate;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief context
 ////////////////////////////////////////////////////////////////////////////////
 
       v8::Handle<v8::Context> _context;
 
-      V8Completer _completer;
-  };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the completer
+////////////////////////////////////////////////////////////////////////////////
 
+      V8Completer _completer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not there is a command currently executing
+////////////////////////////////////////////////////////////////////////////////
+
+      std::atomic<bool> _executingCommand; 
+  };
 }
 
 #endif
@@ -145,8 +234,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

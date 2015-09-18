@@ -13,37 +13,26 @@
 
 <!-- obsolete file -->
 
-<script id="apiView.ejs" type="text/template">
-<div class="headerBar">
-  <a class="arangoHeader">Core - API - Documentation</a>
-</div>
-<div class="form-actions api-actions">
-  <div id="swagger-ui-container" class="swagger-ui-wrap api-container">
-
-  </div>
-</div>
-</script>
-
 <script id="applicationDetailView.ejs" type="text/template">
   <div class="application-detail-view">
     <div class="headerBar">
       <div class="headerButtonBar">
         <ul class="headerButtonList">
           <li>
-            <a id="app-config" class="headerButton <%= _.isEmpty(app.get('config')) ? 'disabled' : '' %>">
+            <a id="app-config" class="headerButton <%= _.isEmpty(app.get('config')) ? 'disabled' : '' %> <%= app.needsConfiguration() ? 'error' : '' %>">
               <span class="icon_arangodb_settings2" title="Configure"></span>
             </a>
           </li>
           <li>
-            <a id="app-deps" class="headerButton <%= _.isEmpty(app.get('deps')) ? 'disabled' : '' %>">
+            <a id="app-deps" class="headerButton <%= _.isEmpty(app.get('deps')) ? 'disabled' : '' %> <%= app.hasUnconfiguredDependencies() ? 'error' : '' %>">
               <span class="fa fa-cubes" title="Dependencies"></span>
             </a>
           </li>
           <li id="app-scripts" class="dropdown">
             <a class="headerButton <%= _.isEmpty(app.get('scripts')) ? 'disabled' : '' %>" title="Scripts">
-              <i class="fa fa-cogs"></i>
+              <i class="fa fa-code"></i>
             </a>
-            <ul class="script-dropdown-menu dropdown-menu" id="scripts_dropdown">
+            <ul class="script-dropdown-menu dropdown-toolbar dropdown-menu" id="scripts_dropdown">
             <% _.each(app.get('scripts'), function (title, name) { %>
               <li class="dropdown-item">
                 <a class="tab" data-script="<%= name %>"><%= title %></a>
@@ -82,13 +71,28 @@
         <div class="header-icon-container">
           <img src="foxxes/thumbnail?mount=<%= app.encodedMount() %>" alt="Icon for Service" class="icon" />
         </div>
-        <div class="header_left">
-          <input type="button" class="open button-success" disabled="true" value="Open" />
-          <input id="app-upgrade" type="button" class="upgrade button-warning" value="Upgrade" <%=app.isSystem()?"disabled":"" %>/>
-          <input id="app-switch-mode" type="button" class="switch-mode button-warning" value="<%=app.get('development')?'Set Pro':'Set Dev'%>" />
-          <input type="button" class="delete button-danger" value="Delete" <%=app.isSystem()?"disabled":""%> />
-        </div>
         <div class="header_right">
+          <input type="button" class="open button-success" disabled="true" value="Open" />
+          <input id="app-replace" type="button" class="upgrade button-warning" value="Replace" <%=app.isSystem()?"disabled":"" %>/>
+          <input id="app-switch-mode" type="button" class="switch-mode button-warning" value="<%=app.get('development')?'Set Production':'Set Development'%>" />
+          <input type="button" class="delete button-danger" value="Delete" <%=app.isSystem()?"disabled":""%> />
+          <% if (mode !== 'swagger') { %>
+            <input id="app-show-swagger" type="button" class="switch-docu button-success" value="Show API" />
+          <% } %>
+          <% if (mode !== 'readme' && app.attributes.readme) { %>
+            <input id="app-show-readme" type="button" class="switch-docu button-success" value="Show README" />
+          <% } %>
+          <% if (mode !== 'readme' && !app.attributes.readme) { %>
+            <input id="app-show-readme" type="button" class="switch-docu button-success" disabled value="Show README" />
+          <% } %>
+        </div>
+        <div class="header_left">
+          <div id="app-warning" class="app-warning" style="display:<%=app.needsAttention()?'block':'none' %>;">
+            <h4>Out of order</h4>
+            <p id="app-warning-broken" style="display:<%=app.isBroken()?'block':'none' %>;">This service has failed to mount due to an error.</p>
+            <p id="app-warning-config" style="display:<%=app.needsConfiguration()?'block':'none' %>;">This service has not yet been configured properly.</p>
+            <p id="app-warning-deps" style="display:<%=app.hasUnconfiguredDependencies()?'block':'block' %>;">Some dependencies have not yet been set up.</p>
+          </div>
           <div class="header_line">
             <h3>
               <%= app.attributes.name %>
@@ -103,33 +107,8 @@
             </h3>
           </div>
           <p class="description"><%= app.attributes.description %></p>
-          <% if (mode !== 'swagger') { %>
-            <input id="app-show-swagger" type="button" class="button-success" value="Show API" />
-          <% } %>
-          <% if (mode !== 'readme' && app.attributes.readme) { %>
-            <input id="app-show-readme" type="button" class="button-success" value="Show README" />
-          <% } %>
-        </div>
-        <div id="app-warning" class="app-warning" style="display:<%=app.needsAttention()?'block':'none' %>;">
-          <h4>Out of order</h4>
-          <p id="app-warning-broken" style="display:<%=app.isBroken()?'block':'none' %>;">This app has failed to mount due to an error.</p>
-          <p id="app-warning-config" style="display:<%=app.needsConfiguration()?'block':'none' %>;">This app has not yet been configured properly.</p>
-          <p id="app-warning-deps" style="display:<%=app.hasUnconfiguredDependencies()?'block':'block' %>;">Some dependencies have not yet been set up.</p>
         </div>
       </div>
-      <% if (mode === 'swagger') { %>
-      <div class="swagger">
-        <iframe src="/_db/<%= db%>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
-      </div>
-      <% } else if (mode === 'readme') { %>
-      <div class="readme">
-        <% if (app.get('readme')) { %>
-        <%= app.get('readme') %>
-        <% } else { %>
-        <p>ERROR: No README data found!</p>
-        <% } %>
-      </div>
-      <% } %>
     </section>
     <aside class="meta">
       <dl>
@@ -151,12 +130,12 @@
         <dd>
           <ul>
             <li>
-              <a href="./foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+              <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
                 API Documentation
               </a>
             </li>
             <li>
-              <a href="./foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+              <a href="/_db/<%= db %>/_admin/aardvark/foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
                 Swagger JSON
               </a>
             </li>
@@ -167,6 +146,25 @@
         </dd>
       </dl>
     </aside>
+    <main>
+      <div id="app-info" class="app-info" style="display: none;">
+        <h4>Info</h4>
+        <p id="app-info-swagger">Documentation for this service is not yet configured.</p>
+      </div>
+      <% if (mode === 'swagger') { %>
+      <div class="swagger">
+        <iframe src="/_db/<%= db %>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
+      </div>
+      <% } else if (mode === 'readme') { %>
+      <div class="readme">
+        <% if (app.get('readme')) { %>
+        <%= app.get('readme') %>
+        <% } else { %>
+        <p>ERROR: No README data found!</p>
+        <% } %>
+      </div>
+      <% } %>
+    </main>
   </div>
 </script>
 
@@ -235,7 +233,9 @@
   <div id="installed">
     <div id="installedList" class="tileList">
       <div class="tile">
-        <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Service</a>
+        <div class="fullBorderBox">
+          <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Service</a>
+        </div>
       </div>
     </div>
   </div>
@@ -254,7 +254,6 @@
 
 <script id="arangoTable.ejs" type="text/template">
 <table class="arango-table" id="<%=content.id%>">
-
   <thead>
     <tr>
       <% var hcounter = 0; %>
@@ -263,7 +262,6 @@
       <% hcounter++; });%>
     </tr>
   </thead>
-
   <tbody>
     <% _.each(content.rows, function(k) { var counter=0;%>
       <tr>
@@ -272,11 +270,18 @@
         <% counter++;});%>
       </tr>
     <%});%>
+
+    <% if (content.rows.length === 0) { %>
+      <tr>
+        <td>No content.</td><td></td><td></td>
+      </tr>
+    <% }; %>
   </tbody>
 </table>
 </script>
 
 <script id="collectionsItemView.ejs" type="text/template">
+<div class="borderBox"></div>
 <div class="iconSet">
   <span id="editCollection_<%=model.get('name')%>" class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
   <% if(model.get('status') === "loaded") { %>
@@ -408,7 +413,9 @@
   <div class="contentDiv" id="arangoCollectionsContainer">
       <div id="collectionsThumbnailsIn" class="tileList">
         <div class="tile">
-          <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Collection</a>
+          <div class="fullBorderBox">
+            <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Collection</a>
+          </div>
         </div>
       </div>
   </div>
@@ -584,7 +591,8 @@
         <li><a>
           <label class="checkbox checkboxLabel">
             <input class="css-checkbox" type="checkbox" id="dbSortDesc">
-            <label class="css-label" id="dbSortDesc"></label>Sort descending
+            <i class="fa"></i>
+            Sort descending
           </label>
         </a></li>
       </ul>
@@ -596,25 +604,30 @@
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="userManagementThumbnailsIn" class="tileList">
       <div class="tile">
-        <a href="#" id="createDatabase" class="add">
-          <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
-          Add Database
-        </a>
+        <div class="fullBorderBox">
+          <a href="#" id="createDatabase" class="add">
+            <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            Add Database
+          </a>
+        </div>
       </div>
       <% collection.forEach(function(db) {
           var name = db.get("name");
       %>
 
-      <div class="tile">
-      <div class="iconSet">
-        <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
-      </div>
-      <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
-      <div class="tileBadge">
-    </div>
+      <% if (name !== '_system') { %>
+        <div class="tile">
+          <div class="borderBox"></div>
+          <div class="iconSet">
+            <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+          </div>
+          <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
+          <div class="tileBadge">
+          </div>
+          <h5 class="collectionName"><%=name %></h5>
+        </div>
+      <%};%>
 
-      <h5 class="collectionName"><%=name %></h5>
-    </div>
       <%});%>
      </div>
   </div>
@@ -1209,6 +1222,7 @@ if (list.length > 0) {
 </script>
 
 <script id="foxxActiveView.ejs" type="text/template">
+  <div class="borderBox"></div>
   <img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for Service" class="icon">
     <% if (model.needsAttention()) { %>
       <span class="warning-icons">
@@ -1216,7 +1230,7 @@ if (list.length > 0) {
           <span class="fa fa-warning" title="Mount error"></span>
         <% } %>
         <% if (model.needsConfiguration()) { %>
-          <span class="fa fa-cog" title="Needs configuration">!</span>
+          <span class="fa fa-cog" title="Needs configuration"></span>
         <% } %>
         <% if (model.hasUnconfiguredDependencies()) { %>
           <span class="fa fa-cubes" title="Unconfigured dependencies">!</span>
@@ -1389,10 +1403,12 @@ if (list.length > 0) {
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="graphManagementThumbnailsIn" class="tileList">
       <div class="tile">
-        <a href="#" id="createGraph" class="add">
-          <span id="newGraph" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
-          Add Graph
-        </a>
+        <div class="fullBorderBox">
+          <a href="#" id="createGraph" class="add">
+            <span id="newGraph" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            Add Graph
+          </a>
+        </div>
       </div>
 
 
@@ -1401,6 +1417,7 @@ if (list.length > 0) {
       %>
 
       <div class="tile tile-graph" id="<%=graphName %>_tile">
+      <div class="borderBox"></div>
       <div class="iconSet">
         <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
       </div>
@@ -1469,10 +1486,11 @@ if (list.length > 0) {
 
 <script id="loginView.ejs" type="text/template">
 <div class="loginFixedWindow">
+
+<div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/logo_arangodb_transp.png"></a></div></div>
+
   <div id="loginWindow" class="login-window">
-    <div id="loginSpace" class="login-space"/>
-    <img id="loginLogo" src="img/logo_arangodb_transp.png"/>
-    <div id="loginSpace" class="login-space"/>
+    <p class="wrong-credentials" style="display:none" >Wrong credentials!</p>
     <form id="loginForm">
       <input class="login-input" placeholder="Username" id="loginUsername" type="text" name="username"><i class="fa fa-user"></i>
       <input class="login-input" placeholder="Password" id="loginPassword" type="password" name="password"><i class="fa fa-lock"></i>
@@ -1519,15 +1537,15 @@ if (list.length > 0) {
   </table>
 
   <ul id="infoTab" class="nav nav-tabs">
-    <li class="active"><a href="#newApp" data-toggle="tab" id="tab-new">New Service</a></li>
-    <li><a href="#appstore" data-toggle="tab" id="tab-store"><img src="img/arangodb_logo_small.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
+    <li><a href="#newApp" data-toggle="tab" id="tab-new">New Service</a></li>
+    <li class="active"><a href="#appstore" data-toggle="tab" id="tab-store"><img src="img/arangodb_logo_small.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
     <li><a href="#github" data-toggle="tab" id="tab-git">Github</a></li>
     <li><a href="#zip" data-toggle="tab" id="tab-zip">Zip</a></li>
   </ul>
 
   <div class="tab-content" id="tab-content-application-info">
 
-    <div class="tab-pane active" id="newApp">
+    <div class="tab-pane" id="newApp">
       <table id="new-app-information">
         <tr class="tableRow">
           <th class="collectionInfoTh">
@@ -1587,8 +1605,11 @@ if (list.length > 0) {
       </table>
     </div>
 
-    <div class="tab-pane" id="appstore">
+    <div class="tab-pane active" id="appstore">
       <table id="appstore-content">
+        <tr>
+          <td>Fetching data...</td>
+        </tr>
       </table>
     </div>
 
@@ -1717,7 +1738,7 @@ if (list.length > 0) {
             </th>
             <th class="tooltipInfoTh">
               <div>
-                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Synchronise to disk before returning from a create or update of a document.">
+                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Synchronize to disk before returning from a create or update of a document.">
                   <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                 </a>
               </div>
@@ -1753,6 +1774,13 @@ if (list.length > 0) {
             <th class="collectionInfoTh2">Status:</th>
             <th class="collectionInfoTh">
               <div class="modal-text"><%=content.get("status")%></div>
+            </th>
+          </tr>
+          
+          <tr>
+            <th class="collectionInfoTh2">Index buckets:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text"><%=figuresData["indexBuckets"]%></div>
             </th>
           </tr>
         </table>
@@ -2311,17 +2339,14 @@ if (list.length > 0) {
           <a id="shell" class="tab" href="#shell">JS Shell</a>
         </li>
 
-        <% if (isSystem) { %>
+        <% if (currentDB.get('isSystem')) { %>
           <li class="dropdown-item">
             <a id="logs" class="tab" href="#logs">Logs</a>
           </li>
         <% } %>
 
         <li class="dropdown-item">
-          <a id="api" class="tab" href="#api">API</a>
-        </li>
-        <li class="dropdown-item">
-          <a id="userManagement" class="tab" href="#api">User Management</a>
+          <a id="userManagement" class="tab" href="#userManagement">User Management</a>
         </li>
         <li class="dropdown-item">
           <a id="queryManagement" class="tab" href="#queryManagement">Query Management</a>
@@ -2332,6 +2357,7 @@ if (list.length > 0) {
       <a href="#" class="tab" id="links">Links <b class="caret"></b></a>
       <ul class="link-dropdown-menu" id="link_dropdown">
         <li class="dropdown-header">Documentation</li>
+        <li class="dropdown-item"><a href="/_db/<%= currentDB.get('name') %>/_admin/aardvark/api/index.html" target="_blank">API Documentation</a></li>
         <li class="dropdown-item"><a href="http://docs.arangodb.com/Arangosh/"
                                      target="_blank">JS Shell Documentation</a></li>
         <li class="dropdown-item"><a href="http://docs.arangodb.com/Aql/" target="_blank">AQL
@@ -2351,11 +2377,11 @@ if (list.length > 0) {
     <option value="" selected="selected">Select</option>
     <option value="#">Dashboard</option>
 
-      <% if(isSystem) { %>
+    <% if(currentDB.get('isSystem')) { %>
 
-        <option value="#databases">Databases</option>
+      <option value="#databases">Databases</option>
 
-      <% } %>
+    <% } %>
 
     <option value="#collections">Collections</option>
     <option value="#demo">Demo</option>
@@ -2364,13 +2390,11 @@ if (list.length > 0) {
     <option value="#query">AQL Editor</option>
     <option value="#shell">JS Shell</option>
 
-      <% if(isSystem) { %>
+    <% if(currentDB.get('isSystem')) { %>
 
-        <option value="#logs">Logs</option>
+      <option value="#logs">Logs</option>
 
-      <% } %>
-
-    <option value="#api">Api</option>
+    <% } %>
   </select>
 </script>
 
@@ -2380,6 +2404,11 @@ if (list.length > 0) {
     <div class="notificationItem">
       <a class="notificationItemTitle"><%=n.get("title")%></a>
       <div class="notificationItemContent"><%=n.get("content")%></div>
+
+      <% if (n.get("info")) { %>
+      <i title="<%=n.get("info")%>" class="notificationInfoIcon fa fa-info-circle"></i>
+      <% } %>
+
       <i id="<%=n.cid%>" class="fa fa-times-circle-o"></i>
     </div>
   </li>
@@ -2390,14 +2419,14 @@ if (list.length > 0) {
 <ul class="navlist" id="notificationViewUl">
 
   <div class="navlogo">
-    <div id="stat_hd" class="notificationButton"><a id="stat_hd_counter">0</a></div>
+    <div id="stat_hd" class="notificationButton"><p id="stat_hd_counter">0</p></div>
   </div>
 
-  <li class="dropdown">
+  <li class="dropdown no-left-margin">
     <ul class="user-dropdown-menu fixedDropdown" id="notification_menu">
       <li class="dropdown-header"><a>Notifications</a></li>
       <ul class="innerDropdownInnerUL"></ul>
-      <button id="removeAllNotifications" class="button-danger">Clear</button>
+      <button id="removeAllNotifications" class="button-close">Clear</button>
     </ul>
   </li>
 
@@ -2444,25 +2473,6 @@ if (list.length > 0) {
 <script id="queryView.ejs" type="text/template">
   <div class="headerBar">
     <a class="arangoHeader">AQL Editor</a>
-
-    <div id="queryToolbar" class="headerButtonBar">
-      <ul class="headerButtonList">
-        <li class="enabled">
-          <a id="importQueriesToggle" class="headerButton">
-            <span class="icon_arangodb_import" title="Upload queries from JSON file"></span>
-          </a>
-        </li>
-      </ul>
-    </div>
-
-  </div>
-
-  <div id="importHeader" class="dropdownImport queryImport">
-    <div class="queryline">
-      <input id="importQueries" name="importQueries" type="file"/>
-      <button id="confirmQueryImport" class="button-success" style="float:right">Import</button>
-      <button id="confirmQueryExport" class="button-success" style="float:right">Export</button>
-    </div>
   </div>
 
   <div id="queryContent" class="innerContent">
@@ -2474,9 +2484,11 @@ if (list.length > 0) {
     </ul>
     <div class="tab-content" id="tabContentCustoms">
       <div class="tab-pane" id="customs">
-        <div id="customsDiv" class="query-div">
+        <div id="editorToolbar" class="query-toolbar editor-toolbar">
+          <span class="icon_arangodb" title="Upload your queries." id="import-query"><i class="fa fa-upload"></i></span>
+          <span class="icon_arangodb" title="Download your listed queries." id="export-query"><i class="fa fa-download"></i></span>
         </div>
-        <div class="queryMethods">
+        <div id="customsDiv" class="query-div">
         </div>
       </div>
     </div>
@@ -2545,10 +2557,47 @@ if (list.length > 0) {
         </div>
         <div class="pull-left queryExecutionTime"></div>
         <div class="queryBottomActions">
-          <button id="downloadQueryResult" style="margin-bottom: 5px" class="button-success query-button">Download</button>
+          <button id="downloadQueryResult" style="margin-bottom: 10px; display: none" class="button-success query-button">Download</button>
         </div>
       </div>
 
+    </div>
+
+  </div>
+
+  <div id="queryImportDialog" class="modal hide fade in" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false" style="display: none;">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Import custom queries</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tbody>
+          <tr class="tableRow">
+            <th class="collectionTh">Format:</th>
+            <th class="collectionTh" colspan="2">
+              <p>JSON documents embedded into a list:</p>
+              <p></p>
+              <p>[{</p>
+              <p style="margin-left: 10px">"name": "Your Query Name",</p>
+              <p style="margin-left: 10px">"value": "Your Query Definition"</p>
+              <p>}]</p>
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionTh">File:</th>
+            <th class="collectionTh" colspan="2">
+              <input id="importQueries" name="importQueries" type="file" style="border: 0" />
+            </th>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="modal-footer">
+      <button id="confirmQueryImport" class="button-success disabled" style="float:right">Import</button>
+      <button id="closeQueryModal" class="button-close">Cancel</button>
     </div>
 
   </div>
@@ -2670,7 +2719,7 @@ var cutByResolution = function (str) {
         <%=_.escape(username)%>
         <% } %>
       <li class="dropdown-item">
-        <a id="userProfile" class="tab" href="#user">User profile</a>
+        <a id="userProfile" class="tab" href="#user">User Profile</a>
       </li>
       <li class="dropdown-item">
         <a id="userLogout" class="tab">Logout</a>
@@ -2740,10 +2789,12 @@ var cutByResolution = function (str) {
   <div class="contentDiv" id="arangoCollectionsContainer">
     <div id="userManagementThumbnailsIn" class="tileList">
       <div class="tile">
-        <a href="#" id="createUser" class="add">
-          <span id="newUser" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
-          Add User
-        </a>
+        <div class="fullBorderBox">
+          <a href="#" id="createUser" class="add">
+            <span id="newUser" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+            Add User
+          </a>
+        </div>
       </div>
 
 
@@ -2756,7 +2807,7 @@ var cutByResolution = function (str) {
                 avatar = '<img src="';
 
               if (! img) {
-                avatar += 'img/arangodb_logo_small.png';
+                avatar += 'img/default_user.png';
               } else {
                 avatar += 'https://s.gravatar.com/avatar/';
                 avatar += img;
@@ -2771,6 +2822,7 @@ var cutByResolution = function (str) {
       %>
 
       <div class="tile">
+        <div class="borderBox"></div>
         <div class="iconSet">
           <span class="icon_arangodb_settings2 editUser" id="<%=_.escape(username) %>_edit-user" alt="Edit user" title="Edit user"></span>
         </div>
@@ -2844,7 +2896,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1438685297715"></script>
+<script src="app.js?version=1442220392252"></script>
 
   </body>
 </html>

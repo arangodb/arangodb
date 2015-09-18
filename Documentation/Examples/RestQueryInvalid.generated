@@ -1,13 +1,13 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query <<EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query &lt;&lt;EOF
 { "query" : "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }
 EOF
 
-HTTP/1.1 400 Bad Request
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : true, 
-  "errorMessage" : "syntax error, unexpected assignment near '= @name LIMIT 2 RETURN p.n' at position 1:33", 
-  "code" : 400, 
-  "errorNum" : 1501 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"syntax error, unexpected assignment near '= @name LIMIT 2 RETURN p.n' at position 1:33"</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">400</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1501</span> 
 }

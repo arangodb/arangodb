@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpRequest.h"
-
 #include "Basics/conversions.h"
 #include "Basics/logging.h"
 #include "Basics/StringBuffer.h"
@@ -197,7 +196,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
       continue;
     }
 
-    const size_t keyLength = strlen(key);
+    size_t const keyLength = strlen(key);
 
     if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) {
       continue;
@@ -227,7 +226,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
       TRI_AppendString2StringBuffer(buffer, "; ", 2);
     }
 
-    const size_t keyLength = strlen(key);
+    size_t const keyLength = strlen(key);
     TRI_AppendString2StringBuffer(buffer, key, keyLength);
     TRI_AppendString2StringBuffer(buffer, "=", 2);
 
@@ -501,10 +500,10 @@ void HttpRequest::setHeader (char const* key,
       if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
           (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
           (keyLength == 22 && memcmp(key, "x-http-method-override", keyLength) == 0)) {
-        string overridenType(value);
-        StringUtils::tolowerInPlace(&overridenType);
+        string overriddenType(value);
+        StringUtils::tolowerInPlace(&overriddenType);
 
-        _type = getRequestType(overridenType.c_str(), overridenType.size());
+        _type = getRequestType(overriddenType.c_str(), overriddenType.size());
 
         // don't insert this header!!
         return;
@@ -741,7 +740,7 @@ HttpRequest::HttpRequestType HttpRequest::getRequestType (const char* ptr,
 void HttpRequest::parseHeader (char* ptr, size_t length) {
   char* start = ptr;
   char* end = start + length;
-  const size_t versionLength = strlen("http/1.x");
+  size_t const versionLength = strlen("http/1.x");
 
   // current line number
   int lineNum = 0;

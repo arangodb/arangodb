@@ -111,8 +111,20 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief make a http request, creating a new HttpResult object
+/// @brief make an http request, creating a new HttpResult object
 /// the caller has to delete the result object
+/// this version does not allow specifying custom headers
+////////////////////////////////////////////////////////////////////////////////
+
+      SimpleHttpResult* request (rest::HttpRequest::HttpRequestType,
+                                 std::string const&,
+                                 char const*,
+                                 size_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief make an http request, actual worker function
+/// the caller has to delete the result object
+/// this version allows specifying custom headers
 ////////////////////////////////////////////////////////////////////////////////
 
       SimpleHttpResult* request (rest::HttpRequest::HttpRequestType,
@@ -149,6 +161,22 @@ namespace triagens {
 
       void setKeepAlive (bool value) {
         _keepAlive = value;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief expose ArangoDB via user-agent?
+////////////////////////////////////////////////////////////////////////////////
+
+      void setExposeArangoDB (bool value) {
+        _exposeArangoDB = value;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief advertise support for deflate?
+////////////////////////////////////////////////////////////////////////////////
+
+      void setSupportDeflate (bool value) {
+        _supportDeflate = value;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,7 +237,19 @@ namespace triagens {
     private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the connection
+/// @brief make a http request, creating a new HttpResult object
+/// the caller has to delete the result object
+/// this version allows specifying custom headers
+////////////////////////////////////////////////////////////////////////////////
+
+      SimpleHttpResult* doRequest (rest::HttpRequest::HttpRequestType,
+                                   std::string const&,
+                                   char const*,
+                                   size_t,
+                                   std::map<std::string, std::string> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize the connection
 ////////////////////////////////////////////////////////////////////////////////
 
       void handleConnect ();
@@ -307,12 +347,6 @@ namespace triagens {
       GeneralClientConnection* _connection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flag whether or not we keep the connection on destruction
-////////////////////////////////////////////////////////////////////////////////
-
-      bool _keepConnectionOnDestruction;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief write buffer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -347,8 +381,6 @@ namespace triagens {
 
       double _requestTimeout;
 
-      bool _warn;
-
       request_state _state;
 
       size_t _written;
@@ -367,15 +399,33 @@ namespace triagens {
 
       uint32_t _nextChunkedSize;
 
+      rest::HttpRequest::HttpRequestType _method;
+
       SimpleHttpResult* _result;
 
       std::vector<std::pair<std::string, std::string> >_pathToBasicAuth;
 
-      const size_t _maxPacketSize;
+      size_t const _maxPacketSize;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flag whether or not we keep the connection on destruction
+////////////////////////////////////////////////////////////////////////////////
+
+      bool _keepConnectionOnDestruction;
+
+      bool _warn;
 
       bool _keepAlive;
 
-      rest::HttpRequest::HttpRequestType _method;
+      bool _exposeArangoDB;
+
+      bool _supportDeflate;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief empty map, used for headers
+////////////////////////////////////////////////////////////////////////////////
+
+      static std::map<std::string, std::string> const NoHeaders;
 
     };
   }

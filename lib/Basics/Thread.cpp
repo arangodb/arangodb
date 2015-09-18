@@ -272,7 +272,7 @@ void Thread::setProcessorAffinity (size_t c) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allows asynchrounous cancelation
+/// @brief allows asynchronous cancelation
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::allowAsynchronousCancelation () {
@@ -283,7 +283,7 @@ void Thread::allowAsynchronousCancelation () {
         TRI_AllowCancelation();
       }
       else {
-        LOG_ERROR("cannot change cancellation type of an already running thread from the outside");
+        LOG_ERROR("cannot change cancelation type of an already running thread from the outside");
       }
     }
     else {

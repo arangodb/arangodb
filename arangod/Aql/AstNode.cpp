@@ -371,8 +371,11 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
 /// @brief returns whether or not the string is empty
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEmptyString (char const* p) {
-  while (*p != '\0') {
+static bool IsEmptyString (char const* p, 
+                           size_t length) {
+  char const* e = p + length;
+
+  while (p < e) {
     if (*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' && *p != '\f' && *p != '\b') {
       return false;
     }
@@ -443,12 +446,13 @@ AstNode::AstNode (int64_t v,
 /// @brief create a string node, with defining a value
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode::AstNode (char const* v, 
+AstNode::AstNode (char const* v,
+                  size_t length, 
                   AstNodeValueType valueType)
   : AstNode(NODE_TYPE_VALUE, valueType) {
 
   TRI_ASSERT(valueType == VALUE_TYPE_STRING);
-  value.value._string = v;
+  setStringValue(v, length);
   TRI_ASSERT_EXPENSIVE(flags == 0);
   TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
 }
@@ -470,10 +474,12 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_COLLECTION:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_ATTRIBUTE_ACCESS:
-    case NODE_TYPE_FCALL_USER:
+    case NODE_TYPE_FCALL_USER: {
+      std::string const str(JsonHelper::getStringValue(json.json(), "name", ""));
       value.type = VALUE_TYPE_STRING;
-      setStringValue(query->registerString(JsonHelper::getStringValue(json.json(), "name", ""), false));
+      setStringValue(query->registerString(str), str.size());
       break;
+    }
     case NODE_TYPE_VALUE: {
       int vType = JsonHelper::checkAndGetNumericValue<int>(json.json(), "vTypeID");
       validateValueType(vType);
@@ -491,9 +497,11 @@ AstNode::AstNode (Ast* ast,
         case VALUE_TYPE_DOUBLE:
           setDoubleValue(JsonHelper::checkAndGetNumericValue<double>(json.json(), "value"));
           break;
-        case VALUE_TYPE_STRING:
-          setStringValue(query->registerString(JsonHelper::checkAndGetStringValue(json.json(), "value"), false));
+        case VALUE_TYPE_STRING: {
+          std::string const str (JsonHelper::checkAndGetStringValue(json.json(), "value"));
+          setStringValue(query->registerString(str), str.size());
           break;
+        }
         default: {
         }
       }
@@ -518,7 +526,8 @@ AstNode::AstNode (Ast* ast,
       break;
     }
     case NODE_TYPE_OBJECT_ELEMENT: {
-      setStringValue(query->registerString(JsonHelper::getStringValue(json.json(), "name", ""), false));
+      std::string const str(JsonHelper::getStringValue(json.json(), "name", ""));
+      setStringValue(query->registerString(str), str.size());
       break;
     }
     case NODE_TYPE_EXPANSION: {
@@ -731,7 +740,7 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
       case VALUE_TYPE_DOUBLE:
         return TRI_CreateNumberJson(zone, value.value._double);
       case VALUE_TYPE_STRING:
-        return TRI_CreateStringCopyJson(zone, value.value._string, strlen(value.value._string));
+        return TRI_CreateStringCopyJson(zone, value.value._string, value.length);
         // TODO: can we get away with a string reference only??
         // this would speed things up considerably!
         // return TRI_CreateStringReferenceJson(zone, value.value._string, strlen(value.value._string));
@@ -836,8 +845,7 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
       type == NODE_TYPE_OBJECT_ELEMENT ||
       type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
-    auto const* strValue = getStringValue();
-    if (TRI_InitStringCopyJson(zone, &json, strValue, strlen(strValue)) != TRI_ERROR_NO_ERROR) {
+    if (TRI_InitStringCopyJson(zone, &json, getStringValue(), getStringLength()) != TRI_ERROR_NO_ERROR) {
       TRI_FreeJson(zone, node);
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -984,11 +992,11 @@ AstNode* AstNode::castToNumber (Ast* ast) {
       case VALUE_TYPE_STRING:
         try {
           // try converting string to number
-          double v = std::stod(value.value._string);
+          double v = std::stod(std::string(value.value._string, value.length));
           return ast->createNodeValueDouble(v);
         }
         catch (...) {
-          if (IsEmptyString(value.value._string)) {
+          if (IsEmptyString(value.value._string, value.length)) {
             // empty string => 0
             return ast->createNodeValueInt(0);
           }
@@ -1040,9 +1048,9 @@ AstNode* AstNode::castToString (Ast* ast) {
   triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
   stringify(&buffer, false, false);
 
-  char const* value = ast->query()->registerString(buffer.c_str(), buffer.length(), false);
+  char const* value = ast->query()->registerString(buffer.c_str(), buffer.length());
   TRI_ASSERT(value != nullptr);
-  return ast->createNodeValueString(value);
+  return ast->createNodeValueString(value, buffer.length());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1121,9 +1129,9 @@ bool AstNode::isTrue () const {
       case VALUE_TYPE_INT: 
         return (value.value._int != 0);
       case VALUE_TYPE_DOUBLE: 
-        return value.value._double != 0.0;
+        return (value.value._double != 0.0);
       case VALUE_TYPE_STRING: 
-        return (*value.value._string != '\0');
+        return (value.length != 0);
     }
   }
   else if (type == NODE_TYPE_ARRAY ||
@@ -1162,13 +1170,13 @@ bool AstNode::isFalse () const {
       case VALUE_TYPE_NULL: 
         return true;
       case VALUE_TYPE_BOOL: 
-        return ! value.value._bool;
+        return (! value.value._bool);
       case VALUE_TYPE_INT: 
         return (value.value._int == 0);
       case VALUE_TYPE_DOUBLE: 
-        return value.value._double == 0.0;
+        return (value.value._double == 0.0);
       case VALUE_TYPE_STRING: 
-        return (*value.value._string == '\0');
+        return (value.length == 0);
     }
   }
   else if (type == NODE_TYPE_ARRAY ||
@@ -1710,17 +1718,17 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
           TRI_ASSERT(member->numMembers() == 1);
 
           buffer->appendChar('"');
-          buffer->appendJsonEncoded(member->getStringValue());
-          buffer->appendText("\":", 2);
+          buffer->appendJsonEncoded(member->getStringValue(), member->getStringLength());
+          buffer->appendText(TRI_CHAR_LENGTH_PAIR("\":"));
 
           member->getMember(0)->stringify(buffer, verbose, failIfLong);
         }
         else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
           TRI_ASSERT(member->numMembers() == 2);
 
-          buffer->appendText("$[", 2);
+          buffer->appendText(TRI_CHAR_LENGTH_PAIR("$["));
           member->getMember(0)->stringify(buffer, verbose, failIfLong);
-          buffer->appendText("]:", 2);
+          buffer->appendText(TRI_CHAR_LENGTH_PAIR("]:"));
           member->getMember(1)->stringify(buffer, verbose, failIfLong);
         }
         else {
@@ -1730,7 +1738,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
       buffer->appendChar('}');
     }
     else {
-      buffer->appendText("[object Object]");
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR("[object Object]"));
     }
     return;
   }
@@ -1794,7 +1802,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
 
   if (type == NODE_TYPE_ARRAY_LIMIT) {
     // not used by V8
-    buffer->appendText("_LIMIT(");
+    buffer->appendText(TRI_CHAR_LENGTH_PAIR("_LIMIT("));
     getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
     getMember(1)->stringify(buffer, verbose, failIfLong);
@@ -1804,7 +1812,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
   
   if (type == NODE_TYPE_EXPANSION) {
     // not used by V8
-    buffer->appendText("_EXPANSION(");
+    buffer->appendText(TRI_CHAR_LENGTH_PAIR("_EXPANSION("));
     getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
     getMember(1)->stringify(buffer, verbose, failIfLong);
@@ -1813,19 +1821,19 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
 
     auto filterNode = getMember(2);
     if (filterNode != nullptr) {
-      buffer->appendText(" FILTER ");
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR(" FILTER "));
       filterNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
     auto limitNode = getMember(3);
     if (limitNode != nullptr) {
-      buffer->appendText(" LIMIT ");
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR(" LIMIT "));
       limitNode->getMember(0)->stringify(buffer, verbose, failIfLong);
       buffer->appendChar(',');
       limitNode->getMember(1)->stringify(buffer, verbose, failIfLong);
     }
     auto returnNode = getMember(4);
     if (returnNode != nullptr) {
-      buffer->appendText(" RETURN ");
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR(" RETURN "));
       returnNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
     
@@ -1835,7 +1843,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
  
   if (type == NODE_TYPE_ITERATOR) {
     // not used by V8
-    buffer->appendText("_ITERATOR(");
+    buffer->appendText(TRI_CHAR_LENGTH_PAIR("_ITERATOR("));
     getMember(1)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
     getMember(0)->stringify(buffer, verbose, failIfLong);
@@ -1889,7 +1897,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     // not used by V8
     TRI_ASSERT(numMembers() == 2);
     getMember(0)->stringify(buffer, verbose, failIfLong);
-    buffer->appendText("..", 2);
+    buffer->appendText(TRI_CHAR_LENGTH_PAIR(".."));
     getMember(1)->stringify(buffer, verbose, failIfLong);
     return;
   }
@@ -1922,10 +1930,10 @@ void AstNode::appendValue (triagens::basics::StringBuffer* buffer) const {
   switch (value.type) {
     case VALUE_TYPE_BOOL: {
       if (value.value._bool) {
-        buffer->appendText("true", 4);
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("true"));
       }
       else {
-        buffer->appendText("false", 5);
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("false"));
       }
       break;
     }
@@ -1942,14 +1950,14 @@ void AstNode::appendValue (triagens::basics::StringBuffer* buffer) const {
 
     case VALUE_TYPE_STRING: {
       buffer->appendChar('"');
-      buffer->appendJsonEncoded(value.value._string);
+      buffer->appendJsonEncoded(value.value._string, value.length);
       buffer->appendChar('"');
       break;
     }
 
     case VALUE_TYPE_NULL: 
     default: {
-      buffer->appendText("null", 4);
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR("null"));
       break;
     }
   }

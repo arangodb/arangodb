@@ -7,7 +7,7 @@ class ArangoMultipartBody
   @parts = [ ]
 
 ################################################################################
-## initialise a multipart message body
+## initialize a multipart message body
 ################################################################################
 
   def initialize (boundary = nil)

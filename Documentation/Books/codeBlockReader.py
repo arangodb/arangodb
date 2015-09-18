@@ -2,12 +2,11 @@ import os
 import sys
 import re
 import inspect
-import cgi
 
-validExtensions = (".cpp", ".h", ".js")
+validExtensions = (".cpp", ".h", ".js", ".mdpp")
 # specify the paths in which docublocks are searched. note that js/apps/* must not be included because it contains js/apps/system/
 # and that path also contains copies of some files present in js/ anyway.
-searchPaths = ["arangod/", "lib/", "js/actions", "js/client", "js/apps/system/_system/cerberus", "js/apps/system/_api/gharial", "js/common", "js/server"]
+searchPaths = ["arangod/", "lib/", "js/actions", "js/client", "js/apps/system/_system/cerberus", "js/apps/system/_api/gharial", "js/common", "js/server", "Documentation/Books/Users/"]
 fullSuccess = True
 
 def file_content(filepath):
@@ -20,16 +19,22 @@ def file_content(filepath):
 
   comment_indexes = []
   comments = []
+  _start = None
 
   for line in enumerate(filelines):
     if "@startDocuBlock" in line[1]:
+      # in the mdpp's we have non-terminated startDocuBlocks, else its an error:
+      if _start != None and not 'mdpp' in filepath:
+        print "next startDocuBlock found without endDocuBlock inbetween in file %s [%s]" %(filepath, line)
+        raise
       _start = line[0]
     if "@endDocuBlock" in line[1]:
       try:
         _end = line[0] + 1
         comment_indexes.append([_start, _end])
+        _start = None
       except NameError:
-        print "endDocuBlock without previous startDocublock seen while analyzing %s [%s]" %(filepath, line)
+        print "endDocuBlock without previous startDocublock seen while analyzing file %s [%s]" %(filepath, line)
         raise
 
   for index in comment_indexes:
@@ -62,12 +67,12 @@ def example_content(filepath, fh, tag):
 
   for line in infile:
     if first:
-      arangosh = line.startswith("arangosh>")
-      curl = line.startswith("shell> curl")
+      arangosh = line.startswith("arangosh&gt;")
+      curl = line.startswith("shell&gt; curl")
       first = False
 
     if arangosh:
-      if line.startswith("arangosh>") or line.startswith("........>"):
+      if line.startswith("arangosh&gt;") or line.startswith("........&gt;"):
         if lastline != None:
           # short = short + lastline
           # shortLines = shortLines + 1
@@ -91,15 +96,14 @@ def example_content(filepath, fh, tag):
             lastline = None
 
     if curl:
-      if line.startswith("shell> curl"):
+      if line.startswith("shell&gt; curl"):
         curlState = CURL_STATE_CMD
-      elif curlState == CURL_STATE_CMD and line.startswith("HTTP/1.1 "):
+      elif curlState == CURL_STATE_CMD and line.startswith("HTTP/"):
         curlState = CURL_STATE_HEADER
       elif curlState == CURL_STATE_HEADER and line.startswith("{"):
         curlState = CURL_STATE_BODY
 
       if curlState == CURL_STATE_CMD or curlState == CURL_STATE_HEADER:
-        line = cgi.escape(line)
         short = short + line
         shortLines = shortLines + 1
       else:
@@ -170,13 +174,14 @@ def fetch_comments(dirpath):
 
   for root, directories, files in os.walk(dirpath):
     for filename in files:
-      if filename.endswith(validExtensions):
+      if filename.endswith(validExtensions) and (filename.find("#") < 0):
+
         filepath = os.path.join(root, filename)
         file_comments = file_content(filepath)
         for comment in file_comments:
-          fh.write("\n<!-- filename: %s -->\n" % filename)
+          fh.write("\n<!-- filename: %s -->\n" % filepath)
           for _com in comment:
-            _text = re.sub(r"//(/)+\s*\n", "<br />", _com)
+            _text = re.sub(r"//(/)+\s*\n", "<br />\n", _com) # place in temporary brs...
             _text = re.sub(r"///+(\s+\s+)([-\*\d])", r"  \2", _text)
             _text = re.sub(r"///\s", "", _text)
             _text = _text.strip("\n")
@@ -188,7 +193,11 @@ def fetch_comments(dirpath):
                 elif ("@EXAMPLE_ARANGOSH_OUTPUT" in _text or \
                   "@EXAMPLE_ARANGOSH_RUN" in _text):
                   shouldIgnoreLine = True
-                  _filename = re.search("{(.*)}", _text).group(1)
+                  try:
+                    _filename = re.search("{(.*)}", _text).group(1)
+                  except Exception as x:
+                    print "failed to match file name in  %s while parsing %s " % (_text, filepath)
+                    raise x
                   dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir, "Examples", _filename + ".generated"))
                   if os.path.isfile(dirpath):
                     example_content(dirpath, fh, _filename)

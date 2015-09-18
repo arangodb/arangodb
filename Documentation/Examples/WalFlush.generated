@@ -1,1 +1,1 @@
-arangosh> require("internal").wal.flush();
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).wal.flush();

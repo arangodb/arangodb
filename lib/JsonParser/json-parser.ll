@@ -287,7 +287,7 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
       nameLen = yyleng - 2;
 
       // do proper unescaping
-      name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, nameLen, &outLength);
+      name = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, nameLen, &outLength);
       nameLen = outLength;
     }
     else if (c == STRING_CONSTANT_ASCII) {
@@ -426,7 +426,7 @@ static bool ParseValue (yyscan_t scanner, TRI_json_t* result, int c) {
       else {
         // string is not empty, process it
         size_t outLength;
-        char* ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+        char* ptr = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
         if (ptr == nullptr) {
           yyextra._message = "out-of-memory";
           return false;
@@ -514,7 +514,7 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
     return nullptr;
   }
   
-  // init as a JSON null object so the memory in object is initialised
+  // init as a JSON null object so the memory in object is initialized
   TRI_InitNullJson(object);
 
   yylex_init(&scanner);
@@ -592,7 +592,7 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** erro
     return nullptr;
   }
 
-  // init as a JSON null object so the memory in value is initialised
+  // init as a JSON null object so the memory in value is initialized
   TRI_InitNullJson(value);
 
   yylex_init(&scanner);

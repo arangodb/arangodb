@@ -290,18 +290,19 @@ namespace triagens {
 
         void invalidate ();
 
-        void setVariable (Variable const* variable, TRI_json_t const* value) {
-          _variables.emplace(variable, value);
-        }
-        void clearVariable (Variable const* variable) {
-          _variables.erase(variable);
-        }
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
       private:
+        
+        void setVariable (Variable const* variable, TRI_json_t const* value) {
+          _variables.emplace(variable, value);
+        }
+
+        void clearVariable (Variable const* variable) {
+          _variables.erase(variable);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find a value in an array

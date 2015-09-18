@@ -42,40 +42,40 @@ var actions = require("org/arangodb/actions");
 ///
 /// @RESTHEADER{POST /_api/transaction, Execute transaction}
 ///
-/// @RESTBODYPARAM{body,string,required}
-/// Contains the *collections* and *action*.
+/// @RESTBODYPARAM{collections,string,required,string}
+/// contains the array of collections to be used in the
+/// transaction (mandatory). *collections* must be a JSON object that can
+/// have the optional sub-attributes *read* and *write*. *read*
+/// and *write* must each be either arrays of collections names or strings
+/// with a single collection name.
+///
+/// @RESTBODYPARAM{action,string,required,string}
+/// the actual transaction operations to be executed, in the
+/// form of stringified JavaScript code. The code will be executed on server
+/// side, with late binding. It is thus critical that the code specified in
+/// *action* properly sets up all the variables it needs.
+/// If the code specified in *action* ends with a return statement, the
+/// value returned will also be returned by the REST API in the *result*
+/// attribute if the transaction committed successfully.
+///
+/// @RESTBODYPARAM{waitForSync,boolean,optional,boolean}
+/// an optional boolean flag that, if set, will force the
+/// transaction to write all data to disk before returning.
+///
+/// @RESTBODYPARAM{lockTimeout,integer,optional,int64}
+/// an optional numeric value that can be used to set a
+/// timeout for waiting on collection locks. If not specified, a default
+/// value will be used. Setting *lockTimeout* to *0* will make ArangoDB
+/// not time out waiting for a lock.
+///
+/// @RESTBODYPARAM{params,string,optional,string}
+/// optional arguments passed to *action*.
 ///
 /// @RESTDESCRIPTION
 ///
+/// Contains the *collections* and *action*.
+///
 /// The transaction description must be passed in the body of the POST request.
-///
-/// The following attributes must be specified inside the JSON object:
-///
-/// - *collections*: contains the array of collections to be used in the
-///   transaction (mandatory). *collections* must be a JSON object that can
-///   have the optional sub-attributes *read* and *write*. *read*
-///   and *write* must each be either arrays of collections names or strings
-///   with a single collection name.
-///
-/// - *action*: the actual transaction operations to be executed, in the
-///   form of stringified JavaScript code. The code will be executed on server
-///   side, with late binding. It is thus critical that the code specified in
-///   *action* properly sets up all the variables it needs.
-///   If the code specified in *action* ends with a return statement, the
-///   value returned will also be returned by the REST API in the *result*
-///   attribute if the transaction committed successfully.
-///
-/// The following optional attributes may also be specified in the request:
-///
-/// - *waitForSync*: an optional boolean flag that, if set, will force the
-///   transaction to write all data to disk before returning.
-///
-/// - *lockTimeout*: an optional numeric value that can be used to set a
-///   timeout for waiting on collection locks. If not specified, a default
-///   value will be used. Setting *lockTimeout* to *0* will make ArangoDB
-///   not time out waiting for a lock.
-///
-/// - *params*: optional arguments passed to *action*.
 ///
 /// If the transaction is fully executed and committed on the server,
 /// *HTTP 200* will be returned. Additionally, the return value of the
@@ -131,7 +131,7 @@ var actions = require("org/arangodb/actions");
 ///
 /// @EXAMPLES
 ///
-/// Executing a transaction on a single collection:
+/// Executing a transaction on a single collection
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTransactionSingle}
 ///     var cn = "products";
@@ -152,7 +152,7 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Executing a transaction using multiple collections:
+/// Executing a transaction using multiple collections
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTransactionMulti}
 ///     var cn1 = "materials";
@@ -186,7 +186,7 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn2);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Aborting a transaction due to an internal error:
+/// Aborting a transaction due to an internal error
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTransactionAbortInternal}
 ///     var cn = "products";
@@ -213,7 +213,7 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Aborting a transaction by explicitly throwing an exception:
+/// Aborting a transaction by explicitly throwing an exception
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTransactionAbort}
 ///     var cn = "products";
@@ -235,7 +235,7 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Referring to a non-existing collection:
+/// Referring to a non-existing collection
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTransactionNonExisting}
 ///     var cn = "products";
@@ -270,7 +270,7 @@ function post_api_transaction(req, res) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       initialiser
+// --SECTION--                                                       initializer
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

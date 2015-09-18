@@ -77,6 +77,15 @@
 
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constants for TRI_MMFileAdvise, not on Windows
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_MADVISE_SEQUENTIAL 0
+#define TRI_MADVISE_RANDOM     0
+#define TRI_MADVISE_WILLNEED   0
+#define TRI_MADVISE_DONTNEED   0
+
 #endif
 
 // -----------------------------------------------------------------------------

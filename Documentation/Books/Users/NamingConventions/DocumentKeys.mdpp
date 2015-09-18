@@ -8,9 +8,9 @@ restrictions:
 * The key must be at least 1 byte and at most 254 bytes long. Empty keys are 
   disallowed when specified (though it may be valid to completely omit the
   *_key* attribute from a document)
-* It must consist of the letters a-z (lower or upper case), the digits 0-9,
-  the underscore (`_`), dash (`-`), colon (`:`), dot (.) or at-mark (`@`) characters 
-  only
+* It must consist of the letters a-z (lower or upper case), the digits 0-9
+  or any of the following punctuation characters:
+  `_` `-` `:` `.` `@` `(` `)` `+` `,` `=` `;` `$` `!` `*` `'` `%` 
 * Any other characters, especially multi-byte sequences, whitespace or punctuation 
   characters cannot be used inside key values
 * The key must be unique within the collection it is used

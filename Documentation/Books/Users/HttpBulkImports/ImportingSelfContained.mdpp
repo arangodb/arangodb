@@ -47,9 +47,9 @@ curl --data-binary @- -X POST --dump - "http://localhost:8529/_api/import?type=d
 { "type" : "bird", "name" : "robin" }
 
 HTTP/1.1 201 Created
-server: triagens GmbH High-Performance HTTP Server
-connection: Keep-Alive
-content-type: application/json; charset=utf-8
+Server: ArangoDB
+Connection: Keep-Alive
+Content-type: application/json; charset=utf-8
 
 {"error":false,"created":2,"empty":0,"errors":0}
 ```

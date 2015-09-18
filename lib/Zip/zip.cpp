@@ -116,7 +116,7 @@ typedef struct linkedlist_datablock_internal_s
   struct linkedlist_datablock_internal_s* next_datablock;
   uLong  avail_in_this_block;
   uLong  filled_in_this_block;
-  uLong  unused; /* for future use and alignement */
+  uLong  unused; /* for future use and alignment */
   unsigned char data[SIZEDATA_INDATABLOCK];
 } linkedlist_datablock_internal;
 
@@ -134,7 +134,7 @@ typedef struct
     bz_stream bstream;          /* bzLib stream structure for bziped */
 #endif
 
-    int  stream_initialised;    /* 1 is stream is initialised */
+    int  stream_initialised;    /* 1 is stream is initialized */
     uInt pos_in_buffered_data;  /* last written byte in buffered_data */
 
     ZPOS64_T pos_local_header;     /* offset of the local header of the file

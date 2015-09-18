@@ -4,14 +4,14 @@
 
 :: Set the version of Visual Studio. This will just add a suffix to the string
 :: of your directories to avoid mixing them up.
-SET VS_VERSION=vs2013
+SET VS_VERSION=vs%5
 
 :: Set this to the directory that contains vcvarsall.bat file of the
 :: VC Visual Studio version you want to use for building ICU.
-SET VISUAL_STUDIO_VC="C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC"
+SET VISUAL_STUDIO_VC=%6
 
 :: Set this to the version of ICU you are building
-SET V8_VERSION=4.3.61
+SET V8_VERSION=%7
 
 :: x86_amd64 or x86
 set ARCHITECTURE=%1
@@ -29,7 +29,7 @@ set SUFFIX=%4
 :: ==== <CLEAN>
 :: ========================================================================================================
 
-cd V8-%V8_VERSION%
+cd %V8_VERSION%
 cd build
 
 rmdir /S /Q Debug

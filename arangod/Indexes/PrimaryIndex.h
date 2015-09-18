@@ -31,6 +31,7 @@
 #define ARANGODB_INDEXES_PRIMARY_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Basics/AssocUnique.h"
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -60,13 +61,10 @@ namespace triagens {
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
         
-      public:
+      private:
 
-        struct PrimaryIndexType {
-          uint64_t  _nrAlloc;     // the size of the table
-          uint64_t  _nrUsed;      // the number of used entries
-          void**    _table;       // the table itself
-        };
+        typedef triagens::basics::AssocUnique<char const,
+                TRI_doc_mptr_t> TRI_PrimaryIndex_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -90,26 +88,59 @@ namespace triagens {
           return true;
         }
         
+        size_t size () const;
+
         size_t memory () const override final;
 
-        triagens::basics::Json toJson (TRI_memory_zone_t*) const override final;
+        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
+        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
-        int insert (struct TRI_doc_mptr_t const*, bool) override final;
-         
-        int remove (struct TRI_doc_mptr_t const*, bool) override final;
+        int insert (TRI_doc_mptr_t const*, bool) override final;
 
-        void* lookupKey (char const*) const;
+        int remove (TRI_doc_mptr_t const*, bool) override final;
+
+        TRI_doc_mptr_t* lookupKey (char const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
 /// returns the index position into which a key would belong in the second
-/// parameter. sets position to UINT64_MAX if the position cannot be determined
+/// parameter. also returns the hash value for the object
 ////////////////////////////////////////////////////////////////////////////////
 
-        void* lookupKey (char const*, uint64_t&) const;
+        TRI_doc_mptr_t* lookupKey (char const*, triagens::basics::BucketPosition&, uint64_t&) const;
 
-        int insertKey (struct TRI_doc_mptr_t const*, void const**);
-        void insertKey (struct TRI_doc_mptr_t const*);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the index in
+///        a random order. 
+///        Returns nullptr if all documents have been returned.
+///        Convention: step === 0 indicates a new start.
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_doc_mptr_t* lookupRandom (triagens::basics::BucketPosition& initialPosition,
+                                      triagens::basics::BucketPosition& position,
+                                      uint64_t& step,
+                                      uint64_t& total);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the index in
+///        a sequential order. 
+///        Returns nullptr if all documents have been returned.
+///        Convention: position === 0 indicates a new start.
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_doc_mptr_t* lookupSequential (triagens::basics::BucketPosition& position,
+                                          uint64_t& total);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a method to iterate over all elements in the index in
+///        reversed sequential order. 
+///        Returns nullptr if all documents have been returned.
+///        Convention: position === UINT64_MAX indicates a new start.
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_doc_mptr_t* lookupSequentialReverse (triagens::basics::BucketPosition& position);
+
+        int insertKey (TRI_doc_mptr_t*, void const**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a key/element to the index
@@ -117,31 +148,18 @@ namespace triagens {
 /// from a previous lookupKey call
 ////////////////////////////////////////////////////////////////////////////////
 
-        void insertKey (struct TRI_doc_mptr_t const*, uint64_t);
+        int insertKey (struct TRI_doc_mptr_t*, triagens::basics::BucketPosition const&);
 
-        void* removeKey (char const*);
+        TRI_doc_mptr_t* removeKey (char const*);
 
         int resize (size_t);
-        int resize ();
 
         static uint64_t calculateHash (char const*); 
         
         static uint64_t calculateHash (char const*, size_t);
+
+        void invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)>);
         
-        PrimaryIndexType* internals () {
-          return &_primaryIndex;
-        } 
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-        bool shouldResize () const;
-
-        bool resize (uint64_t, bool);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -152,13 +170,8 @@ namespace triagens {
 /// @brief the actual index
 ////////////////////////////////////////////////////////////////////////////////
 
-        PrimaryIndexType _primaryIndex;
+        TRI_PrimaryIndex_t* _primaryIndex;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief associative array of pointers
-////////////////////////////////////////////////////////////////////////////////
-
-        static uint64_t const InitialSize;
     };
 
   }

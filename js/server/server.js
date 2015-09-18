@@ -1,7 +1,7 @@
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server initialisation
+/// @brief server initialization
 ///
 /// @file
 ///
@@ -30,13 +30,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             server initialisation
+// --SECTION--                                             server initialization
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server start
 ///
-/// Note that all the initialisation has been done. E. g. "upgrade-database.js"
+/// Note that all the initialization has been done. E. g. "upgrade-database.js"
 /// has been executed.
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -31,7 +31,6 @@
 #define ARANGODB_BASICS_C_PROCESS__UTILS_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/threads.h"
 
 // -----------------------------------------------------------------------------
@@ -51,6 +50,12 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief physical memory
+////////////////////////////////////////////////////////////////////////////////
+
+extern uint64_t TRI_PhysicalMemory;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process
@@ -165,18 +170,6 @@ TRI_process_info_t TRI_ProcessInfoSelf (void);
 TRI_process_info_t TRI_ProcessInfo (TRI_pid_t pid);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the size of the current process
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_ProcessSizeSelf (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the size of the process given its pid
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_ProcessSize (TRI_pid_t pid);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the process name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -185,11 +178,12 @@ void TRI_SetProcessTitle (char const* title);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
-void TRI_CreateExternalProcess (const char* executable,
-                                const char** arguments,
+
+void TRI_CreateExternalProcess (char const* executable,
+                                char const** arguments,
                                 size_t n,
                                 bool usePipes,
-                                TRI_external_id_t * pid);
+                                TRI_external_id_t* pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
@@ -209,14 +203,14 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid);
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            modules initialisation
+// --SECTION--                                            modules initialization
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the process components
+/// @brief initializes the process components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseProcess (int argc, char* argv[]);
+void TRI_InitializeProcess (int argc, char* argv[]);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shut downs the process components

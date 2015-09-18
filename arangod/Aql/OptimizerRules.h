@@ -244,6 +244,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     int removeDataModificationOutVariablesRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief patch UPDATE statement on single collection that iterates over the
+/// entire collection to operate in batches
+////////////////////////////////////////////////////////////////////////////////
+
+    int patchUpdateStatementsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
     
   }  // namespace aql
 }  // namespace triagens

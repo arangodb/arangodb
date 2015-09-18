@@ -28,8 +28,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Basics/locks.h"
 #include "Basics/logging.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/WriteLocker.h"
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
@@ -51,13 +53,13 @@
 /// the string is a comma-separated list of point names
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* FailurePoints;
+static char* FailurePoints = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a read-write lock for thread-safe access to the failure-points list
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_read_write_lock_t FailurePointsLock;
+triagens::basics::ReadWriteLock FailurePointsLock;
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 
@@ -124,7 +126,7 @@ bool TRI_ShouldFailDebugging (char const* value) {
     return false;
   }
 
-  TRI_ReadLockReadWriteLock(&FailurePointsLock);
+  READ_LOCKER(FailurePointsLock);
 
   if (FailurePoints != nullptr) {
     char* checkValue = MakeValue(value);
@@ -135,8 +137,6 @@ bool TRI_ShouldFailDebugging (char const* value) {
     }
   }
 
-  TRI_ReadUnlockReadWriteLock(&FailurePointsLock);
-
   return (found != nullptr);
 }
 
@@ -146,15 +146,13 @@ bool TRI_ShouldFailDebugging (char const* value) {
 
 void TRI_AddFailurePointDebugging (char const* value) {
   char* found;
-  char* checkValue;
-
-  checkValue = MakeValue(value);
+  char* checkValue = MakeValue(value);
 
   if (checkValue == nullptr) {
     return;
   }
 
-  TRI_WriteLockReadWriteLock(&FailurePointsLock);
+  WRITE_LOCKER(FailurePointsLock);
 
   if (FailurePoints == nullptr) {
     found = nullptr;
@@ -166,16 +164,14 @@ void TRI_AddFailurePointDebugging (char const* value) {
   if (found == nullptr) {
     // not yet found. so add it
     char* copy;
-    size_t n;
 
     LOG_WARNING("activating intentional failure point '%s'. the server will misbehave!", value);
-    n = strlen(checkValue);
+    size_t n = strlen(checkValue);
 
     if (FailurePoints == nullptr) {
       copy = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, n + 1, false));
 
       if (copy == nullptr) {
-        TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
         TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
         return;
       }
@@ -187,7 +183,6 @@ void TRI_AddFailurePointDebugging (char const* value) {
       copy = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, n + strlen(FailurePoints), false));
 
       if (copy == nullptr) {
-        TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
         TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
         return;
       }
@@ -195,12 +190,13 @@ void TRI_AddFailurePointDebugging (char const* value) {
       memcpy(copy, FailurePoints, strlen(FailurePoints));
       memcpy(copy + strlen(FailurePoints) - 1, checkValue, n);
       copy[strlen(FailurePoints) + n - 1] = '\0';
+      
+      TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
     }
 
     FailurePoints = copy;
   }
 
-  TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
   TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
 }
 
@@ -209,16 +205,13 @@ void TRI_AddFailurePointDebugging (char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RemoveFailurePointDebugging (char const* value) {
-  char* checkValue;
-
-  TRI_WriteLockReadWriteLock(&FailurePointsLock);
+  WRITE_LOCKER(FailurePointsLock);
 
   if (FailurePoints == nullptr) {
-    TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
     return;
   }
 
-  checkValue = MakeValue(value);
+  char* checkValue = MakeValue(value);
 
   if (checkValue != nullptr) {
     char* found;
@@ -228,7 +221,6 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
     found = strstr(FailurePoints, checkValue);
 
     if (found == nullptr) {
-      TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
       TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
       return;
     }
@@ -237,7 +229,6 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
       TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
       FailurePoints = nullptr;
 
-      TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
       TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
       return;
     }
@@ -245,7 +236,6 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
     copy = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, strlen(FailurePoints) - strlen(checkValue) + 2, false));
 
     if (copy == nullptr) {
-      TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
       TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
       return;
     }
@@ -261,7 +251,6 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
     TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
     FailurePoints = copy;
 
-    TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
     TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
   }
 }
@@ -271,26 +260,22 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearFailurePointsDebugging () {
-  TRI_WriteLockReadWriteLock(&FailurePointsLock);
+  WRITE_LOCKER(FailurePointsLock);
 
   if (FailurePoints != nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
   }
 
   FailurePoints = nullptr;
-
-  TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
 }
 
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the debugging
+/// @brief initialize the debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseDebugging () {
-  FailurePoints = nullptr;
-  TRI_InitReadWriteLock(&FailurePointsLock);
+void TRI_InitializeDebugging () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,8 +288,6 @@ void TRI_ShutdownDebugging () {
   }
 
   FailurePoints = nullptr;
-
-  TRI_DestroyReadWriteLock(&FailurePointsLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,33 +295,34 @@ void TRI_ShutdownDebugging () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_GetBacktrace (std::string& btstr) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
 #ifdef _WIN32
-  void         * stack[100];
+  void* stack[100];
   unsigned short frames;
-  SYMBOL_INFO  * symbol;
-  HANDLE         process;
+  SYMBOL_INFO* symbol;
+  HANDLE process;
 
   process = GetCurrentProcess();
 
   SymInitialize(process, nullptr, true);
 
-  frames               = CaptureStackBackTrace(0, 100, stack, nullptr);
-  symbol               = (SYMBOL_INFO*) calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+  frames = CaptureStackBackTrace(0, 100, stack, nullptr);
+  symbol = (SYMBOL_INFO*) calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
 
   if (symbol == nullptr) {
     // cannot allocate memory
     return;
   }
 
-  symbol->MaxNameLen   = 255;
+  symbol->MaxNameLen = 255;
   symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
 
   for (unsigned int i = 0; i < frames; i++) {
     char address[64];
     SymFromAddr(process, (DWORD64) stack[i], 0, symbol);
 
-    snprintf(address, sizeof(address), "0x%0X", symbol->Address);
+    snprintf(address, sizeof(address), "0x%0X", (unsigned int) symbol->Address);
     btstr += std::to_string(frames - i - 1) + std::string(": ") + symbol->Name + std::string(" [") + address + std::string("]\n");
   }
 
@@ -346,12 +330,11 @@ void TRI_GetBacktrace (std::string& btstr) {
 
 #else
   void* stack_frames[50];
-  size_t size, i;
-  char** strings;
 
-  size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
-  strings = backtrace_symbols(stack_frames, size);
-  for (i = 0; i < size; i++) {
+  size_t size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
+  char** strings = backtrace_symbols(stack_frames, size);
+
+  for (size_t i = 0; i < size; i++) {
     std::stringstream ss;
     if (strings != nullptr) {
       char *mangled_name = nullptr, *offset_begin = nullptr, *offset_end = nullptr;
@@ -413,39 +396,32 @@ void TRI_GetBacktrace (std::string& btstr) {
         *offset_begin++ = '\0';
         *offset_end++ = '\0';
         int status = 0;
-        char * demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
+        char* demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
 
         if (demangled_name != nullptr) {
           if (status == 0) {
             ss << stack_frames[i];
-            btstr +=  strings[i] +
-              std::string("() [") +
-              ss.str() +
-              std::string("] ") +
-              demangled_name +
-              std::string("\n");
+            btstr += strings[i] + std::string("() [") + ss.str() + std::string("] ") + demangled_name + std::string("\n");
           }
           else {
-            btstr += strings[i] +
-              std::string("\n");
+            btstr += strings[i] + std::string("\n");
           }
           TRI_SystemFree(demangled_name);
         }
       }
       else {
-        btstr += strings[i] +
-          std::string("\n");
+        btstr += strings[i] + std::string("\n");
       }
     }
     else {
       ss << stack_frames[i];
-      btstr += ss.str() +
-        std::string("\n");
+      btstr += ss.str() + std::string("\n");
     }
   }
   if (strings != nullptr) {
     TRI_SystemFree(strings);  
   }
+#endif
 #endif
 #endif
 }
@@ -455,10 +431,12 @@ void TRI_GetBacktrace (std::string& btstr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_PrintBacktrace () {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
   std::string out;
   TRI_GetBacktrace(out);
   fprintf(stderr, "%s", out.c_str());
+#endif
 #endif
 }
 

@@ -444,8 +444,7 @@ static v8::Handle<v8::Object> RequestCppToV8 (v8::Isolate* isolate,
   map<string, string>::const_iterator iter = headers.begin();
 
   for (; iter != headers.end(); ++iter) {
-    headerFields->ForceSet(TRI_V8_STD_STRING(iter->first),
-                           TRI_V8_STD_STRING(iter->second));
+    headerFields->ForceSet(TRI_V8_STD_STRING(iter->first), TRI_V8_STD_STRING(iter->second));
   }
 
   TRI_GET_GLOBAL_STRING(HeadersKey);

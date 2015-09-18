@@ -49,7 +49,7 @@ static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* edge = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+    auto const* edge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (edge->_toCid == edge->_fromCid) {
       char const* fromKey = reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
@@ -59,7 +59,7 @@ static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
     }
   }
   else if (marker->_type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* edge = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+    auto const* edge = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (edge->_toCid == edge->_fromCid) {
       char const* fromKey = reinterpret_cast<char const*>(edge) + edge->_offsetFromKey;
@@ -83,15 +83,15 @@ static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
 static bool FindEdges (TRI_edge_direction_e direction,
                        triagens::arango::EdgeIndex* edgeIndex,
                        std::vector<TRI_doc_mptr_copy_t>& result,
-                       TRI_edge_header_t* entry,
+                       TRI_edge_header_t const* entry,
                        int matchType) {
-  std::vector<void*>* found = nullptr;
+  std::unique_ptr<std::vector<void*>> found;
 
   if (direction == TRI_EDGE_OUT) {
-    found = edgeIndex->from()->lookupByKey(static_cast<void*>(entry));
+    found.reset(edgeIndex->from()->lookupByKey(static_cast<void const*>(entry)));
   }
   else if (direction == TRI_EDGE_IN) {
-    found = edgeIndex->to()->lookupByKey(static_cast<void*>(entry));
+    found.reset(edgeIndex->to()->lookupByKey(static_cast<void const*>(entry)));
   }
   else {
     TRI_ASSERT(false);   // TRI_EDGE_ANY not supported here
@@ -130,11 +130,8 @@ static bool FindEdges (TRI_edge_direction_e direction,
       }
 
       result.emplace_back(*edge);
-
     }
   }
-
-  delete found;
 
   return true;
 }
@@ -153,11 +150,9 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
                                         TRI_voc_cid_t cid,
                                         TRI_voc_key_t const key) {
   // search criteria
-  TRI_edge_header_t entry;
-  entry._cid = cid;
-  entry._key = key;
+  TRI_edge_header_t entry(cid, key);
 
-  // initialise the result vector
+  // initialize the result vector
   std::vector<TRI_doc_mptr_copy_t> result;
 
   auto edgeIndex = document->edgeIndex();

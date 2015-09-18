@@ -1,14 +1,14 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("social");
-arangosh> var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
-arangosh> query.inEdges().toArray();
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> query = graph._vertices([{name: <span class="hljs-string">"Alice"</span>}, {name: <span class="hljs-string">"Bob"</span>}]);
+arangosh&gt; query.inEdges().toArray();
 [ 
   { 
-    "_id" : "relation/aliceAndBob", 
-    "_key" : "aliceAndBob", 
-    "_rev" : "769445107", 
-    "_from" : "female/alice", 
-    "_to" : "male/bob", 
-    "type" : "married" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1431413292"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
   } 
 ]

@@ -380,10 +380,10 @@ static uint32_t NodeNumAllocated (const node_t* const node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a sub-node list with length information
+/// @brief initialize a sub-node list with length information
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InitialiseSubNodeList (void* data,
+static void InitializeSubNodeList (void* data,
                                    const uint32_t numAllocated,
                                    const uint32_t numFollowers) {
   uint8_t* head = (uint8_t*) data;
@@ -500,8 +500,8 @@ static bool ExtendSubNodeList (index_t* const idx,
       return false;
     }
 
-    // initialise the chunk of memory we just got
-    InitialiseSubNodeList(node->_followers, nextAllocated, numFollowers);
+    // initialize the chunk of memory we just got
+    InitializeSubNodeList(node->_followers, nextAllocated, numFollowers);
 #if TRI_FULLTEXT_DEBUG
     idx->_memoryFollowers += nextSize;
 #endif
@@ -520,8 +520,8 @@ static bool ExtendSubNodeList (index_t* const idx,
       return false;
     }
 
-    // initialise the chunk of memory we just got
-    InitialiseSubNodeList(followers, nextAllocated, numFollowers);
+    // initialize the chunk of memory we just got
+    InitializeSubNodeList(followers, nextAllocated, numFollowers);
 #if TRI_FULLTEXT_DEBUG
     idx->_memoryFollowers += nextSize;
     idx->_memoryFollowers -= oldSize;
@@ -1349,66 +1349,6 @@ void TRI_DeleteDocumentFulltextIndex (TRI_fts_index_t* const ftx,
   TRI_WriteLockReadWriteLock(&idx->_lock);
   TRI_DeleteDocumentHandleFulltextIndex(idx->_handles, document);
   TRI_WriteUnlockReadWriteLock(&idx->_lock);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a document word/pair to the index (single word)
-/// if multiple words are to be added, the wordlist batch function should be
-/// used for better performance
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_InsertWordFulltextIndex (TRI_fts_index_t* const ftx,
-                                  const TRI_fulltext_doc_t document,
-                                  const char* const key,
-                                  const size_t keyLength) {
-  index_t* idx;
-  TRI_fulltext_handle_t handle;
-  node_t* node;
-  char* p;
-  size_t i;
-  size_t end;
-  bool result;
-
-  idx = (index_t*) ftx;
-
-  TRI_WriteLockReadWriteLock(&idx->_lock);
-  // get a new handle for the document
-  handle = TRI_InsertHandleFulltextIndex(idx->_handles, document);
-  if (handle == 0) {
-    TRI_WriteUnlockReadWriteLock(&idx->_lock);
-    return false;
-  }
-
-  node = idx->_root;
-#if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != nullptr);
-#endif
-
-  p = (char*) key;
-
-  end = keyLength;
-  if (keyLength > MAX_WORD_BYTES) {
-    end = MAX_WORD_BYTES;
-  }
-
-  for (i = 0; i < end; ++i) {
-    node_char_t c = (node_char_t) *(p++);
-
-    node = EnsureSubNode(idx, node, c);
-    if (node == nullptr) {
-      TRI_WriteUnlockReadWriteLock(&idx->_lock);
-      return false;
-    }
-  }
-
-#if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != nullptr);
-#endif
-
-  result = InsertHandle(idx, node, handle);
-  TRI_WriteUnlockReadWriteLock(&idx->_lock);
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

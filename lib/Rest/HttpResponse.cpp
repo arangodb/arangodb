@@ -29,10 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpResponse.h"
-
 #include "Basics/logging.h"
-#include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -63,13 +62,13 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case OK:                              return "200 OK";
     case CREATED:                         return "201 Created";
     case ACCEPTED:                        return "202 Accepted";
-    case PARTIAL:                         return "203 Partial Information";
+    case PARTIAL:                         return "203 Non-Authoritative Information";
     case NO_CONTENT:                      return "204 No Content";
     case RESET_CONTENT:                   return "205 Reset Content";
     case PARTIAL_CONTENT:                 return "206 Partial Content";
 
     //  Redirection 3xx
-    case MOVED_PERMANENTLY:               return "301 Moved";
+    case MOVED_PERMANENTLY:               return "301 Moved Permanently";
     case FOUND:                           return "302 Found";
     case SEE_OTHER:                       return "303 See Other";
     case NOT_MODIFIED:                    return "304 Not Modified";
@@ -82,14 +81,14 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case PAYMENT_REQUIRED:                return "402 Payment Required";
     case FORBIDDEN:                       return "403 Forbidden";
     case NOT_FOUND:                       return "404 Not Found";
-    case METHOD_NOT_ALLOWED:              return "405 Method Not Supported";
+    case METHOD_NOT_ALLOWED:              return "405 Method Not Allowed";
     case NOT_ACCEPTABLE:                  return "406 Not Acceptable";
     case REQUEST_TIMEOUT:                 return "408 Request Timeout";
     case CONFLICT:                        return "409 Conflict";
     case GONE:                            return "410 Gone";
     case LENGTH_REQUIRED:                 return "411 Length Required";
     case PRECONDITION_FAILED:             return "412 Precondition Failed";
-    case REQUEST_ENTITY_TOO_LARGE:        return "413 Request Entity Too Large";
+    case REQUEST_ENTITY_TOO_LARGE:        return "413 Payload Too Large";
     case REQUEST_URI_TOO_LONG:            return "414 Request-URI Too Long";
     case UNSUPPORTED_MEDIA_TYPE:          return "415 Unsupported Media Type";
     case REQUESTED_RANGE_NOT_SATISFIABLE: return "416 Requested Range Not Satisfiable";
@@ -101,10 +100,10 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case TOO_MANY_REQUESTS:               return "429 Too Many Requests";
     case REQUEST_HEADER_FIELDS_TOO_LARGE: return "431 Request Header Fields Too Large";
 
-    case SERVER_ERROR:                    return "500 Internal Error";
+    case SERVER_ERROR:                    return "500 Internal Server Error";
     case NOT_IMPLEMENTED:                 return "501 Not Implemented";
     case BAD_GATEWAY:                     return "502 Bad Gateway";
-    case SERVICE_UNAVAILABLE:             return "503 Service Temporarily Unavailable";
+    case SERVICE_UNAVAILABLE:             return "503 Service Unavailable";
     case HTTP_VERSION_NOT_SUPPORTED:      return "505 HTTP Version Not Supported";
     case BANDWIDTH_LIMIT_EXCEEDED:        return "509 Bandwidth Limit Exceeded";
     case NOT_EXTENDED:                    return "510 Not Extended";
@@ -212,6 +211,8 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (int code) {
     case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: 
     case TRI_ERROR_TYPE_ERROR: 
     case TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE:
+    case TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION:
+    case TRI_ERROR_REPLICATION_RUNNING:
       return BAD;
     
     case TRI_ERROR_ARANGO_READ_ONLY:
@@ -227,7 +228,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (int code) {
       return REQUEST_TIMEOUT;
 
     case TRI_ERROR_ARANGO_CONFLICT:
-    case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
+    case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
     case TRI_ERROR_CURSOR_BUSY:
       return CONFLICT;
 
@@ -265,9 +266,9 @@ HttpResponse::HttpResponse (HttpResponseCode code,
     _bodySize(0),
     _freeables() {
 
-  _headers.insert("server", 6, "ArangoDB");
-  _headers.insert("connection", 10, "Keep-Alive");
-  _headers.insert("content-type", 12, "text/plain; charset=utf-8");
+  _headers.insert(TRI_CHAR_LENGTH_PAIR("server"), "ArangoDB");
+  _headers.insert(TRI_CHAR_LENGTH_PAIR("connection"), "Keep-Alive");
+  _headers.insert(TRI_CHAR_LENGTH_PAIR("content-type"), "text/plain; charset=utf-8");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -309,7 +310,7 @@ size_t HttpResponse::contentLength () {
     return _bodySize;
   }
 
-  Dictionary<char const*>::KeyValue const* kv = _headers.lookup("content-length", 14);
+  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(TRI_CHAR_LENGTH_PAIR("content-length"));
 
   if (kv == nullptr) {
     return 0;
@@ -322,8 +323,8 @@ size_t HttpResponse::contentLength () {
 /// @brief sets the content type
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setContentType (string const& contentType) {
-  setHeader("content-type", 12, contentType);
+void HttpResponse::setContentType (std::string const& contentType) {
+  setHeader(TRI_CHAR_LENGTH_PAIR("content-type"), contentType);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -338,7 +339,7 @@ bool HttpResponse::isChunked () const {
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpResponse::header (string const& key) const {
+string HttpResponse::header (std::string const& key) const {
   string k = StringUtils::tolower(key);
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
 
@@ -352,7 +353,8 @@ string HttpResponse::header (string const& key) const {
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpResponse::header (const char* key, const size_t keyLength) const {
+string HttpResponse::header (char const* key, 
+                             size_t keyLength) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
 
   if (kv == nullptr) {
@@ -365,7 +367,8 @@ string HttpResponse::header (const char* key, const size_t keyLength) const {
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpResponse::header (string const& key, bool& found) const {
+string HttpResponse::header (std::string const& key, 
+                             bool& found) const {
   string k = StringUtils::tolower(key);
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
 
@@ -381,7 +384,9 @@ string HttpResponse::header (string const& key, bool& found) const {
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpResponse::header (const char* key, const size_t keyLength, bool& found) const {
+string HttpResponse::header (char const* key, 
+                             size_t keyLength, 
+                             bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
 
   if (kv == nullptr) {
@@ -419,7 +424,9 @@ map<string, string> HttpResponse::headers () const {
 /// @brief sets a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setHeader (const char* key, const size_t keyLength, string const& value) {
+void HttpResponse::setHeader (char const* key, 
+                              size_t keyLength, 
+                              std::string const& value) {
   if (value.empty()) {
     _headers.erase(key);
   }
@@ -439,7 +446,9 @@ void HttpResponse::setHeader (const char* key, const size_t keyLength, string co
 /// @brief sets a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setHeader (const char* key, const size_t keyLength, const char* value) {
+void HttpResponse::setHeader (char const* key, 
+                              size_t keyLength, 
+                              char const* value) {
   if (*value == '\0') {
     _headers.erase(key);
   }
@@ -453,7 +462,8 @@ void HttpResponse::setHeader (const char* key, const size_t keyLength, const cha
 /// @brief sets a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setHeader (string const& key, string const& value) {
+void HttpResponse::setHeader (std::string const& key, 
+                              std::string const& value) {
   string lk = StringUtils::tolower(key);
 
   if (value.empty()) {
@@ -477,7 +487,8 @@ void HttpResponse::setHeader (string const& key, string const& value) {
 /// @brief sets many header fields
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setHeaders (string const& headers, bool includeLine0) {
+void HttpResponse::setHeaders (std::string const& headers, 
+                               bool includeLine0) {
 
   // make a copy we can change, this buffer will be deleted in the destructor
   char* headerBuffer = new char[headers.size() + 1];
@@ -579,9 +590,13 @@ void HttpResponse::setHeaders (string const& headers, bool includeLine0) {
 /// @brief add a cookie
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::setCookie (string const& name, string const& value,
-        int lifeTimeSeconds, string const& path, string const& domain,
-        bool secure, bool httpOnly) {
+void HttpResponse::setCookie (std::string const& name, 
+                              std::string const& value,
+                              int lifeTimeSeconds, 
+                              std::string const& path, 
+                              std::string const& domain,
+                              bool secure, 
+                              bool httpOnly) {
 
   triagens::basics::StringBuffer* buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
@@ -609,28 +624,28 @@ void HttpResponse::setCookie (string const& name, string const& value,
 
       timeinfo = gmtime(&rawtime);
       strftime(buffer2, 80, "%a, %d-%b-%Y %H:%M:%S %Z", timeinfo);
-      buffer->appendText("; expires=");
+      buffer->appendText(TRI_CHAR_LENGTH_PAIR("; expires="));
       buffer->appendText(buffer2);
     }
   }
 
-  if (path != "") {
-    buffer->appendText("; path=");
+  if (! path.empty()) {
+    buffer->appendText(TRI_CHAR_LENGTH_PAIR("; path="));
     buffer->appendText(path);
   }
 
-  if (domain != "") {
-    buffer->appendText("; domain=");
+  if (! domain.empty()) {
+    buffer->appendText(TRI_CHAR_LENGTH_PAIR("; domain="));
     buffer->appendText(domain);
   }
 
 
   if (secure) {
-    buffer->appendText("; secure");
+    buffer->appendText(TRI_CHAR_LENGTH_PAIR("; secure"));
   }
 
   if (httpOnly) {
-    buffer->appendText("; HttpOnly");
+    buffer->appendText(TRI_CHAR_LENGTH_PAIR("; HttpOnly"));
   }
 
   char const* l = StringUtils::duplicate(buffer->c_str());
@@ -669,9 +684,9 @@ HttpResponse* HttpResponse::swap () {
 void HttpResponse::writeHeader (StringBuffer* output) {
   bool const capitalizeHeaders = (_apiCompatibility >= 20100);
 
-  output->appendText("HTTP/1.1 ");
+  output->appendText(TRI_CHAR_LENGTH_PAIR("HTTP/1.1 "));
   output->appendText(responseString(_code));
-  output->appendText("\r\n");
+  output->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
 
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
@@ -729,48 +744,48 @@ void HttpResponse::writeHeader (StringBuffer* output) {
     else {
       output->appendText(key, keyLength);
     }
-    output->appendText(": ", 2);
+    output->appendText(TRI_CHAR_LENGTH_PAIR(": "));
     output->appendText(begin->_value);
-    output->appendText("\r\n", 2);
+    output->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
   for (vector<char const*>::iterator iter = _cookies.begin();
           iter != _cookies.end(); ++iter) {
     if (capitalizeHeaders) {
-      output->appendText("Set-Cookie: ", 12);
+      output->appendText(TRI_CHAR_LENGTH_PAIR("Set-Cookie: "));
     }
     else {
-      output->appendText("set-cookie: ", 12);
+      output->appendText(TRI_CHAR_LENGTH_PAIR("set-cookie: "));
     }
     output->appendText(*iter);
-    output->appendText("\r\n", 2);
+    output->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
   if (seenTransferEncoding && transferEncoding == "chunked") {
     if (capitalizeHeaders) {
-      output->appendText("Transfer-Encoding: chunked\r\n\r\n", 30);
+      output->appendText(TRI_CHAR_LENGTH_PAIR("Transfer-Encoding: chunked\r\n\r\n"));
     }
     else {
-      output->appendText("transfer-encoding: chunked\r\n\r\n", 30);
+      output->appendText(TRI_CHAR_LENGTH_PAIR("transfer-encoding: chunked\r\n\r\n"));
     }
   }
   else {
     if (seenTransferEncoding) {
       if (capitalizeHeaders) {
-        output->appendText("Transfer-Encoding: ", 19);
+        output->appendText(TRI_CHAR_LENGTH_PAIR("Transfer-Encoding: "));
       }
       else {
-        output->appendText("transfer-encoding: ", 19);
+        output->appendText(TRI_CHAR_LENGTH_PAIR("transfer-encoding: "));
       }
       output->appendText(transferEncoding);
-      output->appendText("\r\n", 2);
+      output->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
     }
 
     if (capitalizeHeaders) {
-      output->appendText("Content-Length: ", 16);
+      output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
     }
     else {
-      output->appendText("content-length: ", 16);
+      output->appendText(TRI_CHAR_LENGTH_PAIR("content-length: "));
     }
 
     if (_isHeadResponse) {
@@ -787,7 +802,7 @@ void HttpResponse::writeHeader (StringBuffer* output) {
       output->appendInteger(_body.length());
     }
 
-    output->appendText("\r\n\r\n", 4);
+    output->appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
   }
   // end of header, body to follow
 }
@@ -834,7 +849,7 @@ int HttpResponse::deflate (size_t bufferSize) {
     return res;
   }
 
-  setHeader("content-encoding", strlen("content-encoding"), "deflate");
+  setHeader(TRI_CHAR_LENGTH_PAIR("content-encoding"), "deflate");
   return TRI_ERROR_NO_ERROR;
 }
 

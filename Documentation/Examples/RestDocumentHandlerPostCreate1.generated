@@ -1,15 +1,15 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products <<EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products &lt;&lt;EOF
 { "Hello": "World" }
 EOF
 
-HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
-etag: "1697500403"
-location: /_db/_system/_api/document/products/1697500403
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+etag: <span class="hljs-string">"705208876"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">705208876</span>
 
 { 
-  "error" : false, 
-  "_id" : "products/1697500403", 
-  "_rev" : "1697500403", 
-  "_key" : "1697500403" 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/705208876"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"705208876"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"705208876"</span> 
 }

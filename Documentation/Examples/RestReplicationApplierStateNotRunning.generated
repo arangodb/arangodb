@@ -1,34 +1,35 @@
 shell> curl --dump - http://localhost:8529/_api/replication/applier-state
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "state" : { 
-    "running" : false, 
-    "lastAppliedContinuousTick" : null, 
-    "lastProcessedContinuousTick" : null, 
-    "lastAvailableContinuousTick" : null, 
-    "progress" : { 
-      "time" : "2015-05-27T08:55:21Z", 
-      "message" : "fetching master state information", 
-      "failedConnects" : 1 
+  <span class="hljs-string">"state"</span> : { 
+    <span class="hljs-string">"running"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"lastAppliedContinuousTick"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"lastProcessedContinuousTick"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"lastAvailableContinuousTick"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"safeResumeTick"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"progress"</span> : { 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-09-16T17:34:38Z"</span>, 
+      <span class="hljs-string">"message"</span> : <span class="hljs-string">"applier shut down"</span>, 
+      <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">1</span> 
     }, 
-    "totalRequests" : 2, 
-    "totalFailedConnects" : 2, 
-    "totalEvents" : 0, 
-    "totalOperationsExcluded" : 0, 
-    "lastError" : { 
-      "time" : "2015-05-27T08:55:21Z", 
-      "errorMessage" : "could not connect to master at tcp://127.0.0.1:8529: Could not connect to 'tcp://127.0.0.1:8529' 'connect() failed with #111 - Connection refused'", 
-      "errorNum" : 1412 
+    <span class="hljs-string">"totalRequests"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"totalFailedConnects"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"totalOperationsExcluded"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"lastError"</span> : { 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-09-16T17:34:38Z"</span>, 
+      <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"could not connect to master at tcp://127.0.0.1:8529: Could not connect to 'tcp://127.0.0.1:8529' 'connect() failed with #111 - Connection refused'"</span>, 
+      <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1412</span> 
     }, 
-    "time" : "2015-05-27T08:55:21Z" 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-09-16T17:34:38Z"</span> 
   }, 
-  "server" : { 
-    "version" : "2.6.0-devel", 
-    "serverId" : "224029098555240" 
+  <span class="hljs-string">"server"</span> : { 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.7.0-devel"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"105734684793879"</span> 
   }, 
-  "endpoint" : "tcp://127.0.0.1:8529", 
-  "database" : "_system" 
+  <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:8529"</span>, 
+  <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
 }

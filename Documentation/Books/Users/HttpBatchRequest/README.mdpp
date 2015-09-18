@@ -13,7 +13,7 @@ request results do not depend on each other.
 
 Clients can use ArangoDB's batch API by issuing a multipart HTTP POST
 request to the URL */_api/batch* handler. The handler will accept the
-request if the Content-Type is *multipart/form-data* and a boundary
+request if the Content-type is *multipart/form-data* and a boundary
 string is specified. ArangoDB will then decompose the batch request
 into its individual parts using this boundary. This also means that
 the boundary string itself must not be contained in any of the parts.
@@ -28,20 +28,20 @@ parts as well.
 The server expects each part message to start with exactly the
 following "header": 
 
-    Content-Type: application/x-arango-batchpart
+    Content-type: application/x-arango-batchpart
 
 You can optionally specify a *Content-Id* "header" to uniquely
 identify each part message. The server will return the *Content-Id* in
 its response if it is specified. Otherwise, the server will not send a
 Content-Id "header" back. The server will not validate the uniqueness
-of the Content-Id.  After the mandatory *Content-Type* and the
+of the Content-Id.  After the mandatory *Content-type* and the
 optional *Content-Id* header, two Windows line breaks
 (i.e. *\r\n\r\n*) must follow.  Any deviation of this structure
 might lead to the part being rejected or incorrectly interpreted. The
 part request payload, formatted as a regular HTTP request, must follow
 the two Windows line breaks literal directly.
 
-Note that the literal *Content-Type: application/x-arango-batchpart*
+Note that the literal *Content-type: application/x-arango-batchpart*
 technically is the header of the MIME part, and the HTTP request
 (including its headers) is the body part of the MIME part.
 
@@ -58,23 +58,23 @@ creation operations. The boundary used in this example is
 *Examples*
 
 ```js
-> curl -X POST --data-binary @- --header "Content-Type: multipart/form-data; boundary=XXXsubpartXXX" http://localhost:8529/_api/batch
+> curl -X POST --data-binary @- --header "Content-type: multipart/form-data; boundary=XXXsubpartXXX" http://localhost:8529/_api/batch
 --XXXsubpartXXX
-Content-Type: application/x-arango-batchpart
+Content-type: application/x-arango-batchpart
 Content-Id: 1
 
 POST /_api/document?collection=xyz&createCollection=true HTTP/1.1
 
 {"a":1,"b":2,"c":3}
 --XXXsubpartXXX
-Content-Type: application/x-arango-batchpart
+Content-type: application/x-arango-batchpart
 Content-Id: 2
 
 POST /_api/document?collection=xyz HTTP/1.1
 
 {"a":1,"b":2,"c":3,"d":4}
 --XXXsubpartXXX
-Content-Type: application/x-arango-batchpart
+Content-type: application/x-arango-batchpart
 Content-Id: 3
 
 POST /_api/document?collection=xyz HTTP/1.1
@@ -102,38 +102,38 @@ operation might also return arbitrary HTTP headers and a body/payload:
 
 ```js
 HTTP/1.1 200 OK
-connection: Keep-Alive
-content-type: multipart/form-data; boundary=XXXsubpartXXX
-content-length: 1055
+Connection: Keep-Alive
+Content-type: multipart/form-data; boundary=XXXsubpartXXX
+Content-length: 1055
 
 --XXXsubpartXXX
-Content-Type: application/x-arango-batchpart
+Content-type: application/x-arango-batchpart
 Content-Id: 1
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: "9514299"
-content-length: 53
+Content-type: application/json; charset=utf-8
+Etag: "9514299"
+Content-length: 53
 
 {"error":false,"_id":"xyz/9514299","_key":"9514299","_rev":"9514299"}
 --XXXsubpartXXX
-Content-Type: application/x-arango-batchpart
+Content-type: application/x-arango-batchpart
 Content-Id: 2
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: "9579835"
-content-length: 53
+Content-type: application/json; charset=utf-8
+Etag: "9579835"
+Content-length: 53
 
 {"error":false,"_id":"xyz/9579835","_key":"9579835","_rev":"9579835"}
 --XXXsubpartXXX
-Content-Type: application/x-arango-batchpart
+Content-type: application/x-arango-batchpart
 Content-Id: 3
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: "9645371"
-content-length: 53
+Content-type: application/json; charset=utf-8
+Etag: "9645371"
+Content-length: 53
 
 {"error":false,"_id":"xyz/9645371","_key":"9645371","_rev":"9645371"}
 --XXXsubpartXXX--
@@ -152,15 +152,15 @@ requests that produced errors:
 *Examples*
 
 ```js
-> curl -X POST --data-binary @- --header "Content-Type: multipart/form-data; boundary=XXXsubpartXXX" http://localhost:8529/_api/batch
+> curl -X POST --data-binary @- --header "Content-type: multipart/form-data; boundary=XXXsubpartXXX" http://localhost:8529/_api/batch
 --XXXsubpartXXX
-Content-Type: application/x-arango-batchpart
+Content-type: application/x-arango-batchpart
 
 POST /_api/document?collection=nonexisting
 
 {"a":1,"b":2,"c":3}
 --XXXsubpartXXX
-Content-Type: application/x-arango-batchpart
+Content-type: application/x-arango-batchpart
 
 POST /_api/document?collection=xyz
 
@@ -177,24 +177,24 @@ header of the overall response is *1*:
 ```js
 HTTP/1.1 200 OK
 x-arango-errors: 1
-content-type: multipart/form-data; boundary=XXXsubpartXXX
-content-length: 711
+Content-type: multipart/form-data; boundary=XXXsubpartXXX
+Content-length: 711
 
 --XXXsubpartXXX
-Content-Type: application/x-arango-batchpart
+Content-type: application/x-arango-batchpart
 
 HTTP/1.1 404 Not Found
-content-type: application/json; charset=utf-8
-content-length: 111
+Content-type: application/json; charset=utf-8
+Content-length: 111
 
 {"error":true,"code":404,"errorNum":1203,"errorMessage":"collection \/_api\/collection\/nonexisting not found"}
 --XXXsubpartXXX
-Content-Type: application/x-arango-batchpart
+Content-type: application/x-arango-batchpart
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: "9841979"
-content-length: 53
+Content-type: application/json; charset=utf-8
+Etag: "9841979"
+Content-length: 53
 
 {"error":false,"_id":"xyz/9841979","_key":"9841979","_rev":"9841979"}
 --XXXsubpartXXX--
@@ -205,3 +205,12 @@ request is determined by scanning the original URL (the URL that contains
 */_api/batch*). It is not possible to override the [database name](../Glossary/index.html#database_name) in
 part operations of a batch. When doing so, any other database name used 
 in a batch part will be ignored.
+
+
+@startDocuBlock JSF_batch_processing
+
+@startDocuBlock JSF_delete_batch_replication
+
+@startDocuBlock JSF_post_batch_replication
+
+@startDocuBlock JSF_put_batch_replication

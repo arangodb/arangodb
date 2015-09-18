@@ -136,7 +136,7 @@ arangosh> stmt = db._createStatement("FOR i IN mycollection RETURN i"); stmt.exe
 }
 ```
 
-For data-modification queries, ArangoDB 2.3 retuns a result with the same structure:
+For data-modification queries, ArangoDB 2.3 returns a result with the same structure:
 
 ```
 arangosh> stmt = db._createStatement("FOR i IN xx REMOVE i IN xx"); stmt.execute().getExtra()
@@ -296,7 +296,7 @@ of ArangoDB so their benefit was limited. The support for bitarray indexes has
 thus been removed in ArangoDB 2.3. It is not possible to create indexes of type
 "bitarray" with ArangoDB 2.3.
 
-When a collection is openend that contains a bitarray index definition created 
+When a collection is opened that contains a bitarray index definition created 
 with a previous version of ArangoDB, ArangoDB will ignore it and log the following
 warning:
 

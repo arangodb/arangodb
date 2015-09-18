@@ -71,10 +71,16 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief already initialised
+/// @brief a static buffer of zeros, used to initialize files
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Initialised = false;
+static char NullBuffer[4096];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief already initialized
+////////////////////////////////////////////////////////////////////////////////
+
+static bool Initialized = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief user-defined temporary path
@@ -134,13 +140,10 @@ static void RemoveTrailingSeparator (char* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void NormalizePath (char* path) {
-  char* p;
-  char *e;
-
   RemoveTrailingSeparator(path);
 
-  p = path;
-  e = path + strlen(p);
+  char* p = path;
+  char* e = path + strlen(p);
 
   for (; p < e;  ++p) {
     if (*p == TRI_DIR_SEPARATOR_CHAR || *p == '/') {
@@ -157,12 +160,11 @@ static void NormalizePath (char* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static ssize_t LookupElementVectorString (TRI_vector_string_t * vector, char const * element) {
-  size_t i;
   int idx = -1;
 
   TRI_ReadLockReadWriteLock(&FileNamesLock);
 
-  for (i = 0;  i < vector->_length;  i++) {
+  for (size_t i = 0;  i < vector->_length;  i++) {
     if (TRI_EqualString(element, vector->_buffer[i])) {
       // theoretically this might cap the value of i, but it is highly unlikely
       idx = (ssize_t) i;
@@ -179,20 +181,14 @@ static ssize_t LookupElementVectorString (TRI_vector_string_t * vector, char con
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveAllLockedFiles (void) {
-  size_t i;
-
   TRI_WriteLockReadWriteLock(&FileNamesLock);
 
-  for (i = 0;  i < FileNames._length;  i++) {
+  for (size_t i = 0;  i < FileNames._length;  i++) {
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
-    HANDLE fd;
-
-    fd = * (HANDLE*) TRI_AtVector(&FileDescriptors, i);
+    HANDLE fd = * (HANDLE*) TRI_AtVector(&FileDescriptors, i);
     CloseHandle(fd);
 #else
-    int fd;
-
-    fd = * (int*) TRI_AtVector(&FileDescriptors, i);
+    int fd = * (int*) TRI_AtVector(&FileDescriptors, i);
     TRI_CLOSE(fd);
 #endif
 
@@ -209,8 +205,8 @@ static void RemoveAllLockedFiles (void) {
 /// @brief initializes some structures which are needed by the file functions
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InitialiseLockFiles (void) {
-  if (Initialised) {
+static void InitializeLockFiles (void) {
+  if (Initialized) {
     return;
   }
 
@@ -225,7 +221,7 @@ static void InitialiseLockFiles (void) {
   TRI_InitReadWriteLock(&FileNamesLock);
 
   atexit(&RemoveAllLockedFiles);
-  Initialised = true;
+  Initialized = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1154,7 +1150,7 @@ int TRI_CreateLockFile (char const* filename) {
   char* fn;
   int res;
 
-  InitialiseLockFiles();
+  InitializeLockFiles();
 
   if (0 <= LookupElementVectorString(&FileNames, filename)) {
     return TRI_ERROR_NO_ERROR;
@@ -1218,32 +1214,25 @@ int TRI_CreateLockFile (char const* filename) {
 #else
 
 int TRI_CreateLockFile (char const* filename) {
-  TRI_pid_t pid;
-  char* buf;
-  char* fn;
-  int fd;
-  int rv;
-  int res;
-
-  InitialiseLockFiles();
+  InitializeLockFiles();
 
   if (0 <= LookupElementVectorString(&FileNames, filename)) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  int fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd == -1) {
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  pid = TRI_CurrentProcessId();
-  buf = TRI_StringUInt32(pid);
+  TRI_pid_t pid = TRI_CurrentProcessId();
+  char* buf = TRI_StringUInt32(pid);
 
-  rv = TRI_WRITE(fd, buf, (TRI_write_t) strlen(buf));
+  int rv = TRI_WRITE(fd, buf, (TRI_write_t) strlen(buf));
 
   if (rv == -1) {
-    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
 
@@ -1267,7 +1256,7 @@ int TRI_CreateLockFile (char const* filename) {
   rv = flock(fd, LOCK_EX);
 
   if (rv == -1) {
-    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     TRI_CLOSE(fd);
     TRI_UNLINK(filename);
@@ -1275,7 +1264,7 @@ int TRI_CreateLockFile (char const* filename) {
     return res;
   }
 
-  fn = TRI_DuplicateString(filename);
+  char* fn = TRI_DuplicateString(filename);
 
   TRI_WriteLockReadWriteLock(&FileNamesLock);
   TRI_PushBackVectorString(&FileNames, fn);
@@ -1393,18 +1382,14 @@ int TRI_VerifyLockFile (char const* filename) {
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
 int TRI_DestroyLockFile (char const* filename) {
-  HANDLE fd;
-  ssize_t n;
-
-  InitialiseLockFiles();
-  n = LookupElementVectorString(&FileNames, filename);
+  InitializeLockFiles();
+  ssize_t n = LookupElementVectorString(&FileNames, filename);
 
   if (n < 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
-
-  fd = * (HANDLE*) TRI_AtVector(&FileDescriptors, n);
+  HANDLE fd = * (HANDLE*) TRI_AtVector(&FileDescriptors, n);
 
   CloseHandle(fd);
 
@@ -1421,31 +1406,31 @@ int TRI_DestroyLockFile (char const* filename) {
 #else
 
 int TRI_DestroyLockFile (char const* filename) {
-  int fd;
-  int res;
-  ssize_t n;
-
-  InitialiseLockFiles();
-  n = LookupElementVectorString(&FileNames, filename);
+  InitializeLockFiles();
+  ssize_t n = LookupElementVectorString(&FileNames, filename);
 
   if (n < 0) {
     // TODO: what happens if the file does not exist?
     return TRI_ERROR_NO_ERROR;
   }
 
-  fd = TRI_OPEN(filename, O_RDWR);
+  int fd = TRI_OPEN(filename, O_RDWR);
 
   if (fd < 0) {
     // TODO: what happens if the file does not exist?
     return TRI_ERROR_NO_ERROR;
   }
 
-  res = flock(fd, LOCK_UN);
+  int res = flock(fd, LOCK_UN);
   TRI_CLOSE(fd);
 
   if (res == 0) {
     TRI_UnlinkFile(filename);
   }
+
+  // close lock file descriptor
+  fd = * (int*) TRI_AtVector(&FileDescriptors, n);
+  TRI_CLOSE(fd);
 
   TRI_WriteLockReadWriteLock(&FileNamesLock);
   TRI_RemoveVectorString(&FileNames, n);
@@ -1924,7 +1909,7 @@ bool TRI_CopyFile (std::string const& src, std::string const& dst, std::string &
 /// @brief copies the filesystem attributes of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CopyAttributes(std::string srcItem, std::string dstItem, std::string &error) {
+bool TRI_CopyAttributes (std::string const& srcItem, std::string const& dstItem, std::string& error) {
 #ifndef _WIN32
   struct stat statbuf;
 
@@ -1957,7 +1942,7 @@ bool TRI_CopyAttributes(std::string srcItem, std::string dstItem, std::string &e
 /// @brief copies a symlink; the link target is not altered.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CopySymlink(std::string srcItem, std::string dstItem, std::string &error) {
+bool TRI_CopySymlink (std::string const& srcItem, std::string const& dstItem, std::string& error) {
 #ifndef _WIN32
   char buffer[PATH_MAX];
   ssize_t rc;
@@ -1979,7 +1964,6 @@ bool TRI_CopySymlink(std::string srcItem, std::string dstItem, std::string &erro
 #endif
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the home directory
@@ -2440,25 +2424,43 @@ char* TRI_LocateConfigDirectory () {
 
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the address of the null buffer
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_GetNullBufferFiles () {
+  return &NullBuffer[0];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the size of the null buffer
+////////////////////////////////////////////////////////////////////////////////
+
+size_t TRI_GetNullBufferSizeFiles () {
+  return sizeof(NullBuffer);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  module functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the files subsystem
+/// @brief initialize the files subsystem
 ///
-/// TODO: inialise logging here?
+/// TODO: initialize logging here?
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseFiles (void) {
+void TRI_InitializeFiles (void) {
   // clear user-defined temp path
   TempPath = nullptr;
+  
+  memset(TRI_GetNullBufferFiles(), 0, TRI_GetNullBufferSizeFiles());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown the files subsystem
 ///
-/// TODO: inialise logging here?
+/// TODO: initialize logging here?
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownFiles (void) {

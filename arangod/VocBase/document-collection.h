@@ -37,7 +37,6 @@
 #include "Basics/ReadWriteLockCPP11.h"
 #include "VocBase/collection.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/headers.h"
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
@@ -52,6 +51,7 @@
 struct TRI_cap_constraint_s;
 struct TRI_document_edge_s;
 struct TRI_json_t;
+class TRI_headers_t;
 
 class VocShaper;
 
@@ -65,7 +65,7 @@ namespace triagens {
     class HashIndex;
     class Index;
     class PrimaryIndex;
-    class SkiplistIndex2;
+    class SkiplistIndex;
   }
 }
 
@@ -410,7 +410,7 @@ public:
   mutable triagens::arango::Ditches      _ditches;
   TRI_associative_pointer_t              _datafileInfo;
 
-  TRI_headers_t*                         _headersPtr;
+  class TRI_headers_t*                   _headersPtr;
   KeyGenerator*                          _keyGenerator;
 
   std::vector<triagens::arango::Index*>  _indexes;
@@ -434,17 +434,16 @@ public:
   // the collection's indexes that support cleanup
   size_t                                 _cleanupIndexes;
 
-  int (*beginRead) (struct TRI_document_collection_t*);
-  int (*endRead) (struct TRI_document_collection_t*);
+  int beginRead ();
+  int endRead ();
+  int beginWrite ();
+  int endWrite ();
+  int beginReadTimed (uint64_t, uint64_t);
+  int beginWriteTimed (uint64_t, uint64_t);
 
-  int (*beginWrite) (struct TRI_document_collection_t*);
-  int (*endWrite) (struct TRI_document_collection_t*);
+  TRI_doc_collection_info_t* figures ();
 
-  int (*beginReadTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
-  int (*beginWriteTimed) (struct TRI_document_collection_t*, uint64_t, uint64_t);
-
-  TRI_doc_collection_info_t* (*figures) (struct TRI_document_collection_t* collection);
-  TRI_voc_size_t (*size) (struct TRI_document_collection_t* collection);
+  uint64_t size ();
 
   // function that is called to garbage-collect the collection's indexes
   int (*cleanupIndexes)(struct TRI_document_collection_t*);
@@ -857,7 +856,8 @@ int TRI_SaveIndex (TRI_document_collection_t*,
 /// the caller must have read-locked the underyling collection!
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection (TRI_document_collection_t*);
+std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection (TRI_document_collection_t*,
+                                                                   bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index, including index file removal and replication
@@ -1066,13 +1066,6 @@ struct ShapedJsonEq {
     return (memcmp(left._data.data, right._data.data, left._data.length) == 0);
   }
 };
-
-typedef std::unordered_map<TRI_shaped_json_t, size_t, 
-                           ShapedJsonHash, ShapedJsonEq> CountingAggregation;
-
-CountingAggregation* TRI_AggregateBySingleAttribute (
-                          TRI_transaction_collection_t* trxCollection,
-                          TRI_shape_pid_t pid );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a documet given by a master pointer

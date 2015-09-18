@@ -1,16 +1,24 @@
 div.headerDropdown {
   background-color: $c-white;
-  border: 1px solid rgba(104, 103, 102, 0.10);
+  border: 1px solid $c-content-border;
   border-radius: 3px;
+  clear: both;
   display: none;
   padding: 10px;
   position: relative;
   width: auto;
 
+  &.smallDropdown {
+
+    .dropdownInner {
+      min-height: 20px;
+    }
+  }
+
   &.headerDropdown input[type=checkbox].css-checkbox {
     display: none;
 
-    & + label.css-label {
+    label.css-label {
       @extend %clickable;
 
       background-position: 0 0;
@@ -39,24 +47,28 @@ div.dropdownInner {
   position: relative;
   width: auto;
 
-  & > .nav-header {
+  .nav-header {
+    font-size: 10pt;
+  }
+
+  > .nav-header {
     color: $c-black;
-    font-size: 13px;
+    font-size: 10pt;
     font-weight: 400;
   }
 
-  & > label {
+  > label {
     color: $c-black;
     font-weight: 300;
   }
 
-  & ul {
+  ul {
     @extend %pull-left;
-    border-left: 1px solid $c-c2grey;
+    border-left: 1px solid $c-content-border;
     display: inline;
     margin-top: 10px;
     min-height: 105px;
-    width: 238px;
+    width: 230px;
 
     &:first-of-type {
       border: 0;
@@ -64,17 +76,21 @@ div.dropdownInner {
 
     label {
       color: $c-black;
-      padding-left: 35px;
+      padding-left: 20px;
     }
-  }
 
-  ul {
     li {
       .fa {
+        color: $c-dark-grey;
         margin-right: 5px;
-        color: #8c8a89;
+
+        &.fa-square-o {
+          margin-left: 1px;
+          margin-right: 6px;
+        }
 
         &.fa-check-circle-o,
+        &.fa-check-square-o,
         &.fa-dot-circle-o {
           color: $c-positive;
         }
@@ -85,18 +101,24 @@ div.dropdownInner {
 }
 
 div.queryline {
+  @extend %search-icon;
+
   color: $c-black;
   height: 35px;
 
   .textDiv {
     margin-right: 10px;
     margin-top: 4px;
-}
+  }
 
   select,
   input {
-
+    @extend %inputs;
     margin-bottom: 5px;
+  }
+
+  input[type='file'] {
+    border: 0;
   }
 
   &.querylineAdd span {
@@ -116,7 +138,7 @@ div.queryline {
     margin-right: 6px;
     position: relative;
 
-    & > ul.gv-dropdown-menu {
+    > ul.gv-dropdown-menu {
       @include border-radius(0);
 
       background-color: $c-nav-bg;
@@ -128,7 +150,6 @@ div.queryline {
       width: 247px;
     }
   }
-
 }
 
 div.dropdownImport {
@@ -136,13 +157,13 @@ div.dropdownImport {
   border-radius: 3px;
   display: none;
   padding: {
-    top: 10px;
+    bottom: 5px;
     left: 10px;
     right: 10px;
-    bottom: 5px;
+    top: 10px;
   }
   position: relative;
-  
+
   input {
     line-height: 0;
     margin-bottom: -15px;
@@ -174,7 +195,7 @@ div.input-append {
     padding-right: 10px;
     padding-top: 12px;
     vertical-align: top;
-    
+
     &:hover {
       background-color: $c-positive;
     }
@@ -192,5 +213,6 @@ img.gv-throbber {
 }
 
 span.gv_caret {
+  border-top: 5px solid $c-white;
   margin-top: 2px !important;
 }

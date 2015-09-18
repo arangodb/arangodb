@@ -1,0 +1,8 @@
+shell> curl --dump - http://localhost:8529/hello/json
+
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json
+
+{ 
+  <span class="hljs-string">"hello"</span> : <span class="hljs-string">"world"</span> 
+}

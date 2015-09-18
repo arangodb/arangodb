@@ -76,7 +76,7 @@ int TRI_FlushMMFile (int fileDescriptor,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MMFile (void* memoryAddress,
-                size_t numOfBytesToInitialise,
+                size_t numOfBytesToInitialize,
                 int memoryProtection,
                 int flags,
                 int fileDescriptor,
@@ -102,6 +102,12 @@ int TRI_ProtectMMFile (void* memoryAddress,
                        int flags,
                        int fileDescriptor,
                        void** mmHandle);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gives hints about upcoming memory usage
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_MMFileAdvise (void* memoryAddress, size_t numOfBytes, int advice);
 
 #endif
 

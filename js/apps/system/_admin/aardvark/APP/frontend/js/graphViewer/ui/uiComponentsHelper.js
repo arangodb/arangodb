@@ -59,6 +59,7 @@ var uiComponentsHelper = uiComponentsHelper || {};
       callback();
     };
     icon.className = "fa gv_icon_icon fa-" + iconInfo.icon;
+    icon.title = iconInfo.title;
     label.className = "gv_button_title";
     button.appendChild(icon);
     button.appendChild(label);

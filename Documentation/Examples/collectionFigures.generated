@@ -1,42 +1,42 @@
-arangosh> db.demo.figures()
+arangosh&gt; db.demo.figures()
 { 
-  "alive" : { 
-    "count" : 1, 
-    "size" : 256 
+  <span class="hljs-string">"alive"</span> : { 
+    <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"size"</span> : <span class="hljs-number">256</span> 
   }, 
-  "dead" : { 
-    "count" : 0, 
-    "size" : 0, 
-    "deletion" : 0 
+  <span class="hljs-string">"dead"</span> : { 
+    <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"size"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"deletion"</span> : <span class="hljs-number">0</span> 
   }, 
-  "datafiles" : { 
-    "count" : 0, 
-    "fileSize" : 0 
+  <span class="hljs-string">"datafiles"</span> : { 
+    <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"fileSize"</span> : <span class="hljs-number">0</span> 
   }, 
-  "journals" : { 
-    "count" : 1, 
-    "fileSize" : 1048576 
+  <span class="hljs-string">"journals"</span> : { 
+    <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"fileSize"</span> : <span class="hljs-number">1048576</span> 
   }, 
-  "compactors" : { 
-    "count" : 0, 
-    "fileSize" : 0 
+  <span class="hljs-string">"compactors"</span> : { 
+    <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"fileSize"</span> : <span class="hljs-number">0</span> 
   }, 
-  "shapefiles" : { 
-    "count" : 0, 
-    "fileSize" : 0 
+  <span class="hljs-string">"shapefiles"</span> : { 
+    <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"fileSize"</span> : <span class="hljs-number">0</span> 
   }, 
-  "shapes" : { 
-    "count" : 2, 
-    "size" : 272 
+  <span class="hljs-string">"shapes"</span> : { 
+    <span class="hljs-string">"count"</span> : <span class="hljs-number">2</span>, 
+    <span class="hljs-string">"size"</span> : <span class="hljs-number">272</span> 
   }, 
-  "attributes" : { 
-    "count" : 6, 
-    "size" : 304 
+  <span class="hljs-string">"attributes"</span> : { 
+    <span class="hljs-string">"count"</span> : <span class="hljs-number">6</span>, 
+    <span class="hljs-string">"size"</span> : <span class="hljs-number">304</span> 
   }, 
-  "indexes" : { 
-    "count" : 1, 
-    "size" : 2008 
+  <span class="hljs-string">"indexes"</span> : { 
+    <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"size"</span> : <span class="hljs-number">16120</span> 
   }, 
-  "lastTick" : "23842035", 
-  "uncollectedLogfileEntries" : 0 
+  <span class="hljs-string">"lastTick"</span> : <span class="hljs-string">"18850348"</span>, 
+  <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span> 
 }

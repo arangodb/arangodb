@@ -49,6 +49,22 @@ logger.state = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the tick ranges provided by the replication logger 
+////////////////////////////////////////////////////////////////////////////////
+
+logger.tickRanges = function () {
+  return internal.tickRangesReplicationLogger();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the first tick that can be provided by the replication logger
+////////////////////////////////////////////////////////////////////////////////
+
+logger.firstTick = function () {
+  return internal.firstTickReplicationLogger();
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -101,18 +117,34 @@ applier.properties = function (config) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief performs a one-time synchronisation with a remote endpoint
+/// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-function sync(config) {
-  return internal.synchroniseReplication(config);
+function sync (config) {
+  return internal.synchronizeReplication(config);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief performs a one-time synchronization with a remote endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+function syncCollection (collection, config) {
+  config = config || { };
+  config.restrictType = "include";
+  config.restrictCollections = [ collection ];
+  config.includeSystem = true;
+  if (! config.hasOwnProperty('verbose')) {
+    config.verbose = false;
+  }
+
+  return internal.synchronizeReplication(config);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the server's id
 ////////////////////////////////////////////////////////////////////////////////
 
-function serverId() {
+function serverId () {
   return internal.serverId();
 }
 
@@ -120,10 +152,11 @@ function serverId() {
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
-exports.logger   = logger;
-exports.applier  = applier;
-exports.sync     = sync;
-exports.serverId = serverId;
+exports.logger         = logger;
+exports.applier        = applier;
+exports.sync           = sync;
+exports.syncCollection = syncCollection;
+exports.serverId       = serverId;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

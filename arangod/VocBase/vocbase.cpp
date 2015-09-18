@@ -47,6 +47,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/threads.h"
 #include "Basics/Exceptions.h"
+#include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/transactions.h"
 #include "VocBase/auth.h"
@@ -72,10 +73,16 @@
 #define COLLECTION_STATUS_POLL_INTERVAL (1000 * 10)
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 static std::atomic<TRI_voc_tick_t> QueryId(1);
+
+static std::atomic<bool> ThrowCollectionNotLoaded(false);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     private types
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auxiliary struct for index iteration
@@ -760,7 +767,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
     TRI_CopyString(collection->_name, newName, sizeof(collection->_name) - 1);
 
     // this shouldn't fail, as we removed an element above so adding one should be ok
-    found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, CONST_CAST(collection), false);
+    found = TRI_InsertKeyAssociativePointer(&vocbase->_collectionsByName, newName, collection, false);
     TRI_ASSERT(found == nullptr);
 
     TRI_ASSERT_EXPENSIVE(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
@@ -989,7 +996,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads an existing (document) collection
 ///
-/// Note that this will READ lock the collection you have to release the
+/// Note that this will READ lock the collection. You have to release the
 /// collection lock by yourself.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1076,7 +1083,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
   // currently loading
   if (collection->_status == TRI_VOC_COL_STATUS_LOADING) {
     // loop until the status changes
-    while (1) {
+    while (true) {
       TRI_vocbase_col_status_e status = collection->_status;
 
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1084,6 +1091,12 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
       if (status != TRI_VOC_COL_STATUS_LOADING) {
         break;
       }
+
+      // only throw this particular error if the server is configured to do so
+      if (ThrowCollectionNotLoaded.load(std::memory_order_relaxed)) {
+        return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED;      
+      }
+
       usleep(COLLECTION_STATUS_POLL_INTERVAL);
 
       TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
@@ -1094,8 +1107,6 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
 
   // unloaded, load collection
   if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
-    TRI_document_collection_t* document;
-
     // set the status to loading
     collection->_status = TRI_VOC_COL_STATUS_LOADING;
 
@@ -1105,7 +1116,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     // disk activity, index creation etc.)
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    document = TRI_OpenDocumentCollection(vocbase, collection, IGNORE_DATAFILE_ERRORS);
+    TRI_document_collection_t* document = TRI_OpenDocumentCollection(vocbase, collection, IGNORE_DATAFILE_ERRORS);
 
     // lock again the adjust the status
     TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
@@ -1476,7 +1487,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 
   if (vocbase->_replicationApplier == nullptr) {
     // TODO
-    LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", vocbase->_name);
+    LOG_FATAL_AND_EXIT("initializing replication applier for database '%s' failed", vocbase->_name);
   }
 
 
@@ -1491,12 +1502,17 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // stop replication
   if (vocbase->_replicationApplier != nullptr) {
-    TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
+    vocbase->_replicationApplier->stop(false);
   }
 
   // mark all cursors as deleted so underlying collections can be freed soon
   if (vocbase->_cursorRepository != nullptr) {
-    static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository)->garbageCollect(true);
+    vocbase->_cursorRepository->garbageCollect(true);
+  }
+  
+  // mark all collection keys as deleted so underlying collections can be freed soon
+  if (vocbase->_collectionKeys != nullptr) {
+    vocbase->_collectionKeys->garbageCollect(true);
   }
 
   std::vector<TRI_vocbase_col_t*> collections;
@@ -1513,7 +1529,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     TRI_UnloadCollectionVocBase(vocbase, collection, true);
   }
 
-  // this will signal the synchroniser and the compactor threads to do one last iteration
+  // this will signal the synchronizer and the compactor threads to do one last iteration
   vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
   
   TRI_LockCondition(&vocbase->_compactorCondition);
@@ -2265,17 +2281,6 @@ bool TRI_DropVocBase (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns whether any references are held on a database
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsUsedVocBase (TRI_vocbase_t* vocbase) {
-  auto refCount = vocbase->_refCount.load();
-  // we are intentionally comparing for greater than 1 here, because a 1 would
-  // only mean that the database was marked as deleted
-  return (refCount > 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns whether the database can be removed
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2342,6 +2347,23 @@ TRI_voc_tick_t TRI_NextQueryIdVocBase (TRI_vocbase_t* vocbase) {
   return QueryId.fetch_add(1, std::memory_order_seq_cst);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the "throw collection not loaded error"
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_GetThrowCollectionNotLoadedVocBase (TRI_vocbase_t* vocbase) {
+  return ThrowCollectionNotLoaded.load(std::memory_order_seq_cst);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the "throw collection not loaded error"
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetThrowCollectionNotLoadedVocBase (TRI_vocbase_t* vocbase, 
+                                             bool value) {
+  ThrowCollectionNotLoaded.store(value, std::memory_order_seq_cst);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     TRI_vocbase_t
 // -----------------------------------------------------------------------------
@@ -2365,14 +2387,16 @@ TRI_vocbase_t::TRI_vocbase_t (TRI_server_t* server,
     _userStructures(nullptr),
     _queries(nullptr),
     _cursorRepository(nullptr),
+    _collectionKeys(nullptr),
     _authInfoLoaded(false),
     _hasCompactor(false),
     _isOwnAppsDirectory(true),
     _oldTransactions(nullptr),
     _replicationApplier(nullptr) {
 
-  _queries = new triagens::aql::QueryList(this);
+  _queries          = new triagens::aql::QueryList(this);
   _cursorRepository = new triagens::arango::CursorRepository(this);
+  _collectionKeys   = new triagens::arango::CollectionKeysRepository();
  
   _path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
   _name = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
@@ -2417,7 +2441,7 @@ TRI_vocbase_t::~TRI_vocbase_t () {
 
   // free replication
   if (_replicationApplier != nullptr) {
-    TRI_FreeReplicationApplier(_replicationApplier);
+    delete _replicationApplier;
   }
 
   delete _oldTransactions;
@@ -2430,8 +2454,9 @@ TRI_vocbase_t::~TRI_vocbase_t () {
   TRI_DestroyAssociativePointer(&_collectionsByName);
   TRI_DestroyAssociativePointer(&_collectionsById);
 
-  delete static_cast<triagens::arango::CursorRepository*>(_cursorRepository);
-  delete static_cast<triagens::aql::QueryList*>(_queries);
+  delete _cursorRepository;
+  delete _collectionKeys;
+  delete _queries;
   
   // free name and path
   if (_path != nullptr) {
@@ -2440,6 +2465,49 @@ TRI_vocbase_t::~TRI_vocbase_t () {
   if (_name != nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, _name);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief note the progress of a connected replication client
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_vocbase_t::updateReplicationClient (TRI_server_id_t serverId, 
+                                             TRI_voc_tick_t lastFetchedTick) {
+  WRITE_LOCKER(_replicationClientsLock);
+
+  try {
+    auto it = _replicationClients.find(serverId);
+
+    if (it == _replicationClients.end()) {
+      _replicationClients.emplace(serverId, std::make_pair(TRI_microtime(), lastFetchedTick));
+    }
+    else {
+      (*it).second.first = TRI_microtime();
+      if (lastFetchedTick > 0) {
+        (*it).second.second = lastFetchedTick;
+      }
+    }
+  }
+  catch (...) {
+    // silently fail...
+    // all we would be missing is the progress information of a slave
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the progress of all replication clients
+////////////////////////////////////////////////////////////////////////////////
+  
+std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> TRI_vocbase_t::getReplicationClients () {
+
+  std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> result;
+
+  READ_LOCKER(_replicationClientsLock);
+
+  for (auto& it : _replicationClients) {
+    result.emplace_back(std::make_tuple(it.first, it.second.first, it.second.second));
+  }
+  return result;
 }
 
 // -----------------------------------------------------------------------------

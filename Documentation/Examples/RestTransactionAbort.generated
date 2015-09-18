@@ -1,19 +1,19 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction <<EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction &lt;&lt;EOF
 { 
-  "collections" : { 
-    "read" : "products" 
+  <span class="hljs-string">"collections"</span> : { 
+    <span class="hljs-string">"read"</span> : <span class="hljs-string">"products"</span> 
   }, 
-  "action" : "function () { throw 'doh!'; }" 
+  <span class="hljs-string">"action"</span> : <span class="hljs-string">"function () { throw 'doh!'; }"</span> 
 }
 EOF
 
-HTTP/1.1 500 Internal Error
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">500</span> Internal Server <span class="hljs-built_in">Error</span>
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "exception" : "doh!", 
-  "error" : true, 
-  "code" : 500, 
-  "errorNum" : 500, 
-  "errorMessage" : "An error has occurred during execution: doh!" 
+  <span class="hljs-string">"exception"</span> : <span class="hljs-string">"doh!"</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">500</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">500</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"internal server error"</span> 
 }

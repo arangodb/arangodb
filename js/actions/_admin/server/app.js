@@ -37,6 +37,7 @@ var actions = require("org/arangodb/actions");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_admin_server_role
+/// @brief Get to know whether this server is a Coordinator or DB-Server
 ///
 /// @RESTHEADER{GET /_admin/server/role, Return role of a server in a cluster}
 ///

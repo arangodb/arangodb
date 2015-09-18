@@ -78,7 +78,7 @@ ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 /// @brief key regex
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.keyRegex = /^([a-zA-Z0-9_:\-@\.])+$/;
+ArangoDatabase.keyRegex = /^([a-zA-Z0-9_:\-@\.\(\)\+,=;\$!\*'%])+$/;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the waitForSync parameter to a URL

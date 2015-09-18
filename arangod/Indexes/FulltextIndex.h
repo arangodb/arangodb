@@ -83,7 +83,8 @@ namespace triagens {
 
         size_t memory () const override final;
 
-        triagens::basics::Json toJson (TRI_memory_zone_t*) const override final;
+        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
+        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
         int insert (struct TRI_doc_mptr_t const*, bool) override final;
          
@@ -92,7 +93,9 @@ namespace triagens {
         int cleanup () override final;
 
         bool isSame (std::string const& field, int minWordLength) const {
-          return (_minWordLength == minWordLength && fields()[0] == field);
+          std::string fieldString;
+          TRI_AttributeNamesToString(fields()[0], fieldString);
+          return (_minWordLength == minWordLength && fieldString == field);
         }
 
         TRI_fts_index_t* internals () {

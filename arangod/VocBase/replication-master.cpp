@@ -41,7 +41,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a master info struct
+/// @brief initialize a master info struct
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitMasterInfoReplication (TRI_replication_master_info_t* info,

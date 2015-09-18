@@ -36,11 +36,11 @@ function ColourMapper() {
     self = this,
     nextColour = 0;
 
-  colours.push({back: "#4CAF50", front: "white"});
   colours.push({back: "#C8E6C9", front: "black"});
   colours.push({back: "#8aa249", front: "white"});
   colours.push({back: "#8BC34A", front: "black"});
   colours.push({back: "#388E3C", front: "white"});
+  colours.push({back: "#4CAF50", front: "white"});
   colours.push({back: "#212121", front: "white"});
   colours.push({back: "#727272", front: "white"});
   colours.push({back: "#B6B6B6", front: "black"});

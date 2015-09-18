@@ -1,292 +1,292 @@
 shell> curl --dump - http://localhost:8529/_admin/statistics-description
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "groups" : [ 
+  <span class="hljs-string">"groups"</span> : [ 
     { 
-      "group" : "system", 
-      "name" : "Process Statistics", 
-      "description" : "Statistics about the ArangoDB process" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"system"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Process Statistics"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Statistics about the ArangoDB process"</span> 
     }, 
     { 
-      "group" : "client", 
-      "name" : "Client Connection Statistics", 
-      "description" : "Statistics about the connections." 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"client"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Client Connection Statistics"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Statistics about the connections."</span> 
     }, 
     { 
-      "group" : "http", 
-      "name" : "HTTP Request Statistics", 
-      "description" : "Statistics about the HTTP requests." 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"http"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"HTTP Request Statistics"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Statistics about the HTTP requests."</span> 
     }, 
     { 
-      "group" : "server", 
-      "name" : "Server Statistics", 
-      "description" : "Statistics about the ArangoDB server" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"server"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Server Statistics"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Statistics about the ArangoDB server"</span> 
     } 
   ], 
-  "figures" : [ 
+  <span class="hljs-string">"figures"</span> : [ 
     { 
-      "group" : "system", 
-      "identifier" : "userTime", 
-      "name" : "User Time", 
-      "description" : "Amount of time that this process has been scheduled in user mode, measured in seconds.", 
-      "type" : "accumulated", 
-      "units" : "seconds" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"system"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"userTime"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"User Time"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Amount of time that this process has been scheduled in user mode, measured in seconds."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"seconds"</span> 
     }, 
     { 
-      "group" : "system", 
-      "identifier" : "systemTime", 
-      "name" : "System Time", 
-      "description" : "Amount of time that this process has been scheduled in kernel mode, measured in seconds.", 
-      "type" : "accumulated", 
-      "units" : "seconds" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"system"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"systemTime"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"System Time"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Amount of time that this process has been scheduled in kernel mode, measured in seconds."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"seconds"</span> 
     }, 
     { 
-      "group" : "system", 
-      "identifier" : "numberOfThreads", 
-      "name" : "Number of Threads", 
-      "description" : "Number of threads in the arangod process.", 
-      "type" : "current", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"system"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"numberOfThreads"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Number of Threads"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Number of threads in the arangod process."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"current"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "system", 
-      "identifier" : "residentSize", 
-      "name" : "Resident Set Size", 
-      "description" : "The total size of the number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The resident set size is reported in bytes.", 
-      "type" : "current", 
-      "units" : "bytes" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"system"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"residentSize"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Resident Set Size"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"The total size of the number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The resident set size is reported in bytes."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"current"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"bytes"</span> 
     }, 
     { 
-      "group" : "system", 
-      "identifier" : "residentSizePercent", 
-      "name" : "Resident Set Size", 
-      "description" : "The percentage of physical memory used by the process as resident set size.", 
-      "type" : "current", 
-      "units" : "percent" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"system"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"residentSizePercent"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Resident Set Size"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"The percentage of physical memory used by the process as resident set size."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"current"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"percent"</span> 
     }, 
     { 
-      "group" : "system", 
-      "identifier" : "virtualSize", 
-      "name" : "Virtual Memory Size", 
-      "description" : "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using.", 
-      "type" : "current", 
-      "units" : "bytes" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"system"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"virtualSize"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Virtual Memory Size"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"current"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"bytes"</span> 
     }, 
     { 
-      "group" : "system", 
-      "identifier" : "minorPageFaults", 
-      "name" : "Minor Page Faults", 
-      "description" : "The number of minor faults the process has made which have not required loading a memory page from disk. This figure is not reported on Windows.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"system"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"minorPageFaults"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Minor Page Faults"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"The number of minor faults the process has made which have not required loading a memory page from disk. This figure is not reported on Windows."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "system", 
-      "identifier" : "majorPageFaults", 
-      "name" : "Major Page Faults", 
-      "description" : "On Windows, this figure contains the total number of page faults. On other system, this figure contains the number of major faults the process has made which have required loading a memory page from disk.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"system"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"majorPageFaults"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Major Page Faults"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"On Windows, this figure contains the total number of page faults. On other system, this figure contains the number of major faults the process has made which have required loading a memory page from disk."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "client", 
-      "identifier" : "httpConnections", 
-      "name" : "Client Connections", 
-      "description" : "The number of connections that are currently open.", 
-      "type" : "current", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"client"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"httpConnections"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Client Connections"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"The number of connections that are currently open."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"current"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "client", 
-      "identifier" : "totalTime", 
-      "name" : "Total Time", 
-      "description" : "Total time needed to answer a request.", 
-      "type" : "distribution", 
-      "cuts" : [ 
-        0.01, 
-        0.05, 
-        0.1, 
-        0.2, 
-        0.5, 
-        1 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"client"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"totalTime"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Total Time"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Total time needed to answer a request."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"distribution"</span>, 
+      <span class="hljs-string">"cuts"</span> : [ 
+        <span class="hljs-number">0.01</span>, 
+        <span class="hljs-number">0.05</span>, 
+        <span class="hljs-number">0.1</span>, 
+        <span class="hljs-number">0.2</span>, 
+        <span class="hljs-number">0.5</span>, 
+        <span class="hljs-number">1</span> 
       ], 
-      "units" : "seconds" 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"seconds"</span> 
     }, 
     { 
-      "group" : "client", 
-      "identifier" : "requestTime", 
-      "name" : "Request Time", 
-      "description" : "Request time needed to answer a request.", 
-      "type" : "distribution", 
-      "cuts" : [ 
-        0.01, 
-        0.05, 
-        0.1, 
-        0.2, 
-        0.5, 
-        1 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"client"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"requestTime"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Request Time"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Request time needed to answer a request."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"distribution"</span>, 
+      <span class="hljs-string">"cuts"</span> : [ 
+        <span class="hljs-number">0.01</span>, 
+        <span class="hljs-number">0.05</span>, 
+        <span class="hljs-number">0.1</span>, 
+        <span class="hljs-number">0.2</span>, 
+        <span class="hljs-number">0.5</span>, 
+        <span class="hljs-number">1</span> 
       ], 
-      "units" : "seconds" 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"seconds"</span> 
     }, 
     { 
-      "group" : "client", 
-      "identifier" : "queueTime", 
-      "name" : "Queue Time", 
-      "description" : "Queue time needed to answer a request.", 
-      "type" : "distribution", 
-      "cuts" : [ 
-        0.01, 
-        0.05, 
-        0.1, 
-        0.2, 
-        0.5, 
-        1 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"client"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"queueTime"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Queue Time"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Queue time needed to answer a request."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"distribution"</span>, 
+      <span class="hljs-string">"cuts"</span> : [ 
+        <span class="hljs-number">0.01</span>, 
+        <span class="hljs-number">0.05</span>, 
+        <span class="hljs-number">0.1</span>, 
+        <span class="hljs-number">0.2</span>, 
+        <span class="hljs-number">0.5</span>, 
+        <span class="hljs-number">1</span> 
       ], 
-      "units" : "seconds" 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"seconds"</span> 
     }, 
     { 
-      "group" : "client", 
-      "identifier" : "bytesSent", 
-      "name" : "Bytes Sent", 
-      "description" : "Bytes sents for a request.", 
-      "type" : "distribution", 
-      "cuts" : [ 
-        250, 
-        1000, 
-        2000, 
-        5000, 
-        10000 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"client"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"bytesSent"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bytes Sent"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Bytes sents for a request."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"distribution"</span>, 
+      <span class="hljs-string">"cuts"</span> : [ 
+        <span class="hljs-number">250</span>, 
+        <span class="hljs-number">1000</span>, 
+        <span class="hljs-number">2000</span>, 
+        <span class="hljs-number">5000</span>, 
+        <span class="hljs-number">10000</span> 
       ], 
-      "units" : "bytes" 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"bytes"</span> 
     }, 
     { 
-      "group" : "client", 
-      "identifier" : "bytesReceived", 
-      "name" : "Bytes Received", 
-      "description" : "Bytes receiveds for a request.", 
-      "type" : "distribution", 
-      "cuts" : [ 
-        250, 
-        1000, 
-        2000, 
-        5000, 
-        10000 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"client"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"bytesReceived"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bytes Received"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Bytes receiveds for a request."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"distribution"</span>, 
+      <span class="hljs-string">"cuts"</span> : [ 
+        <span class="hljs-number">250</span>, 
+        <span class="hljs-number">1000</span>, 
+        <span class="hljs-number">2000</span>, 
+        <span class="hljs-number">5000</span>, 
+        <span class="hljs-number">10000</span> 
       ], 
-      "units" : "bytes" 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"bytes"</span> 
     }, 
     { 
-      "group" : "client", 
-      "identifier" : "connectionTime", 
-      "name" : "Connection Time", 
-      "description" : "Total connection time of a client.", 
-      "type" : "distribution", 
-      "cuts" : [ 
-        0.1, 
-        1, 
-        60 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"client"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"connectionTime"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Connection Time"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Total connection time of a client."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"distribution"</span>, 
+      <span class="hljs-string">"cuts"</span> : [ 
+        <span class="hljs-number">0.1</span>, 
+        <span class="hljs-number">1</span>, 
+        <span class="hljs-number">60</span> 
       ], 
-      "units" : "seconds" 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"seconds"</span> 
     }, 
     { 
-      "group" : "http", 
-      "identifier" : "requestsTotal", 
-      "name" : "Total requests", 
-      "description" : "Total number of HTTP requests.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"http"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"requestsTotal"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Total requests"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Total number of HTTP requests."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "http", 
-      "identifier" : "requestsAsync", 
-      "name" : "Async requests", 
-      "description" : "Number of asynchronously executed HTTP requests.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"http"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"requestsAsync"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Async requests"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Number of asynchronously executed HTTP requests."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "http", 
-      "identifier" : "requestsGet", 
-      "name" : "HTTP GET requests", 
-      "description" : "Number of HTTP GET requests.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"http"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"requestsGet"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"HTTP GET requests"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Number of HTTP GET requests."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "http", 
-      "identifier" : "requestsHead", 
-      "name" : "HTTP HEAD requests", 
-      "description" : "Number of HTTP HEAD requests.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"http"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"requestsHead"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"HTTP HEAD requests"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Number of HTTP HEAD requests."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "http", 
-      "identifier" : "requestsPost", 
-      "name" : "HTTP POST requests", 
-      "description" : "Number of HTTP POST requests.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"http"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"requestsPost"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"HTTP POST requests"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Number of HTTP POST requests."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "http", 
-      "identifier" : "requestsPut", 
-      "name" : "HTTP PUT requests", 
-      "description" : "Number of HTTP PUT requests.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"http"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"requestsPut"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"HTTP PUT requests"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Number of HTTP PUT requests."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "http", 
-      "identifier" : "requestsPatch", 
-      "name" : "HTTP PATCH requests", 
-      "description" : "Number of HTTP PATCH requests.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"http"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"requestsPatch"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"HTTP PATCH requests"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Number of HTTP PATCH requests."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "http", 
-      "identifier" : "requestsDelete", 
-      "name" : "HTTP DELETE requests", 
-      "description" : "Number of HTTP DELETE requests.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"http"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"requestsDelete"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"HTTP DELETE requests"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Number of HTTP DELETE requests."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "http", 
-      "identifier" : "requestsOptions", 
-      "name" : "HTTP OPTIONS requests", 
-      "description" : "Number of HTTP OPTIONS requests.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"http"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"requestsOptions"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"HTTP OPTIONS requests"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Number of HTTP OPTIONS requests."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "http", 
-      "identifier" : "requestsOther", 
-      "name" : "other HTTP requests", 
-      "description" : "Number of other HTTP requests.", 
-      "type" : "accumulated", 
-      "units" : "number" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"http"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"requestsOther"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"other HTTP requests"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Number of other HTTP requests."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"accumulated"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"number"</span> 
     }, 
     { 
-      "group" : "server", 
-      "identifier" : "uptime", 
-      "name" : "Server Uptime", 
-      "description" : "Number of seconds elapsed since server start.", 
-      "type" : "current", 
-      "units" : "seconds" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"server"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"uptime"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Server Uptime"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Number of seconds elapsed since server start."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"current"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"seconds"</span> 
     }, 
     { 
-      "group" : "server", 
-      "identifier" : "physicalMemory", 
-      "name" : "Physical Memory", 
-      "description" : "Physical memory in bytes.", 
-      "type" : "current", 
-      "units" : "bytes" 
+      <span class="hljs-string">"group"</span> : <span class="hljs-string">"server"</span>, 
+      <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"physicalMemory"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Physical Memory"</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Physical memory in bytes."</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"current"</span>, 
+      <span class="hljs-string">"units"</span> : <span class="hljs-string">"bytes"</span> 
     } 
   ], 
-  "error" : false, 
-  "code" : 200 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

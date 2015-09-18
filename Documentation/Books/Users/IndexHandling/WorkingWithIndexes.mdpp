@@ -33,15 +33,16 @@ db._index("demo/362549736");
 !SECTION Collection Methods
 
 !SUBSECTION Listing all indexes of a collection
-<!-- arangod/V8Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocindex.cpp -->
 @startDocuBlock collectionGetIndexes
 
 !SUBSECTION Creating an index
-<!-- arangod/V8Server/v8-vocbase.cpp -->
+Indexes can be created using the general method *ensureIndex*, or *ensure&lt;type&gt;Index* (see the respective subchapters that also describe the behavior of this index in more detail.
+<!-- arangod/V8Server/v8-vocindex.cpp -->
 @startDocuBlock collectionEnsureIndex
 
 !SUBSECTION Dropping an index
-<!-- arangod/V8Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocindex.cpp -->
 @startDocuBlock col_dropIndex
 
 !SECTION Database Methods
@@ -53,3 +54,7 @@ db._index("demo/362549736");
 !SUBSECTION Dropping an index
 <!-- js/server/modules/org/arangodb/arango-database.js -->
 @startDocuBlock dropIndex
+
+!SUBSECTION Revalidating whether an index is used
+<!-- js/server/modules/org/arangodb/arango-database.js -->
+@startDocuBlock IndexVerify

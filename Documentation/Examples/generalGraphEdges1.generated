@@ -1,15 +1,8 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_EDGES("
-........> +"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
-........> ).toArray();
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_EDGES("</span>
+........&gt; +<span class="hljs-string">"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"</span>
+........&gt; ).toArray();
 [ 
-  { 
-    "_id" : "internationalHighway/701680883", 
-    "_key" : "701680883", 
-    "_rev" : "701680883", 
-    "_from" : "germanCity/Cologne", 
-    "_to" : "frenchCity/Lyon", 
-    "distance" : 700 
-  } 
+  <span class="hljs-string">"internationalHighway/1362272812"</span> 
 ]

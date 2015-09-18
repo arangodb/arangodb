@@ -362,15 +362,15 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
   switch (type) {
     case TRI_JSON_UNUSED: 
     case TRI_JSON_NULL: {
-      buffer.appendText("null", strlen("null"));
+      buffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
       break;
     }
     case TRI_JSON_BOOLEAN: {
       if (json->_value._boolean) {
-        buffer.appendText("true", strlen("true"));
+        buffer.appendText(TRI_CHAR_LENGTH_PAIR("true"));
       }
       else {
-        buffer.appendText("false", strlen("false"));
+        buffer.appendText(TRI_CHAR_LENGTH_PAIR("false"));
       }
       break;
     }
@@ -394,7 +394,7 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
       break;
     }
     case TRI_JSON_OBJECT: {
-      buffer.appendText("[object Object]", strlen("[object Object]"));
+      buffer.appendText(TRI_CHAR_LENGTH_PAIR("[object Object]"));
       break;
     }
   }
@@ -719,7 +719,7 @@ AqlValue Functions::Like (triagens::aql::Query* query,
   AppendAsString(buffer, regex.json());
   size_t const length = buffer.length();
 
-  std::string const pattern = std::move(BuildRegexPattern(buffer.c_str(), length, caseInsensitive));
+  std::string const pattern = BuildRegexPattern(buffer.c_str(), length, caseInsensitive);
   RegexMatcher* matcher = nullptr;
 
   if (RegexCache != nullptr) {

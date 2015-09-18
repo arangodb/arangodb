@@ -1680,7 +1680,7 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
   trx.lockRead();
 
   TRI_document_collection_t* document = collection->_collection;
-  TRI_doc_collection_info_t* info = document->figures(document);
+  TRI_doc_collection_info_t* info = document->figures();
 
   trx.finish(res);
   // READ-LOCK end
@@ -1697,7 +1697,7 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 /// **Note** : Retrieving the figures will always load the collection into 
 /// memory.
 ///
-/// * *alive.count*: The number of curretly active documents in all datafiles and
+/// * *alive.count*: The number of currently active documents in all datafiles and
 ///   journals of the collection. Documents that are contained in the
 ///   write-ahead log only are not reported in this figure.
 /// * *alive.size*: The total size in bytes used by all active documents of the
@@ -2017,16 +2017,17 @@ static void JS_PlanIdVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///     Not used for other key generator types.
 ///
 /// * *indexBuckets*: number of buckets into which indexes using a hash
-///   table are split. The default is 1 and this number has to be a
+///   table are split. The default is 16 and this number has to be a
 ///   power of 2 and less than or equal to 1024. 
 ///   
-///   For very large collections
-///   one should increase this to avoid long pauses when the hash table
-///   has to be resized, since buckets are resized individually. For 
+///   For very large collections one should increase this to avoid long pauses 
+///   when the hash table has to be initially built or resized, since buckets 
+///   are resized individually and can be initially built in parallel. For 
 ///   example, 64 might be a sensible value for a collection with 100
 ///   000 000 documents. Currently, only the edge index respects this
-///   value. Changes (see below) are applied when the collection is
-///   loaded the next time.
+///   value, but other index types might follow in future ArangoDB versions. 
+///   Changes (see below) are applied when the collection is loaded the next 
+///   time.
 ///
 /// In a cluster setup, the result will also contain the following attributes:
 ///
@@ -2961,9 +2962,9 @@ static string GetId (const v8::FunctionCallbackInfo<v8::Value>& args, int which)
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{SaveEdgeCol}
-/// ~ db._create("vertex");
-/// ~ db._createEdgeCollection("relation");
+/// @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_01_SaveEdgeCol}
+///   db._create("vertex");
+///   db._createEdgeCollection("relation");
 ///   v1 = db.vertex.insert({ name : "vertex 1" });
 ///   v2 = db.vertex.insert({ name : "vertex 2" });
 ///   e1 = db.relation.insert(v1, v2, { label : "knows" });
@@ -3582,23 +3583,15 @@ static void JS_CheckPointersVocbaseCol (const v8::FunctionCallbackInfo<v8::Value
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-
-  // iterate over the primary index and de-reference all the pointers to data
-  auto primaryIndex = document->primaryIndex()->internals();
-  void** ptr = primaryIndex->_table;
-  void** end = ptr + primaryIndex->_nrAlloc;
-
-  for (;  ptr < end;  ++ptr) {
-    if (*ptr) {
-      char const* key = TRI_EXTRACT_MARKER_KEY((TRI_doc_mptr_t const*) *ptr);
-
-      TRI_ASSERT(key != nullptr);
-      // dereference the key
-      if (*key == '\0') {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
+  auto work = [&] (TRI_doc_mptr_t const* ptr) -> void {
+    char const* key = TRI_EXTRACT_MARKER_KEY(ptr);
+    TRI_ASSERT(key != nullptr);
+    // dereference the key
+    if (*key == '\0') {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
-  }
+  };
+  document->primaryIndex()->invokeOnAllElements(work);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -4246,12 +4239,12 @@ static void JS_CountVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args)
   // READ-LOCK start
   trx.lockRead();
 
-  const TRI_voc_size_t s = document->size(document);
+  uint64_t const s = document->size();
 
   trx.finish(res);
   // READ-LOCK end
 
-  TRI_V8_RETURN(v8::Number::New(isolate, (double) s));
+  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<double>(s)));
   TRI_V8_TRY_CATCH_END
 }
 

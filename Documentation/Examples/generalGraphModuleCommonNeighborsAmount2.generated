@@ -1,18 +1,18 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var graph = examples.loadGraph("routeplanner");
-arangosh> graph._countCommonNeighbors('germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2},
-........> {direction : 'outbound', maxDepth : 2});
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> options = { direction: <span class="hljs-string">'outbound'</span>, maxDepth: <span class="hljs-number">2</span>, includeData: <span class="hljs-literal">true</span> };
+arangosh&gt; graph._countCommonNeighbors(<span class="hljs-string">'germanCity/Hamburg'</span>, {}, options, options);
 [ 
   { 
-    "germanCity/Hamburg" : [ 
+    <span class="hljs-string">"germanCity/Hamburg"</span> : [ 
       { 
-        "germanCity/Berlin" : 3 
+        <span class="hljs-string">"germanCity/Berlin"</span> : <span class="hljs-number">3</span> 
       }, 
       { 
-        "germanCity/Cologne" : 2 
+        <span class="hljs-string">"germanCity/Cologne"</span> : <span class="hljs-number">2</span> 
       }, 
       { 
-        "frenchCity/Paris" : 1 
+        <span class="hljs-string">"frenchCity/Paris"</span> : <span class="hljs-number">1</span> 
       } 
     ] 
   } 

@@ -21,18 +21,12 @@ different usage scenarios:
   cannot be used for sorting.
 
   The hash index is a good candidate if all or most queries on the indexed
-  attribute(s) are equality comparisons. It will be the most efficient index 
-  type if the index is declared unique. 
+  attribute(s) are equality comparisons. The unique hash index provides an
+  amortized complexity of O(1) for insert, update, remove and lookup operations.
+  The non-unique hash index provides O(1) inserts, updates and removes, and
+  will allow looking up documents by index value with amortized O(n) complexity, 
+  with *n* being the number of documents with that index value.
   
-  Insertions into a non-unique hash index are also very efficient. Update and
-  removal performance in a non-unique hash index depend on the key selectivity.
-  If the selectivity is low and keys repeat a lot, update and removal performance
-  in a non-unique hash index will degrade.
-
-  A non-unique hash index should therefore not be used if duplicate index values 
-  are allowed and it is known that there will be many duplicate values in the index 
-  and there will be updates or removals.
-
   A non-unique hash index on an optional document attribute should be declared
   sparse so that it will not index documents for which the index attribute is
   not set.
@@ -133,3 +127,9 @@ will not know beforehand whether the comparison values for `doc.attr` will inclu
 
 Sparse skiplist indexes can be used for sorting if the optimizer can safely detect that the 
 index range does not include `null` for any of the index attributes. 
+
+Note that if you intend to use [joins](../AqlExamples/Join.html) it may be clever
+to use non-sparsity and maybe even uniqueness for that attribute, else all items containing
+the NULL-value will match against each other and thus produce large results.
+
+

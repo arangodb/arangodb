@@ -682,28 +682,6 @@ std::string TRI_ObjectToString (v8::Handle<v8::Value> const value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts an V8 object to a character
-////////////////////////////////////////////////////////////////////////////////
-
-char TRI_ObjectToCharacter (v8::Handle<v8::Value> const value, bool& error) {
-  error = false;
-
-  if (! value->IsString() && ! value->IsStringObject()) {
-    error = true;
-    return '\0';
-  }
-
-  TRI_Utf8ValueNFC sep(TRI_UNKNOWN_MEM_ZONE, value->ToString());
-
-  if (*sep == nullptr || sep.length() != 1) {
-    error = true;
-    return '\0';
-  }
-
-  return (*sep)[0];
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an V8 object to an int64_t
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -802,7 +780,7 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> const value) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the V8 conversion module
+/// @brief initializes the V8 conversion module
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8Conversions (v8::Handle<v8::Context> context) {

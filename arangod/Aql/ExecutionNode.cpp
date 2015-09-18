@@ -24,8 +24,6 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-
 #include "Aql/ExecutionNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
@@ -552,20 +550,22 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (ExecutionNode const* node
   size_t j = 0;
 
   for (; (i < idxFields && j < n); i++) {
-    if (equalityLookupAttributes.find(idx->fields[i]) != equalityLookupAttributes.end()) {
+    std::string fieldString;
+    TRI_AttributeNamesToString(idx->fields[i], fieldString, true);
+    if (equalityLookupAttributes.find(fieldString) != equalityLookupAttributes.end()) {
       // found an attribute in the sort criterion that is used in an equality lookup, too...
       // (e.g. doc.value == 1 && SORT doc.value1)
       // in this case, we can ignore the sorting for this particular attribute, as the index
       // will only return constant values for it
       match.matches.push_back(FORWARD_MATCH); // doesn't matter here if FORWARD or BACKWARD
       ++interestingCount;
-      if (attrs[j].first == idx->fields[i]) {
+      if (attrs[j].first == fieldString) {
         ++j;
       }
       continue;
     }
 
-    if (attrs[j].first == idx->fields[i]) {
+    if (attrs[j].first == fieldString) {
       if (attrs[j].second) {
         // ascending
         match.matches.push_back(FORWARD_MATCH);
@@ -786,6 +786,7 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
 /// @brief static analysis debugger
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
   RegisterPlanningDebugger () 
     : indent(0) {
@@ -827,6 +828,8 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
     std::cout << std::endl;
   }
 };
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief planRegisters
@@ -1269,7 +1272,9 @@ size_t EnumerateCollectionNode::getUsableFieldsOfIndex (Index const* idx,
                                                         std::unordered_set<std::string> const& attrs) const {
   size_t count = 0;
   for (size_t i = 0; i < idx->fields.size(); i++) {
-    if (attrs.find(idx->fields[i]) == attrs.end()) {
+    std::string tmp;
+    TRI_AttributeNamesToString(idx->fields[i], tmp, true);
+    if (attrs.find(tmp) == attrs.end()) {
       break;
     }
 
@@ -2177,7 +2182,7 @@ double FilterNode::estimateCost (size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
   // We are pessimistic here by not reducing the nrItems. However, in the
   // worst case the filter does not reduce the items at all. Furthermore,
-  // no optimiser rule introduces FilterNodes, thus it is not important
+  // no optimizer rule introduces FilterNodes, thus it is not important
   // that they appear to lower the costs. Note that contrary to this,
   // an IndexRangeNode does lower the costs, it also has a better idea
   // to what extent the number of items is reduced. On the other hand it
@@ -2575,7 +2580,7 @@ void AggregateNode::getVariablesUsedHere (std::unordered_set<Variable const*>& v
       auto myselfAsNonConst = const_cast<AggregateNode*>(this);
       myselfAsNonConst->walk(&finder);
       if (finder.depth == 1) {
-        // we are toplevel, let's run again with mindepth = 0
+        // we are top level, let's run again with mindepth = 0
         finder.userVars.clear();
         finder.mindepth = 0;
         finder.depth = -1;

@@ -61,6 +61,17 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
                                             size_t& n,
                                             std::string& errorMessage,
                                             ExampleDefinition& def) {
+  TRI_IF_FAILURE("ExampleNoContextVocbase") {
+    // intentionally fail
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+  if (vocbase == nullptr) {
+    // This should never be thrown as we are already in a transaction
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
   def._pids.reserve(n);
   def._values.reserve(n);
 
@@ -84,15 +95,6 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
           } 
           else {
             // We need a Collection Name Resolver here now!
-            TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-            TRI_IF_FAILURE("ExampleNoContextVocbase") {
-              // Explicitly delete the vocbase
-              vocbase = nullptr;
-            }
-            if (vocbase == nullptr) {
-              // This should never be thrown as we are already in a transaction
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-            }
             V8ResolverGuard resolverGuard(vocbase);
             CollectionNameResolver const* resolver = resolverGuard.getResolver();
             string colName = keyVal.substr(0, keyVal.find("/"));

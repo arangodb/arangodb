@@ -148,7 +148,7 @@ void RestCursorHandler::processQuery (TRI_json_t const* json) {
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCancelled())) {
+        (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
 
@@ -276,10 +276,10 @@ bool RestCursorHandler::cancelQuery () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the query was cancelled
+/// @brief whether or not the query was canceled
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCursorHandler::wasCancelled () {
+bool RestCursorHandler::wasCanceled () {
   MUTEX_LOCKER(_queryLock);
   return _queryKilled;
 }
@@ -384,99 +384,114 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///
 /// @RESTHEADER{POST /_api/cursor, Create cursor}
 ///
-/// @RESTBODYPARAM{query,json,required}
 /// A JSON object describing the query and query parameters.
+///
+/// @RESTBODYPARAM{query,string,required,string}
+/// contains the query string to be executed
+///
+/// @RESTBODYPARAM{count,boolean,optional,}
+/// indicates whether the number of documents in the result set should be returned in
+/// the "count" attribute of the result.
+/// Calculating the "count" attribute might in the future have a performance
+/// impact for some queries so this option is turned off by default, and "count"
+/// is only returned when requested.
+///
+/// @RESTBODYPARAM{batchSize,integer,optional,int64}
+/// maximum number of result documents to be transferred from
+/// the server to the client in one roundtrip. If this attribute is
+/// not set, a server-controlled default value will be used. A *batchSize* value of
+/// *0* is disallowed.
+///
+/// @RESTBODYPARAM{ttl,integer,optional,int64}
+/// The time-to-live for the cursor (in seconds). The cursor will be
+/// removed on the server automatically after the specified amount of time. This
+/// is useful to ensure garbage collection of cursors that are not fully fetched
+/// by clients. If not set, a server-defined value will be used.
+///
+/// @RESTBODYPARAM{cache,boolean,optional,}
+/// flag to determine whether the AQL query cache
+/// shall be used. If set to *false*, then any query cache lookup will be skipped
+/// for the query. If set to *true*, it will lead to the query cache being checked
+/// for the query if the query cache mode is either *on* or *demand*.
+///
+/// @RESTBODYPARAM{bindVars,array,optional,object}
+/// list of bind parameter objects.
+///
+/// @RESTBODYPARAM{options,object,optional,JSF_post_api_cursor_opts}
+/// key/value object with extra options for the query.
+///
+/// @RESTSTRUCT{fullCount,JSF_post_api_cursor_opts,boolean,optional,}
+/// if set to *true* and the query contains a *LIMIT* clause, then the
+/// result will contain an extra attribute *extra* with a sub-attribute *fullCount*.
+/// This sub-attribute will contain the number of documents in the result before the
+/// last LIMIT in the query was applied. It can be used to count the number of documents that
+/// match certain filter criteria, but only return a subset of them, in one go.
+/// It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting the option
+/// will disable a few LIMIT optimizations and may lead to more documents being processed,
+/// and thus make queries run longer. Note that the *fullCount* sub-attribute will only
+/// be present in the result if the query has a LIMIT clause and the LIMIT clause is
+/// actually used in the query.
+///
+/// @RESTSTRUCT{maxPlans,JSF_post_api_cursor_opts,integer,optional,int64}
+/// limits the maximum number of plans that are created by the AQL query optimizer.
+///
+/// @RESTSTRUCT{optimizer.rules,JSF_post_api_cursor_opts,array,optional,string}
+/// a list of to-be-included or to-be-excluded optimizer rules
+/// can be put into this attribute, telling the optimizer to include or exclude
+/// specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
+/// with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
+///
+/// @RESTSTRUCT{profile,JSF_post_api_cursor_opts,boolean,optional,}
+/// if set to *true*, then the additional query profiling information
+/// will be returned in the *extra.stats* return attribute if the query result is not
+/// served from the query cache.
 ///
 /// @RESTDESCRIPTION
 /// The query details include the query string plus optional query options and
 /// bind parameters. These values need to be passed in a JSON representation in
 /// the body of the POST request.
 ///
-/// The following attributes can be used inside the JSON object:
+/// @RESTRETURNCODES
 ///
-/// - *query*: contains the query string to be executed (mandatory)
+/// @RESTRETURNCODE{201}
+/// is returned if the result set can be created by the server.
 ///
-/// - *count*: boolean flag that indicates whether the number of documents
-///   in the result set should be returned in the "count" attribute of the result (optional).
-///   Calculating the "count" attribute might in the future have a performance
-///   impact for some queries so this option is turned off by default, and "count"
-///   is only returned when requested.
+/// @RESTREPLYBODY{error,boolean,required,}
+/// A flag to indicate that an error occurred (*false* in this case)
 ///
-/// - *batchSize*: maximum number of result documents to be transferred from
-///   the server to the client in one roundtrip (optional). If this attribute is
-///   not set, a server-controlled default value will be used. A *batchSize* value of
-///   *0* is disallowed.
+/// @RESTREPLYBODY{code,integer,required,integer}
+/// the HTTP status code
 ///
-/// - *ttl*: an optional time-to-live for the cursor (in seconds). The cursor will be
-///   removed on the server automatically after the specified amount of time. This
-///   is useful to ensure garbage collection of cursors that are not fully fetched
-///   by clients. If not set, a server-defined value will be used.
+/// @RESTREPLYBODY{result,array,optional,}
+/// an array of result documents (might be empty if query has no results)
 ///
-/// - *cache*: optional boolean flag to determine whether the AQL query cache
-///   shall be used. If set to *false*, then any query cache lookup will be skipped
-///   for the query. If set to *true*, it will lead to the query cache being checked
-///   for the query if the query cache mode is either *on* or *demand*.
+/// @RESTREPLYBODY{hasMore,boolean,required,}
+/// A boolean indicator whether there are more results
+/// available for the cursor on the server
 ///
-/// - *bindVars*: key/value object with bind parameters (optional).
+/// @RESTREPLYBODY{count,integer,optional,int64}
+/// the total number of result documents available (only
+/// available if the query was executed with the *count* attribute set)
 ///
-/// - *options*: key/value object with extra options for the query (optional).
+/// @RESTREPLYBODY{id,string,required,string}
+/// id of temporary cursor created on the server (optional, see above)
 ///
-/// The following options are supported at the moment:
+/// @RESTREPLYBODY{extra,object,optional,}
+/// an optional JSON object with extra information about the query result
+/// contained in its *stats* sub-attribute. For data-modification queries, the 
+/// *extra.stats* sub-attribute will contain the number of modified documents and 
+/// the number of documents that could not be modified
+/// due to an error (if *ignoreErrors* query option is specified)
 ///
-/// - *fullCount*: if set to *true* and the query contains a *LIMIT* clause, then the
-///   result will contain an extra attribute *extra* with a sub-attribute *fullCount*.
-///   This sub-attribute will contain the number of documents in the result before the
-///   last LIMIT in the query was applied. It can be used to count the number of documents that
-///   match certain filter criteria, but only return a subset of them, in one go.
-///   It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting the option
-///   will disable a few LIMIT optimizations and may lead to more documents being processed,
-///   and thus make queries run longer. Note that the *fullCount* sub-attribute will only
-///   be present in the result if the query has a LIMIT clause and the LIMIT clause is
-///   actually used in the query.
+/// @RESTREPLYBODY{cached,boolean,required,}
+/// a boolean flag indicating whether the query result was served 
+/// from the query cache or not. If the query result is served from the query
+/// cache, the *extra* return attribute will not contain any *stats* sub-attribute
+/// and no *profile* sub-attribute.
 ///
-/// - *maxPlans*: limits the maximum number of plans that are created by the AQL
-///   query optimizer.
-///
-/// - *optimizer.rules*: a list of to-be-included or to-be-excluded optimizer rules
-///   can be put into this attribute, telling the optimizer to include or exclude
-///   specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
-///   with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
-///
-/// - *profile*: if set to *true*, then the additional query profiling information
-///   will be returned in the *extra.stats* return attribute if the query result is not
-///   served from the query cache.
-///
-/// If the result set can be created by the server, the server will respond with
-/// *HTTP 201*. The body of the response will contain a JSON object with the
-/// result set.
-///
-/// The returned JSON object has the following attributes:
-///
-/// - *error*: boolean flag to indicate that an error occurred (*false*
-///   in this case)
-///
-/// - *code*: the HTTP status code
-///
-/// - *result*: an array of result documents (might be empty if query has no results)
-///
-/// - *hasMore*: a boolean indicator whether there are more results
-///   available for the cursor on the server
-///
-/// - *count*: the total number of result documents available (only
-///   available if the query was executed with the *count* attribute set)
-///
-/// - *id*: id of temporary cursor created on the server (optional, see above)
-///
-/// - *extra*: an optional JSON object with extra information about the query result
-///   contained in its *stats* sub-attribute. For data-modification queries, the 
-///   *extra.stats* sub-attribute will contain the number of modified documents and 
-///   the number of documents that could not be modified
-///   due to an error (if *ignoreErrors* query option is specified)
-///
-/// - *cached*: a boolean flag indicating whether the query result was served 
-///   from the query cache or not. If the query result is served from the query
-///   cache, the *extra* return attribute will not contain any *stats* sub-attribute
-///   and no *profile* sub-attribute.
+/// @RESTRETURNCODE{400}
+/// is returned if the JSON representation is malformed or the query specification is
+/// missing from the request.
 ///
 /// If the JSON representation is malformed or the query specification is
 /// missing from the request, the server will respond with *HTTP 400*.
@@ -484,13 +499,17 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:
 ///
-/// - *error*: boolean flag to indicate that an error occurred (*true* in this case)
+/// @RESTREPLYBODY{error,boolean,required,}
+/// boolean flag to indicate that an error occurred (*true* in this case)
 ///
-/// - *code*: the HTTP status code
+/// @RESTREPLYBODY{code,integer,required,int64}
+/// the HTTP status code
 ///
-/// - *errorNum*: the server error number
+/// @RESTREPLYBODY{errorNum,integer,required,int64}
+/// the server error number
 ///
-/// - *errorMessage*: a descriptive error message
+/// @RESTREPLYBODY{errorMessage,string,required,string}
+/// a descriptive error message
 ///
 /// If the query specification is complete, the server will process the query. If an
 /// error occurs during query processing, the server will respond with *HTTP 400*.
@@ -498,14 +517,6 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///
 /// A list of query errors can be found (../ArangoErrors/README.md) here.
 ///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{201}
-/// is returned if the result set can be created by the server.
-///
-/// @RESTRETURNCODE{400}
-/// is returned if the JSON representation is malformed or the query specification is
-/// missing from the request.
 ///
 /// @RESTRETURNCODE{404}
 /// The server will respond with *HTTP 404* in case a non-existing collection is
@@ -516,7 +527,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///
 /// @EXAMPLES
 ///
-/// Executes a query and extract the result in a single go:
+/// Execute a query and extract the result in a single go
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorForLimitReturnSingle}
 ///     var cn = "products";
@@ -533,7 +544,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///       batchSize: 2
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);
 ///
@@ -541,7 +552,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Executes a query and extracts part of the result:
+/// Execute a query and extract a part of the result
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorForLimitReturn}
 ///     var cn = "products";
@@ -561,7 +572,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///       batchSize: 2
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);
 ///
@@ -569,7 +580,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Using query option "fullCount":
+/// Using the query option "fullCount"
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorOption}
 ///     var url = "/_api/cursor";
@@ -581,14 +592,14 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///       }
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Enabling and disabling optimizer rules:
+/// Enabling and disabling optimizer rules
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorOptimizerRules}
 ///     var url = "/_api/cursor";
@@ -603,15 +614,15 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///       }
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Executes a data-modification query and retrieves the number of
-/// modified documents:
+/// Execute a data-modification query and retrieve the number of
+/// modified documents
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteQuery}
 ///     var cn = "products";
@@ -626,7 +637,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///       query: "FOR p IN products REMOVE p IN products"
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);
 ///     assert(JSON.parse(response.body).extra.stats.writesExecuted === 2);
@@ -636,7 +647,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Executes a data-modification query with option *ignoreErrors*:
+/// Execute a data-modification query with option *ignoreErrors*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteIgnore}
 ///     var cn = "products";
@@ -650,7 +661,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///       query: "REMOVE 'bar' IN products OPTIONS { ignoreErrors: true }"
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 201);
 ///     assert(JSON.parse(response.body).extra.stats.writesExecuted === 0);
@@ -660,9 +671,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///   ~ db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Bad queries:
-///
-/// Missing body:
+/// Bad query - Missing body
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorMissingBody}
 ///     var url = "/_api/cursor";
@@ -674,7 +683,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Unknown collection:
+/// Bad query - Unknown collection
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorUnknownCollection}
 ///     var url = "/_api/cursor";
@@ -684,15 +693,15 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///       batchSize: 2
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 404);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Executes a data-modification query that attempts to remove a non-existing
-/// document:
+/// Bad query - Execute a data-modification query that attempts to remove a non-existing
+/// document
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteQueryFail}
 ///     var cn = "products";
@@ -706,7 +715,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 ///       query: "REMOVE 'foo' IN products"
 ///     };
 ///
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     assert(response.code === 404);
 ///
@@ -794,7 +803,7 @@ void RestCursorHandler::createCursor () {
 ///
 /// @EXAMPLES
 ///
-/// Valid request for next batch:
+/// Valid request for next batch
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorForLimitReturnCont}
 ///     var url = "/_api/cursor";
@@ -814,7 +823,7 @@ void RestCursorHandler::createCursor () {
 ///       count: true,
 ///       batchSize: 2
 ///     };
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///
 ///     var body = response.body.replace(/\\/g, '');
 ///     var _id = JSON.parse(body).id;
@@ -955,7 +964,7 @@ void RestCursorHandler::modifyCursor () {
 ///       count: true,
 ///       batchSize: 2
 ///     };
-///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///     var response = logCurlRequest('POST', url, body);
 ///     logJsonResponse(response);
 ///     var body = response.body.replace(/\\/g, '');
 ///     var _id = JSON.parse(body).id;

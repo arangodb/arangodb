@@ -178,17 +178,6 @@ typedef long suseconds_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief const cast for C
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void* CONST_CAST (void const* ptr) {
-  union { void* p; void const* c; } cnv;
-
-  cnv.c = ptr;
-  return cnv.p;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief incrementing a uint64_t modulo a number with wraparound
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -215,6 +204,13 @@ static inline uint64_t TRI_DecModU64 (uint64_t i, uint64_t len) {
 static inline uint32_t TRI_64to32 (uint64_t x) {
   return static_cast<uint32_t>(x >> 32) ^ static_cast<uint32_t>(x);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper macro for calculating strlens for static strings at 
+/// a compile-time (unless compiled with fno-builtin-strlen etc.)
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_CHAR_LENGTH_PAIR(value) (value), strlen(value)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fake spinlocks
@@ -250,6 +246,20 @@ static inline uint32_t TRI_64to32 (uint64_t x) {
 #endif
 
 // -----------------------------------------------------------------------------
+// --SECTIONS--                                                          alignas
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct alignas(x) ... does not work in Visual Studio 2013
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _WIN32
+#define TRI_ALIGNAS(x)
+#else
+#define TRI_ALIGNAS(x) alignas(x)
+#endif
+
+// -----------------------------------------------------------------------------
 // --SECTIONS--                                               deferred execution
 // -----------------------------------------------------------------------------
 
@@ -282,7 +292,6 @@ struct TRI_AutoOutOfScope {
   TRI_AutoOutOfScope<decltype(funcname)> objname(funcname);
 
 #define TRI_DEFER(Destructor) TRI_DEFER_INTERNAL(Destructor, TOKEN_PASTE(auto_fun, __LINE__) , TOKEN_PASTE(auto_obj, __LINE__))
-
 
 // -----------------------------------------------------------------------------
 // --SECTIONS--                                               triagens namespace

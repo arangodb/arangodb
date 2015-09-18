@@ -2,13 +2,14 @@
 
 If you have never built a Foxx App, then you can make your own [first Foxx App](https://docs.arangodb.com/cookbook/FoxxFirstSteps.html) using our [cookbook](https://docs.arangodb.com/cookbook).
 
+
 Foxx allows defining job queues that let you perform slow or expensive actions asynchronously. These queues can be used to send e-mails, call external APIs or perform other actions that you do not want to perform directly or want to retry on failure.
 
-This feature can be disabled by setting the startup option `--server.foxx-queues` to `false`. This will disable the queue manager and prevent any jobs from being processed, which may improve CPU load if you do not plan to use Foxx queues at all.
+@startDocuBlock foxxQueues
 
 Please note that Foxx job queues are database-specific. Queues and jobs are always relative to the database in which they are created or accessed.
 
-By default the Foxx queue manager will be checking the queues once every second. This value can be changed by setting the startup option `--server.foxx-queues-poll-interval`. Lowering this value will result in the queue manager waking up and checking the queues more frequently, which may increase CPU usage of the server.
+@startDocuBlock foxxQueuesPollInterval
 
 For the low-level functionality see [the chapter on the **Task Management** module](../../ModuleTasks/).
 
@@ -135,7 +136,7 @@ Returns the job id.
 
 Note that if you pass a function for the **backOff** calculation, **success** callback or **failure** callback options the function will be serialized to the database as a string and therefore must not rely on any external scope or external variables.
 
-When the job is set to automatically repeat, the **failure** callback will only be executed when a run of the job has failured more than **maxFailures** times. Note that if the job fails and **maxFailures** is set, it will be rescheduled according to the **backOff** until it has either failed too many times or completed successfully before being scheduled according to the **repeatDelay** again. Recovery attempts by **maxFailures** do not count towards **repeatTimes**.
+When the job is set to automatically repeat, the **failure** callback will only be executed when a run of the job has failed more than **maxFailures** times. Note that if the job fails and **maxFailures** is set, it will be rescheduled according to the **backOff** until it has either failed too many times or completed successfully before being scheduled according to the **repeatDelay** again. Recovery attempts by **maxFailures** do not count towards **repeatTimes**.
 
 The **success** and **failure** callbacks receive the following arguments:
 

@@ -1,32 +1,32 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/ <<EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/ &lt;&lt;EOF
 { 
-  "_key" : "graph", 
-  "vertices" : "vertices", 
-  "edges" : "edges" 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"graph"</span>, 
+  <span class="hljs-string">"vertices"</span> : <span class="hljs-string">"vertices"</span>, 
+  <span class="hljs-string">"edges"</span> : <span class="hljs-string">"edges"</span> 
 }
 EOF
 
-HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: 1349242099
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+etag: <span class="hljs-number">803447340</span>
 
 { 
-  "graph" : { 
-    "_id" : "_graphs/graph", 
-    "_key" : "graph", 
-    "_rev" : "1349242099", 
-    "edgeDefinitions" : [ 
+  <span class="hljs-string">"graph"</span> : { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/graph"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"graph"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"803447340"</span>, 
+    <span class="hljs-string">"edgeDefinitions"</span> : [ 
       { 
-        "collection" : "edges", 
-        "from" : [ 
-          "vertices" 
+        <span class="hljs-string">"collection"</span> : <span class="hljs-string">"edges"</span>, 
+        <span class="hljs-string">"from"</span> : [ 
+          <span class="hljs-string">"vertices"</span> 
         ], 
-        "to" : [ 
-          "vertices" 
+        <span class="hljs-string">"to"</span> : [ 
+          <span class="hljs-string">"vertices"</span> 
         ] 
       } 
     ] 
   }, 
-  "error" : false, 
-  "code" : 202 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span> 
 }

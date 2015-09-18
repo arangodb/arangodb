@@ -80,7 +80,7 @@ namespace triagens {
 /// @brief create an execution plan from an AST
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ExecutionPlan* instanciateFromAst (Ast*);
+        static ExecutionPlan* instantiateFromAst (Ast*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process the list of collections in a JSON
@@ -93,7 +93,7 @@ namespace triagens {
 /// @brief create an execution plan from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ExecutionPlan* instanciateFromJson (Ast* ast,
+        static ExecutionPlan* instantiateFromJson (Ast* ast,
                                                    triagens::basics::Json const& Json);
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,23 +1,26 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor <<EOF
-{"query":"REMOVE 'bar' IN products OPTIONS { ignoreErrors: true }"}
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"query"</span> : <span class="hljs-string">"REMOVE 'bar' IN products OPTIONS { ignoreErrors: true }"</span> 
+}
 EOF
 
-HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "result" : [ ], 
-  "hasMore" : false, 
-  "extra" : { 
-    "stats" : { 
-      "writesExecuted" : 0, 
-      "writesIgnored" : 1, 
-      "scannedFull" : 0, 
-      "scannedIndex" : 0, 
-      "filtered" : 0 
+  <span class="hljs-string">"result"</span> : [ ], 
+  <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"cached"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"extra"</span> : { 
+    <span class="hljs-string">"stats"</span> : { 
+      <span class="hljs-string">"writesExecuted"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"writesIgnored"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span> 
     }, 
-    "warnings" : [ ] 
+    <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
-  "error" : false, 
-  "code" : 201 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }

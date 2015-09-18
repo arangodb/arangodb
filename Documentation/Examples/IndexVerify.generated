@@ -1,0 +1,34 @@
+arangosh&gt; <span class="hljs-keyword">var</span> explain = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/aql/explainer"</span>).explain;
+arangosh&gt; db.example.ensureSkiplist(<span class="hljs-string">"a"</span>, <span class="hljs-string">"b"</span>);
+{ 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/595501612"</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+  <span class="hljs-string">"fields"</span> : [ 
+    <span class="hljs-string">"a"</span>, 
+    <span class="hljs-string">"b"</span> 
+  ], 
+  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
+}
+arangosh&gt; explain(<span class="hljs-string">"FOR doc IN example FILTER doc.a &lt; 23 RETURN doc"</span>, {colors:<span class="hljs-literal">false</span>});
+Query string:
+ FOR doc IN example FILTER doc.a &lt; <span class="hljs-number">23</span> RETURN doc
+
+Execution plan:
+ Id   NodeType         Est.   Comment
+  <span class="hljs-number">1</span>   SingletonNode       <span class="hljs-number">1</span>   * ROOT
+  <span class="hljs-number">6</span>   IndexRangeNode      <span class="hljs-number">1</span>     - FOR doc IN example   <span class="hljs-comment">/* skiplist index scan */</span>
+  <span class="hljs-number">5</span>   ReturnNode          <span class="hljs-number">1</span>       - RETURN doc
+
+Indexes used:
+ Id   Type       Collection   Unique   Sparse   Selectivity Est.   Fields     Ranges
+  <span class="hljs-number">6</span>   skiplist   example      <span class="hljs-literal">false</span>    <span class="hljs-literal">false</span>                 n/a   <span class="hljs-string">`a`</span>, <span class="hljs-string">`b`</span>   [ <span class="hljs-string">`a`</span> &lt; <span class="hljs-number">23</span> ]
+
+Optimization rules applied:
+ Id   RuleName
+  <span class="hljs-number">1</span>   use-index-range
+  <span class="hljs-number">2</span>   remove-filter-covered-by-index
+
+

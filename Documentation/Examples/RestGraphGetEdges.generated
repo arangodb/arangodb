@@ -1,62 +1,62 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edges <<EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edges &lt;&lt;EOF
 { 
-  "batchSize" : 100 
+  <span class="hljs-string">"batchSize"</span> : <span class="hljs-number">100</span> 
 }
 EOF
 
-HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "result" : [ 
+  <span class="hljs-string">"result"</span> : [ 
     { 
-      "_id" : "edges/edge2", 
-      "_key" : "edge2", 
-      "_rev" : "1403899123", 
-      "_from" : "vertices/v1", 
-      "_to" : "vertices/v3", 
-      "$label" : null, 
-      "optional1" : "val1" 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge4"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge4"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"773890604"</span>, 
+      <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/v1"</span>, 
+      <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/v5"</span>, 
+      <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
+      <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
     }, 
     { 
-      "_id" : "edges/edge3", 
-      "_key" : "edge3", 
-      "_rev" : "1404423411", 
-      "_from" : "vertices/v2", 
-      "_to" : "vertices/v4", 
-      "$label" : null, 
-      "optional1" : "val1" 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge2"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge2"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"772842028"</span>, 
+      <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/v1"</span>, 
+      <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/v3"</span>, 
+      <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
+      <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
     }, 
     { 
-      "_id" : "edges/edge1", 
-      "_key" : "edge1", 
-      "_rev" : "1403374835", 
-      "_from" : "vertices/v1", 
-      "_to" : "vertices/v2", 
-      "$label" : null, 
-      "optional1" : "val1" 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge3"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge3"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"773366316"</span>, 
+      <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/v2"</span>, 
+      <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/v4"</span>, 
+      <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
+      <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
     }, 
     { 
-      "_id" : "edges/edge4", 
-      "_key" : "edge4", 
-      "_rev" : "1404947699", 
-      "_from" : "vertices/v1", 
-      "_to" : "vertices/v5", 
-      "$label" : null, 
-      "optional1" : "val1" 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/edge1"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"edge1"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"772317740"</span>, 
+      <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/v1"</span>, 
+      <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/v2"</span>, 
+      <span class="hljs-string">"$label"</span> : <span class="hljs-literal">null</span>, 
+      <span class="hljs-string">"optional1"</span> : <span class="hljs-string">"val1"</span> 
     } 
   ], 
-  "hasMore" : false, 
-  "extra" : { 
-    "stats" : { 
-      "writesExecuted" : 0, 
-      "writesIgnored" : 0, 
-      "scannedFull" : 4, 
-      "scannedIndex" : 0, 
-      "filtered" : 0 
+  <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"extra"</span> : { 
+    <span class="hljs-string">"stats"</span> : { 
+      <span class="hljs-string">"writesExecuted"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"writesIgnored"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">4</span>, 
+      <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span> 
     }, 
-    "warnings" : [ ] 
+    <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
-  "error" : false, 
-  "code" : 201 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }

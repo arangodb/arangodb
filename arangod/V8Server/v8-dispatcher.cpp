@@ -75,6 +75,27 @@ static Dispatcher* GlobalDispatcher = nullptr;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief try to compile the command
+////////////////////////////////////////////////////////////////////////////////
+
+static bool TryCompile (v8::Isolate* isolate,
+                        std::string const& command) {
+  v8::HandleScope scope(isolate);
+
+  // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
+  auto current = isolate->GetCurrentContext()->Global();
+  auto ctor = v8::Local<v8::Function>::Cast(current->Get(TRI_V8_ASCII_STRING("Function")));
+
+  // Invoke Function constructor to create function with the given body and no arguments
+  v8::Handle<v8::Value> args[2] = { TRI_V8_ASCII_STRING("params"), TRI_V8_STD_STRING(command) };
+  v8::Local<v8::Object> function = ctor->NewInstance(2, args);
+
+  v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
+
+  return (! action.IsEmpty());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a task id from an argument
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -113,7 +134,7 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
 
   // job id
-  string id;
+  std::string id;
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("id"))) {
     // user-specified id
@@ -126,7 +147,7 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   // job name
-  string name;
+  std::string name;
 
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("name"))) {
     name = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("name")));
@@ -164,13 +185,17 @@ static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("command must be specified");
   }
 
-  string command;
+  std::string command;
   if (obj->Get(TRI_V8_ASCII_STRING("command"))->IsFunction()) {
     // need to add ( and ) around function because call would otherwise break
     command = "(" + TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("command"))) + ")(params)";
   }
   else {
     command = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("command")));
+  }
+
+  if (! TryCompile(isolate, command)) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot compile command");
   }
 
   // extract the parameters
@@ -358,7 +383,7 @@ void TRI_InitV8Dispatcher (v8::Isolate* isolate,
     TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_GET_TASK"), JS_GetTask);
   }
   else {
-    LOG_ERROR("cannot initialise tasks, scheduler or dispatcher unknown");
+    LOG_ERROR("cannot initialize tasks, scheduler or dispatcher unknown");
   }
 }
 

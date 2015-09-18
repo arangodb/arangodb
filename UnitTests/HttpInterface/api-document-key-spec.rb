@@ -119,24 +119,17 @@ describe ArangoDB do
         "\\rabcd",
         "abcd defg",
         "abcde/bdbg",
+        "a/a",
         "/a",
         "adbfbgb/",
         "öööää",
         "müller",
-        "m+ller",
         "\\\"invalid",
-        "'invalid",
         "\\\\invalid",
         "\\\\\\\\invalid",
-        ";invalid",
-        ",invalid",
-        "!invalid",
         "?invalid",
-        "$invalid",
         "#invalid",
-        "%invalid",
         "&invalid",
-        "(invalid)",
         "[invalid]",
         "a" * 255
       ]
@@ -183,12 +176,57 @@ describe ArangoDB do
         "-foobar",
         "_foobar",
         "@foobar",
+        "(valid)",
+        "%valid",
+        "$valid",
+        "$$bill,y'all",
+        "'valid",
+        "'a-key-is-a-key-is-a-key'",
+        "m+ller",
+        ";valid",
+        ",valid",
+        "!valid!",
+        ":",
+        ":::",
+        ":-:-:",
+        ";",
+        ";;;;;;;;;;",
+        "(",
+        ")",
+        "()xoxo()",
+        "%",
+        "%-%-%-%",
+        ":-)",
+        "!",
+        "!!!!",
+        "'",
+        "''''",
+        "this-key's-valid.",
+        "=",
+        "==================================================",
+        "-=-=-=___xoxox-",
+        "*",
+        "(*)",
+        "****",
         ".",
         "...",
         "-",
         "--",
         "_",
         "__",
+        "(" * 254, # 254 bytes is the maximum allowed length
+        ")" * 254, # 254 bytes is the maximum allowed length
+        "," * 254, # 254 bytes is the maximum allowed length
+        ":" * 254, # 254 bytes is the maximum allowed length
+        ";" * 254, # 254 bytes is the maximum allowed length
+        "*" * 254, # 254 bytes is the maximum allowed length
+        "=" * 254, # 254 bytes is the maximum allowed length
+        "-" * 254, # 254 bytes is the maximum allowed length
+        "%" * 254, # 254 bytes is the maximum allowed length
+        "@" * 254, # 254 bytes is the maximum allowed length
+        "'" * 254, # 254 bytes is the maximum allowed length
+        "." * 254, # 254 bytes is the maximum allowed length
+        "!" * 254, # 254 bytes is the maximum allowed length
         "_" * 254, # 254 bytes is the maximum allowed length
         "a" * 254 # 254 bytes is the maximum allowed length
       ]

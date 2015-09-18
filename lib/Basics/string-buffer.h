@@ -53,30 +53,30 @@ TRI_string_buffer_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new string buffer and initialise it
+/// @brief create a new string buffer and initialize it
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new string buffer and initialise it with a specific size
+/// @brief create a new string buffer and initialize it with a specific size
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t*,
-                                                  const size_t);
+                                                  size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the string buffer
+/// @brief initializes the string buffer
 ///
-/// @warning You must call initialise before using the string buffer.
+/// @warning You must call initialize before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitStringBuffer (TRI_string_buffer_t *, TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the string buffer with a specific size
+/// @brief initializes the string buffer with a specific size
 ///
-/// @warning You must call initialise before using the string buffer.
+/// @warning You must call initialize before using the string buffer.
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitSizedStringBuffer (TRI_string_buffer_t *,
@@ -180,12 +180,6 @@ void TRI_ResetStringBuffer (TRI_string_buffer_t*);
 char* TRI_StealStringBuffer (TRI_string_buffer_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the character at the end of the string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-char TRI_LastCharStringBuffer (TRI_string_buffer_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -215,13 +209,6 @@ int TRI_ReplaceStringStringBuffer (TRI_string_buffer_t*,
                                    char const*,
                                    size_t);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replaces characters
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t*,
-                                         TRI_string_buffer_t const*);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  STRING APPENDERS
 // -----------------------------------------------------------------------------
@@ -247,24 +234,6 @@ int TRI_AppendStringStringBuffer (TRI_string_buffer_t* self, char const* str);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendString2StringBuffer (TRI_string_buffer_t* self, char const* str, size_t len);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends a string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendStringBufferStringBuffer (TRI_string_buffer_t* self, TRI_string_buffer_t const* text);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends a blob
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendBlobStringBuffer (TRI_string_buffer_t* self, TRI_blob_t const* text);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends eol character
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendEolStringBuffer (TRI_string_buffer_t* self);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends characters but url-encode the string
@@ -358,12 +327,6 @@ int TRI_AppendInt64StringBuffer (TRI_string_buffer_t * self, int64_t attr);
 
 int TRI_AppendUInt64StringBuffer (TRI_string_buffer_t * self, uint64_t attr);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends size_t
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendSizeStringBuffer (TRI_string_buffer_t * self, size_t attr);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           INTEGER OCTAL APPENDERS
 // -----------------------------------------------------------------------------
@@ -384,12 +347,6 @@ int TRI_AppendUInt32OctalStringBuffer (TRI_string_buffer_t * self, uint32_t attr
 
 int TRI_AppendUInt64OctalStringBuffer (TRI_string_buffer_t * self, uint64_t attr);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends size_t in octal
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendSizeOctalStringBuffer (TRI_string_buffer_t * self, size_t attr);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             INTEGER HEX APPENDERS
 // -----------------------------------------------------------------------------
@@ -409,12 +366,6 @@ int TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t * self, uint64_t attr);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appends size_t in hex
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_AppendSizeHexStringBuffer (TRI_string_buffer_t * self, size_t attr);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   FLOAT APPENDERS

@@ -1,0 +1,20 @@
+arangosh&gt; <span class="hljs-keyword">var</span> query = <span class="hljs-string">"FOR doc IN mycollection FILTER doc.value &gt; 42 RETURN doc"</span>;
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/aql/explainer"</span>).explain(query, {colors:<span class="hljs-literal">false</span>});
+Query string:
+ FOR doc IN mycollection FILTER doc.value &gt; <span class="hljs-number">42</span> RETURN doc
+
+Execution plan:
+ Id   NodeType                  Est.   Comment
+  <span class="hljs-number">1</span>   SingletonNode                <span class="hljs-number">1</span>   * ROOT
+  <span class="hljs-number">2</span>   EnumerateCollectionNode    <span class="hljs-number">201</span>     - FOR doc IN mycollection   <span class="hljs-comment">/* full collection scan */</span>
+  <span class="hljs-number">3</span>   CalculationNode            <span class="hljs-number">201</span>       - LET #<span class="hljs-number">1</span> = doc.<span class="hljs-string">`value`</span> &gt; <span class="hljs-number">42</span>   <span class="hljs-comment">/* simple expression */</span>   <span class="hljs-comment">/* collections used: doc : mycollection */</span>
+  <span class="hljs-number">4</span>   FilterNode                 <span class="hljs-number">201</span>       - FILTER #<span class="hljs-number">1</span>
+  <span class="hljs-number">5</span>   ReturnNode                 <span class="hljs-number">201</span>       - RETURN doc
+
+Indexes used:
+ none
+
+Optimization rules applied:
+ none
+
+

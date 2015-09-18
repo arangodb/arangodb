@@ -30,6 +30,7 @@ ERROR_LEGEND_INCOMPLETE,24,"internal error if a legend could not be created","Wi
 ERROR_IP_ADDRESS_INVALID,25,"IP address is invalid","Will be raised when the structure of an IP address is invalid."
 ERROR_LEGEND_NOT_IN_WAL_FILE,26,"internal error if a legend for a marker does not yet exist in the same WAL file","Will be raised internally, then fixed internally, and never come out to the user."
 ERROR_FILE_EXISTS,27,"file exists","Will be raised when a file already exists."
+ERROR_LOCKED,28,"locked","Will be raised when a resource or an operation is locked."
 
 ################################################################################
 ## HTTP standard errors
@@ -99,7 +100,6 @@ ERROR_ARANGO_DUPLICATE_NAME,1207,"duplicate name","Will be raised when a name du
 ERROR_ARANGO_ILLEGAL_NAME,1208,"illegal name","Will be raised when an illegal name is detected."
 ERROR_ARANGO_NO_INDEX,1209,"no suitable index known","Will be raised when no suitable index for the query is known."
 ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,1210,"unique constraint violated","Will be raised when there is a unique constraint violation."
-ERROR_ARANGO_GEO_INDEX_VIOLATED,1211,"geo index violated","Will be raised when an illegal coordinate is used."
 ERROR_ARANGO_INDEX_NOT_FOUND,1212,"index not found","Will be raised when an index with a given identifier is unknown."
 ERROR_ARANGO_CROSS_COLLECTION_REQUEST,1213,"cross collection request not allowed","Will be raised when a cross-collection is requested."
 ERROR_ARANGO_INDEX_HANDLE_BAD,1214,"illegal index handle","Will be raised when a index handle is corrupt."
@@ -125,6 +125,7 @@ ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING,1234,"index insertion warning - at
 ERROR_ARANGO_INDEX_CREATION_FAILED,1235,"index creation failed","Will be raised when an attempt to create an index has failed."
 ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT,1236,"write-throttling timeout","Will be raised when the server is write-throttled and a write operation has waited too long for the server to process queued operations."
 ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,1237,"collection type mismatch","Will be raised when a collection has a different type from what has been expected."
+ERROR_ARANGO_COLLECTION_NOT_LOADED,1238,"collection not loaded","Will be raised when a collection is accessed that is not yet loaded."
 
 ################################################################################
 ## ArangoDB storage errors
@@ -147,11 +148,11 @@ ERROR_REPLICATION_LOOP,1405,"loop detected","Will be raised when the replication
 ERROR_REPLICATION_UNEXPECTED_MARKER,1406,"unexpected marker","Will be raised when an unexpected marker is found in the replication log stream."
 ERROR_REPLICATION_INVALID_APPLIER_STATE,1407,"invalid applier state","Will be raised when an invalid replication applier state file is found."
 ERROR_REPLICATION_UNEXPECTED_TRANSACTION,1408,"invalid transaction","Will be raised when an unexpected transaction id is found."
-ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION,1409,"invalid replication logger configuration","Will be raised when the configuration for the replication logger is invalid."
 ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,1410,"invalid replication applier configuration","Will be raised when the configuration for the replication applier is invalid."
-ERROR_REPLICATION_RUNNING,1411,"cannot change applier configuration while running","Will be raised when there is an attempt to change the configuration for the replication applier while it is running."
+ERROR_REPLICATION_RUNNING,1411,"cannot perform operation while applier is running","Will be raised when there is an attempt to perform an operation while the replication applier is running."
 ERROR_REPLICATION_APPLIER_STOPPED,1412,"replication stopped","Special error code used to indicate the replication applier was stopped by a user."
-ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the replication error is started without a known start tick value."
+ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the replication applier is started without a known start tick value."
+ERROR_REPLICATION_START_TICK_NOT_PRESENT,1414,"start tick not present","Will be raised when the replication applier fetches data using a start tick, but that start tick is not present on the logger server anymore."
 
 ################################################################################
 ## ArangoDB cluster errors
@@ -317,10 +318,10 @@ ERROR_GRAPH_CREATE_MISSING_NAME,1922,"missing graph name","a graph name is requi
 ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION,1923,"malformed edge definition","the edge definition is malformed. It has to be an array of objects.",
 ERROR_GRAPH_NOT_FOUND,1924,"graph not found","a graph with this name could not be found.",
 ERROR_GRAPH_DUPLICATE,1925,"graph already exists","a graph with this name already exists.",
-ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,1926,"collection does not exist"," does not exist.",
+ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,1926,"vertex collection does not exist or is not part of the graph","the specified vertex collection does not exist or is not part of the graph.",
 ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX,1927,"not a vertex collection","the collection is not a vertex collection.",
 ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION,1928,"not in orphan collection","Vertex collection not in orphan collection of the graph.",
-ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF,1929,"collection used in edge def","The collection is already used in an edge definition of the graph.",
+ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF,1929,"collection already used in edge def","The collection is already used in an edge definition of the graph.",
 ERROR_GRAPH_EDGE_COLLECTION_NOT_USED,1930,"edge collection not used in graph","The edge collection is not used in any edge definition of the graph.",
 ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION,1931," is not an ArangoCollection","The collection is not an ArangoCollection.",
 ERROR_GRAPH_NO_GRAPH_COLLECTION,1932,"collection _graphs does not exist","collection _graphs does not exist.",
@@ -330,6 +331,7 @@ ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS,1935,"Invalid number of arguments. Expec
 ERROR_GRAPH_INVALID_PARAMETER,1936,"Invalid parameter type.","Invalid parameter type.",
 ERROR_GRAPH_INVALID_ID,1937,"Invalid id","Invalid id",
 ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS,1938,"collection used in orphans","The collection is already used in the orphans of the graph.",
+ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,1939,"edge collection does not exist or is not part of the graph","the specified edge collection does not exist or is not part of the graph.",
 
 ################################################################################
 ## Session errors

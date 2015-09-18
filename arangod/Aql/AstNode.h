@@ -108,6 +108,7 @@ namespace triagens {
         void*       _data;
       } 
       value;
+      uint32_t         length; // only used for string values
       AstNodeValueType type;
     };
 
@@ -229,7 +230,7 @@ namespace triagens {
 /// @brief create a string node, with defining a value type
 ////////////////////////////////////////////////////////////////////////////////
 
-      explicit AstNode (char const*, AstNodeValueType); 
+      explicit AstNode (char const*, size_t, AstNodeValueType); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the node from JSON
@@ -659,11 +660,24 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the string value of a node
+////////////////////////////////////////////////////////////////////////////////
+
+        inline size_t getStringLength () const {
+          return static_cast<size_t>(value.length);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set the string value of a node
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline void setStringValue (char const* v) {
+        inline void setStringValue (char const* v,
+                                    size_t length) {
+          // note: v may contain the NUL byte
+          TRI_ASSERT(v == nullptr || strlen(v) <= length);
+
           value.value._string = v;
+          value.length = static_cast<uint32_t>(length);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

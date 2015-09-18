@@ -5,8 +5,9 @@ A repository is a gateway to the database. It gets data from the database, updat
 ```javascript
 var Foxx = require("org/arangodb/foxx");
 
-var TodosRepository = Foxx.Repository.extend({
-});
+class TodosRepository extends Foxx.Repository {
+    // ...
+}
 
 exports.repository = TodosRepository;
 ```
@@ -27,8 +28,7 @@ Model lifecycle:
 ```js
 var person = new PersonModel();
 person.on('beforeCreate', function() {
-  var model = this;
-  model.fancyMethod(); // Do something fancy with the model
+    this.fancyMethod(); // Do something fancy with the model
 });
 var people = new Repository(appContext.collection("people"), { model: PersonModel });
 
@@ -70,11 +70,12 @@ Making a simple query in the repository and using it from the controller:
 // in the repository
 var Foxx = require("org/arangodb/foxx");
 
-var TodosRepository = Foxx.Repository.extend({
-    getPendingItems: Foxx.createQuery(
-        'FOR todo IN my_todos FILTER todo.completed == false RETURN todo'
-    )
+class TodosRepository extends Foxx.Repository {
+    // ...
 });
+TodosRepository.prototype.getPendingItems = Foxx.createQuery(
+    'FOR todo IN my_todos FILTER todo.completed == false RETURN todo'
+);
 
 // in the controller
 ctrl.get("/", function(req, res) {
@@ -86,10 +87,10 @@ It is also possible to supply parameters to the query:
 
 ```js
 // in the repository
-getPendingItemById: Foxx.createQuery({
+TodosRepository.prototype.getPendingItemById = Foxx.createQuery({
     query: 'FOR todo IN my_todos FILTER todo.completed == false FILTER todo._key == @id RETURN todo',
     params: ['id']
-})
+});
 
 // in the controller
 ctrl.get("/:id", function(req, res) {
@@ -103,7 +104,7 @@ The list of results can also be transformed before returning it from the reposit
 
 ```js
 // in the repository
-getPendingItemById: Foxx.createQuery({
+TodosRepository.prototype.getPendingItemById = Foxx.createQuery({
     query: 'FOR todo IN my_todos FILTER todo.completed == false FILTER todo._key == @id RETURN todo',
     params: ['id'],
     transform: function(results, extra) {
@@ -111,7 +112,7 @@ getPendingItemById: Foxx.createQuery({
             results[i].extraProperty = extra;
         }
     }
-})
+});
 
 // in the controller
 ctrl.get("/:id", function(req, res) {
@@ -148,19 +149,20 @@ access to additional index-specific methods like **range** or **fulltext** (see 
 
 The syntax for defining indexes is the same used in [*collection.ensureIndex*](../../IndexHandling/README.md).
 
-@EXAMPLES
+**Examples**
 
 ```js
 var Foxx = require('org/arangodb/foxx');
-var FulltextRepository = Foxx.Repository.extend({
-    indexes: [
-        {
-            type: 'fulltext',
-            fields: ['text'],
-            minLength: 3
-        }
-    ]
-});
+class FulltextRepository extends Foxx.Repository {
+    // ...
+}
+FulltextRepository.prototype.indexes = [
+    {
+        type: 'fulltext',
+        fields: ['text'],
+        minLength: 3
+    }
+];
 ```
 
 !SECTION Methods of a Repository
@@ -198,6 +200,7 @@ var FulltextRepository = Foxx.Repository.extend({
 @startDocuBlock JSF_foxx_repository_replaceByExample
 
 !SUBSECTION Updating entries in the repository
+@startDocuBlock JSF_foxx_repository_update
 
 @startDocuBlock JSF_foxx_repository_updateById
 

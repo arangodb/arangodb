@@ -97,12 +97,13 @@
 
 .figuresHeader {
   border-bottom: 1px solid  $c-c2grey;
+
+  th {
+    font-family: 'Open Sans', sans-serif !important;
+    font-weight: 400 !important;
+  }
 }
 
-.figuresHeader th {
-  font-family: 'Open Sans', sans-serif !important;
-  font-weight: 400 !important;
-}
 
 #collectionIndexTable {
   margin-left: 0;
@@ -138,9 +139,9 @@
 
 #infoTab .active > a,
 #collectionTab .active > a {
-  color: $c-black;
   background-color: $c-modal-header;
   border-color: $c-collection-tab-border-bottom $c-collection-tab-border-bottom transparent !important;
+  color: $c-black;
 }
 
 #confirmCreateEdge {

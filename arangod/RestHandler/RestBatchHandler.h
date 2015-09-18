@@ -96,7 +96,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestBatchHandler (rest::HttpRequest*);
+        explicit RestBatchHandler (rest::HttpRequest*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -105,7 +105,7 @@ namespace triagens {
         ~RestBatchHandler ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
+// --SECTION--                                               HttpHandler methods
 // -----------------------------------------------------------------------------
 
       public:
@@ -114,7 +114,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        Handler::status_t execute ();
+        HttpHandler::status_t execute ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

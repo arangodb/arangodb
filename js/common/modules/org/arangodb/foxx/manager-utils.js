@@ -295,6 +295,7 @@ function listJson (showPrefix, onlyDevelopment) {
       author: doc.manifest.author,
       system: doc.isSystem || false,
       development: doc.isDevelopment || false,
+      contributors: doc.manifest.contributors || false,
       license: doc.manifest.license,
       version: doc.version,
       path: fs.join(fs.makeAbsolute(doc.root), doc.path),
@@ -441,6 +442,7 @@ function validateAppName (name) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the app mounted at this mount point
 ////////////////////////////////////////////////////////////////////////////////
+
 function mountedApp (mount) {
   return getStorage().firstExample({mount: mount});
 }
@@ -448,6 +450,7 @@ function mountedApp (mount) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Update the app mounted at this mountpoint with the new app
 ////////////////////////////////////////////////////////////////////////////////
+
 function updateApp (mount, update) {
   return getStorage().updateByExample({mount: mount}, update);
 }
@@ -455,6 +458,7 @@ function updateApp (mount, update) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief define validators for parameter types
 ////////////////////////////////////////////////////////////////////////////////
+
 var parameterTypes = {
   integer: joi.number().integer(),
   boolean: joi.boolean(),

@@ -1,16 +1,20 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products <<EOF
-{"type":"cap","size":10}
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"cap"</span>, 
+  <span class="hljs-string">"size"</span> : <span class="hljs-number">10</span> 
+}
 EOF
 
-HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "id" : "products/1260834035", 
-  "type" : "cap", 
-  "size" : 10, 
-  "byteSize" : 0, 
-  "isNewlyCreated" : true, 
-  "error" : false, 
-  "code" : 201 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/819831340"</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"cap"</span>, 
+  <span class="hljs-string">"size"</span> : <span class="hljs-number">10</span>, 
+  <span class="hljs-string">"byteSize"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }

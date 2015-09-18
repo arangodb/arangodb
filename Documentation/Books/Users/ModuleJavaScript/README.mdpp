@@ -1,6 +1,6 @@
 !CHAPTER JavaScript Modules
 
-!SUBSECTION Introduction to Javascript Modules
+!SUBSECTION Introduction to JavaScript Modules
 
 The ArangoDB uses a [CommonJS](http://wiki.commonjs.org/wiki)
 compatible module and package concept. You can use the function *require* in
@@ -150,10 +150,12 @@ arangosh> test1.func1();
 The values in `__filename` and `__dirname` can be used for generic debugging and for
 creating filename relative to the required file, e.g.
 
-```js
-var fs = require("fs");
-var relativeFile = fs.join(__dirname, "scripts", "test.js");
-```
+    @startDocuBlockInline MODJS_fsDir
+    @EXAMPLE_ARANGOSH_OUTPUT{MODJS_fsDir}
+    var files = require("fs");
+    relativeFile = files.join(__dirname, "scripts", "test.js");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock MODJS_fsDir
 
 
 *require* can also be used to load JSON data. If the name of the required module ends

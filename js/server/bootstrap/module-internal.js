@@ -122,7 +122,15 @@ exports.wal = {
 
   properties: function () {
     return global.WAL_PROPERTIES.apply(null, arguments);
-  }
+  },
+  
+  transactions: function () {
+    return global.WAL_TRANSACTIONS.apply(null, arguments);
+  },
+
+  waitForCollector: function () {
+    return global.WAL_WAITCOLLECTOR.apply(null, arguments);
+  },
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,6 +140,15 @@ exports.wal = {
 if (global.SYS_DEFINE_ACTION) {
   exports.defineAction = global.SYS_DEFINE_ACTION;
   delete global.SYS_DEFINE_ACTION;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throw-collection-not-loaded
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.THROW_COLLECTION_NOT_LOADED) {
+  exports.throwOnCollectionNotLoaded = global.THROW_COLLECTION_NOT_LOADED;
+  delete global.THROW_COLLECTION_NOT_LOADED;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,6 +234,24 @@ if (global.REPLICATION_LOGGER_STATE) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tickRangesReplicationLogger
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.REPLICATION_LOGGER_TICK_RANGES) {
+  exports.tickRangesReplicationLogger = global.REPLICATION_LOGGER_TICK_RANGES;
+  delete global.REPLICATION_LOGGER_TICK_RANGES;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief firstTickReplicationLogger
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.REPLICATION_LOGGER_FIRST_TICK) {
+  exports.firstTickReplicationLogger = global.REPLICATION_LOGGER_FIRST_TICK;
+  delete global.REPLICATION_LOGGER_FIRST_TICK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief configureReplicationApplier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -262,12 +297,12 @@ if (global.REPLICATION_APPLIER_FORGET) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sychroniseReplication
+/// @brief sychronizeReplication
 ////////////////////////////////////////////////////////////////////////////////
 
-if (global.REPLICATION_SYNCHRONISE) {
-  exports.synchroniseReplication = global.REPLICATION_SYNCHRONISE;
-  delete global.REPLICATION_SYNCHRONISE;
+if (global.REPLICATION_SYNCHRONIZE) {
+  exports.synchronizeReplication = global.REPLICATION_SYNCHRONIZE;
+  delete global.REPLICATION_SYNCHRONIZE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -346,9 +381,3 @@ if (global.SYS_SEND_CHUNK) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:

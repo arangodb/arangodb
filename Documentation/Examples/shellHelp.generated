@@ -1,0 +1,34 @@
+arangosh&gt; db._help(); 
+
+--------------------------- ArangoDatabase (db) help ---------------------------
+Administration Functions:                                                 
+  _help()                               <span class="hljs-keyword">this</span> help                         
+  _flushCache()                         flush and refill collection cache 
+                                                                          
+Collection Functions:                                                     
+  _collections()                        list all collections              
+  _collection(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">name</span>&gt;</span>)</span>                   get collection by identifier/name 
+  _create(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">name</span>&gt;</span>, <span class="hljs-tag">&lt;<span class="hljs-title">properties</span>&gt;</span>)</span>         creates a <span class="hljs-keyword">new</span> collection          
+  _createEdgeCollection(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">name</span>&gt;</span>)</span>         creates a <span class="hljs-keyword">new</span> edge collection     
+  _drop(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">name</span>&gt;</span>)</span>                         <span class="hljs-keyword">delete</span> a collection               
+                                                                          
+Document Functions:                                                       
+  _document(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">id</span>&gt;</span>)</span>                       get <span class="hljs-built_in">document</span> by handle (_id)      
+  _replace(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">id</span>&gt;</span>, <span class="hljs-tag">&lt;<span class="hljs-title">data</span>&gt;</span>, <span class="hljs-tag">&lt;<span class="hljs-title">overwrite</span>&gt;</span>)</span>   overwrite <span class="hljs-built_in">document</span>                
+  _update(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">id</span>&gt;</span>, <span class="hljs-tag">&lt;<span class="hljs-title">data</span>&gt;</span>, <span class="hljs-tag">&lt;<span class="hljs-title">overwrite</span>&gt;</span>,    partially update document         
+          <span class="hljs-tag">&lt;<span class="hljs-title">keepNull</span>&gt;</span>)</span>                                                     
+  _remove(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">id</span>&gt;</span>)</span>                         <span class="hljs-keyword">delete</span> <span class="hljs-built_in">document</span>                   
+  _exists(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">id</span>&gt;</span>)</span>                         checks whether a <span class="hljs-built_in">document</span> exists  
+  _truncate()                           <span class="hljs-keyword">delete</span> all documents              
+                                                                          
+Database Management Functions:                                            
+  _createDatabase(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">name</span>&gt;</span>)</span>               creates a <span class="hljs-keyword">new</span> database            
+  _dropDatabase(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">name</span>&gt;</span>)</span>                 drops an existing database        
+  _useDatabase(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">name</span>&gt;</span>)</span>                  switches into an existing database
+  _drop(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">name</span>&gt;</span>)</span>                         <span class="hljs-keyword">delete</span> a collection               
+  _name()                               name <span class="hljs-keyword">of</span> the current database      
+                                                                          
+Query / Transaction Functions:                                            
+  _executeTransaction(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">transaction</span>&gt;</span>)</span>    execute transaction               
+  _query(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">query</span>&gt;</span>)</span>                       execute AQL query                 
+  _createStatement(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">data</span>&gt;</span>)</span>              create and <span class="hljs-keyword">return</span> AQL query       

@@ -104,12 +104,6 @@
       var status = this.model.get('status');
 
       if (status === 'loaded') {
-        var result;
-        if (this.model.get('name') !== newname) {
-          result = this.model.renameCollection(newname);
-        }
-
-        var wfs = $('#change-collection-sync').val();
         var journalSize;
         try {
           journalSize = JSON.parse($('#change-collection-size').val() * 1024 * 1024);
@@ -118,7 +112,23 @@
           arangoHelper.arangoError('Please enter a valid number');
           return 0;
         }
-        var changeResult = this.model.changeCollection(wfs, journalSize);
+
+        var indexBuckets;
+        try {
+          indexBuckets = JSON.parse($('#change-index-buckets').val());
+          if (indexBuckets < 1 || parseInt(indexBuckets) !== Math.pow(2, Math.log2(indexBuckets))) {
+            throw "invalid indexBuckets value";
+          }
+        }
+        catch (e) {
+          arangoHelper.arangoError('Please enter a valid number of index buckets');
+          return 0;
+        }
+
+        var result;
+        if (this.model.get('name') !== newname) {
+          result = this.model.renameCollection(newname);
+        }
 
         if (result !== true) {
           if (result !== undefined) {
@@ -127,19 +137,21 @@
           }
         }
 
+        var wfs = $('#change-collection-sync').val();
+        var changeResult = this.model.changeCollection(wfs, journalSize, indexBuckets);
+
         if (changeResult !== true) {
           arangoHelper.arangoNotification("Collection error", changeResult);
           return 0;
         }
 
-        if (changeResult === true) {
-          this.collectionsView.render();
-          window.modalView.hide();
-        }
+        this.collectionsView.render();
+        window.modalView.hide();
       }
       else if (status === 'unloaded') {
         if (this.model.get('name') !== newname) {
           var result2 = this.model.renameCollection(newname);
+
           if (result2 === true) {
             this.collectionsView.render();
             window.modalView.hide();
@@ -217,10 +229,26 @@
             ]
           )
         );
-      }
+        
+        var indexBuckets = this.model.getProperties().indexBuckets;
+        
+        tableContent.push(
+          window.modalView.createTextEntry(
+            "change-index-buckets",
+            "Index buckets",
+            indexBuckets,
+            "The number of index buckets for this collection. Must be at least 1 and a power of 2.",
+            "",
+            true,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
+                msg: "Must be a number greater than 1 and a power of 2."
+              }
+            ]
+          )
+        );
 
-
-      if (collectionIsLoaded) {
         // prevent "unexpected sync method error"
         var wfs = this.model.getProperties().waitForSync;
         tableContent.push(
@@ -228,7 +256,7 @@
             "change-collection-sync",
             "Wait for sync",
             wfs,
-            "Synchronise to disk before returning from a create or update of a document.",
+            "Synchronize to disk before returning from a create or update of a document.",
             [{value: false, label: "No"}, {value: true, label: "Yes"}]        )
         );
       }

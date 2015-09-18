@@ -28,13 +28,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgeHandler.h"
-
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
@@ -75,7 +74,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 ///
 /// @RESTHEADER{POST /_api/edge,Create edge}
 ///
-/// @RESTBODYPARAM{edge-document,json,required}
+/// @RESTALLBODYPARAM{edge-document,json,required}
 /// A JSON representation of the edge document must be passed as the body of
 /// the POST request. This JSON object may contain the edge's document key in
 /// the *_key* attribute if needed.
@@ -163,7 +162,7 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 bool RestEdgeHandler::createDocument () {
   vector<string> const& suffix = _request->suffix();
 
-  if (suffix.size() != 0) {
+  if (! suffix.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + EDGE_PATH + "?collection=<identifier>");
@@ -191,7 +190,7 @@ bool RestEdgeHandler::createDocument () {
   }
 
   // extract the cid
-  const string& collection = _request->value("collection", found);
+  std::string const& collection = _request->value("collection", found);
 
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -200,27 +199,25 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  const bool waitForSync = extractWaitForSync();
+  bool const waitForSync = extractWaitForSync();
 
-  TRI_json_t* json = parseJsonBody();
+  std::unique_ptr<TRI_json_t> json(parseJsonBody());
   
   if (json == nullptr) {
     return false;
   }
 
-  if (! TRI_IsObjectJson(json)) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  if (! TRI_IsObjectJson(json.get())) {
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
 
   if (ServerState::instance()->isCoordinator()) {
     // json will be freed inside!
-    return createDocumentCoordinator(collection, waitForSync, json, from, to);
+    return createDocumentCoordinator(collection, waitForSync, json.release(), from, to);
   }
 
   if (! checkCreateCollection(collection, getCollectionType())) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
@@ -235,7 +232,6 @@ bool RestEdgeHandler::createDocument () {
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collection, res);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
@@ -244,11 +240,10 @@ bool RestEdgeHandler::createDocument () {
   if (document->_info._type != TRI_COL_TYPE_EDGE) {
     // check if we are inserting with the EDGE handler into a non-EDGE collection
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
 
-  const TRI_voc_cid_t cid = trx.cid();
+  TRI_voc_cid_t const cid = trx.cid();
 
   // edge
   TRI_document_edge_t edge;
@@ -281,8 +276,6 @@ bool RestEdgeHandler::createDocument () {
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
 
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
     if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
       generateError(HttpResponse::NOT_FOUND, res, wrongPart + " does not point to a valid collection");
     }
@@ -298,12 +291,11 @@ bool RestEdgeHandler::createDocument () {
 
   // will hold the result
   TRI_doc_mptr_copy_t mptr;
-  res = trx.createEdge(&mptr, json, waitForSync, &edge);
+  res = trx.createEdge(&mptr, json.get(), waitForSync, &edge);
   res = trx.finish(res);
 
   FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
   FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // .............................................................................
   // outside write transaction
@@ -328,7 +320,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
                                                  TRI_json_t* json,
                                                  char const* from,
                                                  char const* to) {
-  string const& dbname = _request->databaseName();
+  std::string const& dbname = _request->databaseName();
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   map<string, string> resultHeaders;
@@ -340,6 +332,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname.c_str(), error);
+
     return false;
   }
   // Essentially return the response we got from the DBserver, be it
@@ -347,9 +340,9 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
   _response = createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
+
   return responseCode >= triagens::rest::HttpResponse::BAD;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock API_EDGE_READ
@@ -490,7 +483,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTHEADER{PUT /_api/edge/{document-handle},replaces an edge}
 ///
-/// @RESTBODYPARAM{edge,json,required}
+/// @RESTALLBODYPARAM{edge,json,required}
 /// A JSON representation of the new edge data.
 ///
 /// @RESTURLPARAMETERS
@@ -530,14 +523,14 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// *_from* and *_to* of an edge are immutable and cannot be updated either.
 ///
 /// Optionally, the URL parameter *waitForSync* can be used to force
-/// synchronisation of the edge document replacement operation to disk even in case
+/// synchronization of the edge document replacement operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* URL parameter can be used to force synchronisation
+/// Thus, the *waitForSync* URL parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* URL parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// The body of the response contains a JSON object with the information about
@@ -575,7 +568,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// id, then by default a *HTTP 412* conflict is returned and no replacement is
 /// performed.
 ///
-/// The conditional update behavior can be overriden with the *policy* URL query parameter:
+/// The conditional update behavior can be overridden with the *policy* URL query parameter:
 ///
 /// - PUT /_api/document/*document-handle*?policy=*policy*
 ///
@@ -619,7 +612,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTHEADER{PATCH /_api/edge/{document-handle}, Patches edge}
 ///
-/// @RESTBODYPARAM{document,json,required}
+/// @RESTALLBODYPARAM{document,json,required}
 /// A JSON representation of the edge update.
 ///
 /// @RESTURLPARAMETERS
@@ -673,14 +666,14 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// once set and cannot be updated.
 ///
 /// Optionally, the URL parameter *waitForSync* can be used to force
-/// synchronisation of the edge document update operation to disk even in case
+/// synchronization of the edge document update operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* URL parameter can be used to force synchronisation
+/// Thus, the *waitForSync* URL parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* URL parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// The body of the response contains a JSON object with the information about
@@ -765,7 +758,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* URL parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// @RESTRETURNCODES

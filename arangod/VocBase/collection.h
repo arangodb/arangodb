@@ -116,6 +116,12 @@ struct TRI_vocbase_col_s;
 
 #define TRI_COL_NAME_STATISTICS  "_statistics"
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default number of index buckets
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_DEFAULT_INDEX_BUCKETS 8
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -156,7 +162,7 @@ typedef uint32_t TRI_col_version_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_COL_TYPE_UNKNOWN          = 0, // only used when initialising
+  TRI_COL_TYPE_UNKNOWN          = 0, // only used when initializing
   TRI_COL_TYPE_SHAPE_DEPRECATED = 1, // not used since ArangoDB 1.5
   TRI_COL_TYPE_DOCUMENT         = 2,
   TRI_COL_TYPE_EDGE             = 3
@@ -436,12 +442,6 @@ bool TRI_IsSystemNameCollection (char const*);
 
 bool TRI_IsAllowedNameCollection (bool,
                                   char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type name for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-char const* TRI_TypeNameCollection (const TRI_col_type_e);
 
 #endif
 

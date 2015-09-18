@@ -1,55 +1,13 @@
-arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
-arangosh> var g = examples.loadGraph("routeplanner");
-arangosh> db._query("FOR e IN GRAPH_EDGES("
-........> +"'routeplanner', 'germanCity/Hamburg', {direction : 'outbound', maxDepth : 2}) RETURN e"
-........> ).toArray();
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_EDGES("</span>
+........&gt; +<span class="hljs-string">"'routeplanner', 'germanCity/Hamburg', {direction : 'outbound', maxDepth : 2}) RETURN e"</span>
+........&gt; ).toArray();
 [ 
-  { 
-    "_id" : "germanHighway/706399475", 
-    "_key" : "706399475", 
-    "_rev" : "706399475", 
-    "_from" : "germanCity/Hamburg", 
-    "_to" : "germanCity/Cologne", 
-    "distance" : 500 
-  }, 
-  { 
-    "_id" : "internationalHighway/707841267", 
-    "_key" : "707841267", 
-    "_rev" : "707841267", 
-    "_from" : "germanCity/Cologne", 
-    "_to" : "frenchCity/Lyon", 
-    "distance" : 700 
-  }, 
-  { 
-    "_id" : "internationalHighway/708037875", 
-    "_key" : "708037875", 
-    "_rev" : "708037875", 
-    "_from" : "germanCity/Cologne", 
-    "_to" : "frenchCity/Paris", 
-    "distance" : 550 
-  }, 
-  { 
-    "_id" : "internationalHighway/707448051", 
-    "_key" : "707448051", 
-    "_rev" : "707448051", 
-    "_from" : "germanCity/Hamburg", 
-    "_to" : "frenchCity/Paris", 
-    "distance" : 900 
-  }, 
-  { 
-    "_id" : "frenchHighway/706727155", 
-    "_key" : "706727155", 
-    "_rev" : "706727155", 
-    "_from" : "frenchCity/Paris", 
-    "_to" : "frenchCity/Lyon", 
-    "distance" : 550 
-  }, 
-  { 
-    "_id" : "internationalHighway/707644659", 
-    "_key" : "707644659", 
-    "_rev" : "707644659", 
-    "_from" : "germanCity/Hamburg", 
-    "_to" : "frenchCity/Lyon", 
-    "distance" : 1300 
-  } 
+  <span class="hljs-string">"germanHighway/1366663724"</span>, 
+  <span class="hljs-string">"internationalHighway/1368105516"</span>, 
+  <span class="hljs-string">"internationalHighway/1368302124"</span>, 
+  <span class="hljs-string">"internationalHighway/1367712300"</span>, 
+  <span class="hljs-string">"frenchHighway/1366991404"</span>, 
+  <span class="hljs-string">"internationalHighway/1367908908"</span> 
 ]

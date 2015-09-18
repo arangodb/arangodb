@@ -150,8 +150,8 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief in-flight modules
 ///
-/// These modules are currently loading and must be cleanup when a cancellation
-/// occured.
+/// These modules are currently loading and must be cleanup when a cancelation
+/// occurred.
 ////////////////////////////////////////////////////////////////////////////////
 
   var inFlight = {};
@@ -620,6 +620,11 @@ function require (path) {
     }
 
     if (description.type === "coffee") {
+      let deprecated = require('org/arangodb/deprecated');
+      deprecated('2.8', (
+        `file ${description.origin}: built-in CoffeeScript support is deprecated,`
+        + ` pre-compile CoffeeScript modules instead`
+      ));
       var cs = require("coffee-script");
       description.content = cs.compile(description.content, {bare: true});
       localModule = createModule(currentModule, currentPackage, description);

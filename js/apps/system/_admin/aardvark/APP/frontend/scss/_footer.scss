@@ -14,11 +14,11 @@ footer.footer {
   height: 40px;
 
   p {
+    font-size: 10pt;
+    font-weight: 100;
     margin-bottom: 0;
     padding-bottom: 10px;
     padding-top: 10px;
-    font-weight: 100;
-    font-size: 10pt;
   }
 }
 
@@ -37,49 +37,51 @@ div.footer-left {
     margin-top: 5px;
 
     a {
-      width: 25px;
       display: block;
-      height: 25px;
       float: left;
+      height: 25px;
+      width: 25px;
     }
 
     p {
-      font-size: 12pt;
       background: $c-white;
-      border: 1px solid rgba(104, 103, 102, 0.1);
+      border: 1px solid rgba(104, 103, 102, .1);
       border-radius: 20px;
       height: 25px;
-      width: 25px;
-      padding: 0;
       margin-right: 10px;
+      padding: 0;
+      width: 25px;
     }
 
     p:hover {
+      background: $c-positive;
       cursor: pointer;
-      background: $c-new-grey;
 
-      i {
+      i {
         color: $c-white;
       }
     }
 
     i {
       color: $c-black;
+      margin-top: 6px;
       position: absolute;
-      margin-top: 4px;
 
       &.fa-twitter {
-        margin-left: -7px;
+        margin-left: -5px;
       }
+
       &.fa-envelope {
-        margin-left: -20px;
+        margin-left: -19px;
       }
+
       &.fa-google {
-        margin-top: 6px;
-        margin-left: -18px;
+        margin-left: -17px;
+        margin-top: 7px;
       }
+
       &.fa-stack-overflow {
-        margin-left: -18px;
+        margin-left: -17px;
       }
     }
 
@@ -95,15 +97,16 @@ div.footer-center {
 
   i {
     background-color: $c-white;
+    border: 1px solid rgba(104, 103, 102, .1);
     border-radius: 20px;
-    border: 1px solid rgba(104, 103, 102, 0.1);
+    margin-left: 1px;
+    padding: 6px 2px;
     width: 20px;
-    padding: 6px 3px 6px 2px;
   }
 
   i:hover {
+    background-color: $c-positive;
     color: $c-white;
-    background-color: $c-new-grey;
   }
 
   p {

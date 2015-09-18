@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor using linenoise
+/// @brief console input using linenoise
 ///
 /// @file
 ///
@@ -28,34 +28,39 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LinenoiseShell.h"
-#include "Utilities/Completer.h"
-#include "Utilities/LineEditor.h"
 
 extern "C" {
 #include <linenoise.h>
 }
 
+#include "Utilities/Completer.h"
+#include "Utilities/LineEditor.h"
 #include "Basics/files.h"
 
 using namespace std;
 using namespace triagens;
+using namespace arangodb;
 
-namespace {
-  static Completer* COMPLETER;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
 
-  static void LinenoiseCompletionGenerator (char const* text, 
-                                            linenoiseCompletions* lc) {
-    if (COMPLETER) {
-      std::vector<string> alternatives;
-      COMPLETER->getAlternatives(text, alternatives);
-      LineEditor::sortAlternatives(alternatives);
+namespace arangodb {
+  Completer* COMPLETER;
+}
 
-      for (auto& it : alternatives) {
-        linenoiseAddCompletion(lc, it.c_str());
-      }
+static void LinenoiseCompletionGenerator (char const* text, 
+					  linenoiseCompletions* lc) {
+  if (COMPLETER) {
+    std::vector<string> alternatives = COMPLETER->alternatives(text);
+    arangodb::LineEditor::sortAlternatives(alternatives);
+
+    for (auto& it : alternatives) {
+      linenoiseAddCompletion(lc, it.c_str());
     }
-    lc->multiLine = 1;
   }
+
+  lc->multiLine = 1;
 }
 
 // -----------------------------------------------------------------------------
@@ -86,7 +91,7 @@ LinenoiseShell::~LinenoiseShell() {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor open
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LinenoiseShell::open (bool) {
@@ -98,7 +103,7 @@ bool LinenoiseShell::open (bool) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor shutdown
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LinenoiseShell::close () {
@@ -113,7 +118,7 @@ bool LinenoiseShell::close () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the history file path
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 string LinenoiseShell::historyPath () {
@@ -137,19 +142,19 @@ string LinenoiseShell::historyPath () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add to history
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void LinenoiseShell::addHistory (char const* str) {
-  if (*str == '\0') {
+void LinenoiseShell::addHistory (std::string const& str) {
+  if (str.empty()) {
     return;
   }
 
-  linenoiseHistoryAdd(str);
+  linenoiseHistoryAdd(str.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief save history
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LinenoiseShell::writeHistory () {
@@ -158,8 +163,13 @@ bool LinenoiseShell::writeHistory () {
   return true;
 }
 
-char* LinenoiseShell::getLine (char const* input) {
-  return linenoise(input);
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+std::string LinenoiseShell::getLine(const std::string& prompt, bool& eof) {
+  eof = false;
+  return linenoise(prompt.c_str());
 }
 
 // -----------------------------------------------------------------------------

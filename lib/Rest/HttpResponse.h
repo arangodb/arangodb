@@ -234,7 +234,8 @@ namespace triagens {
 /// The header field name must already be trimmed and lower-cased
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string header (const char*, const size_t) const;
+        std::string header (char const*, 
+                            size_t) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a header field
@@ -244,7 +245,8 @@ namespace triagens {
 /// returned. found is set if the client specified the header field.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string header (std::string const& field, bool& found) const;
+        std::string header (std::string const&, 
+                            bool& found) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a header field
@@ -254,7 +256,9 @@ namespace triagens {
 /// returned. found is set if the client specified the header field.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string header (const char*, const size_t, bool& found) const;
+        std::string header (char const*, 
+                            size_t, 
+                            bool& found) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all header fields
@@ -271,7 +275,9 @@ namespace triagens {
 /// The key string must remain valid until the response is destroyed
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setHeader (const char*, const size_t, std::string const& value);
+        void setHeader (char const*, 
+                        size_t, 
+                        std::string const& value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a header field
@@ -281,7 +287,9 @@ namespace triagens {
 /// The value string must remain valid until the response is destroyed
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setHeader (const char*, const size_t, const char*);
+        void setHeader (char const*, 
+                        size_t, 
+                        char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a header field
@@ -289,7 +297,8 @@ namespace triagens {
 /// The key is automatically converted to lower case and trimmed.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setHeader (std::string const& key, std::string const& value);
+        void setHeader (std::string const& key, 
+                        std::string const& value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets many header fields
@@ -297,7 +306,8 @@ namespace triagens {
 /// The key is automatically converted to lower case.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setHeaders (std::string const& headers, bool includeLine0);
+        void setHeaders (std::string const& headers, 
+                         bool includeLine0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a cookie

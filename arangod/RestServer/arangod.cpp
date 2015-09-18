@@ -30,13 +30,12 @@
 #include <iostream>
 
 #include "Basics/Common.h"
-
-#include "Basics/messages.h"
-#include "Basics/logging.h"
-#include "Basics/tri-strings.h"
-#include "Rest/InitialiseRest.h"
 #include "Basics/files.h"
+#include "Basics/logging.h"
+#include "Basics/messages.h"
+#include "Rest/InitializeRest.h"
 #include "RestServer/ArangoServer.h"
+#include "Statistics/statistics.h"
 #include <signal.h>
 
 using namespace triagens;
@@ -97,7 +96,7 @@ static void AbortHandler (int signum) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-  int res = 0;
+  int res = EXIT_SUCCESS;
 
   signal(SIGSEGV, AbortHandler);
 
@@ -107,9 +106,11 @@ int main (int argc, char* argv[]) {
   bool const startAsService = false;
 #endif
 
-  // initialise sub-systems
+  // initialize sub-systems
   TRI_GlobalEntryFunction();
-  TRIAGENS_REST_INITIALISE(argc, argv);
+  TRIAGENS_REST_INITIALIZE(argc, argv);
+      
+  TRI_InitializeStatistics();
 
   if (startAsService) {
     TRI_StartService(argc, argv);
@@ -133,6 +134,8 @@ int main (int argc, char* argv[]) {
     }
     ArangoInstance = nullptr;
   }
+  
+  TRI_ShutdownStatistics();
 
   // shutdown sub-systems
   TRIAGENS_REST_SHUTDOWN;

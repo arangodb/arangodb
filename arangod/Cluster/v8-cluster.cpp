@@ -1202,6 +1202,23 @@ static void JS_IdServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the primary servers id (only for secondaries)
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_IdOfPrimaryServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("idOfPrimary()");
+  }
+
+  const std::string id = ServerState::instance()->getPrimaryId();
+  TRI_V8_RETURN_STD_STRING(id);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the servers description
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1376,15 +1393,15 @@ static void JS_DisableDipatcherKickstarterServerState (const v8::FunctionCallbac
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return whether the cluster is initialised
+/// @brief return whether the cluster is initialized
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_InitialisedServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_InitializedServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("initialised()");
+    TRI_V8_THROW_EXCEPTION_USAGE("initialized()");
   }
 
   if (ServerState::instance()->initialized()) {
@@ -2167,6 +2184,7 @@ void TRI_InitV8Cluster (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("flush"), JS_FlushServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("localInfo"), JS_LocalInfoServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("id"), JS_IdServerState);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("idOfPrimary"), JS_IdOfPrimaryServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("description"), JS_DescriptionServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("dataPath"), JS_DataPathServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("logPath"), JS_LogPathServerState);
@@ -2177,7 +2195,7 @@ void TRI_InitV8Cluster (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("coordinatorConfig"), JS_CoordinatorConfigServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("disableDispatcherFrontend"), JS_DisableDipatcherFrontendServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("disableDispatcherKickstarter"), JS_DisableDipatcherKickstarterServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("initialised"), JS_InitialisedServerState);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("initialized"), JS_InitializedServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("isCoordinator"), JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("role"), JS_RoleServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("setLocalInfo"), JS_SetLocalInfoServerState, true);

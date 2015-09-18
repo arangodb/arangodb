@@ -28,28 +28,43 @@ describes how to deal with a particular request path.
 
 For the above example, add the following document to the _routing collection:
 
-```js
-arangosh> db._routing.save({ 
-  url: { 
-    match: "/hello/world" 
-  },
-  content: { 
-    contentType: "text/html", 
-    body: "<html><body>Hello World</body></html>" 
-  }
-});
-```
+    @startDocuBlockInline HTML_01_routingCreateHtml
+    @EXAMPLE_ARANGOSH_OUTPUT{HTML_01_routingCreateHtml}
+    |db._routing.save({ 
+    |  url: { 
+    |    match: "/hello/world" 
+    |  },
+    |  content: { 
+    |    contentType: "text/html", 
+    |    body: "<html><body>Hello World</body></html>" 
+    |  }
+    });
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock HTML_01_routingCreateHtml
 
 In order to activate the new routing, you must either restart the server or call
 the internal reload function.
 
-```js
-arangosh> require("internal").reloadRouting()
-```
+    @startDocuBlockInline HTML_02_routingReload
+    @EXAMPLE_ARANGOSH_OUTPUT{HTML_02_routingReload}
+    require("internal").reloadRouting()
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock HTML_02_routingReload
 
 Now use the browser and access http:// localhost:8529/hello/world
 
-You should see the *Hello World* in our browser.
+You should see the *Hello World* in our browser:
+
+    @startDocuBlockInline HTML_03_routingCurlHtml
+    @EXAMPLE_ARANGOSH_RUN{HTML_03_routingCurlHtml}
+    var url = "/hello/world";
+    var response = logCurlRequest('GET', url);
+    assert(response.code === 200);
+    logRawResponse(response);
+    db._query("FOR route IN _routing FILTER route.url.match == '/hello/world' REMOVE route in _routing")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock HTML_03_routingCurlHtml
+
 
 !SECTION Matching a URL
 
@@ -159,7 +174,7 @@ It is possible to use more then one constraint for the same URL part.
     { 
       url: { 
         match: "/hello/:name|:id/world",
-	constraint: { 
+        constraint: { 
           name: "/[a-z]+/", id: "/[0-9]+/" 
         } 
       }
@@ -246,9 +261,9 @@ to test the above examples.
 
     {
       routes: [
-	{ url: { match: "/hello/world" }, content: "route 1" },
-	{ url: { match: "/hello/:name|:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "route 2" },
-	{ url: { match: "/:something/world" }, content: "route 3" },
-	{ url: { match: "/hello/*" }, content: "route 4" },
+    { url: { match: "/hello/world" }, content: "route 1" },
+    { url: { match: "/hello/:name|:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "route 2" },
+    { url: { match: "/:something/world" }, content: "route 3" },
+    { url: { match: "/hello/*" }, content: "route 4" },
       ]
     }

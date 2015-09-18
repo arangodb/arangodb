@@ -112,7 +112,7 @@ SERVER_OPT := \
 	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
-	--log.level error \
+	--log.level fatal \
         --wal.reserve-logfiles 1 \
 	--server.threads 4 \
 	$(SERVER_START)
@@ -120,7 +120,7 @@ SERVER_OPT := \
 CLIENT_OPT := \
 	--configuration none \
 	--javascript.startup-directory @top_srcdir@/js \
-	--log.level error \
+	--log.level fatal \
 	--no-colors \
 	--quiet
 
@@ -144,9 +144,25 @@ start-server:
 	@test -d "$(VOCDIR)"
 
 	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) && rm -rf "$(VOCDIR)") &
+# Wait for http/https server endpoints:
+	@test "$(PROTO)" == "unix" || \
+	   ( \
+		rm -f "$(STARTFILE)"; \
+		while [ ! -s "$(STARTFILE)" ]; do \
+			$(CURL) $(CURL_OPT) --insecure -X GET -s "$(PROTO)://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || \
+			sleep 2; \
+		done)
+# wait for unix domain socket enpoints:
+	@(test "$(PROTO)" == "unix" && \
+		while ! @builddir@/bin/arangosh $(CLIENT_OPT)  \
+			--server.endpoint unix://$(VOCDIR)/arango.sock \
+                        --server.disable-authentication true \
+                        --javascript.execute-string 'if (arango.GET("/_api/version").server === "arango") { 0; } else {1; }'; do \
+		    sleep 1; \
+		    echo .; \
+		done;) ||\
+	     true
 
-	@test "$(PROTO)" == "unix" || (rm -f "$(STARTFILE)"; while [ ! -s "$(STARTFILE)" ]; do $(CURL) $(CURL_OPT) --insecure -X GET -s "$(PROTO)://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || sleep 2; done)
-	@(test "$(PROTO)" == "unix" && sleep 8) || true
 	@rm -f "$(STARTFILE)"
 	@echo "server has been started."
 	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 75; else sleep 2; fi
@@ -199,7 +215,7 @@ if ENABLE_FAILURE_TESTS
 execute-recovery-test:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
-	@builddir@/bin/arangod "$(VOCDIR)" --no-server $(SERVER_OPT) --server.threads 1 --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup || true # the server will crash with segfault intentionally in this test
+	@builddir@/bin/arangod "$(VOCDIR)" --no-server $(SERVER_OPT) --server.threads 1 --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup --log.level fatal || true # the server will crash with segfault intentionally in this test
 	@rm -f core
 	$(VALGRIND) @builddir@/bin/arangod --no-server "$(VOCDIR)" $(SERVER_OPT) --server.threads 1 --wal.ignore-logfile-errors true --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter recover || test "x$(FORCE)" == "x1"
 
@@ -210,6 +226,10 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="disk-full-logfile"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="disk-full-logfile-data"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="disk-full-datafile"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="disk-full-datafile"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-with-temp"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-collection-fail"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-database-fail"
@@ -228,6 +248,7 @@ unittests-recovery:
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-multi-flush"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-simple"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-all"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-other"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="foxx-directories"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-rename"
@@ -348,6 +369,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/hashes-test.cpp \
 	UnitTests/Basics/associative-pointer-test.cpp \
 	UnitTests/Basics/associative-multi-pointer-test.cpp \
+	UnitTests/Basics/associative-multi-pointer-nohashcache-test.cpp \
 	UnitTests/Basics/skiplist-test.cpp \
 	UnitTests/Basics/priorityqueue-test.cpp \
 	UnitTests/Basics/string-buffer-test.cpp \
@@ -360,7 +382,8 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/EndpointTest.cpp \
 	UnitTests/Basics/StringBufferTest.cpp \
 	UnitTests/Basics/StringUtilsTest.cpp \
-	UnitTests/Basics/PathEnumeratorTest.cpp
+	UnitTests/Basics/PathEnumeratorTest.cpp \
+	UnitTests/Basics/AttributeNameParserTest.cpp 
 
 UnitTests_geo_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_builddir@/lib -I@top_srcdir@/lib @BOOST_CPPFLAGS@
 UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
@@ -483,8 +506,10 @@ SHELL_COMMON = \
 ################################################################################
 
 SHELL_SERVER_ONLY = \
-               @top_srcdir@/js/server/tests/shell-readonly-noncluster-disabled.js\
+               @top_srcdir@/js/server/tests/shell-readonly-noncluster-disabled.js \
                @top_srcdir@/js/server/tests/shell-wal-noncluster-memoryintense.js \
+               @top_srcdir@/js/server/tests/shell-datafile-timecritical-noncluster.js \
+               @top_srcdir@/js/server/tests/shell-collection-not-loaded-timecritical-noncluster.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster-timecritical.js \
                @top_srcdir@/js/server/tests/shell-shaped-noncluster.js \
@@ -494,7 +519,6 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-foxx.js \
                @top_srcdir@/js/server/tests/shell-foxx-base-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-format-middleware.js \
-               @top_srcdir@/js/server/tests/shell-foxx-manager-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-model.js \
                @top_srcdir@/js/server/tests/shell-foxx-model-events-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-preprocessor.js \
@@ -618,11 +642,11 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-queries-fulltext.js \
 			@top_srcdir@/js/server/tests/aql-queries-geo.js \
 			@top_srcdir@/js/server/tests/aql-queries-noncollection.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser-in-noncluster.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser-limit-noncluster.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser-ref-noncluster.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser-sort-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimizer-in-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimizer.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimizer-limit-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimizer-ref-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimizer-sort-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-simple.js \
 			@top_srcdir@/js/server/tests/aql-queries-variables.js \
 			@top_srcdir@/js/server/tests/aql-query-cache-noncluster.js \
@@ -728,7 +752,7 @@ SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 unittests-shell-client:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=unix
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
 
 	@echo
 	@echo "================================================================================"
@@ -837,9 +861,9 @@ unittests-import:
 ### starts two servers (master & slave) and checks for data drift
 ################################################################################
 
-.PHONY: unittests-replication unittests-replication-server unittests-replication-http unittests-replication-data
+.PHONY: unittests-replication unittests-replication-server unittests-replication-http unittests-replication-sync unittests-replication-static unittests-replication-ongoing
 
-unittests-replication: unittests-replication-server unittests-replication-http unittests-replication-data
+unittests-replication: unittests-replication-server unittests-replication-http unittests-replication-sync unittests-replication-static unittests-replication-ongoing
 
 unittests-replication-server:
 	@echo
@@ -873,7 +897,30 @@ unittests-replication-http:
 	@rm -rf "$(VOCDIR)"
 	@echo
 
-unittests-replication-data:
+unittests-replication-sync:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+	$(MAKE) start-slave PID=$(PID) SERVER_START="--server.endpoint tcp://$(SLAVEHOST):$(SLAVEPORT) --server.disable-authentication true" PROTO=http
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< REPLICATION SYNC TESTS                                                     >>"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.execute-string "require('org/arangodb/users').save('replicator-user', 'replicator-password', true); require('org/arangodb/users').reload();"
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/replication-sync.js || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+	kill `cat $(SLAVEPIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+	while test -f $(SLAVEPIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+	@rm -rf "$(VOCDIR)"
+	@rm -rf "$(SLAVEDIR)"
+	@echo
+
+unittests-replication-static:
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication false" PROTO=http
 	$(MAKE) start-slave PID=$(PID) SERVER_START="--server.endpoint tcp://$(SLAVEHOST):$(SLAVEPORT) --server.disable-authentication true" PROTO=http
 
@@ -885,7 +932,28 @@ unittests-replication-data:
 
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.execute-string "require('org/arangodb/users').save('replicator-user', 'replicator-password', true); require('org/arangodb/users').reload();"
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/replication-data.js || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/replication-static.js || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+	kill `cat $(SLAVEPIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+	while test -f $(SLAVEPIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+	@rm -rf "$(VOCDIR)"
+	@rm -rf "$(SLAVEDIR)"
+	@echo
+
+unittests-replication-ongoing:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+	$(MAKE) start-slave PID=$(PID) SERVER_START="--server.endpoint tcp://$(SLAVEHOST):$(SLAVEPORT) --server.disable-authentication true" PROTO=http
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< REPLICATION DATA TESTS                                                     >>"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/replication-ongoing.js || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 	kill `cat $(SLAVEPIDFILE)`
@@ -1009,7 +1077,6 @@ unittests-arangob:
 	@echo "<< ARANGOB TESTS                                                              >>"
 	@echo "================================================================================"
 	@echo
-
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 10000 --concurrency 2 --test version --keep-alive false || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 10000 --concurrency 2 --test version --async true || test "x$(FORCE)" == "x1"
 	@builddir@/bin/arangob --configuration none --quiet --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --requests 20000 --concurrency 1 --test version --async true || test "x$(FORCE)" == "x1"

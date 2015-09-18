@@ -67,7 +67,10 @@ AqlItemBlock* AqlItemBlockManager::requestBlock (size_t nrItems,
       _last->size() == nrItems &&
       _last->getNrRegs() == nrRegs) {
     auto block = _last;
+    // don't hand out the same block next time
     _last = nullptr;
+    block->eraseAll();
+
     return block;
   }
 

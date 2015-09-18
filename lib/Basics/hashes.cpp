@@ -75,26 +75,13 @@ uint64_t TRI_FnvHashPointer (void const* buffer, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a FNV hash for blobs
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_FnvHashBlob (TRI_blob_t* blob) {
-  return TRI_FnvHashPointer(blob->data, blob->length);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief computes a FNV hash for strings
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_FnvHashString (char const* buffer) {
-  uint64_t nMagicPrime;
-  uint64_t nHashVal;
-  uint8_t const* pFirst;
-
-  nMagicPrime = 0x00000100000001b3ULL;
-  nHashVal = 0xcbf29ce484222325ULL;
-
-  pFirst = (uint8_t const*) buffer;
+  uint64_t const nMagicPrime = 0x00000100000001b3ULL;
+  uint64_t nHashVal = 0xcbf29ce484222325ULL;
+  uint8_t const* pFirst = (uint8_t const*) buffer;
 
   while (*pFirst) {
     nHashVal ^= *pFirst++;
@@ -108,8 +95,8 @@ uint64_t TRI_FnvHashString (char const* buffer) {
 /// @brief computes a initial FNV for blocks
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_FnvHashBlockInitial (void) {
-  return (0xcbf29ce484222325ULL);
+uint64_t TRI_FnvHashBlockInitial () {
+  return 0xcbf29ce484222325ULL;
 }
 
 // -----------------------------------------------------------------------------
@@ -426,7 +413,7 @@ static uint32_t ReflectCrc32 (uint32_t value, const int size) {
 /// @brief generates the CRC32 polynomial
 ////////////////////////////////////////////////////////////////////////////////
 
-static void GenerateCrc32Polynomial (void) {
+static void GenerateCrc32Polynomial () {
   int i;
   int j;
   uint32_t polynomial;
@@ -469,7 +456,7 @@ uint32_t TRI_FinalCrc32 (uint32_t value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief CRC32 value of data block
 ///
-/// optimised code to process 8 bytes at a time. provides a substantial speedup
+/// optimized code to process 8 bytes at a time. provides a substantial speedup
 /// compared to the one-byte-at-a-time version
 ///
 /// code found at http://create.stephan-brumme.com/crc32/#slicing-by-8-overview,
@@ -503,35 +490,6 @@ uint32_t TRI_BlockCrc32 (uint32_t value, char const* data, size_t length) {
   }
 
   return value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief CRC32 value of data block ended by 0
-////////////////////////////////////////////////////////////////////////////////
-
-uint32_t TRI_BlockStringCrc32 (uint32_t value, char const* data) {
-  uint8_t const* ptr;
-
-  if (data == 0) {
-    return value;
-  }
-
-  ptr = (uint8_t const*) data;
-
-  while (*ptr != '\0') {
-    value = (value >> 8) ^ (Crc32Polynomial[(value & 0xFF) ^ (*ptr)]);
-    ++ptr;
-  }
-
-  return value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a CRC32 for blobs
-////////////////////////////////////////////////////////////////////////////////
-
-uint32_t TRI_Crc32HashBlob (TRI_blob_t* blob) {
-  return TRI_Crc32HashPointer(blob->data, blob->length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -575,27 +533,27 @@ uint32_t TRI_Crc32HashString (char const* data) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief already initialised
+/// @brief already initialized
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Initialised = false;
+static bool Initialized = false;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the hashes components
+/// @brief initializes the hashes components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseHashes () {
-  if (Initialised) {
+void TRI_InitializeHashes () {
+  if (Initialized) {
     return;
   }
 
   GenerateCrc32Polynomial();
 
-  Initialised = true;
+  Initialized = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -603,11 +561,11 @@ void TRI_InitialiseHashes () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownHashes () {
-  if (! Initialised) {
+  if (! Initialized) {
     return;
   }
 
-  Initialised = false;
+  Initialized = false;
 }
 
 // -----------------------------------------------------------------------------

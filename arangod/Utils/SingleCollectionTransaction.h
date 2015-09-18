@@ -250,9 +250,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int read (std::vector<TRI_doc_mptr_copy_t>& docs,
-                  TRI_voc_ssize_t skip,
-                  TRI_voc_size_t limit,
-                  uint32_t* total) {
+                  int64_t skip,
+                  uint64_t limit,
+                  uint64_t& total) {
 
           return this->readSlice(this->trxCollection(), docs, skip, limit, total);
         }
@@ -261,37 +261,8 @@ namespace triagens {
 /// @brief read all documents within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (std::vector<TRI_doc_mptr_t*>& docs) {
+        int read (std::vector<TRI_doc_mptr_t const*>& docs) {
           return this->readSlice(this->trxCollection(), docs);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read documents within a transaction, using skip and limit and an
-/// internal offset into the primary index. this can be used for incremental
-/// access to the documents
-////////////////////////////////////////////////////////////////////////////////
-
-        int readOffset (std::vector<TRI_doc_mptr_copy_t>& docs,
-                  TRI_voc_size_t& internalSkip,
-                  TRI_voc_size_t batchSize,
-                  TRI_voc_ssize_t skip,
-                  TRI_voc_size_t limit,
-                  uint32_t* total) {
-
-          return this->readIncremental(this->trxCollection(), docs, internalSkip, batchSize, skip, limit, total);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief selects documents from a collection, hashing the document key and
-/// only returning these documents which fall into a specific partition
-////////////////////////////////////////////////////////////////////////////////
-
-        int readPartition (std::vector<TRI_doc_mptr_copy_t>& docs,
-                  uint64_t partitionId,
-                  uint64_t numberOfPartitions,
-                  uint32_t* total) {
-
-          return this->readNth(this->trxCollection(), docs, partitionId, numberOfPartitions, total);
         }
 
 // -----------------------------------------------------------------------------

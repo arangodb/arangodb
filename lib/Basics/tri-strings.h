@@ -45,16 +45,7 @@
 /// tolower and toupper of ctype.h are not used because they depend on locale
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LowerAsciiStringZ (TRI_memory_zone_t*, char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert an ASCII string to lower case
-///
-/// Note: this works with ASCII characters only. No umlauts, no UTF-8 characters
-/// tolower and toupper of ctype.h are not used because they depend on locale
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_LowerAsciiString (char const*);
+char* TRI_LowerAsciiString (TRI_memory_zone_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an ASCII string to upper case
@@ -63,16 +54,7 @@ char* TRI_LowerAsciiString (char const*);
 /// tolower and toupper of ctype.h are not used because they depend on locale
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UpperAsciiStringZ (TRI_memory_zone_t*, char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert an ASCII string to upper case
-///
-/// Note: this works with ASCII characters only. No umlauts, no UTF-8 characters
-/// tolower and toupper of ctype.h are not used because they depend on locale
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_UpperAsciiString (char const*);
+char* TRI_UpperAsciiString (TRI_memory_zone_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if ASCII strings are equal
@@ -179,22 +161,6 @@ char* TRI_Concatenate2String (char const*, char const*);
 char* TRI_Concatenate2StringZ (TRI_memory_zone_t*, char const*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief concatenate two strings, with known lengths
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_ConcatenateSized2String (char const*, size_t, char const*, size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief concatenate two strings, with known lengths, using a memory zone
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_ConcatenateSized2StringZ (TRI_memory_zone_t*,
-                                    char const*,
-                                    size_t,
-                                    char const*,
-                                    size_t);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief concatenate three strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -294,22 +260,12 @@ char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength);
 /// escape the character '/'.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeUtf8String (char const* in,
+char* TRI_EscapeUtf8String (TRI_memory_zone_t*,
+                            char const* in,
                             size_t inLength,
                             bool escapeSlash,
                             size_t* outLength,
                             bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes special characters using unicode escapes
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t*,
-                             char const* in,
-                             size_t inLength,
-                             bool escapeSlash,
-                             size_t* outLength,
-                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences
@@ -318,13 +274,7 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t*,
 /// sequence by unicode characters and representing them as UTF-8 sequences.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UnescapeUtf8String (char const* in, size_t inLength, size_t* outLength);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unescapes unicode escape sequences
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t*, char const* in, size_t inLength, size_t* outLength);
+char* TRI_UnescapeUtf8String (TRI_memory_zone_t*, char const* in, size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the number of characters in a UTF-8 string

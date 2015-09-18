@@ -1,18 +1,20 @@
 shell> curl --dump - http://localhost:8529/_api/replication/applier-config
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "requestTimeout" : 300, 
-  "connectTimeout" : 10, 
-  "ignoreErrors" : 0, 
-  "maxConnectRetries" : 100, 
-  "sslProtocol" : 0, 
-  "chunkSize" : 0, 
-  "autoStart" : false, 
-  "adaptivePolling" : true, 
-  "includeSystem" : true, 
-  "restrictType" : "", 
-  "restrictCollections" : [ ] 
+  <span class="hljs-string">"requestTimeout"</span> : <span class="hljs-number">300</span>, 
+  <span class="hljs-string">"connectTimeout"</span> : <span class="hljs-number">10</span>, 
+  <span class="hljs-string">"ignoreErrors"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"maxConnectRetries"</span> : <span class="hljs-number">100</span>, 
+  <span class="hljs-string">"sslProtocol"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"chunkSize"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"autoStart"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"adaptivePolling"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"includeSystem"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"requireFromPresent"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"verbose"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"restrictType"</span> : <span class="hljs-string">""</span>, 
+  <span class="hljs-string">"restrictCollections"</span> : [ ] 
 }

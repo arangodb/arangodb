@@ -162,8 +162,6 @@ function GeneralGraphCreationSuite() {
 
       assertEqual([vn1, vn2], g.__edgeDefinitions[0].from);
       assertEqual([vn3, vn4], g.__edgeDefinitions[0].to);
-
-
     },
 
     test_directedRelation : function () {
@@ -1914,7 +1912,6 @@ function EdgesAndVerticesSuite() {
       graph._drop(unitTestGraphName, true);
     },
 
-
     test_connectingEdges : function () {
       fillCollections();
       var res = g._getConnectingEdges({first_name: "Tam"}, {first_name: "Tem"}, {});
@@ -1950,7 +1947,6 @@ function EdgesAndVerticesSuite() {
       var res = g._getConnectingEdges(ids.vId11, ids.vId13, {});
       assertEqual(res.length, 2);
     },
-
 
     test_dropGraph1 : function () {
       var myGraphName = unitTestGraphName + "2";
@@ -2395,6 +2391,33 @@ function EdgesAndVerticesSuite() {
       assertEqual(result._id, ids.vId12);
       result = g._toVertex(ids.eId25);
       assertEqual(result._id, ids.vId35);
+    },
+
+    test_getFromVertexInvalidHandle : function() {
+      try {
+        g._fromVertex("foobar");
+      }
+      catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
+      }
+    },
+
+    test_getFromVertexInvalidCollectionType : function() {
+      try {
+        g._fromVertex(vc1 + "/foobar");
+      }
+      catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST.code);
+      }
+    },
+
+    test_getFromVertexNonexistingCollection : function() {
+      try {
+        g._fromVertex("UnitTestsCollectionDoesNotExist/foobar");
+      }
+      catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST.code);
+      }
     }
 
   };
@@ -2643,9 +2666,13 @@ function GeneralGraphCommonNeighborsSuite() {
     testCommonPropertiesWithFilters: function () {
       actual = testGraph._commonProperties({ageing : true} , {harald : 'meier'},  {});
       assertEqual(actual[0][v5][0]._id  , v6);
-      assertEqual(actual[1][v6][0]._id  , v4);
-      assertEqual(actual[1][v6][1]._id  , v8);
-      assertEqual(actual[1][v6][2]._id  , v7);
+      var proV6 = actual[1][v6];
+      proV6.sort(function(a, b) {
+        return a._id > b._id;
+      });
+      assertEqual(proV6[0]._id, v4);
+      assertEqual(proV6[1]._id, v7);
+      assertEqual(proV6[2]._id, v8);
 
       actual = testGraph._countCommonProperties({ageing : true} , {harald : 'meier'},  {});
       assertEqual(actual, [
@@ -3000,11 +3027,9 @@ function MeasurementsSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
+jsunity.run(EdgesAndVerticesSuite);
 jsunity.run(GeneralGraphCommonNeighborsSuite);
 jsunity.run(GeneralGraphAQLQueriesSuite);
-/*
-jsunity.run(EdgesAndVerticesSuite);
-*/
 jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(ChainedFluentAQLResultsSuite);
 jsunity.run(OrphanCollectionSuite);

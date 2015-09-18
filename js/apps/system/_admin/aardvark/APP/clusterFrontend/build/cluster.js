@@ -14732,7 +14732,7 @@ nv.models.stackedAreaChart = function() {
                $(element).find('i').addClass('fa-dot-circle-o');
              }
              else {
-               $(element).find('i').addClass('fa-check-circle-o');
+               $(element).find('i').addClass('fa-check-square-o');
              }
            }
            else {
@@ -14740,7 +14740,7 @@ nv.models.stackedAreaChart = function() {
                $(element).find('i').addClass('fa-circle-o');
              }
              else {
-               $(element).find('i').addClass('fa-circle-o');
+               $(element).find('i').addClass('fa-square-o');
              }
            }
          }
@@ -14889,12 +14889,12 @@ nv.models.stackedAreaChart = function() {
       return returnVal;
     },
 
-    arangoNotification: function (title, content) {
-      window.App.notificationList.add({title:title, content: content});
+    arangoNotification: function (title, content, info) {
+      window.App.notificationList.add({title:title, content: content, info: info});
     },
 
-    arangoError: function (title, content) {
-      window.App.notificationList.add({title:title, content: content});
+    arangoError: function (title, content, info) {
+      window.App.notificationList.add({title:title, content: content, info: info});
     },
 
     getRandomToken: function () {
@@ -15528,7 +15528,7 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
             updateStatus("critical");
             break;
           default:
-            console.debug("Undefined server state occured. This is still in development");
+            console.debug("Undefined server state occurred. This is still in development");
         }
       });
       return res;
@@ -15717,7 +15717,7 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
             }
             break;
           default:
-            console.debug("Undefined server state occured. This is still in development");
+            console.debug("Undefined server state occurred. This is still in development");
         }
       });
       return res;
@@ -16591,7 +16591,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
 
     initialize: function () {
       this.dygraphConfig = this.options.dygraphConfig;
-      this.d3NotInitialised = true;
+      this.d3NotInitialized = true;
       this.events["click .dashboard-sub-bar-menu-sign"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
@@ -17002,9 +17002,9 @@ window.StatisticsCollection = Backbone.Collection.extend({
           "bytesSentDistributionPercent", "bytesReceivedDistributionPercent"]
       };
 
-      if (this.d3NotInitialised) {
+      if (this.d3NotInitialized) {
           update = false;
-          this.d3NotInitialised = false;
+          this.d3NotInitialized = false;
       }
 
       _.each(Object.keys(barCharts), function (k) {
@@ -17264,13 +17264,13 @@ window.StatisticsCollection = Backbone.Collection.extend({
     createModalHotkeys: function() {
       //submit modal
       $(this.el).bind('keydown', 'return', function(){
-        $('.modal-footer .button-success').click();
+        $('.createModalDialog .modal-footer .button-success').click();
       });
       $("input", $(this.el)).bind('keydown', 'return', function(){
-        $('.modal-footer .button-success').click();
+        $('.createModalDialog .modal-footer .button-success').click();
       });
       $("select", $(this.el)).bind('keydown', 'return', function(){
-        $('.modal-footer .button-success').click();
+        $('.createModalDialog .modal-footer .button-success').click();
       });
     },
 
@@ -17289,13 +17289,13 @@ window.StatisticsCollection = Backbone.Collection.extend({
     },
 
     navigateThroughButtons: function(direction) {
-      var hasFocus = $('.modal-footer button').is(':focus');
+      var hasFocus = $('.createModalDialog .modal-footer button').is(':focus');
       if (hasFocus === false) {
         if (direction === 'left') {
-          $('.modal-footer button').first().focus();
+          $('.createModalDialog .modal-footer button').first().focus();
         }
         else if (direction === 'right') {
-          $('.modal-footer button').last().focus();
+          $('..createModalDialog .modal-footer button').last().focus();
         }
       }
       else if (hasFocus === true) {
@@ -17423,7 +17423,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
           buttons.push(lastBtn);
         }
       } else {
-        buttons.push(self.createCloseButton('Dismiss'));
+        buttons.push(self.createCloseButton('Close'));
       }
       $(this.el).html(this.baseTemplate.render({
         title: title,
@@ -17450,12 +17450,12 @@ window.StatisticsCollection = Backbone.Collection.extend({
       });
 
       var template = templateEngine.createTemplate(templateName);
-      $(".modal-body").html(template.render({
+      $(".createModalDialog .modal-body").html(template.render({
         content: tableContent,
         advancedContent: advancedContent,
         info: extraInfo
       }));
-      $('.modalTooltips').tooltip({
+      $('.createModalDialog .modalTooltips').tooltip({
         position: {
           my: "left top",
           at: "right+55 top-1"
@@ -17561,7 +17561,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
               //error element not available
               $el.after('<p class="errorMessage">' + msg+ '</p>');
             }
-            $('.modal-footer .button-success')
+            $('.createModalDialog .modal-footer .button-success')
               .prop('disabled', true)
               .addClass('disabled');
           } else {
@@ -17584,11 +17584,11 @@ window.StatisticsCollection = Backbone.Collection.extend({
       });
       var invalid = _.any(tests);
       if (invalid) {
-        $('.modal-footer .button-success')
+        $('.createModalDialog .modal-footer .button-success')
           .prop('disabled', true)
           .addClass('disabled');
       } else {
-        $('.modal-footer .button-success')
+        $('.createModalDialog .modal-footer .button-success')
           .prop('disabled', false)
           .removeClass('disabled');
       }

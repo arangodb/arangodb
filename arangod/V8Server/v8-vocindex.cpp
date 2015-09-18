@@ -37,7 +37,7 @@
 #include "Indexes/HashIndex.h"
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
-#include "Indexes/SkiplistIndex2.h"
+#include "Indexes/SkiplistIndex.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
@@ -339,7 +339,7 @@ static int EnhanceJsonIndexCap (v8::Isolate* isolate,
   if (obj->Has(TRI_V8_ASCII_STRING("size")) && obj->Get(TRI_V8_ASCII_STRING("size"))->IsNumber()) {
     int64_t value = TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("size")));
 
-    if (value < 0 || value > UINT32_MAX) {
+    if (value < 0 || value > INT64_MAX) {
       return TRI_ERROR_BAD_PARAMETER;
     }
     count = (size_t) value;
@@ -699,7 +699,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::SkiplistIndex2*>(TRI_EnsureSkiplistIndexDocumentCollection(document,
+        idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_EnsureSkiplistIndexDocumentCollection(document,
                                                                                                        iid,
                                                                                                        attributes,
                                                                                                        sparse,
@@ -707,7 +707,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
                                                                                                        &created));
       }
       else {
-        idx = static_cast<triagens::arango::SkiplistIndex2*>(TRI_LookupSkiplistIndexDocumentCollection(document,
+        idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_LookupSkiplistIndexDocumentCollection(document,
                                                                                                        attributes,
                                                                                                        sparsity,
                                                                                                        unique));
@@ -786,7 +786,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
   }
 
   // found some index to return
-  auto indexJson = idx->toJson(TRI_UNKNOWN_MEM_ZONE);
+  auto indexJson = idx->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
   if (indexJson.json() == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -1069,7 +1069,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   // create a dummy primary index
   std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(new triagens::arango::PrimaryIndex(nullptr));
 
-  auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE);
+  auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
 
@@ -1077,7 +1077,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
     // create a dummy edge index
     std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(id, nullptr));
 
-    auto idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE);
+    auto idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
   }
@@ -1113,7 +1113,9 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 /// new index will be created if none exists with the given description.
 ///
 /// The *index-description* must contain at least a *type* attribute.
-/// *type* can be one of the following values:
+/// Other attributes may be necessary, depending on the index type.
+///
+/// **type** can be one of the following values:
 /// - *hash*: hash index
 /// - *skiplist*: skiplist index
 /// - *fulltext*: fulltext index
@@ -1121,7 +1123,12 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 /// - *geo2*: geo index, with two attributes
 /// - *cap*: cap constraint
 ///
-/// Other attributes may be necessary, depending on the index type.
+/// **sparse** can be *true* or *false*.
+///
+/// For *hash*, and *skiplist* the sparsity can be controlled, *fulltext* and *geo*
+/// are [sparse](WhichIndex.html) by definition.
+///
+/// **unique** can be *true* or *false* and is supported by *hash* or *skiplist*
 ///
 /// Calling this method returns an index object. Whether or not the index
 /// object existed before the call is indicated in the return attribute
@@ -1129,18 +1136,12 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 ///
 /// @EXAMPLES
 ///
-/// ```js
-/// arango> db.example.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
-/// {
-///   "id" : "example/30242599562",
-///   "type" : "hash",
-///   "unique" : true,
-///   "fields" : [
-///     "name"
-///    ],
-///   "isNewlyCreated" : true
-/// }
-/// ```
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionEnsureIndex}
+/// ~db._create("test");
+/// db.test.ensureIndex({ type: "hash", fields: [ "a" ], sparse: true });
+/// db.test.ensureIndex({ type: "hash", fields: [ "a", "b" ], unique: true });
+/// ~db._drop("test");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1234,29 +1235,16 @@ static void DropIndexCoordinator (const v8::FunctionCallbackInfo<v8::Value>& arg
 ///
 /// Same as above. Instead of an index an index handle can be given.
 ///
-/// @EXAMPLES
-///
-/// ```js
-/// arango> db.example.ensureSkiplist("a", "b");
-/// { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
-/// 
-/// arango> i = db.example.getIndexes();
-/// [
-///   { "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
-///   { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }
-/// ]
-/// 
-/// arango> db.example.dropIndex(i[0])
-/// false
-/// 
-/// arango> db.example.dropIndex(i[1].id)
-/// true
-/// 
-/// arango> i = db.example.getIndexes();
-/// [
-///   { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
-/// ]
-/// ```
+/// @EXAMPLE_ARANGOSH_OUTPUT{col_dropIndex}
+/// ~db._create("example");
+/// db.example.ensureSkiplist("a", "b");
+/// var indexInfo = db.example.getIndexes();
+/// indexInfo;
+/// db.example.dropIndex(indexInfo[0])
+/// db.example.dropIndex(indexInfo[1].id)
+/// indexInfo = db.example.getIndexes();
+/// ~db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1334,12 +1322,11 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-
   string const databaseName(collection->_dbName);
   string const cid = StringUtils::itoa(collection->_cid);
   string const collectionName(collection->_name);
 
-  shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, cid);
+  std::shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, cid);
 
   if ((*c).empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1348,6 +1335,7 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
   v8::Handle<v8::Array> ret = v8::Array::New(isolate);
 
   TRI_json_t const* json = (*c).getIndexes();
+
   if (TRI_IsArrayJson(json)) {
     uint32_t j = 0;
     size_t const n = TRI_LengthArrayJson(json);
@@ -1370,37 +1358,17 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
 /// `getIndexes()`
 ///
 /// Returns an array of all indexes defined for the collection.
+/// 
+/// Note that `_key` implicitly has an index assigned to it.
 ///
-/// @EXAMPLES
-///
-/// ```js
-/// [
-///   { 
-///     "id" : "demo/0", 
-///     "type" : "primary",
-///     "fields" : [ "_id" ]
-///   }, 
-///   { 
-///     "id" : "demo/2290971", 
-///     "unique" : true, 
-///     "type" : "hash", 
-///     "fields" : [ "a" ] 
-///   }, 
-///   { 
-///     "id" : "demo/2946331",
-///     "unique" : false, 
-///     "type" : "hash", 
-///     "fields" : [ "b" ] 
-///   },
-///   { 
-///     "id" : "demo/3077403", 
-///     "unique" : false, 
-///     "type" : "skiplist", 
-///     "fields" : [ "c" ]
-///   }
-/// ]
-/// ```
-///
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionGetIndexes}
+/// ~db._create("test");
+/// ~db.test.ensureUniqueSkiplist("skiplistAttribute");
+/// ~db.test.ensureUniqueSkiplist("skiplistUniqueAttribute");
+/// ~db.test.ensureHashIndex("hashListAttribute", "hashListSecondAttribute.subAttribute");
+/// db.test.getIndexes();
+/// ~db._drop("test");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1419,6 +1387,11 @@ static void JS_GetIndexesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
     return;
   }
 
+  bool withFigures = false;
+  if (args.Length() > 0) {
+    withFigures = TRI_ObjectToBoolean(args[0]);
+  }
+
   SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
@@ -1434,7 +1407,7 @@ static void JS_GetIndexesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
   std::string const& collectionName = std::string(collection->_name);
 
   // get list of indexes
-  auto&& indexes = TRI_IndexesDocumentCollection(document);
+  auto&& indexes = TRI_IndexesDocumentCollection(document, withFigures);
 
   trx.finish(res);
   // READ-LOCK end
@@ -1879,3 +1852,4 @@ void TRI_InitV8indexCollection (v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("lookupIndex"), JS_LookupIndexVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getIndexes"), JS_GetIndexesVocbaseCol);
 }
+

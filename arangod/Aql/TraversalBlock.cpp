@@ -28,6 +28,7 @@
 
 #include "Aql/TraversalBlock.h"
 #include "Utils/ShapedJsonTransformer.h"
+#include "Utils/SingleCollectionReadOnlyTransaction.h"
 
 using namespace std;
 using namespace triagens::basics;

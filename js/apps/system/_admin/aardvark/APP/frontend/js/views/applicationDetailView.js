@@ -16,7 +16,7 @@
       'click #app-switch-mode': 'toggleDevelopment',
       'click #app-scripts [data-script]': 'runScript',
       'click #app-tests': 'runTests',
-      'click #app-upgrade': 'upgradeApp',
+      'click #app-replace': 'replaceApp',
       'click #download-app': 'downloadApp',
       'click #app-show-swagger': 'showSwagger',
       'click #app-show-readme': 'showReadme',
@@ -30,17 +30,26 @@
       }
     },
 
-    upgradeApp: function() {
+    replaceApp: function() {
       var mount = this.model.get('mount');
       window.foxxInstallView.upgrade(mount, function() {
         window.App.applicationDetail(encodeURIComponent(mount));
       });
+      $('.createModalDialog .arangoHeader').html("Replace Service");
+      $('#infoTab').click();
     },
 
     updateConfig: function() {
       this.model.getConfiguration(function () {
         $('#app-warning')[this.model.needsAttention() ? 'show' : 'hide']();
         $('#app-warning-config')[this.model.needsConfiguration() ? 'show' : 'hide']();
+
+        if (this.model.needsConfiguration()) {
+          $('#app-config').addClass('error');
+        }
+        else {
+          $('#app-config').removeClass('error');
+        }
       }.bind(this));
     },
 
@@ -48,17 +57,23 @@
       this.model.getDependencies(function () {
         $('#app-warning')[this.model.needsAttention() ? 'show' : 'hide']();
         $('#app-warning-deps')[this.model.hasUnconfiguredDependencies() ? 'show' : 'hide']();
+        if (this.model.hasUnconfiguredDependencies()) {
+          $('#app-deps').addClass('error');
+        }
+        else {
+          $('#app-deps').removeClass('error');
+        }
       }.bind(this));
     },
 
     toggleDevelopment: function() {
       this.model.toggleDevelopment(!this.model.isDevelopment(), function() {
         if (this.model.isDevelopment()) {
-          $('#app-switch-mode').val('Set Pro');
+          $('#app-switch-mode').val('Set Production');
           $('#app-development-indicator').css('display', 'inline');
           $('#app-development-path').css('display', 'inline');
         } else {
-          $('#app-switch-mode').val('Set Dev');
+          $('#app-switch-mode').val('Set Development');
           $('#app-development-indicator').css('display', 'none');
           $('#app-development-path').css('display', 'none');
         }
@@ -182,6 +197,14 @@
 
       this.updateConfig();
       this.updateDeps();
+
+      if (mode === 'swagger') {
+        $.get( "./foxxes/docs/swagger.json?mount=" + encodeURIComponent(this.model.get('mount')), function(data) {
+          if (Object.keys(data.paths).length <= 1) {
+            $('#app-info').show(); 
+          }
+        });
+      }
 
       return $(this.el);
     },
@@ -350,24 +373,27 @@
       var tableContent = _.map(this.model.get('deps'), function(obj, name) {
         var currentValue = obj.current === undefined ? '' : String(obj.current);
         var defaultValue = '';
-        var description = obj.definition;
-        var checks = [
-          {
-            rule: Joi.string().optional().allow(''),
-            msg: 'Has to be a string.'
-          },
-          {
+        var description = obj.definition.name;
+        if (obj.definition.version !== '*') {
+          description += '@' + obj.definition.version;
+        }
+        var checks = [{
+          rule: Joi.string().optional().allow(''),
+          msg: 'Has to be a string.'
+        }];
+        if (obj.definition.required) {
+          checks.push({
             rule: Joi.string().required(),
             msg: 'This value is required.'
-          }
-        ];
+          });
+        }
         return window.modalView.createTextEntry(
           'app_deps_' + name,
           obj.title,
           currentValue,
           description,
           defaultValue,
-          true,
+          obj.definition.required,
           checks
         );
       });

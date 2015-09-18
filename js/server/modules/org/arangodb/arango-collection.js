@@ -33,6 +33,33 @@ module.isSystem = true;
 var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief builds an example query
+////////////////////////////////////////////////////////////////////////////////
+
+function buildExampleQuery (collection, example, limit) {
+  var parts = [ ]; 
+  var bindVars = { "@collection" : collection.name() };
+  var keys = Object.keys(example);
+
+  for (var i = 0; i < keys.length; ++i) {
+    var key = keys[i];
+    parts.push("doc.@att" + i + " == @value" + i);
+    bindVars["att" + i] = key;
+    bindVars["value" + i] = example[key];
+  }
+  
+  var query = "FOR doc IN @@collection";
+  if (parts.length > 0) {
+    query += " FILTER " + parts.join(" && ", parts);
+  }
+  if (limit > 0) {
+    query += " LIMIT " + parseInt(limit, 10);
+  }
+
+  return { query: query, bindVars: bindVars };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add options from arguments to index specification
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -369,7 +396,6 @@ ArangoCollection.prototype.any = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_ArangoCollection_prototype_first
 /// @brief selects the n first documents in the collection
 /// @startDocuBlock documentsCollectionFirst
 /// `collection.first(count)`
@@ -455,9 +481,8 @@ ArangoCollection.prototype.first = function (count) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_ArangoCollection_prototype_last
-///
 /// @brief selects the n last documents in the collection
+///
 /// @startDocuBlock documentsCollectionLast
 /// `collection.last(count)`
 ///
@@ -543,14 +568,14 @@ ArangoCollection.prototype.last = function (count) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_ArangoCollection_prototype_firstExample
 /// @brief constructs a query-by-example for a collection
+///
 /// @startDocuBlock collectionFirstExample
 /// `collection.firstExample(example)`
 ///
 /// Returns the first document of a collection that matches the specified
 /// example. If no such document exists, *null* will be returned. 
-/// The example must be specified as paths and values.
+/// The example has to be specified as paths and values.
 /// See *byExample* for details.
 ///
 /// `collection.firstExample(path1, value1, ...)`
@@ -624,9 +649,10 @@ ArangoCollection.prototype.removeByExample = function (example,
     var tmp_options = waitForSync === null ? {} : waitForSync;
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
-        waitForSync = tmp_options.waitForSync;
+    waitForSync = tmp_options.waitForSync;
     limit = tmp_options.limit;
   }
+  var i;
   var cluster = require("org/arangodb/cluster");
 
   if (cluster.isCoordinator()) {
@@ -659,7 +685,7 @@ ArangoCollection.prototype.removeByExample = function (example,
     });
 
     var deleted = 0;
-    var results = cluster.wait(coord, shards), i;
+    var results = cluster.wait(coord, shards);
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
 
@@ -669,34 +695,11 @@ ArangoCollection.prototype.removeByExample = function (example,
     return deleted;
   }
 
-  return require("internal").db._executeTransaction({
-    collections: {
-      write: this.name()
-    },
-    action: function (params) {
-      var collection = params.c;
-      var documents = collection.byExample(params.example);
-      if (params.limit > 0) {
-        documents = documents.limit(params.limit);
-      }
+  var query = buildExampleQuery(this, example, limit);
+  var opts = { waitForSync : waitForSync };
+  query.query += " REMOVE doc IN @@collection OPTIONS " + JSON.stringify(opts);
 
-      var deleted = 0;
-      while (documents.hasNext()) {
-        var document = documents.next();
-
-        if (collection.remove(document, true, params.wfs)) {
-          deleted++;
-        }
-      }
-      return deleted;
-    },
-    params: {
-      c: this,
-      example: example,
-      limit: limit,
-      wfs: waitForSync
-    }
-  });
+  return require("internal").db._query(query).getExtra().stats.writesExecuted; 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -781,35 +784,12 @@ ArangoCollection.prototype.replaceByExample = function (example,
     return replaced;
   }
 
-  return require("internal").db._executeTransaction({
-    collections: {
-      write: this.name()
-    },
-    action: function (params) {
-      var collection = params.c;
-      var documents = collection.byExample(params.example);
-      if (params.limit > 0) {
-        documents = documents.limit(params.limit);
-      }
+  var query = buildExampleQuery(this, example, limit);
+  var opts = { waitForSync : waitForSync };
+  query.query += " REPLACE doc WITH @newValue IN @@collection OPTIONS " + JSON.stringify(opts);
+  query.bindVars.newValue = newValue;
 
-      var replaced = 0;
-      while (documents.hasNext()) {
-        var document = documents.next();
-
-        if (collection.replace(document, params.newValue, true, params.wfs)) {
-          replaced++;
-        }
-      }
-      return replaced;
-    },
-    params: {
-      c: this,
-      example: example,
-      newValue: newValue,
-      limit: limit,
-      wfs: waitForSync
-    }
-  });
+  return require("internal").db._query(query).getExtra().stats.writesExecuted; 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -900,37 +880,12 @@ ArangoCollection.prototype.updateByExample = function (example,
     return updated;
   }
 
-  return require("internal").db._executeTransaction({
-    collections: {
-      write: this.name()
-    },
-    action: function (params) {
-      var collection = params.c;
-      var documents = collection.byExample(params.example);
-      if (params.limit > 0) {
-        documents = documents.limit(params.limit);
-      }
+  var query = buildExampleQuery(this, example, limit);
+  var opts = { waitForSync : waitForSync, keepNull: keepNull };
+  query.query += " UPDATE doc WITH @newValue IN @@collection OPTIONS " + JSON.stringify(opts);
+  query.bindVars.newValue = newValue;
 
-      var updated = 0;
-      while (documents.hasNext()) {
-        var document = documents.next();
-
-        if (collection.update(document, params.newValue,
-            {overwrite: true, keepNull: params.keepNull, waitForSync: params.wfs})) {
-          updated++;
-        }
-      }
-      return updated;
-    },
-    params: {
-      c: this,
-      example: example,
-      newValue: newValue,
-      keepNull: keepNull,
-      limit: limit,
-      wfs: waitForSync
-    }
-  });
+  return require("internal").db._query(query).getExtra().stats.writesExecuted; 
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -988,7 +943,7 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 /// `collection.ensureUniqueSkiplist(field1, field2, ..., fieldn)`
 ///
 /// Creates a unique skiplist index on all documents using *field1*, *field2*, ...
-/// as attribute paths. At least one attribute path must be given. The index will
+/// as attribute paths. At least one attribute path has to be given. The index will
 ///  be non-sparse by default.
 ///
 /// All documents in the collection must differ in terms of the indexed 
@@ -1049,21 +1004,14 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 /// `collection.ensureSkiplist(field1, field2, ..., fieldn)`
 ///
 /// Creates a non-unique skiplist index on all documents using *field1*, 
-/// *field2*, ... as attribute paths. At least one attribute path must be given.
+/// *field2*, ... as attribute paths. At least one attribute path has to be given.
 /// The index will be non-sparse by default.
 ///
 /// Additional index options can be specified in the *options* argument. If
-/// set, it must be an object. Currently the following index options are
+/// set, it has to be an object. Currently the following index options are
 /// supported:
 ///
 /// - *sparse*: controls if the index is sparse. The default is *false*.
-///
-/// In a sparse index all documents will be excluded from the index that do not 
-/// contain at least one of the specified index attributes or that have a value 
-/// of *null* in any of the specified index attributes. 
-///
-/// In a non-sparse index, these documents will be indexed (for non-present
-/// indexed attributes, a value of *null* will be used).
 ///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
@@ -1078,18 +1026,6 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 /// db.names.save({ "first" : "Tom" });
 /// ~db._drop("names");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Note that in addition to the two specialized index creation methods, there
-/// is also the general method `collection.ensureIndex`, which can be used to
-/// create indexes of any type and also supports uniqueness and sparsity:
-/// 
-/// @EXAMPLE_ARANGOSH_OUTPUT{ensureSparseSkiplist}
-/// ~db._create("test");
-/// db.test.ensureIndex({ type: "skiplist", fields: [ "a" ], sparse: true });
-/// db.test.ensureIndex({ type: "skiplist", fields: [ "a", "b" ], unique: true });
-/// ~db._drop("test");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1104,22 +1040,39 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
 /// @startDocuBlock ensureFulltextIndex
-/// `ensureFulltextIndex(attribute, minWordLength)`
+/// `ensureFulltextIndex(field, minWordLength)`
 ///
-/// Creates a fulltext index on all documents on attribute *attribute*.
-/// All documents, which do not have the attribute *attribute* or that have a
-/// non-textual value inside their *attribute* attribute are ignored.
+/// Creates a fulltext index on all documents on attribute *field*.
 ///
-/// The minimum length of words that are indexed can be specified with the
-/// @FA{minWordLength} parameter. Words shorter than *minWordLength*
-/// characters will not be indexed. *minWordLength* has a default value of 2,
-/// but this value might be changed in future versions of ArangoDB. It is thus
-/// recommended to explicitly specify this value
+/// Fulltext indexes are implicitly sparse: all documents which do not have 
+/// the specified *field* attribute or that have a non-qualifying value in their 
+/// *field* attribute will be ignored for indexing.
+///
+/// Only a single attribute can be indexed. Specifying multiple attributes is 
+/// unsupported.
+///
+/// The minimum length of words that are indexed can be specified via the
+/// *minWordLength* parameter. Words shorter than minWordLength characters will 
+/// not be indexed. *minWordLength* has a default value of 2, but this value might
+/// be changed in future versions of ArangoDB. It is thus recommended to explicitly
+/// specify this value.
 ///
 /// In case that the index was successfully created, an object with the index
-/// details, including the index-identifier, is returned.
+/// details is returned.
 ///
-/// @verbinclude fulltext
+/// @EXAMPLE_ARANGOSH_OUTPUT{ensureFulltextIndex}
+/// ~db._create("example");
+/// db.example.ensureFulltextIndex("text");
+/// db.example.save({ text : "the quick brown", b : { c : 1 } });
+/// db.example.save({ text : "quick brown fox", b : { c : 2 } });
+/// db.example.save({ text : "brown fox jums", b : { c : 3 } });
+/// db.example.save({ text : "fox jumps over", b : { c : 4 } });
+/// db.example.save({ text : "jumps over the", b : { c : 5 } });
+/// db.example.save({ text : "over the lazy", b : { c : 6 } });
+/// db.example.save({ text : "the lazy dog", b : { c : 7 } });
+/// db._query("FOR document IN FULLTEXT(example, 'text', 'the') RETURN document");
+/// ~db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1140,36 +1093,42 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a unique constraint exists
 /// @startDocuBlock ensureUniqueConstraint
-/// `ensureUniqueConstraint(attribute*1*, attribute*2*, ..., attribute*n*, options)`
+/// `collection.ensureUniqueConstraint(field1, field2, ..., fieldn)`
 ///
-/// Creates a unique hash index on all documents using *attribute1*, *attribute2*,
-/// ... as attribute paths. At least one attribute path must be given.
+/// Creates a unique hash index on all documents using *field1*, *field2*,
+/// ... as attribute paths. At least one attribute path has to be given.
+/// The index will be non-sparse by default.
 ///
 /// All documents in the collection must differ in terms of the indexed 
 /// attributes. Creating a new document or updating an existing document will
 /// will fail if the attribute uniqueness is violated. 
 ///
-/// Additional index options can be specified in the *options* argument. If
-/// set, it must be an object. Currently the following index options are
-/// supported:
+/// To create a sparse index, use the following command:
+/// 
+/// `collection.ensureUniqueConstraint(field1, field2, ..., fieldn, { sparse: true })`
+/// 
+/// In case that the index was successfully created, the index identifier is returned.
+/// 
+/// Non-existing attributes will default to `null`.
+/// In a sparse index all documents will be excluded from the index for which all
+/// specified index attributes are `null`. Such documents will not be taken into account
+/// for uniqueness checks.
 ///
-/// - *sparse*: controls if the index is sparse. The default is *false*.
-///
-/// In a sparse index all documents will be excluded from the index that do not 
-/// contain at least one of the specified index attributes or that have a value 
-/// of *null* in any of the specified index attributes. Such documents will
-/// not be indexed, and not be taken into account for uniqueness checks.
-///
-/// In a non-sparse index, these documents will be indexed (for non-present
-/// indexed attributes, a value of *null* will be used) and will be taken into
-/// account for uniqueness checks.
+/// In a non-sparse index, **all** documents regardless of `null` - attributes will be
+/// indexed and will be taken into account for uniqueness checks.
 ///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
 ///
-/// *Examples*
-///
-/// @verbinclude shell-index-create-unique-constraint
+/// @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueConstraint}
+/// ~db._create("test");
+/// db.test.ensureUniqueConstraint("a", "b.c");
+/// db.test.save({ a : 1, b : { c : 1 } });
+/// db.test.save({ a : 1, b : { c : 1 } }); // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
+/// db.test.save({ a : 1, b : { c : null } });
+/// db.test.save({ a : 1 });  // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
+/// ~db._drop("test");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1185,31 +1144,27 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a non-unique hash index exists
 /// @startDocuBlock ensureHashIndex
-/// `ensureHashIndex(attribute*1*, attribute*2*, ..., attribute*n*)`
+/// `collection.ensureHashIndex(field1, field2, ..., fieldn)`
 ///
-/// Creates a non-unique hash index on all documents using *attribute1*, *attribute2*,
-/// ... as attribute paths. At least one attribute path must be given.
+/// Creates a non-unique hash index on all documents using  *field1*, *field2*
+/// ... as attribute paths. At least one attribute path has to be given.
+/// The index will be non-sparse by default.
 ///
-/// Additional index options can be specified in the *options* argument. If
-/// set, it must be an object. Currently the following index options are
-/// supported:
+/// To create a sparse index, use the following command:
 ///
-/// - *sparse*: controls if the index is sparse. The default is *false*.
-///
-/// In a sparse index all documents will be excluded from the index that do not 
-/// contain at least one of the specified index attributes or that have a value 
-/// of *null* in any of the specified index attributes. Such documents will
-/// not be indexed.
-///
-/// In a non-sparse index, these documents will be indexed (for non-present
-/// indexed attributes, a value of *null* will be used).
+/// `collection.ensureHashIndex(field1, field2, ..., fieldn, { sparse: true })`
 ///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
 ///
-/// *Examples*
-///
-/// @verbinclude shell-index-create-hash-index
+/// @EXAMPLE_ARANGOSH_OUTPUT{ensureHashIndex}
+/// ~db._create("test");
+/// db.test.ensureHashIndex("a");
+/// db.test.save({ a : 1 });
+/// db.test.save({ a : 1 });
+/// db.test.save({ a : null });
+/// ~db._drop("test");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1227,7 +1182,7 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 /// `collection.ensureGeoIndex(location)`
 ///
 /// Creates a geo-spatial index on all documents using *location* as path to
-/// the coordinates. The value of the attribute must be an array with at least two
+/// the coordinates. The value of the attribute has to be an array with at least two
 /// numeric values. The array must contain the latitude (first value) and the
 /// longitude (second value).
 /// 
@@ -1249,7 +1204,7 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 ///
 /// Creates a geo-spatial index on all documents using *latitude* and
 /// *longitude* as paths the latitude and the longitude. The values of the
-/// attributes *latitude* and  *longitude* must be numeric.
+/// attributes *latitude* and  *longitude* has to be numeric.
 /// All documents, which do not have the attribute paths or 
 /// have non-conforming values in the index attributes are excluded from the index.
 ///

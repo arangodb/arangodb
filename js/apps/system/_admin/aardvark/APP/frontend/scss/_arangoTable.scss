@@ -3,10 +3,10 @@
   width: 100%;
 
   thead {
-    background-color: #fff;
+    background-color: $c-white;
 
     th {
-      border-bottom: 1px solid #c2c2c2;
+      border-bottom: 1px solid $c-c2grey;
       height: 43px;
     }
   }
@@ -14,7 +14,7 @@
   tbody {
 
     tr:nth-child(even) {
-      background-color: #fff;
+      background-color: $c-white;
     }
 
     tr:nth-child(odd) {

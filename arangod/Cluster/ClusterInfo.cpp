@@ -43,6 +43,11 @@
 #include "Basics/StringUtils.h"
 #include "VocBase/server.h"
 
+#ifdef _WIN32
+// turn off warnings about too long type name for debug symbols blabla in MSVC only...
+#pragma warning(disable : 4503)
+#endif
+
 using namespace std;
 using namespace triagens::arango;
 using triagens::basics::JsonHelper;
@@ -292,7 +297,7 @@ ClusterInfo::~ClusterInfo () {
 uint64_t ClusterInfo::uniqid (uint64_t count) {
   MUTEX_LOCKER(_idLock);
 
-  if (_uniqid._currentValue >= _uniqid._upperValue) {
+  if (_uniqid._currentValue + count - 1 >= _uniqid._upperValue) {
     
     uint64_t fetch = count;
 

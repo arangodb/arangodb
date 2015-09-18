@@ -1,7 +1,7 @@
-arangosh> db.example.first();
+arangosh&gt; db.example.first();
 { 
-  "_id" : "example/484625651", 
-  "_key" : "484625651", 
-  "_rev" : "484625651", 
-  "Hello" : "world" 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1150722604"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1150722604"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1150722604"</span>, 
+  <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"world"</span> 
 }

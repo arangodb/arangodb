@@ -58,13 +58,13 @@ namespace triagens {
 
         GeoIndex2 (TRI_idx_iid_t,
                    struct TRI_document_collection_t*,
-                   std::vector<std::string> const&,
+                   std::vector<std::vector<triagens::basics::AttributeName>> const&,
                    std::vector<TRI_shape_pid_t> const&,
                    bool);
         
         GeoIndex2 (TRI_idx_iid_t,
                    struct TRI_document_collection_t*,
-                   std::vector<std::string> const&,
+                   std::vector<std::vector<triagens::basics::AttributeName>> const&,
                    std::vector<TRI_shape_pid_t> const&);
 
         ~GeoIndex2 ();
@@ -111,7 +111,8 @@ namespace triagens {
 
         size_t memory () const override final;
 
-        triagens::basics::Json toJson (TRI_memory_zone_t*) const override final;
+        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
+        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
         int insert (struct TRI_doc_mptr_t const*, bool) override final;
          

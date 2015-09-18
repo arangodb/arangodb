@@ -699,39 +699,38 @@ void ApplicationV8::upgradeDatabase (bool skip,
     if (! skip) {
       LOG_DEBUG("running database init/upgrade");
 
-      // can do this without a lock as this is the startup
-      for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
-        TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(_server->_databases._table[j]);
+      auto unuser(_server->_databasesProtector.use());
+      auto theLists = _server->_databasesLists.load();
+      for (auto& p : theLists->_databases) {
+        TRI_vocbase_t* vocbase = p.second;
 
-        if (vocbase != nullptr) {
-          // special check script to be run just once in first thread (not in all)
-          // but for all databases
-          v8::HandleScope scope(isolate);
+        // special check script to be run just once in first thread (not in all)
+        // but for all databases
+        v8::HandleScope scope(isolate);
 
-          v8::Handle<v8::Object> args = v8::Object::New(isolate);
-          args->Set(TRI_V8_ASCII_STRING("upgrade"), v8::Boolean::New(isolate, perform));
+        v8::Handle<v8::Object> args = v8::Object::New(isolate);
+        args->Set(TRI_V8_ASCII_STRING("upgrade"), v8::Boolean::New(isolate, perform));
 
-          localContext->Global()->Set(TRI_V8_ASCII_STRING("UPGRADE_ARGS"), args);
+        localContext->Global()->Set(TRI_V8_ASCII_STRING("UPGRADE_ARGS"), args);
 
-          bool ok = TRI_UpgradeDatabase(vocbase, &_startupLoader, localContext);
+        bool ok = TRI_UpgradeDatabase(vocbase, &_startupLoader, localContext);
 
-          if (! ok) {
-            if (localContext->Global()->Has(TRI_V8_ASCII_STRING("UPGRADE_STARTED"))) {
-              localContext->Exit();
-              if (perform) {
-                LOG_FATAL_AND_EXIT(
-                                   "Database '%s' upgrade failed. Please inspect the logs from the upgrade procedure",
-                                   vocbase->_name);
-              }
-              else {
-                LOG_FATAL_AND_EXIT(
-                                   "Database '%s' needs upgrade. Please start the server with the --upgrade option",
-                                   vocbase->_name);
-              }
+        if (! ok) {
+          if (localContext->Global()->Has(TRI_V8_ASCII_STRING("UPGRADE_STARTED"))) {
+            localContext->Exit();
+            if (perform) {
+              LOG_FATAL_AND_EXIT(
+                                 "Database '%s' upgrade failed. Please inspect the logs from the upgrade procedure",
+                                 vocbase->_name);
             }
             else {
-              LOG_FATAL_AND_EXIT("JavaScript error during server start");
+              LOG_FATAL_AND_EXIT(
+                                 "Database '%s' needs upgrade. Please start the server with the --upgrade option",
+                                 vocbase->_name);
             }
+          }
+          else {
+            LOG_FATAL_AND_EXIT("JavaScript error during server start");
           }
 
           LOG_DEBUG("database '%s' init/upgrade done", vocbase->_name);
@@ -754,22 +753,21 @@ void ApplicationV8::upgradeDatabase (bool skip,
 
     // regular shutdown... wait for all threads to finish
 
-    // again, can do this without the lock
-    for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
-      TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(_server->_databases._table[j]);
+    auto unuser(_server->_databasesProtector.use());
+    auto theLists = _server->_databasesLists.load();
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
 
-      if (vocbase != nullptr) {
-        vocbase->_state = 2;
+      vocbase->_state = 2;
 
-        int res = TRI_ERROR_NO_ERROR;
+      int res = TRI_ERROR_NO_ERROR;
 
-        res |= TRI_StopCompactorVocBase(vocbase);
-        vocbase->_state = 3;
-        res |= TRI_JoinThread(&vocbase->_cleanup);
+      res |= TRI_StopCompactorVocBase(vocbase);
+      vocbase->_state = 3;
+      res |= TRI_JoinThread(&vocbase->_cleanup);
 
-        if (res != TRI_ERROR_NO_ERROR) {
-          LOG_ERROR("unable to join database threads for database '%s'", vocbase->_name);
-        }
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_ERROR("unable to join database threads for database '%s'", vocbase->_name);
       }
     }
 
@@ -808,26 +806,26 @@ void ApplicationV8::versionCheck () {
 
     // can do this without a lock as this is the startup
 
-    for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
-      TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(_server->_databases._table[j]);
+    auto unuser(_server->_databasesProtector.use());
+    auto theLists = _server->_databasesLists.load();
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
 
-      if (vocbase != nullptr) {
-        // special check script to be run just once in first thread (not in all)
-        // but for all databases
+      // special check script to be run just once in first thread (not in all)
+      // but for all databases
 
-        int status = TRI_CheckDatabaseVersion(vocbase, &_startupLoader, localContext);
+      int status = TRI_CheckDatabaseVersion(vocbase, &_startupLoader, localContext);
 
-        if (status < 0) {
-          LOG_FATAL_AND_EXIT(
-                             "Database version check failed for '%s'. Please inspect the logs from any errors",
-                             vocbase->_name);
-        }
-        else if (status == 3) {
-          result = 3;
-        }
-        else if (status == 2 && result == 1) {
-          result = 2;
-        }
+      if (status < 0) {
+        LOG_FATAL_AND_EXIT(
+                           "Database version check failed for '%s'. Please inspect the logs from any errors",
+                           vocbase->_name);
+      }
+      else if (status == 3) {
+        result = 3;
+      }
+      else if (status == 2 && result == 1) {
+        result = 2;
       }
     }
 
@@ -840,22 +838,21 @@ void ApplicationV8::versionCheck () {
 
   // regular shutdown... wait for all threads to finish
 
-  // again, can do this without the lock
-  for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
-    TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
+  auto unuser(_server->_databasesProtector.use());
+  auto theLists = _server->_databasesLists.load();
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
 
-    if (vocbase != nullptr) {
-      vocbase->_state = 2;
+    vocbase->_state = 2;
 
-      int res = TRI_ERROR_NO_ERROR;
+    int res = TRI_ERROR_NO_ERROR;
 
-      res |= TRI_StopCompactorVocBase(vocbase);
-      vocbase->_state = 3;
-      res |= TRI_JoinThread(&vocbase->_cleanup);
+    res |= TRI_StopCompactorVocBase(vocbase);
+    vocbase->_state = 3;
+    res |= TRI_JoinThread(&vocbase->_cleanup);
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_ERROR("unable to join database threads for database '%s'", vocbase->_name);
-      }
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("unable to join database threads for database '%s'", vocbase->_name);
     }
   }
 
@@ -978,6 +975,8 @@ bool ApplicationV8::prepare2 () {
   _platform = v8::platform::CreateDefaultPlatform();
   v8::V8::InitializePlatform(_platform);
   v8::V8::Initialize();
+  
+  v8::V8::SetArrayBufferAllocator(&_bufferAllocator);
 
   // setup instances
   {
@@ -1179,7 +1178,7 @@ bool ApplicationV8::prepareV8Instance (size_t i, bool useActions) {
 
   vector<string> files;
 
-  files.push_back("server/initialise.js");
+  files.push_back("server/initialize.js");
 
   v8::Isolate* isolate = v8::Isolate::New();
   
@@ -1228,7 +1227,7 @@ bool ApplicationV8::prepareV8Instance (size_t i, bool useActions) {
 
     TRI_InitV8Cluster(isolate, localContext);
     if (_dispatcher->dispatcher() != nullptr) {
-      // don't initialise dispatcher if there is no scheduler (server started with --no-server option)
+      // don't initialize dispatcher if there is no scheduler (server started with --no-server option)
       TRI_InitV8Dispatcher(isolate, localContext, _vocbase, _scheduler, _dispatcher, this);
     }
 
@@ -1294,12 +1293,12 @@ bool ApplicationV8::prepareV8Instance (size_t i, bool useActions) {
   // this avoids collecting all contexts at the very same time
   double const randomWait = fmod(static_cast<double>(TRI_UInt32Random()), 15.0);
 
-  // initialise garbage collection for context
+  // initialize garbage collection for context
   context->_numExecutions      = 0;
   context->_hasActiveExternals = true;
   context->_lastGcStamp        = TRI_microtime() + randomWait;
 
-  LOG_TRACE("initialised V8 context #%d", (int) i);
+  LOG_TRACE("initialized V8 context #%d", (int) i);
 
   _freeContexts.emplace_back(context);
 
@@ -1356,8 +1355,8 @@ void ApplicationV8::prepareV8Server (const size_t i, const string& startupFile) 
   delete context->_locker;
   context->_locker = nullptr;
 
-  // initialise garbage collection for context
-  LOG_TRACE("initialised V8 server #%d", (int) i);
+  // initialize garbage collection for context
+  LOG_TRACE("initialized V8 server #%d", (int) i);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

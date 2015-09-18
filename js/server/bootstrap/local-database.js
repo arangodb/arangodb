@@ -2,7 +2,7 @@
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a new database
+/// @brief initialize a new database
 ///
 /// @file
 ///
@@ -29,11 +29,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         initialise a new database
+// --SECTION--                                         initialize a new database
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a new database
+/// @brief initialize a new database
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
@@ -53,7 +53,7 @@
     internal.loadStartup("server/bootstrap/foxxes.js").foxx();
   }
   else {
-    console.error("cannot initialise database '%s', upgrade script failed", db._name());
+    console.error("cannot initialize database '%s', upgrade script failed", db._name());
   }
 
   // expire database cache

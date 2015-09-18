@@ -1,3 +1,4 @@
+/*global ArangoServerState, ArangoClusterInfo */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,6 +326,23 @@ function dropLocalDatabases (plannedDatabases) {
         // must drop database
 
         console.info("dropping local database '%s'", name);
+
+        // Do we have to stop a replication applier first?
+        if (ArangoServerState.role() === "SECONDARY") {
+          try {
+            db._useDatabase(name);
+            var rep = require("org/arangodb/replication");
+            var state = rep.applier.state();
+            if (state.state.running === true) {
+              console.info("stopping replication applier first");
+              rep.applier.stop();
+            }
+            db._useDatabase("_system");
+          }
+          catch (err) {
+            db._useDatabase("_system");
+          }
+        }
         db._dropDatabase(name);
 
         writeLocked({ part: "Current" },
@@ -774,12 +792,58 @@ function handleCollectionChanges (plan) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief make sure that replication is set up for all databases
+////////////////////////////////////////////////////////////////////////////////
+
+function setupReplication () {
+  console.debug("Setting up replication...");
+
+  var db = require("internal").db;
+  var rep = require("org/arangodb/replication");
+  var dbs = db._listDatabases();
+  var i;
+  try {
+    for (i = 0; i < dbs.length; i++) {
+      var database = dbs[i];
+      console.debug("Checking replication of database "+database);
+      db._useDatabase(database);
+
+      var state = rep.applier.state();
+      if (state.state.running === false) {
+        var endpoint = ArangoClusterInfo.getServerEndpoint(
+                              ArangoServerState.idOfPrimary());
+        var config = { "endpoint": endpoint, "includeSystem": false };
+        rep.applier.properties(config);
+        console.info("Starting synchronization...");
+        var res = rep.sync(config);
+        console.info("Last log tick: "+res.lastLogTick+
+                    ", starting replication...");
+        var res2 = rep.applier.start(res.lastLogTick);
+        console.info("Result of replication start: "+res2);
+      }
+    }
+  }
+  catch (err) {
+    db._useDatabase("_system");
+  }
+  db._useDatabase("_system");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief change handling trampoline function
 ////////////////////////////////////////////////////////////////////////////////
 
 function handleChanges (plan, current) {
   handleDatabaseChanges(plan, current);
-  handleCollectionChanges(plan, current);
+  var role = ArangoServerState.role();
+  if (role === "PRIMARY" || role === "COORDINATOR") {
+    // Note: This is only ever called for DBservers (primary and secondary),
+    // we keep the coordinator case here just in case...
+    handleCollectionChanges(plan, current);
+  }
+  else {
+    setupReplication();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -910,7 +974,7 @@ var role = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var status = function () {
-  if (! isCluster() || ! global.ArangoServerState.initialised()) {
+  if (! isCluster() || ! global.ArangoServerState.initialized()) {
     return undefined;
   }
 
@@ -934,7 +998,7 @@ var isCoordinatorRequest = function (req) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var handlePlanChange = function () {
-  if (! isCluster() || isCoordinator() || ! global.ArangoServerState.initialised()) {
+  if (! isCluster() || isCoordinator() || ! global.ArangoServerState.initialized()) {
     return;
   }
 

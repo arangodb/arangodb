@@ -14,6 +14,7 @@ ${SRCDIR}/Installation/file-list-js.sh ${SRCDIR} | while read a; do
   TO="${DSTDIR}/$a"
   DIR=`dirname "${TO}"`
   
+  chmod a+r "${FROM}"
   test -d "${DIR}" || mkdir -p "${DIR}"
   cp -n "${FROM}" "${TO}"
 done

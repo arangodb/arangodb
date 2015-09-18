@@ -76,7 +76,7 @@ var lessons = [
   },
   {
     title: "Creating Documents",
-    text:  "Now we have a collection, but it is stil empty. So let's create some documents!\n\n" +
+    text:  "Now we have a collection, but it is still empty. So let's create some documents!\n\n" +
            "  db.places.save({ _key : \"foo\", city : \"foo-city\" });\n" +
            "  for (i = 0; i <= 10; i++) { db.places.save({ _key: \"example\" + i, zipcode: i }) };"
   },

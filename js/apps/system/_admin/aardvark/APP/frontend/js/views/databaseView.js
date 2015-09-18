@@ -27,7 +27,7 @@
       "click #databaseSearchSubmit" : "search",
       "click #databaseToggle"       : "toggleSettingsDropdown",
       "click .css-label"            : "checkBoxes",
-      "change #dbSortDesc"          : "sorting",
+      "click #dbSortDesc"           : "sorting",
       "click svg"                   : "switchDatabase"
     },
 
@@ -51,7 +51,7 @@
     initialize: function() {
       this.collection.fetch({async:false});
     },
-
+      
     checkBoxes: function (e) {
       //chrome bugfix
       var clicked = e.currentTarget.id;
@@ -69,12 +69,14 @@
         searchString : '',
         currentDB    : this.currentDB
       }));
-
+      
       if (this.dropdownVisible === true) {
         $('#dbSortDesc').attr('checked', this.collection.sortOptions.desc);
         $('#databaseToggle').toggleClass('activated');
         $('#databaseDropdown2').show();
       }
+      
+      arangoHelper.setCheckboxStatus("#databaseDropdown");
 
       this.replaceSVGs();
       return this;
@@ -199,11 +201,11 @@
 
     editDatabase: function(e) {
       var dbName = this.evaluateDatabaseName($(e.currentTarget).attr("id"), '_edit-database'),
-        isDeleteable = true;
+        isDeletable = true;
       if(dbName === this.currentDB) {
-        isDeleteable = false;
+        isDeletable = false;
       }
-      this.createEditDatabaseModal(dbName, isDeleteable);
+      this.createEditDatabaseModal(dbName, isDeletable);
     },
 
     search: function() {
@@ -254,14 +256,14 @@
       return str.substring(0, index);
     },
 
-    createEditDatabaseModal: function(dbName, isDeleteable) {
+    createEditDatabaseModal: function(dbName, isDeletable) {
       var buttons = [],
         tableContent = [];
 
       tableContent.push(
         window.modalView.createReadOnlyEntry("id_name", "Name", dbName, "")
       );
-      if (isDeleteable) {
+      if (isDeletable) {
         buttons.push(
           window.modalView.createDeleteButton(
             "Delete",
@@ -273,7 +275,7 @@
       }
       window.modalView.show(
         "modalTable.ejs",
-        "Edit database",
+        "Delete database",
         buttons,
         tableContent
       );

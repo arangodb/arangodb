@@ -44,7 +44,7 @@ man:
 
 swagger:
 	(python \
-            @srcdir@/Documentation/Scripts/generateSwaggerApi.py \
+            @srcdir@/Documentation/Scripts/generateSwagger.py \
                 @srcdir@ \
                 @srcdir@/js/apps/system/_admin/aardvark/APP/api-docs api-docs \
         ) > @srcdir@/js/apps/system/_admin/aardvark/APP/api-docs.json	
@@ -63,29 +63,46 @@ examples:
 	@rm -f /tmp/arangodb.examples
 
 	python @srcdir@/Documentation/Scripts/generateExamples.py \
-		--output-dir @builddir@/Documentation/Examples \
-		--only-thisone "$(FILTER_EXAMPLE)" \
-		--arangosh-setup @srcdir@/Documentation/Examples/setup-arangosh.js \
-		@srcdir@/js/actions \
-		@srcdir@/js/client \
-		@srcdir@/js/common \
-		@srcdir@/js/server \
-		@srcdir@/js/apps/system/_api/gharial/APP \
-		@srcdir@/Documentation/Books/Users \
-		@srcdir@/arangod/RestHandler \
-		@srcdir@/arangod/V8Server \
-		@srcdir@/lib/Admin \
-		> /tmp/arangosh.examples.js
+		--outputDir @builddir@/Documentation/Examples \
+		--onlyThisOne "$(FILTER_EXAMPLE)" \
+		--outputFile /tmp/arangosh.examples.js \
+		--arangoshSetup @srcdir@/Documentation/Examples/setup-arangosh.js \
+			@srcdir@/js/actions \
+			@srcdir@/js/client \
+			@srcdir@/js/common \
+			@srcdir@/js/server \
+			@srcdir@/js/apps/system/_api/gharial/APP \
+			@srcdir@/Documentation/Books/Users \
+			@srcdir@/arangod/RestHandler \
+			@srcdir@/arangod/V8Server
 
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+	if test -z "$(server.endpoint)"; then \
+		$(MAKE) start-server PID=$(PID) \
+			SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" \
+			PROTO=http ;\
+		@builddir@/bin/arangosh \
+			-s \
+			-c @srcdir@/etc/relative/arangosh.conf \
+			--server.password "" \
+			--server.endpoint tcp://$(VOCHOST):$(VOCPORT) \
+			--javascript.execute /tmp/arangosh.examples.js ;\
+	else \
+		@builddir@/bin/arangosh \
+			-s \
+			-c @srcdir@/etc/relative/arangosh.conf \
+			--server.password "" \
+			--server.endpoint $(server.endpoint) \
+			--javascript.execute /tmp/arangosh.examples.js ;\
+	fi
 
-
-	@builddir@/bin/arangosh \
-		-s \
-		-c @srcdir@/etc/relative/arangosh.conf \
-		--server.password "" \
-		--server.endpoint tcp://$(VOCHOST):$(VOCPORT) \
-		--javascript.execute /tmp/arangosh.examples.js
+examples-inspect-file:
+	@echo "generating /tmp/allExamples.html"
+	@(printf "<html><head></head><body><pre>\n"; \
+	   for thisExample in Documentation/Examples/*.generated; do \
+		printf "<hr>\n<h3>$$thisExample</h3>\n"; \
+		cat $$thisExample; \
+	done; \
+	printf "</pre></body></html>") > /tmp/allExamples.html
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

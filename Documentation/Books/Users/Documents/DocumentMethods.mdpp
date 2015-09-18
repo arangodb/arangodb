@@ -83,3 +83,16 @@
 !SUBSECTION Last
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock documentsCollectionLast
+
+!SUBSECTION Collection type
+@startDocuBlock collectionType
+
+!SUBSECTION Get the Version of ArangoDB
+@startDocuBlock databaseVersion
+
+!SUBSECTION Misc
+@startDocuBlock collectionEdgesAll
+@startDocuBlock collectionEdgesInbound
+@startDocuBlock collectionEdgesOutbound
+@startDocuBlock collectionIterate
+@startDocuBlock edgeSetProperty

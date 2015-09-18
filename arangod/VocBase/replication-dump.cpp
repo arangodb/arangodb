@@ -99,7 +99,7 @@ using namespace triagens;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct df_entry_s {
-  TRI_datafile_t* _data;
+  TRI_datafile_t const* _data;
   TRI_voc_tick_t  _dataMin;
   TRI_voc_tick_t  _dataMax;
   TRI_voc_tick_t  _tickMax;
@@ -181,18 +181,16 @@ static int AppendCollection (TRI_replication_dump_t* dump,
 /// data range
 ////////////////////////////////////////////////////////////////////////////////
 
-static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
-                             TRI_vector_t* result,
-                             TRI_voc_tick_t dataMin,
-                             TRI_voc_tick_t dataMax,
-                             bool isJournal) {
-
-  int res = TRI_ERROR_NO_ERROR;
+static void IterateDatafiles (TRI_vector_pointer_t const* datafiles,
+                              std::vector<df_entry_t>& result,
+                              TRI_voc_tick_t dataMin,
+                              TRI_voc_tick_t dataMax,
+                              bool isJournal) {
 
   size_t const n = datafiles->_length;
 
   for (size_t i = 0; i < n; ++i) {
-    TRI_datafile_t* df = static_cast<TRI_datafile_t*>(TRI_AtVectorPointer(datafiles, i));
+    auto df = static_cast<TRI_datafile_t const*>(TRI_AtVectorPointer(datafiles, i));
 
     df_entry_t entry = {
       df,
@@ -226,36 +224,34 @@ static int IterateDatafiles (TRI_vector_pointer_t const* datafiles,
       continue;
     }
 
-    res = TRI_PushBackVector(result, &entry);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      break;
-    }
+    result.emplace_back(entry);
   }
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the datafiles of a collection for a specific tick range
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vector_t GetRangeDatafiles (TRI_document_collection_t* document,
-                                       TRI_voc_tick_t dataMin,
-                                       TRI_voc_tick_t dataMax) {
-  TRI_vector_t datafiles;
+static std::vector<df_entry_t> GetRangeDatafiles (TRI_document_collection_t* document,
+                                                  TRI_voc_tick_t dataMin,
+                                                  TRI_voc_tick_t dataMax) {
 
   LOG_TRACE("getting datafiles in data range %llu - %llu",
             (unsigned long long) dataMin,
             (unsigned long long) dataMax);
 
-  // determine the datafiles of the collection
-  TRI_InitVector(&datafiles, TRI_CORE_MEM_ZONE, sizeof(df_entry_t));
+  std::vector<df_entry_t> datafiles;
 
   TRI_READ_LOCK_DATAFILES_DOC_COLLECTION(document);
 
-  IterateDatafiles(&document->_datafiles, &datafiles, dataMin, dataMax, false);
-  IterateDatafiles(&document->_journals, &datafiles, dataMin, dataMax, true);
+  try {
+    IterateDatafiles(&document->_datafiles, datafiles, dataMin, dataMax, false);
+    IterateDatafiles(&document->_journals, datafiles, dataMin, dataMax, true);
+  }
+  catch (...) {
+    TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
+    throw;
+  }
 
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
@@ -846,6 +842,16 @@ static inline bool MustReplicateWalMarkerType (TRI_df_marker_t const* marker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a marker belongs to a transaction
+////////////////////////////////////////////////////////////////////////////////
+     
+static inline bool IsTransactionWalMarkerType (TRI_df_marker_t const* marker) { 
+  return (marker->_type == TRI_WAL_MARKER_BEGIN_TRANSACTION ||
+          marker->_type == TRI_WAL_MARKER_COMMIT_TRANSACTION ||
+          marker->_type == TRI_WAL_MARKER_ABORT_TRANSACTION);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief translate a marker type to a replication type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1065,11 +1071,68 @@ static TRI_voc_tick_t GetCollectionFromWalMarker (TRI_df_marker_t const* marker)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to extract a transaction id from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+static TRI_voc_tid_t GetTransactionId (TRI_df_marker_t const* marker) {
+  T const* m = reinterpret_cast<T const*>(marker);
+  return m->_transactionId;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the transaction id from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_voc_tid_t GetTransactionFromWalMarker (TRI_df_marker_t const* marker) {
+  TRI_ASSERT_EXPENSIVE(MustReplicateWalMarkerType(marker));
+
+  switch (marker->_type) {
+    case TRI_WAL_MARKER_DOCUMENT: 
+      return GetTransactionId<triagens::wal::document_marker_t>(marker);
+    case TRI_WAL_MARKER_EDGE: 
+      return GetTransactionId<triagens::wal::edge_marker_t>(marker);
+    case TRI_WAL_MARKER_REMOVE: 
+      return GetTransactionId<triagens::wal::remove_marker_t>(marker);
+    case TRI_WAL_MARKER_BEGIN_TRANSACTION: 
+      return GetTransactionId<triagens::wal::transaction_begin_marker_t>(marker);
+    case TRI_WAL_MARKER_COMMIT_TRANSACTION: 
+      return GetTransactionId<triagens::wal::transaction_commit_marker_t>(marker);
+    case TRI_WAL_MARKER_ABORT_TRANSACTION: 
+      return GetTransactionId<triagens::wal::transaction_abort_marker_t>(marker);
+    default: {
+      return 0;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a marker belongs to a transaction
+////////////////////////////////////////////////////////////////////////////////
+     
+static bool IsTransactionWalMarker (TRI_replication_dump_t* dump,
+                                    TRI_df_marker_t const* marker) { 
+  // first check the marker type
+  if (! IsTransactionWalMarkerType(marker)) {
+    return false;
+  }
+
+  // then check if the marker belongs to the "correct" database
+  if (dump->_vocbase->_id != GetDatabaseFromWalMarker(marker)) {
+    return false;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a marker is replicated
 ////////////////////////////////////////////////////////////////////////////////
      
 static bool MustReplicateWalMarker (TRI_replication_dump_t* dump,
-                                    TRI_df_marker_t const* marker) { 
+                                    TRI_df_marker_t const* marker,
+                                    TRI_voc_tick_t firstRegularTick,
+                                    std::unordered_set<TRI_voc_tid_t> const& transactionIds) { 
   // first check the marker type
   if (! MustReplicateWalMarkerType(marker)) {
     return false;
@@ -1090,6 +1153,18 @@ static bool MustReplicateWalMarker (TRI_replication_dump_t* dump,
     }
   }
 
+  if (marker->_tick >= firstRegularTick) {
+    return true;
+  }
+
+  if (! transactionIds.empty()) {
+    TRI_voc_tid_t tid = GetTransactionFromWalMarker(marker);
+    if (tid == 0 ||
+        transactionIds.find(tid) == transactionIds.end()) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -1104,11 +1179,9 @@ static int DumpCollection (TRI_replication_dump_t* dump,
                            bool withTicks,
                            bool translateCollectionIds,
                            triagens::arango::CollectionNameResolver* resolver) {
-  TRI_vector_t datafiles;
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
   TRI_voc_tid_t lastTid;
-  size_t i, n;
   int res;
   bool hasMore;
   bool bufferFull;
@@ -1127,8 +1200,16 @@ static int DumpCollection (TRI_replication_dump_t* dump,
             (unsigned long long) dataMin,
             (unsigned long long) dataMax);
 
-  buffer         = dump->_buffer;
-  datafiles      = GetRangeDatafiles(document, dataMin, dataMax);
+  buffer = dump->_buffer;
+
+  std::vector<df_entry_t> datafiles;
+
+  try {
+    datafiles = GetRangeDatafiles(document, dataMin, dataMax);
+  }
+  catch (...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   // setup some iteration state
   lastFoundTick  = 0;
@@ -1138,17 +1219,17 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   bufferFull     = false;
   ignoreMarkers  = false;
 
-  n = TRI_LengthVector(&datafiles);
+  size_t const n = datafiles.size();
 
-  for (i = 0; i < n; ++i) {
-    df_entry_t* e = (df_entry_t*) TRI_AtVector(&datafiles, i);
-    TRI_datafile_t* datafile = e->_data;
+  for (size_t i = 0; i < n; ++i) {
+    df_entry_t const& e = datafiles[i];
+    TRI_datafile_t const* datafile = e._data;
     char const* ptr;
     char const* end;
 
     // we are reading from a journal that might be modified in parallel
     // so we must read-lock it
-    if (e->_isJournal) {
+    if (e._isJournal) {
       TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
     else {
@@ -1208,7 +1289,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
 
         // check if we can abort searching
         if (foundTick >= dataMax ||
-            (foundTick >= e->_tickMax && i == (n - 1))) {
+            (foundTick >= e._tickMax && i == (n - 1))) {
           // fetched the last available marker
           hasMore = false;
           goto NEXT_DF;
@@ -1258,7 +1339,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       }
 
       if (foundTick >= dataMax ||
-          (foundTick >= e->_tickMax && i == (n - 1))) {
+          (foundTick >= e._tickMax && i == (n - 1))) {
         // fetched the last available marker
         hasMore = false;
         goto NEXT_DF;
@@ -1273,7 +1354,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
     }
 
 NEXT_DF:
-    if (e->_isJournal) {
+    if (e._isJournal) {
       // read-unlock the journal
       TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
     }
@@ -1282,8 +1363,6 @@ NEXT_DF:
       break;
     }
   }
-
-  TRI_DestroyVector(&datafiles);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (lastFoundTick > 0) {
@@ -1333,11 +1412,18 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   // block compaction
   TRI_ReadLockReadWriteLock(&document->_compactionLock);
 
-  int res = DumpCollection(dump, document, dataMin, dataMax, withTicks, 
-                           translateCollectionIds, &resolver);
+  int res;
 
+  try {
+    res = DumpCollection(dump, document, dataMin, dataMax, withTicks, 
+                         translateCollectionIds, &resolver);
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  // always execute this
   TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
-
   document->ditches()->freeDitch(b);
 
   return res;
@@ -1348,6 +1434,8 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
+                            std::unordered_set<TRI_voc_tid_t> const& transactionIds,
+                            TRI_voc_tick_t firstRegularTick,
                             TRI_voc_tick_t tickMin,
                             TRI_voc_tick_t tickMax,
                             bool outputAsArray) {
@@ -1356,8 +1444,8 @@ int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
             (unsigned long long) tickMax);
 
   // ask the logfile manager which datafiles qualify
-  std::vector<triagens::wal::Logfile*> logfiles = triagens::wal::LogfileManager::instance()->getLogfilesForTickRange(tickMin, tickMax);
-  size_t const n = logfiles.size();
+  bool fromTickIncluded = false;
+  std::vector<triagens::wal::Logfile*> logfiles = triagens::wal::LogfileManager::instance()->getLogfilesForTickRange(tickMin, tickMax, fromTickIncluded);
     
   // setup some iteration state
   int res = TRI_ERROR_NO_ERROR;
@@ -1370,9 +1458,11 @@ int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
   }
 
   try {
-     bool first = true;
+    bool first = true;
 
     // iterate over the datafiles found
+    size_t const n = logfiles.size();
+
     for (size_t i = 0; i < n; ++i) {
       triagens::wal::Logfile* logfile = logfiles[i];
 
@@ -1400,15 +1490,14 @@ int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
 
         if (foundTick >= tickMax) {
           hasMore = false;
-        }
         
-        if (foundTick > tickMax) {
-          // marker too new
-          break;
+          if (foundTick > tickMax) {
+            // marker too new
+            break;
+          }
         }
 
-        if (! MustReplicateWalMarker(dump, marker)) {
-          // check if we can abort searching
+        if (! MustReplicateWalMarker(dump, marker, firstRegularTick, transactionIds)) {
           continue;
         }
 
@@ -1456,6 +1545,8 @@ int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
     TRI_AppendStringStringBuffer(dump->_buffer, "\n]");
   }
 
+  dump->_fromTickIncluded = fromTickIncluded;
+
   if (res == TRI_ERROR_NO_ERROR) {
     if (lastFoundTick > 0) {
       // data available for requested range
@@ -1471,6 +1562,139 @@ int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
     }
   }
 
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the transactions that were open at a given point in time
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DetermineOpenTransactionsReplication (TRI_replication_dump_t* dump,
+                                              TRI_voc_tick_t tickMin,
+                                              TRI_voc_tick_t tickMax) {
+    
+  LOG_TRACE("determining transactions, tick range %llu - %llu",
+            (unsigned long long) tickMin,
+            (unsigned long long) tickMax);
+
+  std::unordered_map<TRI_voc_tid_t, TRI_voc_tick_t> transactions;
+
+  // ask the logfile manager which datafiles qualify
+  bool fromTickIncluded = false;
+  std::vector<triagens::wal::Logfile*> logfiles = triagens::wal::LogfileManager::instance()->getLogfilesForTickRange(tickMin, tickMax, fromTickIncluded);
+    
+  // setup some iteration state
+  TRI_voc_tick_t lastFoundTick = 0;
+  int res = TRI_ERROR_NO_ERROR;
+
+  // LOG_INFO("found logfiles: %d", (int) logfiles.size());
+
+  try {
+    // iterate over the datafiles found
+    size_t const n = logfiles.size();
+    for (size_t i = 0; i < n; ++i) {
+      triagens::wal::Logfile* logfile = logfiles[i];
+
+      char const* ptr;
+      char const* end;
+      triagens::wal::LogfileManager::instance()->getActiveLogfileRegion(logfile, ptr, end);
+
+      // LOG_INFO("scanning logfile %d", (int) i);
+      while (ptr < end) {
+        TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
+
+        if (marker->_size == 0 || marker->_type <= TRI_MARKER_MIN) {
+          // end of datafile
+          break;
+        }
+
+        ptr += TRI_DF_ALIGN_BLOCK(marker->_size);
+
+        // get the marker's tick and check whether we should include it
+        TRI_voc_tick_t foundTick = marker->_tick;
+
+        if (foundTick <= tickMin) {
+          // marker too old
+          continue;
+        }
+
+        if (foundTick > tickMax) {
+          // marker too new
+          // LOG_INFO("marker too new. aborting logfile %d", (int) i);
+          break;
+        }
+
+        if (! IsTransactionWalMarker(dump, marker)) {
+          continue;
+        }
+
+        // LOG_INFO("found transaction marker");
+
+        if (marker->_type == TRI_WAL_MARKER_BEGIN_TRANSACTION) {
+          auto m = reinterpret_cast<triagens::wal::transaction_begin_marker_t const*>(marker);
+          transactions.emplace(m->_transactionId, foundTick);
+          // LOG_INFO("found begin: %llu", m->_transactionId);
+        }
+        else if (marker->_type == TRI_WAL_MARKER_COMMIT_TRANSACTION) {
+          auto m = reinterpret_cast<triagens::wal::transaction_commit_marker_t const*>(marker);
+          transactions.erase(m->_transactionId);
+          // LOG_INFO("found commit: %llu", m->_transactionId);
+        }
+        else if (marker->_type == TRI_WAL_MARKER_ABORT_TRANSACTION) {
+          auto m = reinterpret_cast<triagens::wal::transaction_abort_marker_t const*>(marker);
+          transactions.erase(m->_transactionId);
+          // LOG_INFO("found abort: %llu", m->_transactionId);
+        }
+
+        // note the last tick we processed
+        if (foundTick > lastFoundTick) {
+          lastFoundTick = foundTick;
+        }
+      }
+    }
+
+    // LOG_INFO("found transactions: %d", (int) transactions.size());
+    // LOG_INFO("last tick: %llu", lastFoundTick);
+
+    if (transactions.empty()) {
+      TRI_AppendStringStringBuffer(dump->_buffer, "[]");
+    }
+    else {
+      bool first = true;
+      TRI_AppendStringStringBuffer(dump->_buffer, "[\"");
+
+      for (auto const& it : transactions) {
+        if (it.second - 1 < lastFoundTick) {
+          lastFoundTick = it.second - 1;
+        }
+     
+        if (first) { 
+          first = false;
+        }
+        else {
+          TRI_AppendStringStringBuffer(dump->_buffer, "\",\"");
+        }
+
+        TRI_AppendUInt64StringBuffer(dump->_buffer, it.first);
+      }
+
+      TRI_AppendStringStringBuffer(dump->_buffer, "\"]");
+    }
+
+    dump->_fromTickIncluded = fromTickIncluded;
+    dump->_lastFoundTick = lastFoundTick;
+    // LOG_INFO("last tick2: %llu", lastFoundTick);
+  }
+  catch (triagens::basics::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  // always return the logfiles we have used
+  triagens::wal::LogfileManager::instance()->returnLogfiles(logfiles);
+ 
   return res;
 }
 

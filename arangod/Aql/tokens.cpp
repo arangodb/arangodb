@@ -1368,7 +1368,8 @@ case 55:
 YY_RULE_SETUP
 { 
   /* unquoted string */
-  yylval->strval = yyextra->query()->registerString(yytext, yyleng, false);
+  yylval->strval.value = yyextra->query()->registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_STRING; 
 }
 	YY_BREAK
@@ -1385,7 +1386,9 @@ YY_RULE_SETUP
 {
   /* end of backtick-enclosed string */
   BEGIN(INITIAL);
-  yylval->strval = yyextra->query()->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
+  size_t outLength;
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, outLength);
+  yylval->strval.length = outLength;
   return T_STRING;
 }
 	YY_BREAK
@@ -1423,7 +1426,9 @@ YY_RULE_SETUP
 {
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
-  yylval->strval = yyextra->query()->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
+  size_t outLength;
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, outLength);
+  yylval->strval.length = outLength;
   return T_QUOTED_STRING;
 }
 	YY_BREAK
@@ -1461,7 +1466,9 @@ YY_RULE_SETUP
 {
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
-  yylval->strval = yyextra->query()->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
+  size_t outLength;
+  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, outLength);
+  yylval->strval.length = outLength;
   return T_QUOTED_STRING;
 }
 	YY_BREAK
@@ -1544,7 +1551,8 @@ YY_RULE_SETUP
 {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name parameter */
-  yylval->strval = yyextra->query()->registerString(yytext + 1, yyleng - 1, false); 
+  yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1); 
+  yylval->strval.length = yyleng - 1;
   return T_PARAMETER;
 }
 	YY_BREAK

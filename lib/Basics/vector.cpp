@@ -50,7 +50,7 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector
+/// @brief initializes a vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVector (TRI_vector_t* vector, TRI_memory_zone_t* zone, size_t elementSize) {
@@ -62,7 +62,7 @@ void TRI_InitVector (TRI_vector_t* vector, TRI_memory_zone_t* zone, size_t eleme
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector, with user-definable settings
+/// @brief initializes a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVector2 (TRI_vector_t* vector,
@@ -136,51 +136,6 @@ int TRI_ReserveVector (TRI_vector_t* vector,
   vector->_capacityX = static_cast<uint32_t>(newSize);
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copies a vector
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_t* TRI_CopyVector (TRI_memory_zone_t* zone,
-                              TRI_vector_t const* vector) {
-  TRI_vector_t* copy = static_cast<TRI_vector_t*>(TRI_Allocate(zone, sizeof(TRI_vector_t), false));
-
-  if (copy == nullptr) {
-    return nullptr;
-  }
-
-  copy->_elementSizeX = vector->_elementSizeX;
-  copy->_memoryZoneX  = TRI_MemoryZoneId(zone);
-
-  if (vector->_capacityX == 0) {
-    copy->_buffer     = nullptr;
-    copy->_lengthX    = 0;
-    copy->_capacityX  = 0;
-  }
-  else {
-    copy->_buffer = static_cast<char*>(TRI_Allocate(zone, static_cast<size_t>(vector->_lengthX * vector->_elementSizeX), false));
-
-    if (copy->_buffer == nullptr) {
-      TRI_Free(zone, copy);
-      return nullptr;
-    }
-
-    copy->_capacityX = vector->_lengthX;
-    copy->_lengthX   = vector->_lengthX;
-
-    memcpy(copy->_buffer, vector->_buffer, static_cast<size_t>(vector->_lengthX * vector->_elementSizeX));
-  }
-
-  return copy;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true if the vector is empty
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_EmptyVector (TRI_vector_t const* vector) {
-  return vector->_lengthX == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -389,14 +344,6 @@ void* TRI_BeginVector (TRI_vector_t const* vector) {
   return vector->_buffer;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the end (pointer after the last element)
-////////////////////////////////////////////////////////////////////////////////
-
-void* TRI_EndVector (TRI_vector_t const* vector) {
-  return vector->_buffer + static_cast<size_t>(vector->_lengthX * vector->_elementSizeX);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   POINTER VECTORS
 // -----------------------------------------------------------------------------
@@ -406,7 +353,7 @@ void* TRI_EndVector (TRI_vector_t const* vector) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector
+/// @brief initializes a vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVectorPointer (TRI_vector_pointer_t* vector,
@@ -418,7 +365,7 @@ void TRI_InitVectorPointer (TRI_vector_pointer_t* vector,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a vector, with user-definable settings
+/// @brief initializes a vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVectorPointer (TRI_vector_pointer_t* vector,
@@ -455,21 +402,6 @@ void TRI_DestroyVectorPointer (TRI_vector_pointer_t* vector) {
 void TRI_FreeVectorPointer (TRI_memory_zone_t* zone, TRI_vector_pointer_t* vector) {
   TRI_DestroyVectorPointer(vector);
   TRI_Free(zone, vector);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a vector and frees the pointer and the content
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeContentVectorPointer (TRI_memory_zone_t* zone,
-                                   TRI_vector_pointer_t* vector) {
-  for (size_t i = 0;  i < vector->_length;  ++i) {
-    void* ptr = vector->_buffer[i];
-
-    if (ptr != nullptr) {
-      TRI_Free(zone, ptr);
-    }
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -543,51 +475,6 @@ TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_memory_zone_t* zone,
   }
 
   return copy;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true if the vector is empty
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_EmptyVectorPointer (TRI_vector_pointer_t const* vector) {
-  return vector->_length == 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clears the vector
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ClearVectorPointer (TRI_vector_pointer_t* vector) {
-  vector->_length = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resizes the vector
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ResizeVectorPointer (TRI_vector_pointer_t* vector,
-                             size_t n) {
-  if (vector->_length == n) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (vector->_capacity < n) {
-    void* newBuffer;
-    size_t newSize = n;
-
-    newBuffer = TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * sizeof(void*));
-
-    if (newBuffer == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    vector->_capacity = newSize;
-    vector->_buffer = static_cast<void**>(newBuffer);
-  }
-
-  vector->_length = n;
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -711,7 +598,7 @@ void* TRI_AtVectorPointer (TRI_vector_pointer_t const* vector, size_t pos) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a string vector
+/// @brief initializes a string vector
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitVectorString (TRI_vector_string_t* vector, TRI_memory_zone_t* zone) {
@@ -722,7 +609,7 @@ void TRI_InitVectorString (TRI_vector_string_t* vector, TRI_memory_zone_t* zone)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a string vector, with user-definable settings
+/// @brief initializes a string vector, with user-definable settings
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitVectorString2 (TRI_vector_string_t* vector,
@@ -772,115 +659,6 @@ void TRI_FreeVectorString (TRI_memory_zone_t* zone, TRI_vector_string_t* vector)
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copies a vector and all its strings
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t* zone,
-                                           TRI_vector_string_t const* vector) {
-  TRI_vector_string_t* copy = static_cast<TRI_vector_string_t*>(TRI_Allocate(zone, sizeof(TRI_vector_t), false));
-
-  if (copy == nullptr) {
-    return nullptr;
-  }
-
-  copy->_memoryZone = zone;
-
-  if (vector->_capacity == 0) {
-    copy->_buffer = nullptr;
-    copy->_length = 0;
-    copy->_capacity = 0;
-  }
-  else {
-    char** ptr;
-    char** end;
-    char** qtr;
-
-    copy->_buffer = static_cast<char**>(TRI_Allocate(zone, vector->_length * sizeof(char*), false));
-
-    if (copy->_buffer == nullptr) {
-      TRI_Free(zone, copy);
-      return nullptr;
-    }
-
-    copy->_capacity = vector->_length;
-    copy->_length = vector->_length;
-
-    ptr = vector->_buffer;
-    end = vector->_buffer + vector->_length;
-    qtr = copy->_buffer;
-
-    for (;  ptr < end;  ++ptr, ++qtr) {
-      *qtr = TRI_DuplicateStringZ(zone, *ptr);
-
-      if (*qtr == nullptr) {
-        char** xtr = copy->_buffer;
-
-        for (;  xtr < qtr;  ++xtr) {
-          TRI_Free(zone, *xtr);
-        }
-
-        TRI_Free(zone, copy->_buffer);
-        TRI_Free(zone, copy);
-        return nullptr;
-      }
-    }
-  }
-
-  return copy;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true if the vector is empty
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_EmptyVectorString (TRI_vector_string_t const* vector) {
-  return vector->_length == 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clears the vector
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ClearVectorString (TRI_vector_string_t* vector) {
-  if (vector->_buffer != nullptr) {
-    for (size_t i = 0;  i < vector->_length;  ++i) {
-      if (vector->_buffer[i] != nullptr) {
-        TRI_Free(vector->_memoryZone, vector->_buffer[i]);
-      }
-    }
-  }
-
-  vector->_length = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resizes the vector
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ResizeVectorString (TRI_vector_string_t* vector, size_t n) {
-  if (vector->_length == n) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (vector->_capacity < n) {
-    void* newBuffer;
-    size_t newSize = n;
-
-    newBuffer = TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * sizeof(char*));
-
-    if (newBuffer == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    vector->_capacity = n;
-    vector->_buffer = static_cast<char**>(newBuffer);
-  }
-
-  vector->_length = n;
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element at the end
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -900,48 +678,6 @@ int TRI_PushBackVectorString (TRI_vector_string_t* vector, char* element) {
   }
 
   vector->_buffer[vector->_length++] = element;
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an element at position n
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InsertVectorString (TRI_vector_string_t* vector, char* element, size_t n) {
-  // ...........................................................................
-  // Check and see if we need to extend the vector
-  // ...........................................................................
-
-  if (vector->_length >= vector->_capacity || n >= vector->_capacity) {
-    char** newBuffer;
-    size_t newSize = (size_t) (1 + GROW_FACTOR * vector->_capacity);
-
-    if (n >= newSize) {
-      newSize = n + 1;
-    }
-
-    TRI_ASSERT(newSize > n);
-
-    newBuffer = (char**) TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * sizeof(char*));
-
-    if (newBuffer == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    vector->_capacity = newSize;
-    vector->_buffer = newBuffer;
-  }
-
-  if (n != vector->_length) {
-    memmove(vector->_buffer + n + 1,
-            vector->_buffer + n,
-            sizeof(char**) * (vector->_length - n));
-  }
-
-  TRI_ASSERT(vector->_capacity >= vector->_length);
-
-  vector->_length++;
-  vector->_buffer[n] = element;
   return TRI_ERROR_NO_ERROR;
 }
 

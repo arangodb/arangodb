@@ -162,7 +162,7 @@ static void InvalidParameterHandler (const wchar_t* expression, // expression se
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Called from the 'main' and performs any initialisation requirements which
+// Called from the 'main' and performs any initialization requirements which
 // are specific to windows.
 //
 // If this function returns 0, then no errors encountered. If < 0, then the
@@ -170,14 +170,14 @@ static void InvalidParameterHandler (const wchar_t* expression, // expression se
 // calling function should decide what to do.
 ////////////////////////////////////////////////////////////////////////////////
 
-int finaliseWindows (const TRI_win_finalise_e finaliseWhat,
+int finalizeWindows (const TRI_win_finalize_e finalizeWhat,
                      const char* data) {
   // ............................................................................
   // The data is used to transport information from the calling function to here
   // it may be NULL (and will be in most cases)
   // ............................................................................
 
-  switch (finaliseWhat) {
+  switch (finalizeWhat) {
     case TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL: {
       int result = WSACleanup();     // could this cause error on server termination?
 
@@ -191,7 +191,7 @@ int finaliseWindows (const TRI_win_finalise_e finaliseWhat,
 
     default: {
       // can not use LOG_ etc here since the logging may have terminated
-      printf("ERROR: Invalid windows finalisation called");
+      printf("ERROR: Invalid windows finalization called");
       return -1;
     }
   }
@@ -199,7 +199,7 @@ int finaliseWindows (const TRI_win_finalise_e finaliseWhat,
   return -1;
 }
 
-int initialiseWindows (const TRI_win_initialise_e initialiseWhat,
+int initializeWindows (const TRI_win_initialize_e initializeWhat,
                        const char* data) {
 
   // ............................................................................
@@ -207,7 +207,7 @@ int initialiseWindows (const TRI_win_initialise_e initialiseWhat,
   // it may be NULL (and will be in most cases)
   // ............................................................................
 
-  switch (initialiseWhat) {
+  switch (initializeWhat) {
 
     case TRI_WIN_INITIAL_SET_DEBUG_FLAG: {
       _CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF)|_CRTDBG_CHECK_ALWAYS_DF);
@@ -253,7 +253,7 @@ int initialiseWindows (const TRI_win_initialise_e initialiseWhat,
     }
 
     default: {
-      LOG_ERROR("Invalid windows initialisation called");
+      LOG_ERROR("Invalid windows initialization called");
       return -1;
     }
   }

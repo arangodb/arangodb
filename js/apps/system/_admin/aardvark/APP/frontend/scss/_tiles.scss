@@ -1,10 +1,20 @@
-div.tileList {
+.tileList {
   @extend %clear-float;
   margin-left: -6px;
   margin-right: -6px;
 
-  & legend {
+  legend {
     padding-left: 5px;
+  }
+
+  .tile:first-child {
+    a {
+      opacity: .8;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
   }
 }
 
@@ -15,8 +25,8 @@ $iconsize: 50px;
   @include box-shadow(none);
 
   background-color: $c-white;
+  border: 1px solid $c-lightgreen-2-bg;
   border-radius: 3px;
-  border: 1px solid rgba(104, 103, 102, 0.1);
   font-size: 14px;
   list-style: none;
   margin: {
@@ -27,34 +37,28 @@ $iconsize: 50px;
   position: relative;
   text-align: center;
 
+  &:hover {
+    cursor: pointer;
+  }
+
   .warning-icons {
     background-color: $c-negative;
-    color: #fff;
+    border-radius: 3px;
+    color: $c-white;
     font-size: 11px;
     height: 17px;
     left: 0;
     line-height: 13px;
+    margin-left: 5px;
+    margin-top: 5px;
     padding-left: 9px;
-    padding-right: 4px;
+    padding-right: 9px;
     position: absolute;
     top: 0;
 
-    &:before {
-      border-right: 17px solid transparent;
-      border-top: 17px solid $c-negative;
-      content: '';
-      position: absolute;
-      right: -17px;
-    }
-
     .fa {
-      &+.fa {
-        margin-left: 1px;
-      }
-
-      &:before {
-        font-size: 8px;
-      }
+      font-size: 11pt;
+      margin-left: 1px;
     }
 
   }
@@ -70,9 +74,15 @@ $iconsize: 50px;
   }
 
   img {
+    position: relative;
+
     &.icon {
       height: $iconsize;
       width: $iconsize;
+    }
+
+    &:hover {
+      cursor: pointer;
     }
   }
 
@@ -107,7 +117,7 @@ $iconsize: 50px;
     }
   }
 
-  svg.tile-icon-svg {
+  .tile-icon-svg {
     cursor: pointer;
     fill: $c-icon-grey;
     height: $iconsize;
@@ -116,19 +126,19 @@ $iconsize: 50px;
     width: $iconsize;
   }
 
-  span.tile-icon {
+  .tile-icon {
     color: $c-icon-grey;
     font-size: $iconsize;
     line-height: 1.2;
   }
 
-  span.icon_arangodb_edge5-2 {
+  .icon_arangodb_edge5-2 {
+    display: inline-block;
     position: relative;
     top: 15px;
-    -webkit-transform:rotate(80deg);
-    -moz-transform:rotate(80deg);
-    -o-transform:rotate(80deg);
-    display: inline-block;
+    -moz-transform: rotate(80deg);
+    -o-transform: rotate(80deg);
+    -webkit-transform: rotate(80deg);
   }
 
   h5 {
@@ -142,7 +152,7 @@ $iconsize: 50px;
     white-space: nowrap !important;
   }
 
-  div.tileSelects {
+  .tileSelects {
     margin-left: 40px;
     position: relative;
     z-index: 9999;
@@ -156,7 +166,23 @@ $iconsize: 50px;
     }
   }
 
-  div.iconSet {
+  .fullBorderBox {
+    border: 1px solid $c-tile-border;
+    border-radius: 3px;
+    height: 100%;
+    position: absolute;
+    width: 100%;
+  }
+
+  .borderBox {
+    border: 1px solid $c-tile-border;
+    border-radius: 3px;
+    height: 75px;
+    position: absolute;
+    width: 224px;
+  }
+
+  .iconSet {
     position: absolute;
     right: 5px;
     top: 5px;
@@ -165,12 +191,12 @@ $iconsize: 50px;
       @extend %clickable;
       @extend %pull-right;
       border-radius: 3px;
-      color: $c-black;
+      color: $c-darker-grey;
       font-size: 18px;
-      padding-top: 2px;
       padding-bottom: 2px;
       padding-left: 3px;
       padding-right: 3px;
+      padding-top: 2px;
 
       &:hover {
         background-color: $c-positive;
@@ -204,7 +230,7 @@ $iconsize: 50px;
     border-bottom: 16px solid $c-state-critical;
   }
 
-  div.tileBadge {
+  .tileBadge {
     bottom: 29px;
     font-size: 11px;
     font-weight: 300;
@@ -222,19 +248,19 @@ $iconsize: 50px;
       display: inline-block;
       line-height: 15px;
 
-      div.corneredBadge {
+      .corneredBadge {
         border: {
-          left: 5px solid $c-transp;
           bottom: {
             style: solid;
             width: 17px;
           }
+          left: 5px solid $c-transp;
         }
         border-radius: 3px;
+        color: $c-white;
+        height: 0;
         margin-bottom: 4px;
         margin-right: 5px;
-        color: #fff;
-        height: 0;
         padding-left: 1px;
         padding-right: 6px;
 
@@ -260,25 +286,25 @@ $iconsize: 50px;
 
 div {
 
-  & .tile {
+  .tile {
     @extend %tile;
     height: 100px;
     width: $tile-width - 14px;
   }
 
-  & .tile-graph {
+  .tile-graph {
     .tile-icon:hover {
-      cursor:pointer;
+      cursor: pointer;
     }
   }
 
-  & .bigtile {
+  .bigtile {
     @extend %clickable;
     @extend %tile;
     height: 309px;
     width: 2 * ($tile-width - 14px);
 
-    div.shardContainer {
+    .shardContainer {
       font-size: 30px;
 
       span {
@@ -289,9 +315,9 @@ div {
 }
 
 .collectionName {
-  bottom: 0;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
+  bottom: 0;
   font-weight: 300;
   left: 0;
   position: absolute;

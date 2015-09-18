@@ -25,3 +25,6 @@ documents which do not fulfill these requirements.
 
 <!-- js/common/modules/org/arangodb/arango-collection-common.js-->
 @startDocuBlock collectionWithin
+
+
+@startDocuBlock collectionEnsureGeoConstraint

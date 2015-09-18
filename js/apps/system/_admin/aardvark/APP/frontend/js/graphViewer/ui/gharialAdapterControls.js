@@ -41,7 +41,7 @@ function GharialAdapterControls(list, adapter) {
       idprefix = prefix + "_";
 
     adapter.getGraphs(function(graphs) {
-      uiComponentsHelper.createButton(list, "Graph", prefix, function() {
+      uiComponentsHelper.createButton(list, "Switch Graph", prefix, function() {
         modalDialogHelper.createModalDialog("Switch Graph",
           idprefix, [{
             type: "list",
@@ -85,7 +85,7 @@ function GharialAdapterControls(list, adapter) {
       label = "Group vertices";
 
     uiComponentsHelper.createButton(list, label, prefix, function() {
-      modalDialogHelper.createModalChangeDialog(label,
+      modalDialogHelper.createModalChangeDialog(label + " by attribute",
         idprefix, [{
           type: "extendable",
           id: "attribute",

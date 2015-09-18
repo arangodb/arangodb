@@ -44,7 +44,7 @@ Any errors raised by the script will be handled depending on how the script was 
 
 * if the script was invoked with the **foxx-manager** CLI, it will exit with a non-zero exit status and print the error message.
 * if the script was invoked from the HTTP API (e.g. using the web admin frontend), it will return an error response using the exception's `statusCode` property if specified or 500.
-* if the script was invoked fromt the Foxx job queue, the job's failure counter will be incremented and the job will be rescheduled or marked as failed if no attempts remain.
+* if the script was invoked from the Foxx job queue, the job's failure counter will be incremented and the job will be rescheduled or marked as failed if no attempts remain.
 
 **Examples**
 
@@ -69,7 +69,7 @@ The following scripts are currently recognized as life-cycle scripts:
 
 !SUBSECTION Setup Script
 
-The **setup** script will be executed without arguments during the installion of your Foxx app:
+The **setup** script will be executed without arguments during the installation of your Foxx app:
 
 ```sh
 unix>foxx-manager install hello-foxx /example

@@ -765,7 +765,7 @@ namespace triagens {
         std::vector<ExecutionNode*> _parents;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _estimatedCost = 0 if uninitialised and otherwise stores the result
+/// @brief _estimatedCost = 0 if uninitialized and otherwise stores the result
 /// of estimateCost(), the bool indicates if the cost has been set, it starts
 /// out as false, _estimatedNrItems is the estimated number of items coming
 /// out of this node.
@@ -1653,7 +1653,7 @@ namespace triagens {
 /// @brief can the node throw?
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool canThrow () {
+        bool canThrow () override {
           return _expression->canThrow();
         }
 
@@ -1806,7 +1806,7 @@ namespace triagens {
 /// return true just because a dependent node can throw an exception.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool canThrow ();
+        bool canThrow () override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

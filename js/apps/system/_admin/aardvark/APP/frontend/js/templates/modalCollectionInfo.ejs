@@ -48,7 +48,7 @@
             </th>
             <th class="tooltipInfoTh">
               <div>
-                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Synchronise to disk before returning from a create or update of a document.">
+                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Synchronize to disk before returning from a create or update of a document.">
                   <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                 </a>
               </div>
@@ -84,6 +84,13 @@
             <th class="collectionInfoTh2">Status:</th>
             <th class="collectionInfoTh">
               <div class="modal-text"><%=content.get("status")%></div>
+            </th>
+          </tr>
+          
+          <tr>
+            <th class="collectionInfoTh2">Index buckets:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text"><%=figuresData["indexBuckets"]%></div>
             </th>
           </tr>
         </table>

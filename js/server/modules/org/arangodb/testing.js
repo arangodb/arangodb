@@ -28,7 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_UnitTest
 /// @brief framework to perform unittests
 ///
 /// This function gets one or two arguments, the first describes which tests
@@ -58,6 +57,7 @@ var optionsDocumentation = [
   '   - `skipGeo`: if set to true the geo index tests are skipped',
   '   - `skipGraph`: if set to true the Graph tests are skipped',
   '   - `skipAql`: if set to true the AQL tests are skipped',
+  '   - `skipArangoB`: if set to true benchmark tests are skipped',
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipMemoryIntense`: tests using lots of resources will be skippet.',
@@ -65,7 +65,9 @@ var optionsDocumentation = [
   '   - `skipSsl`: ommit the ssl_server rspec tests.',
   '   - `skipLogAnalysis`: don\'t try to crawl the server logs',
   '   - `skipConfig`: ommit the noisy configuration tests',
-  '   - `skipFoxQueues`: ommit the test for the fox queues',
+  '   - `skipFoxxQueues`: ommit the test for the foxx queues',
+  '   - `skipNightly`: ommit the nightly tests',
+  '   - `onlyNightly`: execute only the nightly tests',
   '',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
@@ -121,8 +123,11 @@ var optionsDefaults = { "cluster": false,
                         "skipBoost": false,
                         "skipGeo": false,
                         "skipTimeCritical": false,
+                        "skipNightly": true,
+                        "onlyNightly": false,
                         "skipMemoryIntense": false,
                         "skipAql": false,
+                        "skipArangoB": false,
                         "skipRanges": false,
                         "skipLogAnalysis": false,
                         "username": "root",
@@ -192,18 +197,23 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     whichFilter.filter = "testcase";
     return testname === options.test;
   }
-  if ((testname.indexOf("-cluster") !== -1) && (options.cluster === false)) {
+  if ((testname.indexOf("-cluster") !== -1) && !options.cluster) {
     whichFilter.filter = 'noncluster';
     return false;
   }
 
-  if (testname.indexOf("-noncluster") !== -1 && (options.cluster === true)) {
+  if (testname.indexOf("-noncluster") !== -1 && options.cluster) {
     whichFilter.filter = 'cluster';
     return false;
   }
 
-  if (testname.indexOf("-timecritical") !== -1 && (options.skipTimeCritical === true)) {
+  if (testname.indexOf("-timecritical") !== -1 && options.skipTimeCritical) {
     whichFilter.filter = 'timecritical';
+    return false;
+  }
+
+  if (testname.indexOf("-nightly") !== -1 && options.skipNightly && ! options.onlyNightly) {
+    whichFilter.filter = 'skip nightly';
     return false;
   }
 
@@ -227,8 +237,13 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf("-memoryintense") !== -1) && (options.skipMemoryIntense === true)) {
+  if ((testname.indexOf("-memoryintense") !== -1) && options.skipMemoryIntense) {
     whichFilter.filter = 'memoryintense';
+    return false;
+  }
+
+  if (testname.indexOf("-nightly") === -1 && options.onlyNightly) {
+    whichFilter.filter = 'only nightly';
     return false;
   }
 
@@ -269,7 +284,7 @@ function makeTestingArgsClient (options) {
  };
 }
 
-function makeAuthorisationHeaders (options) {
+function makeAuthorizationHeaders (options) {
   return {"headers":
             {"Authorization": "Basic " + base64Encode(options.username+":"+
                                                       options.password)}};
@@ -425,7 +440,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
   while (true) {
     wait(0.5, false);
-    var r = download(url+"/_api/version", "", makeAuthorisationHeaders(options));
+    var r = download(url+"/_api/version", "", makeAuthorizationHeaders(options));
     if (! r.error && r.code === 200) {
       break;
     }
@@ -446,7 +461,13 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       instanceInfo.pid.pid,
       fs.join(tmpDataDir, 'core.dmp')
     ];
-    instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+    try {
+      instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+    }
+    catch (x) {
+      print("failed to start procdump - is it installed?");
+      throw x;
+    }
   }
   return instanceInfo;
 }
@@ -613,7 +634,7 @@ function waitOnServerForGC(instanceInfo, options, waitTime) {
     var r;
     var t;
     t = 'require("internal").wait(' + waitTime + ', true);';
-    var o = makeAuthorisationHeaders(options);
+    var o = makeAuthorizationHeaders(options);
     o.method = "POST";
     o.timeout = waitTime * 10;
     o.returnBodyOnError = true;
@@ -678,7 +699,7 @@ function shutdownInstance (instanceInfo, options) {
   else {
     if (typeof(instanceInfo.exitStatus) === 'undefined') {
       download(instanceInfo.url+"/_admin/shutdown","",
-               makeAuthorisationHeaders(options));
+               makeAuthorizationHeaders(options));
 
       print("Waiting for server shut down");
       var count = 0;
@@ -859,7 +880,7 @@ function runThere (options, instanceInfo, file) {
           '};' +
           '}';
     }
-    var o = makeAuthorisationHeaders(options);
+    var o = makeAuthorizationHeaders(options);
     o.method = "POST";
     o.timeout = 3600;
     o.returnBodyOnError = true;
@@ -1665,7 +1686,7 @@ testFuncs.foxx_manager = function (options) {
 
 // TODO write test for 2.6-style queues
 // testFuncs.queue_legacy = function (options) {
-//   if (options.skipFoxQueues) {
+//   if (options.skipFoxxQueues) {
 //     print("skipping test of legacy queue job types");
 //     return {};
 //   }
@@ -1867,6 +1888,12 @@ var benchTodo = [
 ];
 
 testFuncs.arangob = function (options) {
+  print(options);
+  print(options.skipArangoB);
+  if (options.skipArangoB === true) {
+    print("skipping Benchmark tests!");
+    return {};
+  }
   print("arangob tests...");
   var instanceInfo = startInstance("tcp",options, [], "arangob");
   if (instanceInfo === false) {
@@ -2167,7 +2194,7 @@ function UnitTest (which, options) {
   if (which === "all") {
     var n;
     for (n = 0; n < allTests.length; n++) {
-      print("Doing test",allTests[n],"with options",options);
+      print("Doing test", allTests[n], "with options", options);
       results[allTests[n]] = r = testFuncs[allTests[n]](options);
       ok = true;
       for (i in r) {

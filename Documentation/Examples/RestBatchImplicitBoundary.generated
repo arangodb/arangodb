@@ -1,4 +1,4 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/batch <<EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/batch &lt;&lt;EOF
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 

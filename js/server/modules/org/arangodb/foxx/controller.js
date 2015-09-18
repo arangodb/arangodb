@@ -27,14 +27,13 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
-  RequestContextBuffer = require("org/arangodb/foxx/request_context").RequestContextBuffer,
-  BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
-  _ = require("underscore"),
-  extend = _.extend,
-  is = require("org/arangodb/is"),
-  internal = require("org/arangodb/foxx/internals"),
-  swagger = require("org/arangodb/foxx/swagger");
+const deprecated = require('org/arangodb/deprecated');
+const RequestContext = require('org/arangodb/foxx/request_context');
+const BaseMiddleware = require('org/arangodb/foxx/base_middleware').BaseMiddleware;
+const _ = require('underscore');
+const is = require('org/arangodb/is');
+const internal = require('org/arangodb/foxx/internals');
+const swagger = require('org/arangodb/foxx/swagger');
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Controller
@@ -42,21 +41,19 @@ var RequestContext = require("org/arangodb/foxx/request_context").RequestContext
 
 var authControllerProps = {
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_getUsers
+/// JSF_foxx_controller_getUsers
 /// @brief Get the users of this controller
 ////////////////////////////////////////////////////////////////////////////////
-  getUsers: function () {
-    var foxxAuthentication = require("org/arangodb/foxx/authentication"),
-      users = new foxxAuthentication.Users(this.applicationContext);
-
-    return users;
+  getUsers() {
+    const foxxAuthentication = require('org/arangodb/foxx/authentication');
+    return new foxxAuthentication.Users(this.applicationContext);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_getAuth
+/// JSF_foxx_controller_getAuth
 /// @brief Get the auth object of this controller
 ////////////////////////////////////////////////////////////////////////////////
-  getAuth: function () {
+  getAuth() {
     return this.auth;
   },
 
@@ -85,7 +82,7 @@ var authControllerProps = {
 ///
 /// ```js
 /// app.login('/login', {
-///   onSuccess: function (req, res) {
+///   onSuccess(req, res) {
 ///     res.json({"success": true});
 ///   }
 /// });
@@ -93,8 +90,8 @@ var authControllerProps = {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  login: function (route, opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
+  login(route, opts) {
+    var authentication = require('org/arangodb/foxx/authentication');
     return this.post(route, authentication.createStandardLoginHandler(this.getAuth(), this.getUsers(), opts));
   },
 
@@ -122,7 +119,7 @@ var authControllerProps = {
 ///
 /// ```js
 /// app.logout('/logout', {
-///   onSuccess: function (req, res) {
+///   onSuccess(req, res) {
 ///     res.json({"message": "Bye, Bye"});
 ///   }
 /// });
@@ -130,8 +127,8 @@ var authControllerProps = {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  logout: function (route, opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
+  logout(route, opts) {
+    var authentication = require('org/arangodb/foxx/authentication');
     return this.post(route, authentication.createStandardLogoutHandler(this.getAuth(), opts));
   },
 
@@ -178,12 +175,12 @@ var authControllerProps = {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  register: function (route, opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
+  register(route, opts) {
+    var authentication = require('org/arangodb/foxx/authentication');
     return this.post(
       route,
       authentication.createStandardRegistrationHandler(this.getAuth(), this.getUsers(), opts)
-    ).errorResponse(authentication.UserAlreadyExistsError, 400, "User already exists");
+    ).errorResponse(authentication.UserAlreadyExistsError, 400, 'User already exists');
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,7 +208,7 @@ var authControllerProps = {
 ///
 /// ```js
 /// app.changePassword('/changePassword', {
-///   onSuccess: function (req, res) {
+///   onSuccess(req, res) {
 ///     res.json({"success": true});
 ///   }
 /// });
@@ -219,48 +216,26 @@ var authControllerProps = {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  changePassword: function (route, opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
+  changePassword(route, opts) {
+    var authentication = require('org/arangodb/foxx/authentication');
     return this.post(route, authentication.createStandardChangePasswordHandler(this.getUsers(), opts));
   }
 };
 
 var sessionControllerProps = {
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_getSessions
+/// JSF_foxx_controller_getSessions
 /// @brief Get the sessions object of this controller
 ////////////////////////////////////////////////////////////////////////////////
-  getSessions: function () {
+  getSessions() {
     return this.sessions;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_destroySession
-///
-/// `FoxxController#destroySession(path, opts)`
-///
-/// This adds a path to your app for the destroySession functionality.
-/// You can customize it with custom *before* and *after* function:
-/// *before* is a function that you can define to do something before
-/// the session is destroyed.
-/// *after* is a function that you can define to do something after the
-/// session is destroyed. This defaults to a function that returns a
-/// JSON object with *message* set to "logged out".
-/// Both *before* and *after* should take request and result as arguments.
-/// If you only want to provide an *after* function, you can pass the
-/// function directly instead of an object.
-///
-/// @EXAMPLES
-///
-/// ```js
-/// app.destroySession('/logout', function (req, res) {
-///   res.json({"message": "Bye, Bye"});
-/// });
-/// ```
-///
-/// @endDocuBlock
+/// @brief defines a route to logout/destroy the session
 ////////////////////////////////////////////////////////////////////////////////
-  destroySession: function (route, opts) {
+
+  destroySession(route, opts) {
     var method = opts.method;
     if (typeof method === 'string') {
       method = method.toLowerCase();
@@ -268,15 +243,17 @@ var sessionControllerProps = {
     if (!method || typeof this[method] !== 'function') {
       method = 'post';
     }
-    var sessions = require("org/arangodb/foxx/sessions");
+    var sessions = require('org/arangodb/foxx/sessions');
     return this[method](route, sessions.createDestroySessionHandler(this.getSessions(), opts));
   }
 };
 
+class Controller {
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_initializer
 ///
-/// `new FoxxController(applicationContext, options)`
+/// `new Controller(applicationContext, options)`
 ///
 /// This creates a new Controller. The first argument is the controller
 /// context available in the variable *applicationContext*. The second one is an
@@ -295,81 +272,81 @@ var sessionControllerProps = {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function Controller(context, options) {
-  var urlPrefix, baseMiddleware;
-  context.clearComments();
+  constructor(context, options) {
+    this.currentPriority = 0;
 
-  if (is.notExisty(context)) {
-    throw new Error("parameter <context> is missing");
-  }
-  context.clearComments();
+    var urlPrefix, baseMiddleware;
+    context.clearComments();
 
-  this.routingInfo = {
-    routes: []
-  };
+    if (is.notExisty(context)) {
+      throw new Error('parameter <context> is missing');
+    }
+    context.clearComments();
 
-  // Models for the Documentation
-  this.models = {};
+    this.routingInfo = {
+      routes: []
+    };
 
-  options = options || {};
-  urlPrefix = options.urlPrefix || "";
+    // Models for the Documentation
+    this.models = {};
 
-  if (urlPrefix === "") {
-    urlPrefix = context.prefix;
-  } else if (context.prefix !== "") {
-    urlPrefix = context.prefix + "/" + urlPrefix;
-  }
+    options = options || {};
+    urlPrefix = options.urlPrefix || '';
 
-  this.injected = Object.create(null);
-  this.injectors = Object.create(null);
-  this.routingInfo.urlPrefix = urlPrefix;
-  this.collectionPrefix = context.collectionPrefix;
+    if (urlPrefix === '') {
+      urlPrefix = context.prefix;
+    } else if (context.prefix !== '') {
+      urlPrefix = context.prefix + '/' + urlPrefix;
+    }
 
-  this.extensions = {};
+    this.injected = Object.create(null);
+    this.injectors = Object.create(null);
+    this.routingInfo.urlPrefix = urlPrefix;
+    this.collectionPrefix = context.collectionPrefix;
 
-  baseMiddleware = new BaseMiddleware();
+    this.extensions = {};
 
-  this.routingInfo.middleware = [
-    {
-      url: { match: "/*" },
-      action: {
-        callback: baseMiddleware.functionRepresentation,
-        options: {
-          name: context.name,
-          version: context.version,
-          mount: context.mount,
-          isDevelopment: context.isDevelopment,
-          isProduction: context.isProduction,
-          prefix: context.prefix,
-          options: context.options
+    baseMiddleware = new BaseMiddleware();
+
+    this.routingInfo.middleware = [
+      {
+        url: { match: '/*' },
+        action: {
+          callback: baseMiddleware.functionRepresentation,
+          options: {
+            name: context.name,
+            version: context.version,
+            mount: context.mount,
+            isDevelopment: context.isDevelopment,
+            isProduction: context.isProduction,
+            prefix: context.prefix,
+            options: context.options
+          }
         }
       }
+    ];
+
+    this.allRoutes = new RequestContext.Buffer();
+
+    context.foxxes.push(this);
+
+    if (is.existy(context.manifest.rootElement)) {
+      this.rootElement = context.manifest.rootElement;
+    } else {
+      this.rootElement = false;
     }
-  ];
 
-  this.allRoutes = new RequestContextBuffer();
-
-  context.foxxes.push(this);
-
-  if (is.existy(context.manifest.rootElement)) {
-    this.rootElement = context.manifest.rootElement;
-  } else {
-    this.rootElement = false;
+    this.applicationContext = context;
   }
 
-  this.applicationContext = context;
-}
-
-extend(Controller.prototype, {
-  currentPriority: 0,
-
-  addInjector: function (name, factory) {
+  addInjector(name, factory) {
+    deprecated('2.9', '"addInjector" is deprecated, use regular variables instead');
     if (factory === undefined) {
       _.extend(this.injectors, name);
     } else {
       this.injectors[name] = factory;
     }
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -381,7 +358,7 @@ extend(Controller.prototype, {
 /// provided for *barn* via the *params* function (see the Request object).
 ////////////////////////////////////////////////////////////////////////////////
 
-  handleRequest: function (method, route, callback) {
+  handleRequest(method, route, callback) {
     var constraints = {queryParams: {}, urlParams: {}};
     var newRoute = internal.constructRoute(method, route, callback, this, constraints);
     var requestContext = new RequestContext(
@@ -395,51 +372,68 @@ extend(Controller.prototype, {
     if (this.applicationContext.comments.length > 0) {
       do {
         summary = this.applicationContext.comments.shift();
-      } while (summary === "");
-      requestContext.summary(summary || "");
-      requestContext.notes(this.applicationContext.comments.join("\n"));
+      } while (summary === '');
+      requestContext.summary(summary || '');
+      requestContext.notes(this.applicationContext.comments.join('\n'));
     }
 
     this.applicationContext.clearComments();
 
     if (method === 'post' || method === 'put' || method === 'patch') {
-      undocumentedBody = require('org/arangodb/foxx').Model.extend();
-      requestContext.bodyParam("undocumented body", {
-        description: "Undocumented body param",
+      const Model = require('org/arangodb/foxx').Model;
+      undocumentedBody = class UndocumentedBody extends Model {};
+      requestContext.bodyParam('undocumented body', {
+        description: 'Undocumented body param',
         type: undocumentedBody,
         allowInvalid: true
       });
     }
 
     return requestContext;
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_head
 ///
-/// `FoxxController#head(path, callback)`
+/// `Controller.head(path, callback)`
 ///
-/// This handles requests from the HTTP verb *head*.  You have to give a
-/// function as *callback*. It will get a request and response object as its
-/// arguments
+/// Defines a new route on `path` that handles requests from the HTTP verb `head`.
+/// This route can also be 'parameterized' like `/goose/:barn`.
+/// In this case you can later get the value the user provided for `barn`
+/// via the `params` function in the `request`.
+/// The function defined in `callback` will be invoked whenever this type of
+/// request is recieved.
+/// `callback` get's two arguments `request` and `response`, see below for further
+/// information about these objects.
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.head('/goose/barn', function (req, res) {
+///   // Take this request and deal with it!
+/// });
+/// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  head: function (route, callback) {
-    return this.handleRequest("head", route, callback);
-  },
+  head(route, callback) {
+    return this.handleRequest('head', route, callback);
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_get
 ///
-/// `FoxxController#get(path, callback)`
+/// `Controller.get(path, callback)`
 ///
-/// This handles requests from the HTTP verb *get*.
-///
-/// When defining a route you can also define a so called 'parameterized'
-/// *path* like */goose/:barn*. In this case you can later get the value
-/// the user provided for *barn* via the *params* function (see the Request
-/// object).
+/// Defines a new route on `path` that handles requests from the HTTP verb `get`.
+/// This route can also be 'parameterized' like `/goose/:barn`.
+/// In this case you can later get the value the user provided for `barn`
+/// via the `params` function in the `request`.
+/// The function defined in `callback` will be invoked whenever this type of
+/// request is recieved.
+/// `callback` get's two arguments `request` and `response`, see below for further
+/// information about these objects.
 ///
 /// @EXAMPLES
 ///
@@ -452,17 +446,23 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  get: function (route, callback) {
-    return this.handleRequest("get", route, callback);
-  },
+  get(route, callback) {
+    return this.handleRequest('get', route, callback);
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_post
 ///
-/// `FoxxController#post(path, callback)`
+/// `Controller.post(path, callback)`
 ///
-/// This handles requests from the HTTP verb *post*.  See above for the
-/// arguments you can give.
+/// Defines a new route on `path` that handles requests from the HTTP verb `post`.
+/// This route can also be 'parameterized' like `/goose/:barn`.
+/// In this case you can later get the value the user provided for `barn`
+/// via the `params` function in the `request`.
+/// The function defined in `callback` will be invoked whenever this type of
+/// request is recieved.
+/// `callback` get's two arguments `request` and `response`, see below for further
+/// information about these objects.
 ///
 /// @EXAMPLES
 ///
@@ -475,17 +475,23 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  post: function (route, callback) {
-    return this.handleRequest("post", route, callback);
-  },
+  post(route, callback) {
+    return this.handleRequest('post', route, callback);
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_put
 ///
-/// `FoxxController#put(path, callback)`
+/// `Controller.put(path, callback)`
 ///
-/// This handles requests from the HTTP verb *put*.  See above for the arguments
-/// you can give.
+/// Defines a new route on `path` that handles requests from the HTTP verb `put`.
+/// This route can also be 'parameterized' like `/goose/:barn`.
+/// In this case you can later get the value the user provided for `barn`
+/// via the `params` function in the `request`.
+/// The function defined in `callback` will be invoked whenever this type of
+/// request is recieved.
+/// `callback` get's two arguments `request` and `response`, see below for further
+/// information about these objects.
 ///
 /// @EXAMPLES
 ///
@@ -498,17 +504,23 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  put: function (route, callback) {
-    return this.handleRequest("put", route, callback);
-  },
+  put(route, callback) {
+    return this.handleRequest('put', route, callback);
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_patch
 ///
-/// `FoxxController#patch(path, callback)`
+/// `Controller.patch(path, callback)`
 ///
-/// This handles requests from the HTTP verb *patch*.  See above for the
-/// arguments you can give.
+/// Defines a new route on `path` that handles requests from the HTTP verb `patch`.
+/// This route can also be 'parameterized' like `/goose/:barn`.
+/// In this case you can later get the value the user provided for `barn`
+/// via the `params` function in the `request`.
+/// The function defined in `callback` will be invoked whenever this type of
+/// request is recieved.
+/// `callback` get's two arguments `request` and `response`, see below for further
+/// information about these objects.
 ///
 /// @EXAMPLES
 ///
@@ -521,30 +533,28 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  patch: function (route, callback) {
-    return this.handleRequest("patch", route, callback);
-  },
+  patch(route, callback) {
+    return this.handleRequest('patch', route, callback);
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_delete
 ///
-/// `FoxxController#delete(path, callback)`
+/// `Controller.delete(path, callback)`
 ///
-/// This handles requests from the HTTP verb *delete*.  See above for the
-/// arguments you can give.
-///
-/// **Warning**: Do not forget that *delete* is a reserved word in JavaScript and
-/// therefore needs to be called as app['delete']. There is also an alias *del*
-/// for this very reason.
+/// Defines a new route on `path` that handles requests from the HTTP verb `delete`.
+/// This route can also be 'parameterized' like `/goose/:barn`.
+/// In this case you can later get the value the user provided for `barn`
+/// via the `params` function in the `request`.
+/// The function defined in `callback` will be invoked whenever this type of
+/// request is recieved.
+/// `callback` get's two arguments `request` and `response`, see below for further
+/// information about these objects.
 ///
 /// @EXAMPLES
 ///
 /// ```js
-/// app['delete']('/goose/barn', function (req, res) {
-///   // Take this request and deal with it!
-/// });
-///
-/// app.del('/goose/barn', function (req, res) {
+/// app.delete('/goose/barn', function (req, res) {
 ///   // Take this request and deal with it!
 /// });
 /// ```
@@ -552,25 +562,28 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  delete: function (route, callback) {
-    return this.handleRequest("delete", route, callback);
-  },
+  delete(route, callback) {
+    return this.handleRequest('delete', route, callback);
+  }
 
-  del: function (route, callback) {
+  del(route, callback) {
+    deprecated('2.9', '"del" is deprecated, use "delete" instead');
     return this.delete(route, callback);
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_before
 ///
-/// `FoxxController#before(path, callback)`
+/// `Controller.before(path, callback)`
 ///
-/// The before function takes a *path* on which it should watch and a
-/// function that it should execute before the routing takes place. If you do
-/// omit the path, the function will be executed before each request, no matter
-/// the path. Your function gets a Request and a Response object.
+/// Defines an additional function on the route `path` which will be executed
+/// before the callback defined for a specific HTTP verb is executed.
+/// The `callback` function has the same signature as the `callback` in the
+/// specific route.
+/// You can also omit the `path`, in this case `callback` will be executed
+/// before handleing any request in this Controller.
 ///
-/// If your callback returns the Boolean value *false*, the route handling
+/// If `callback` returns the Boolean value `false`, the route handling
 /// will not proceed. You can use this to intercept invalid or unauthorized
 /// requests and prevent them from being passed to the matching routes.
 ///
@@ -585,17 +598,17 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  before: function (path, func) {
+  before(path, func) {
     if (is.notExisty(func)) {
       func = path;
-      path = "/*";
+      path = '/*';
     }
 
     this.routingInfo.middleware.push({
       priority: this.currentPriority = this.currentPriority + 1,
       url: {match: path},
       action: {
-        callback: function (req, res, opts, next) {
+        callback(req, res, opts, next) {
           var result = func(req, res, opts);
           if (result !== false) {
             next();
@@ -603,15 +616,15 @@ extend(Controller.prototype, {
         }
       }
     });
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_after
 ///
-/// `FoxxController#after(path, callback)`
+/// `Controller.after(path, callback)`
 ///
-/// This works pretty similar to the before function.  But it acts after the
-/// execution of the handlers (Big surprise, I suppose).
+/// Similar to `Controller.before(path, callback)` but `callback` will be invoked
+/// after the request is handled in the specific route.
 ///
 /// @EXAMPLES
 ///
@@ -624,32 +637,35 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  after: function (path, func) {
+  after(path, func) {
     if (is.notExisty(func)) {
       func = path;
-      path = "/*";
+      path = '/*';
     }
 
     this.routingInfo.middleware.push({
       priority: this.currentPriority = this.currentPriority + 1,
       url: {match: path},
       action: {
-        callback: function (req, res, opts, next) { next(); func(req, res, opts); }
+        callback(req, res, opts, next) { next(); func(req, res, opts); }
       }
     });
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_around
 ///
-/// `FoxxController#around(path, callback)`
+/// `Controller.around(path, callback)`
 ///
-/// The around function takes a *path* on which it should watch and a function
-/// that it should execute around the function which normally handles the
-/// route. If you do omit the path, the function will be executed before each
-/// request, no matter the path.  Your function gets a Request and a Response
-/// object and a next function, which you must call to execute the handler for
-/// that route.
+/// Similar to `Controller.before(path, callback)` `callback` will be invoked
+/// instead of the specific handler.
+/// `callback` takes two additional paramaters `opts` and `next` where
+/// `opts` contains options assigned to the route and `next` is a function.
+/// Whenever you call `next` in `callback` the specific handler is invoked,
+/// if you do not call `next` the specific handler will not be invoked at all.
+/// So using around you can execute code before and after a specific handler
+/// and even call the handler only under certain circumstances.
+/// If you omit `path` `callback` will be called on every request.
 ///
 /// @EXAMPLES
 ///
@@ -663,31 +679,31 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  around: function (path, func) {
+  around(path, func) {
 
     if (is.notExisty(func)) {
       func = path;
-      path = "/*";
+      path = '/*';
     }
 
     this.routingInfo.middleware.push({
       priority: this.currentPriority = this.currentPriority + 1,
       url: {match: path},
       action: {
-        callback: function (req, res, opts, next) {
+        callback(req, res, opts, next) {
           func(req, res, opts, next);
         }
       }
     });
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_activateAuthentication
 ///
-/// `FoxxController#activateAuthentication(opts)`
+/// `Controller.activateAuthentication(opts)`
 ///
-/// To activate authentication for this controller, first call this function.
-/// Provide the following arguments:
+/// To activate authentication for this controller, call this function before defining any routes.
+/// In the `opts` object you can set the following keys:
 ///
 /// * *type*: Currently we only support *cookie*, but this will change in the future
 /// * *cookieLifetime*: An integer. Lifetime of cookies in seconds
@@ -707,59 +723,35 @@ extend(Controller.prototype, {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  activateAuthentication: function (opts) {
-    var authentication = require("org/arangodb/foxx/authentication");
+  activateAuthentication(opts) {
+    var authentication = require('org/arangodb/foxx/authentication');
     _.extend(this, authControllerProps);
 
     this.auth = authentication.createAuthObject(this.applicationContext, opts);
-    this.before("/*", authentication.createAuthenticationMiddleware(this.auth, this.applicationContext));
-    this.after("/*", authentication.createSessionUpdateMiddleware());
-  },
+    this.before('/*', authentication.createAuthenticationMiddleware(this.auth, this.applicationContext));
+    this.after('/*', authentication.createSessionUpdateMiddleware());
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_activateSessions
-///
-/// `FoxxController#activateAuthentication(opts)`
-///
-/// To activate sessions for this sessions, first call this function.
-/// Provide the following arguments:
-///
-/// * *type*: Currently we only support *cookie*, but this will change in the future. Defaults to *"cookie"*.
-/// * *cookieName*: A string used as the name of the cookie. Defaults to *"sid"*.
-/// * *cookieSecret*: A secret string used to sign the cookie (as "*cookieName*_sig"). Optional.
-/// * *autoCreateSession*: Whether to always create a session if none exists. Defaults to *true*.
-/// * *sessionStorage*: Mount path of the app to use for sessions. Defaults to */_system/sessions*
-///
-///
-/// @EXAMPLES
-///
-/// ```js
-/// app.activateSessions({
-///   type: "cookie",
-///   cookieName: "my_cookie",
-///   autoCreateSession: true,
-///   sessionStorage: "/my-sessions"
-/// });
-/// ```
-///
-/// @endDocuBlock
+/// @brief activate sessions with the giveon options for this controller
 ////////////////////////////////////////////////////////////////////////////////
-  activateSessions: function (opts) {
-    var sessions = require("org/arangodb/foxx/sessions");
+
+  activateSessions(opts) {
+    var sessions = require('org/arangodb/foxx/sessions');
     _.extend(this, sessionControllerProps);
 
     this.sessions = new sessions.Sessions(opts);
     sessions.decorateController(this.sessions, this);
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_apiDocumentation
 ///
-/// `FoxxController#apiDocumentation(path, [opts])`
+/// `Controller.apiDocumentation(path, [opts])`
 ///
-/// Mounts the API documentation (Swagger) at the given *path*.
+/// Mounts the API documentation (Swagger) at the given `path`.
 ///
-/// Note that the **path** can use URL parameters as usual but must not use any
+/// Note that the `path` can use URL parameters as usual but must not use any
 /// wildcard (`*`) or optional (`:name?`) parameters.
 ///
 /// The optional **opts** can be an object with any of the following properties:
@@ -815,33 +807,80 @@ extend(Controller.prototype, {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  apiDocumentation: function (route, opts) {
+  apiDocumentation(route, opts) {
     if (route.charAt(route.length - 1) !== '/') {
       route += '/';
     }
     var mountPath = this.applicationContext.mount;
     return this.get(route + '*', swagger.createSwaggerRouteHandler(mountPath, opts));
-  },
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_extend
 ///
-/// `FoxxController#extend(extensions)`
+/// `Controller.extend(extensions)`
+///
+/// Extends all functions to define routes in this controller.
+/// This allows to combine several route extensions with the invocation
+/// of a single function.
+/// This is especially useful if you use the same input parameter in several routes of
+/// your controller and want to apply the same validation, documentation and error handling
+/// for it.
+///
+/// The `extensions` parameter is a JSON object with arbitrary keys.
+/// Each key is used as the name of the function you want to define (you cannot overwrite
+/// internal functions like `pathParam`) and the value is a function that will be invoked.
+/// This function can get arbitrary many arguments and the `this` of the function is bound
+/// to the route definition object (e.g. you can use `this.pathParam()`).
+/// Your newly defined function is chainable similar to the internal functions.
 ///
 /// **Examples**
 ///
+/// Define a validator for a queryParameter, including documentation and errorResponses
+/// in a single command:
+///
+/// ```js
+/// controller.extend({
+///   myParam: function (maxValue) {
+///     this.queryParam("value", {type: joi.number().required()});
+///     this.onlyIf(function(req) {
+///       var v = req.param("value");
+///       if (v > maxValue) {
+///         throw new NumberTooLargeError();
+///       }
+///     });
+///     this.errorResponse(NumberTooLargeError, 400, "The given value is too large");
+///   }
+/// });
+///
+/// controller.get("/goose/barn", function(req, res) {
+///   // Will only be invoked if the request has parameter value and it is less or equal 5.
+/// }).myParam(5);
+/// ```
+/// 
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  extend: function(extensions) {
+
+  extend(extensions) {
     var attr;
+    var extensionWrapper = function(scope, functionName) {
+      return function() {
+        this.applyChain.push({
+          functionName: functionName,
+          argumentList: arguments
+        });
+        return this;
+      }.bind(scope);
+    };
     for (attr in extensions) {
       if (extensions.hasOwnProperty(attr)) {
         this.extensions[attr] = extensions[attr];
+        this.allRoutes[attr] = extensionWrapper(this.allRoutes, attr);
       }
     }
   }
 
-});
+}
 
 exports.Controller = Controller;
 

@@ -14,23 +14,27 @@ js-*.h
 *.gcno
 *.gcda
 
+*.diff
+*.patch
+*.lnk
+
 .libev-build-64
 .v8-build-64
 .idea
-.mruby-build-64
 .zlib-build-64
 .libev-build-32
 .v8-build-32
 .zlib-build-32
-.mruby-build-32
 .setup-mr-directories
 .setup-js-directories
+.file-list-js
 
 3rdParty/libev/ARCH.x64/
 3rdParty/libev/ARCH.ia32/
 3rdParty/zlib-1.2.7/
 
 Build*
+WindowsLibraries
 
 Makefile
 Makefile.in
@@ -53,6 +57,22 @@ core
 TAGS
 tags
 
+CMakeCache.txt
+CMakeFiles/
+CPackConfig.cmake
+CPackSourceConfig.cmake
+CTestTestfile.cmake
+UnitTests/CMakeFiles/
+UnitTests/CTestTestfile.cmake
+UnitTests/cmake_install.cmake
+arangod/CMakeFiles/
+arangod/cmake_install.cmake
+arangosh/CMakeFiles/
+arangosh/cmake_install.cmake
+cmake_install.cmake
+lib/CMakeFiles/
+lib/cmake_install.cmake
+
 Documentation/Examples/*.generated
 Documentation/Books/Users/book.json
 Documentation/Books/Users/manual.epub
@@ -61,6 +81,7 @@ Documentation/Books/Users/manual.pdf
 Documentation/Books/Makefile
 Documentation/Books/Users/node_modules/
 Documentation/Examples/*.generated
+Documentation/Books/ppbooks/
 UnitTests/HttpInterface/logs/
 UnitTests/basics_suite
 UnitTests/geo_suite

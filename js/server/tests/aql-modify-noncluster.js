@@ -905,6 +905,22 @@ function ahuacatlRemoveSuite () {
 /// @brief test remove - return what
 ////////////////////////////////////////////////////////////////////////////////
 
+    testRemoveReturnDocObjectLiteral : function () {
+      var actual = AQL_EXECUTE("FOR d IN " + cn1 + " REMOVE d IN " + cn1 + " LET removed = OLD RETURN { OLD }", {}).json;
+
+      assertEqual(0, c1.count());
+      assertEqual(100, actual.length);
+      for (var i = 0; i < actual.length; ++i) {
+        var doc = actual[i];
+        assertTrue(doc.hasOwnProperty("OLD"));
+        assertTrue(doc.OLD.hasOwnProperty("_key"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove - return what
+////////////////////////////////////////////////////////////////////////////////
+
     testRemoveReturnKey : function () {
       var actual = AQL_EXECUTE("FOR d IN " + cn1 + " REMOVE d IN " + cn1 + " LET removed = OLD RETURN removed._key", {}).json;
 
@@ -1560,6 +1576,25 @@ function ahuacatlInsertSuite () {
 
       for (var i = 0; i < actual.json.length; ++i) {
         assertTrue(actual.json[i].hasOwnProperty("foxx"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertReturnObjectLiteral : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN " + cn1 + " INSERT { foxx: true } IN " + cn1 + " RETURN { NEW }", {});
+    
+      assertEqual(100, actual.json.length);
+      assertEqual(200, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      for (var i = 0; i < actual.json.length; ++i) {
+        var doc = actual.json[i];
+        assertTrue(doc.hasOwnProperty("NEW"));
+        assertTrue(doc.NEW.hasOwnProperty("foxx"));
       }
     },
 
@@ -2524,6 +2559,29 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
+    testUpdateWithNothingReturnObjectLiteral : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn SORT d.value1 UPDATE d WITH { } IN @@cn RETURN { OLD, NEW }", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc.OLD._key);
+        assertEqual("test" + i, doc.NEW._key);
+        assertEqual(i, doc.OLD.value1);
+        assertEqual(i, doc.NEW.value1);
+        assertEqual("test" + i, doc.OLD.value2);
+        assertEqual("test" + i, doc.NEW.value2);
+        assertEqual(doc.OLD._rev, doc.NEW._rev); // _rev should not have changed
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
     testUpdateWithSomething : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResultsRaw("FOR d IN @@cn SORT d.value1 UPDATE d WITH { value1: d.value1, value2: d.value2 } IN @@cn RETURN { old: OLD, new: NEW }", { "@cn": cn1 });
@@ -2540,6 +2598,29 @@ function ahuacatlUpdateSuite () {
         assertEqual("test" + i, doc.old.value2);
         assertEqual("test" + i, doc["new"].value2);
         assertNotEqual(doc.old._rev, doc["new"]._rev); // _rev should have changed
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateWithSomethingReturnObjectLiteral : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn SORT d.value1 UPDATE d WITH { value1: d.value1, value2: d.value2 } IN @@cn RETURN { OLD, NEW }", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc.OLD._key);
+        assertEqual("test" + i, doc.NEW._key);
+        assertEqual(i, doc.OLD.value1);
+        assertEqual(i, doc.NEW.value1);
+        assertEqual("test" + i, doc.OLD.value2);
+        assertEqual("test" + i, doc.NEW.value2);
+        assertNotEqual(doc.OLD._rev, doc.NEW._rev); // _rev should have changed
       }
     },
 
@@ -3191,6 +3272,29 @@ function ahuacatlUpdateSuite () {
         assertEqual("test" + i, doc.old.value2);
         assertEqual("test" + i, doc["new"].value2);
         assertEqual(doc.old._rev, doc["new"]._rev); // _rev should not have changed
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertUpdateWithNothingReturnObjectLiteral : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn SORT d.value1 UPSERT { _key: d._key } INSERT { } UPDATE { } IN @@cn RETURN { OLD, NEW }", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc.OLD._key);
+        assertEqual("test" + i, doc.NEW._key);
+        assertEqual(i, doc.OLD.value1);
+        assertEqual(i, doc.NEW.value1);
+        assertEqual("test" + i, doc.OLD.value2);
+        assertEqual("test" + i, doc.NEW.value2);
+        assertEqual(doc.OLD._rev, doc.NEW._rev); // _rev should not have changed
       }
     },
 

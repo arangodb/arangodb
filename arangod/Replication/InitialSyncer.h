@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replication initial data synchroniser
+/// @brief replication initial data synchronizer
 ///
 /// @file
 ///
@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Replication/Syncer.h"
+#include "Utils/transactions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -105,10 +106,10 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run method, performs a full synchronisation
+/// @brief run method, performs a full synchronization
 ////////////////////////////////////////////////////////////////////////////////
 
-        int run (std::string&);
+        int run (std::string&, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the last log tick of the master at start
@@ -116,6 +117,28 @@ namespace triagens {
 
         TRI_voc_tick_t getLastLogTick () const {
           return _masterInfo._lastLogTick;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief translate a phase to a phase name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string translatePhase (sync_phase_e phase) const {
+          switch (phase) {
+            case PHASE_INIT: 
+              return "init";
+            case PHASE_VALIDATE:
+              return "validate";
+            case PHASE_DROP:
+              return "drop";
+            case PHASE_CREATE:
+              return "create";
+            case PHASE_DUMP:
+              return "dump";
+            case PHASE_NONE: 
+              break;
+          }
+          return "none";
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,13 +159,19 @@ namespace triagens {
 /// @brief set a progress message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setProgress (const std::string& message) {
+        void setProgress (std::string const& message) {
           _progress = message;
 
           if (_verbose) {
-            LOG_INFO("synchronisation progress: %s", message.c_str());
+            LOG_INFO("synchronization progress: %s", message.c_str());
           }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send a WAL flush command
+////////////////////////////////////////////////////////////////////////////////
+
+        int sendFlush (std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send a "start batch" command
@@ -182,11 +211,40 @@ namespace triagens {
                                   std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief incrementally fetch data from a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int handleCollectionSync (std::string const&, 
+                                  SingleCollectionWriteTransaction<UINT64_MAX>&,
+                                  std::string const&,
+                                  TRI_voc_tick_t,
+                                  std::string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief incrementally fetch data from a collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int handleSyncKeys (std::string const&,
+                            std::string const&, 
+                            SingleCollectionWriteTransaction<UINT64_MAX>&,
+                            std::string const&,
+                            TRI_voc_tick_t,
+                            std::string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief changes the properties of a collection, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+
+        int changeCollection (TRI_vocbase_col_t*,
+                              struct TRI_json_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the information about a collection
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleCollection (struct TRI_json_t const*,
                               struct TRI_json_t const*,
+                              bool,
                               std::string&,
                               sync_phase_e);
 
@@ -195,13 +253,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleInventoryResponse (struct TRI_json_t const*,
+                                     bool,
                                      std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief iterate over all collections from a list and apply an action
+/// @brief iterate over all collections from an array and apply an action
 ////////////////////////////////////////////////////////////////////////////////
 
-        int iterateCollections (struct TRI_json_t const*,
+        int iterateCollections (std::vector<std::pair<struct TRI_json_t const*, struct TRI_json_t const*>> const&,
+                                bool,
                                 std::string&,
                                 sync_phase_e);
 
@@ -263,7 +323,7 @@ namespace triagens {
 /// @brief chunk size to use
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string _chunkSize;
+        uint64_t _chunkSize;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief verbosity
@@ -276,6 +336,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _hasFlushed;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum internal value for chunkSize
+////////////////////////////////////////////////////////////////////////////////
+
+        static size_t const MaxChunkSize;
     };
 
   }

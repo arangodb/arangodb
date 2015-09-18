@@ -1,9 +1,9 @@
-arangosh> db.example.last(1);
+arangosh&gt; db.example.last(<span class="hljs-number">1</span>);
 [ 
   { 
-    "_id" : "example/486853875", 
-    "_key" : "486853875", 
-    "_rev" : "486853875", 
-    "Hello" : "world" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1152950828"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1152950828"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1152950828"</span>, 
+    <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"world"</span> 
   } 
 ]

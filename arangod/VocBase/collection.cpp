@@ -37,6 +37,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
+#include "Basics/memory-map.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -220,7 +221,7 @@ static TRI_voc_tick_t GetDatafileId (const char* path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises a new collection
+/// @brief initializes a new collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InitCollection (TRI_vocbase_t* vocbase,
@@ -738,6 +739,11 @@ static bool IterateDatafilesVector (const TRI_vector_pointer_t* const files,
     if (! TRI_IterateDatafile(datafile, iterator, data)) {
       return false;
     }
+
+    if (datafile->isPhysical(datafile) && datafile->_isSealed) {
+      TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
+                       TRI_MADVISE_RANDOM);
+    }
   }
 
   return true;
@@ -804,7 +810,7 @@ static void FillParametersFromJson (TRI_col_info_t* parameters,
   // init with defaults
   memset(parameters, 0, sizeof(TRI_col_info_t));
   parameters->_initialCount = -1;
-  parameters->_indexBuckets = 1;
+  parameters->_indexBuckets = TRI_DEFAULT_INDEX_BUCKETS;
 
   // convert json
   size_t const n = TRI_LengthVector(&json->_value._objects);
@@ -904,7 +910,7 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
     parameters->_maximalSize = static_cast<TRI_voc_size_t>(PageSize);
   }
   parameters->_initialCount  = -1;
-  parameters->_indexBuckets  = 1;
+  parameters->_indexBuckets  = TRI_DEFAULT_INDEX_BUCKETS;
 
   // fill name with 0 bytes
   memset(parameters->_name, 0, sizeof(parameters->_name));
@@ -1991,27 +1997,6 @@ bool TRI_IsAllowedNameCollection (bool allowSystem,
   }
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type name for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-char const* TRI_TypeNameCollection (const TRI_col_type_e type) {
-  switch (type) {
-    case TRI_COL_TYPE_DOCUMENT:
-      return "document";
-    case TRI_COL_TYPE_EDGE:
-      return "edge";
-    case TRI_COL_TYPE_SHAPE_DEPRECATED:
-      return "shape (deprecated)";
-    case TRI_COL_TYPE_UNKNOWN:
-    default:
-      return "unknown";
-  }
-
-  TRI_ASSERT(false);
-  return "unknown";
 }
 
 // -----------------------------------------------------------------------------

@@ -54,8 +54,8 @@ unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/gr
 {"_key":"edge1","_from":"vert2","_to":"vert1","optional1":"val1"}
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: 144630753
+Content-type: application/json; charset=utf-8
+Etag: 144630753
 
 { 
   "edge" : { 
@@ -94,9 +94,9 @@ Revision of an edge
 
 `if-none-match (string,optional)`
 
-If the "If-None-Match" header is given, then it must contain exactly one etag. The document is returned, if it has a different revision than the given etag. Otherwise a HTTP 304 is returned.
+If the "If-None-Match" header is given, then it must contain exactly one Etag. The document is returned, if it has a different revision than the given Etag. Otherwise a HTTP 304 is returned.
 if-match (string,optional)
-If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one Etag. The document is returned, if it has the same revision ad the given Etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the Etag in an attribute rev in the URL.
 !SUBSECTION Description
 
 Returns an object with an attribute edge containing an array of all edge properties.
@@ -125,8 +125,8 @@ is returned if the graph or edge was not found. The response body contains an er
 unix> curl --dump - http://localhost:8529/_api/graph/graph/edge/edge1
 
 HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
-etag: 147579873
+Content-type: application/json; charset=utf-8
+Etag: 147579873
 
 { 
   "edge" : { 
@@ -175,7 +175,7 @@ The call expects a JSON object as body with the new edge properties.
 
 `if-match (string,optional)`
 
-If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one Etag. The document is returned, if it has the same revision ad the given Etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the Etag in an attribute rev in the URL.
 !SUBSECTION Description
 
 Replaces the optional edge properties.
@@ -207,8 +207,8 @@ unix> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/graph/gra
 {"optional1":"val2"}
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: 154526689
+Content-type: application/json; charset=utf-8
+Etag: 154526689
 
 { 
   "edge" : { 
@@ -261,7 +261,7 @@ The call expects a JSON object as body with the properties to patch.
 
 `if-match (string,optional)`
 
-If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one Etag. The document is returned, if it has the same revision ad the given Etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the Etag in an attribute rev in the URL.
 
 !SUBSECTION Description
 
@@ -295,8 +295,8 @@ unix> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/g
 {"optional3":"val3"}
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
-etag: 158065633
+Content-type: application/json; charset=utf-8
+Etag: 158065633
 
 { 
   "edge" : { 
@@ -340,7 +340,7 @@ Revision of an edge
 
 `if-match (string,optional)`
 
-If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one Etag. The document is returned, if it has the same revision ad the given Etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the Etag in an attribute rev in the URL.
 
 !SUBSECTION Description
 
@@ -370,7 +370,7 @@ is returned if the graph or the edge was not found. The response body contains a
 unix> curl -X DELETE --dump - http://localhost:8529/_api/graph/graph/edge/edge1
 
 HTTP/1.1 202 Accepted
-content-type: application/json; charset=utf-8
+Content-type: application/json; charset=utf-8
 
 { 
   "deleted" : true, 
@@ -431,7 +431,7 @@ unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/gr
 {"batchSize" : 100, "filter" : {"direction" : "any", "properties":[] }}
 
 HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
+Content-type: application/json; charset=utf-8
 
 { 
   "result" : [ 
@@ -461,7 +461,7 @@ unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/gr
 {"batchSize" : 100, "filter" : {"direction" : "out", "properties":[ { "key": "optional1", "value": "val2", "compare" : "==" }, ] }}
 
 HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
+Content-type: application/json; charset=utf-8
 
 { 
   "result" : [ 
@@ -540,7 +540,7 @@ unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/gr
 {"batchSize" : 100, "filter" : { "direction" : "any" }}
 
 HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
+Content-type: application/json; charset=utf-8
 
 { 
   "result" : [ 
@@ -569,42 +569,16 @@ content-type: application/json; charset=utf-8
 }
 ```
 
-<!--
-@CLEARPAGE
-@anchor A_JSF_POST_graph_edge
-@copydetails JSF_post_graph_edge
+@startDocuBlock JSF_graph_create_edge
 
-@CLEARPAGE
-@anchor A_JSF_GET_graph_edge
-@copydetails JSF_get_graph_edge
+@startDocuBlock JSF_graph_delete_edge
 
-@CLEARPAGE
-@anchor A_JSF_PUT_graph_edge
-@copydetails JSF_put_graph_edge
+@startDocuBlock JSF_graph_fetch_edge
 
-@CLEARPAGE
-@anchor A_JSF_PATCH_graph_edge
-@copydetails JSF_patch_graph_edge
+@startDocuBlock JSF_graph_fetch_vertex_edge
 
-@CLEARPAGE
-@anchor A_JSF_DELETE_graph_edge
-@copydetails JSF_delete_graph_edge
+@startDocuBlock JSF_graph_get_edge_properties
 
-@CLEARPAGE
-@anchor A_JSF_POST_graph_vertices
-@copydetails JSF_post_graph_vertices
+@startDocuBlock JSF_graph_patch_edge
 
-@CLEARPAGE
-@anchor A_JSF_POST_graph_vertex_vertices
-@copydetails JSF_post_graph_vertex_vertices
-
-@CLEARPAGE
-@anchor A_JSF_POST_graph_edges
-@copydetails JSF_post_graph_edges
-
-@CLEARPAGE
-@anchor A_JSF_POST_graph_vertex_edges
-@copydetails JSF_post_graph_vertex_edges
-
-@BNAVIGATE_HttpGraph
--->
+@startDocuBlock JSF_graph_update_edge

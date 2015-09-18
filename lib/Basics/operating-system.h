@@ -186,10 +186,6 @@
 #define TRI_STAT_ATIME_SEC(statbuf)     statbuf.st_atimespec.tv_sec
 #define TRI_STAT_MTIME_SEC(statbuf)     statbuf.st_mtimespec.tv_sec
 
-#define TRI_DIR_FN(item)                item->d_name
-#define TRI_DIR_IS_SUB_DIRECTORY(item)  (item->d_type == DT_DIR)
-#define TRI_DIR_IS_SYMLINK(item)        (item->d_type == DT_LNK)
-
 #define TRI_write_t                     size_t
 #define TRI_read_t                      size_t
 #define TRI_lseek_t                     off_t
@@ -346,10 +342,6 @@
 #define TRI_FSTAT                       fstat
 #define TRI_STAT_ATIME_SEC(statbuf)     statbuf.st_atimespec.tv_sec
 #define TRI_STAT_MTIME_SEC(statbuf)     statbuf.st_mtimespec.tv_sec
-
-#define TRI_DIR_FN(item)                item->d_name
-#define TRI_DIR_IS_SUB_DIRECTORY(item)  (item->d_type == DT_DIR)
-#define TRI_DIR_IS_SYMLINK(item)        (item->d_type == DT_LNK)
 
 #define TRI_write_t                     size_t
 #define TRI_read_t                      size_t
@@ -524,10 +516,6 @@
 #define TRI_STAT_ATIME_SEC(statbuf)     statbuf.st_atim.tv_sec
 #define TRI_STAT_MTIME_SEC(statbuf)     statbuf.st_mtim.tv_sec
 
-#define TRI_DIR_FN(item)                item->d_name
-#define TRI_DIR_IS_SUB_DIRECTORY(item)  (item->d_type == DT_DIR)
-#define TRI_DIR_IS_SYMLINK(item)        (item->d_type == DT_LNK)
-
 #define TRI_write_t                     size_t
 #define TRI_read_t                      size_t
 #define TRI_lseek_t                     off_t
@@ -646,7 +634,7 @@
 
 #define TRI_HAVE_LINENOISE                  1
 
-#define GLOBAL_TIMEZONE                     timezone
+#define GLOBAL_TIMEZONE                     _timezone
 #define TRI_HAVE_GLOBAL_TIMEZONE_PROTO      1
 
 #define YY_NO_UNISTD_H                      1
@@ -749,10 +737,6 @@ typedef unsigned char bool;
 #define TRI_STAT                        _stat64
 #define TRI_FSTAT                       _fstat64
 
-#define TRI_DIR_FN(item)                item.name
-#define TRI_DIR_IS_SUB_DIRECTORY(item)  ((item.attrib & _A_SUBDIR) != 0)
-#define TRI_DIR_IS_SYMLINK(item)        (false)
-
 #define TRI_write_t                     unsigned int
 #define TRI_read_t                      unsigned int
 #define TRI_lseek_t                     __int64
@@ -765,7 +749,7 @@ typedef unsigned char bool;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return system error string
-/// macro requires ERRORBUF to instanciate its buffer before.
+/// macro requires ERRORBUF to instantiate its buffer before.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_SYSTEM_ERROR()                      \

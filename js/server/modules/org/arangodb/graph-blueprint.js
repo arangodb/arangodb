@@ -102,9 +102,6 @@ var findOrCreateEdgeCollectionByName = function (name) {
 ///
 /// Changes or sets the property *name* an *edges* to *value*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-edge-set-property
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -134,16 +131,13 @@ Edge.prototype.setProperty = function (name, value) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock vertexEdges
+/// @start Docu Block vertexEdges
 ///
 /// `vertex.edges()`
 ///
 /// Returns a list of in- or outbound edges of the *vertex*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-edges
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.edges = function () {
@@ -155,16 +149,13 @@ Vertex.prototype.edges = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock vertexGetInEdges
+/// @start Docu Block vertexGetInEdges
 ///
 ///`vertex.getInEdges(label, ...)`
 ///
 /// Returns a list of inbound edges of the *vertex* with given label(s).
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-get-in-edges
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getInEdges = function () {
@@ -181,16 +172,13 @@ Vertex.prototype.getInEdges = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock vertexGetOutEdges
+/// @start Docu Block vertexGetOutEdges
 ///
 /// `vertex.getOutEdges(label, ...)`
 ///
 /// Returns a list of outbound edges of the *vertex* with given label(s).
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-get-out-edges
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getOutEdges = function () {
@@ -207,13 +195,13 @@ Vertex.prototype.getOutEdges = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock vertexGetEdges
+/// @start Docu Block vertexGetEdges
 ///
 /// `vertex.getEdges(label, ...)`
 ///
 /// Returns a list of in- or outbound edges of the *vertex* with given
 /// label(s).
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getEdges = function () {
@@ -230,16 +218,12 @@ Vertex.prototype.getEdges = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock vertexInbound
+/// @start Docu Block vertexInbound
 ///
 /// `vertex.inbound()`
 ///
 /// Returns a list of inbound edges of the *vertex*.
-///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-inbound
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.inbound = function () {
@@ -251,16 +235,13 @@ Vertex.prototype.inbound = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock vertexOutbound
+/// @start Docu Block vertexOutbound
 ///
 /// `vertex.outbound()`
 ///
 /// Returns a list of outbound edges of the *vertex*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-outbound
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.outbound = function () {
@@ -272,16 +253,13 @@ Vertex.prototype.outbound = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock vertexSetProperty
+/// @start Docu Block vertexSetProperty
 ///
 /// `vertex.setProperty(name, value)`
 ///
 /// Changes or sets the property *name* a *vertex* to *value*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-vertex-set-property
-/// @endDocuBLock
+/// @end Docu BLock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
@@ -306,7 +284,7 @@ Vertex.prototype.setProperty = function (name, value) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock graphConstruct
+/// @start Docu Block graphConstruct
 ///
 /// `Graph(name, vertices, edges)`
 ///
@@ -319,10 +297,7 @@ Vertex.prototype.setProperty = function (name, value) {
 ///
 /// Returns a known graph.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-constructor
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
@@ -492,12 +467,12 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_graph_getAll
+/// @start Docu Block JSF_graph_getAll
 ///
 /// `graph.getAll()`
 ///
 /// Returns all available graphs.
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.getAll = function getAllGraphs () {
@@ -542,12 +517,12 @@ Graph.drop = function (name, waitForSync) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock graphDrop
+/// @start Docu Block graphDrop
 ///
 /// `graph.drop(waitForSync)`
 ///
 /// Drops the graph, the vertices, and the edges. Handle with care.
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.drop = function (waitForSync) {
@@ -606,16 +581,13 @@ Graph.prototype._replaceEdge = function (edge_id, data) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock graphGetVertex
+/// @start Docu Block graphGetVertex
 ///
 /// `graph.getVertex(id)`
 ///
 /// Returns the vertex identified by *id* or *null*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-get-vertex
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertex = function (id) {
@@ -628,17 +600,14 @@ Graph.prototype.getVertex = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock GraphGetVertices
+/// @start Docu Block GraphGetVertices
 ///
 /// `graph.getVertices()`
 ///
 /// Returns an iterator for all vertices of the graph. The iterator supports the
 /// methods *hasNext* and *next*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-get-vertices
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertices = function () {
@@ -652,16 +621,13 @@ Graph.prototype.getVertices = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock graphGetEdge
+/// @start Docu Block graphGetEdge
 ///
 /// `graph.getEdge(id)`
 ///
 /// Returns the edge identified by *id* or *null*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-get-edge
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdge = function (id) {
@@ -694,9 +660,6 @@ Graph.prototype.getEdge = function (id) {
 /// Returns an iterator for all edges of the graph. The iterator supports the
 /// methods *hasNext* and *next*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-get-edges
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -710,16 +673,13 @@ Graph.prototype.getEdges = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock graphRemoveVertex
+/// @start Docu Block graphRemoveVertex
 ///
 /// `graph.removeVertex(vertex, waitForSync)`
 ///
 /// Deletes the *vertex* and all its edges.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-remove-vertex
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeVertex = function (vertex, waitForSync) {
@@ -743,16 +703,13 @@ Graph.prototype.removeVertex = function (vertex, waitForSync) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock graph RemoveEdge
+/// @start Docu Block graphRemoveEdge
 ///
 /// `graph.removeEdge(vertex, waitForSync)`
 ///
 /// Deletes the *edge*. Note that the in and out vertices are left untouched.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude graph-graph-remove-edge
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeEdge = function (edge, waitForSync) {

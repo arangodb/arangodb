@@ -61,21 +61,21 @@ RestUploadHandler::~RestUploadHandler () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
+// --SECTION--                                               HttpHandler methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::status_t RestUploadHandler::execute () {
+HttpHandler::status_t RestUploadHandler::execute () {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
 
   if (type != HttpRequest::HTTP_REQUEST_POST) {
     generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
-    return status_t(Handler::HANDLER_DONE);
+    return status_t(HttpHandler::HANDLER_DONE);
   }
 
   char* filename = nullptr;
@@ -85,7 +85,7 @@ Handler::status_t RestUploadHandler::execute () {
   if (TRI_GetTempName("uploads", &filename, false, systemError, errorMessage) != TRI_ERROR_NO_ERROR) {
     errorMessage = "could not generate temp file: " + errorMessage;
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, errorMessage);
-    return status_t(Handler::HANDLER_FAILED);
+    return status_t(HttpHandler::HANDLER_FAILED);
   }
 
   char* relative = TRI_GetFilename(filename);
@@ -109,7 +109,7 @@ Handler::status_t RestUploadHandler::execute () {
         TRI_Free(TRI_CORE_MEM_ZONE, relative);
         TRI_Free(TRI_CORE_MEM_ZONE, filename);
         generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "invalid multipart request");
-        return status_t(Handler::HANDLER_FAILED);
+        return status_t(HttpHandler::HANDLER_FAILED);
       }
     }
   }
@@ -122,7 +122,7 @@ Handler::status_t RestUploadHandler::execute () {
     TRI_Free(TRI_CORE_MEM_ZONE, relative);
     TRI_Free(TRI_CORE_MEM_ZONE, filename);
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "could not save file");
-    return status_t(Handler::HANDLER_FAILED);
+    return status_t(HttpHandler::HANDLER_FAILED);
   }
 
   char* fullName = TRI_Concatenate2File("uploads", relative);
@@ -142,7 +142,7 @@ Handler::status_t RestUploadHandler::execute () {
   TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &json);
 
   // success
-  return status_t(Handler::HANDLER_DONE);
+  return status_t(HttpHandler::HANDLER_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

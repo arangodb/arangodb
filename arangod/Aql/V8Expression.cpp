@@ -55,6 +55,7 @@ V8Expression::V8Expression (v8::Isolate* isolate,
   : isolate(isolate),
     _func(),
     _constantValues(),
+    _numExecutions(0),
     _isSimple(isSimple) {
 
   _func.Reset(isolate, func);
@@ -161,13 +162,13 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
     uint64_t const hash = hasher(isolate, constantValues);
 #endif
 
-    v8::Handle<v8::Value> args[] = { values, constantValues };
+    v8::Handle<v8::Value> args[] = { values, constantValues, v8::Boolean::New(isolate, _numExecutions++ == 0) };
 
     // execute the function
     v8::TryCatch tryCatch;
 
     auto func = v8::Local<v8::Function>::New(isolate, _func);
-    result = func->Call(func, 2, args);
+    result = func->Call(func, 3, args);
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
     // now that the V8 function call is finished, check that our 

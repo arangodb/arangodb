@@ -1,12 +1,12 @@
 shell> curl --dump - http://localhost:8529/_api/document/?collection=products&type=key
 
-HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "documents" : [ 
-    "1702022387", 
-    "1702677747", 
-    "1702350067" 
+  <span class="hljs-string">"documents"</span> : [ 
+    <span class="hljs-string">"707699244"</span>, 
+    <span class="hljs-string">"707371564"</span>, 
+    <span class="hljs-string">"708026924"</span> 
   ] 
 }

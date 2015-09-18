@@ -3,7 +3,7 @@
 ///
 /// @file
 ///
-/// @warning You must initialise the classes by calling initialise or by
+/// @warning You must initialize the classes by calling initialize or by
 /// setting everything to 0. This can be done by using "new
 /// StringBuffer()". You must call free to free the allocated
 /// memory.
@@ -79,7 +79,7 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the string buffer
+/// @brief initializes the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit
@@ -88,7 +88,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises the string buffer
+/// @brief initializes the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
         StringBuffer (TRI_memory_zone_t* zone, size_t initialSize) {
@@ -339,6 +339,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns pointer to the beginning of the character buffer
+////////////////////////////////////////////////////////////////////////////////
+
+        char* begin () {
+          return const_cast<char*>(TRI_BeginStringBuffer(&_buffer));
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns pointer to the end of the character buffer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -497,6 +505,15 @@ namespace triagens {
 
         StringBuffer& appendJsonEncoded (char const* str) {
           TRI_AppendJsonEncodedStringStringBuffer(&_buffer, str, true);
+          return *this;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends as json-encoded
+////////////////////////////////////////////////////////////////////////////////
+
+        StringBuffer& appendJsonEncoded (char const* str, size_t length) {
+          TRI_AppendJsonEncodedStringStringBuffer(&_buffer, str, length, true);
           return *this;
         }
 

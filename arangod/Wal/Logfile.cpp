@@ -86,8 +86,7 @@ Logfile* Logfile::createNew (std::string const& filename,
     }
   }
 
-  Logfile* logfile = new Logfile(id, df, StatusType::EMPTY);
-  return logfile;
+  return new Logfile(id, df, StatusType::EMPTY);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,6 +171,7 @@ int Logfile::judge (std::string const& filename) {
     ++ptr;
   }
 
+  TRI_CLOSE(fd);
   return TRI_ERROR_ARANGO_DATAFILE_EMPTY;
 }
 

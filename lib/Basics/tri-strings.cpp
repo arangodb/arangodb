@@ -371,7 +371,7 @@ static void DecodeSurrogatePair (char** dst, char const* src1, char const* src2)
 /// @brief convert a string to lower case
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LowerAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
+char* TRI_LowerAsciiString (TRI_memory_zone_t* zone, char const* value) {
   size_t length;
   char* buffer;
   char* p;
@@ -408,18 +408,10 @@ char* TRI_LowerAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a string to lower case
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_LowerAsciiString (char const* value) {
-  return TRI_LowerAsciiStringZ(TRI_CORE_MEM_ZONE, value);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to upper case
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UpperAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
+char* TRI_UpperAsciiString (TRI_memory_zone_t* zone, char const* value) {
   size_t length;
   char* buffer;
   char* p;
@@ -453,14 +445,6 @@ char* TRI_UpperAsciiStringZ (TRI_memory_zone_t* zone, char const* value) {
   *out = '\0';
 
   return buffer;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a string to upper case
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_UpperAsciiString (char const* value) {
-  return TRI_UpperAsciiStringZ(TRI_CORE_MEM_ZONE, value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -655,38 +639,6 @@ char* TRI_Concatenate2StringZ (TRI_memory_zone_t* zone, char const* a, char cons
   nb = strlen(b);
 
   result = static_cast<char*>(TRI_Allocate(zone, na + nb + 1, false));
-
-  if (result != nullptr) {
-    memcpy(result, a, na);
-    memcpy(result + na, b, nb);
-
-    result[na + nb] = '\0';
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief concatenate two strings, with known lengths
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_ConcatenateSized2String (char const* a,
-                                   size_t na,
-                                   char const* b,
-                                   size_t nb) {
-  return TRI_ConcatenateSized2StringZ(TRI_CORE_MEM_ZONE, a, na, b, nb);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief concatenate two strings, with known lengths, using a memory zone
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_ConcatenateSized2StringZ (TRI_memory_zone_t* zone,
-                                    char const* a,
-                                    size_t na,
-                                    char const* b,
-                                    size_t nb) {
-  char* result = static_cast<char*>(TRI_Allocate(zone, na + nb + 1, false));
 
   if (result != nullptr) {
     memcpy(result, a, na);
@@ -1141,24 +1093,12 @@ char* TRI_EscapeControlsCString (TRI_memory_zone_t* zone,
 /// @brief escapes special characters using unicode escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeUtf8String (char const* in,
+char* TRI_EscapeUtf8String (TRI_memory_zone_t* zone,
+                            char const* in,
                             size_t inLength,
                             bool escapeSlash,
                             size_t* outLength,
                             bool compactResult) {
-  return TRI_EscapeUtf8StringZ(TRI_CORE_MEM_ZONE, in, inLength, escapeSlash, outLength, compactResult);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes special characters using unicode escapes
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
-                             char const* in,
-                             size_t inLength,
-                             bool escapeSlash,
-                             size_t* outLength,
-                             bool compactResult) {
   char * buffer;
   char * qtr;
   char const * ptr;
@@ -1317,15 +1257,7 @@ char* TRI_EscapeUtf8StringZ (TRI_memory_zone_t* zone,
 /// @brief unescapes unicode escape sequences
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UnescapeUtf8String (char const* in, size_t inLength, size_t* outLength) {
-  return TRI_UnescapeUtf8StringZ(TRI_CORE_MEM_ZONE, in, inLength, outLength);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unescapes unicode escape sequences
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t inLength, size_t* outLength) {
+char* TRI_UnescapeUtf8String (TRI_memory_zone_t* zone, char const* in, size_t inLength, size_t* outLength) {
   char * buffer;
   char * qtr;
   char const * ptr;

@@ -1656,6 +1656,10 @@ else {
 
 exports.printObject = printObject;
 
+exports.isCaptureMode = function() {
+  return exports.output === bufferOutput;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startCaptureMode
 ////////////////////////////////////////////////////////////////////////////////
@@ -1809,23 +1813,6 @@ exports.stopColorPrint = function (silent) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                          public utility functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exponentialBackoff
-////////////////////////////////////////////////////////////////////////////////
-
-exports.exponentialBackOff = function (n, i) {
-  if (i === 0) {
-    return 0;
-  }
-  if (n === 0) {
-    return 0;
-  }
-  if (n === 1) {
-    return Math.random() < 0.5 ? 0 : i;
-  }
-  return Math.floor(Math.random() * (n + 1)) * i;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief env

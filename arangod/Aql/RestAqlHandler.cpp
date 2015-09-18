@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAqlHandler.h"
+#include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
 #include "Basics/ConditionLocker.h"
@@ -43,6 +44,7 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
 using namespace triagens::aql;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -67,6 +69,18 @@ RestAqlHandler::RestAqlHandler (triagens::rest::HttpRequest* request,
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                               HttpHandler methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the queue name
+////////////////////////////////////////////////////////////////////////////////
+
+size_t RestAqlHandler::queue () const {
+  return Dispatcher::AQL_QUEUE;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
@@ -79,20 +93,20 @@ bool RestAqlHandler::isDirect () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief POST method for /_api/aql/instanciate
+/// @brief POST method for /_api/aql/instantiate
 /// The body is a JSON with attributes "plan" for the execution plan and
 /// "options" for the options, all exactly as in AQL_EXECUTEJSON.
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::createQueryFromJson () {
-  Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  triagens::basics::Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
     LOG_ERROR("invalid JSON plan in query");
     return;
   }
 
-  Json plan;
-  Json options;
+  triagens::basics::Json plan;
+  triagens::basics::Json options;
 
   plan = queryJson.get("plan").copy();   // cannot throw
   if (plan.isEmpty()) {
@@ -108,7 +122,7 @@ void RestAqlHandler::createQueryFromJson () {
   auto query = new Query(_applicationV8, false, _vocbase, plan, options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("failed to instanciate the query: %s", res.details.c_str());
+    LOG_ERROR("failed to instantiate the query: %s", res.details.c_str());
 
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
       res.details);
@@ -141,9 +155,9 @@ void RestAqlHandler::createQueryFromJson () {
 
   _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
-  Json answerBody(Json::Object, 2);
-  answerBody("queryId", Json(StringUtils::itoa(_qId)))
-            ("ttl",     Json(ttl));
+  triagens::basics::Json answerBody(triagens::basics::Json::Object, 2);
+  answerBody("queryId", triagens::basics::Json(StringUtils::itoa(_qId)))
+            ("ttl",     triagens::basics::Json(ttl));
 
   _response->body().appendText(answerBody.toString());
 }
@@ -175,26 +189,26 @@ void RestAqlHandler::parseQuery () {
                          nullptr, nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("failed to instanciate the Query: %s", res.details.c_str());
+    LOG_ERROR("failed to instantiate the Query: %s", res.details.c_str());
     generateError(HttpResponse::BAD, res.code, res.details);
     delete query;
     return;
   }
 
   // Now prepare the answer:
-  Json answerBody(Json::Object, 4);
-  answerBody("parsed", Json(true));
-  Json collections(Json::Array, res.collectionNames.size());
+  triagens::basics::Json answerBody(triagens::basics::Json::Object, 4);
+  answerBody("parsed", triagens::basics::Json(true));
+  triagens::basics::Json collections(triagens::basics::Json::Array, res.collectionNames.size());
   for (auto const& c : res.collectionNames) {
-    collections(Json(c));
+    collections(triagens::basics::Json(c));
   }
   answerBody("collections", collections);
-  Json bindVars(Json::Array, res.bindParameters.size());
+  triagens::basics::Json bindVars(triagens::basics::Json::Array, res.bindParameters.size());
   for (auto const& p : res.bindParameters) {
-    bindVars(Json(p));
+    bindVars(triagens::basics::Json(p));
   }
   answerBody("parameters", bindVars);
-  answerBody("ast", Json(res.zone, res.json));
+  answerBody("ast", triagens::basics::Json(res.zone, res.json));
   res.json = nullptr;
 
   _response = createResponse(triagens::rest::HttpResponse::OK);
@@ -211,7 +225,7 @@ void RestAqlHandler::parseQuery () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::explainQuery () {
-  Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  triagens::basics::Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
     return;
   }
@@ -224,29 +238,29 @@ void RestAqlHandler::explainQuery () {
     return;
   }
   
-  Json parameters;
+  triagens::basics::Json parameters;
   parameters = queryJson.get("parameters").copy();  // cannot throw
-  Json options;
+  triagens::basics::Json options;
   options = queryJson.get("options").copy();        // cannot throw
 
   auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(), queryString.size(),
                          parameters.steal(), options.steal(), PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("failed to instanciate the Query: %s", res.details.c_str());
+    LOG_ERROR("failed to instantiate the Query: %s", res.details.c_str());
     generateError(HttpResponse::BAD, res.code, res.details);
     delete query;
     return;
   }
 
   // Now prepare the answer:
-  Json answerBody(Json::Object, 1);
+  triagens::basics::Json answerBody(triagens::basics::Json::Object, 1);
   if (res.json != nullptr) {
     if (query->allPlans()) {
-      answerBody("plans", Json(res.zone, res.json));
+      answerBody("plans", triagens::basics::Json(res.zone, res.json));
     }
     else {
-      answerBody("plan", Json(res.zone, res.json));
+      answerBody("plan", triagens::basics::Json(res.zone, res.json));
     }
   }
   res.json = nullptr;
@@ -266,7 +280,7 @@ void RestAqlHandler::explainQuery () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::createQueryFromString () {
-  Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  triagens::basics::Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
     return;
   }
@@ -287,16 +301,16 @@ void RestAqlHandler::createQueryFromString () {
     return;
   }
 
-  Json parameters;
+  triagens::basics::Json parameters;
   parameters = queryJson.get("parameters").copy();  // cannot throw
-  Json options;
+  triagens::basics::Json options;
   options = queryJson.get("options").copy();        // cannot throw
 
   auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(), queryString.size(),
                          parameters.steal(), options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("failed to instanciate the Query: %s", res.details.c_str());
+    LOG_ERROR("failed to instantiate the Query: %s", res.details.c_str());
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
       res.details);
     delete query;
@@ -325,9 +339,9 @@ void RestAqlHandler::createQueryFromString () {
 
   _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
-  Json answerBody(Json::Object, 2);
-  answerBody("queryId", Json(StringUtils::itoa(_qId)))
-            ("ttl",     Json(ttl));
+  triagens::basics::Json answerBody(triagens::basics::Json::Object, 2);
+  answerBody("queryId", triagens::basics::Json(StringUtils::itoa(_qId)))
+            ("ttl",     triagens::basics::Json(ttl));
   _response->body().appendText(answerBody.toString());
 }
 
@@ -371,7 +385,7 @@ void RestAqlHandler::createQueryFromString () {
 ///             If "number" is not given it defaults to 1.
 /// For the "initializeCursor" operation, one has to bind the following 
 /// attributes:
-///   "items": This is a serialised AqlItemBlock with usually only one row 
+///   "items": This is a serialized AqlItemBlock with usually only one row 
 ///            and the correct number of columns.
 ///   "pos":   The number of the row in "items" to take, usually 0.
 /// For the "shutdown" and "lock" operations no additional arguments are
@@ -393,7 +407,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
   TRI_ASSERT(_qId > 0);
   TRI_ASSERT(query->engine() != nullptr);
 
-  Json queryJson = Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  triagens::basics::Json queryJson = triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
     _queryRegistry->close(_vocbase, _qId);
     return;
@@ -469,7 +483,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
 
   TRI_ASSERT(_qId > 0);
 
-  Json answerBody(Json::Object, 2);
+  triagens::basics::Json answerBody(triagens::basics::Json::Object, 2);
 
   TRI_ASSERT(query->engine() != nullptr);
 
@@ -478,10 +492,10 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
     if (operation == "count") {
       number = query->engine()->count();
       if (number == -1) {
-        answerBody("count", Json("unknown"));
+        answerBody("count", triagens::basics::Json("unknown"));
       }
       else {
-        answerBody("count", Json(static_cast<double>(number)));
+        answerBody("count", triagens::basics::Json(static_cast<double>(number)));
       }
     }
     else if (operation == "remaining") {
@@ -497,10 +511,10 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
         number = block->remainingForShard(shardId);
       }
       if (number == -1) {
-        answerBody("remaining", Json("unknown"));
+        answerBody("remaining", triagens::basics::Json("unknown"));
       }
       else {
-        answerBody("remaining", Json(static_cast<double>(number)));
+        answerBody("remaining", triagens::basics::Json(static_cast<double>(number)));
       }
     }
     else if (operation == "hasMore") {
@@ -517,7 +531,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
         hasMore = block->hasMoreForShard(shardId);
       }
 
-      answerBody("hasMore", Json(hasMore));
+      answerBody("hasMore", triagens::basics::Json(hasMore));
     }
     else {
       _queryRegistry->close(_vocbase, _qId);
@@ -545,7 +559,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
   catch (...) {
     _queryRegistry->close(_vocbase, _qId);
       
-    LOG_ERROR("failed during use of query: Unknown exeption occured");
+    LOG_ERROR("failed during use of query: Unknown exception occurred");
 
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
@@ -556,7 +570,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
 
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  answerBody("error", Json(false));
+  answerBody("error", triagens::basics::Json(false));
   _response->body().appendText(answerBody.toString());
 }
 
@@ -578,7 +592,7 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
       if (suffix.size() != 1) {
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       }
-      else if (suffix[0] == "instanciate") {
+      else if (suffix[0] == "instantiate") {
         createQueryFromJson(); 
       }
       else if (suffix[0] == "parse") {
@@ -684,7 +698,7 @@ bool RestAqlHandler::findQuery (std::string const& idString,
 
 void RestAqlHandler::handleUseQuery (std::string const& operation,
                                      Query* query,
-                                     Json const& queryJson) {
+                                     triagens::basics::Json const& queryJson) {
   bool found;
   std::string shardId;
   char const* shardIdCharP = _request->header("shard-id", found);
@@ -692,7 +706,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     shardId = shardIdCharP;
   }
 
-  Json answerBody(Json::Object, 3);
+  triagens::basics::Json answerBody(triagens::basics::Json::Object, 3);
 
   if (operation == "lock") {
     // Mark current thread as potentially blocking:
@@ -717,8 +731,8 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     if (currentThread != nullptr) {
       triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
     }
-    answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
-              ("code", Json(static_cast<double>(res)));
+    answerBody("error", res == TRI_ERROR_NO_ERROR ? triagens::basics::Json(false) : triagens::basics::Json(true))
+              ("code", triagens::basics::Json(static_cast<double>(res)));
   }
   else if (operation == "getSome") {
     auto atLeast = JsonHelper::getNumericValue<size_t>(queryJson.json(), "atLeast", 1);
@@ -737,8 +751,8 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
       items.reset(block->getSomeForShard(atLeast, atMost, shardId));
     }
     if (items.get() == nullptr) {
-      answerBody("exhausted", Json(true))
-        ("error", Json(false))
+      answerBody("exhausted", triagens::basics::Json(true))
+        ("error", triagens::basics::Json(false))
         ("stats", query->getStats());
     }
     else {
@@ -779,8 +793,8 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
                     "skipSome lead to an exception");
       return;
     }
-    answerBody("skipped", Json(static_cast<double>(skipped)))
-              ("error", Json(false));
+    answerBody("skipped", triagens::basics::Json(static_cast<double>(skipped)))
+              ("error", triagens::basics::Json(false));
     answerBody.set("stats", query->getStats());
   }
   else if (operation == "skip") {
@@ -799,8 +813,8 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
         exhausted = block->skipForShard(number, shardId);
       }
 
-      answerBody("exhausted", Json(exhausted))
-                ("error", Json(false));
+      answerBody("exhausted", triagens::basics::Json(exhausted))
+                ("error", triagens::basics::Json(false));
       answerBody.set("stats", query->getStats());
     }
     catch (...) {
@@ -830,8 +844,8 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
                     "initializeCursor lead to an exception");
       return;
     }
-    answerBody("error", Json(res != TRI_ERROR_NO_ERROR))
-              ("code", Json(static_cast<double>(res)));
+    answerBody("error", triagens::basics::Json(res != TRI_ERROR_NO_ERROR))
+              ("code", triagens::basics::Json(static_cast<double>(res)));
     answerBody.set("stats", query->getStats());
   }
   else if (operation == "shutdown") {
@@ -847,7 +861,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
       // return warnings if present
       auto warnings = query->warningsToJson(TRI_UNKNOWN_MEM_ZONE);
       if (warnings != nullptr) {
-        answerBody("warnings", Json(TRI_UNKNOWN_MEM_ZONE, warnings));
+        answerBody("warnings", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, warnings));
       }
 
       // delete the query from the registry
@@ -860,8 +874,8 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
                     "shutdown lead to an exception");
       return;
     }
-    answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
-              ("code", Json(static_cast<double>(res)));
+    answerBody("error", res == TRI_ERROR_NO_ERROR ? triagens::basics::Json(false) : triagens::basics::Json(true))
+              ("code", triagens::basics::Json(static_cast<double>(res)));
   }
   else {
     LOG_ERROR("Unknown operation!");

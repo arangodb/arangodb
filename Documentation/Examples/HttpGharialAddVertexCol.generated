@@ -1,35 +1,35 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex <<EOF
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex &lt;&lt;EOF
 { 
-  "collection" : "otherVertices" 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"otherVertices"</span> 
 }
 EOF
 
-HTTP/1.1 201 Created
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
 content-type: application/json
-etag: 1581567219
+etag: <span class="hljs-number">520135212</span>
 
 { 
-  "error" : false, 
-  "code" : 201, 
-  "graph" : { 
-    "name" : "social", 
-    "edgeDefinitions" : [ 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span>, 
+  <span class="hljs-string">"graph"</span> : { 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"social"</span>, 
+    <span class="hljs-string">"edgeDefinitions"</span> : [ 
       { 
-        "collection" : "relation", 
-        "from" : [ 
-          "female", 
-          "male" 
+        <span class="hljs-string">"collection"</span> : <span class="hljs-string">"relation"</span>, 
+        <span class="hljs-string">"from"</span> : [ 
+          <span class="hljs-string">"female"</span>, 
+          <span class="hljs-string">"male"</span> 
         ], 
-        "to" : [ 
-          "female", 
-          "male" 
+        <span class="hljs-string">"to"</span> : [ 
+          <span class="hljs-string">"female"</span>, 
+          <span class="hljs-string">"male"</span> 
         ] 
       } 
     ], 
-    "orphanCollections" : [ 
-      "otherVertices" 
+    <span class="hljs-string">"orphanCollections"</span> : [ 
+      <span class="hljs-string">"otherVertices"</span> 
     ], 
-    "_id" : "_graphs/social", 
-    "_rev" : "1581567219" 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"520135212"</span> 
   } 
 }

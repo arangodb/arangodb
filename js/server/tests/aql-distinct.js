@@ -202,6 +202,29 @@ function ahuacatlDistinct () {
       });
 
       assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distinct usage 
+////////////////////////////////////////////////////////////////////////////////
+
+    testDistinctWithArrays1 : function () {
+      var result = AQL_EXECUTE("FOR i IN 1..2 RETURN DISTINCT (FOR j IN [ 1, 2, 3, 4, 1, 3 ] RETURN j)").json;
+
+      assertEqual(1, result.length);
+      assertEqual([ 1, 2, 3, 4, 1, 3 ], result[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distinct usage 
+////////////////////////////////////////////////////////////////////////////////
+
+    testDistinctWithArrays2 : function () {
+      var result = AQL_EXECUTE("FOR i IN 1..2 RETURN (FOR j IN [ 1, 2, 3, 4, 1, 3 ] RETURN DISTINCT j)").json;
+
+      assertEqual(2, result.length);
+      assertEqual([ 1, 2, 3, 4 ], result[0].sort(function (l, r) { return l - r; }));
+      assertEqual([ 1, 2, 3, 4 ], result[1].sort(function (l, r)  { return l - r; }));
     }
 
   };

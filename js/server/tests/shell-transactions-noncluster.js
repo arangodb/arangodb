@@ -4263,6 +4263,35 @@ function transactionServerFailuresSuite () {
       c = null;
       internal.wait(0);
     },
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of starting a transaction fails
+////////////////////////////////////////////////////////////////////////////////
+
+    testBeginTransactionFailure : function () {
+      internal.debugClearFailAt();
+      db._drop(cn);
+      c = db._create(cn);
+
+      internal.debugSetFailAt("LogfileManagerRegisterTransactionOom");
+
+      try {
+        db._executeTransaction({ 
+          collections: {
+            write: cn 
+          },
+          action: function () {
+            c.save({ value: 1 });
+            fail();
+          }
+        });
+
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
+      }
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rollback in case of a server-side fail
@@ -5336,7 +5365,15 @@ function transactionServerFailuresSuite () {
       assertEqual(100160, fig.uncollectedLogfileEntries);
 
       internal.debugClearFailAt();
-      internal.wal.flush(true, true);
+      while (true) {
+        try {
+          internal.wal.flush(true, true);
+          break;
+        }
+        catch (err) {
+          internal.wait(0.5, false);
+        }
+      }
 
       assertEqual(100150, c.count());
 

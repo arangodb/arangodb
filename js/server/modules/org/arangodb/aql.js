@@ -146,9 +146,242 @@ var TYPEWEIGHT_STRING    = 4;
 var TYPEWEIGHT_ARRAY     = 8;
 var TYPEWEIGHT_OBJECT    = 16;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mapping of time unit names to short name, getter and setter
+////////////////////////////////////////////////////////////////////////////////
+
+var unitMapping = {
+  y: ["y", "getUTCFullYear", "setUTCFullYear"],
+  m: ["m", "getUTCMonth", "setUTCMonth"],
+  w: ["w", null, null],
+  d: ["d", "getUTCDate", "setUTCDate"],
+  h: ["h", "getUTCHours", "setUTCHours"],
+  i: ["i", "getUTCMinutes", "setUTCMinutes"],
+  s: ["s", "getUTCSeconds", "setUTCSeconds"],
+  f: ["f", "getUTCMilliseconds", "setUTCMilliseconds"]
+};
+
+// aliases
+unitMapping.years = unitMapping.y;
+unitMapping.year = unitMapping.y;
+unitMapping.months = unitMapping.m;
+unitMapping.month = unitMapping.m;
+unitMapping.week = unitMapping.w;
+unitMapping.weeks = unitMapping.w;
+unitMapping.days = unitMapping.d;
+unitMapping.day = unitMapping.d;
+unitMapping.hours = unitMapping.h;
+unitMapping.hour = unitMapping.h;
+unitMapping.minutes = unitMapping.i;
+unitMapping.minute = unitMapping.i;
+unitMapping.seconds = unitMapping.s;
+unitMapping.second = unitMapping.s;
+unitMapping.milliseconds = unitMapping.f;
+unitMapping.millisecond = unitMapping.f;
+unitMapping.ms = unitMapping.f;
+
+var unitMappingArray = [null, "y", "m", "w", "d", "h", "i", "s", "f"];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief RegExp and cache for ISO duration strings
+////////////////////////////////////////////////////////////////////////////////
+
+// ISODurationRegex.exec("P1Y2M3W4DT5H6M7.890S")
+// -> ["P1Y2M3W4DT5H6M7.890S", "1", "2", "3", "4", "5", "6", "7", "890"]
+
+/* jshint -W101 */
+var ISODurationRegex = /^P(?:(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d+))?S)?)?$/i;
+/* jshint +W101 */
+
+var ISODurationCache = {}; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief substring ranges for DATE_COMPARE()
+////////////////////////////////////////////////////////////////////////////////
+
+// 0123_56_89_12_45_78_012_
+var unitStrRanges = {
+  y: [0, 4],
+  m: [5, 7],
+  d: [8, 10],
+  h: [11, 13],
+  i: [14, 16],
+  s: [17, 19],
+  f: [20, 23]
+};
+unitStrRanges.years = unitStrRanges.y;
+unitStrRanges.year = unitStrRanges.y;
+unitStrRanges.months = unitStrRanges.m;
+unitStrRanges.month = unitStrRanges.m;
+unitStrRanges.days = unitStrRanges.d;
+unitStrRanges.day = unitStrRanges.d;
+unitStrRanges.hours = unitStrRanges.h;
+unitStrRanges.hour = unitStrRanges.h;
+unitStrRanges.minutes = unitStrRanges.i;
+unitStrRanges.minute = unitStrRanges.i;
+unitStrRanges.seconds = unitStrRanges.s;
+unitStrRanges.second = unitStrRanges.s;
+unitStrRanges.milliseconds = unitStrRanges.f;
+unitStrRanges.millisecond = unitStrRanges.f;
+unitStrRanges.ms = unitStrRanges.f;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief offsets for day of year calculation
+////////////////////////////////////////////////////////////////////////////////
+
+var dayOfYearOffsets = [
+  0,
+  31,  // + 31 Jan
+  59,  // + 28 Feb*
+  90,  // + 31 Mar
+  120, // + 30 Apr
+  151, // + 31 May
+  181, // + 30 Jun
+  212, // + 31 Jul
+  243, // + 31 Aug
+  273, // + 30 Sep
+  304, // + 31 Oct
+  334  // + 30 Nov
+];
+
+var dayOfLeapYearOffsets = [
+  0,
+  31,  // + 31 Jan
+  59,  // + 29 Feb*
+  91,  // + 31 Mar
+  121, // + 30 Apr
+  152, // + 31 May
+  182, // + 30 Jun
+  213, // + 31 Jul
+  244, // + 31 Aug
+  274, // + 30 Sep
+  305, // + 31 Oct
+  335  // + 30 Nov
+];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup array for days in month calculation (leap year aware)
+////////////////////////////////////////////////////////////////////////////////
+
+var daysInMonth = [
+  29, // Feb (in leap year)
+  31, // Jan
+  28, // Feb (in non-leap year)
+  31, // Mar
+  30, // Apr
+  31, // May
+  30, // Jun
+  31, // Jul
+  31, // Aug
+  30, // Sep
+  31, // Oct
+  30, // Nov
+  31  // Dec
+];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief English month names (1-based)
+////////////////////////////////////////////////////////////////////////////////
+
+var monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December"
+];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief English weekday names
+////////////////////////////////////////////////////////////////////////////////
+
+var weekdayNames = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday"
+];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constants for date difference function
+////////////////////////////////////////////////////////////////////////////////
+
+// milliseconds per month, counting February as 28 days (compensating later)
+var msPerMonth = [
+  26784e5, 24192e5, 26784e5, 2592e6, 26784e5, 2592e6,
+  26784e5, 26784e5, 2592e6, 26784e5, 2592e6, 26784e5
+];
+
+var msPerUnit = {
+  f:      1,
+  s:    1e3, // 1000
+  i:    6e4, // 1000 * 60
+  h:   36e5, // 1000 * 60 * 60
+  d:  864e5, // 1000 * 60 * 60 * 24
+  w: 6048e5, // 1000 * 60 * 60 * 24 * 7
+  m: 0, // evaluates to false
+  y: -1 // evaluates to true to distinguish it from months
+};
+
+// Aliases
+msPerUnit.milliseconds = msPerUnit.f;
+msPerUnit.millisecond = msPerUnit.f;
+msPerUnit.ms = msPerUnit.f;
+msPerUnit.seconds = msPerUnit.s;
+msPerUnit.second = msPerUnit.s;
+msPerUnit.minutes = msPerUnit.i;
+msPerUnit.minute = msPerUnit.i;
+msPerUnit.hours = msPerUnit.h;
+msPerUnit.hour = msPerUnit.h;
+msPerUnit.days = msPerUnit.d;
+msPerUnit.day = msPerUnit.d;
+msPerUnit.weeks = msPerUnit.w;
+msPerUnit.week = msPerUnit.w;
+msPerUnit.months = msPerUnit.m;
+msPerUnit.month = msPerUnit.m;
+msPerUnit.years = msPerUnit.y;
+msPerUnit.year = msPerUnit.y;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear caches
+////////////////////////////////////////////////////////////////////////////////
+
+function clearCaches () {
+  'use strict';
+
+  RegexCache        = { 'i' : { }, '' : { } };
+  ISODurationCache = { };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add zeros for a total length of width chars (left padding by default)
+////////////////////////////////////////////////////////////////////////////////
+
+function zeropad (n, width, padRight) {
+  'use strict';
+
+  padRight = padRight || false;
+  n = "" + n;
+  if (padRight) {
+    return n.length >= width ? n : n + new Array(width - n.length + 1).join("0");
+  } else {
+    return n.length >= width ? n : new Array(width - n.length + 1).join("0") + n;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief raise a warning
@@ -206,16 +439,6 @@ function THROW (func, error, data) {
 
 function DB_PREFIX () {
   return INTERNAL.db._name();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reset the regex cache
-////////////////////////////////////////////////////////////////////////////////
-
-function resetRegexCache () {
-  'use strict';
-
-  RegexCache = { 'i' : { }, '' : { } };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1691,7 +1914,7 @@ function UNARY_MINUS (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform artithmetic plus or string concatenation
+/// @brief perform arithmetic plus or string concatenation
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_PLUS (lhs, rhs) {
@@ -1711,7 +1934,7 @@ function ARITHMETIC_PLUS (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform artithmetic minus
+/// @brief perform arithmetic minus
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_MINUS (lhs, rhs) {
@@ -1731,7 +1954,7 @@ function ARITHMETIC_MINUS (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform artithmetic multiplication
+/// @brief perform arithmetic multiplication
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_TIMES (lhs, rhs) {
@@ -1751,7 +1974,7 @@ function ARITHMETIC_TIMES (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform artithmetic division
+/// @brief perform arithmetic division
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_DIVIDE (lhs, rhs) {
@@ -1772,7 +1995,7 @@ function ARITHMETIC_DIVIDE (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform artithmetic modulus
+/// @brief perform arithmetic modulus
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_MODULUS (lhs, rhs) {
@@ -4265,6 +4488,7 @@ function AQL_PASSTHRU (value) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test helper function
+/// this is no actual function the end user should call
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_TEST_MODIFY (test, what) {
@@ -4391,7 +4615,13 @@ function MAKE_DATE (args, func) {
       }
     }
 
-    return new Date(args[0]);
+    // detect invalid dates ("foo" -> "fooZ" -> getTime() == NaN)
+    var date = new Date(args[0]);
+    if (isNaN(date)) {
+      WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE, func);
+      return null;
+    }
+    return date;
   }
 
   // called with more than one argument
@@ -4429,7 +4659,14 @@ function MAKE_DATE (args, func) {
     }
   }
 
-  return new Date(Date.UTC.apply(null, args));
+  var result = new Date(Date.UTC.apply(null, args));
+
+  if (TYPEWEIGHT(result) !== TYPEWEIGHT_NULL) {
+    return result;
+  }
+
+  // avoid returning NaN here
+  return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4600,6 +4837,382 @@ function AQL_DATE_MILLISECOND (value) {
   }
   catch (err) {
     WARN("DATE_MILLISECOND", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the day of the year of the date passed
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_DAYOFYEAR (value) {
+  'use strict';
+
+  try {
+    var date = MAKE_DATE([ value ], "DATE_DAYOFYEAR");
+    var m = date.getUTCMonth();
+    var d = date.getUTCDate();
+    var ly = AQL_DATE_LEAPYEAR(date.getTime());
+    // we could duplicate the leap year code here to avoid an extra MAKE_DATE() call...
+    //var yr = date.getUTCFullYear();
+    //var ly = !((yr % 4) || (!(yr % 100) && (yr % 400)));
+    return (ly ? (dayOfLeapYearOffsets[m] + d) : (dayOfYearOffsets[m] + d));
+  }
+  catch (err) {
+    WARN("DATE_DAYOFYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the ISO week date of the date passed (1..53)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_ISOWEEK (value) {
+  'use strict';
+
+  try {
+    var date = MAKE_DATE([ value ], "DATE_ISOWEEK");
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+    return Math.ceil((((date - Date.UTC(date.getUTCFullYear(), 0, 1)) / 864e5) + 1) / 7);
+  }
+  catch (err) {
+    WARN("DATE_ISOWEEK", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return if year of the date passed is a leap year
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_LEAPYEAR (value) {
+  'use strict';
+
+  try {
+    var yr = MAKE_DATE([ value ], "DATE_LEAPYEAR").getUTCFullYear();
+    return ((yr % 4 === 0) && (yr % 100 !== 0)) || (yr % 400 === 0);
+  }
+  catch (err) {
+    WARN("DATE_LEAPYEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the ISO week date of the date passed (1..53)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_QUARTER (value) {
+  'use strict';
+
+  try {
+    return MAKE_DATE([ value ], "DATE_QUARTER").getUTCMonth() / 3 + 1 | 0;
+  }
+  catch (err) {
+    WARN("DATE_QUARTER", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return number of days in month of date passed (leap year aware)
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_DAYS_IN_MONTH (value) {
+  'use strict';
+
+  try {
+    var date = MAKE_DATE([ value ], "DATE_DAYS_IN_MONTH");
+    var month = date.getUTCMonth() + 1;
+    var ly = AQL_DATE_LEAPYEAR(date.getTime());
+    return daysInMonth[month === 2 && ly ? 0 : month];
+  }
+  catch (err) {
+    WARN("DATE_DAYS_IN_MONTH", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to add to or subtract from given date
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_CALC (value, amount, unit, func) {
+  'use strict';
+
+  try {
+    // TODO: check if isNaN? If called by AQL FOR-loop, should query throw
+    // and terminate immediately, or return a bunch of 'null's? If it shall
+    // stop, then best handled in MAKE_DATE() itself I guess.
+    var date = MAKE_DATE([ value ], func);
+
+    if (date === null) {
+      WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      return null;
+    }
+
+    var sign = (func === "DATE_ADD" || func === undefined) ? 1 : -1;
+    var m;
+    
+    // if amount is not a number, then it must be an ISO duration string
+    if (TYPEWEIGHT(unit) === TYPEWEIGHT_NULL) {
+      if (TYPEWEIGHT(amount) !== TYPEWEIGHT_STRING) {
+        WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
+      }
+      // ISO duration cache
+      var duration;
+      if (ISODurationCache[amount] === undefined) {
+        duration = ISODurationRegex.exec(amount);
+        if (!duration) {
+          WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+          return null;
+        }
+        ISODurationCache[amount] = duration;
+      } else {
+        duration = ISODurationCache[amount];
+      }
+      // ensure ms has a length of 3
+      if (duration[8] && duration[8].length !== 3) {
+        duration[8] = zeropad(duration[8], 3, true).substring(0, 3);
+      }
+      // add or subtract component by component, from ms to year
+      for (var d = duration.length - 1; d >= 1; d--) {
+        if (duration[d]) {
+          // convert weeks to days
+          if (d === 3) {
+            m = unitMapping[unitMappingArray[4]];
+            date[m[2]](date[m[1]]() + duration[d] * sign * 7);
+          } else {
+            m = unitMapping[unitMappingArray[d]];
+            date[m[2]](date[m[1]]() + duration[d] * sign);
+          }
+        }
+      }
+      return date.toISOString(); 
+    } else {
+      if (TYPEWEIGHT(unit) !== TYPEWEIGHT_STRING) {
+        WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
+      }
+      if (TYPEWEIGHT(amount) !== TYPEWEIGHT_NUMBER) {
+        WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
+      }
+      m = unitMapping[unit.toLowerCase()]; // we're sure unit is a string here
+      if (m === "undefined") {
+        WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+        return null;
+      } else if (m[0] === "w") {
+        m = unitMapping.d;
+        date[m[2]](date[m[1]]() + amount * 7 * sign);
+      } else {
+        date[m[2]](date[m[1]]() + amount * sign);
+      }
+      return date.toISOString();
+    }
+  }
+  catch (err) {
+    WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return date passed with added amount of time units
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_ADD (value, amount, unit) {
+  'use strict';
+  return DATE_CALC(value, amount, unit, "DATE_ADD");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return date passed with subtracted amount of time units
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_SUBTRACT (value, amount, unit) {
+  'use strict';
+  return DATE_CALC(value, amount, unit, "DATE_SUBTRACT");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return date difference in given unit, optionally with fractions
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_DIFF (value1, value2, unit, asFloat) {
+  'use strict';
+
+  var date1 = MAKE_DATE([ value1 ], "DATE_DIFF");
+  var date2 = MAKE_DATE([ value2 ], "DATE_DIFF");
+  // Don't return any number if either or both dates are NaN.
+  if (date1 === null || date2 === null) {
+    // warning issued by MAKE_DATE() already (duplicate warnings in other date function calls???)
+    return null;
+  }
+
+  asFloat = (asFloat === undefined) ? false : asFloat;
+  if (date1 === date2) {
+    return 0;
+  }
+
+  try {
+    var divisor = msPerUnit[unit.toLowerCase()];
+    if (divisor === undefined) {
+      WARN("DATE_DIFF", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      return null;
+    }
+
+    // simple calculation if not month or year
+    if (divisor > 0) {
+      return (asFloat) ? ((date2 - date1) / divisor) : (~~((date2 - date1) / divisor));
+    }
+
+    var year1 = date1.getUTCFullYear();
+    var month1 = date1.getUTCMonth();
+    var year2 = date2.getUTCFullYear();
+    var month2 = date2.getUTCMonth();
+
+    // ms in given month, leap year compensated if February and leap year
+    var month1ms = msPerMonth[month1] + ((month1 === 1 && AQL_DATE_LEAPYEAR(date1.getTime())) ? msPerUnit.d : 0);
+    // ms since beginning of month
+    var month1msOffset = date1 - Date.UTC(year1, month1);
+    var month2ms = msPerMonth[month2] + ((month2 === 1 && AQL_DATE_LEAPYEAR(date2.getTime())) ? msPerUnit.d : 0);
+    var month2msOffset = date2 - Date.UTC(year2, month2);
+
+    // Diff between YYYY-MM parts only.
+    var diff = (year2 * 12 + month2) - (year1 * 12 + month1);
+
+    // Add diff between month offsets relative to the mean of ms in both months
+    diff += ((month2msOffset - month1msOffset) / ((month1ms + month2ms) / 2));
+
+    // return 1/12th of month if unit is year
+    if (asFloat) {
+      return divisor ? diff / 12 : diff;
+    } else {
+      // round towards zero, regardless of sign
+      return divisor ? ~~(diff / 12) : ~~diff;
+    }
+  }
+  catch (err) {
+    WARN("DATE_DIFF", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two partial dates, using a substring of the dates
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
+  try {
+    // TODO: Should we handle leap years, so leapling birthdays occur every year?
+    // It may result in unexpected behavior if it's used for something else but
+    // birthday checking however. Probably best to leave compensation up to user query.
+    var date1 = MAKE_DATE([ value1 ], "DATE_COMPARE");
+    var date2 = MAKE_DATE([ value2 ], "DATE_COMPARE");
+    if (TYPEWEIGHT(date1) === TYPEWEIGHT_NULL || TYPEWEIGHT(date2) === TYPEWEIGHT_NULL) {
+      return null;
+    }
+    if (unitRangeEnd === undefined) {
+      unitRangeEnd = unitRangeStart;
+    }
+    var start = unitStrRanges[unitRangeStart][0];
+    var end = unitStrRanges[unitRangeEnd][1];
+    if (start === undefined || end === undefined) {
+      WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      return null;
+    }
+    var yr1 = date1.getUTCFullYear();
+    if ((yr1 < 0 || yr1 > 9999) && start !== 0) {
+      start += 3;
+    }
+    var yr2 = date2.getUTCFullYear();
+    if (yr2 < 0 || yr2 > 9999) {
+      end += 3;
+    }
+    var substr1 = date1.toISOString().slice(start, end);
+    var substr2 = date2.toISOString().slice(start, end);
+    // if unitRangeEnd > unitRangeStart, substrings will be empty
+    if (!substr1 || !substr2) {
+      WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      return null;
+    }
+    return substr1 === substr2;
+  } catch (err) {
+    WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief format a date (numerical values only)
+////////////////////////////////////////////////////////////////////////////////
+
+// special escape sequence first, rest ordered by length
+var dateMapRegExp = [
+  "%&", "%yyyyyy", "%yyyy", "%mmmm", "%wwww", "%mmm", "%www", "%fff", "%xxx",
+  "%yy", "%mm", "%dd", "%hh", "%ii", "%ss", "%kk", "%t", "%z", "%w", "%y", "%m",
+  "%d", "%h", "%i", "%s", "%f", "%x", "%k", "%l", "%q", "%a", "%%", "%"
+].join("|");
+
+function AQL_DATE_FORMAT (value, format) {
+  'use strict';
+  try {
+    var date = MAKE_DATE([ value ], "DATE_FORMAT");
+    var dateStr = date.toISOString();
+    var yr = date.getUTCFullYear();
+    var offset = yr < 0 || yr > 9999 ? 3 : 0;
+    var dateMap = {
+      "%t": function() { return date.getTime(); },
+      "%z": function() { return dateStr; },
+      "%w": function() { return AQL_DATE_DAYOFWEEK(dateStr); },
+      "%y": function() { return date.getUTCFullYear(); },
+      // there's no really sensible way to handle negative years, but better not drop the sign
+      "%yy": function() { return (yr < 0 ? "-" : "") + dateStr.slice(2 + offset, 4 + offset); },
+      // preserves full negative years (-000753 is not reduced to -753 or -0753)
+      "%yyyy": function() { return dateStr.slice(0, 4 + offset); },
+      // zero-pad 4 digit years to length of 6 and add "+" prefix, keep negative as-is
+      "%yyyyyy": function() { 
+        return (yr >= 0 && yr <= 9999)
+          ? "+" + zeropad(dateStr.slice(0, 4 + offset), 6)
+          : dateStr.slice(0, 7);
+      },
+      "%m": function() { return date.getUTCMonth() + 1; },
+      "%mm": function() { return dateStr.slice(5 + offset, 7 + offset); },
+      "%d": function() { return date.getUTCDate(); },
+      "%dd": function() { return dateStr.slice(8 + offset, 10 + offset); },
+      "%h": function() { return date.getUTCHours(); },
+      "%hh": function() { return dateStr.slice(11 + offset, 13 + offset); },
+      "%i": function() { return date.getUTCMinutes(); },
+      "%ii": function() { return dateStr.slice(14 + offset, 16 + offset); },
+      "%s": function() { return date.getUTCSeconds(); },
+      "%ss": function() { return dateStr.slice(17 + offset, 19 + offset); },
+      "%f": function() { return date.getUTCMilliseconds(); },
+      "%fff": function() { return dateStr.slice(20 + offset, 23 + offset); },
+      "%x": function() { return AQL_DATE_DAYOFYEAR(dateStr); },
+      "%xxx": function() { return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3); },
+      "%k": function() { return AQL_DATE_ISOWEEK(dateStr); },
+      "%kk": function() { return zeropad(AQL_DATE_ISOWEEK(dateStr), 2); },
+      "%l": function() { return +AQL_DATE_LEAPYEAR(dateStr); },
+      "%q": function() { return AQL_DATE_QUARTER(dateStr); },
+      "%a": function() { return AQL_DATE_DAYS_IN_MONTH(dateStr); },
+      "%mmm": function() { return monthNames[date.getUTCMonth()].substring(0, 3); },
+      "%mmmm": function() { return monthNames[date.getUTCMonth()]; },
+      "%www": function() { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3); },
+      "%wwww": function() { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)]; },
+      "%&": function() { return ""; }, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
+      "%%": function() { return "%"; }, // Allow for literal "%y" using "%%y"
+      "%": function() { return ""; }
+    };
+    var exp = new RegExp(dateMapRegExp, "gi"); 
+    format = format.replace(exp, function(match){
+      return dateMap[match.toLowerCase()]();
+    });
+    return format;
+  } catch (err) {
+    WARN("DATE_FORMAT", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
     return null;
   }
 }
@@ -4985,10 +5598,13 @@ function TRAVERSAL_EDGE_VISITOR (config, result, vertex, path) {
   'use strict';
   // The this has to be bound explicitly!
   // It contains additional options.
-  if (path.edges.length >= this.minDepth) {
-    result.push(CLONE(path.edges[path.edges.length - 1]));
+  if (this.hasOwnProperty("minDepth") && path.edges.length < this.minDepth) {
+    return;
   }
-
+  if (this.hasOwnProperty("neighborExamples") && !AQL_MATCHES(vertex, this.neighborExamples, false)) {
+    return;
+  }
+  result.push(CLONE(path.edges[path.edges.length - 1]));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7115,12 +7731,15 @@ function AQL_GRAPH_EDGES (graphName,
   else {
   */
  // Injecting additional options into the Visitor
-   params.visitor = TRAVERSAL_EDGE_VISITOR.bind({
-     minDepth: options.minDepth === undefined ? 1 : options.minDepth
-   });
-   // }
+  var visitorConfig = {
+    minDepth: options.minDepth === undefined ? 1 : options.minDepth
+  };
+  if (options.hasOwnProperty("neighborExamples")) {
+    visitorConfig.neighborExamples = options.neighborExamples;
+  }
+  params.visitor = TRAVERSAL_EDGE_VISITOR.bind(visitorConfig);
   
-  var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_NEIGHBORS");
+  var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_EDGES");
   if (options.edgeExamples) {
     params.followEdges = options.edgeExamples;
   }
@@ -7140,7 +7759,7 @@ function AQL_GRAPH_EDGES (graphName,
     }
   });
   fromVertices.forEach(function (v) {
-    var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
+    var e = TRAVERSAL_FUNC("GRAPH_EDGES",
       factory,
       v._id,
       undefined,
@@ -8546,11 +9165,22 @@ exports.AQL_DATE_HOUR = AQL_DATE_HOUR;
 exports.AQL_DATE_MINUTE = AQL_DATE_MINUTE;
 exports.AQL_DATE_SECOND = AQL_DATE_SECOND;
 exports.AQL_DATE_MILLISECOND = AQL_DATE_MILLISECOND;
+exports.AQL_DATE_DAYOFYEAR = AQL_DATE_DAYOFYEAR;
+exports.AQL_DATE_ISOWEEK = AQL_DATE_ISOWEEK;
+exports.AQL_DATE_LEAPYEAR = AQL_DATE_LEAPYEAR;
+exports.AQL_DATE_QUARTER = AQL_DATE_QUARTER;
+exports.AQL_DATE_DAYS_IN_MONTH = AQL_DATE_DAYS_IN_MONTH;
+exports.AQL_DATE_ADD = AQL_DATE_ADD;
+exports.AQL_DATE_SUBTRACT = AQL_DATE_SUBTRACT;
+exports.AQL_DATE_DIFF = AQL_DATE_DIFF;
+exports.AQL_DATE_COMPARE = AQL_DATE_COMPARE;
+exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 
 exports.reload = reloadUserFunctions;
+exports.clearCaches = clearCaches;
 
-// initialise the query engine
-resetRegexCache();
+// initialize the query engine
+exports.clearCaches();
 //reloadUserFunctions();
 
 // -----------------------------------------------------------------------------

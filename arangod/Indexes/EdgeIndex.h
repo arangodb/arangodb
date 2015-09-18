@@ -69,7 +69,7 @@ namespace triagens {
 /// @brief typedef for hash tables
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef triagens::basics::AssocMulti<void, void, uint32_t> TRI_EdgeIndexHash_t;
+        typedef triagens::basics::AssocMulti<void, void, uint32_t, true> TRI_EdgeIndexHash_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -93,13 +93,14 @@ namespace triagens {
         
         size_t memory () const override final;
 
-        triagens::basics::Json toJson (TRI_memory_zone_t*) const override final;
+        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
+        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
         int insert (struct TRI_doc_mptr_t const*, bool) override final;
          
         int remove (struct TRI_doc_mptr_t const*, bool) override final;
         
-        int batchInsert (std::vector<struct TRI_doc_mptr_t const*> const*,
+        int batchInsert (std::vector<TRI_doc_mptr_t const*> const*,
                          size_t) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,6 +144,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_EdgeIndexHash_t* _edgesTo;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of buckets effectively used by the index
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _numBuckets;
 
     };
 

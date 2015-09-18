@@ -38,6 +38,7 @@
 
 #include <random>
 #include <chrono>
+#include <iostream>
 
 using namespace std;
 using namespace triagens::basics;
@@ -219,7 +220,7 @@ namespace RandomHelper {
           if (r == 0) {
             LOG_FATAL_AND_EXIT("read on random device failed: nothing read");
           }
-          else if (errno == EWOULDBLOCK) {
+          else if (errno == EWOULDBLOCK || errno == EAGAIN) {
             LOG_INFO("not enough entropy (got %d), switching to pseudo-random", (int) (sizeof(buffer) - n));
             break;
           }
@@ -312,10 +313,10 @@ namespace RandomHelper {
 #endif
   };
 
-  RandomDevice* randomDevice = 0;
-  RandomDevice* urandomDevice = 0;
-  RandomDevice* combinedDevice = 0;
-  RandomDevice* win32Device = 0;
+  std::unique_ptr<RandomDevice> randomDevice;
+  std::unique_ptr<RandomDevice> urandomDevice;
+  std::unique_ptr<RandomDevice> combinedDevice;
+  std::unique_ptr<RandomDevice> win32Device;
 }
 
 // -----------------------------------------------------------------------------
@@ -489,7 +490,7 @@ namespace triagens {
 
 
       // current implementation (see version at the top of the file)
-      UniformIntegerImpl * uniformInteger = new UniformIntegerMersenne;
+      std::unique_ptr<UniformIntegerImpl> uniformInteger(new UniformIntegerMersenne);
 
 // -----------------------------------------------------------------------------
       // uniform integer generator
@@ -563,54 +564,48 @@ namespace triagens {
         random_e oldVersion = version;
         version = newVersion;
 
-        if (uniformInteger != nullptr) {
-          delete uniformInteger;
-          uniformInteger = nullptr;
-        }
-
-
         switch (version) {
 
           case RAND_MERSENNE: {
-            uniformInteger = new UniformIntegerMersenne;
+            uniformInteger.reset(new UniformIntegerMersenne);
             break;
            }
 
           case RAND_RANDOM: {
             if (RandomHelper::randomDevice == nullptr) {
-              RandomHelper::randomDevice = new RandomHelper::RandomDeviceDirect<1024>("/dev/random");
+              RandomHelper::randomDevice.reset(new RandomHelper::RandomDeviceDirect<1024>("/dev/random"));
             }
 
-            uniformInteger = new UniformIntegerRandom(RandomHelper::randomDevice);
+            uniformInteger.reset(new UniformIntegerRandom(RandomHelper::randomDevice.get()));
 
             break;
           }
 
           case RAND_URANDOM: {
             if (RandomHelper::urandomDevice == nullptr) {
-              RandomHelper::urandomDevice = new RandomHelper::RandomDeviceDirect<1024>("/dev/urandom");
+              RandomHelper::urandomDevice.reset(new RandomHelper::RandomDeviceDirect<1024>("/dev/urandom"));
             }
 
-            uniformInteger = new UniformIntegerRandom(RandomHelper::urandomDevice);
+            uniformInteger.reset(new UniformIntegerRandom(RandomHelper::urandomDevice.get()));
 
             break;
           }
 
           case RAND_COMBINED: {
             if (RandomHelper::combinedDevice == nullptr) {
-              RandomHelper::combinedDevice = new RandomHelper::RandomDeviceCombined<600>("/dev/random");
+              RandomHelper::combinedDevice.reset(new RandomHelper::RandomDeviceCombined<600>("/dev/random"));
             }
 
-            uniformInteger = new UniformIntegerRandom(RandomHelper::combinedDevice);
+            uniformInteger.reset(new UniformIntegerRandom(RandomHelper::combinedDevice.get()));
 
             break;
           }
 
           case RAND_WIN32: {
             if (RandomHelper::win32Device == nullptr) {
-              RandomHelper::win32Device = new RandomHelper::RandomDeviceWin32<1024>();
+              RandomHelper::win32Device.reset(new RandomHelper::RandomDeviceWin32<1024>());
             }
-            uniformInteger = new UniformIntegerWin32(RandomHelper::win32Device);
+            uniformInteger.reset(new UniformIntegerWin32(RandomHelper::win32Device.get()));
             break;
           }
 
@@ -631,20 +626,6 @@ namespace triagens {
 
 
       void shutdown () {
-        if (RandomHelper::randomDevice != nullptr) {
-          delete RandomHelper::randomDevice;
-          RandomHelper::randomDevice = nullptr;
-        }
-
-        if (RandomHelper::urandomDevice != nullptr) {
-          delete RandomHelper::urandomDevice;
-          RandomHelper::urandomDevice = nullptr;
-        }
-
-        if (RandomHelper::combinedDevice != nullptr) {
-          delete RandomHelper::combinedDevice;
-          RandomHelper::combinedDevice = nullptr;
-        }
       }
 
 
@@ -681,6 +662,7 @@ namespace triagens {
     }
   }
 }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

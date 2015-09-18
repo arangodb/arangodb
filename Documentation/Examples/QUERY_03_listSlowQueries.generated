@@ -1,0 +1,2 @@
+arangosh&gt; queries.slow();
+[ ]

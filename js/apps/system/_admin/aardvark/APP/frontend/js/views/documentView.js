@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine */
+/*global Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine, JSONEditor */
 /*global document, _ */
 
 (function() {
@@ -151,7 +151,7 @@
         mode: 'tree',
         modes: ['tree', 'code']
       };
-      this.editor = new window.jsoneditor.JSONEditor(container, options);
+      this.editor = new JSONEditor(container, options);
 
       return this;
     },

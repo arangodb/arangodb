@@ -10,9 +10,6 @@
 
     searchTimeout: null,
 
-    initialize: function () {
-    },
-
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
     render: function () {
@@ -100,7 +97,6 @@
       //chrome bugfix
       var clicked = e.currentTarget.id;
       $('#'+clicked).click();
-      console.log(e);
     },
 
     checkSystem: function () {
@@ -214,7 +210,7 @@
       searchOptions.searchPhrase = null;
     },
 
-    restrictToSearchPhraseKey: function (e) {
+    restrictToSearchPhraseKey: function () {
       // key pressed in search box
       var self = this;
 
@@ -288,8 +284,8 @@
       var returnobj = this.collection.newCollection(
         collName, wfs, isSystem, collSize, collType, shards, shardBy
       );
-      if (returnobj.status !== true) {
-        arangoHelper.arangoError(returnobj.errorMessage);
+      if (returnobj.status !== true) {console.log(returnobj);
+        arangoHelper.arangoError("Collection error", returnobj.errorMessage);
       }
       this.updateCollectionsView();
       window.modalView.hide();
@@ -385,7 +381,7 @@
           "new-collection-sync",
           "Sync",
           "",
-          "Synchronise to disk before returning from a create or update of a document.",
+          "Synchronize to disk before returning from a create or update of a document.",
           [{value: false, label: "No"}, {value: true, label: "Yes"}]
         )
       );

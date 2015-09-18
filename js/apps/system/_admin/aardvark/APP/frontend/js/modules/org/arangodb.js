@@ -100,12 +100,27 @@ if (typeof internal.arango !== 'undefined') {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the server version
+////////////////////////////////////////////////////////////////////////////////
+
+exports.plainServerVersion = function() {
+  if (internal.arango) {
+    let version = internal.arango.getVersion();
+    let devel = version.match(/(.*)-(rc[0-9]*|devel)$/);
+
+    if (devel !== null) {
+      version = devel[1];
+    }
+
+    return version;
+  }
+  else {
+    return undefined;
+  }
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
-// End:
 });

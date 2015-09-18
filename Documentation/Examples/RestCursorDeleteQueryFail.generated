@@ -1,13 +1,15 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor <<EOF
-{"query":"REMOVE 'foo' IN products"}
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"query"</span> : <span class="hljs-string">"REMOVE 'foo' IN products"</span> 
+}
 EOF
 
-HTTP/1.1 404 Not Found
-content-type: application/json; charset=utf-8
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">404</span> Not Found
+content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  "error" : true, 
-  "errorMessage" : "document not found (while executing)", 
-  "code" : 404, 
-  "errorNum" : 1202 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"document not found (while executing)"</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1202</span> 
 }

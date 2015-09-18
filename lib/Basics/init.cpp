@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief force symbols into programm, initialise globals
+/// @brief force symbols into program, initialize globals
 ///
 /// @file
 ///
@@ -34,27 +34,25 @@
 #include "Basics/logging.h"
 #include "Basics/process-utils.h"
 #include "Basics/random.h"
-#include "Basics/socket-utils.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise function
+/// @brief initialize function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseC (int argc, char* argv[]) {
-  TRI_InitialiseMemory();
-  TRI_InitialiseDebugging();
-  TRI_InitialiseError();
-  TRI_InitialiseFiles();
-  TRI_InitialiseMimetypes();
-  TRI_InitialiseLogging(false);
-  TRI_InitialiseHashes();
-  TRI_InitialiseRandom();
-  TRI_InitialiseProcess(argc, argv);
-  TRI_InitialiseSockets();
+void TRI_InitializeC (int argc, char* argv[]) {
+  TRI_InitializeMemory();
+  TRI_InitializeDebugging();
+  TRI_InitializeError();
+  TRI_InitializeFiles();
+  TRI_InitializeMimetypes();
+  TRI_InitializeLogging(false);
+  TRI_InitializeHashes();
+  TRI_InitializeRandom();
+  TRI_InitializeProcess(argc, argv);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,7 +60,6 @@ void TRI_InitialiseC (int argc, char* argv[]) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownC () {
-  TRI_ShutdownSockets();
   TRI_ShutdownProcess();
   TRI_ShutdownRandom();
   TRI_ShutdownHashes();

@@ -66,6 +66,8 @@
 ///   the user.
 /// - 27: @LIT{file exists}
 ///   Will be raised when a file already exists.
+/// - 28: @LIT{locked}
+///   Will be raised when a resource or an operation is locked.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -163,8 +165,6 @@
 ///   Will be raised when no suitable index for the query is known.
 /// - 1210: @LIT{unique constraint violated}
 ///   Will be raised when there is a unique constraint violation.
-/// - 1211: @LIT{geo index violated}
-///   Will be raised when an illegal coordinate is used.
 /// - 1212: @LIT{index not found}
 ///   Will be raised when an index with a given identifier is unknown.
 /// - 1213: @LIT{cross collection request not allowed}
@@ -226,6 +226,8 @@
 /// - 1237: @LIT{collection type mismatch}
 ///   Will be raised when a collection has a different type from what has been
 ///   expected.
+/// - 1238: @LIT{collection not loaded}
+///   Will be raised when a collection is accessed that is not yet loaded.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1301: @LIT{server database directory is empty}
@@ -255,21 +257,21 @@
 ///   Will be raised when an invalid replication applier state file is found.
 /// - 1408: @LIT{invalid transaction}
 ///   Will be raised when an unexpected transaction id is found.
-/// - 1409: @LIT{invalid replication logger configuration}
-///   Will be raised when the configuration for the replication logger is
-///   invalid.
 /// - 1410: @LIT{invalid replication applier configuration}
 ///   Will be raised when the configuration for the replication applier is
 ///   invalid.
-/// - 1411: @LIT{cannot change applier configuration while running}
-///   Will be raised when there is an attempt to change the configuration for
-///   the replication applier while it is running.
+/// - 1411: @LIT{cannot perform operation while applier is running}
+///   Will be raised when there is an attempt to perform an operation while the
+///   replication applier is running.
 /// - 1412: @LIT{replication stopped}
 ///   Special error code used to indicate the replication applier was stopped
 ///   by a user.
 /// - 1413: @LIT{no start tick}
-///   Will be raised when the replication error is started without a known
+///   Will be raised when the replication applier is started without a known
 ///   start tick value.
+/// - 1414: @LIT{start tick not present}
+///   Will be raised when the replication applier fetches data using a start
+///   tick, but that start tick is not present on the logger server anymore.
 /// - 1450: @LIT{could not connect to agency}
 ///   Will be raised when none of the agency servers can be connected to.
 /// - 1451: @LIT{missing coordinator header}
@@ -552,13 +554,14 @@
 ///   a graph with this name could not be found.
 /// - 1925: @LIT{graph already exists}
 ///   a graph with this name already exists.
-/// - 1926: @LIT{collection does not exist}
-///    does not exist.
+/// - 1926: @LIT{vertex collection does not exist or is not part of the graph}
+///   the specified vertex collection does not exist or is not part of the
+///   graph.
 /// - 1927: @LIT{not a vertex collection}
 ///   the collection is not a vertex collection.
 /// - 1928: @LIT{not in orphan collection}
 ///   Vertex collection not in orphan collection of the graph.
-/// - 1929: @LIT{collection used in edge def}
+/// - 1929: @LIT{collection already used in edge def}
 ///   The collection is already used in an edge definition of the graph.
 /// - 1930: @LIT{edge collection not used in graph}
 ///   The edge collection is not used in any edge definition of the graph.
@@ -578,6 +581,8 @@
 ///   Invalid id
 /// - 1938: @LIT{collection used in orphans}
 ///   The collection is already used in the orphans of the graph.
+/// - 1939: @LIT{edge collection does not exist or is not part of the graph}
+///   the specified edge collection does not exist or is not part of the graph.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -665,7 +670,7 @@
 /// @brief register all errors for ArangoDB
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseErrorMessages ();
+void TRI_InitializeErrorMessages ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 0: ERROR_NO_ERROR
@@ -950,6 +955,16 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_FILE_EXISTS                                             (27)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 28: ERROR_LOCKED
+///
+/// locked
+///
+/// Will be raised when a resource or an operation is locked.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LOCKED                                                  (28)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -1372,16 +1387,6 @@ void TRI_InitialiseErrorMessages ();
 #define TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED                       (1210)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1211: ERROR_ARANGO_GEO_INDEX_VIOLATED
-///
-/// geo index violated
-///
-/// Will be raised when an illegal coordinate is used.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED                               (1211)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 1212: ERROR_ARANGO_INDEX_NOT_FOUND
 ///
 /// index not found
@@ -1643,6 +1648,16 @@ void TRI_InitialiseErrorMessages ();
 #define TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH                         (1237)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1238: ERROR_ARANGO_COLLECTION_NOT_LOADED
+///
+/// collection not loaded
+///
+/// Will be raised when a collection is accessed that is not yet loaded.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            (1238)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
 ///
 /// datafile full
@@ -1760,16 +1775,6 @@ void TRI_InitialiseErrorMessages ();
 #define TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION                      (1408)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1409: ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION
-///
-/// invalid replication logger configuration
-///
-/// Will be raised when the configuration for the replication logger is invalid.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_REPLICATION_INVALID_LOGGER_CONFIGURATION                (1409)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 1410: ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION
 ///
 /// invalid replication applier configuration
@@ -1783,10 +1788,10 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1411: ERROR_REPLICATION_RUNNING
 ///
-/// cannot change applier configuration while running
+/// cannot perform operation while applier is running
 ///
-/// Will be raised when there is an attempt to change the configuration for the
-/// replication applier while it is running.
+/// Will be raised when there is an attempt to perform an operation while the
+/// replication applier is running.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_RUNNING                                     (1411)
@@ -1807,11 +1812,22 @@ void TRI_InitialiseErrorMessages ();
 ///
 /// no start tick
 ///
-/// Will be raised when the replication error is started without a known start
-/// tick value.
+/// Will be raised when the replication applier is started without a known
+/// start tick value.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_NO_START_TICK                               (1413)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1414: ERROR_REPLICATION_START_TICK_NOT_PRESENT
+///
+/// start tick not present
+///
+/// Will be raised when the replication applier fetches data using a start
+/// tick, but that start tick is not present on the logger server anymore.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT                      (1414)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1450: ERROR_CLUSTER_NO_AGENCY
@@ -2973,9 +2989,9 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1926: ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST
 ///
-/// collection does not exist
+/// vertex collection does not exist or is not part of the graph
 ///
-///  does not exist.
+/// the specified vertex collection does not exist or is not part of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST                         (1926)
@@ -3003,7 +3019,7 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1929: ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF
 ///
-/// collection used in edge def
+/// collection already used in edge def
 ///
 /// The collection is already used in an edge definition of the graph.
 ////////////////////////////////////////////////////////////////////////////////
@@ -3099,6 +3115,16 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS                        (1938)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1939: ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST
+///
+/// edge collection does not exist or is not part of the graph
+///
+/// the specified edge collection does not exist or is not part of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST                           (1939)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN

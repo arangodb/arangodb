@@ -785,7 +785,6 @@ describe ArangoDB do
         def check404Vertex (doc)
           check404(doc)
           doc.parsed_response['errorNum'].should eq(1926)
-          doc.parsed_response['errorMessage'].should eq("collection does not exist")
         end
 
         def check404CRUD (doc)

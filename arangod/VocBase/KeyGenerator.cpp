@@ -40,6 +40,49 @@
 #include "VocBase/vocbase.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup table for key checks
+////////////////////////////////////////////////////////////////////////////////
+
+std::array<bool, 256> KeyGenerator::LookupTable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize the lookup table for key checks
+////////////////////////////////////////////////////////////////////////////////
+
+void KeyGenerator::Initialize () {
+  for (int c = 0; c < 256; ++c) {
+    if ((c >= 'a' && c <= 'z') ||
+        (c >= 'A' && c <= 'Z') ||
+        (c >= '0' && c <= '9') ||
+         c == '_' ||
+         c == ':' ||
+         c == '-' || 
+         c == '@' ||
+         c == '.' ||
+         c == '(' ||
+         c == ')' ||
+         c == '+' ||
+         c == ',' ||
+         c == '=' ||
+         c == ';' ||
+         c == '$' ||
+         c == '!' ||
+         c == '*' ||
+         c == '\'' ||
+         c == '%') {
+      LookupTable[c] = true;
+    }
+    else {
+      LookupTable[c] = false;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             GENERAL KEY GENERATOR
 // -----------------------------------------------------------------------------
 
@@ -233,24 +276,18 @@ TraditionalKeyGenerator::~TraditionalKeyGenerator () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TraditionalKeyGenerator::validateKey (char const* key) {
-  char const* p = key;
+  unsigned char const* p = reinterpret_cast<unsigned char const*>(key);
+  unsigned char const* s = p;
 
   while (true) {
-    char c = *p;
+    unsigned char c = *p;
 
     if (c == '\0') {
-      return ((p - key) > 0) &&
-             ((p - key) <= TRI_VOC_KEY_MAX_LENGTH);
+      return ((p - s) > 0) &&
+             ((p - s) <= TRI_VOC_KEY_MAX_LENGTH);
     }
 
-    if ((c >= 'a' && c <= 'z') ||
-        (c >= 'A' && c <= 'Z') ||
-        (c >= '0' && c <= '9') ||
-         c == '_' ||
-         c == ':' ||
-         c == '-' || 
-         c == '@' ||
-         c == '.') {
+    if (LookupTable[c]) {
       ++p;
       continue;
     }

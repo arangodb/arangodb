@@ -2,7 +2,7 @@
 
 **Warning: This Chapter is Deprecated**
 
-This api is deprecated and will be removed soon.
+This API is deprecated and will be removed soon.
 Please use [General Graphs](../HttpGharial/README.md) instead.
 
 `POST /_api/graph`*(create graph)*
@@ -17,7 +17,7 @@ Wait until document has been sync to disk.
 
 `graph (json,required)`
 
-The call expects a JSON object as body with the following attributes: _key: The name of the new graph. vertices: The name of the vertices collection. edges: The name of the egde collection.
+The call expects a JSON object as body with the following attributes: _key: The name of the new graph. vertices: The name of the vertices collection. edges: The name of the edge collection.
 
 !SUBSECTION Description
 
@@ -45,8 +45,8 @@ unix> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/
 {"_key":"graph","vertices":"vertices","edges":"edges"}
 
 HTTP/1.1 201 Created
-content-type: application/json; charset=utf-8
-etag: 103998433
+Content-type: application/json; charset=utf-8
+Etag: 103998433
 
 { 
   "graph" : { 
@@ -74,12 +74,12 @@ The name of the graph.
 `If-None-Match (string,optional)`
 
 If graph-name is specified, then this header can be used to check whether a specific graph has changed or not.
-If the "If-None-Match" header is given, then it must contain exactly one etag. The document is returned if it has a different revision than the given etag. Otherwise a HTTP 304 is returned.
+If the "If-None-Match" header is given, then it must contain exactly one Etag. The document is returned if it has a different revision than the given Etag. Otherwise a HTTP 304 is returned.
 
 `If-Match (string,optional)`
 
 If graph-name is specified, then this header can be used to check whether a specific graph has changed or not.
-If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one Etag. The document is returned, if it has the same revision ad the given Etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the Etag in an attribute rev in the URL.
 
 !SUBSECTION Description
 
@@ -113,8 +113,8 @@ get graph by name
 unix> curl --dump - http://localhost:8529/_api/graph/graph
 
 HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
-etag: 105440225
+Content-type: application/json; charset=utf-8
+Etag: 105440225
 
 { 
   "graph" : { 
@@ -135,7 +135,7 @@ get all graphs
 unix> curl --dump - http://localhost:8529/_api/graph
 
 HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+Content-type: application/json; charset=utf-8
 
 { 
   "graphs" : [ 
@@ -171,7 +171,7 @@ The name of the graph
 
 `If-Match (string,optional)`
 
-If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+If the "If-Match" header is given, then it must contain exactly one Etag. The document is returned, if it has the same revision ad the given Etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the Etag in an attribute rev in the URL.
 
 !SUBSECTION Description
 
@@ -203,7 +203,7 @@ delete graph by name
 unix> curl -X DELETE --dump - http://localhost:8529/_api/graph/graph
 
 HTTP/1.1 200 OK
-content-type: application/json; charset=utf-8
+Content-type: application/json; charset=utf-8
 
 { 
   "deleted" : true, 
@@ -212,18 +212,10 @@ content-type: application/json; charset=utf-8
 }
 ```
 
-<!--
-@NAVIGATE_HttpGraph
-@EMBEDTOC{HttpGraphTOC}
+@startDocuBlock JSF_graph_delete
 
-@anchor A_JSF_POST_graph_graph
-@copydetails JSF_post_graph_graph
+@startDocuBlock JSF_graph_post
 
-@CLEARPAGE
-@anchor A_JSF_GET_graph_graph
-@copydetails JSF_get_graph_graph
+@startDocuBlock JSF_graph_properties
 
-@CLEARPAGE
-@anchor A_JSF_DELETE_graph_graph
-@copydetails JSF_delete_graph_graph
--->
+@startDocuBlock JSF_graph_update_edge
