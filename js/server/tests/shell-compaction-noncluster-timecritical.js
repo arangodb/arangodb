@@ -980,8 +980,6 @@ function CompactionSuite () {
         assertTrue(doc.updated);
       }
       
-      internal.print(c1.figures());
-      
       assertEqual(0, c1.figures().dead.count);
 
       internal.db._drop(cn);
