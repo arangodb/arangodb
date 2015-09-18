@@ -50,8 +50,7 @@ Parser::Parser (Query* query)
     _offset(0),
     _marker(nullptr),
     _stack(),
-    _type(AQL_QUERY_READ),
-    _writeNode(nullptr) {
+    _type(AQL_QUERY_READ) {
   
   _stack.reserve(4);
 }
