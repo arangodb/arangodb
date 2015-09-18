@@ -90,7 +90,7 @@ bool Parser::configureWriteQuery (QueryType type,
   }
 
   // now track which collection is going to be modified
-  _ast->setWriteCollection(collectionNode);
+  _ast->addWriteCollection(collectionNode);
 
   if (optionNode != nullptr && ! optionNode->isConstant()) {
     _query->registerError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
