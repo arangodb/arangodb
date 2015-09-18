@@ -84,6 +84,19 @@ struct TRI_edge_index_iterator_t {
     }
   }
 
+  TRI_edge_index_iterator_t (TRI_edge_direction_e direction,
+                             TRI_voc_cid_t cid,
+                             char const* key) 
+    : _direction(direction),
+      _edge({ cid, nullptr }) {
+
+    TRI_ASSERT(key != nullptr);
+    _edge._key = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, key);
+    if (_edge._key == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+  }
+
   ~TRI_edge_index_iterator_t () {
     if (_edge._key != nullptr) {
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _edge._key);

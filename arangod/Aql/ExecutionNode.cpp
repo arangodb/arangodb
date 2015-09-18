@@ -1,4 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Infrastructure for ExecutionPlans
 ///
 /// @file arangod/Aql/ExecutionNode.cpp
@@ -30,6 +29,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/Ast.h"
 #include "Basics/StringBuffer.h"
@@ -77,7 +77,8 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
   { static_cast<int>(DISTRIBUTE),                   "DistributeNode" },
   { static_cast<int>(GATHER),                       "GatherNode" },
   { static_cast<int>(NORESULTS),                    "NoResultsNode" },
-  { static_cast<int>(UPSERT),                       "UpsertNode" }
+  { static_cast<int>(UPSERT),                       "UpsertNode" },
+  { static_cast<int>(TRAVERSAL),                    "TraversalNode" }
 };
           
 // -----------------------------------------------------------------------------
@@ -241,6 +242,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       return new ScatterNode(plan, oneNode);
     case DISTRIBUTE: 
       return new DistributeNode(plan, oneNode);
+    case TRAVERSAL:
+      return new TraversalNode(plan, oneNode);
     case ILLEGAL: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type");
     }
@@ -909,8 +912,8 @@ ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone (ExecutionPlan* 
 
 void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
   switch (en->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION: 
-    case ExecutionNode::INDEX_RANGE: {
+    case ExecutionNode::INDEX_RANGE:
+    case ExecutionNode::ENUMERATE_COLLECTION: { 
       depth++;
       nrRegsHere.emplace_back(1);
       // create a copy of the last value here
@@ -920,6 +923,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
 
       auto ep = static_cast<EnumerateCollectionNode const*>(en);
       TRI_ASSERT(ep != nullptr);
+
       varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       break;
@@ -1111,6 +1115,25 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::REMOTE: 
     case ExecutionNode::NORESULTS: {
       // these node types do not produce any new registers
+      break;
+    }
+    
+    case ExecutionNode::TRAVERSAL: {
+      depth++;
+      auto ep = static_cast<TraversalNode const*>(en);
+      TRI_ASSERT(ep != nullptr);
+      auto vars = ep->getVariablesSetHere();
+      nrRegsHere.emplace_back(vars.size());
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      RegisterId registerId = vars.size() + nrRegs.back();
+      nrRegs.emplace_back(registerId);
+
+      for (auto& it : vars) {
+        varInfo.emplace(make_pair(it->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
       break;
     }
 
@@ -2497,7 +2520,8 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
     else if (en->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
              en->getType() == ExecutionNode::INDEX_RANGE ||
              en->getType() == ExecutionNode::ENUMERATE_LIST ||
-             en->getType() == ExecutionNode::AGGREGATE) {
+             en->getType() == ExecutionNode::AGGREGATE ||
+             en->getType() == ExecutionNode::TRAVERSAL) {
       depth += 1;
     }
     // Now depth is set correct for this node.
@@ -3292,4 +3316,3 @@ double GatherNode::estimateCost (size_t& nrItems) const {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-

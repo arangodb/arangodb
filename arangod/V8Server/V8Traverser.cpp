@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8Traverser.h"
+#include "Indexes/EdgeIndex.h"
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
 #include "Utils/CollectionNameResolver.h"
@@ -38,6 +39,7 @@
 #include "V8Server/v8-vocindex.h"
 #include "V8Server/v8-collection.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"
 
 #include <v8.h>
@@ -66,6 +68,34 @@ static VertexId ExtractToId (TRI_doc_mptr_copy_t const& ptr) {
   return VertexId(TRI_EXTRACT_MARKER_TO_CID(&ptr),
                   TRI_EXTRACT_MARKER_TO_KEY(&ptr));
 };
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper to transform a vertex _id string to VertexId struct.
+/// NOTE:  Make sure the given string is not freed as long as the resulting
+///        VertexId is in use
+////////////////////////////////////////////////////////////////////////////////
+
+VertexId triagens::basics::traverser::IdStringToVertexId (
+    CollectionNameResolver const* resolver,
+    string const& vertex
+  ) {
+  size_t split;
+  char const* str = vertex.c_str();
+
+  if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+    throw TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
+  }
+
+  string const collectionName = vertex.substr(0, split);
+  auto coli = resolver->getCollectionStruct(collectionName);
+
+  if (coli == nullptr) {
+    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  return VertexId(coli->_cid, const_cast<char *>(str + split + 1));
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Expander for Multiple edge collections
@@ -696,3 +726,186 @@ void TRI_RunNeighborsSearch (
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                         class DepthFirstTraverser
+// -----------------------------------------------------------------------------
+
+DepthFirstTraverser::DepthFirstTraverser (
+    TRI_document_collection_t* edgeCollection,
+    TRI_edge_direction_e& direction,
+    uint64_t minDepth,
+    uint64_t maxDepth
+  ) : _done(false),
+      _pruneNext(false)
+       {
+  _opts.minDepth = minDepth;
+  _opts.maxDepth = maxDepth;
+  _opts.direction = direction;
+  _defInternalFunctions();
+}
+
+DepthFirstTraverser::DepthFirstTraverser (
+  std::vector<TRI_document_collection_t*> edgeCollections,
+  TraverserOptions& opts
+) : _done(false),
+    _opts(opts),
+    _pruneNext(false),
+    _edgeCols(edgeCollections) {
+  _defInternalFunctions();
+}
+
+void DepthFirstTraverser::_defInternalFunctions () {
+  _getVertex = [] (EdgeInfo& edge, VertexId& vertex) -> VertexId {
+    auto mptr = edge.mptr;
+    // TODO fill Statistics
+    if (strcmp(TRI_EXTRACT_MARKER_FROM_KEY(&mptr), vertex.key) == 0 &&
+        TRI_EXTRACT_MARKER_FROM_CID(&mptr) == vertex.cid) {
+      return VertexId(TRI_EXTRACT_MARKER_TO_CID(&mptr), TRI_EXTRACT_MARKER_TO_KEY(&mptr));
+    }
+    return VertexId(TRI_EXTRACT_MARKER_FROM_CID(&mptr), TRI_EXTRACT_MARKER_FROM_KEY(&mptr));
+  };
+
+  auto direction = _opts.direction;
+  auto edgeCols = _edgeCols;
+  if (direction == TRI_EDGE_ANY) {
+    _getEdge = [edgeCols] (VertexId& startVertex, std::vector<EdgeInfo>& edges, void*& last, size_t& eColIdx, bool& dir) {
+      std::vector<TRI_doc_mptr_copy_t> tmp;
+      TRI_ASSERT(eColIdx < edgeCols.size());
+      // TODO fill Statistics
+      // TODO Self referencing edges
+      triagens::arango::EdgeIndex* edgeIndex = edgeCols.at(eColIdx)->edgeIndex();
+      if (dir) {
+        TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid, startVertex.key);
+        edgeIndex->lookup(&it, tmp, last, 1);
+        while (last == nullptr) {
+          // Switch back direction
+          dir = false;
+          ++eColIdx;
+          if (edgeCols.size() == eColIdx) {
+            // No more to do, stop here
+            return;
+          }
+          TRI_edge_index_iterator_t it(TRI_EDGE_IN, startVertex.cid, startVertex.key);
+          edgeIndex = edgeCols.at(eColIdx)->edgeIndex();
+          edgeIndex->lookup(&it, tmp, last, 1);
+          if (last == nullptr) {
+            dir = true;
+            TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid, startVertex.key);
+            edgeIndex->lookup(&it, tmp, last, 1);
+          }
+        }
+      } else {
+        TRI_edge_index_iterator_t it(TRI_EDGE_IN, startVertex.cid, startVertex.key);
+        edgeIndex->lookup(&it, tmp, last, 1);
+        while (last == nullptr) {
+          // now change direction
+          dir = true;
+          TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid, startVertex.key);
+          edgeIndex->lookup(&it, tmp, last, 1);
+          if (last == nullptr) {
+            // The other direction also has no further edges
+            dir = false;
+            ++eColIdx;
+            if (edgeCols.size() == eColIdx) {
+              // No more to do, stop here
+              return;
+            }
+            TRI_edge_index_iterator_t it(TRI_EDGE_IN, startVertex.cid, startVertex.key);
+            edgeIndex = edgeCols.at(eColIdx)->edgeIndex();
+            edgeIndex->lookup(&it, tmp, last, 1);
+          }
+        }
+      }
+      if (last != nullptr) {
+        // sth is stored in tmp. Now push it on edges
+        TRI_ASSERT(tmp.size() == 1);
+        EdgeInfo e(
+          edgeCols.at(eColIdx)->_info._cid,
+          tmp.back()
+        );
+        edges.push_back(e);
+      }
+    };
+  } else {
+    _getEdge = [edgeCols, direction] (VertexId& startVertex, std::vector<EdgeInfo>& edges, void*& last, size_t& eColIdx, bool&) {
+      std::vector<TRI_doc_mptr_copy_t> tmp;
+      TRI_ASSERT(eColIdx < edgeCols.size());
+      // Do not touch the bool parameter, as long as it is default the first encountered nullptr is final
+      // TODO fill Statistics
+      TRI_edge_index_iterator_t it(direction, startVertex.cid, startVertex.key);
+      triagens::arango::EdgeIndex* edgeIndex = edgeCols.at(eColIdx)->edgeIndex();
+      edgeIndex->lookup(&it, tmp, last, 1);
+      while (last == nullptr) {
+        // This edge collection does not have any more edges for this vertex. Check the next one
+        ++eColIdx;
+        if (edgeCols.size() == eColIdx) {
+          // No more to do, stop here
+          return;
+        }
+        edgeIndex = edgeCols.at(eColIdx)->edgeIndex();
+        edgeIndex->lookup(&it, tmp, last, 1);
+      }
+      if (last != nullptr) {
+        // sth is stored in tmp. Now push it on edges
+        TRI_ASSERT(tmp.size() == 1);
+        edges.push_back(EdgeInfo(
+          edgeCols.at(eColIdx)->_info._cid,
+          tmp.back()
+        ));
+      }
+    };
+  }
+}
+
+void DepthFirstTraverser::setStartVertex (VertexId& v) {
+  _enumerator.reset(new PathEnumerator<EdgeInfo, VertexId>(_getEdge, _getVertex, v));
+  _done = false;
+}
+
+size_t DepthFirstTraverser::skip (size_t amount) {
+  size_t skipped = 0;
+  TraversalPath<EdgeInfo, VertexId> p;
+  for (size_t i = 0; i < amount; ++i) {
+    p = next();
+    if (p.edges.size() == 0) {
+      break;
+    }
+    ++skipped;
+  }
+  return skipped;
+}
+
+bool DepthFirstTraverser::hasMore () {
+  return !_done;
+}
+
+const TraversalPath<EdgeInfo, VertexId>& DepthFirstTraverser::next () {
+  TRI_ASSERT(!_done);
+  if (_pruneNext) {
+    _pruneNext = false;
+    _enumerator->prune();
+  }
+  TRI_ASSERT(!_pruneNext);
+  const TraversalPath<EdgeInfo, VertexId>& p = _enumerator->next();
+  size_t countEdges = p.edges.size();
+  if (countEdges == 0) {
+    _done = true;
+    // Done traversing
+    return p;
+  }
+  if (_opts.shouldPrunePath(p)) {
+    _enumerator->prune();
+    return next();
+  }
+  if (countEdges >= _opts.maxDepth) {
+    _pruneNext = true;
+  }
+  if (countEdges < _opts.minDepth) {
+    return next();
+  }
+  return p;
+}
+
+void DepthFirstTraverser::prune () {
+  _pruneNext = true;
+}

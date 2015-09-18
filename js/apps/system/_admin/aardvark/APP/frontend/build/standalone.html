@@ -1,0 +1,2850 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+
+<head>
+    <!-- ArangoDB web interface -->
+    <meta charset="utf-8">
+    <title>ArangoDB Web Interface</title>
+    <meta name="description" content="ArangoDB Admin Web Interface">
+    <meta name="author" content="Heiko Kernbach, Michael Hackstein">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="css/sass.css" rel="stylesheet">
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+
+<!-- obsolete file -->
+
+<script id="apiView.ejs" type="text/template">
+<div class="headerBar">
+  <a class="arangoHeader">Core - API - Documentation</a>
+</div>
+<div class="form-actions api-actions">
+  <div id="swagger-ui-container" class="swagger-ui-wrap api-container">
+
+  </div>
+</div>
+</script>
+
+<script id="applicationDetailView.ejs" type="text/template">
+  <div class="application-detail-view">
+    <div class="headerBar">
+      <div class="headerButtonBar">
+        <ul class="headerButtonList">
+          <li>
+            <a id="app-config" class="headerButton <%= _.isEmpty(app.get('config')) ? 'disabled' : '' %>">
+              <span class="icon_arangodb_settings2" title="Configure"></span>
+            </a>
+          </li>
+          <li>
+            <a id="app-deps" class="headerButton <%= _.isEmpty(app.get('deps')) ? 'disabled' : '' %>">
+              <span class="fa fa-cubes" title="Dependencies"></span>
+            </a>
+          </li>
+          <li id="app-scripts" class="dropdown">
+            <a class="headerButton <%= _.isEmpty(app.get('scripts')) ? 'disabled' : '' %>" title="Scripts">
+              <i class="fa fa-cogs"></i>
+            </a>
+            <ul class="script-dropdown-menu dropdown-menu" id="scripts_dropdown">
+            <% _.each(app.get('scripts'), function (title, name) { %>
+              <li class="dropdown-item">
+                <a class="tab" data-script="<%= name %>"><%= title %></a>
+              </li>
+            <% }) %>
+            </ul>
+          </li>
+          <li>
+            <a id="app-tests" class="headerButton">
+              <span class="fa fa-flask" title="Tests"></span>
+            </a>
+          </li>
+          <li>
+            <a id="download-app" class="headerButton <%= app.isSystem() ? 'disabled' : '' %>">
+              <span class="fa fa-download" title="Download"></span>
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div class="breadcrumb">
+        <a class="activeBread" href="#applications">Services</a>
+        <span class="disabledBread"><i class="fa fa-chevron-right"></i></span>
+        <span class="disabledBread">
+          <%= app.attributes.mount %>
+        </span>
+        <span class="disabledBread" id="app-development-indicator" style="display:<%=app.get('development')?'inline':'none' %>;">
+          (development) Location: 
+        </span>
+        <span class="disabledBread" id="app-development-path" style="display:<%=app.get('development')?'inline':'none' %>;">
+          <%= app.get("path")%>
+        </span>
+      </div>
+    </div>
+    <section class="info">
+      <div class="header">
+        <div class="header-icon-container">
+          <img src="foxxes/thumbnail?mount=<%= app.encodedMount() %>" alt="Icon for Service" class="icon" />
+        </div>
+        <div class="header_left">
+          <input type="button" class="open button-success" disabled="true" value="Open" />
+          <input id="app-upgrade" type="button" class="upgrade button-warning" value="Upgrade" <%=app.isSystem()?"disabled":"" %>/>
+          <input id="app-switch-mode" type="button" class="switch-mode button-warning" value="<%=app.get('development')?'Set Pro':'Set Dev'%>" />
+          <input type="button" class="delete button-danger" value="Delete" <%=app.isSystem()?"disabled":""%> />
+        </div>
+        <div class="header_right">
+          <div class="header_line">
+            <h3>
+              <%= app.attributes.name %>
+            </h3>
+            <h3>
+              <% if (app.attributes.license) { %>
+                <span class="license"><%= app.attributes.license %></span>
+              <% } %>
+            </h3>
+            <h3>
+              <span class="version"><%= app.attributes.version %></span>
+            </h3>
+          </div>
+          <p class="description"><%= app.attributes.description %></p>
+          <% if (mode !== 'swagger') { %>
+            <input id="app-show-swagger" type="button" class="button-success" value="Show API" />
+          <% } %>
+          <% if (mode !== 'readme' && app.attributes.readme) { %>
+            <input id="app-show-readme" type="button" class="button-success" value="Show README" />
+          <% } %>
+        </div>
+        <div id="app-warning" class="app-warning" style="display:<%=app.needsAttention()?'block':'none' %>;">
+          <h4>Out of order</h4>
+          <p id="app-warning-broken" style="display:<%=app.isBroken()?'block':'none' %>;">This app has failed to mount due to an error.</p>
+          <p id="app-warning-config" style="display:<%=app.needsConfiguration()?'block':'none' %>;">This app has not yet been configured properly.</p>
+          <p id="app-warning-deps" style="display:<%=app.hasUnconfiguredDependencies()?'block':'block' %>;">Some dependencies have not yet been set up.</p>
+        </div>
+      </div>
+      <% if (mode === 'swagger') { %>
+      <div class="swagger">
+        <iframe src="/_db/<%= db%>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
+      </div>
+      <% } else if (mode === 'readme') { %>
+      <div class="readme">
+        <% if (app.get('readme')) { %>
+        <%= app.get('readme') %>
+        <% } else { %>
+        <p>ERROR: No README data found!</p>
+        <% } %>
+      </div>
+      <% } %>
+    </section>
+    <aside class="meta">
+      <dl>
+        <dt>Author</dt>
+        <dd><%= app.attributes.author %></dd>
+        <dt>Contributors</dt>
+        <dd>
+          <% if (app.attributes.contributors && app.attributes.contributors.length > 0) { %>
+          <ul>
+          <% _.each(app.attributes.contributors, function (contributor) { %>
+            <li><a href="mailto:<%= contributor.email %>"><%= contributor.name %></a></li>
+          <% }); %>
+          </ul>
+          <% } else { %>
+          No contributors
+          <% } %>
+        </dd>
+        <dt>Links</dt>
+        <dd>
+          <ul>
+            <li>
+              <a href="./foxxes/docs/standalone/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+                API Documentation
+              </a>
+            </li>
+            <li>
+              <a href="./foxxes/docs/swagger.json?mount=<%= encodeURIComponent(app.get('mount')) %>" target="_blank">
+                Swagger JSON
+              </a>
+            </li>
+            <% if (app.attributes.repository && app.attributes.repository.type == 'git') { %>
+              <li><a href="<%= app.attributes.repository.url %>" target="_blank">Git Repository</a></li>
+            <% } %>
+          </ul>
+        </dd>
+      </dl>
+    </aside>
+  </div>
+</script>
+
+<script id="applicationListView.ejs" type="text/template">
+  <tr class="foxx-store-row">
+    <td class="foxx-store-main">
+      <div class="foxx-name"><%=name%></div>
+      <div class="foxx-author"><%=author%></div>
+      <div class="foxx-description"><%=description%></div>
+    </td>
+    <td class="foxx-store-version">
+      <div class="foxx-version"><%=latestVersion%></div>
+    </td>
+    <td class="foxx-store-install">
+      <button class="button-success install-app" appId="<%=name %>" appVersion="<%=latestVersion %>">Install</button>
+    </td>
+  </tr>
+</script>
+
+<script id="applicationsView.ejs" type="text/template">
+<div class="headerBar">
+  <a class="arangoHeader">Services</a>
+  <div class="headerButtonBar">
+    <ul class="headerButtonList">
+      <li>
+        <a id="foxxToggle" class="headerButton">
+          <span class="icon_arangodb_settings2" title="Settings"></span>
+        </a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div id="foxxDropdownOut" class="headerDropdown">
+  <div id="foxxDropdown" class="dropdownInner">
+    <ul>
+      <li class="nav-header">Type</li>
+      <li><a href="#applications">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="checkProduction"/>
+          <i class="fa"></i>
+          Production
+        </label>
+      </a></li>
+
+      <li><a href="#applications">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="checkDevel"/>
+          <i class="fa"></i>
+          Development
+        </label>
+      </a></li>
+
+      <li><a href="#applications">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" id="checkSystem" type="checkbox"/>
+          <i class="fa"></i>
+          System applications
+        </label>
+      </a></li>
+    </ul>
+  </div>
+</div>
+
+<div class="contentDiv">
+  <div id="installed">
+    <div id="installedList" class="tileList">
+      <div class="tile">
+        <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Service</a>
+      </div>
+    </div>
+  </div>
+</div>
+</script>
+
+<script id="arangoTabbar.ejs" type="text/template">
+<div class="arango-tabbar" id="<%=content.id%>">
+  <% _.each(content.titles, function(k,v) { %>
+  <% var name = content.titles[v][0];  %>
+  <% var elid = content.titles[v][1];  %>
+  <button class="arangodb-tabbar" id="<%=elid%>"><%=name%></button>
+  <%});%>
+</div>
+</script>
+
+<script id="arangoTable.ejs" type="text/template">
+<table class="arango-table" id="<%=content.id%>">
+
+  <thead>
+    <tr>
+      <% var hcounter = 0; %>
+      <% _.each(content.titles, function(y) {%>
+        <th class="arangob-table-th table-cell<%=hcounter%>"><%=y%></th>
+      <% hcounter++; });%>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% _.each(content.rows, function(k) { var counter=0;%>
+      <tr>
+        <% _.each(k, function(x) { %>
+          <td class="arangob-table-td table-cell<%=counter%>"><%=(content.unescaped && content.unescaped[counter] ? x : _.escape(x))%></td>
+        <% counter++;});%>
+      </tr>
+    <%});%>
+  </tbody>
+</table>
+</script>
+
+<script id="collectionsItemView.ejs" type="text/template">
+<div class="iconSet">
+  <span id="editCollection_<%=model.get('name')%>" class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
+  <% if(model.get('status') === "loaded") { %>
+    <span id="info_<%=model.get('name')%>" class="spanInfo icon_arangodb_info" title="Show collection properties"></span>
+  <%} else {%>
+    <span class="icon_arangodb_info disabled" alt="disabled"></span>
+  <%}%>
+</div>
+
+<i class="collection-type-icon fa <%= model.get('picture') %>"></i>
+<!--<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">-->
+<div class="tileBadge">
+  <span>
+    <div class="corneredBadge <%= model.get('status') %>">
+      <%= model.get('status') %>
+    </div>
+  </span>
+</div>
+<h5 class="collectionName"><%= model.get('name') %></h5>
+</script>
+
+<script id="collectionsView.ejs" type="text/template">
+  <div class="headerBar">
+    <div class="search-field">
+      <input type="text" id="searchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="searchSubmit" class="search-submit-icon"/> -->
+      <i id="searchSubmit" class="fa fa-search"></i>
+    </div>
+    <div class="headerButtonBar">
+      <ul class="headerButtonList">
+        <li class="enabled">
+          <a id="collectionsToggle" class="headerButton">
+            <span class="icon_arangodb_settings2" title="Settings"></span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="pull-left">
+      <a class="arangoHeader">Collections</a>
+    </div>
+  </div>
+
+
+  <div id="collectionsDropdown2" class="headerDropdown">
+
+    <div id="collectionsDropdown" class="dropdownInner">
+
+      <ul>
+        <li class="nav-header">Type</li>
+        <li><a>
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox checkSystemCollections" type="checkbox">
+            <i class="fa"></i>
+            System
+          </label>
+        </a></li>
+
+        <li><a>
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkDocument">
+            <i class="fa"></i>
+            Document
+          </label>
+        </a></li>
+
+        <li><a>
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkEdge">
+            <i class="fa"></i>
+            Edge
+          </label>
+        </a></li>
+
+        </li>
+      </ul>
+
+      <ul>
+        <li class="nav-header">Status</li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkLoaded">
+            <i class="fa"></i>
+            Loaded
+          </label>
+        </a></li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="checkUnloaded">
+            <i class="fa"></i>
+            Unloaded
+          </label>
+        </a></li>
+
+      </ul>
+      <ul>
+        <li class="nav-header">Sorting</li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="sortName">
+            <i class="fa css-round-label"></i>
+            Sort by name
+          </label>
+        </a></li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="sortType">
+            <i class="fa css-round-label"></i>
+            Sort by type
+          </label>
+        </a></li>
+
+        <li><a href="#">
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="sortOrder">
+            <i class="fa"></i>
+            Sort descending
+          </label>
+        </a></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="contentDiv" id="arangoCollectionsContainer">
+      <div id="collectionsThumbnailsIn" class="tileList">
+        <div class="tile">
+          <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Collection</a>
+        </div>
+      </div>
+  </div>
+</script>
+
+<script id="dashboardView.ejs" type="text/template">
+  <% var subBar = function(title) { %>
+    <div class="dashboard-sub-bar">
+      <div  class="dashboard-sub-bar-title"><%= title %></div>
+    </div>
+  <% }
+  var enlargeButton = function(name, arrows) {
+    if (arrows) { %>
+      <div class="dashboard-sub-bar-menu">
+        <i class="fa fa-arrows-alt dashboard-sub-bar-menu-sign" id="<%= name %>Button"></i>
+      </div>
+    <% }
+  } %>
+
+  <% var largeChart = function(name, title, arrows) { %>
+    <div class="dashboard-large-chart">
+      <% enlargeButton(name, true); %>
+      <div class="dashboard-large-chart-inner dashboard-chart" id="<%= name %>Container">
+        <div id="<%= name %>" class="dashboard-interior-chart"></div>
+        <div class="dashboard-legend">
+          <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+        </div>
+      </div>
+      <% subBar(title) %>
+    </div>
+  <% } %>
+
+  <% var mediumChart = function(name, title, arrows) { %>
+    <div class="dashboard-medium-chart-outer">
+      <div class="dashboard-medium-chart">
+        <% enlargeButton(name, true); %>
+        <div class="dashboard-medium-chart-inner dashboard-chart" id="<%= name %>Container">
+          <div id="<%= name %>" class="dashboard-interior-chart"></div>
+          <div class="dashboard-legend">
+            <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+          </div>
+        </div>
+        <% subBar(title) %>
+      </div>
+    </div>
+  <% } %>
+
+  <% var smallChart = function(name, title, arrows) { %>
+    <div class="dashboard-small-chart">
+      <% enlargeButton(name, arrows); %>
+      <div class="dashboard-small-chart-inner dashboard-chart" id="<%= name %>Container">
+        <div id="<%= name %>" class="dashboard-interior-chart">
+          <svg></svg>
+        </div>
+      </div>
+      <% subBar(title) %>
+    </div>
+  <% } %>
+
+  <% var tendency = function(title, name, arrows) { %>
+    <div class="dashboard-tendency-container">
+      <div class="dashboard-tendency-chart">
+        <% enlargeButton(name, arrows); %>
+        <div class="dashboard-tendency">
+          <% if (name === "asyncRequests") {%>
+            <div class="dashboard-subtitle-bar">sync</div>
+            <div class="dashboard-figure">
+              <span id="syncPerSecondCurrent"></span>
+          <%} else {%>
+            <div class="dashboard-subtitle-bar">current</div>
+            <div class="dashboard-figure">
+              <span id="<%= name %>Current"></span>
+          <% } %>
+          </div>
+        </div>
+        <div class="dashboard-tendency">
+          <% if (name === "asyncRequests") {%>
+            <div class="dashboard-subtitle-bar">async</div>
+            <div class="dashboard-figure">
+              <span id="asyncPerSecondCurrent"></span>
+          <%} else {%>
+            <div class="dashboard-subtitle-bar">15-min-avg</div>
+            <div class="dashboard-figure">
+              <span id="<%= name %>Average"></span>
+          <% } %>
+          </div>
+        </div>
+      </div>
+      <div class="dashboard-sub-bar"><%= title %></div>
+    </div>
+  <% } %>
+
+  <div class="headerBar">
+    <a class="arangoHeader">Request Statistics</a>
+  </div>
+  <div class="contentDiv">
+    <div class="dashboard-row">
+      <% largeChart("requestsChart", "Requests per Second") %>
+
+      <% tendency("Request Types", "asyncRequests", false); %>
+      <% tendency("Number of Client Connections", "clientConnections", false); %>
+    </div>
+    
+    <div class="dashboard-row">
+      <% largeChart("dataTransferChart", "Transfer Size per Second (bytes)") %>
+      <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)", false) %>
+    </div>
+    
+    <div class="dashboard-row">
+      <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
+      <% smallChart("totalTimeDistribution", "Average Request Time (distribution)", false) %>
+    </div>
+  </div>
+
+  <div class="dashboard-headerbar headerBar">
+    <a class="arangoHeader">System Resources</a>
+  </div>
+
+  <div class="dashboard-row">
+    <% tendency("Number of threads", "numberOfThreads", false); %>
+
+    <div class="dashboard-bar-chart-container dashboard-spacer">
+      <div class="dashboard-bar-chart">
+        <div class="dashboard-bar-chart-title">
+          <div class="percentage"></div>
+          <div class="absolut"></div>
+        </div>
+        <div class="dashboard-bar-chart-chart" id="residentSizeChartContainer">
+          <div id="residentSizeChart">
+            <svg></svg>
+          </div>
+        </div>
+      </div>
+      <div class="dashboard-sub-bar"">Resident Size</div>
+    </div>
+
+    <% tendency("Virtual Size in GB", "virtualSize", false); %>
+  </div>
+  <div class="dashboard-row">
+    <% mediumChart("pageFaultsChart", "Major Page Faults") %>
+    <% mediumChart("systemUserTimeChart", "Used CPU Time per Second") %>
+  </div>
+</script>
+
+<script id="databaseView.ejs" type="text/template">
+  <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="databaseSearchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="databaseSearchSubmit" class="search-submit-icon">-->
+      <i id="databaseSearchSubmit" class="fa fa-search"></i>
+    </div>
+    <div class="headerButtonBar">
+        <ul class="headerButtonList">
+          <li class="enabled">
+            <a id="databaseToggle" class="headerButton">
+              <span class="icon_arangodb_settings2" title="Settings"></span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+    <div class="pull-left">
+      <a class="arangoHeader">Databases</a>
+    </div>
+  </div>
+
+
+  <div id="databaseDropdown2" class="headerDropdown">
+
+    <div id="databaseDropdown" class="dropdownInner">
+      <ul>
+        <li class="nav-header">Sorting</li>
+        <li><a>
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="dbSortDesc">
+            <label class="css-label" id="dbSortDesc"></label>Sort descending
+          </label>
+        </a></li>
+      </ul>
+    </div>
+
+  </div>
+
+
+  <div class="contentDiv" id="arangoCollectionsContainer">
+    <div id="userManagementThumbnailsIn" class="tileList">
+      <div class="tile">
+        <a href="#" id="createDatabase" class="add">
+          <span id="newDatabase" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+          Add Database
+        </a>
+      </div>
+      <% collection.forEach(function(db) {
+          var name = db.get("name");
+      %>
+
+      <div class="tile">
+      <div class="iconSet">
+        <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+      </div>
+      <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
+      <div class="tileBadge">
+    </div>
+
+      <h5 class="collectionName"><%=name %></h5>
+    </div>
+      <%});%>
+     </div>
+  </div>
+
+</script>
+
+<script id="dbSelectionView.ejs" type="text/template">
+<a href="#" class="tab" id="dbselection"></span><div class="dbselection">DB: <%=current%></div> <b class="caret"></b></a>
+<ul class="link-dropdown-menu" id="dbs_dropdown">
+<%
+if (list.length > 0) {
+%>
+    <li class="dropdown-header">Databases</li>
+  <%
+    _.each(list, function(i) {
+  %>
+    <li class="dropdown-item">
+        <a id=<%=i%> class="dbSelectionLink tab" href="#"><%=i%></a>
+    </li>
+  <%
+    });
+  %>
+<%
+}
+%>
+    <% if (current === "_system") { %>
+    <% if (list.length >= 2) { %>
+      <li class="divider"></li>
+    <% } %>
+    <li class="dropdown-header">Manager</li>
+    <li id="databaseNavi" class="dropdown-item">
+      <a id="databases" class="tab" href="#databases">Manage Databases</a>
+    </li>
+    <% } %>
+</ul>
+</script>
+
+<script id="demoView.ejs" type="text/template">
+  <div class="headerBar">
+    <div class="search-field">
+      <input type="text" id="demoSearchInput" class="search-input" placeholder="Search...">
+      <i id="demoSearchSubmit" class="fa fa-search"></i>
+      <!-- <img id="demoSearchSubmit" class="search-submit-icon"> -->
+      <!--<div id="searchResults" class="demo-dropdown-menu"><ul></ul></div>-->
+    </div>
+    <div class="pull-left">
+      <a class="arangoHeader">Demo</a>
+    </div>
+    <div class="styled-select">
+      <select id="flightQuerySelect" class="query-select" style="margin-top: 5px; height: 25px">
+        <option>Please select your query</option>
+        <optgroup label="Example queries"></optgroup>
+      </select>
+    </div>
+  </div>
+
+  <div id="demoContent" class="innerContent">
+    <div id="demo-mapdiv" style="width: 100%; height: 490px;"><div id="demo-mapdiv-info"></div></div>
+  </div>
+</script>
+
+<script id="documentView.ejs" type="text/template">
+  <div id="transparentHeader" class="headerBar">
+
+  </div>
+
+  <div class="innerContent document-info-div">
+
+    <div class="document-info">
+
+      <div class="document-type-container">
+        <div id="document-type" class="document-bold-font"></div>
+        <div id="document-id" class="document-thin-font"></div>
+      </div>
+
+      <div class="document-info-container">
+
+        <div class="document-inner-info-container">
+          <div class="document-attribute">
+            <div class="document-bold-font">_rev:</div>
+            <div id="document-rev" class="document-thin-font"></div>
+          </div>
+          <div class="document-attribute">
+            <div class="document-bold-font">_key:</div>
+            <div id="document-key" class="document-thin-font"></div>
+          </div>
+        </div>
+
+        <div class="document-inner-info-container edge-info-container">
+          <div class="document-attribute">
+            <div class="document-bold-font">_from:</div>
+            <div id="document-from" class="document-thin-font document-link"></div>
+          </div>
+          <div class="document-attribute">
+            <div class="document-bold-font">_to:</div>
+            <div id="document-to" class="document-thin-font document-link"></div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div id="tableDiv" class="innerContent document-content-div">
+
+    <div id="documentEditor" class="document-editor"></div>
+    <div class="bottomButtonBar">
+      <button id="saveDocumentButton" class="button-success pull-right">Save</button>
+      <button id="deleteDocumentButton" class="button-danger pull-right">Delete</button>
+    </div>
+    <div class="pull-left shortcuts showHotkeyHelp"></div>
+	</div>
+
+</script>
+
+<script id="documentsView.ejs" type="text/template">
+<div id="transparentHeader" class="headerBar">
+  <div id="documentsToolbar" class="headerButtonBar">
+
+
+  <!-- remove marker for docupdiv-->
+  <ul class="headerButtonList">
+    <!-- Mark: removed prev/next collection button
+    <li class="enabled">
+      <a id="collectionNext" class="headerButton">
+        <span class="icon_arangodb_arrowright" title="Next collection"></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="collectionPrev" class="headerButton collection-pagination">
+        <span class="icon_arangodb_arrowleft" title="Previous collection"></span>
+      </a>
+    </li>
+    -->
+    <li class="enabled">
+        <select id="documentSize" class="documents-size">
+          <option value="10" selected="">10 results</option>
+          <option value="20">20 results</option>
+          <option value="50">50 results</option>
+          <option value="100">100 results</option>
+          <option value="500">500 results</option>
+          <option value="1000">1000 results</option>
+          <option value="2500">2500 results</option>
+          <option value="5000">5000 results</option>
+          <option value="all">All results</option>
+        </select>
+      </a>
+    <li class="enabled">
+      <a id="markDocuments" class="headerButton">
+        <span class="icon_arangodb_edit" title="Edit documents"></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="importCollection" class="headerButton">
+        <span title="Upload documents from JSON file"><i class="fa fa-upload"></i></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="exportCollection" class="headerButton">
+        <span title="Download documents as JSON file"><i class="fa fa-download"></i></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="indexCollection" class="headerButton">
+        <span class="icon_arangodb_checklist" title="Index collection"></span>
+      </a>
+    </li>
+    <li class="enabled" style="margin-right: 15px">
+      <a id="filterCollection" class="headerButton">
+        <span class="icon_arangodb_filter" title="Filter collection"></span>
+      </a>
+    </li>
+  </ul>
+
+  </div>
+</div>
+
+<div class="arangoDropdown documentsDropdown">
+  <div id="filterHeader" class="headerDropdown">
+    <div class="queryline">
+       <input id="attribute_name0" type="text" placeholder="Attribute name"><select name="operator" id="operator0" class="filterSelect">
+           <option value="==">==</option>
+           <option value="!=">!=</option>
+           <option value="&lt;">&lt;</option>
+           <option value="&lt;=">&lt;=</option>
+           <option value="&gt;">&gt;</option>
+           <option value="&gt;=">&gt;=</option>
+       </select><input id="attribute_value0" type="text" placeholder="Attribute value" class="filterValue">
+       <a id="addFilterItem" class="add-filter-item"><i class="icon-plus arangoicon"></i></a>
+       <button id="resetView" class="button-warning btn-old-padding">Reset</button>
+       <button id="filterSend" class="button-success btn-old-padding">Filter</button>
+       <input type="text" id="docsSort" placeholder="_key" style="float: right"></input>
+       <div class="textDiv" style="float: right">Sort by:</div>
+    </div>
+  </div>
+
+  <div id="importHeader" class="dropdownImport">
+    <div class="queryline">
+      <input id="importDocuments" name="importDocuments" type="file" accept="application/json" />
+      <button id="confirmDocImport" class="button-success btn-old-padding" style="float:right" disabled>
+        <img id="uploadIndicator" class="upload-indicator" src="img/ajax-loader.gif"/>Import JSON
+      </button>
+      <div title='Example input data:<br /><br /> I. Line-wise: <br /> { "_key": "key1", ... } <br /> { "_key": "key2", ... } <br /><br /> or <br /><br /> II. JSON documents embedded into a list: <br /> [ <br /> &nbsp; { "_key": "key1", ... }, <br /> &nbsp; { "_key": "key2", ... }, <br /> &nbsp; ... <br /> ]' class="upload-info" style="float:left; margin-top:7px; margin-right: 10px;"><i style="font-size: 13pt;" class="fa fa-info-circle"></i></div>
+    </div>
+  </div>
+
+  <div id="exportHeader" class="headerDropdown">
+    <div class="queryline">
+      <div style="float:left; margin-top:7px"><i class="fa fa-exclamation-circle"></i>Please be careful. If no filter is set, the whole collection will be downloaded.</div>
+      <button id="exportDocuments" class="button-success btn-old-padding" style="float:right">Download JSON</button>
+    </div>
+  </div>
+
+  <div id="editHeader" class="dropdownImport">
+    <div class="queryline">
+      <div style="float:left; margin-top:5px"><div style="float:left" class="selectedCount">0</div> &nbsp; document(s) selected</div>
+      <button id="deleteSelected" class="button-neutral btn-old-padding" style="float:right">Delete</button>
+      <button id="moveSelected" class="button-neutral btn-old-padding" style="float:right">Move</button>
+    </div>
+  </div>
+
+  <div id="indexHeader" class="headerDropdown">
+    <div class="contentIn" id="indexHeaderContent">
+        <div id="indexEditView">
+          <span class="arangoHeader">Indexes:</span>
+          <table id="collectionEditIndexTable" class="edit-index-table">
+            <thead>
+              <tr class="figuresHeader">
+                <th class="collectionInfoTh">ID</th>
+                <th class="collectionInfoTh">Type</th>
+                <th class="collectionInfoTh">Unique</th>
+                <th class="collectionInfoTh">Sparse</th>
+                <th class="collectionInfoTh">Selectivity Est.</th>
+                <th class="collectionInfoTh">Fields</th>
+                <th class="collectionInfoTh">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+            </tbody>
+          </table>
+          <div class="index-button-bar">
+            <button id="addIndex" class="button-success">Add Index</button>
+          </div>
+      </div>
+
+        <div id="newIndexView" class="new-index-view" style="display:none">
+          <span id="newIndexHeader" class="arangoHeader">Add Index:</span>
+          <table>
+            <tr>
+              <th class="collectionTh">Type:</th>
+              <th class="">
+                <select id="newIndexType">
+                  <option value="Cap">Cap Constraint</option>
+                  <option value="Geo">Geo Index</option>
+                  <option value="Hash">Hash Index</option>
+                  <option value="Fulltext">Fulltext Index</option>
+                  <option value="Skiplist">Skip-List Index</option>
+                </select>
+              </th>
+              <th class="" style="width: 18px"/>
+            </tr>
+          </table>
+
+          <div id="newIndexTypeCap" class="newIndexClass">
+            <table>
+              <tr>
+                <th class="collectionTh">Size:</th>
+                <th><input type="text" id="newCapSize" value=""/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="The maximal number of documents for the collection.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Bytesize:</th>
+                <th><input type="text" id="newCapByteSize" value=""/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="The maximal size of the active document data in the collection. (min = 16384)">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+            </table>
+          </div>
+          <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newGeoFields" value=""/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list with one or two attribute paths.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Geo JSON:</th>
+                <th>
+                  <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
+                </th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If a geo-spatial index on a location is constructed and geoJson is true, then the order within the list is longitude followed by latitude.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Constraint:</th>
+                <th>
+                  <input id="newGeoConstraint" type="checkbox" name="newGeoConstraint" value="true">
+                </th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If constraint is true, then a geo-spatial constraint is created.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Ignore Null:</th>
+                <th>
+                  <input id="newGeoIgnoreNull" type="checkbox" name="newGeoIgnoreNull" value="true">
+                </th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If a geo-spatial constraint is created and ignoreNull is true, then documents with a null in location or at least one null in latitude or longitude are ignored.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+            </table>
+          </div>
+
+          <div id="newIndexTypeHash" class="newIndexClass" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newHashFields" value=""/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list of attribute paths.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Unique:</th>
+                <th>
+                  <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
+                </th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Sparse:</th>
+                <th>
+                  <input id="newHashSparse" type="checkbox" name="newHashSparse" value="true">
+                </th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+            </table>
+          </div>
+          <div id="newIndexTypeFulltext" class="newIndexClass" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newFulltextFields" value=""/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title='A list of attribute names. Currently, the list is limited to exactly one attribute, so the value of fields should look like this for example: [ "text" ].'>
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Min. length:</th>
+                <th><input type="text" id="newFulltextMinLength" value=""/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+            </table>
+
+          </div>
+
+          <div id="newIndexTypeSkiplist" class="newIndexClass" style="display:none">
+            <table>
+              <tr>
+                <th class="collectionTh">Fields:</th>
+                <th><input type="text" id="newSkiplistFields" value=""/></th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A list of attribute paths.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Unique:</th>
+                <th>
+                  <input id="newSkiplistUnique" type="checkbox" name="newSkiplistUnique" value="true">
+                </th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+              <tr>
+                <th class="collectionTh">Sparse:</th>
+                <th>
+                  <input id="newSkiplistSparse" type="checkbox" name="newSkiplistSparse" value="true">
+                </th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
+            </table>
+          </div>
+          <div class="index-button-bar">
+            <button id="createIndex" class="button-success">Save</button>
+            <button id="cancelIndex" class="button-danger">Cancel</button>
+          </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="documentsDiv" class="innerContent">
+
+<div id="uploadMessages"></div>
+<div id="documentsTableID_wrapper" class="dataTables_wrapper" role="grid">
+  <table cellpadding="0" cellspacing="0" border="0" class="display arangoDataTable dataTable" id="documentsTableID">
+  </table>
+</div>
+    <div id="documentsToolbarFL">
+      <div id="documentsToolbarF" class="pagination-line">
+      </div>
+    </div>
+
+<!-- Delete Modal -->
+<div id="docDeleteModal" style="display:none" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Delete Document?</a>
+  </div>
+  <div class="modal-body" id="deleteDoc">
+    <p>There is no way back…</p>
+  </div>
+  <div class="modal-footer">
+    <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="confirmDeleteBtn" class="button-danger" style="float:right" disabled="true">Delete</button>
+  </div>
+</div>
+
+<!-- Delete Index Modal -->
+<div id="indexDeleteModal" style="display:none" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Delete Index?</a>
+  </div>
+  <div class="modal-body" id="deleteIndex">
+    <p>There is no way back…</p>
+  </div>
+  <div class="modal-footer">
+    <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="confirmDeleteIndexBtn" class="button-danger" style="float:right">Delete</button>
+  </div>
+</div>
+
+</script>
+
+<script id="edgeDefinitionTable.ejs" type="text/template">
+  <tr class="tableRow" id="row_newEdgeDefinitions<%= number%>">
+    <th class="collectionTh">Edge definitions*:</th>
+    <th class="collectionTh">
+      <input type="hidden" id="newEdgeDefinitions<%= number%>" value="" placeholder="Edge definitions" tabindex="-1" class="select2-offscreen">
+      <button id="remove_newEdgeDefinitions<%= number%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
+    </th><th>
+    <a class="modalTooltips" title="Some info for edge definitions">
+      <span class="arangoicon icon_arangodb_info"></span>
+    </a>
+    </th>
+  </tr>
+  <tr class="tableRow" id="row_fromCollections<%= number%>">
+    <th class="collectionTh">fromCollections*:</th>
+    <th class="collectionTh">
+      <input type="hidden" id="fromCollections<%= number%>" value="" placeholder="fromCollections" tabindex="-1" class="select2-offscreen">
+    </th><th>
+    <a class="modalTooltips" title="The collection that contain the start vertices of the relation.">
+      <span class="arangoicon icon_arangodb_info"></span>
+    </a>
+  </th>
+  </tr>
+  <tr class="tableRow" id="row_toCollections<%= number%>">
+    <th class="collectionTh">toCollections*:</th>
+    <th class="collectionTh">
+      <input type="hidden" id="toCollections<%= number%>" value="" placeholder="toCollections" tabindex="-1" class="select2-offscreen">
+    </th><th>
+    <a class="modalTooltips" title="The collection that contain the end vertices of the relation.">
+      <span class="arangoicon icon_arangodb_info"></span>
+    </a>
+  </th>
+  </tr>
+</script>
+
+<script id="editListEntryView.ejs" type="text/template">
+<td class="writable sorting_1">
+  <% if (isReadOnly) { %>
+    <span class="key"><%=key%></span>
+  <% } else { %>
+    <input type="text" class="key" placeholder="attribute" <%=key?"value=" + key:""%>></input>
+  <% } %>
+</td>
+<td class="writeable rightCell">
+  <% if (isReadOnly) { %>
+    <span class="val"><%=value%></span>
+  <% } else { %>
+    <textarea class="val" placeholder="value"><%=value?value:""%></textarea>
+  <% } %>
+</td>
+</td>
+<td class="leftCell">
+  <a class="deleteAttribute">
+    <span class="icon_arangodb_roundminus" data-original-title="Delete attribute"></span>
+  </a>
+</td>
+</script>
+
+<script id="footerView.ejs" type="text/template">
+<%
+  var n,v,db;
+  if (name) {
+    n = name || "";
+    v = version || "";
+  }
+%>
+<div class="footer-left">
+  <div class="social-icons">
+    <p><a href="https://twitter.com/arangodb" target="_blank"><i class="fa fa-twitter"></i></a></p>
+    <p><a href="https://www.arangodb.com/community" target="_blank"></a><i class="fa fa-envelope"></i></a></p>
+    <p><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank"></a><i class="fa fa-stack-overflow"></i></a></p>
+    <p><a href="https://groups.google.com/group/arangodb" target="_blank"></a><i class="fa fa-google"></i></a></p>
+  </div>
+</div>
+
+<div class="footer-center">
+  <p>Help <i class="fa fa-keyboard-o"></i></p>
+</div>
+
+<div class="footer-right">
+  <p><% if(n) { %><i class="isOnline fa fa-check-circle-o serverStatusIndicator"></i><a><%=n%> <%=v%> <% } %></a></i></p>
+</div>
+</script>
+
+<script id="foxxActiveView.ejs" type="text/template">
+  <img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for Service" class="icon">
+    <% if (model.needsAttention()) { %>
+      <span class="warning-icons">
+        <% if (model.isBroken()) { %>
+          <span class="fa fa-warning" title="Mount error"></span>
+        <% } %>
+        <% if (model.needsConfiguration()) { %>
+          <span class="fa fa-cog" title="Needs configuration">!</span>
+        <% } %>
+        <% if (model.hasUnconfiguredDependencies()) { %>
+          <span class="fa fa-cubes" title="Unconfigured dependencies">!</span>
+        <% } %>
+      </span>
+    <% } %>
+  <% if(model.isDevelopment()) { %>
+    <div class="tileBadge">
+      <span>
+        <div class="corneredBadge development">
+          development
+        </div>
+      </span>
+    </div>
+  <% } %>
+  <h5 class="collectionName">
+    <%= model.get("mount") %>
+  </h5>
+</script>
+
+<script id="foxxEditView.ejs" type="text/template">
+<%var appInfos = attributes.app.split(":"); %>
+<div id="change-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Modify Service</a>
+  </div>
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th class="collectionTh">Name:</th>
+        <th class="collectionTh"><strong><%=appInfos[1] %></strong></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Documentation:</th>
+        <th class="collectionTh"><%=documentationJsonUrl</th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Mount:</th>
+        <th class="collectionTh"><input type="text" id="change-mount-point" name="mountpoint" value="<%=attributes.mount%>"/></th>
+        <th><a class="modalTooltips" title="The path where the app can be reached."><i class="arangoicon icon_arangodb_info"></i></a></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Version:</th>
+        <th class="collectionTh">
+          <select>
+            <option selected><%=appInfos[2] %></option>
+          </select>
+        <th>
+      </tr>
+      <tr>
+        <th class="collectionTh">System:</th>
+        <th class="collectionTh">
+          <%=attributes.isSystem ? "Yes" : "No" %>
+        <th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Status:</th>
+        <th class="collectionTh">
+          <%if (attributes.active) {%>
+            <div class="modal-text active">
+              Active
+            </div>
+          <%} else {%>
+            <div class="modal-text inactive">
+              Inactive
+            </div>
+          <%}%>
+        </th>
+      </tr>
+    </table>
+  </div>
+  <div id="colFooter" class="modal-footer">
+    <button id="uninstall" class="button-danger"<%=(attributes.isSystem || attributes.development) ? " disabled" : ""%>>Uninstall</button>
+    <button id="change" class="button-success pull-right">Save</button>
+    <%if (false && attributes.active) {%>
+      <button id="deactivate" class="button-warning pull-right" style="margin-right:8px" disabled>Deactivate</button>
+    <%} else if (false) {%>
+      <button id="activate" class="button-success pull-right" style="margin-right:8px" disabled>Activate</button>
+    <%}%>
+    
+  </div>
+</div>
+</script>
+
+<script id="foxxMountView.ejs" type="text/template">
+<div id="install-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Install Service</a>
+  </div>
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th class="collectionTh">Name:</th>
+        <th class="collectionTh"><strong><%=attributes.name %></strong></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">&nbsp;</th>
+        <th class="collectionTh">&nbsp;</th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Mount:</th>
+        <th class="collectionTh">
+          <input type="text" id="mount-point" name="mountpoint" value="/<%=attributes.name%>" placeholder="mount-path" />
+        </th>
+        <th><a class="modalTooltips" title="The path where the app can be reached."><i class="arangoicon icon_arangodb_info"></i></a></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Version:</th>
+        <th class="collectionTh">
+          <%=attributes.version %>
+        <th>
+      </tr>
+      <tr>
+        <th class="collectionTh">System:</th>
+        <th class="collectionTh">
+          <%=attributes.isSystem ? "Yes" : "No" %>
+        <th>
+      </tr>
+    </table>
+  </div>
+  <div id="colFooter" class="modal-footer">
+    <button class="button-success pull-right installFoxx">Install</button>    
+    <button id="cancel" class="button-danger pull-right">Cancel</button>
+  </div>
+</div>
+</script>
+
+<script id="graphManagementView.ejs" type="text/template">
+  <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/>
+      <i id="graphManagementSearchSubmit" class="fa fa-search"></i>
+      <!-- <img id="graphManagementSearchSubmit" class="search-submit-icon"> -->
+    </div>
+     <div class="headerButtonBar">
+        <ul class="headerButtonList">
+          <li class="enabled">
+            <a id="graphManagementToggle" class="headerButton">
+              <span class="icon_arangodb_settings2" title="Settings"></span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    <div class="pull-left">
+      <a class="arangoHeader">Graphs</a>
+    </div>
+  </div>
+
+
+  <div id="graphManagementDropdown2" class="headerDropdown">
+
+    <div id="graphManagementDropdown" class="dropdownInner">
+      <ul>
+        <li class="nav-header">Sorting</li>
+        <li><a>
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="graphSortDesc">
+            <i class="fa"></i>
+            Sort descending
+          </label>
+        </a></li>
+      </ul>
+    </div>
+
+  </div>
+
+
+  <div class="contentDiv" id="arangoCollectionsContainer">
+    <div id="graphManagementThumbnailsIn" class="tileList">
+      <div class="tile">
+        <a href="#" id="createGraph" class="add">
+          <span id="newGraph" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+          Add Graph
+        </a>
+      </div>
+
+
+      <% graphs.forEach(function(graph) {
+        var graphName = graph.get("_key");
+      %>
+
+      <div class="tile tile-graph" id="<%=graphName %>_tile">
+      <div class="iconSet">
+        <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
+      </div>
+      <span class="icon_arangodb_edge5 tile-icon"></span>
+      <span class="icon_arangodb_edge5 icon_arangodb_edge5-2 tile-icon"></span>
+        <div class="tileBadge">
+    </div>
+
+      <h5 class="collectionName"><%=graphName %></h5>
+    </div>
+      <%});%>
+     </div>
+  </div>
+
+</script>
+
+<script id="graphTestView.ejs" type="text/template">
+  <div class="headerBar">
+    <div class="pull-left">
+      <a class="arangoHeader">Graphs</a>
+    </div>
+  </div>
+
+  <div class="contentDiv" id="graphTest">
+    <div id="graphContainer" style="height: 100px"></div>
+</div>
+
+</script>
+
+<script id="graphViewGroupByEntry.ejs" type="text/template">
+<div class="control-group">
+  <label for="<%=type %>_<%=id%>" class="control-label">Attribute <%=id%></label>
+  <div class="controls">
+    <input id="<%=type %>_<%=id%>" type="text" name="<%=type %>_<%=id%>" placeholder="Attribute" maxlength="75" class="input-xlarge">
+    <button id="remove_<%=type %>_<%=id%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete" />
+  </div>
+</div>
+</script>
+
+<script id="lineChartDetailView.ejs" type="text/template">
+	<div id="lineChartDetail" class="modal hide fade modal-chart-detail" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+			<a class="arangoHeader"><%=figure%></a>
+		</div>
+		<div id="dashboardDetailedLineChart" class="dashboardDetailChart" style="position: absolute"></div>
+	</div>
+</script>
+<script id="loadingTableView.ejs" type="text/template">
+<thead>
+  <tr role="row">
+    <th class="sorting_disabled docsFirstCol" role="columnheader" rowspan="1" colspan="1">Content</th>
+    <th class="sorting_disabled docsSecCol" role="columnheader" rowspan="1" colspan="1">_key</th>
+    <th class="sorting_disabled docsThirdCol" role="columnheader" rowspan="1" colspan="1">
+      <a id="addDocumentButton" class="pull-right addButton"><span class="arangoicon icon_arangodb_roundplus" title="Add a document"></span></a>
+    </th>
+  </tr>
+</thead>
+<tbody>
+  <tr class="odd">
+    <td valign="top" colspan="3" class="dataTables_empty">Loading...</td>
+  </tr>
+</tbody>
+</script>
+
+
+<script id="loginView.ejs" type="text/template">
+<div class="loginFixedWindow">
+  <div id="loginWindow" class="login-window">
+    <div id="loginSpace" class="login-space"/>
+    <img id="loginLogo" src="img/logo_arangodb_transp.png"/>
+    <div id="loginSpace" class="login-space"/>
+    <form id="loginForm">
+      <input class="login-input" placeholder="Username" id="loginUsername" type="text" name="username"><i class="fa fa-user"></i>
+      <input class="login-input" placeholder="Password" id="loginPassword" type="password" name="password"><i class="fa fa-lock"></i>
+      <button id="submitLogin" class="button-success pull-right">Login</button>
+    </form>
+  </div>
+</div>
+</script>
+
+<script id="logsView.ejs" type="text/template">
+  <div class="headerBar">
+    <a class="arangoHeader">Logs</a>
+  </div>
+
+  <div id="logContent" class="log-content-id innerContent">
+  </div>
+  <!-- <div id="logPaginationDiv" class="pagination-line"></div> -->
+</script>
+
+<script id="modalApplicationMount.ejs" type="text/template">
+  <table>
+    <tr class="tableRow">
+      <% if (content === true) { %>
+        <th class="collectionInfoTh">
+          Run teardown:
+        </th>
+        <th class="collectionInfoTh">
+          <input type="checkbox" id="new-app-teardown"></input>
+        </th>
+      <% } else { %>
+        <th class="collectionInfoTh">
+          Mount*:
+        </th>
+        <th class="collectionInfoTh">
+          <input type="text" id="new-app-mount" value="" placeholder="/my/foxx"></input>
+        </th>
+        <th>
+          <a class="modalTooltips" title="The path the app will be mounted. Has to start with /. Is not allowed to start with /_">
+            <span class="arangoicon icon_arangodb_info"></span>
+          </a>
+        </th>
+      <% } %>
+    </tr>
+  </table>
+
+  <ul id="infoTab" class="nav nav-tabs">
+    <li class="active"><a href="#newApp" data-toggle="tab" id="tab-new">New Service</a></li>
+    <li><a href="#appstore" data-toggle="tab" id="tab-store"><img src="img/arangodb_logo_small.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
+    <li><a href="#github" data-toggle="tab" id="tab-git">Github</a></li>
+    <li><a href="#zip" data-toggle="tab" id="tab-zip">Zip</a></li>
+  </ul>
+
+  <div class="tab-content" id="tab-content-application-info">
+
+    <div class="tab-pane active" id="newApp">
+      <table id="new-app-information">
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Author*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="new-app-author" value="" placeholder="Your Name">
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Name*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="new-app-name" value="" placeholder="Name of the Service">
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Description*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="new-app-description" value="" placeholder="Please describe your Service here">
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            License*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="new-app-license" value="" placeholder="Apache 2"></input>
+          </th>
+        </tr>
+        <!--
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Authentication*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="checkbox" id="new-app-authenticate" checked></input>
+          </th>
+        </tr>
+        -->
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Collections:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="hidden" id="new-app-collections" value="" placeholder="Collections"></input>
+          </th>
+          <th>
+            <a class="modalTooltips" title="A list of collections that will be created specifically for this Service. A CRUD API for these will be generated.">
+              <span class="arangoicon icon_arangodb_info"></span>
+            </a>
+          </th>
+        </tr>
+      </table>
+    </div>
+
+    <div class="tab-pane" id="appstore">
+      <table id="appstore-content">
+      </table>
+    </div>
+
+    <div class="tab-pane" id="github">
+      <div>
+        Download a foxx application from a public <a href="https://www.github.com">github.com</a> repository. In order to define a version please add a <a href="https://git-scm.com/book/en/v2/Git-Basics-Tagging">git tag</a> to your repository using the following format: "v1.2.3". To connect to github your username and the name of the repository are sufficient.
+      </div>
+      <div>
+        <table>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Repository*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="repository" value="" placeholder="username/repository">
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Version*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="tag" value="" placeholder="master">
+            </th>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="zip">
+      <div>
+        <p>
+          Upload a ZIP-packed foxx application to ArangoDB.
+          The ZIP file has to be created from the folder containing the manifest.json file of your Service, do not include the databases folder structure created by ArangoDB.
+          This is also compatible with the download format for ZIP files on <a href="https://www.github.com">github.com</a>.
+          Remember to change to a new version number in the manifest.json when uploading an update.
+        </p>
+      </div>
+      <div id="upload-foxx-zip">Upload Foxx.zip</div>
+    </div>
+  </div>
+</script>
+
+<script id="modalBase.ejs" type="text/template">
+  <div id="modal-dialog" class="modal hide fade createModalDialog" tabindex="-1" role="dialog"
+       aria-labelledby="myModalLabel" aria-hidden="true">
+   <% if (title !== null) { %>
+   <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader"><%=title%></a>
+   </div>
+   <%}%>
+
+    <div class="modal-body">
+    </div>
+    <% if (!hideFooter) { %>
+    <div class="modal-footer">
+      <%
+      _.each(buttons, function(value, key){
+        var type = value.type,
+          title = value.title,
+          disabled = '';
+          if (value.disabled) {
+            disabled = 'disabled';
+          }
+        %>
+      <button id="modalButton<%=key%>" class="button-<%=type%>" <%=disabled%>><%=title%></button>
+      <%});%>
+    </div>
+    <% } %>
+    <div class="alert alert-error modal-delete-confirmation" id="modal-delete-confirmation">
+      <strong><%=confirm||'Really delete?'%></strong>
+      <button id="modal-confirm-delete" class="button-danger pull-right modal-confirm-delete">Yes</button>
+      <button id="modal-abort-delete" class="button-neutral pull-right">No</button>
+    </div>
+  </div>
+</script>
+
+<script id="modalCollectionInfo.ejs" type="text/template">
+<%
+    var roundNumber = function(number, n) {
+      var factor;
+      factor = Math.pow(10,n);
+      var returnVal = (Math.round(number * factor) / factor);
+      return returnVal;
+    };
+
+    var figuresData = content.getFigures();
+    var revision    = content.getRevision();
+    var index       = content.getIndex();
+
+%>
+
+    <ul id="infoTab" class="nav nav-tabs">
+      <li class="active"><a href="#info" data-toggle="tab">Info</a></li>
+      <li><a href="#figures" data-toggle="tab">Figures</a></li>
+      <li><a href="#index" data-toggle="tab">Indexes</a></li>
+    </ul>
+
+    <div class="tab-content" id="tab-content-collection-info">
+
+			<div class="tab-pane active" id="info">
+
+        <table id="collectionInfoTable">
+          <tr id="collectionSizeBox">
+            <th class="collectionInfoTh2">Journal size (MB):</th>
+            <th class="collectionInfoTh">
+              <div id="show-collection-size" class="modal-text">
+                <%=roundNumber(figuresData.journalSize / 1024 / 1024, 2)%>
+              </div>
+            </th>
+            <th class="tooltipInfoTh">
+              <div>
+                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="The maximal size of a journal or datafile (in MB). Must be at least 1.">
+                  <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                </a>
+              </div>
+            </th>
+          </tr>
+          <tr id="collectionSyncBox">
+            <th class="collectionInfoTh2">Wait for sync:</th>
+            <th class="collectionInfoTh">
+                <div id="show-collection-sync" class="modal-text">
+                  <%=figuresData.waitForSync%>
+                </div>
+            </th>
+            <th class="tooltipInfoTh">
+              <div>
+                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Synchronise to disk before returning from a create or update of a document.">
+                  <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                </a>
+              </div>
+            </th>
+          </tr>
+
+          <tr>
+            <th class="collectionInfoTh2">ID:</th>
+            <th class="collectionInfoTh">
+              <div id="show-collection-id" class="modal-text">
+                <%=content.get("id")%>
+              </div>
+            <th>
+          </tr>
+
+          <tr id="collectionRevBox">
+            <th class="collectionInfoTh2">Revision:</th>
+            <th class="collectionInfoTh">
+              <div id="show-collection-rev" class="modal-text">
+                <%=revision.revision%>
+              </div>
+            </th>
+          </tr>
+
+          <tr>
+            <th class="collectionInfoTh2">Type:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text"><%=content.get("type")%></div>
+            </th>
+          </tr>
+
+          <tr>
+            <th class="collectionInfoTh2">Status:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text"><%=content.get("status")%></div>
+            </th>
+          </tr>
+        </table>
+
+      </div>
+
+      <div class="tab-pane collection-info-figures" id="figures">
+        <table class="figures1">
+          <tr class="figuresHeader">
+            <th class="">Type</th>
+            <th>Count</th>
+            <th>Size (MB)</th>
+            <th>Info</th>
+          </tr>
+          <tr>
+            <th class="modal-text">Datafiles</th>
+            <th class="modal-text"><%=figuresData.figures.datafiles.count%></th>
+            <th class="modal-text">
+            <%=roundNumber(figuresData.figures.datafiles.fileSize / 1024 / 1024, 2)%>
+            </th>
+            <th class="tooltipInfoTh">
+              <div>
+                <a class="modalTooltips" data-toggle="tooltip" data-placement="left" title="Number and total size of active datafiles.">
+                  <span class="arangoicon icon_arangodb_info"></span>
+                </a>
+              </div>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">Journals</th>
+            <th class="modal-text"><%=figuresData.figures.journals.count%></th>
+            <th class="modal-text">
+            <%=roundNumber(figuresData.figures.journals.fileSize / 1024 / 1024, 2)%>
+            </th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Number and total size of journal files.">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">Compactors</th>
+            <th class="modal-text"><%=figuresData.figures.compactors.count%></th>
+            <th class="modal-text">
+            <%=roundNumber(figuresData.figures.compactors.fileSize / 1024 / 1024, 2)%>
+            </th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Number and total size of compactor files.">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">Shape files</th>
+            <th class="modal-text"><%=figuresData.figures.shapefiles.count%></th>
+            <th class="modal-text">
+            <%=roundNumber(figuresData.figures.shapefiles.fileSize / 1024 / 1024, 2)%>
+            </th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Number and total size of shape files.">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">Indexes</th>
+            <th class="modal-text"><%=figuresData.figures.indexes.count%></th>
+            <th class="modal-text">
+            <%=roundNumber(figuresData.figures.indexes.size / 1024 / 1024, 2)%>
+            </th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Number and total memory usage of indexes.">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+        </table>
+
+        <table class="figures2">
+          <tr class="figuresHeader">
+            <th>Type</th>
+            <th>Count</th>
+            <th>Info</th>
+          </tr>
+          <tr>
+            <th class="modal-text">Shapes</th>
+            <th class="modal-text"><%=figuresData.figures.shapes.count%></th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Total number of shapes in the collection">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">Attributes</th>
+            <th class="modal-text"><%=figuresData.figures.attributes.count%></th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Total number of attributes in the collection">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+        </table>
+
+        <table class="figures3">
+          <tr class="figuresHeader">
+            <th>Type</th>
+            <th>Count</th>
+            <th>Size (MB)</th>
+            <th>Deletion</th>
+            <th>Info</th>
+          </tr>
+          <tr>
+            <th class="modal-text">Alive</th>
+            <th class="modal-text"><%=figuresData.figures.alive.count%></th>
+            <th class="modal-text">
+            <%=roundNumber(figuresData.figures.alive.size/1024/1024, 2)%>
+            </th>
+            <th class="modal-text"> -</th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Total number and size of all living documents.">
+                <span class="arangoicon icon_arangodb_info"></span>
+              </a>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">Dead</th>
+            <th class="modal-text"><%=figuresData.figures.dead.count%></th>
+            <th class="modal-text">
+            <%=roundNumber(figuresData.figures.dead.size/1024/1024, 2)%>
+            </th>
+            <th class="modal-text"><%=figuresData.figures.dead.deletion%></th>
+
+            <th class="tooltipInfoTh">
+              <div>
+                <a class="modalTooltips" title="Total number and size of all dead documents.">
+                <span class="arangoicon icon_arangodb_info"></span>
+                </a>
+            </div>
+            </th>
+
+          </tr>
+          <tr><th><div> </div></th></tr>
+        </table>
+      </div>
+
+			<div class="tab-pane" id="index">
+        <table id="collectionIndexTable">
+          <tr class="figuresHeader">
+            <th class="collectionInfoTh">ID</th>
+            <th class="collectionInfoTh">Type</th>
+            <th class="collectionInfoTh">Unique</th>
+            <th class="collectionInfoTh">Sparse</th>
+            <th class="collectionInfoTh">Selectivity Est.</th>
+            <th class="collectionInfoTh">Fields</th>
+          </tr>
+          <%
+          if (index) {
+            var fieldString = '';
+            $.each(index.indexes, function(k, v) {
+              if (v.fields !== undefined) {
+                fieldString = v.fields.join(", ");
+              }
+
+              //cut index id
+              var position = v.id.indexOf('/');
+              var indexId = v.id.substr(position+1, v.id.length);
+              var selectivity = (
+                v.hasOwnProperty("selectivityEstimate") ? 
+                (v.selectivityEstimate * 100).toFixed(2) + "%" : 
+                "n/a"
+              );
+              var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
+          %>
+          <tr>
+            <th class="collectionInfoTh modal-text"><%=indexId%></th>
+            <th class="collectionInfoTh modal-text"><%=v.type%></th>
+            <th class="collectionInfoTh modal-text"><%=v.unique%></th>
+            <th class="collectionInfoTh modal-text"><%=sparse%></th>
+            <th class="collectionInfoTh modal-text"><%=selectivity%></th>
+            <th class="collectionInfoTh modal-text"><%=fieldString%></th>
+          </tr>
+          <%
+            });
+          }
+          %>
+        </table>
+			</div>
+
+	  </div>
+</script>
+
+<script id="modalDownloadFoxx.ejs" type="text/template">
+  <div>
+    Your new Foxx Service is ready for download.
+    You can edit it on your local system and repack it in a zip file to publish it on ArangoDB.
+  </div>
+</script>
+
+<script id="modalGraph.ejs" type="text/template">
+	<div class="detail-chart">
+		<div id="lineChartDetail" class="modal-inner-detail"></div>
+		<div class="modal-dashboard-legend">
+			<div class="dashboard-legend-inner" id="detailLegend"></div>
+		</div>
+	</div>
+</script>
+
+<script id="modalGraphTable.ejs" type="text/template">
+  <%
+  var createTR = function(row, disableSubmitOnEnter) {
+    var mandatory = '';
+    if (row.mandatory) {
+      mandatory = '*';
+    }
+
+    %>
+      <tr class="tableRow" id="<%='row_' + row.id%>">
+        <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
+        <th class="collectionTh">
+          <%
+            switch(row.type) {
+              case "text":
+          %>
+          <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <%
+              break;
+            case "password":
+          %>
+          <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <%
+              break;
+            case "readonly":
+          %>
+          <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>" disabled></input>
+          <%
+              break;
+              case "checkbox":
+                var checked = '',
+                  disabled = '';
+                if (row.checked) {
+                  checked = 'checked';
+                }
+                if (row.disabled) {
+                  disabled = 'disabled';
+                }
+          %>
+          <input type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
+          <%
+              break;
+              case "select":
+          %>
+          <select id="<%=row.id%>" class="modalSelect">
+          <%
+                _.each(row.options, function(opt) {
+          %>
+            <option value="<%=opt.value%>" <%=row.selected === opt.value?"selected":""%>><%=opt.label%></option>
+          <%
+                });
+          %>
+          </select>
+          <%
+              break;
+              case "select2":
+          %>
+          <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <% if (row.addAdd) {%>
+            <button id="<%='addAfter_' + row.id%>" class="graphViewer-icon-button gv-icon-small add"></button>
+          <% } %>
+          <% if (row.addDelete) {%>
+            <button id="<%='remove_' + row.id%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
+          <% } %>
+          <%
+              break;
+            }
+
+            if (row.info) {
+          %>
+        <th>
+          <a class="modalTooltips" title="<%=row.info%>">
+            <span class="arangoicon icon_arangodb_info"></span>
+          </a>
+        </th>
+      <%
+        }
+      %>
+      </tr>
+    <%
+  }//createTR
+  %>
+
+  <table>
+    <tbody>
+      <%
+      _.each(content, function(row) {
+        createTR(row);
+      });
+      %>
+
+    </tbody>
+  </table>
+    <%
+    if (advancedContent) {
+    %>
+    <div class="accordion" id="accordion2">
+      <div class="accordion-group">
+        <div class="accordion-heading">
+          <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
+            <span><%=advancedContent.header%></span><span><b class="caret"></b></span>
+          </a>
+        </div>
+        <div id="collapseOne" class="accordion-body collapse out">
+          <div class="accordion-inner">
+            <table>
+              <tbody>
+                <%
+                _.each(advancedContent.content, function(row) {
+                  createTR(row);
+                });
+                %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <%
+    }
+    %>
+</script>
+<script id="modalHotkeys.ejs" type="text/template">
+
+  <ul class="hotkeysList">
+  <% _.each(content, function(categories) { %>
+
+    <li class="hotkeysLabel"><%=categories.name%></li>
+
+    <% _.each(categories.content, function(values) { %>
+      <li class="hotkeysContent"><div class="hotkeysContentLabel"><%=values.label%></div><div class="hotkeysicons">&nbsp;&nbsp;<%=values.letter%>&nbsp;&nbsp;</div></li>
+    <% }); %>
+
+
+  <% }); %>
+  <ul>
+
+</script>
+
+<script id="modalTable.ejs" type="text/template">
+  <%
+  var createTR = function(row) {
+    var mandatory = '';
+    if (row.mandatory) {
+      mandatory = '*';
+    }
+    %>
+    <tr class="tableRow" id="<%='row_' + row.id%>">
+      <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
+      <th class="collectionTh"<%=row.info?'':' colspan="2"'%>>
+        <%
+        switch(row.type) {
+        case "text":
+          %>
+          <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <%
+          break;
+        case "blob":
+          %>
+          <textarea id="<%=row.id%>" placeholder="<%=row.placeholder||''%>"><%=row.value||''%></textarea>
+          <%
+          break;
+        case "password":
+          %>
+          <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <%
+          break;
+        case "readonly":
+          %>
+          <div class="modal-text" id="<%=row.id%>"><%=row.value||''%></div>
+          <%
+          break;
+        case "checkbox":
+          var checked = '',
+            disabled = '';
+          if (row.checked) {
+            checked = 'checked';
+          }
+          if (row.disabled) {
+            disabled = 'disabled';
+          }
+          %>
+          <input type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
+          <%
+          break;
+        case "select":
+          %>
+          <select id="<%=row.id%>" class="modalSelect">
+          <% _.each(row.options, function(opt) { %>
+            <option value="<%=opt.value%>" <%=row.selected === opt.value?"selected":""%>><%=opt.label%></option>
+          <% }); %>
+          </select>
+          <%
+          break;
+        case "select2":
+          %>
+          <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <% if (row.addDelete) {%>
+            <button class="graphViewer-icon-button gv-icon-small add"></button>
+          <% } %>
+          <% if (row.addDelete) {%>
+            <button class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
+          <% } %>
+          <%
+          break;
+        }
+        %>
+        <% if (row.info) { %>
+        </th>
+        <th>
+          <a class="modalTooltips" title="<%=row.info%>">
+            <span class="arangoicon icon_arangodb_info"></span>
+          </a>
+        <% } %>
+      </th>
+    </tr>
+    <%
+  };
+  %>
+  <% if (content) { %>
+    <table>
+      <tbody>
+        <%
+        _.each(content, function(row) {
+          createTR(row);
+        });
+        %>
+      </tbody>
+    </table>
+  <% } %>
+  <% if (info) { %>
+    <%= info %>
+  <% } %>
+  <% if (advancedContent) { %>
+    <div class="accordion" id="accordion2">
+      <div class="accordion-group">
+        <div class="accordion-heading">
+          <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
+            <span><%=advancedContent.header%></span><span><b class="caret"></b></span>
+          </a>
+        </div>
+        <div id="collapseOne" class="accordion-body collapse out">
+          <div class="accordion-inner">
+            <table>
+              <tbody>
+                <%
+                _.each(advancedContent.content, function(row) {
+                  createTR(row);
+                });
+                %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% } %>
+</script>
+
+<script id="modalTestResults.ejs" type="text/template">
+<%
+  function createSuite(suite) {
+    %>
+    <dt class="tests-result-spec-suite-title">
+      <%= suite.title %>
+    </dt>
+    <dd>
+      <% if (suite.tests.length) { %>
+        <ul class="tests-result-spec-tests">
+          <% _.each(suite.tests, createTest) %>
+        </ul>
+      <% } %>
+      <% if (suite.suites.length) { %>
+        <dl class="tests-result-spec-suites">
+          <% _.each(suite.suites, createSuite) %>
+        </dl>
+      <% } %>
+    </dd>
+    <%
+  }
+  function createTest(test) {
+    var slow = test.duration > 75;
+    %>
+    <li class="tests-result-spec-test <%= test.result %><%= slow ? ' slow': '' %>">
+      <span class="tests-result-spec-test-title">
+        <% switch (test.result) {
+          case 'pass': %>
+          <span class="fa fa-check"></span>
+          <% break;
+          case 'fail': %>
+          <span class="fa fa-times"></span>
+          <% break;
+          case 'pending': %>
+          <span class="fa fa-circle"></span>
+        <% } %>
+        <%= test.title %>
+        <%= slow ? '(' + test.duration + 'ms)' : '' %>
+      </span>
+      <% if (!_.isEmpty(test.err)) { %>
+        <pre class="stack"><%= test.err.stack %></pre>
+      <% } %>
+    </li>
+  <%
+  } %>
+  <div class="tests-result">
+    <% if (info.stack) { %>
+      <div class="tests-result-stats fail">
+        Test runner failed with an error.
+      </div>
+      <pre class="stack"><%= info.stack %></pre>
+    <% } else { %>
+      <div class="tests-result-stats">
+        Completed <b><%= info.stats.tests %></b> tests in <b><%= info.stats.duration %>ms</b>
+        (<span class="pass" title="passes"><%= info.stats.passes
+        %></span>/<span class="fail" title="failures"><%= info.stats.failures
+        %></span>/<span class="pending" title="pending"><%= info.stats.pending
+        %></span>)
+      </div>
+      <div class="tests-result-spec">
+        <% if (info.tests.length) { %>
+          <ul class="tests-result-spec-tests">
+            <% _.each(info.tests, createTest) %>
+          </ul>
+        <% } %>
+        <% if (info.suites.length) { %>
+          <dl class="tests-result-spec-suites">
+            <% _.each(info.suites, createSuite) %>
+          </dl>
+        <% } %>
+        <% if (!info.tests.length && !info.suites.length) { %>
+          <div class="tests-result-spec-empty">No tests found.</div>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+</script>
+
+<script id="navigationView.ejs" type="text/template">
+  <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
+    <li id="dbSelect" class="dropdown databases-menu"></li>
+    <li class="collections-menu"><a id="collections" class="tab" href="#collections">Collections</a></li>
+    <li class="demo-menu"><a id="demo" class="tab" href="#demo">Demo</a></li>
+    <li class="graphviewer-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
+    <li class="applications-menu">
+      <a id="applications" class="tab" href="#applications">Services</a>
+    </li>
+    <li class="query-menu"><a id="query" class="tab" href="#query">AQL Editor</a></li>
+    <li class="navbar-spacer big"></li>
+    <li class="dropdown tools-menu" id="toolsDropdown">
+      <a href="#" class="tab" id="tools">Tools <b class="caret"></b></a>
+      <ul class="link-dropdown-menu" id="tools_dropdown">
+        <li class="dropdown-header">Tools</li>
+        <li class="dropdown-item">
+          <a id="shell" class="tab" href="#shell">JS Shell</a>
+        </li>
+
+        <% if (isSystem) { %>
+          <li class="dropdown-item">
+            <a id="logs" class="tab" href="#logs">Logs</a>
+          </li>
+        <% } %>
+
+        <li class="dropdown-item">
+          <a id="api" class="tab" href="#api">API</a>
+        </li>
+        <li class="dropdown-item">
+          <a id="userManagement" class="tab" href="#api">User Management</a>
+        </li>
+        <li class="dropdown-item">
+          <a id="queryManagement" class="tab" href="#queryManagement">Query Management</a>
+        </li>
+      </ul>
+    </li>
+    <li class="dropdown" id="linkDropdown">
+      <a href="#" class="tab" id="links">Links <b class="caret"></b></a>
+      <ul class="link-dropdown-menu" id="link_dropdown">
+        <li class="dropdown-header">Documentation</li>
+        <li class="dropdown-item"><a href="http://docs.arangodb.com/Arangosh/"
+                                     target="_blank">JS Shell Documentation</a></li>
+        <li class="dropdown-item"><a href="http://docs.arangodb.com/Aql/" target="_blank">AQL
+          Documentation</a></li>
+        <li class="dropdown-item"><a href="http://docs.arangodb.com/" target="_blank">General
+          Documentation</a></li>
+        <li class="divider"></li>
+        <li class="dropdown-header">ArangoDB</li>
+        <li class="dropdown-item"><a href="https://github.com/arangodb/arangodb" target="_blank">GitHub
+          Repository</a></li>
+        <li class="dropdown-item"><a href="https://www.arangodb.com" target="_blank">ArangoDB.com</a></li>
+      </ul>
+    </li>
+  </ul>
+
+  <select id="arangoCollectionSelect" class="arango-collection-select">
+    <option value="" selected="selected">Select</option>
+    <option value="#">Dashboard</option>
+
+      <% if(isSystem) { %>
+
+        <option value="#databases">Databases</option>
+
+      <% } %>
+
+    <option value="#collections">Collections</option>
+    <option value="#demo">Demo</option>
+    <option value="#applications">Services</option>
+    <option value="#graph">Graph</option>
+    <option value="#query">AQL Editor</option>
+    <option value="#shell">JS Shell</option>
+
+      <% if(isSystem) { %>
+
+        <option value="#logs">Logs</option>
+
+      <% } %>
+
+    <option value="#api">Api</option>
+  </select>
+</script>
+
+<script id="notificationItem.ejs" type="text/template">
+<% notifications.forEach(function(n) { %>
+  <li class="dropdown-item">
+    <div class="notificationItem">
+      <a class="notificationItemTitle"><%=n.get("title")%></a>
+      <div class="notificationItemContent"><%=n.get("content")%></div>
+      <i id="<%=n.cid%>" class="fa fa-times-circle-o"></i>
+    </div>
+  </li>
+<%  }); %>
+</script>
+
+<script id="notificationView.ejs" type="text/template">
+<ul class="navlist" id="notificationViewUl">
+
+  <div class="navlogo">
+    <div id="stat_hd" class="notificationButton"><a id="stat_hd_counter">0</a></div>
+  </div>
+
+  <li class="dropdown">
+    <ul class="user-dropdown-menu fixedDropdown" id="notification_menu">
+      <li class="dropdown-header"><a>Notifications</a></li>
+      <ul class="innerDropdownInnerUL"></ul>
+      <button id="removeAllNotifications" class="button-danger">Clear</button>
+    </ul>
+  </li>
+
+</ul>
+</script>
+
+<script id="progressBase.ejs" type="text/template">
+  <div class="progress-view">
+    <div class="progress-content">
+      <!--<i style="visibility:hidden" class="fa fa-spinner fa-spin"></i>-->
+      <div class="pong-loader">
+        Loading…
+      </div>
+    </div>
+    <div class="progress-message">
+      <div class="progress-text"></div>
+      <div class="progress-action"></div>
+    </div>
+  </div>
+</script>
+
+<script id="queryManagementViewActive.ejs" type="text/template">
+  <div class="headerBar">
+    <a class="arangoHeader">Query Management</a>
+  </div>
+
+  <div id="queryManagementContent" class="innerContent">
+  </div>
+</script>
+
+<script id="queryManagementViewSlow.ejs" type="text/template">
+  <div class="headerBar">
+    <a class="arangoHeader">Query Management</a>
+  </div>
+
+  <div id="queryManagementContent" class="innerContent">
+  </div>
+
+  <div class="queryManagementBottomActions">
+    <button id="deleteSlowQueryHistory" class="button-danger query-button">Delete History</button>
+  </div>
+</script>
+
+<script id="queryView.ejs" type="text/template">
+  <div class="headerBar">
+    <a class="arangoHeader">AQL Editor</a>
+
+    <div id="queryToolbar" class="headerButtonBar">
+      <ul class="headerButtonList">
+        <li class="enabled">
+          <a id="importQueriesToggle" class="headerButton">
+            <span class="icon_arangodb_import" title="Upload queries from JSON file"></span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div id="importHeader" class="dropdownImport queryImport">
+    <div class="queryline">
+      <input id="importQueries" name="importQueries" type="file"/>
+      <button id="confirmQueryImport" class="button-success" style="float:right">Import</button>
+      <button id="confirmQueryExport" class="button-success" style="float:right">Export</button>
+    </div>
+  </div>
+
+  <div id="queryContent" class="innerContent">
+    <ul class="arango-tab">
+      <li><a href="#result" data-toggle="pill" id="result-switch">Result</a></li>
+      <!--<li><a href="#explain" data-toggle="pill" id="explain-switch">Explain</a></li>-->
+      <li><a href="#query" data-toggle="pill" id="query-switch">Query</a></li>
+      <li><a href="#customs" data-toggle="pill" id="customs-switch">My Queries</a></li>
+    </ul>
+    <div class="tab-content" id="tabContentCustoms">
+      <div class="tab-pane" id="customs">
+        <div id="customsDiv" class="query-div">
+        </div>
+        <div class="queryMethods">
+        </div>
+      </div>
+    </div>
+    <div class="tab-content" id="tabContentQuery">
+      <div class="tab-pane active" id="query">
+        <div id="queryDiv" class="query-div">
+          <div id="editorToolbar" class="query-toolbar editor-toolbar">
+            <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearInput"/>
+            <span class="icon_arangodb icon_arangodb_adddoc queryTooltips" title="Save current query" id="addAQL"/>
+            <span class="queryTooltips tooltip-margin" title="Comment" id="commentText"><i class="fa fa-comment"></i></span>
+            <span class="icon_arangodb icon_arangodb_arrow6 queryTooltips tooltip-margin" title="Redo" id="redoText"/>
+            <span class="icon_arangodb icon_arangodb_arrow5 queryTooltips tooltip-margin" title="Undo" id="undoText"/>
+          </div>
+
+          <div id="aqlEditor" class='aql-editor'></div>
+
+
+          <div id="wideButtonDiv" class="wide-button-div">
+            <div>
+
+              <div id="shortcutDiv" class="shortcuts shortcut-div showHotkeyHelp">
+              </div>
+            </div>
+            <div class="queryBottomActions">
+
+              <button id="submitQueryButton" class="button-success query-button">Execute</button>
+              <button id="explainQueryButton" class="button-success query-button">Explain</button>
+              <button id="clearQueryButton" class="button-close query-button">Clear</button>
+              <div class="styled-select">
+                <select id="querySelect" class="query-select"/>
+              </div>
+              <div class="styled-select querySizeDiv">
+                <select id="querySize" class="query-size"/>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+      </div>
+    </div>
+<!--
+    <div class="tab-content" id="tabContentExplain">
+
+      <div class="tab-pane" id="explain">
+        <div id="outputToolbar" class="query-toolbar output-toolbar">
+        </div>
+        <div class="explain-warnings"></div>
+        <div class="contentDiv query-output">
+          <svg id="explainOutput" class="explain-tree"></svg>
+        </div>
+      </div>
+
+    </div>
+-->
+    <div class="tab-content" id="tabContentResult">
+
+      <div class="tab-pane" id="result">
+        <div id="outputToolbar" class="query-toolbar output-toolbar">
+          <!--
+          <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearOutput"></span>
+          <span class="icon_arangodb icon_arangodb_arrow1 queryTooltips" title="Unfold" id="bigOutput"></span>
+          -->
+        </div>
+        <div id="queryOutput" class="contentDiv query-output">
+        </div>
+        <div class="pull-left queryExecutionTime"></div>
+        <div class="queryBottomActions">
+          <button id="downloadQueryResult" style="margin-bottom: 5px" class="button-success query-button">Download</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</script>
+
+<script id="shellView.ejs" type="text/template">
+  <div class="headerBar">
+    <a class="arangoHeader">JS Shell</a>
+  </div>
+  <div id="shell_workspace_header"/>
+  <div id="shell_workspace" class="shell_workspace">
+    <div id="replShell" class="replShell"/>
+  </div>
+</script>
+
+<script id="statisticBarView.ejs" type="text/template">
+  <div class="navlogo display-none">
+    <a href="#dashboard" style="padding-left: 15px;">
+      <img class="svg stat_cpu"
+        src="img/cpu.svg"
+      />
+      <img class="svg stat_ram"
+        src="img/ram.svg"
+        style="background-color: #FAFF92; margin-top: 9px; margin-left: 4px; margin-right: 2px;"
+      />
+      <img class="svg stat_req"
+        src="img/requests.svg"
+        style="background-color: #8aa051; margin-top: 9px;"
+      />
+    </a>
+  </div>
+</script>
+
+<script id="tableView.ejs" type="text/template">
+<%
+var escaped = function (value) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+};
+var cutByResolution = function (str) {
+  if (str.length > 1024) {
+    return escaped(str.substr(0, 1024)) + '...';
+  }
+  return escaped(str);
+};
+%>
+
+<thead>
+  <tr role="row">
+    <th class="sorting_disabled docsFirstCol" role="columnheader" rowspan="1" colspan="1">Content</th>
+    <th class="sorting_disabled docsSecCol" role="columnheader" rowspan="1" colspan="1">_key</th>
+    <th class="sorting_disabled docsThirdCol" role="columnheader" rowspan="1" colspan="1">
+      <a id="addDocumentButton" class="pull-right addButton"><span class="arangoicon icon_arangodb_roundplus" title="Add a document"></span></a>
+    </th>
+  </tr>
+</thead>
+<tbody>
+  <%
+  if (docs.length === 0) {
+  %>
+    <tr class="odd">
+      <td valign="top" colspan="3" class="dataTables_empty">No documents</td>
+    </tr>
+  <%
+  }
+  var odd = true;
+  docs.forEach(function(d) {
+    var tempObj = {};
+    $.each(d.attributes.content, function(k, v) {
+      if (! (k === '_id' || k === '_rev' || k === '_key')) {
+        tempObj[k] = v;
+      }
+    });
+    var tmpObj = JSON.stringify(tempObj); %>
+  <tr class="<%=odd?'odd':'even'%>" id="row_<%=d.attributes.key %>">
+    <td class="docsFirstCol">
+      <pre class="prettify" title="<%=escaped(tmpObj)%>"><%= cutByResolution(tmpObj) %></pre>
+    </td>
+    <td class="docsSecCol">
+    <div class="key"><%= d.attributes.key %></div>
+    </td>
+    <td class="docsThirdCol">
+      <a class="deleteButton">
+      <span class="icon_arangodb_roundminus" data-original-title="Delete document" title="Delete document"></span></a>
+    </td>
+  </tr>
+  <% 
+    odd = !odd;
+    });
+  %>
+</tbody>
+</script>
+
+<script id="testView.ejs" type="text/template">
+<h1>Text File Reader</h1>
+    <div>
+          Select a text file: 
+                <input type="file" id="fileInput">
+                    </div>
+                        <pre id="fileDisplayArea"><pre>
+
+
+</script>
+
+<script id="userBarView.ejs" type="text/template">
+<ul class="navlist" id="userBarUl">
+
+  <li class="dropdown user-menu userImg">
+    <a href="#" class="tab userImg" id="user" >
+      <img class="user-menu-img" src="<%=img%>" id="userimage" /> <b class="caret"></b>
+    </a>
+    <ul class="user-dropdown-menu" id="user_dropdown">
+      <li class="dropdown-header" style="text-transform: none">
+        <%
+        if (name) {%>
+        <%=_.escape(name)%> (<%=_.escape(username)%>)
+        <% } else {%>
+        <%=_.escape(username)%>
+        <% } %>
+      <li class="dropdown-item">
+        <a id="userProfile" class="tab" href="#user">User profile</a>
+      </li>
+      <li class="dropdown-item">
+        <a id="userLogout" class="tab">Logout</a>
+      </li>
+    </ul>
+  </li>
+
+</ul>
+</script>
+
+<script id="userManagementView.ejs" type="text/template">
+  <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="userManagementSearchSubmit" class="search-submit-icon"> -->
+      <i id="userManagementSearchSubmit" class="fa fa-search"></i>
+    </div>
+    <div class="headerButtonBar">
+      <ul class="headerButtonList">
+        <li class="enabled">
+        <a id="userManagementToggle" class="headerButton">
+          <span class="icon_arangodb_settings2" title="Settings"></span>
+        </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="pull-left">
+      <a class="arangoHeader">User Management</a>
+    </div>
+  </div>
+
+
+<div id="userManagementDropdown2" class="headerDropdown">
+
+  <div id="userManagementDropdown" class="dropdownInner">
+    <ul>
+      <li class="nav-header">Sorting</li>
+
+      <!--<li><a href="#">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="sortName">
+          <label class="css-label css-label-round"></label>Sort by username
+        </label>
+      </a></li>
+
+      <li><a href="#">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="sortType">
+          <label class="css-label css-label-round"></label>Sort by status
+        </label>
+      </a></li>-->
+
+      <li><a href="#">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="userSortDesc">
+          <i class="fa"></i>
+          Sort descending
+        </label>
+      </a></li>
+    </ul>
+  </div>
+
+</div>
+
+
+  <div class="contentDiv" id="arangoCollectionsContainer">
+    <div id="userManagementThumbnailsIn" class="tileList">
+      <div class="tile">
+        <a href="#" id="createUser" class="add">
+          <span id="newUser" class="pull-left icon_arangodb_roundplus arangoicon add-Icon"/>
+          Add User
+        </a>
+      </div>
+
+
+            <% collection.forEach(function(user) {
+              var username = user.get("user"),
+                extra = user.get("extra"),
+                name = extra.name,
+                img = extra.img,
+                active = user.get("active"),
+                avatar = '<img src="';
+
+              if (! img) {
+                avatar += 'img/arangodb_logo_small.png';
+              } else {
+                avatar += 'https://s.gravatar.com/avatar/';
+                avatar += img;
+                avatar += '?s=50';
+              }
+              avatar += '" height="50" width="50" alt="" class="icon" id="';
+              avatar += _.escape(username);
+              avatar += '" />';
+              if (! name) {
+                name = " ";
+              }
+      %>
+
+      <div class="tile">
+        <div class="iconSet">
+          <span class="icon_arangodb_settings2 editUser" id="<%=_.escape(username) %>_edit-user" alt="Edit user" title="Edit user"></span>
+        </div>
+        <%=avatar %>
+        <div class="tileBadge">
+          <span>
+            <%if (active) {%>
+            <div class="corneredBadge loaded">
+              active
+            </div>
+            <%} else {%>
+            <div class="corneredBadge unloaded">
+              inactive
+            </div>
+            <%}%>
+          </span>
+        </div>
+
+        <h5 class="collectionName"><%=_.escape(username) %> <% if (name !== ' ') { %>(<%=_.escape(name) %>)<%}%></h5>
+      </div>
+      <%});%>
+     </div>
+  </div>
+</script>
+
+<script id="warningList.ejs" type="text/template">
+  <% if (warnings.length > 0) { %>
+    <div>
+      <ul>
+        <% console.log(warnings); _.each(warnings, function(w) { console.log(w);%>
+          <li><b><%=w.code%></b>: <%=w.message%></li>
+        <% }); %>
+      </ul>
+    </div>
+  <% } %>
+</script>
+
+</head>
+<body>
+  <nav class="navbar">
+    <div class="resizecontainer">
+      <div class="navlogo">
+        <a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"/></a>
+      </div>
+      <div id="progressPlaceholderIcon"></div>
+        <div class="statmenu" id="statisticBar">
+        </div>
+        <div class="usermenu" id="userBar" style="float:right;">
+        </div>
+        <div class="notificationmenu" id="notificationBar" style="float:right;">
+        </div>
+        <div class="navmenu" id="navigationBar">
+        </div>
+    </div>
+  </nav>
+
+  <div class="centralRow resizecontainer">
+    <div id="content" class="centralContent"></div>
+  </div>
+
+  <div id="modalPlaceholder">
+  </div>
+
+  <div id="progressPlaceholder" style="display:none">
+  </div>
+
+  </div>
+
+  <footer class="footer">
+    <div class="resizecontainer" id="footerBar">
+    </div>
+  </footer>
+
+<script src="app.js?version=1438685297715"></script>
+
+  </body>
+</html>

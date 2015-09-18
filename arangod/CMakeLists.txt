@@ -90,6 +90,8 @@ add_executable(
     Aql/RestAqlHandler.cpp
     Aql/Scopes.cpp
     Aql/ShortStringStorage.cpp
+    Aql/TraversalBlock.cpp
+    Aql/TraversalNode.cpp
     Aql/tokens.cpp
     Aql/V8Expression.cpp
     Aql/Variable.cpp
@@ -181,6 +183,7 @@ add_executable(
     VocBase/document-collection.cpp
     VocBase/ExampleMatcher.cpp
     VocBase/edge-collection.cpp
+    VocBase/Graphs.cpp
     VocBase/headers.cpp
     VocBase/KeyGenerator.cpp
     VocBase/Legends.cpp

@@ -69,6 +69,8 @@ void Aqlerror (YYLTYPE* locp,
 %token T_IN "IN keyword"
 %token T_WITH "WITH keyword"
 %token T_INTO "INTO keyword"
+
+%token T_GRAPH "GRAPH keyword"
 %token T_DISTINCT "DISTINCT modifier"
 
 %token T_REMOVE "REMOVE command"
@@ -120,6 +122,9 @@ void Aqlerror (YYLTYPE* locp,
 
 %token T_END 0 "end of query string"
 
+%token T_OUTBOUND "outbound direction"
+%token T_INBOUND "inbound direction"
+%token T_ANY "any direction"
 
 /* define operator precedence */
 %left T_COMMA
@@ -182,6 +187,10 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> optional_array_filter;
 %type <node> optional_array_limit;
 %type <node> optional_array_return;
+%type <node> graph_subject;
+%type <intval> graph_direction;
+%type <node> graph_direction_steps;
+%type <node> graph_collection;
 %type <node> reference;
 %type <node> simple_value;
 %type <node> value_literal;
@@ -257,6 +266,21 @@ for_statement:
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
      
       auto node = parser->ast()->createNodeFor($2, $4);
+      parser->ast()->addOperation(node);
+    }
+    | T_FOR variable_name T_IN graph_direction_steps expression graph_subject {
+      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
+      auto node = parser->ast()->createNodeTraversal($2, $4, $5, $6);
+      parser->ast()->addOperation(node);
+    }
+    | T_FOR variable_name T_COMMA variable_name T_IN graph_direction_steps expression graph_subject {
+      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
+      auto node = parser->ast()->createNodeTraversal($2, $4, $6, $7, $8);
+      parser->ast()->addOperation(node);
+    }
+    | T_FOR variable_name T_COMMA variable_name T_COMMA variable_name T_IN graph_direction_steps expression graph_subject {
+      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
+      auto node = parser->ast()->createNodeTraversal($2, $4, $6, $8, $9, $10);
       parser->ast()->addOperation(node);
     }
   ;
@@ -1042,6 +1066,75 @@ optional_array_return:
     }
   | T_RETURN expression {
       $$ = $2;
+    }
+  ;
+
+graph_collection:
+    T_STRING {
+      $$ = parser->ast()->createNodeValueString($1);
+    }
+  | bind_parameter {
+      // TODO FIXME check @s
+      $$ = $1;
+    }
+  ;
+
+graph_collection_list:
+     graph_collection {
+       auto node = static_cast<AstNode*>(parser->peekStack());
+       node->addMember($1);
+     }
+   | graph_collection_list T_COMMA graph_collection {
+       auto node = static_cast<AstNode*>(parser->peekStack());
+       node->addMember($3);
+     }
+   ;
+
+graph_subject:
+    graph_collection {
+      auto node = parser->ast()->createNodeArray();
+      node->addMember($1);
+      $$ = parser->ast()->createNodeCollectionList(node);
+    }
+  | graph_collection T_COMMA 
+    {
+      auto node = parser->ast()->createNodeArray();
+      parser->pushStack(node);
+      node->addMember($1);
+    } graph_collection_list {
+      auto node = static_cast<AstNode*>(parser->popStack());
+      $$ = parser->ast()->createNodeCollectionList(node);
+    }
+  | T_GRAPH bind_parameter {
+      // graph name
+      $$ = $2;
+    }
+  | T_GRAPH T_QUOTED_STRING {
+      // graph name
+      $$ = parser->ast()->createNodeValueString($2);
+    }
+  ;
+
+graph_direction:
+    // Returns the edge direction number.
+    // Identical order as TRI_edge_direction_e
+    T_OUTBOUND {
+      $$ = 2;
+    }
+    | T_INBOUND {
+      $$ = 1;
+    }
+    | T_ANY {
+      $$ = 0; 
+    }
+  ;
+
+graph_direction_steps:
+    graph_direction {
+      $$ = parser->ast()->createNodeDirection($1, 1);
+    }
+    | expression graph_direction {
+      $$ = parser->ast()->createNodeDirection($2, $1);
     }
   ;
 

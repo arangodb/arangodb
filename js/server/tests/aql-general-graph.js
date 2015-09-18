@@ -52,7 +52,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
   var AQL_VERTICES = "FOR e IN GRAPH_VERTICES(@name, @example, @options) SORT e._id RETURN e";
   var AQL_EDGES = "FOR e IN GRAPH_EDGES(@name, @example, @options) SORT e.what RETURN e.what";
-  var AQL_NEIGHBORS = "FOR e IN GRAPH_NEIGHBORS(@name, @example, @options) SORT e RETURN e";
+  var AQL_NEIGHBORS = "FOR e IN GRAPH_NEIGHBORS(@name, @example, @options) SORT e._id RETURN e";
 
   var startExample = [{hugo : true}, {heinz : 1}];
   var vertexExample = {_key: "v1"};

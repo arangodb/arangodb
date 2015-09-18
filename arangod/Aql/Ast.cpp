@@ -34,6 +34,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/collection.h"
+#include "VocBase/Graphs.h"
 
 using namespace triagens::aql;
 
@@ -1023,6 +1024,128 @@ AstNode* Ast::createNodeCalculatedObjectElement (AstNode const* attributeName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST collection list node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeCollectionList (AstNode const* edgeCollections) {
+
+  AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
+
+  TRI_ASSERT(edgeCollections->type == NODE_TYPE_ARRAY);
+
+  for (size_t i = 0; i < edgeCollections->numMembers(); ++i) {
+    auto eC = edgeCollections->getMember(i);
+    if (eC->isStringValue()) {
+      _query->collections()->add(eC->getStringValue(), TRI_TRANSACTION_READ);
+    } // else bindParameter use default for collection bindVar
+    // We do not need to propagate these members
+    node->addMember(eC);
+  }
+  
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST direction node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeDirection (uint64_t direction,
+                                   uint64_t steps) {
+  AstNode* node = createNode(NODE_TYPE_DIRECTION);
+  AstNode* dir = createNodeValueInt(direction);
+  AstNode* step = createNodeValueInt(steps);
+  node->addMember(dir);
+  node->addMember(step);
+
+  TRI_ASSERT(node->numMembers() == 2);
+  return node;
+}
+
+AstNode* Ast::createNodeDirection (uint64_t direction,
+                                   AstNode const* steps) {
+  AstNode* node = createNode(NODE_TYPE_DIRECTION);
+  AstNode* dir = createNodeValueInt(direction);
+
+  node->addMember(dir);
+  node->addMember(steps);
+
+  TRI_ASSERT(node->numMembers() == 2);
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST traversal node with only vertex variable
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeTraversal (char const* vertexVarName,
+                              AstNode const* direction,
+                              AstNode const* start,
+                              AstNode const* graph) {
+
+  if (vertexVarName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  AstNode* node = createNode(NODE_TYPE_TRAVERSAL);
+
+  node->addMember(direction);
+  node->addMember(start);
+  node->addMember(graph);
+
+  AstNode* vertexVar = createNodeVariable(vertexVarName, false);
+  node->addMember(vertexVar);
+
+  TRI_ASSERT(node->numMembers() == 4);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST traversal node with vertex and edge variable
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeTraversal (char const* vertexVarName,
+                              char const* edgeVarName,
+                              AstNode const* direction,
+                              AstNode const* start,
+                              AstNode const* graph) {
+  if (edgeVarName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  AstNode* node = createNodeTraversal(vertexVarName, direction, start, graph);
+
+  AstNode* edgeVar = createNodeVariable(edgeVarName, false);
+  node->addMember(edgeVar);
+
+  TRI_ASSERT(node->numMembers() == 5);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST traversal node with vertex, edge and path variable
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeTraversal (char const* vertexVarName,
+                              char const* edgeVarName,
+                              char const* pathVarName,
+                              AstNode const* direction,
+                              AstNode const* start,
+                              AstNode const* graph) {
+
+  if (pathVarName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  AstNode* node = createNodeTraversal(vertexVarName, edgeVarName, direction, start, graph);
+
+  AstNode* pathVar = createNodeVariable(pathVarName, false);
+  node->addMember(pathVar);
+
+  TRI_ASSERT(node->numMembers() == 6);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST function call node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1184,6 +1307,25 @@ void Ast::injectBindParameters (BindParameters& parameters) {
       }
       // convert into a regular attribute access node to simplify handling later
       return createNodeAttributeAccess(node->getMember(0), name->getStringValue());
+    }
+    else if (node->type == NODE_TYPE_TRAVERSAL) {
+      auto graphNode = node->getMember(2);
+      if (graphNode->type == NODE_TYPE_VALUE) {
+        TRI_ASSERT(graphNode->isStringValue());
+        std::string graphName = graphNode->getStringValue();
+        auto graph = triagens::arango::GraphFactory::factory()->byName(
+          _query->vocbase(),
+          graphName
+        );
+        auto vColls = graph.vertexCollections();
+        for (const auto& n: vColls) {
+          _query->collections()->add(n, TRI_TRANSACTION_READ);
+        }
+        auto eColls = graph.edgeCollections();
+        for (const auto& n: eColls) {
+          _query->collections()->add(n, TRI_TRANSACTION_READ);
+        }
+      }
     }
 
     return node;
@@ -2587,12 +2729,13 @@ std::pair<std::string, bool> Ast::normalizeFunctionName (char const* name) {
 
   std::string functionName(upperName);
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, upperName);
 
   if (functionName.find(':') == std::string::npos) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, upperName);
     // prepend default namespace for internal functions
     return std::make_pair(functionName, true);
   }
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, upperName);
 
   // user-defined function
   return std::make_pair(functionName, false);

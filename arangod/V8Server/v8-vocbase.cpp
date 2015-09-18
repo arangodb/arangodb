@@ -72,6 +72,7 @@
 
 using namespace std;
 using namespace triagens::basics;
+using namespace triagens::basics::traverser;
 using namespace triagens::arango;
 using namespace triagens::rest;
 
@@ -2000,30 +2001,6 @@ class AttributeWeightCalculator {
     }
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper to transform a vertex _id string to VertexId struct.
-////////////////////////////////////////////////////////////////////////////////
-
-static VertexId IdStringToVertexId (CollectionNameResolver const* resolver,
-                                    string const& vertex) {
-  size_t split;
-  char const* str = vertex.c_str();
-
-  if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-
-  string const collectionName = vertex.substr(0, split);
-  auto coli = resolver->getCollectionStruct(collectionName);
-
-  if (coli == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-
-  return VertexId(coli->_cid, const_cast<char*>(str + split + 1));
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Executes a shortest Path Traversal
 ////////////////////////////////////////////////////////////////////////////////
@@ -3820,7 +3797,6 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_SHORTEST_PATH"), JS_QueryShortestPath, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("CPP_NEIGHBORS"), JS_QueryNeighbors, true);
-
 
   TRI_InitV8Replication(isolate, context, server, vocbase, loader, threadNumber, v8g);
 

@@ -43,6 +43,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/JsonHelper.h"
 #include "lib/Basics/json-utilities.h"
+#include "VocBase/Graphs.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -101,7 +102,8 @@ namespace triagens {
           RETURN                  = 18,
           NORESULTS               = 19,
           DISTRIBUTE              = 20,
-          UPSERT                  = 21
+          UPSERT                  = 21,
+          TRAVERSAL               = 22
         };
 
 // -----------------------------------------------------------------------------
@@ -1155,6 +1157,14 @@ namespace triagens {
 
         std::vector<Variable const*> getVariablesSetHere () const override final {
           return std::vector<Variable const*>{ _outVariable };
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return out variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* outVariable () const {
+          return _outVariable;
         }
 
 // -----------------------------------------------------------------------------

@@ -48,6 +48,8 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/RestAqlHandler.cpp \
 	arangod/Aql/Scopes.cpp \
 	arangod/Aql/ShortStringStorage.cpp \
+	arangod/Aql/TraversalBlock.cpp \
+	arangod/Aql/TraversalNode.cpp \
 	arangod/Aql/tokens.cpp \
 	arangod/Aql/V8Expression.cpp \
 	arangod/Aql/Variable.cpp \
@@ -107,6 +109,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Utils/Cursor.cpp \
 	arangod/Utils/CursorRepository.cpp \
 	arangod/Utils/DocumentHelper.cpp \
+	arangod/Utils/ShapedJsonTransformer.cpp \
 	arangod/Utils/StandaloneTransactionContext.cpp \
 	arangod/Utils/Transaction.cpp \
 	arangod/Utils/TransactionContext.cpp \
@@ -139,6 +142,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/document-collection.cpp \
 	arangod/VocBase/ExampleMatcher.cpp \
 	arangod/VocBase/edge-collection.cpp \
+	arangod/VocBase/Graphs.cpp \
 	arangod/VocBase/headers.cpp \
 	arangod/VocBase/KeyGenerator.cpp \
 	arangod/VocBase/Legends.cpp \

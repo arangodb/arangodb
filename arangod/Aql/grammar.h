@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.0.2.  */
+/* A Bison parser, made by GNU Bison 3.0.4.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2013 Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -58,70 +58,76 @@ extern int Aqldebug;
     T_IN = 267,
     T_WITH = 268,
     T_INTO = 269,
-    T_DISTINCT = 270,
-    T_REMOVE = 271,
-    T_INSERT = 272,
-    T_UPDATE = 273,
-    T_REPLACE = 274,
-    T_UPSERT = 275,
-    T_NULL = 276,
-    T_TRUE = 277,
-    T_FALSE = 278,
-    T_STRING = 279,
-    T_QUOTED_STRING = 280,
-    T_INTEGER = 281,
-    T_DOUBLE = 282,
-    T_PARAMETER = 283,
-    T_ASSIGN = 284,
-    T_NOT = 285,
-    T_AND = 286,
-    T_OR = 287,
-    T_EQ = 288,
-    T_NE = 289,
-    T_LT = 290,
-    T_GT = 291,
-    T_LE = 292,
-    T_GE = 293,
-    T_PLUS = 294,
-    T_MINUS = 295,
-    T_TIMES = 296,
-    T_DIV = 297,
-    T_MOD = 298,
-    T_QUESTION = 299,
-    T_COLON = 300,
-    T_SCOPE = 301,
-    T_RANGE = 302,
-    T_COMMA = 303,
-    T_OPEN = 304,
-    T_CLOSE = 305,
-    T_OBJECT_OPEN = 306,
-    T_OBJECT_CLOSE = 307,
-    T_ARRAY_OPEN = 308,
-    T_ARRAY_CLOSE = 309,
-    T_NIN = 310,
-    UMINUS = 311,
-    UPLUS = 312,
-    FUNCCALL = 313,
-    REFERENCE = 314,
-    INDEXED = 315,
-    EXPANSION = 316
+    T_GRAPH = 270,
+    T_DISTINCT = 271,
+    T_REMOVE = 272,
+    T_INSERT = 273,
+    T_UPDATE = 274,
+    T_REPLACE = 275,
+    T_UPSERT = 276,
+    T_NULL = 277,
+    T_TRUE = 278,
+    T_FALSE = 279,
+    T_STRING = 280,
+    T_QUOTED_STRING = 281,
+    T_INTEGER = 282,
+    T_DOUBLE = 283,
+    T_PARAMETER = 284,
+    T_ASSIGN = 285,
+    T_NOT = 286,
+    T_AND = 287,
+    T_OR = 288,
+    T_EQ = 289,
+    T_NE = 290,
+    T_LT = 291,
+    T_GT = 292,
+    T_LE = 293,
+    T_GE = 294,
+    T_PLUS = 295,
+    T_MINUS = 296,
+    T_TIMES = 297,
+    T_DIV = 298,
+    T_MOD = 299,
+    T_QUESTION = 300,
+    T_COLON = 301,
+    T_SCOPE = 302,
+    T_RANGE = 303,
+    T_COMMA = 304,
+    T_OPEN = 305,
+    T_CLOSE = 306,
+    T_OBJECT_OPEN = 307,
+    T_OBJECT_CLOSE = 308,
+    T_ARRAY_OPEN = 309,
+    T_ARRAY_CLOSE = 310,
+    T_OUTBOUND = 311,
+    T_INBOUND = 312,
+    T_ANY = 313,
+    T_NIN = 314,
+    UMINUS = 315,
+    UPLUS = 316,
+    FUNCCALL = 317,
+    REFERENCE = 318,
+    INDEXED = 319,
+    EXPANSION = 320
   };
 #endif
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef union YYSTYPE YYSTYPE;
+
 union YYSTYPE
 {
-#line 17 "arangod/Aql/grammar.y" /* yacc.c:1909  */
+#line 17 "arangod/Aql/grammar.y" /* yacc.c:1915  */
 
   triagens::aql::AstNode*  node;
   char*                    strval;
   bool                     boolval;
   int64_t                  intval;
 
-#line 124 "arangod/Aql/grammar.hpp" /* yacc.c:1909  */
+#line 128 "arangod/Aql/grammar.hpp" /* yacc.c:1915  */
 };
+
+typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif

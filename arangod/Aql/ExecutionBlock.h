@@ -41,6 +41,7 @@
 #include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
+#include "V8Server/V8Traverser.h"
 #include "VocBase/shaped-json.h"
 
 struct TRI_df_marker_s;
@@ -2479,9 +2480,7 @@ namespace triagens {
 
         ExecutionStats _deltaStats;
         
-
     };
-
   }  // namespace triagens::aql
 }  // namespace triagens
 

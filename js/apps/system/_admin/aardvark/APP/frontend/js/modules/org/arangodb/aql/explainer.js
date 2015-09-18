@@ -491,6 +491,8 @@ function processQuery (query, explain) {
         index.node = node.id;
         indexes.push(index);
         return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse ? "reverse " : "") + node.index.type + " index scan */");
+      case "TraversalNode":
+        return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " TRAVERSE /* TODO FIXME */";
       case "CalculationNode":
         return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");
       case "FilterNode":
