@@ -70,10 +70,8 @@ Parser::~Parser () {
 /// @brief set data for write queries
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Parser::configureWriteQuery (QueryType type,
-                                  AstNode const* collectionNode,
+bool Parser::configureWriteQuery (AstNode const* collectionNode,
                                   AstNode* optionNode) {
-  TRI_ASSERT(type != AQL_QUERY_READ);
 
   // check if we currently are in a subquery
   if (_ast->isInSubQuery()) {

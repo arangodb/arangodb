@@ -2362,7 +2362,7 @@ yyreduce:
   case 57:
 #line 591 "arangod/Aql/grammar.y" /* yacc.c:1646  */
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_REMOVE, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
       auto node = parser->ast()->createNodeRemove((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
@@ -2374,7 +2374,7 @@ yyreduce:
   case 58:
 #line 601 "arangod/Aql/grammar.y" /* yacc.c:1646  */
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_INSERT, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
       auto node = parser->ast()->createNodeInsert((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
@@ -2386,7 +2386,7 @@ yyreduce:
   case 59:
 #line 611 "arangod/Aql/grammar.y" /* yacc.c:1646  */
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
 
@@ -2399,7 +2399,7 @@ yyreduce:
   case 60:
 #line 619 "arangod/Aql/grammar.y" /* yacc.c:1646  */
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
 
@@ -2419,7 +2419,7 @@ yyreduce:
   case 62:
 #line 635 "arangod/Aql/grammar.y" /* yacc.c:1646  */
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
 
@@ -2432,7 +2432,7 @@ yyreduce:
   case 63:
 #line 643 "arangod/Aql/grammar.y" /* yacc.c:1646  */
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
 
@@ -2478,7 +2478,7 @@ yyreduce:
   case 68:
 #line 672 "arangod/Aql/grammar.y" /* yacc.c:1646  */
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPSERT, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
 

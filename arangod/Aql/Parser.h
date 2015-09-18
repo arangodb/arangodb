@@ -205,8 +205,7 @@ namespace triagens {
 /// @brief set data for write queries
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool configureWriteQuery (QueryType,
-                                  AstNode const*,
+        bool configureWriteQuery (AstNode const*,
                                   AstNode* optionNode);
 
 ////////////////////////////////////////////////////////////////////////////////
