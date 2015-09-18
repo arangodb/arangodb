@@ -652,73 +652,6 @@ function get_api_collections (req, res) {
 /// and additional statistical information about the collection.
 /// **Note** : This will always load the collection into memory.
 ///
-/// - *count*: The number of documents currently present in the collection.
-///
-/// * *figures.alive.count*: The number of currently active documents in all datafiles
-///   and journals of the collection. Documents that are contained in the
-///   write-ahead log only are not reported in this figure.
-///
-/// * *figures.alive.size*: The total size in bytes used by all active documents of
-///   the collection. Documents that are contained in the write-ahead log only are
-///   not reported in this figure.
-///
-/// - *figures.dead.count*: The number of dead documents. This includes document
-///   versions that have been deleted or replaced by a newer version. Documents
-///   deleted or replaced that are contained the write-ahead log only are not reported
-///   in this figure.
-///
-/// * *figures.dead.size*: The total size in bytes used by all dead documents.
-///
-/// * *figures.dead.deletion*: The total number of deletion markers. Deletion markers
-///   only contained in the write-ahead log are not reporting in this figure.
-///
-/// - *figures.datafiles.count*: The number of datafiles.
-/// - *figures.datafiles.fileSize*: The total filesize of datafiles (in bytes).
-///
-/// - *figures.journals.count*: The number of journal files.
-/// - *figures.journals.fileSize*: The total filesize of all journal files (in bytes).
-///
-/// - *figures.compactors.count*: The number of compactor files.
-/// - *figures.compactors.fileSize*: The total filesize of all compactor files (in bytes).
-///
-/// * *figures.shapefiles.count*: The number of shape files. This value is
-///   deprecated and kept for compatibility reasons only. The value will always
-///   be 0 since ArangoDB 2.0 and higher.
-/// * *figures.shapefiles.fileSize*: The total filesize of the shape files. This
-///   value is deprecated and kept for compatibility reasons only. The value will
-///   always be 0 in ArangoDB 2.0 and higher.
-///
-/// * *figures.shapes.count*: The total number of shapes used in the collection.
-///   This includes shapes that are not in use anymore. Shapes that are contained
-///   in the write-ahead log only are not reported in this figure.
-/// * *figures.shapes.size*: The total size of all shapes (in bytes). This includes
-///   shapes that are not in use anymore. Shapes that are contained in the
-///   write-ahead log only are not reported in this figure.
-///
-/// * *figures.attributes.count*: The total number of attributes used in the
-///   collection. Note: the value includes data of attributes that are not in use
-///   anymore. Attributes that are contained in the write-ahead log only are
-///   not reported in this figure.
-/// * *figures.attributes.size*: The total size of the attribute data (in bytes).
-///   Note: the value includes data of attributes that are not in use anymore.
-///   Attributes that are contained in the write-ahead log only are not
-///   reported in this figure.
-///
-/// * *figures.indexes.count*: The total number of indexes defined for the
-///   collection, including the pre-defined indexes (e.g. primary index).
-///
-/// * *figures.indexes.size*: The total memory allocated for indexes in bytes.
-///
-/// * *figures.maxTick*: The tick of the last marker that was stored in a journal
-///   of the collection. This might be 0 if the collection does not yet have
-///   a journal.
-///
-/// * *figures.uncollectedLogfileEntries*: The number of markers in the write-ahead
-///   log for this collection that have not been transferred to journals or
-///   datafiles.
-///
-/// - *journalSize*: The maximal size of a journal or datafile in bytes.
-///
 /// **Note**: collection data that are stored in the write-ahead log only are
 /// not reported in the results. When the write-ahead log is collected, documents
 /// might be added to journals and datafiles of the collection, which may modify
@@ -739,6 +672,125 @@ function get_api_collections (req, res) {
 /// used as a lower bound approximation of the disk usage.
 ///
 /// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Returns information about the collection:
+///
+/// @RESTREPLYBODY{count,integer,required,int64}
+/// The number of documents currently present in the collection.
+///
+/// @RESTREPLYBODY{figures,object,required,collection_figures}
+/// metrics of the collection
+///
+/// @RESTSTRUCT{alive,collection_figures,object,required,collection_figures_alive}
+/// the currently active figures
+///
+/// @RESTSTRUCT{count,collection_figures_alive,integer,required,int64}
+/// The number of currently active documents in all datafiles
+/// and journals of the collection. Documents that are contained in the
+/// write-ahead log only are not reported in this figure.
+///
+/// @RESTSTRUCT{size,collection_figures_alive,integer,required,int64}
+/// The total size in bytes used by all active documents of
+/// the collection. Documents that are contained in the write-ahead log only are
+/// not reported in this figure.
+///
+/// @RESTSTRUCT{dead,collection_figures,object,required,collection_figures_dead}
+/// the items waiting to be swept away by the cleaner
+///
+/// @RESTSTRUCT{count,collection_figures_dead,integer,required,int64}
+/// The number of dead documents. This includes document
+/// versions that have been deleted or replaced by a newer version. Documents
+/// deleted or replaced that are contained the write-ahead log only are not reported
+/// in this figure.
+///
+/// @RESTSTRUCT{size,collection_figures_dead,integer,required,int64}
+/// The total size in bytes used by all dead documents.
+///
+/// @RESTSTRUCT{deletion,collection_figures_dead,integer,required,int64}
+/// The total number of deletion markers. Deletion markers
+/// only contained in the write-ahead log are not reporting in this figure.
+///
+/// @RESTSTRUCT{datafiles,collection_figures,object,required,collection_figures_datafiles}
+/// Metrics regarding the datafiles
+///
+/// @RESTSTRUCT{count,collection_figures_datafiles,integer,required,int64}
+/// The number of datafiles.
+///
+/// @RESTSTRUCT{fileSize,collection_figures_datafiles,integer,required,int64}
+/// The total filesize of datafiles (in bytes).
+///
+/// @RESTSTRUCT{journals,collection_figures,object,required,collection_figures_journals}
+/// Metrics regarding the journal files
+///
+/// @RESTSTRUCT{count,collection_figures_journals,integer,required,int64}
+/// The number of journal files.
+///
+/// @RESTSTRUCT{fileSize,collection_figures_journals,integer,required,int64}
+/// The total filesize of all journal files (in bytes).
+///
+/// @RESTSTRUCT{compactors,collection_figures,object,required,collection_figures_compactors}
+///
+/// @RESTSTRUCT{count,collection_figures_compactors,integer,required,int64}
+/// The number of compactor files.
+///
+/// @RESTSTRUCT{fileSize,collection_figures_compactors,integer,required,int64}
+/// The total filesize of all compactor files (in bytes).
+///
+/// @RESTSTRUCT{shapefiles,collection_figures,object,required,collection_figures_shapefiles}
+/// **deprecated**
+///
+/// @RESTSTRUCT{count,collection_figures_shapefiles,integer,required,int64}
+/// The number of shape files. This value is deprecated and kept for compatibility reasons only.
+/// The value will always be 0 since ArangoDB 2.0 and higher.
+///
+/// @RESTSTRUCT{fileSize,collection_figures_shapefiles,integer,required,int64}
+/// The total filesize of the shape files. This value is deprecated and kept
+/// for compatibility reasons only. The value will always be 0 in ArangoDB 2.0 and higher.
+///
+/// @RESTSTRUCT{shapes,collection_figures,object,required,collection_figures_shapes}
+/// @RESTSTRUCT{count,collection_figures_shapes,integer,required,int64}
+/// The total number of shapes used in the collection. This includes shapes
+/// that are not in use anymore. Shapes that are contained
+/// in the write-ahead log only are not reported in this figure.
+///
+/// @RESTSTRUCT{size,collection_figures_shapes,integer,required,int64}
+/// The total size of all shapes (in bytes). This includes
+/// shapes that are not in use anymore. Shapes that are contained in the
+/// write-ahead log only are not reported in this figure.
+///
+/// @RESTSTRUCT{attributes,collection_figures,object,required,collection_figures_attributes}
+/// @RESTSTRUCT{count,collection_figures_attributes,integer,required,int64}
+/// The total number of attributes used in the
+/// collection. Note: the value includes data of attributes that are not in use
+/// anymore. Attributes that are contained in the write-ahead log only are
+/// not reported in this figure.
+///
+/// @RESTSTRUCT{size,collection_figures_attributes,integer,required,int64}
+/// The total size of the attribute data (in bytes).
+/// Note: the value includes data of attributes that are not in use anymore.
+/// Attributes that are contained in the write-ahead log only are not
+/// reported in this figure.
+///
+/// @RESTSTRUCT{indexes,collection_figures,object,required,collection_figures_indexes}
+/// @RESTSTRUCT{count,collection_figures_indexes,integer,required,int64}
+/// The total number of indexes defined for the collection, including the pre-defined
+/// indexes (e.g. primary index).
+///
+/// @RESTSTRUCT{size,collection_figures_indexes,integer,required,int64}
+/// The total memory allocated for indexes in bytes.
+///
+/// @RESTSTRUCT{maxTick,collection_figures,integer,required,int64}
+/// The tick of the last marker that was stored in a journal
+/// of the collection. This might be 0 if the collection does not yet have
+/// a journal.
+///
+/// @RESTSTRUCT{uncollectedLogfileEntries,collection_figures,integer,required,int64}
+/// The number of markers in the write-ahead
+/// log for this collection that have not been transferred to journals or datafiles.
+///
+/// @RESTREPLYBODY{journalSize,integer,required,int64}
+/// The maximal size of a journal or datafile in bytes.
 ///
 /// @RESTRETURNCODE{400}
 /// If the *collection-name* is missing, then a *HTTP 400* is
