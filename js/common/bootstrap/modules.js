@@ -151,6 +151,7 @@ NATIVE_MODULES.module = Module;
 
 Module._cache = {};
 Module._pathCache = {};
+Module._dbCache = {};
 Module._extensions = {};
 var modulePaths = GLOBAL_PATHS;
 Module.globalPaths = [];
@@ -368,7 +369,24 @@ Module._resolveLookupPaths = function(request, parent) {
 //    Then have it load  the file contents before returning its exports
 //    object.
 Module._load = function(request, parent, isMain) {
-  var filename = Module._resolveFilename(request, parent);
+  var filename = request;
+  var dbModule = false;
+
+  try {
+    filename = Module._resolveFilename(request, parent);
+  } catch (e) {
+    if (request.charAt(0) !== '/') {
+      request = '/' + request;
+    }
+    dbModule = Module._dbCache[request];
+    if (!dbModule) {
+      dbModule = internal.db._modules.firstExample({path: request});
+      if (!dbModule) {
+        throw e;
+      }
+      Module._dbCache[request] = dbModule;
+    }
+  }
 
   var cachedModule = Module._cache[filename];
   if (cachedModule) {
@@ -390,7 +408,11 @@ Module._load = function(request, parent, isMain) {
   var hadException = true;
 
   try {
-    module.load(filename);
+    if (dbModule) {
+      module._loadDbModule(dbModule);
+    } else {
+      module.load(filename);
+    }
     hadException = false;
   } finally {
     if (hadException) {
@@ -430,6 +452,15 @@ Module.prototype.load = function(filename) {
   var extension = path.extname(filename) || '.js';
   if (!Module._extensions[extension]) extension = '.js';
   Module._extensions[extension](this, filename);
+  this.loaded = true;
+};
+
+
+Module.prototype._loadDbModule = function (dbModule) {
+  assert(!this.loaded);
+  const filename = `db://_modules${dbModule.path}`;
+  this.filename = filename;
+  this._compile(dbModule.content, filename);
   this.loaded = true;
 };
 
