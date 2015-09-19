@@ -1226,6 +1226,7 @@ function printObject (object, context) {
 
 var funcRE = /function ([^\(]*)?\(\) \{ \[native code\] \}/;
 var func2RE = /function ([^\(]*)?\((.*)\) \{/;
+var classRE = /class ([^{]*)? \{/;
 
 exports.printRecursive = printRecursive = function (value, context) {
 
@@ -1321,8 +1322,15 @@ exports.printRecursive = printRecursive = function (value, context) {
                 }
               }
               else {
-                f = f.substr(8, f.length - 10).trim();
-                context.output += '[Function "' + f + '" ...]';
+                m = classRE.exec(f);
+
+                if (m !== null) {
+                  context.output += 'class ' + m[1] + ' { ... }';
+                }
+                else {
+                  f = f.substr(8, f.length - 10).trim();
+                  context.output += '[Function "' + f + '" ...]';
+                }
               }
             }
           }
