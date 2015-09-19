@@ -18,6 +18,6 @@ punycode:             4.1.0
 querystring:        	0.11.0        	(urlDecode)
 stream:             	0.10.25
 sys:                	not supported
-url:                	0.11.0
+url:                	4.1.0
 util:               	compatibility
 vm:                 	not supported
