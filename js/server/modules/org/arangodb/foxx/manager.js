@@ -61,6 +61,7 @@ const executeGlobalContextFunction = require('internal').executeGlobalContextFun
 const actions = require('org/arangodb/actions');
 const plainServerVersion = require("org/arangodb").plainServerVersion;
 const _ = require('underscore');
+const Module = require('module');
 
 const throwDownloadError = arangodb.throwDownloadError;
 const throwFileNotFound = arangodb.throwFileNotFound;
@@ -112,7 +113,7 @@ const manifestSchema = {
       .pattern(RE_FQPATH, joi.string().required())
     )
   ),
-  defaultDocument: joi.string().allow('').optional(),
+  defaultDocument: joi.string().allow('').allow(null).default(null),
   dependencies: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -147,7 +148,7 @@ const manifestSchema = {
   ),
   isSystem: joi.boolean().default(false),
   keywords: joi.array().optional(),
-  lib: joi.string().optional(),
+  lib: joi.string().default('.'),
   license: joi.string().optional(),
   name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).required(),
   repository: (
@@ -306,42 +307,29 @@ function checkMountedSystemApps(dbname) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function checkManifest(filename, manifest) {
-  var validationErrors = [];
+  const serverVersion = plainServerVersion();
+  const validationErrors = [];
 
   Object.keys(manifestSchema).forEach(function (key) {
-
-    var schema = manifestSchema[key];
-    var value = manifest[key];
-    var result = joi.validate(value, schema);
+    let schema = manifestSchema[key];
+    let value = manifest[key];
+    let result = joi.validate(value, schema);
     if (result.value !== undefined) {
       manifest[key] = result.value;
     }
     if (result.error) {
-      var message = result.error.message.replace(/^"value"/, util.format('"%s"', key));
-      if (value === undefined) {
-        message = util.format(
-          'Manifest "%s": attribute %s.',
-          filename,
-          message
-        );
-      } else {
-        message = util.format(
-          'Manifest "%s": attribute %s (was "%s").',
-          filename,
-          message,
-          manifest[key]
-        );
-      }
+      let error = result.error.message.replace(/^"value"/, `"${key}"`);
+      let message = `Manifest "${filename}": attribute ${error} (was "${util.format(value)}").`;
       validationErrors.push(message);
       console.error(message);
     }
   });
 
-  let serverVersion = plainServerVersion();
-
-  if (manifest.engines 
-   && manifest.engines.arangodb
-   && !semver.satisfies(serverVersion, manifest.engines.arangodb)) {
+  if (
+    manifest.engines
+    && manifest.engines.arangodb
+    && !semver.satisfies(serverVersion, manifest.engines.arangodb)
+   ) {
     console.warn(
       `Manifest "${filename}" for app "${manifest.name}":`
       + ` ArangoDB version ${serverVersion} probably not compatible`
@@ -461,9 +449,9 @@ function isSystemMount(mount) {
 
 function computeRootAppPath(mount) {
   if (isSystemMount(mount)) {
-    return module.systemAppPath();
+    return Module._systemAppPath;
   }
-  return module.appPath();
+  return Module._appPath;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1559,7 +1547,7 @@ function syncWithFolder(options) {
   options.replace = true;
   appCache = appCache || {};
   appCache[dbname] = {};
-  var folders = fs.listTree(module.appPath()).filter(filterAppRoots);
+  var folders = fs.listTree(Module._appPath).filter(filterAppRoots);
   var collection = utils.getStorage();
   return folders.map(function (folder) {
     var mount;

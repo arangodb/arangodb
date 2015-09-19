@@ -1,16 +1,21 @@
-/*jshint esnext: true, strict: false, unused: false, -W051: true */
-var EventEmitter = require('events').EventEmitter;
-exports = module.exports = new EventEmitter();
-exports.env = require("internal").env;
+'use strict';
+
+const EventEmitter = require('events').EventEmitter;
+const internal = require('internal');
+const path = require('path');
+
+module.exports = exports = new EventEmitter();
+
+exports.env = internal.env;
 exports.argv = [];
 exports.stdout = {
   isTTY: false,
-  write: function (text) {
-    require('console').infoLines(text);
+  write(text) {
+    console.infoLines(text);
   }
 };
 exports.cwd = function () {
-  return global.module.appPath();
+  return path.resolve(internal.appPath);
 };
 exports.nextTick = function (fn) {
   fn();

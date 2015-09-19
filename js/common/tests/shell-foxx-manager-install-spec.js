@@ -34,6 +34,7 @@ var FoxxManager = require("org/arangodb/foxx/manager");
 var arangodb = require("org/arangodb");
 var ArangoError = arangodb.ArangoError;
 var fs = require("fs");
+var Module = require('module');
 var errors = require("internal").errors;
 var basePath = fs.makeAbsolute(fs.join(module.startupPath(), "common", "test-data", "apps"));
 
@@ -54,7 +55,7 @@ describe("Foxx Manager install", function() {
     } catch(e) {
       try {
         // Make sure that the files are physically removed
-        var appPath = fs.makeAbsolute(module.appPath());
+        var appPath = fs.makeAbsolute(Module._appPath);
         appPath = fs.join(appPath, "unittest", "broken");
         fs.removeDirectoryRecursive(appPath, true);
       } catch(err) {

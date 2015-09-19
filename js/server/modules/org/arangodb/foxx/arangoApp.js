@@ -34,6 +34,7 @@
 
 var fs = require("fs");
 var internal = require("internal");
+var Module = require('module');
 var db = internal.db;
 var joi = require("joi");
 var _= require("underscore");
@@ -144,9 +145,9 @@ if (isValidation) {
   return "";
 }
 if (isSystemMount(mount)) {
-  return module.systemAppPath();
+  return Module._systemAppPath;
 }
-return module.appPath();
+return Module._appPath;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

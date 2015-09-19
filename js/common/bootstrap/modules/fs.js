@@ -1,5 +1,8 @@
 /*jshint -W051:true */
+/*eslint-disable */
+global.DEFINE_MODULE('fs', (function () {
 'use strict';
+/*eslint-enable */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "fs"
@@ -51,10 +54,8 @@
 /// USE OR OTHER DEALINGS IN THE SOFTWARE.
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-
-var exports = require("fs");
-var isWindows = require("internal").platform.substr(0, 3) === 'win';
+var exports = {};
+var isWindows = require('internal').platform.substr(0, 3) === 'win';
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Module "fs"
@@ -68,7 +69,7 @@ var isWindows = require("internal").platform.substr(0, 3) === 'win';
 /// @brief pathSeparator
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.pathSeparator = "/";
+exports.pathSeparator = '/';
 
 if (global.PATH_SEPARATOR) {
   exports.pathSeparator = global.PATH_SEPARATOR;
@@ -232,7 +233,7 @@ if (global.FS_GET_TEMP_PATH) {
 /// @brief home
 ////////////////////////////////////////////////////////////////////////////////
 
-var homeDirectory = "";
+var homeDirectory = '';
 
 if (global.HOME) {
   homeDirectory = global.HOME;
@@ -332,16 +333,16 @@ var safeJoin;
 
 if (isWindows) {
   safeJoin = function (base, relative) {
-    base = normalize(base + "/");
-    var path = normalizeArray(relative.split(/[\\\/]+/), false).join("/");
+    base = normalize(base + '/');
+    var path = normalizeArray(relative.split(/[\\\/]+/), false).join('/');
 
     return base + path;
   };
 }
 else {
   safeJoin = function (base, relative) {
-    base = normalize(base + "/");
-    var path = normalizeArray(relative.split("/"), false).join("/");
+    base = normalize(base + '/');
+    var path = normalizeArray(relative.split('/'), false).join('/');
 
     return base + path;
   };
@@ -432,34 +433,34 @@ if (global.FS_MOVE) {
     }
     catch (x) {
 
-      if (x.hasOwnProperty('errorNum') && 
-          (x.errorNum === 2 /* errors.ERROR_SYS_ERROR.code */ )) { 
+      if (x.hasOwnProperty('errorNum') &&
+          (x.errorNum === 2 /* errors.ERROR_SYS_ERROR.code */ )) {
         try {
           exports.copyRecursive(source, target);
           // yes, this only works from the temporary dir
           try {
             exports.removeDirectoryRecursive(source);
           }
-          catch(z){
-            require("console").log("failed to remove source directory: " + z);
+          catch (z){
+            require('console').log(`failed to remove source directory: ${z.stack || z}`);
           }
 
         }
         catch (y) {
           try {
-            // try to cleanup the mess we created... 
+            // try to cleanup the mess we created...
             // if it doesn't work out... oh well...
             exports.removeDirectoryRecursive(target);
           }
-          catch(v){
-            require("console").log("failed to clean up target directory: " + v);
+          catch (v){
+            require('console').log(`failed to clean up target directory: ${v.stack || v}`);
           }
-          throw(y);
+          throw y;
         }
       }
       else {
 
-        throw(x);
+        throw x;
       }
     }
     return true;
@@ -576,7 +577,9 @@ if (global.FS_ZIP_FILE) {
   delete global.FS_ZIP_FILE;
 }
 
-}());
+return exports;
+
+}()));
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

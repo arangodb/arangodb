@@ -1,5 +1,11 @@
 /*eslint curly:0, no-redeclare:0, quotes:0 */
+/*jshint ignore:start */
+/*eslint-disable */
+global.DEFINE_MODULE('path', (function () {
 'use strict';
+/*eslint-enable */
+
+const module = {};
 
 const isWindows = require('internal').platform.substr(0, 3) === 'win';
 
@@ -628,3 +634,6 @@ else /* posix */
 
 module.exports.posix = posix;
 module.exports.win32 = win32;
+
+return module.exports;
+}()));

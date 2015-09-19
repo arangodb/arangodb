@@ -29,6 +29,7 @@
 
 var db = require("org/arangodb").db;
 var internal = require("internal");
+var Module = require('module');
 var jsunity = require("jsunity");
 var fs = require("fs");
 
@@ -36,7 +37,7 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
   
-  var appPath = fs.join(module.appPath(), ".."); 
+  var appPath = fs.join(Module._appPath, ".."); 
   
   try {
     db._dropDatabase("UnitTestsRecovery1");
@@ -83,7 +84,7 @@ function recoverySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testFoxxDirectories : function () {
-      var appPath = fs.join(module.appPath(), ".."); 
+      var appPath = fs.join(Module._appPath, ".."); 
 
       assertTrue(fs.isDirectory(fs.join(appPath, "UnitTestsRecovery1")));
       assertTrue(fs.isFile(fs.join(appPath, "UnitTestsRecovery1", "foo.json")));
