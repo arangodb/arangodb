@@ -1,5 +1,11 @@
+/*eslint camelcase:0 */
 /*jshint esnext:true, -W051:true */
+/*eslint-disable */
+global.DEFINE_MODULE('internal', (function () {
 'use strict';
+/*eslint-enable */
+
+const exports = {};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -27,10 +33,6 @@
 /// @author Dr. Frank Celler
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
-(function () {
-
-var exports = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Module "internal"
@@ -71,7 +73,7 @@ exports.ArangoError.prototype.toString = function() {
   var errorNum = this.errorNum;
   var errorMessage = this.errorMessage || this.message;
 
-  return "[ArangoError " + errorNum + ": " + errorMessage + "]";
+  return '[ArangoError ' + errorNum + ': ' + errorMessage + ']';
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +89,7 @@ if (global.SleepAndRequeue) {
   };
 
   exports.SleepAndRequeue.prototype.toString = function() {
-    return "[SleepAndRequeue sleep: " + this.sleep + "]";
+    return '[SleepAndRequeue sleep: ' + this.sleep + ']';
 };
 
 }
@@ -158,7 +160,7 @@ if (global.COVERAGE) {
 /// @brief version
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.version = "unknown";
+exports.version = 'unknown';
 
 if (global.VERSION) {
   exports.version = global.VERSION;
@@ -169,7 +171,7 @@ if (global.VERSION) {
 /// @brief platform
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.platform = "unknown";
+exports.platform = 'unknown';
 
 if (global.SYS_PLATFORM) {
   exports.platform = global.SYS_PLATFORM;
@@ -224,15 +226,15 @@ if (global.REQUEST_TIME_DISTRIBUTION) {
 /// @brief startupPath
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.startupPath = "";
+exports.startupPath = '';
 
 if (global.STARTUP_PATH) {
   exports.startupPath = global.STARTUP_PATH;
   delete global.STARTUP_PATH;
 }
 
-if (exports.startupPath === "") {
-  exports.startupPath = ".";
+if (exports.startupPath === '') {
+  exports.startupPath = '.';
 }
 
 // -----------------------------------------------------------------------------
@@ -762,20 +764,20 @@ exports.setUnitTestsResult = function (value) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief structured to flat commandline arguments
-/// @param longOptsEqual whether long-options are in the type --opt=value 
+/// @param longOptsEqual whether long-options are in the type --opt=value
 ///                      or --opt value
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.toArgv = function (structure, longOptsEqual) {
-  if (typeof(longOptsEqual) === 'undefined') {
+  if (typeof longOptsEqual === 'undefined') {
     longOptsEqual = false;
   }
   var vec = [];
-  for (var key in structure) {
+  for (let key in structure) {
     if (structure.hasOwnProperty(key)) {
       if (key === 'commandSwitches') {
-        var multivec = "";
-        for (var i = 0; i < structure[key].length; i ++) {
+        let multivec = '';
+        for (let i = 0; i < structure[key].length; i++) {
           if (structure[key][i].length > 1) {
             vec.push(structure[key][i]);
           }
@@ -801,11 +803,11 @@ exports.toArgv = function (structure, longOptsEqual) {
               vec.push(structure[key]);
             }
             else {
-              vec.push("true");
+              vec.push('true');
             }
           }
           else {
-            vec.push("false");
+            vec.push('false');
           }
         }
       }
@@ -819,11 +821,12 @@ exports.toArgv = function (structure, longOptsEqual) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.parseArgv = function (argv, startOffset) {
+  var i;
   function setOption(ret, option, value) {
     if (option.indexOf(':') > 0) {
       var n = option.indexOf(':');
       var topOption = option.slice(0, n);
-      if (! ret.hasOwnProperty(topOption)) {
+      if (!ret.hasOwnProperty(topOption)) {
         ret[topOption] = {};
       }
       setOption(ret[topOption], option.slice(n + 1, option.length), value);
@@ -834,7 +837,7 @@ exports.parseArgv = function (argv, startOffset) {
     else if (argv[i + 1] === 'false') {
       ret[option] = false;
     }
-    else if (! isNaN(argv[i + 1])) {
+    else if (!isNaN(argv[i + 1])) {
       ret[option] = parseInt(argv[i + 1]);
     }
     else {
@@ -842,7 +845,7 @@ exports.parseArgv = function (argv, startOffset) {
     }
   }
   function setSwitch(ret, option) {
-    if (! ret.hasOwnProperty('commandSwitches')) {
+    if (!ret.hasOwnProperty('commandSwitches')) {
       ret.commandSwitches = [];
     }
     ret.commandSwitches.push(option);
@@ -855,7 +858,7 @@ exports.parseArgv = function (argv, startOffset) {
   }
 
   function setFlatCommand(ret, thisString) {
-    if (! ret.hasOwnProperty('flatCommands')) {
+    if (!ret.hasOwnProperty('flatCommands')) {
       ret.flatCommands = [];
     }
     ret.flatCommands.push(thisString);
@@ -863,14 +866,14 @@ exports.parseArgv = function (argv, startOffset) {
 
   var inFlat = false;
   var ret = {};
-  for (var i = startOffset; i < argv.length; i++) {
-    var thisString = argv[i];
-    if (! inFlat) {
+  for (i = startOffset; i < argv.length; i++) {
+    let thisString = argv[i];
+    if (!inFlat) {
       if ((thisString.length > 2) &&
-          (thisString.slice(0,2) === '--')) {
-        var option = thisString.slice(2, thisString.length);
+          (thisString.slice(0, 2) === '--')) {
+        let option = thisString.slice(2, thisString.length);
         if ((argv.length > i) &&
-            (argv[i + 1].slice(0,1) !== '-')) {
+            (argv[i + 1].slice(0, 1) !== '-')) {
           setOption(ret, option, argv[i + 1]);
           i++;
         }
@@ -1035,13 +1038,13 @@ function quoteJsonString (str) {
 function printIndent (context) {
 
   var j;
-  var indent = "";
+  var indent = '';
 
   if (context.prettyPrint) {
-    indent += "\n";
+    indent += '\n';
 
     for (j = 0; j < context.level; ++j) {
-      indent += "  ";
+      indent += '  ';
     }
   }
 
@@ -1061,31 +1064,29 @@ function printArray (object, context) {
       context.output += colors.COLOR_PUNCTUATION;
     }
 
-    context.output += "[ ]";
+    context.output += '[ ]';
 
     if (useColor) {
       context.output += colors.COLOR_RESET;
     }
   }
   else {
-    var i;
-
     if (useColor) {
       context.output += colors.COLOR_PUNCTUATION;
     }
 
-    context.output += "[";
+    context.output += '[';
 
     if (useColor) {
       context.output += colors.COLOR_RESET;
     }
 
     var newLevel = context.level + 1;
-    var sep = " ";
+    var sep = ' ';
 
     context.level = newLevel;
 
-    for (i = 0;  i < object.length;  i++) {
+    for (let i = 0; i < object.length; i++) {
       if (useColor) {
         context.output += colors.COLOR_PUNCTUATION;
       }
@@ -1099,21 +1100,21 @@ function printArray (object, context) {
       printIndent(context);
 
       var path = context.path;
-      context.path += "[" + i + "]";
+      context.path += '[' + i + ']';
 
       printRecursive(object[i], context);
 
       if (context.emit && context.output.length >= context.emit) {
         exports.output(context.output);
-        context.output = "";
+        context.output = '';
       }
 
       context.path = path;
-      sep = ", ";
+      sep = ', ';
     }
 
     context.level = newLevel - 1;
-    context.output += " ";
+    context.output += ' ';
 
     printIndent(context);
 
@@ -1121,7 +1122,7 @@ function printArray (object, context) {
       context.output += colors.COLOR_PUNCTUATION;
     }
 
-    context.output += "]";
+    context.output += ']';
 
     if (useColor) {
       context.output += colors.COLOR_RESET;
@@ -1136,13 +1137,13 @@ function printArray (object, context) {
 function printObject (object, context) {
 
   var useColor = context.useColor;
-  var sep = " ";
+  var sep = ' ';
 
   if (useColor) {
     context.output += colors.COLOR_PUNCTUATION;
   }
 
-  context.output += "{";
+  context.output += '{';
 
   if (useColor) {
     context.output += colors.COLOR_RESET;
@@ -1158,11 +1159,10 @@ function printObject (object, context) {
   }
   catch (err) {
     // ES6 proxy objects don't support key enumeration
-    keys = [ ];
+    keys = [];
   }
-  var i, n = keys.length;
 
-  for (i = 0; i < n; ++i) {
+  for (let i = 0, n = keys.length; i < n; ++i) {
     var k = keys[i];
     var val = object[k];
 
@@ -1188,24 +1188,24 @@ function printObject (object, context) {
       context.output += colors.COLOR_RESET;
     }
 
-    context.output += " : ";
+    context.output += ' : ';
 
     var path = context.path;
-    context.path += "[" + k + "]";
+    context.path += '[' + k + ']';
 
     printRecursive(val, context);
 
     context.path = path;
-    sep = ", ";
+    sep = ', ';
 
     if (context.emit && context.output.length >= context.emit) {
       exports.output(context.output);
-      context.output = "";
+      context.output = '';
     }
   }
 
   context.level = newLevel - 1;
-  context.output += " ";
+  context.output += ' ';
 
   printIndent(context);
 
@@ -1213,7 +1213,7 @@ function printObject (object, context) {
     context.output += colors.COLOR_PUNCTUATION;
   }
 
-  context.output += "}";
+  context.output += '}';
 
   if (useColor) {
     context.output += colors.COLOR_RESET;
@@ -1235,26 +1235,26 @@ exports.printRecursive = printRecursive = function (value, context) {
   var limitString = context.limitString;
   var showFunction = context.showFunction;
 
-  if (typeof context.seen === "undefined") {
+  if (typeof context.seen === 'undefined') {
     context.seen = [];
     context.names = [];
   }
 
   var p = context.seen.indexOf(value);
 
-  if (0 <= p) {
+  if (p >= 0) {
     context.output += context.names[p];
   }
   else {
     if (value && (value instanceof Object || (typeof value === 'object' && Object.getPrototypeOf(value) === null))) {
       context.seen.push(value);
       context.names.push(context.path);
-      if (customInspect && typeof value._PRINT === "function") {
+      if (customInspect && typeof value._PRINT === 'function') {
         value._PRINT(context);
 
         if (context.emit && context.output.length >= context.emit) {
           exports.output(context.output);
-          context.output = "";
+          context.output = '';
         }
       }
       else if (value instanceof Array) {
@@ -1270,7 +1270,7 @@ exports.printRecursive = printRecursive = function (value, context) {
               value instanceof Map ||
               value instanceof WeakSet ||
               value instanceof WeakMap ||
-              typeof value[Symbol.iterator] === "function") {
+              typeof value[Symbol.iterator] === 'function') {
             // ES6 iterators
             context.output += value.toString();
             handled = true;
@@ -1280,23 +1280,23 @@ exports.printRecursive = printRecursive = function (value, context) {
           // ignore any errors thrown above, and simply fall back to normal printing
         }
 
-        if (! handled) {
+        if (!handled) {
           // all other objects
           printObject(value, context);
         }
 
         if (context.emit && context.output.length >= context.emit) {
           exports.output(context.output);
-          context.output = "";
+          context.output = '';
         }
       }
-      else if (typeof value === "function") {
+      else if (typeof value === 'function') {
         // it's possible that toString() throws, and this looks quite ugly
         try {
           var s = value.toString();
 
-          if (0 < context.level && ! showFunction) {
-            var a = s.split("\n");
+          if (context.level > 0 && !showFunction) {
+            var a = s.split('\n');
             var f = a[0];
 
             var m = funcRE.exec(f);
@@ -1314,10 +1314,10 @@ exports.printRecursive = printRecursive = function (value, context) {
 
               if (m !== null) {
                 if (m[1] === undefined) {
-                  context.output += 'function ' + '(' + m[2] +') { ... }';
+                  context.output += 'function ' + '(' + m[2] + ') { ... }';
                 }
                 else {
-                  context.output += 'function ' + m[1] + ' (' + m[2] +') { ... }';
+                  context.output += 'function ' + m[1] + ' (' + m[2] + ') { ... }';
                 }
               }
               else {
@@ -1332,23 +1332,23 @@ exports.printRecursive = printRecursive = function (value, context) {
         }
         catch (e1) {
           exports.stdOutput(String(e1));
-          context.output += "[Function]";
+          context.output += '[Function]';
         }
       }
-      else if (useToString && typeof value.toString === "function") {
+      else if (useToString && typeof value.toString === 'function') {
         try {
           context.output += value.toString();
         }
         catch (e2) {
-          context.output += "[Object ";
+          context.output += '[Object ';
           printObject(value, context);
-          context.output += "]";
+          context.output += ']';
         }
       }
       else {
-        context.output += "[Object ";
+        context.output += '[Object ';
         printObject(value, context);
-        context.output += "]";
+        context.output += ']';
       }
     }
     else if (value === undefined) {
@@ -1356,20 +1356,20 @@ exports.printRecursive = printRecursive = function (value, context) {
         context.output += colors.COLOR_UNDEFINED;
       }
 
-      context.output += "undefined";
+      context.output += 'undefined';
 
       if (useColor) {
         context.output += colors.COLOR_RESET;
       }
     }
-    else if (typeof(value) === "string") {
+    else if (typeof value === 'string') {
       if (useColor) {
         context.output += colors.COLOR_STRING;
       }
 
       if (limitString) {
         if (limitString < value.length) {
-          value = value.substr(0, limitString) + "...";
+          value = value.substr(0, limitString) + '...';
         }
       }
 
@@ -1379,7 +1379,7 @@ exports.printRecursive = printRecursive = function (value, context) {
         context.output += colors.COLOR_RESET;
       }
     }
-    else if (typeof(value) === "boolean") {
+    else if (typeof value === 'boolean') {
       if (useColor) {
         context.output += value ? colors.COLOR_TRUE : colors.COLOR_FALSE;
       }
@@ -1390,7 +1390,7 @@ exports.printRecursive = printRecursive = function (value, context) {
         context.output += colors.COLOR_RESET;
       }
     }
-    else if (typeof(value) === "number") {
+    else if (typeof value === 'number') {
       if (useColor) {
         context.output += colors.COLOR_NUMBER;
       }
@@ -1413,7 +1413,7 @@ exports.printRecursive = printRecursive = function (value, context) {
       }
     }
     /* jshint notypeof: true */
-    else if (typeof(value) === "symbol") {
+    else if (typeof value === 'symbol') {
     /* jshint notypeof: false */
       // handle ES6 symbols
       if (useColor) {
@@ -1437,19 +1437,18 @@ exports.printRecursive = printRecursive = function (value, context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function bufferOutput () {
-  var i;
 
-  for (i = 0;  i < arguments.length;  ++i) {
+  for (let i = 0; i < arguments.length; ++i) {
     var value = arguments[i];
     var text;
 
     if (value === null) {
-      text = "null";
+      text = 'null';
     }
     else if (value === undefined) {
-      text = "undefined";
+      text = 'undefined';
     }
-    else if (typeof(value) === "object") {
+    else if (typeof value === 'object') {
       try {
         text = JSON.stringify(value);
       }
@@ -1479,14 +1478,13 @@ function bufferOutput () {
 function printShell () {
 
   var output = exports.output;
-  var i;
 
-  for (i = 0;  i < arguments.length;  ++i) {
-    if (0 < i) {
-      output(" ");
+  for (let i = 0; i < arguments.length; ++i) {
+    if (i > 0) {
+      output(' ');
     }
 
-    if (typeof(arguments[i]) === "string") {
+    if (typeof arguments[i] === 'string') {
       output(arguments[i]);
     }
     else {
@@ -1496,8 +1494,8 @@ function printShell () {
         level: 0,
         limitString: 80,
         names: [],
-        output: "",
-        path: "~",
+        output: '',
+        path: '~',
         prettyPrint: usePrettyPrint,
         seen: [],
         showFunction: false,
@@ -1511,7 +1509,7 @@ function printShell () {
     }
   }
 
-  output("\n");
+  output('\n');
 }
 
 // -----------------------------------------------------------------------------
@@ -1541,7 +1539,6 @@ exports.flatten = function (obj, seen) {
   var result = Object.create(null),
     src = obj,
     keys,
-    i,
     key,
     val;
 
@@ -1558,7 +1555,7 @@ exports.flatten = function (obj, seen) {
     }
     seen.push(src);
     keys = Object.getOwnPropertyNames(src);
-    for (i = 0; i < keys.length; i++) {
+    for (let i = 0; i < keys.length; i++) {
       key = keys[i];
       if (typeof src !== 'function' || (
         key !== 'arguments' && key !== 'caller' && key !== 'callee'
@@ -1601,16 +1598,16 @@ exports.inspect = function (object, options) {
     level: 0,
     limitString: false,
     names: [],
-    output: "",
+    output: '',
     prettyPrint: true,
-    path: "~",
+    path: '~',
     seen: [],
     showFunction: true,
     useColor: false,
     useToString: false
   };
 
-  if (options && options.hasOwnProperty("prettyPrint")) {
+  if (options && options.hasOwnProperty('prettyPrint')) {
     context.prettyPrint = options.prettyPrint;
   }
 
@@ -1642,7 +1639,7 @@ exports.printf = function () {
 /// @brief print
 ////////////////////////////////////////////////////////////////////////////////
 
-if (typeof exports.printBrowser === "function") {
+if (typeof exports.printBrowser === 'function') {
   exports.printShell = printShell;
   exports.print = exports.printBrowser;
 }
@@ -1667,7 +1664,7 @@ exports.isCaptureMode = function() {
 exports.startCaptureMode = function () {
   var old = exports.output;
 
-  exports.outputBuffer = "";
+  exports.outputBuffer = '';
   exports.output = bufferOutput;
 
   return old;
@@ -1680,14 +1677,14 @@ exports.startCaptureMode = function () {
 exports.stopCaptureMode = function (old) {
   var buffer = exports.outputBuffer;
 
-  exports.outputBuffer = "";
+  exports.outputBuffer = '';
   if (old !== undefined) {
     exports.output = old;
   }
   else {
     exports.output = exports.stdOutput;
   }
-  
+
   return buffer;
 };
 
@@ -1718,8 +1715,8 @@ if (global.SYS_STOP_PAGER) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.startPrettyPrint = function (silent) {
-  if (! usePrettyPrint && !silent) {
-    exports.print("using pretty printing");
+  if (!usePrettyPrint && !silent) {
+    exports.print('using pretty printing');
   }
 
   usePrettyPrint = true;
@@ -1731,7 +1728,7 @@ exports.startPrettyPrint = function (silent) {
 
 exports.stopPrettyPrint = function (silent) {
   if (usePrettyPrint && !silent) {
-    exports.print("disabled pretty printing");
+    exports.print('disabled pretty printing');
   }
 
   usePrettyPrint = false;
@@ -1756,13 +1753,13 @@ exports.startColorPrint = function (color, silent) {
   };
 
   if (!useColor && !silent) {
-    exports.print("starting color printing");
+    exports.print('starting color printing');
   }
 
   if (color === undefined || color === null) {
     color = null;
   }
-  else if (typeof color === "string") {
+  else if (typeof color === 'string') {
     color = color.toLowerCase();
     var c;
 
@@ -1770,7 +1767,7 @@ exports.startColorPrint = function (color, silent) {
       colors = schemes[color];
 
       for (c in exports.COLORS) {
-        if (exports.COLORS.hasOwnProperty(c) && ! colors.hasOwnProperty(c)) {
+        if (exports.COLORS.hasOwnProperty(c) && !colors.hasOwnProperty(c)) {
           colors[c] = exports.COLORS[c];
         }
       }
@@ -1804,7 +1801,7 @@ exports.startColorPrint = function (color, silent) {
 
 exports.stopColorPrint = function (silent) {
   if (useColor && !silent) {
-    exports.print("disabled color printing");
+    exports.print('disabled color printing');
   }
 
   useColor = false;
@@ -1841,7 +1838,7 @@ if (typeof SYS_OPTIONS !== 'undefined') {
 ////////////////////////////////////////////////////////////////////////////////
 
 global.print = function print () {
-  var internal = require("internal");
+  var internal = require('internal');
   internal.print.apply(internal.print, arguments);
 };
 
@@ -1850,7 +1847,7 @@ global.print = function print () {
 ////////////////////////////////////////////////////////////////////////////////
 
 global.printf = function printf () {
-  var internal = require("internal");
+  var internal = require('internal');
   internal.printf.apply(internal.printf, arguments);
 };
 
@@ -1858,26 +1855,25 @@ global.printf = function printf () {
 /// @brief print_plain
 ////////////////////////////////////////////////////////////////////////////////
 
-global.print_plain = function print_plain () {
-  var output = require("internal").output;
-  var printRecursive = require("internal").printRecursive;
-  var i;
+global.print_plain = function print_plain() {
+  var output = require('internal').output;
+  var printRecursive = require('internal').printRecursive;
 
-  for (i = 0;  i < arguments.length;  ++i) {
-    if (0 < i) {
-      output(" ");
+  for (let i = 0; i < arguments.length; ++i) {
+    if (i > 0) {
+      output(' ');
     }
 
-    if (typeof(arguments[i]) === "string") {
+    if (typeof arguments[i] === 'string') {
       output(arguments[i]);
     }
     else {
       var context = {
         names: [],
         seen: [],
-        path: "~",
+        path: '~',
         level: 0,
-        output: "",
+        output: '',
         prettyPrint: false,
         useColor: false,
         customInspect: true
@@ -1889,7 +1885,7 @@ global.print_plain = function print_plain () {
     }
   }
 
-  output("\n");
+  output('\n');
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1897,7 +1893,7 @@ global.print_plain = function print_plain () {
 ////////////////////////////////////////////////////////////////////////////////
 
 global.start_pretty_print = function start_pretty_print () {
-  require("internal").startPrettyPrint();
+  require('internal').startPrettyPrint();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1905,7 +1901,7 @@ global.start_pretty_print = function start_pretty_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
 global.stop_pretty_print = function stop_pretty_print () {
-  require("internal").stopPrettyPrint();
+  require('internal').stopPrettyPrint();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1913,7 +1909,7 @@ global.stop_pretty_print = function stop_pretty_print () {
 ////////////////////////////////////////////////////////////////////////////////
 
 global.start_color_print = function start_color_print (color) {
-  require("internal").startColorPrint(color, false);
+  require('internal').startColorPrint(color, false);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1921,10 +1917,30 @@ global.start_color_print = function start_color_print (color) {
 ////////////////////////////////////////////////////////////////////////////////
 
 global.stop_color_print = function stop_color_print () {
-  require("internal").stopColorPrint();
+  require('internal').stopColorPrint();
 };
 
-}());
+
+if (global.EXPORTS_SLOW_BUFFER) {
+  Object.keys(global.EXPORTS_SLOW_BUFFER).forEach(function (key) {
+    exports[key] = global.EXPORTS_SLOW_BUFFER[key];
+  });
+  delete global.EXPORTS_SLOW_BUFFER;
+}
+
+if (global.APP_PATH) {
+  exports.appPath = global.APP_PATH;
+  delete global.APP_PATH;
+}
+
+if (global.DEV_APP_PATH) {
+  exports.devAppPath = global.APP_PATH;
+  delete global.DEV_APP_PATH;
+}
+
+return exports;
+
+}()));
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

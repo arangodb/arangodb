@@ -1,5 +1,8 @@
 /*jshint -W051:true */
+/*eslint-disable */
+(function () {
 'use strict';
+/*eslint-enable */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -32,9 +35,7 @@
 // --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
 
-(function () {
-
-var exports = require("internal");
+var exports = require('internal');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hide global variables
@@ -61,33 +62,33 @@ if (global.SYS_ARANGO) {
 exports.wal = {
   flush: function (waitForSync, waitForCollector) {
     if (exports.arango) {
-      var wfs = waitForSync ? "true" : "false";
-      var wfc = waitForCollector ? "true" : "false";
-      exports.arango.PUT("/_admin/wal/flush?waitForSync=" + wfs + "&waitForCollector=" + wfc, "");
+      var wfs = waitForSync ? 'true' : 'false';
+      var wfc = waitForCollector ? 'true' : 'false';
+      exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, '');
       return;
     }
 
-    throw "not connected";
+    throw 'not connected';
   },
 
   properties: function (value) {
     if (exports.arango) {
       if (value !== undefined) {
-        return exports.arango.PUT("/_admin/wal/properties", JSON.stringify(value));
+        return exports.arango.PUT('/_admin/wal/properties', JSON.stringify(value));
       }
 
-      return exports.arango.GET("/_admin/wal/properties", "");
+      return exports.arango.GET('/_admin/wal/properties', '');
     }
 
-    throw "not connected";
+    throw 'not connected';
   },
 
   transactions: function () {
     if (exports.arango) {
-      return exports.arango.GET("/_admin/wal/transactions", "");
+      return exports.arango.GET('/_admin/wal/transactions', '');
     }
 
-    throw "not connected";
+    throw 'not connected';
   }
 };
 
@@ -97,11 +98,11 @@ exports.wal = {
 
 exports.reloadAqlFunctions = function () {
   if (exports.arango) {
-    exports.arango.POST("/_admin/aql/reload", "");
+    exports.arango.POST('/_admin/aql/reload', '');
     return;
   }
 
-  throw "not connected";
+  throw 'not connected';
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,11 +111,11 @@ exports.reloadAqlFunctions = function () {
 
 exports.reloadRouting = function () {
   if (exports.arango) {
-    exports.arango.POST("/_admin/routing/reload", "");
+    exports.arango.POST('/_admin/routing/reload', '');
     return;
   }
 
-  throw "not connected";
+  throw 'not connected';
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,11 +124,11 @@ exports.reloadRouting = function () {
 
 exports.routingCache = function () {
   if (exports.arango) {
-    return exports.arango.GET("/_admin/routing/routes", "");
+    return exports.arango.GET('/_admin/routing/routes', '');
 
   }
 
-  throw "not connected";
+  throw 'not connected';
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,11 +137,11 @@ exports.routingCache = function () {
 
 exports.reloadAuth = function () {
   if (exports.arango) {
-    exports.arango.POST("/_admin/auth/reload", "");
+    exports.arango.POST('/_admin/auth/reload', '');
     return;
   }
 
-  throw "not connected";
+  throw 'not connected';
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,10 +150,10 @@ exports.reloadAuth = function () {
 
 exports.executeServer = function (body) {
   if (exports.arango) {
-    return exports.arango.POST("/_admin/execute", body);
+    return exports.arango.POST('/_admin/execute', body);
   }
 
-  throw "not connected";
+  throw 'not connected';
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,62 +172,62 @@ exports.appendCurlRequest = function (shellAppender,jsonAppender, rawAppender) {
       body = exports.inspect(body);
     }
 
-    curl = "shell> curl ";
+    curl = 'shell> curl ';
 
     if (method === 'POST') {
       response = exports.arango.POST_RAW(url, body, headers);
-      curl += "-X " + method + " ";
+      curl += '-X ' + method + ' ';
     }
     else if (method === 'PUT') {
       response = exports.arango.PUT_RAW(url, body, headers);
-      curl += "-X " + method + " ";
+      curl += '-X ' + method + ' ';
     }
     else if (method === 'GET') {
       response = exports.arango.GET_RAW(url, headers);
     }
     else if (method === 'DELETE') {
       response = exports.arango.DELETE_RAW(url, headers);
-      curl += "-X " + method + " ";
+      curl += '-X ' + method + ' ';
     }
     else if (method === 'PATCH') {
       response = exports.arango.PATCH_RAW(url, body, headers);
-      curl += "-X " + method + " ";
+      curl += '-X ' + method + ' ';
     }
     else if (method === 'HEAD') {
       response = exports.arango.HEAD_RAW(url, headers);
-      curl += "-X " + method + " ";
+      curl += '-X ' + method + ' ';
     }
     else if (method === 'OPTION') {
       response = exports.arango.OPTION_RAW(url, body, headers);
-      curl += "-X " + method + " ";
+      curl += '-X ' + method + ' ';
     }
-    if (headers !== undefined && headers !== "") {
+    if (headers !== undefined && headers !== '') {
       for (i in headers) {
         if (headers.hasOwnProperty(i)) {
-          curl += "--header \'" + i + ": " + headers[i] + "\' ";
+          curl += '--header \'' + i + ': ' + headers[i] + '\' ';
         }
       }
     }
 
-    if (body !== undefined && body !== "") {
-      curl += "--data-binary @- ";
+    if (body !== undefined && body !== '') {
+      curl += '--data-binary @- ';
     }
 
-    curl += "--dump - http://localhost:8529" + url;
+    curl += '--dump - http://localhost:8529' + url;
 
     shellAppender(curl);
 
-    if (body !== undefined && body !== "" && body) {
-      rawAppender(" &lt;&lt;EOF\n");
+    if (body !== undefined && body !== '' && body) {
+      rawAppender(' &lt;&lt;EOF\n');
       if (jsonBody) {
         jsonAppender(body);
       }
       else {
         rawAppender(body);
       }
-      rawAppender("\nEOF");
+      rawAppender('\nEOF');
     }
-    rawAppender("\n\n");
+    rawAppender('\n\n');
     return response;
   };
 };
@@ -241,23 +242,23 @@ exports.appendRawResponse = function (appender, syntaxAppender) {
     var headers = response.headers;
 
     // generate header
-    appender("HTTP/1.1 " + headers['http/1.1'] + "\n");
+    appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
 
     for (key in headers) {
       if (headers.hasOwnProperty(key)) {
         if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
             && key !== 'content-length') {
-          appender(key + ": " + headers[key] + "\n");
+          appender(key + ': ' + headers[key] + '\n');
         }
       }
     }
 
-    appender("\n");
+    appender('\n');
 
     // append body
     if (response.body !== undefined) {
       syntaxAppender(exports.inspect(response.body));
-      appender("\n");
+      appender('\n');
     }
   };
 };
@@ -270,7 +271,7 @@ exports.appendJsonResponse = function (appender, syntaxAppender) {
   return function (response) {
     var syntaxAppend = exports.appendRawResponse(syntaxAppender, syntaxAppender);
 
-    // copy original body (this is necessary because "response" is passed by reference)
+    // copy original body (this is necessary because 'response' is passed by reference)
     var copy = response.body;
     // overwrite body with parsed JSON && append
     response.body = JSON.parse(response.body);
@@ -289,7 +290,7 @@ exports.appendJsonResponse = function (appender, syntaxAppender) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.log = function (level, msg) {
-  exports.output(level, ": ", msg, "\n");
+  exports.output(level, ': ', msg, '\n');
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +302,7 @@ try {
     exports.sprintf = function (format) {
       var n = arguments.length;
       if (n === 0) {
-        return "";
+        return '';
       }
       if (n <= 1) {
         return String(format);
@@ -320,7 +321,9 @@ try {
     };
   }
 }
-catch (e) {}
+catch (e) {
+  // noop
+}
 
 }());
 
