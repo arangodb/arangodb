@@ -17,7 +17,7 @@ fs:                   compatibility
 http:                 not supported
 https:                not supported
 net:                  compatibility
-path:               	0.11.0       	(process)
+path:               	4.1.0
 process:              compatibility
 punycode:             4.1.0
 querystring:        	4.1.0
