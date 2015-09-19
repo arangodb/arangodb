@@ -15,7 +15,7 @@ https:                not supported
 net:                	compatibility
 path:               	0.11.0       	(process)
 punycode:             4.1.0
-querystring:        	0.11.0        	(urlDecode)
+querystring:        	4.1.0
 stream:             	0.10.25
 sys:                	not supported
 string_decoder:       4.1.0
