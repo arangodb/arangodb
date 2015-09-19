@@ -26,5 +26,5 @@ string_decoder:       4.1.0
 sys:                  not supported
 tty:                	compatibility
 url:                	4.1.0
-util:               	compatibility
+util:               	4.1.0 (modified)
 vm:                 	not supported
