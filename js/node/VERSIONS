@@ -9,22 +9,30 @@ _stream_writable:   	0.10.25
 assert:             	0.11.0
 buffer:             	0.11.0 (SlowBuffer)
 child_process:        not supported
-console:             	compatibility
+cluster:              not supported
+console:              compatibility
 constants:            not supported
 crypto:               not supported (see org/arangodb/crypto)
+dgram:                not supported
+dns:                  not supported
+domain:               not supported
 events:               4.1.0
 fs:                   compatibility
 http:                 not supported
 https:                not supported
 net:                  compatibility
-path:               	4.1.0
+os:                   not supported
+path:                 4.1.0
 process:              compatibility
 punycode:             4.1.0
 querystring:        	4.1.0
 stream:             	0.10.25
 string_decoder:       4.1.0
 sys:                  not supported
-tty:                	compatibility
-url:                	4.1.0
-util:               	4.1.0 (modified)
-vm:                 	not supported
+tls:                  not supported
+tty:                  compatibility
+url:                  4.1.0
+util:                 4.1.0 (modified)
+v8:                   not supported
+vm:                   not supported
+zlib:                 not supported
