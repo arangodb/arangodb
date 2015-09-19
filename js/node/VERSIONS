@@ -10,6 +10,8 @@ assert:             	0.11.0
 buffer:             	0.11.0       	(SlowBuffer)
 child_process:      	not supported
 events:             	0.10.25
+http:                 not supported
+https:                not supported
 net:                	compatibility
 path:               	0.11.0       	(process)
 punycode:           	0.11.0
