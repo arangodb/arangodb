@@ -9,7 +9,7 @@ _stream_writable:   	0.10.25
 assert:             	0.11.0
 buffer:             	0.11.0       	(SlowBuffer)
 child_process:      	not supported
-events:             	0.10.25
+events:               4.1.0
 http:                 not supported
 https:                not supported
 net:                	compatibility
