@@ -1970,21 +1970,23 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
     if (_posInDocs >= _documents.size()) {
       // we have exhausted our local documents buffer,
 
-      if (++_pos >= cur->size()) {
-        _buffer.pop_front();  // does not throw
-        delete cur;
-        _pos = 0;
-      }
-
-      // let's read the index if bounds are variable:
-      if (! _buffer.empty()) {
-        if (! initRanges()) {
-          _done = true;
-          return skipped;
-        }
-        readIndex(atMost);
-      }
       _posInDocs = 0;
+      if (! readIndex(atMost)) {
+        if (++_pos >= cur->size()) {
+          _buffer.pop_front();  // does not throw
+          delete cur;
+          _pos = 0;
+        }
+
+        // let's read the index if bounds are variable:
+        if (! _buffer.empty()) {
+          if (! initRanges()) {
+            _done = true;
+            return skipped;
+          }
+          readIndex(atMost);
+        }
+      }
       
       // If _buffer is empty, then we will fetch a new block in the next round
       // and then read the index.

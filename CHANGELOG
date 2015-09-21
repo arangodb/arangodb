@@ -1,3 +1,17 @@
+v2.6.9 (XXXX-XX-XX)
+-------------------
+
+* fixed failing AQL skiplist, sort and limit combination
+
+  When using a Skiplist index on an attribute (say "a") and then using sort
+  and skip on this attribute caused the result to be empty e.g.:
+    
+    require("internal").db.test.ensureSkiplist("a");
+    require("internal").db._query("FOR x IN test SORT x.a LIMIT 10, 10");
+
+  Was always empty no matter how many documents are stored in test.
+  This is now fixed.
+
 v2.6.8 (2015-09-09)
 -------------------
 

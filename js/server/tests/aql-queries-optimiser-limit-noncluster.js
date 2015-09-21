@@ -39,10 +39,11 @@ var getQueryResults = helper.getQueryResults;
 
 function ahuacatlQueryOptimiserLimitTestSuite () {
   var collection = null;
+  var docCount = 100;
   var cn = "UnitTestsAhuacatlOptimiserLimit";
   
   var explain = function (query, params) {
-    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
+    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range", "+use-index-for-sort" ] } })).map(function(node) { return node.type; });
   };
 
   return {
@@ -55,7 +56,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
 
-      for (var i = 0; i < 100; ++i) {
+      for (var i = 0; i < docCount; ++i) {
         collection.save({ "value" : i });
       }
     },
@@ -478,6 +479,24 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 /// @brief check limit optimisation with index
 ////////////////////////////////////////////////////////////////////////////////
 
+    testLimitFullCollectionHashIndex3 : function () {
+      collection.ensureHashIndex("value");
+
+      var query = "FOR c IN " + cn + " SORT c.value DESC LIMIT 10, 10 RETURN c";
+
+      var actual = getQueryResults(query);
+      assertEqual(10, actual.length);
+      for (var i = 0; i < 10; ++i) {
+        assertEqual(docCount - 11 - i, actual[i].value);
+      }
+
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "LimitNode", "ReturnNode" ], explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit optimisation with index
+////////////////////////////////////////////////////////////////////////////////
+
     testLimitFilterFilterCollectionHashIndex : function () {
       collection.ensureHashIndex("value");
 
@@ -526,6 +545,47 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       
       assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit optimisation with index
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitFullCollectionSkiplist3 : function () {
+      collection.ensureSkiplist("value");
+
+      var query = "FOR c IN " + cn + " SORT c.value DESC LIMIT 10, 10 RETURN c";
+
+      var actual = getQueryResults(query);
+      assertEqual(10, actual.length);
+      for (var i = 0; i < 10; ++i) {
+        assertEqual(docCount - 11 - i, actual[i].value);
+      }
+
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "LimitNode", "ReturnNode" ], explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit optimisation with index large skip
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitFullCollectionSkiplist4 : function () {
+      collection.ensureSkiplist("value");
+
+      for (var i = docCount; i < 1030; ++i) {
+        internal.db[cn].save({value: i});
+      }
+      var query = "FOR c IN " + cn + " SORT c.value ASC LIMIT 1005, 10 RETURN c";
+
+      var actual = getQueryResults(query);
+      assertEqual(10, actual.length);
+      for (var j = 0; j < 10; ++j) {
+        assertEqual(1005 + j, actual[j].value);
+      }
+
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "LimitNode", "ReturnNode" ], explain(query));
+    },
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check limit optimisation with index
