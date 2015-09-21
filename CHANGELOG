@@ -435,7 +435,7 @@ v2.7.0-rc1 (XXXX-XX-XX)
   The "Applications" tab in the web interfaces has been renamed to "Services".
 
 
-v2.6.8 (XXXX-XX-XX)
+v2.6.9 (XXXX-XX-XX)
 -------------------
 
 * fixed failing AQL skiplist, sort and limit combination
@@ -448,6 +448,9 @@ v2.6.8 (XXXX-XX-XX)
 
   Was always empty no matter how many documents are stored in test.
   This is now fixed.
+
+v2.6.8 (2015-09-09)
+-------------------
 
 * ARM only:
 
