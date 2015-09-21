@@ -565,6 +565,27 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit optimisation with index large skip
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitFullCollectionSkiplist4 : function () {
+      collection.ensureSkiplist("value");
+
+      for (var i = docCount; i < 1030; ++i) {
+        internal.db[cn].save({value: i});
+      }
+      var query = "FOR c IN " + cn + " SORT c.value ASC LIMIT 1005, 10 RETURN c";
+
+      var actual = getQueryResults(query);
+      assertEqual(10, actual.length);
+      for (var j = 0; j < 10; ++j) {
+        assertEqual(1005 + j, actual[j].value);
+      }
+
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "LimitNode", "ReturnNode" ], explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check limit optimisation with index
 ////////////////////////////////////////////////////////////////////////////////
 
