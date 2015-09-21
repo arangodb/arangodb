@@ -282,8 +282,8 @@ ArangoDatabase.prototype._truncate = function(name) {
 /// So you've created an index, and since its maintainance isn't for free,
 /// you definitely want to know whether your Query can utilize it.
 ///
-/// You can use explain to verify whether **skiplist** or **hash indices** are used:
-/// (if you ommit `colors: false` you will get nice colors on ArangoSH)
+/// You can use explain to verify whether **skiplist** or **hash indices** are used
+/// (if you ommit `colors: false` you will get nice colors in ArangoShell):
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{IndexVerify}
 /// ~db._create("example");
