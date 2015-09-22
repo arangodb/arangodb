@@ -267,17 +267,33 @@ function GharialAdapter(nodes, edges, viewer, config) {
   };
 
   //origin nodes to display, real display may be more (depending on their relations)
-  self.NODES_TO_DISPLAY = 30;
+  self.NODES_TO_DISPLAY = 19;
   self.TOTAL_NODES = 0;
 
   self.definedNodes = [];
   self.randomNodes = [];
 
-  self.loadRandomNode = function(callback) {
+  self.loadRandomNode = function(callback, size) {
     var collections = _.shuffle(self.getNodeCollections()), i;
     for (i = 0; i < collections.length; ++i) {
 
-      var list = getNRandom(10, collections[i]);
+      if (size !== undefined) {
+        if (size === 'all') {
+          self.NODES_TO_DISPLAY = self.TOTAL_NODES;
+        }
+        else {
+          self.NODES_TO_DISPLAY = parseInt(size, 10) - 1;
+        }
+
+        if (self.NODES_TO_DISPLAY >= self.TOTAL_NODES) {
+          $('.infoField').hide();
+        }
+        else {
+          $('.infoField').show();
+        }
+      }
+
+      var list = getNRandom(self.NODES_TO_DISPLAY, collections[i]);
       if (list.length > 0) {
         var counter = 0;
         _.each(list, function(node) {

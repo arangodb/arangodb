@@ -486,6 +486,26 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       dispatcherUI.addAll();
       // Default selection
       $("#control_event_expand").click();
+
+
+    },
+
+    createOptionBox = function() {
+      //create select option box 
+      var optionBox = '<li class="enabled" style="float:right">'+
+      '<select id="graphSize" class="documents-size">'+
+      '<option value="10">10 results</option>'+
+      '<option value="20" selected="">20 results</option>'+
+      '<option value="50">50 results</option>'+
+      '<option value="100">100 results</option>'+
+      '<option value="500">500 results</option>'+
+      '<option value="1000">1000 results</option>'+
+      '<option value="2500">2500 results</option>'+
+      '<option value="5000">5000 results</option>'+
+      '<option value="all">All results</option>'+
+      '</select>'+
+      '</li>';
+      $('.headerBar .headerButtonList').prepend(optionBox);
     },
 
     updateAttributeExamples = function(e) {
@@ -600,6 +620,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       colourList.className = "gv-colour-list";
       background.insertBefore(colourList, svg[0][0]);
     };
+
   container.appendChild(menubar);
   container.appendChild(background);
   background.className = "contentDiv gv-background ";
@@ -617,6 +638,16 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   createMenu();
   createColourList();
   makeDisplayInformationDiv();
+  createOptionBox();
+
+  $('#graphSize').on('change', function() {
+    var size = $('#graphSize').find(":selected").val();
+      graphViewer.loadGraphWithRandomStart(function(node) {
+        if (node && node.errorCode) {
+          window.alert("Sorry your graph seems to be empty");
+        }
+      }, size);
+  });
 
   if (startNode) {
     if (typeof startNode === "string") {
