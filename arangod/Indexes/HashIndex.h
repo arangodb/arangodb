@@ -119,6 +119,10 @@ namespace triagens {
                     TRI_index_element_t*&,
                     size_t batchSize) const;
 
+
+        bool canServeForConditionNode (triagens::aql::AstNode const*,
+                                       triagens::aql::Variable const*) const;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -140,6 +144,10 @@ namespace triagens {
         int removeMultiElement(TRI_index_element_t*, bool);
 
         int removeMulti (struct TRI_doc_mptr_t const*, bool);
+
+        bool accessFitsIndex (triagens::aql::AstNode const*,
+                              triagens::aql::Variable const*,
+                              std::unordered_set<std::string>& found) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private classes

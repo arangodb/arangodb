@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HashIndex.h"
+#include "Aql/AstNode.h"
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
@@ -689,6 +690,57 @@ int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
   }
                  
   return res;
+}
+
+bool HashIndex::accessFitsIndex (triagens::aql::AstNode const* access,
+                                 triagens::aql::Variable const* reference,
+                                 std::unordered_set<std::string>& found) const {
+  if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    TRI_ASSERT(access->numMembers() == 1);
+    if (access->getMember(0)->getData() != reference) {
+      // This access is not referencing this collection
+      return false;
+    }
+    // We have to check if this attribute string is used
+    std::string attr(access->getStringValue());
+    for (auto& field : _fields) {
+      std::string comp;
+      TRI_AttributeNamesToString(field, comp);
+      if (attr == comp) {
+        // This index knows this attribute
+        found.emplace(attr);
+        return true;
+      }
+    }
+  }
+  return false;
+
+}
+
+bool HashIndex::canServeForConditionNode (triagens::aql::AstNode const* node,
+                                          triagens::aql::Variable const* reference) const {
+  std::unordered_set<std::string> found;
+  for (size_t i = 0; i < node->numMembers(); ++i) {
+    auto op = node->getMember(i);
+    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      TRI_ASSERT(op->numMembers() == 2);
+      if (accessFitsIndex(op->getMember(0), reference, found) ||
+          accessFitsIndex(op->getMember(1), reference, found)) {
+        if (found.size() == _fields.size()) {
+          return true;
+        }
+      }
+    }
+    else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      TRI_ASSERT(op->numMembers() == 2);
+      if (accessFitsIndex(op->getMember(0), reference, found)) {
+        if (found.size() == _fields.size()) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 // -----------------------------------------------------------------------------
