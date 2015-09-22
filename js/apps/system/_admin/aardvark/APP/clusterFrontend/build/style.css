@@ -2090,7 +2090,7 @@ div.queryline .fa.fa-search:hover {
   cursor: pointer;
   opacity: 1; }
 
-div.queryline select, div.queryline input, input.search-input, .modal-body .select2-choices input, .modal-body input, .modal-body select, .modal-body textarea {
+.navbar .arango-collection-select, div.queryline select, div.queryline input, input.search-input, .modal-body .select2-choices input, .modal-body input, .modal-body select, .modal-body textarea {
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -2100,7 +2100,7 @@ div.queryline select, div.queryline input, input.search-input, .modal-body .sele
   outline: none;
   outline-color: transparent;
   outline-style: none; }
-  div.queryline select:focus, div.queryline input:focus, input.search-input:focus, .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus {
+  .navbar .arango-collection-select:focus, div.queryline select:focus, div.queryline input:focus, input.search-input:focus, .modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus {
     border-color: #999;
     box-shadow: none;
     outline: none;
@@ -2158,6 +2158,10 @@ div.queryline select, div.queryline input, input.search-input, .modal-body .sele
     margin-left: -5px;
     margin-top: -1px;
     width: 40%; }
+  .navbar .arango-collection-select {
+    position: relative;
+    right: -22px;
+    top: 4px; }
   .navbar .nav .dropdown .active > .dropdown-toggle, .navbar .nav .dropdown .open > .dropdown-toggle, .navbar .nav .dropdown .open.active > .dropdown-toggle {
     background: #788f3d; }
   .navbar .nav > .active > a {
@@ -2933,18 +2937,21 @@ div .bigtile {
 .resizecontainer {
   margin: 0 auto; }
 
-@media (max-width: 798px) {
+@media (max-width: 738px) {
   #arangoCollectionUl {
     display: none; }
   #collectionsDropdown ul {
     width: auto !important; }
   #arangoCollectionSelect {
-    display: inline-block; } }
+    display: inline-block;
+    margin-top: 1px;
+    height: 29px; } }
 
-@media (min-width: 799px) and (max-width: 1041px) {
+@media (min-width: 739px) and (max-width: 1041px) {
   #arangoCollectionUl a {
     font-size: 12px;
-    padding: 10px 5px; } }
+    padding: 8px 5px;
+    height: 12px; } }
 
 @media (min-width: 1042px) and (max-width: 1284px) {
   #arangoCollectionUl a {
@@ -4900,6 +4907,7 @@ div.dropdownInner {
   div.dropdownInner ul {
     border-left: 1px solid rgba(140, 138, 137, 0.25);
     display: inline;
+    list-style-type: none;
     margin-top: 10px;
     min-height: 105px;
     width: 230px; }
@@ -5902,18 +5910,21 @@ div .bigtile {
 .resizecontainer {
   margin: 0 auto; }
 
-@media (max-width: 798px) {
+@media (max-width: 738px) {
   #arangoCollectionUl {
     display: none; }
   #collectionsDropdown ul {
     width: auto !important; }
   #arangoCollectionSelect {
-    display: inline-block; } }
+    display: inline-block;
+    margin-top: 1px;
+    height: 29px; } }
 
-@media (min-width: 799px) and (max-width: 1041px) {
+@media (min-width: 739px) and (max-width: 1041px) {
   #arangoCollectionUl a {
     font-size: 12px;
-    padding: 10px 5px; } }
+    padding: 8px 5px;
+    height: 12px; } }
 
 @media (min-width: 1042px) and (max-width: 1284px) {
   #arangoCollectionUl a {

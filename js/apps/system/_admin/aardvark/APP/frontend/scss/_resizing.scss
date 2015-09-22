@@ -3,7 +3,7 @@
   margin: 0 auto;
 }
 
-@media (max-width: 798px) {
+@media (max-width: 738px) {
   #arangoCollectionUl {
     display: none;
   }
@@ -14,13 +14,16 @@
 
   #arangoCollectionSelect {
     display: inline-block;
+    margin-top: 1px;
+    height: 29px;
   }
 }
 
-@media (min-width: 799px) and (max-width: 1041px) {
+@media (min-width: 739px) and (max-width: 1041px) {
   #arangoCollectionUl a {
     font-size: 12px;
-    padding: 10px 5px;
+    padding: 8px 5px;
+    height: 12px;
   }
 }
 

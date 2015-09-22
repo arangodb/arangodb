@@ -41,7 +41,7 @@
       }
 
       this.demoView.render();
-      this.naviView.selectMenuItem('demo-menu');
+      //this.naviView.selectMenuItem('demo-menu');
     },
 
     initialize: function () {

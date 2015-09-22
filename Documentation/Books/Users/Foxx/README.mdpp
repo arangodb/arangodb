@@ -1,13 +1,13 @@
 !CHAPTER Foxx
 
 Foxx is a framework that allows you to write data-centric microservices.
-It is execute directly inside of ArangoDB and grants you raw access to your data.
+It is executed directly inside of ArangoDB and grants you raw access to your data.
 With the framework you can embed complex queries and data-focused business logic into your database.
 
-Using Foxx will give you benefits above writing the code in a separate applications.
+Using Foxx will give you several benefits above writing the code in separate applications.
 First of all it yields performance benefits, the data analysis and modification is executed as close to the data as possible.
 Also it requires one network hop less as the Foxx has direct access to the data and does not have to query a database located on a different server.
-Second your application is completely free of any database related information like queries, it is just requesting a endpoint that gives the data in the expected format.
+Second your application is completely free of any database related information like queries, it just requests an HTTP-endpoint that gives the data in the expected format.
 This also allows to reuse this endpoint in different applications without copying the queries.
 Third Foxx adds another level of security to your application, you can manage the access rights on any level you like: application, collection, document or even attribute.
 Finally Foxx is automatically scaled alongside your database: if the number of ArangoDB servers grows so does your Foxx servers, both have their bottleneck at the same point.
@@ -32,7 +32,7 @@ The following table lists a mapping of microservice concepts and how they can be
     <tr>
       <td>Few lines of Code</td>
       <td>Little Boilerplate</td>
-      <td>Most of the boilerplate is already handled by the Foxx environment. You can focus on your business logic</td>
+      <td>Most of the boilerplate is already handled by the Foxx environment. You can focus on your business logic.</td>
     </tr>
     <tr>
       <td>HTTP API</td>
@@ -82,7 +82,7 @@ The following table lists a mapping of microservice concepts and how they can be
     <tr>
       <td>Different Databases</td>
       <td>Multi-Model</td>
-      <td>In most setups you need different database technologies because you have several data formats. ArangoDB is a multi-model database that server many formats. However if you still need another database you can connect to it via HTTP.</td>
+      <td>In most setups you need different database technologies because you have several data formats. ArangoDB is a multi-model database that serves many formats. However if you still need another database you can connect to it via HTTP.</td>
     </tr>
     <tr>
       <td>Asynchronous Calls</td>
@@ -112,19 +112,19 @@ The following table lists a mapping of microservice concepts and how they can be
     <tr>
       <td>Easy Setup</td>
       <td>ArangoDB on Mesos</td>
-      <td>ArangoDB perfectly integrates with the Mesos project, a distributed kernel written for data centers. You can set up and deploy a Mesos instance running ArangoDB and having your microservice on top of it with just a single command.</td>
+      <td>ArangoDB perfectly integrates with the [Mesos project](http://mesos.apache.org/), a distributed kernel written for data centers. You can set up and deploy a Mesos instance running ArangoDB and having your microservice on top of it with just a single command.</td>
     </tr>
     <tr>
       <td>Maintenance</td>
       <td>Marathon</td>
-      <td>If you are running ArangoDB on top of Mesos you can use marathon to keep all your instances alive and scale up or down with just a few clicks. Do not bother with long configuration, that is all handled by the underlying systems.</td>
+      <td>If you are running ArangoDB on top of Mesos you can use [Marathon](https://mesosphere.github.io/marathon/) to keep all your instances alive and scale up or down with just a few clicks. Do not bother with long configuration, that is all handled by the underlying systems.</td>
     </tr>
   </tbody>
 </table>
 
-As you can see most concepts of microservices are natively available in Foxx plus several additions that easy your development
+As you can see most concepts of microservices are natively available in Foxx plus several additions that ease your development
 process.
-That is why we like to call Foxx a "microservice framework": It allows you to write and deploy data-centric microservices 
+Thats why we like to call Foxx a "microservice framework": It allows you to write and deploy data-centric microservices 
 on top of ArangoDB.
 
 If this short introduction has piqued your interest you can find more details in the sections below.

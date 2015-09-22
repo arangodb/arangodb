@@ -81,7 +81,7 @@
             "frontend/js/arango/arango.js",
             "frontend/js/arango/templateEngine.js",
             "frontend/js/shell/browser.js",
-            "frontend/js/config/dygraphConfig.js",
+            "frontend/js/config/dygraphConfig.js",/*
             "frontend/js/modules/underscore.js",
             "frontend/js/modules/org/arangodb/aql/explainer.js",
             "frontend/js/modules/org/arangodb/aql/functions.js",
@@ -105,7 +105,7 @@
             "frontend/js/modules/org/arangodb/simple-query.js",
             "frontend/js/modules/org/arangodb/tutorial.js",
             "frontend/js/modules/org/arangodb-common.js",
-            "frontend/js/modules/org/arangodb.js",
+            "frontend/js/modules/org/arangodb.js",*/
             "frontend/js/bootstrap/errors.js",
             "frontend/js/bootstrap/monkeypatches.js",
             "frontend/js/bootstrap/module-internal.js",
@@ -218,7 +218,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.min.js'],
+            src: ['frontend/build/app.min.js', 'frontend/build/arangoes5.min.js'],
             dest: '.',
             ext: '.min.js.gz'
           }]
@@ -229,7 +229,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.js'],
+            src: ['frontend/build/app.js', 'frontend/build/arangoes5.js'],
             dest: '.',
             ext: '.js.gz'
           }]
@@ -352,6 +352,20 @@
             }
           }
         },
+        sharedES: {
+          src: [
+            "frontend/js/modules/**/*.js",
+          ],
+          dest: 'frontend/build/arangoes6.js',
+          options: {
+            extractRequired: function () {
+              return [];
+            },
+            extractDeclared: function () {
+              return [];
+            }
+          }
+        },
         jsCluster: {
           src: [
             "frontend/js/lib/dygraph-combined.js",
@@ -448,13 +462,25 @@
         ]
       },
 
+      babel: {
+        options: {
+          sourceMap: false
+        },
+        dist: {
+          files: {
+            'frontend/build/arangoes5.js': 'frontend/build/arangoes6.js'
+          }
+        }
+      },
+
       uglify: {
         dist: {
           files: {
             'frontend/build/app.min.js': 'frontend/build/app.js',
             'clusterFrontend/build/cluster.min.js': 'clusterFrontend/build/cluster.js',
             'frontend/src/ace.min.js': 'frontend/src/ace.js',
-            'build/sharedLibs.min.js': 'build/sharedLibs.js'
+            'build/sharedLibs.min.js': 'build/sharedLibs.js',
+            'frontend/build/arangoes5.min.js': 'frontend/build/arangoes5.js'
           }
         }
       },
@@ -480,11 +506,13 @@
         },
         concat_in_order: {
           files: [
+            '!frontend/js/modules/**/*.js',
             'frontend/js/{,*/}*.js',
             'frontend/js/graphViewer/**/*.js',
             'clusterFrontend/js/{,*/}*.js'
           ],
           tasks: [
+            'concat_in_order:sharedES',
             'concat_in_order:sharedLibs',
             'concat_in_order:default',
             'concat_in_order:jsCluster',
@@ -512,8 +540,9 @@
     grunt.loadNpmTasks('grunt-contrib-cssmin');
     grunt.loadNpmTasks('grunt-contrib-compress');
     grunt.loadNpmTasks("grunt-contrib-concat");
-    grunt.loadNpmTasks('grunt-contrib-htmlmin')
-    grunt.loadNpmTasks('grunt-contrib-uglify')
+    grunt.loadNpmTasks('grunt-contrib-htmlmin');
+    grunt.loadNpmTasks('grunt-contrib-uglify');
+    require('load-grunt-tasks')(grunt);
 
     require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
     grunt.loadNpmTasks('grunt-text-replace');
@@ -524,11 +553,13 @@
       'replace',
       'imagemin',
       'concat',
+      'concat_in_order:sharedES',
       'concat_in_order:sharedLibs',
       'concat_in_order:default',
       'concat_in_order:jsCluster',
       'concat_in_order:htmlCluster',
       'concat_in_order:htmlStandalone',
+      'babel',
       'cssmin',
       'uglify',
       'htmlmin',
@@ -541,6 +572,7 @@
       'sass:dev',
       'replace',
       'concat',
+      'concat_in_order:sharedES',
       'concat_in_order:sharedLibs',
       'concat_in_order:default',
       'concat_in_order:jsCluster',
@@ -551,6 +583,7 @@
 
     grunt.registerTask('deploy', [
       'sass:dist',
+      'concat_in_order:sharedES',
       'concat_in_order:sharedLibs',
       'concat_in_order:default',
       'concat_in_order:jsCluster',
