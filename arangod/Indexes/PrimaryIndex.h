@@ -159,6 +159,8 @@ namespace triagens {
         static uint64_t calculateHash (char const*, size_t);
 
         void invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)>);
+
+        bool canServeForConditionNode (triagens::aql::AstNode const*, triagens::aql::Variable const*) const;
         
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

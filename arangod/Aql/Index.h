@@ -161,6 +161,12 @@ namespace triagens {
         internals = idx;
       }
 
+      bool canServeForConditionNode (AstNode const* node, Variable const* reference) const {
+        TRI_ASSERT(internals != nullptr);
+        auto internals = getInternals();
+        return internals->canServeForConditionNode(node, reference);
+      }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------

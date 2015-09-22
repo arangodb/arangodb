@@ -137,19 +137,25 @@ void Condition::andCombine (AstNode const* node) {
 
 void Condition::findIndices (EnumerateCollectionNode const* node) {
   // We can only start after DNF transform
-  Variable const* reference = node->outVariable();
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
+
+  Variable const* reference = node->outVariable();
   for (size_t i = 0; i < _root->numMembers(); ++i) {
     findIndexForAndNode(_root->getMember(i), reference, node);
   }
 }
 
 void Condition::findIndexForAndNode (AstNode const* node, Variable const* reference, EnumerateCollectionNode const* colNode) {
-  // We are not iterating through the DNF properly
+  // We can only iterate through a proper DNF
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
-  std::unordered_set<std::string> attributes;
-  for (size_t i = 0; i < node->numMembers(); ++i) {
-    auto compareNode = node->getMember(i);
+
+  std::vector<Index*> indexes = colNode->collection()->getIndexes();
+  for (auto& idx : indexes) {
+    if (idx->canServeForConditionNode(node, reference)) {
+      std::cout << "We can use Index for var: " << reference->name << " in collection " << colNode->collection()->getName() << " " << idx->toJson() << std::endl;
+    }
+    // canServeForConditionNode
+    /*
     switch (compareNode->type) {
       default:
         for (size_t j = 0; j < compareNode->numMembers(); ++j) {
@@ -162,8 +168,8 @@ void Condition::findIndexForAndNode (AstNode const* node, Variable const* refere
           }
         }
     }
+    */
   }
-  // std::string node->getStringValue()
 }
 
 ////////////////////////////////////////////////////////////////////////////////

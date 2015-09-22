@@ -31,6 +31,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/hashes.h"
 #include "Basics/logging.h"
+#include "Aql/AstNode.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
@@ -265,6 +266,46 @@ uint64_t PrimaryIndex::calculateHash (char const* key,
 
 void PrimaryIndex::invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)> work) {
   _primaryIndex->invokeOnAllElements(work);
+}
+
+static bool accessFitsIndex (triagens::aql::AstNode const* access, triagens::aql::Variable const* reference) {
+  if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    TRI_ASSERT(access->numMembers() == 1);
+    if (access->getMember(0)->getData() != reference) {
+      // This access is not referencing this collection
+      return false;
+    }
+    auto l = access->getStringLength();
+    if (l == 3 &&
+        strcmp(access->getStringValue(), TRI_VOC_ATTRIBUTE_ID) == 0) {
+      return true;
+    }
+    if (l == 4 &&
+        strcmp(access->getStringValue(), TRI_VOC_ATTRIBUTE_KEY) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool PrimaryIndex::canServeForConditionNode (triagens::aql::AstNode const* node, triagens::aql::Variable const* reference) const {
+  for (size_t i = 0; i < node->numMembers(); ++i) {
+    auto op = node->getMember(i);
+    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      TRI_ASSERT(op->numMembers() == 2);
+      if (accessFitsIndex(op->getMember(0), reference) ||
+          accessFitsIndex(op->getMember(1), reference)) {
+        return true;
+      }
+    }
+    else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      TRI_ASSERT(op->numMembers() == 2);
+      if (accessFitsIndex(op->getMember(0), reference)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 // -----------------------------------------------------------------------------

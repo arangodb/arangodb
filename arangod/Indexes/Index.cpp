@@ -424,6 +424,14 @@ bool Index::hasBatchInsert () const {
   return false;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default implementation for canServeForConditionNode
+////////////////////////////////////////////////////////////////////////////////
+
+bool Index::canServeForConditionNode (triagens::aql::AstNode const* node, triagens::aql::Variable const* reference) const {
+  return false;
+}
+
 namespace triagens {
   namespace arango {
 

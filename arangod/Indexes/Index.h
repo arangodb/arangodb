@@ -32,7 +32,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/JsonHelper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
@@ -57,6 +56,13 @@ typedef struct TRI_index_search_value_s {
   struct TRI_shaped_json_s* _values;
 }
 TRI_index_search_value_t;
+
+namespace triagens {
+  namespace aql {
+    struct AstNode;
+    struct Variable;
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              struct index_element
@@ -284,6 +290,8 @@ namespace triagens {
         virtual int sizeHint (size_t);
 
         virtual bool hasBatchInsert () const;
+
+        virtual bool canServeForConditionNode (triagens::aql::AstNode const*, triagens::aql::Variable const*) const;
 
         friend std::ostream& operator<< (std::ostream&, Index const*);
         friend std::ostream& operator<< (std::ostream&, Index const&);

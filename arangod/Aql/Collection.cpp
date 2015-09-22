@@ -172,7 +172,7 @@ std::vector<std::string> Collection::shardKeys () const {
 /// @brief returns the indexes of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<Index*> Collection::getIndexes () {
+std::vector<Index*> Collection::getIndexes () const {
   fillIndexes();
 
   return indexes;
