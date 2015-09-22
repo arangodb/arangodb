@@ -218,7 +218,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.min.js'],
+            src: ['frontend/build/app.min.js', 'frontend/build/arangoes5.min.js'],
             dest: '.',
             ext: '.min.js.gz'
           }]
@@ -229,7 +229,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.js'],
+            src: ['frontend/build/app.js', 'frontend/build/arangoes5.js'],
             dest: '.',
             ext: '.js.gz'
           }]
