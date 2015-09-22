@@ -22,7 +22,7 @@ Therefore you get exactly this two entry points:
 * Select a set of edges
 * Select a set of vertices
 
-!SUBSECTION  Edges
+!SUBSECTION Edges
 
 @startDocuBlock JSF_general_graph_edges
 

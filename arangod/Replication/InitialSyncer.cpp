@@ -51,6 +51,14 @@ using namespace triagens::arango;
 using namespace triagens::httpclient;
 using namespace triagens::rest;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief performs a binary search for the given key in the markers vector
+////////////////////////////////////////////////////////////////////////////////
+
 static bool BinarySearch (std::vector<TRI_df_marker_t const*> const& markers,
                           std::string const& key,
                           size_t& position) {
@@ -87,6 +95,10 @@ static bool BinarySearch (std::vector<TRI_df_marker_t const*> const& markers,
     }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a key range in the markers vector
+////////////////////////////////////////////////////////////////////////////////
 
 static bool FindRange (std::vector<TRI_df_marker_t const*> const& markers,
                        std::string const& lower,
@@ -172,12 +184,28 @@ int InitialSyncer::run (string& errorMsg,
     return TRI_ERROR_INTERNAL;
   }
 
-  setProgress("fetching master state");
-
-  int res = getMasterState(errorMsg);
+  int res = _vocbase->_replicationApplier->preventStart();
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
+  }
+
+  TRI_DEFER(_vocbase->_replicationApplier->allowStart());
+
+  setProgress("fetching master state");
+
+  res = getMasterState(errorMsg);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  if (incremental) {
+    res = sendFlush(errorMsg);
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
   }
 
   res = sendStartBatch(errorMsg);
@@ -185,7 +213,6 @@ int InitialSyncer::run (string& errorMsg,
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-
 
   string url = BaseUrl + "/inventory?serverId=" + _localServerIdString;
   if (_includeSystem) {
@@ -235,6 +262,11 @@ int InitialSyncer::run (string& errorMsg,
 
   sendFinishBatch();
 
+  if (res != TRI_ERROR_NO_ERROR &&
+      errorMsg.empty()) {
+    errorMsg = TRI_errno_string(res);
+  }
+
   return res;
 }
 
@@ -243,17 +275,57 @@ int InitialSyncer::run (string& errorMsg,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief send a WAL flush command
+////////////////////////////////////////////////////////////////////////////////
+
+int InitialSyncer::sendFlush (std::string& errorMsg) {
+  string const url = "/_admin/wal/flush";
+  string const body = "{\"waitForSync\":true,\"waitForCollector\":true,\"waitForCollectorQueue\":true}";
+
+  // send request
+  string const progress = "send WAL flush command to url " + url;
+  setProgress(progress);
+
+  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
+                                                              url,
+                                                              body.c_str(),
+                                                              body.size()));
+
+  if (response == nullptr || ! response->isComplete()) {
+    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+               ": " + _client->getErrorMessage();
+
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  }
+
+  TRI_ASSERT(response != nullptr);
+
+  if (response->wasHttpError()) {
+    int res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+
+    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
+               ": " + response->getHttpReturnMessage();
+
+    return res;
+  }
+    
+  _hasFlushed = true;
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief send a "start batch" command
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::sendStartBatch (string& errorMsg) {
+int InitialSyncer::sendStartBatch (std::string& errorMsg) {
   _batchId = 0;
 
-  string const url = BaseUrl + "/batch";
-  string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
+  std::string const url = BaseUrl + "/batch";
+  std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request
-  string const progress = "send batch start command to url " + url;
+  std::string const progress = "send batch start command to url " + url;
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_POST,
@@ -279,15 +351,14 @@ int InitialSyncer::sendStartBatch (string& errorMsg) {
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
   }
-
-  if (res == TRI_ERROR_NO_ERROR) {
+  else {
     std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
 
     if (json == nullptr) {
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
     else {
-      string const id = JsonHelper::getStringValue(json.get(), "id", "");
+      std::string const id = JsonHelper::getStringValue(json.get(), "id", "");
 
       if (id.empty()) {
         res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -636,9 +707,13 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
                                          string& errorMsg) {
 
   string const baseUrl = BaseUrl + "/keys";
+  string url = baseUrl + "?collection=" + cid + "&to=" + std::to_string(maxTick);
+  
+  std::string progress = "fetching collection keys from " + url;
+  setProgress(progress);
    
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_POST,
-                                                              baseUrl + "?collection=" + cid + "&to=" + std::to_string(maxTick),
+                                                              url,
                                                               nullptr,
                                                               0));
 
@@ -680,6 +755,23 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
+  std::string const id(idJson->_value._string.data, idJson->_value._string.length - 1);
+  
+  auto shutdown = [&] () -> void { 
+    url = baseUrl + "/" + id;
+    string progress = "deleting remote collection keys object from " + url;
+    setProgress(progress);
+
+    // now delete the keys we ordered
+    std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_DELETE,
+                                                                url,
+                                                                nullptr,
+                                                                0));
+  };
+
+  TRI_DEFER(shutdown());
+  
+
   TRI_json_t const* countJson = TRI_LookupObjectJson(json.get(), "count");
 
   if (! TRI_IsNumberJson(countJson)) {
@@ -702,8 +794,6 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   }
 
 
-  std::string const id(idJson->_value._string.data, idJson->_value._string.length - 1);
-
   // now we can fetch the complete chunk information from the master
   int res;
 
@@ -716,22 +806,7 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
-  
-  {
-    // now delete the keys we ordered
-    std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_DELETE,
-                                                                baseUrl + "/" + id,
-                                                                nullptr,
-                                                                0));
-
-    if (response == nullptr || ! response->isComplete()) {
-      errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
-                ": " + _client->getErrorMessage();
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    }
-  }
-
+ 
   return res;
 }
 
@@ -750,6 +825,9 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   auto shaper = trx.documentCollection()->getShaper();
           
   bool const isEdge = (trx.documentCollection()->_info._type == TRI_COL_TYPE_EDGE);
+   
+  string progress = "collecting local keys";
+  setProgress(progress);
 
   // fetch all local keys from primary index
   std::vector<TRI_df_marker_t const*> markers;
@@ -771,13 +849,11 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
       void const* marker = ptr->getDataPtr();
       auto df = static_cast<TRI_df_marker_t const*>(marker);
-
-      if (df->_tick >= maxTick) {
-        continue;
-      }
-
       markers.emplace_back(df);
     }
+
+    string progress = "sorting " + std::to_string(markers.size()) + " local key(s)";
+    setProgress(progress);
     
     // sort all our local keys
     std::sort(markers.begin(), markers.end(), [] (TRI_df_marker_t const* lhs, TRI_df_marker_t const* rhs) -> bool {
@@ -786,14 +862,18 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       return res < 0;
     });
   }
-      
+
   std::vector<size_t> toFetch;
 
   TRI_voc_tick_t const chunkSize = 5000;
   string const baseUrl = BaseUrl + "/keys";
+    
+  string url = baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
+  progress = "fetching remote keys chunks from " + url;
+  setProgress(progress);
    
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
-                                                              baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize),
+                                                              url,
                                                               nullptr,
                                                               0));
 
@@ -838,9 +918,10 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
     TRI_ASSERT(TRI_IsStringJson(lowJson));
 
     char const* lowKey = lowJson->_value._string.data;
-
+    
     for (size_t i = 0; i < markers.size(); ++i) {
       auto key = TRI_EXTRACT_MARKER_KEY(markers[i]);
+
       if (strcmp(key, lowKey) >= 0) {
         break;
       }
@@ -857,6 +938,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
     for (size_t i = markers.size(); i >= 1; --i) {
       auto key = TRI_EXTRACT_MARKER_KEY(markers[i - 1]);
+      
       if (strcmp(key, highKey) <= 0) {
         break;
       }
@@ -866,11 +948,10 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   }
 
   size_t nextStart = 0;
-  size_t currentChunkId;
 
   // now process each chunk
   for (size_t i = 0; i < n; ++i) {
-    currentChunkId = i;
+    size_t const currentChunkId = i;
 
     // read remote chunk
     auto chunk = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), i));
@@ -914,7 +995,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         hash ^= TRI_FnvHashString(key);
         hash ^= TRI_EXTRACT_MARKER_RID(marker);
       }
-
+      
       if (std::to_string(hash) != std::string(hashJson->_value._string.data, hashJson->_value._string.length - 1)) {
         match = false;
       }
@@ -927,9 +1008,12 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
     else {
       // no match
       // must transfer keys for non-matching range
+      std::string url = baseUrl + "/" + keysId + "?type=keys&chunk=" + std::to_string(i) + "&chunkSize=" + std::to_string(chunkSize);
+      progress = "fetching keys from " + url;
+      setProgress(progress);
 
       std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
-                                                                  baseUrl + "/" + keysId + "?type=keys&chunk=" + std::to_string(i) + "&chunkSize=" + std::to_string(chunkSize),
+                                                                  url,
                                                                   nullptr,
                                                                   0));
 
@@ -965,7 +1049,6 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       size_t const n = TRI_LengthArrayJson(rangeKeysJson.get());
       TRI_ASSERT(n > 0);
        
-        
       // delete all keys at start of the range
       while (nextStart < markers.size()) {
         auto df = markers[nextStart];
@@ -981,29 +1064,41 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           break;
         }
       }
-
+        
       toFetch.clear();
 
       for (size_t i = 0; i < n; ++i) {
-        auto chunk = static_cast<TRI_json_t const*>(TRI_AtVector(&(rangeKeysJson.get()->_value._objects), i));
+        auto pair = static_cast<TRI_json_t const*>(TRI_AtVector(&(rangeKeysJson.get()->_value._objects), i));
 
-        if (! TRI_IsArrayJson(chunk) || TRI_LengthArrayJson(chunk) != 2) {
+        if (! TRI_IsArrayJson(pair) || TRI_LengthArrayJson(pair) != 2) {
           errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
-                     ": response chunk is no valid array";
+                     ": response key pair is no valid array";
 
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
         }
       
         // key
-        auto keyJson = static_cast<TRI_json_t const*>(TRI_AtVector(&chunk->_value._objects, 0));
-        // rid
-        auto ridJson = static_cast<TRI_json_t const*>(TRI_AtVector(&chunk->_value._objects, 1));
+        auto keyJson = static_cast<TRI_json_t const*>(TRI_AtVector(&pair->_value._objects, 0));
 
+        if (! TRI_IsStringJson(keyJson)) {
+          errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+                     ": response key is no string";
+
+          return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+        }
+
+        // rid
+        if (markers.empty()) {
+          // no local markers
+          toFetch.emplace_back(i);
+          continue;
+        }
+        
         while (nextStart < markers.size()) {
           auto df = markers[nextStart];
           char const* localKey = TRI_EXTRACT_MARKER_KEY(df);
 
-          int res = strcmp(localKey, lowJson->_value._string.data);
+          int res = strcmp(localKey, keyJson->_value._string.data);
 
           if (res < 0) {
             // we have a local key that is not present remotely
@@ -1016,6 +1111,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           }
         }
 
+        auto ridJson = static_cast<TRI_json_t const*>(TRI_AtVector(&chunk->_value._objects, 1));
         auto mptr = idx->lookupKey(keyJson->_value._string.data);
 
         if (mptr == nullptr) {
@@ -1025,23 +1121,28 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         else if (std::to_string(mptr->_rid) != std::string(ridJson->_value._string.data, ridJson->_value._string.length - 1)) {
           // key found, but rid differs
           toFetch.emplace_back(i);
+          ++nextStart;
         }
         else {
           // a match - nothing to do!
+          ++nextStart;
         }
       }
       
       // calculate next starting point
-      BinarySearch(markers, highJson->_value._string.data, nextStart);
-      while (nextStart < markers.size()) {
-        TRI_ASSERT(nextStart < markers.size());
-        char const* key = TRI_EXTRACT_MARKER_KEY(markers.at(nextStart));
-        int res = strcmp(key, highJson->_value._string.data);
-        if (res <= 0) {
-          ++nextStart;
-        }
-        else {
-          break;
+      if (! markers.empty()) {
+        BinarySearch(markers, highJson->_value._string.data, nextStart);
+
+        while (nextStart < markers.size()) {
+          char const* key = TRI_EXTRACT_MARKER_KEY(markers.at(nextStart));
+          int res = strcmp(key, highJson->_value._string.data);
+
+          if (res <= 0) {
+            ++nextStart;
+          }
+          else {
+            break;
+          }
         }
       }
 
@@ -1058,10 +1159,14 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           keysJson.add(triagens::basics::Json(static_cast<double>(it)));
         }
       
+        std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" + std::to_string(currentChunkId) + "&chunkSize=" + std::to_string(chunkSize);
+        progress = "fetching documents from " + url;
+        setProgress(progress);
+
         auto const keyJsonString = triagens::basics::JsonHelper::toString(keysJson.json());
 
         std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
-                                                                    baseUrl + "/" + keysId + "?type=docs&chunk=" + std::to_string(currentChunkId) + "&chunkSize=" + std::to_string(chunkSize),
+                                                                    url,
                                                                     keyJsonString.c_str(),
                                                                     keyJsonString.size()));
 
@@ -1137,15 +1242,18 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           TRI_doc_mptr_copy_t result;
 
           int res = TRI_ERROR_NO_ERROR;
-          TRI_document_edge_t* e = nullptr;
           auto mptr = idx->lookupKey(documentKey.c_str());
 
-          if (mptr == nullptr) {
+          if (mptr == nullptr || isEdge) {
+            // in case of an edge collection we must always update
+            TRI_document_edge_t* e = nullptr;
             TRI_document_edge_t edge;
+            std::string from;
+            std::string to;
 
             if (isEdge) {
-              std::string const from = JsonHelper::getStringValue(documentJson, TRI_VOC_ATTRIBUTE_FROM, "");
-              std::string const to   = JsonHelper::getStringValue(documentJson, TRI_VOC_ATTRIBUTE_TO, "");
+              from = JsonHelper::getStringValue(documentJson, TRI_VOC_ATTRIBUTE_FROM, "");
+              to   = JsonHelper::getStringValue(documentJson, TRI_VOC_ATTRIBUTE_TO, "");
 
               // parse _from
               if (! DocumentHelper::parseDocumentId(*trx.resolver(), from.c_str(), edge._fromCid, &edge._fromKey)) {
@@ -1159,12 +1267,14 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
               e = &edge;
             }
-            else {
-              e = nullptr;
-            }
 
             // INSERT
             if (res == TRI_ERROR_NO_ERROR) {
+              if (mptr != nullptr && isEdge) {
+                // must remove existing edge first
+                TRI_RemoveShapedJsonDocumentCollection(trx.trxCollection(), (TRI_voc_key_t) documentKey.c_str(), 0, nullptr, &policy, false, false);
+              }
+
               res = TRI_InsertShapedJsonDocumentCollection(trx.trxCollection(), (TRI_voc_key_t) documentKey.c_str(), rid, nullptr, &result, shaped, e, false, false, true);
             }
           }
@@ -1185,6 +1295,40 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief changes the properties of a collection, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+
+int InitialSyncer::changeCollection (TRI_vocbase_col_t* col,
+                                     TRI_json_t const* json) {
+
+  bool waitForSync      = JsonHelper::getBooleanValue(json, "waitForSync", false);
+  bool doCompact        = JsonHelper::getBooleanValue(json, "doCompact", true);
+  int maximalSize       = JsonHelper::getNumericValue<int>(json, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+  uint32_t indexBuckets = JsonHelper::getNumericValue<uint32_t>(json, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
+
+  try {
+    triagens::arango::CollectionGuard guard(_vocbase, col->_cid);
+
+    TRI_col_info_t parameters;
+
+    // only need to set these three properties as the others cannot be updated on the fly
+    parameters._doCompact    = doCompact;
+    parameters._maximalSize  = maximalSize;
+    parameters._waitForSync  = waitForSync;
+    parameters._indexBuckets = indexBuckets;
+
+    bool doSync = _vocbase->_settings.forceSyncProperties;
+    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection, &parameters, doSync);
+  }
+  catch (triagens::basics::Exception const& ex) {
+    return ex.code();
+  }
+  catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1323,7 +1467,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
       if (col != nullptr) {
         // collection is already present
-        return TRI_ERROR_NO_ERROR;
+        return changeCollection(col, parameters);
       }
     }
 
@@ -1395,7 +1539,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
       if (n > 0) {
         string const progress = "creating indexes for " + collectionMsg;
-        setProgress(progress.c_str());
+        setProgress(progress);
 
         READ_LOCKER(_vocbase->_inventoryLock);
 

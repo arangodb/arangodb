@@ -358,6 +358,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_import_json
 /// @brief imports documents from JSON
 ///
 /// @RESTHEADER{POST /_api/import#json,imports documents from JSON}
@@ -708,6 +709,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createFromJson (string const& type) {
@@ -925,6 +927,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_import_document
 /// @brief imports documents from JSON-encoded lists
 ///
 /// @RESTHEADER{POST /_api/import#document,imports document values}
@@ -1200,6 +1203,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::createFromKeyValueList () {

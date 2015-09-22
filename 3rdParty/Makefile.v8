@@ -14,8 +14,10 @@ DEBUG_V8_FLAGS = -DV8_TARGET_ARCH_X64 -DENABLE_GDB_JIT_INTERFACE -DV8_DEPRECATIO
 
 if ENABLE_GOLD
 GOLD_V8_FLAGS = -fuse-ld=gold
+GOLD_V8_GYP =
 else
 GOLD_V8_FLAGS =
+GOLD_V8_GYP = -Dlinux_use_bundled_gold=0 -Dlinux_use_gold_flags=0
 endif
 
 V8DIR=@V8_DIR@
@@ -36,30 +38,30 @@ V8DIR=@V8_DIR@
 if ENABLE_ARMV6
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
+	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 	  && $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-	        LDFLAGS="-march=armv6" \
+		CFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		LDFLAGS="-march=armv6" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 else
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
+	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 	  && $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
-	        LDFLAGS="-march=armv6" \
+		CFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
+		LDFLAGS="-march=armv6" \
 		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 endif
 else # ! ENABLE_ARM6
@@ -71,30 +73,30 @@ else # ! ENABLE_ARM6
 if ENABLE_ARMV7
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
+	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 	  && $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-	        LDFLAGS="-march=armv7" \
+		CFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		LDFLAGS="-march=armv7" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 else
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS=" -Darm_version=7 -Dstandalone_static_library=1" \
+	  export GYPFLAGS=" -Darm_version=7 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 	  && $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
-	        LDFLAGS="-march=armv7" \
+		CFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
+		LDFLAGS="-march=armv7" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif
 
@@ -106,16 +108,16 @@ else # ! ENABLE_ARM7
 if ENABLE_DARWIN
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Dstandalone_static_library=1" \
+	  export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 	  && $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        LDFLAGS="-lc++" \
-	        CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
-	        CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
+		LDFLAGS="-lc++" \
+		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
+		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
@@ -125,16 +127,16 @@ if ENABLE_V8_DEBUG
 
 else # ! ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Dstandalone_static_library=1" \
+	  export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 	  && $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        LDFLAGS="-lc++" \
-                CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
-	        CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
+		LDFLAGS="-lc++" \
+		CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
+		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif # ENABLE_V8_DEBUG
 
@@ -145,28 +147,28 @@ endif # ENABLE_V8_DEBUG
 else # ! ENABLE_DARWIN
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Dstandalone_static_library=1" \
+	  export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 	  && $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 else # ! ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
-	  export GYPFLAGS="-Dstandalone_static_library=1" \
+	  export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 	  && $(MAKE) \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+		CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif # ENABLE_V8_DEBUG
 endif # ENABLE_DARWIN

@@ -38,12 +38,14 @@ var checkedFishBowl = false;
 // --SECTION--                                                           imports
 // -----------------------------------------------------------------------------
 
-var arangodb = require("org/arangodb");
-var db = arangodb.db;
-var download = require("internal").download;
-var fs = require("fs");
-var throwDownloadError = arangodb.throwDownloadError;
-var utils = require("org/arangodb/foxx/manager-utils");
+const arangodb = require("org/arangodb");
+const plainServerVersion = arangodb.plainServerVersion;
+const db = arangodb.db;
+const download = require("internal").download;
+const fs = require("fs");
+const throwDownloadError = arangodb.throwDownloadError;
+const utils = require("org/arangodb/foxx/manager-utils");
+const semver = require('semver');
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -259,7 +261,6 @@ var updateFishbowlFromZip = function(filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var searchJson = function (name) {
-
   var fishbowl = getFishbowlStorage();
 
   if (fishbowl.count() === 0) {
@@ -330,46 +331,59 @@ var search = function (name) {
 /// @brief extracts the highest version number from the document
 ////////////////////////////////////////////////////////////////////////////////
 
-function extractMaxVersion (versionDoc) {
-var maxVersion = "-";
-var versions = Object.keys(versionDoc);
-versions.sort(compareVersions);
-if (versions.length > 0) {
-  versions.reverse();
-  maxVersion = versions[0];
-}
-return maxVersion;
+function extractMaxVersion(matchEngine, versionDoc) {
+  let serverVersion = plainServerVersion();
+  let versions = Object.keys(versionDoc);
+  versions.sort(compareVersions).reverse();
+
+  for (let version of versions) {
+    if (matchEngine) {
+      let info = versionDoc[version];
+
+      if (info.engines && info.engines.arangodb) {
+        if (semver.satisfies(serverVersion, info.engines.arangodb)) {
+          return version;
+        }
+      }
+      else if (matchEngine !== "match-engines") {
+        return version;
+      }
+    }
+    else {
+      return version;
+    }
+  }
+
+  return undefined;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all available FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-function availableJson() {
-var fishbowl = getFishbowlStorage();
-var cursor = fishbowl.all();
-var result = [];
-var doc, maxVersion, res;
+function availableJson(matchEngine) {
+  let fishbowl = getFishbowlStorage();
+  let cursor = fishbowl.all();
+  let result = [];
 
-while (cursor.hasNext()) {
-  doc = cursor.next();
-  maxVersion = extractMaxVersion(doc.versions);
+  while (cursor.hasNext()) {
+    let doc = cursor.next();
+    let maxVersion = extractMaxVersion(matchEngine, doc.versions);
 
-  res = {
-    name: doc.name,
-    description: doc.description || "",
-    author: doc.author || "",
-    latestVersion: maxVersion
-  };
+    if (maxVersion) {
+      let res = {
+        name: doc.name,
+        description: doc.description || "",
+        author: doc.author || "",
+        latestVersion: maxVersion
+      };
 
-  result.push(res);
+      result.push(res);
+    }
+  }
+
+  return result;
 }
-
-return result;
-}
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the repository
@@ -415,8 +429,8 @@ var update = function() {
 /// @brief prints all available FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-var available = function () {
-  var list = availableJson();
+var available = function (matchEngine) {
+  var list = availableJson(matchEngine);
 
   arangodb.printTable(
     list.sort(compareApps),
@@ -440,25 +454,30 @@ var available = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var infoJson = function (name) {
-utils.validateAppName(name);
+  utils.validateAppName(name);
 
-var fishbowl = getFishbowlStorage();
+  var fishbowl = getFishbowlStorage();
 
-if (fishbowl.count() === 0) {
-  arangodb.print("Repository is empty, please use 'update'");
-  return;
-}
+  if (fishbowl.count() === 0) {
+    arangodb.print("Repository is empty, please use 'update'");
+    return;
+  }
 
-var desc;
+  var desc = db._query(
+    "FOR u IN @@storage FILTER u.name == @name OR @name in u.aliases RETURN DISTINCT u",
+    { '@storage': fishbowl.name(), 'name': name }).toArray();
 
-try {
-  desc = fishbowl.document(name);
-  return desc;
-}
-catch (err) {
-  arangodb.print("No application '" + name + "' available, please try 'search'");
-  return;
-}
+  if (desc.length === 0) {
+    arangodb.print("No application '" + name + "' available, please try 'search'");
+    return;
+  }
+  else if (desc.length > 1) {
+    arangodb.print("Multiple applications are named '" + name + "', please try 'search'");
+    return;
+  }
+  else {
+    return desc[0];
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -466,24 +485,41 @@ catch (err) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var buildUrl = function(appInfo) {
+
   // TODO Validate
-  var infoSplit = appInfo.split(":");
-  var name = infoSplit[0];
-  var version = infoSplit[1];
-  var storeInfo = infoJson(name);
+  let infoSplit = appInfo.split(":");
+  let name = infoSplit[0];
+  let version = infoSplit[1];
+  let storeInfo = infoJson(name);
+
   if (storeInfo === undefined) {
     throw "Application not found";
   }
-  var versions = storeInfo.versions;
-  var versionInfo;
+
+  let versions = storeInfo.versions;
+  let versionInfo;
+
   if (version === undefined) {
-    versionInfo = versions[extractMaxVersion(versions)];
-  } else {
+    let maxVersion = extractMaxVersion(true, versions);
+
+    if (! maxVersion) {
+      maxVersion = extractMaxVersion(false, versions);
+    }
+
+    if (! maxVersion) {
+      throw "No version known";
+    }
+
+    versionInfo = versions[maxVersion];
+  }
+  else {
     if (!versions.hasOwnProperty(version)) {
       throw "Unknown version";
     }
+
     versionInfo = versions[version];
   }
+
   return utils.buildGithubUrl(versionInfo.location, versionInfo.tag);
 };
 

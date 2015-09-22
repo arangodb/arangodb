@@ -119,7 +119,7 @@ Ast::Ast (Query* query)
     _bindParameters(),
     _root(nullptr),
     _queries(),
-    _writeCollection(nullptr),
+    _writeCollections(),
     _functionsMayAccessDocuments(false) {
 
   TRI_ASSERT(_query != nullptr);
@@ -1168,11 +1168,15 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         // collection parameter
         TRI_ASSERT(TRI_IsStringJson(value));
 
+        // check if the collection was used in a data-modification query
         bool isWriteCollection = false;
-        if (_writeCollection != nullptr && 
-            _writeCollection->type == NODE_TYPE_PARAMETER &&
-            ::strcmp(param, _writeCollection->getStringValue()) == 0) {
-          isWriteCollection = true;
+
+        for (auto const& it : _writeCollections) {
+          if (it->type == NODE_TYPE_PARAMETER &&
+              ::strcmp(param, it->getStringValue()) == 0) {
+            isWriteCollection = true;
+            break;
+          }
         }
 
         // turn node into a collection node
@@ -1182,8 +1186,14 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         node = createNodeCollection(name, isWriteCollection ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
 
         if (isWriteCollection) {
-          // this was the bind parameter that contained the collection to update 
-          _writeCollection = node;
+          // must update AST info now for all nodes that contained this parameter
+          for (size_t i = 0; i < _writeCollections.size(); ++i) {
+            if (_writeCollections[i]->type == NODE_TYPE_PARAMETER &&
+                ::strcmp(param, _writeCollections[i]->getStringValue()) == 0) {
+              _writeCollections[i] = node;
+              // no break here. replace all occurrences
+            }
+          }
         }
       }
       else {
@@ -1225,11 +1235,12 @@ void Ast::injectBindParameters (BindParameters& parameters) {
   };
 
   _root = traverseAndModify(_root, func, &p); 
-  
-  if (_writeCollection != nullptr &&
-      _writeCollection->type == NODE_TYPE_COLLECTION) {
-
-    _query->collections()->add(_writeCollection->getStringValue(), TRI_TRANSACTION_WRITE);
+ 
+  // add all collections used in data-modification statements
+  for (auto& it : _writeCollections) { 
+    if (it->type == NODE_TYPE_COLLECTION) {
+      _query->collections()->add(it->getStringValue(), TRI_TRANSACTION_WRITE);
+    }
   }
 
   for (auto it = p.begin(); it != p.end(); ++it) {
@@ -1305,7 +1316,6 @@ AstNode* Ast::replaceVariableReference (AstNode* node,
 /// optimizations saves one extra pass over the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 void Ast::validateAndOptimize () {
   struct TraversalContext {
     int64_t stopOptimizationRequests = 0;

@@ -135,6 +135,7 @@
 * [Replication](Replication/README.md)
   * [Components](Replication/Components.md)
   * [Example Setup](Replication/ExampleSetup.md)
+  * [Syncing Collections](Replication/SyncingCollections.md)
   * [Replication Limitations](Replication/Limitations.md)
   * [Replication Overhead](Replication/Overhead.md)
 * [Sharding](Sharding/README.md)

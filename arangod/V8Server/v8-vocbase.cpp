@@ -552,32 +552,94 @@ static void JS_FlushWal (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  bool waitForSync = false;
+  bool waitForSync           = false;
+  bool waitForCollector      = false;
+  bool writeShutdownFile     = false;
+
   if (args.Length() > 0) {
-    waitForSync = TRI_ObjectToBoolean(args[0]);
-  }
-
-  bool waitForCollector = false;
-  if (args.Length() > 1) {
-    waitForCollector = TRI_ObjectToBoolean(args[1]);
-  }
-
-  bool writeShutdownFile = false;
-  if (args.Length() > 2) {
-    writeShutdownFile = TRI_ObjectToBoolean(args[2]);
+    if (args[0]->IsObject()) {
+      v8::Handle<v8::Object> obj = args[0]->ToObject();
+      if (obj->Has(TRI_V8_ASCII_STRING("waitForSync"))) {
+        waitForSync = TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING("waitForSync")));
+      }
+      if (obj->Has(TRI_V8_ASCII_STRING("waitForCollector"))) {
+        waitForCollector = TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING("waitForCollector")));
+      }
+      if (obj->Has(TRI_V8_ASCII_STRING("writeShutdownFile"))) {
+        writeShutdownFile = TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING("writeShutdownFile")));
+      }
+    }
+    else {
+      waitForSync = TRI_ObjectToBoolean(args[0]);
+  
+      if (args.Length() > 1) {
+        waitForCollector = TRI_ObjectToBoolean(args[1]);
+  
+        if (args.Length() > 2) {
+          writeShutdownFile = TRI_ObjectToBoolean(args[2]);
+        }
+      }
+    }
   }
 
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
-    res = flushWalOnAllDBServers( waitForSync, waitForCollector );
+    res = flushWalOnAllDBServers(waitForSync, waitForCollector);
+
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
     TRI_V8_RETURN_TRUE();
   }
 
-  res = triagens::wal::LogfileManager::instance()->flush(waitForSync, waitForCollector, writeShutdownFile);
+  res = triagens::wal::LogfileManager::instance()->flush(
+    waitForSync, 
+    waitForCollector, 
+    writeShutdownFile
+  );
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for WAL collector to finish operations for the specified 
+/// collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_WaitCollectorWal (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (args.Length() < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("WAL_WAITCOLLECTOR(<collection-id>)");
+  }
+
+  std::string const name = TRI_ObjectToString(args[0]);
+
+  TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
+
+  if (col == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  
+  double timeout = 30.0;
+  if (args.Length() > 1) {
+    timeout = TRI_ObjectToDouble(args[1]);
+  }
+  
+  int res = triagens::wal::LogfileManager::instance()->waitForCollectorQueue(col->_cid, timeout);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -3929,6 +3991,7 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("RELOAD_AUTH"), JS_ReloadAuth, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("TRANSACTION"), JS_Transaction, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("WAL_FLUSH"), JS_FlushWal, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("WAL_WAITCOLLECTOR"), JS_WaitCollectorWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("WAL_PROPERTIES"), JS_PropertiesWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("WAL_TRANSACTIONS"), JS_TransactionsWal, true);
   

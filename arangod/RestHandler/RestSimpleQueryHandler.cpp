@@ -91,7 +91,7 @@ HttpHandler::status_t RestSimpleQueryHandler::execute () {
 ///
 /// @RESTHEADER{PUT /_api/simple/all, Return all documents}
 ///
-/// @RESTBODYPARAM{query,string,required}
+/// @RESTALLBODYPARAM{query,string,required}
 /// Contains the query.
 ///
 /// @RESTDESCRIPTION

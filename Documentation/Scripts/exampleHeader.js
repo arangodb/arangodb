@@ -81,6 +81,9 @@ var appender = function(text) {
 var jsonAppender = function(text) {
   output += highlight("js", text);
 };
+var htmlAppender = function(text) {
+  output += highlight("html", text);
+};
 var rawAppender = function(text) {
   output += text;
 };
@@ -111,8 +114,9 @@ var curlRequestRaw = internal.appendCurlRequest(swallowText, swallowText, swallo
 var curlRequest = function () {
   return curlRequestRaw.apply(curlRequestRaw, arguments);
 };
-var logJsonResponse = internal.appendJsonResponse(jsonAppender);
-var logRawResponse = internal.appendRawResponse(rawAppender);
+var logJsonResponse = internal.appendJsonResponse(rawAppender, jsonAppender);
+var logHtmlResponse = internal.appendRawResponse(rawAppender, htmlAppender);
+var logRawResponse = internal.appendRawResponse(rawAppender, rawAppender);
 var logErrorResponse = function (response) {
     allErrors += "Server reply was: " + JSON.stringify(response) + "\n";
 };

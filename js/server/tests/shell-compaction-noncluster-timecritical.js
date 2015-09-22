@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var testHelper = require("org/arangodb/test-helper").Helper;
+var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        compaction
@@ -844,6 +845,142 @@ function CompactionSuite () {
       assertEqual(0, fig["dead"]["count"]);
       // we should still have all the deletion markers
       assertTrue(n >= fig["dead"]["deletion"]);
+
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test document presence after compaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testCompactionAfterUpdateSingleDatafile : function () {
+      var cn = "example";
+      var n = 2000;
+      var i;
+      var fig;
+      var payload = "the quick brown fox jumped over the lazy dog.";
+
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
+
+      for (i = 0; i < n; ++i) {
+        c1.save({ _key: "test" + i, value : i, payload : payload });
+      }
+      
+      fig = c1.figures();
+      assertEqual(0, fig.dead.count);
+      
+      internal.wal.flush(true, true);
+      // wait for the above docs to get into the collection journal
+      internal.wal.waitForCollector(cn);
+      internal.wait(0.5);
+      
+      // update all documents so the existing revisions become irrelevant
+      for (i = 0; i < n; ++i) {
+        c1.update("test" + i, { payload: payload + ", isn't that nice?", updated: true });
+      }
+      
+      fig = c1.figures();
+      assertTrue(fig.dead.count > 0);
+
+      internal.wal.flush(true, true);
+      internal.wal.waitForCollector(cn);
+    
+      // wait for the compactor. it shouldn't compact now, but give it a chance to run
+      internal.wait(5); 
+
+      // unload collection
+      c1.unload();
+      c1 = null;
+
+      while (internal.db._collection(cn).status() !== ArangoCollection.STATUS_UNLOADED) {
+        internal.wait(1, false);
+      }
+
+      // now reload and check documents
+      c1 = internal.db._collection(cn);
+      c1.load();
+
+      for (i = 0; i < n; ++i) {
+        var doc = c1.document("test" + i);
+        assertEqual(payload + ", isn't that nice?", doc.payload);
+        assertTrue(doc.updated);
+      }
+
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test document presence after compaction
+////////////////////////////////////////////////////////////////////////////////
+
+    testCompactionAfterUpdateMultipleDatafiles : function () {
+      var cn = "example";
+      var n = 2000;
+      var i;
+      var fig;
+      var payload = "the quick brown fox jumped over the lazy dog.";
+
+      internal.db._drop(cn);
+      var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
+
+      for (i = 0; i < n; ++i) {
+        c1.save({ _key: "test" + i, value : i, payload : payload });
+      }
+      
+      fig = c1.figures();
+      assertEqual(0, fig.dead.count);
+      
+      internal.wal.flush(true, true);
+      // wait for the above docs to get into the collection journal
+      internal.wal.waitForCollector(cn);
+      internal.wait(0.5);
+      
+      // update all documents so the existing revisions become irrelevant
+      for (i = 0; i < n; ++i) {
+        c1.update("test" + i, { payload: payload + ", isn't that nice?", updated: true });
+      }
+      
+      fig = c1.figures();
+      assertTrue(fig.dead.count > 0);
+
+      // create new datafile
+      c1.rotate();
+
+      internal.wal.flush(true, true);
+      internal.wal.waitForCollector(cn);
+    
+      // wait for the compactor. it should compact now
+      var tries = 0;
+      while (tries++ < 20) {
+        fig = c1.figures();
+        if (fig.dead.count === 0) {
+          break;
+        }
+        internal.wait(1);
+      }
+
+      assertEqual(0, fig.dead.count);
+
+      // unload collection
+      c1.unload();
+      c1 = null;
+
+      while (internal.db._collection(cn).status() !== ArangoCollection.STATUS_UNLOADED) {
+        internal.wait(1, false);
+      }
+
+      // now reload and check documents
+      c1 = internal.db._collection(cn);
+      c1.load();
+
+      for (i = 0; i < n; ++i) {
+        var doc = c1.document("test" + i);
+        assertEqual(payload + ", isn't that nice?", doc.payload);
+        assertTrue(doc.updated);
+      }
+      
+      assertEqual(0, c1.figures().dead.count);
 
       internal.db._drop(cn);
     }

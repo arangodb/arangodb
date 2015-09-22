@@ -163,7 +163,7 @@ Use the following for a permanent redirect:
     var url = "/redirectMe";
     var response = logCurlRequest('GET', url);
     assert(response.code === 301);
-    logRawResponse(response);
+    logHtmlResponse(response);
     db._query("FOR route IN _routing FILTER route.url == '/redirectMe' REMOVE route in _routing")
     require("internal").reloadRouting()
     @END_EXAMPLE_ARANGOSH_RUN

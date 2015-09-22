@@ -193,7 +193,7 @@ var unitMappingArray = [null, "y", "m", "w", "d", "h", "i", "s", "f"];
 var ISODurationRegex = /^P(?:(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d+))?S)?)?$/i;
 /* jshint +W101 */
 
-var ISODurationCache = {}; // TODO: clear cache for every new AQL query to avoid memory leak
+var ISODurationCache = {}; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief substring ranges for DATE_COMPARE()
@@ -260,6 +260,59 @@ var dayOfLeapYearOffsets = [
 ];
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup array for days in month calculation (leap year aware)
+////////////////////////////////////////////////////////////////////////////////
+
+var daysInMonth = [
+  29, // Feb (in leap year)
+  31, // Jan
+  28, // Feb (in non-leap year)
+  31, // Mar
+  30, // Apr
+  31, // May
+  30, // Jun
+  31, // Jul
+  31, // Aug
+  30, // Sep
+  31, // Oct
+  30, // Nov
+  31  // Dec
+];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief English month names (1-based)
+////////////////////////////////////////////////////////////////////////////////
+
+var monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December"
+];
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief English weekday names
+////////////////////////////////////////////////////////////////////////////////
+
+var weekdayNames = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday"
+];
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constants for date difference function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -304,10 +357,23 @@ msPerUnit.year = msPerUnit.y;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clear caches
+////////////////////////////////////////////////////////////////////////////////
+
+function clearCaches () {
+  'use strict';
+
+  RegexCache        = { 'i' : { }, '' : { } };
+  ISODurationCache = { };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add zeros for a total length of width chars (left padding by default)
 ////////////////////////////////////////////////////////////////////////////////
 
-function zeropad(n, width, padRight) {
+function zeropad (n, width, padRight) {
+  'use strict';
+
   padRight = padRight || false;
   n = "" + n;
   if (padRight) {
@@ -373,16 +439,6 @@ function THROW (func, error, data) {
 
 function DB_PREFIX () {
   return INTERNAL.db._name();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reset the regex cache
-////////////////////////////////////////////////////////////////////////////////
-
-function resetRegexCache () {
-  'use strict';
-
-  RegexCache = { 'i' : { }, '' : { } };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4603,8 +4659,14 @@ function MAKE_DATE (args, func) {
     }
   }
 
-  // TODO: add check if Date is NaN? Note: avoid duplicate warnings!
-  return new Date(Date.UTC.apply(null, args));
+  var result = new Date(Date.UTC.apply(null, args));
+
+  if (TYPEWEIGHT(result) !== TYPEWEIGHT_NULL) {
+    return result;
+  }
+
+  // avoid returning NaN here
+  return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4854,10 +4916,29 @@ function AQL_DATE_QUARTER (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief internal function to add or subtract from date
+/// @brief return number of days in month of date passed (leap year aware)
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_CALC(value, amount, unit, func) {
+function AQL_DATE_DAYS_IN_MONTH (value) {
+  'use strict';
+
+  try {
+    var date = MAKE_DATE([ value ], "DATE_DAYS_IN_MONTH");
+    var month = date.getUTCMonth() + 1;
+    var ly = AQL_DATE_LEAPYEAR(date.getTime());
+    return daysInMonth[month === 2 && ly ? 0 : month];
+  }
+  catch (err) {
+    WARN("DATE_DAYS_IN_MONTH", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to add to or subtract from given date
+////////////////////////////////////////////////////////////////////////////////
+
+function DATE_CALC (value, amount, unit, func) {
   'use strict';
 
   try {
@@ -4865,12 +4946,18 @@ function DATE_CALC(value, amount, unit, func) {
     // and terminate immediately, or return a bunch of 'null's? If it shall
     // stop, then best handled in MAKE_DATE() itself I guess.
     var date = MAKE_DATE([ value ], func);
+
+    if (date === null) {
+      WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+      return null;
+    }
+
     var sign = (func === "DATE_ADD" || func === undefined) ? 1 : -1;
     var m;
     
-    // if amount is not a number, than it must be an ISO duration string
-    if (TYPEWEIGHT(amount) !== TYPEWEIGHT_NUMBER) {
-      if (TYPEWEIGHT(unit) !== TYPEWEIGHT_STRING) {
+    // if amount is not a number, then it must be an ISO duration string
+    if (TYPEWEIGHT(unit) === TYPEWEIGHT_NULL) {
+      if (TYPEWEIGHT(amount) !== TYPEWEIGHT_STRING) {
         WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
@@ -4891,7 +4978,7 @@ function DATE_CALC(value, amount, unit, func) {
         duration[8] = zeropad(duration[8], 3, true).substring(0, 3);
       }
       // add or subtract component by component, from ms to year
-      for (var d=duration.length-1; d>=1; d--) {
+      for (var d = duration.length - 1; d >= 1; d--) {
         if (duration[d]) {
           // convert weeks to days
           if (d === 3) {
@@ -4905,11 +4992,15 @@ function DATE_CALC(value, amount, unit, func) {
       }
       return date.toISOString(); 
     } else {
-      if (unit === undefined || typeof unit !== "string") {
+      if (TYPEWEIGHT(unit) !== TYPEWEIGHT_STRING) {
         WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
-      m = unitMapping[unit.toLowerCase()]; // TODO: AQL_TO_STRING?
+      if (TYPEWEIGHT(amount) !== TYPEWEIGHT_NUMBER) {
+        WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
+      }
+      m = unitMapping[unit.toLowerCase()]; // we're sure unit is a string here
       if (m === "undefined") {
         WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
         return null;
@@ -4945,7 +5036,6 @@ function AQL_DATE_SUBTRACT (value, amount, unit) {
   'use strict';
   return DATE_CALC(value, amount, unit, "DATE_SUBTRACT");
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return date difference in given unit, optionally with fractions
@@ -5022,7 +5112,7 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
     // birthday checking however. Probably best to leave compensation up to user query.
     var date1 = MAKE_DATE([ value1 ], "DATE_COMPARE");
     var date2 = MAKE_DATE([ value2 ], "DATE_COMPARE");
-    if (isNaN(date1) || isNaN(date2)) {
+    if (TYPEWEIGHT(date1) === TYPEWEIGHT_NULL || TYPEWEIGHT(date2) === TYPEWEIGHT_NULL) {
       return null;
     }
     if (unitRangeEnd === undefined) {
@@ -5034,10 +5124,12 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
       WARN("DATE_COMPARE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
       return null;
     }
-    if (date1.getUTCFullYear() < 0 && start !== 0) {
+    var yr1 = date1.getUTCFullYear();
+    if ((yr1 < 0 || yr1 > 9999) && start !== 0) {
       start += 3;
     }
-    if (date2.getUTCFullYear() < 0) {
+    var yr2 = date2.getUTCFullYear();
+    if (yr2 < 0 || yr2 > 9999) {
       end += 3;
     }
     var substr1 = date1.toISOString().slice(start, end);
@@ -5058,33 +5150,65 @@ function AQL_DATE_COMPARE (value1, value2, unitRangeStart, unitRangeEnd) {
 /// @brief format a date (numerical values only)
 ////////////////////////////////////////////////////////////////////////////////
 
+// special escape sequence first, rest ordered by length
+var dateMapRegExp = [
+  "%&", "%yyyyyy", "%yyyy", "%mmmm", "%wwww", "%mmm", "%www", "%fff", "%xxx",
+  "%yy", "%mm", "%dd", "%hh", "%ii", "%ss", "%kk", "%t", "%z", "%w", "%y", "%m",
+  "%d", "%h", "%i", "%s", "%f", "%x", "%k", "%l", "%q", "%a", "%%", "%"
+].join("|");
+
 function AQL_DATE_FORMAT (value, format) {
   'use strict';
   try {
     var date = MAKE_DATE([ value ], "DATE_FORMAT");
     var dateStr = date.toISOString();
-    var offset = date.getUTCFullYear() < 0 ? 3 : 0;
+    var yr = date.getUTCFullYear();
+    var offset = yr < 0 || yr > 9999 ? 3 : 0;
     var dateMap = {
-      "%t": date.getTime(),
-      "%o": dateStr,
-      "%w": AQL_DATE_DAYOFWEEK(dateStr),
-      "%y": dateStr.slice(0, 4 + offset),
-      "%m": dateStr.slice(5 + offset, 7 + offset),
-      "%d": dateStr.slice(8 + offset, 10 + offset),
-      "%h": dateStr.slice(11 + offset, 13 + offset),
-      "%i": dateStr.slice(14 + offset, 16 + offset),
-      "%s": dateStr.slice(17 + offset, 19 + offset),
-      "%f": dateStr.slice(20 + offset, 23 + offset),
-      "%x": zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3),
-      "%k": zeropad(AQL_DATE_ISOWEEK(dateStr), 2),
-      "%l": +AQL_DATE_LEAPYEAR(dateStr),
-      "%q": AQL_DATE_QUARTER(dateStr),
-      "%%": "%" // Allow for literal "%Y" using "%%Y"
-      //"%": "" // Not reliable, because Object.keys() does not guarantee order
+      "%t": function() { return date.getTime(); },
+      "%z": function() { return dateStr; },
+      "%w": function() { return AQL_DATE_DAYOFWEEK(dateStr); },
+      "%y": function() { return date.getUTCFullYear(); },
+      // there's no really sensible way to handle negative years, but better not drop the sign
+      "%yy": function() { return (yr < 0 ? "-" : "") + dateStr.slice(2 + offset, 4 + offset); },
+      // preserves full negative years (-000753 is not reduced to -753 or -0753)
+      "%yyyy": function() { return dateStr.slice(0, 4 + offset); },
+      // zero-pad 4 digit years to length of 6 and add "+" prefix, keep negative as-is
+      "%yyyyyy": function() { 
+        return (yr >= 0 && yr <= 9999)
+          ? "+" + zeropad(dateStr.slice(0, 4 + offset), 6)
+          : dateStr.slice(0, 7);
+      },
+      "%m": function() { return date.getUTCMonth() + 1; },
+      "%mm": function() { return dateStr.slice(5 + offset, 7 + offset); },
+      "%d": function() { return date.getUTCDate(); },
+      "%dd": function() { return dateStr.slice(8 + offset, 10 + offset); },
+      "%h": function() { return date.getUTCHours(); },
+      "%hh": function() { return dateStr.slice(11 + offset, 13 + offset); },
+      "%i": function() { return date.getUTCMinutes(); },
+      "%ii": function() { return dateStr.slice(14 + offset, 16 + offset); },
+      "%s": function() { return date.getUTCSeconds(); },
+      "%ss": function() { return dateStr.slice(17 + offset, 19 + offset); },
+      "%f": function() { return date.getUTCMilliseconds(); },
+      "%fff": function() { return dateStr.slice(20 + offset, 23 + offset); },
+      "%x": function() { return AQL_DATE_DAYOFYEAR(dateStr); },
+      "%xxx": function() { return zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3); },
+      "%k": function() { return AQL_DATE_ISOWEEK(dateStr); },
+      "%kk": function() { return zeropad(AQL_DATE_ISOWEEK(dateStr), 2); },
+      "%l": function() { return +AQL_DATE_LEAPYEAR(dateStr); },
+      "%q": function() { return AQL_DATE_QUARTER(dateStr); },
+      "%a": function() { return AQL_DATE_DAYS_IN_MONTH(dateStr); },
+      "%mmm": function() { return monthNames[date.getUTCMonth()].substring(0, 3); },
+      "%mmmm": function() { return monthNames[date.getUTCMonth()]; },
+      "%www": function() { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3); },
+      "%wwww": function() { return weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)]; },
+      "%&": function() { return ""; }, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
+      "%%": function() { return "%"; }, // Allow for literal "%y" using "%%y"
+      "%": function() { return ""; }
     };
-    var exp = new RegExp(Object.keys(dateMap).join("|"), "gi"); 
+    var exp = new RegExp(dateMapRegExp, "gi"); 
     format = format.replace(exp, function(match){
-      return dateMap[match.toLowerCase()];
+      return dateMap[match.toLowerCase()]();
     });
     return format;
   } catch (err) {
@@ -7098,7 +7222,7 @@ function AQL_EDGES (edgeCollection,
     if (options && options.includeVertices) {
       for (let i = 0; i < result.length; ++i) {
         try {
-          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._from) };
+          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._to) };
         }
         catch (err) {
         }
@@ -7110,7 +7234,7 @@ function AQL_EDGES (edgeCollection,
     if (options && options.includeVertices) {
       for (let i = 0; i < result.length; ++i) {
         try {
-          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._to) };
+          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._from) };
         }
         catch (err) {
         }
@@ -9045,6 +9169,7 @@ exports.AQL_DATE_DAYOFYEAR = AQL_DATE_DAYOFYEAR;
 exports.AQL_DATE_ISOWEEK = AQL_DATE_ISOWEEK;
 exports.AQL_DATE_LEAPYEAR = AQL_DATE_LEAPYEAR;
 exports.AQL_DATE_QUARTER = AQL_DATE_QUARTER;
+exports.AQL_DATE_DAYS_IN_MONTH = AQL_DATE_DAYS_IN_MONTH;
 exports.AQL_DATE_ADD = AQL_DATE_ADD;
 exports.AQL_DATE_SUBTRACT = AQL_DATE_SUBTRACT;
 exports.AQL_DATE_DIFF = AQL_DATE_DIFF;
@@ -9052,9 +9177,10 @@ exports.AQL_DATE_COMPARE = AQL_DATE_COMPARE;
 exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 
 exports.reload = reloadUserFunctions;
+exports.clearCaches = clearCaches;
 
 // initialize the query engine
-resetRegexCache();
+exports.clearCaches();
 //reloadUserFunctions();
 
 // -----------------------------------------------------------------------------

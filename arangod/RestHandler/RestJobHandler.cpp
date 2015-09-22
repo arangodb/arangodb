@@ -115,9 +115,9 @@ HttpHandler::status_t RestJobHandler::execute () {
 /// @startDocuBlock JSF_job_fetch_result
 /// @brief fetches a job result and removes it from the queue
 /// 
-/// @RESTHEADER{PUT /_api/job/job-id, Return result of an async job}
+/// @RESTHEADER{PUT /_api/job/{job-id}, Return result of an async job}
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTURLPARAM{job-id,string,required}
 /// The async job id.
@@ -246,9 +246,9 @@ void RestJobHandler::putJob () {
 /// @startDocuBlock JSF_job_cancel
 /// @brief cancels an async job
 /// 
-/// @RESTHEADER{PUT /_api/job/job-id/cancel, Cancel async job}
+/// @RESTHEADER{PUT /_api/job/{job-id}/cancel, Cancel async job}
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTURLPARAM{job-id,string,required}
 /// The async job id.
@@ -355,9 +355,9 @@ void RestJobHandler::getJob () {
 /// @startDocuBlock JSF_job_getStatusById
 /// @brief Returns the status of a specific job
 ///
-/// @RESTHEADER{GET /_api/job/job-id, Returns async job}
+/// @RESTHEADER{GET /_api/job/{job-id}, Returns async job}
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTURLPARAM{job-id,string,required}
 /// The async job id.
@@ -444,9 +444,9 @@ void RestJobHandler::getJobById (std::string const& value) {
 /// @startDocuBlock JSF_job_getByType
 /// @brief Returns the ids of job results with a specific status
 /// 
-/// @RESTHEADER{GET /_api/job/type, Returns list of async job}
+/// @RESTHEADER{GET /_api/job/{type}, Returns list of async jobs}
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTURLPARAM{type,string,required}
 /// The type of jobs to return. The type can be either done or pending. Setting 
@@ -454,9 +454,9 @@ void RestJobHandler::getJobById (std::string const& value) {
 /// jobs for which results can be fetched. Setting the type to pending will return 
 /// the ids of not yet finished async jobs.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
-/// @RESTPARAM{count, number, optional}
+/// @RESTPARAM{count,number,optional}
 /// 
 /// The maximum number of ids to return per call. If not specified, a 
 /// server-defined maximum value will be used.
@@ -586,9 +586,9 @@ void RestJobHandler::getJobByType (std::string const& type) {
 /// @startDocuBlock JSF_job_delete
 /// @brief deletes an async job result
 /// 
-/// @RESTHEADER{DELETE /_api/job/type, Deletes async job}
+/// @RESTHEADER{DELETE /_api/job/{type}, Deletes async job}
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTURLPARAM{type,string,required}
 /// The type of jobs to delete. type can be:
@@ -600,7 +600,7 @@ void RestJobHandler::getJobByType (std::string const& type) {
 /// * *an actual job-id*: In this case, the call will remove the result of the 
 ///   specified async job. If the job is currently executing or queued, it will not be aborted.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTPARAM{stamp, number, optional}
 /// 

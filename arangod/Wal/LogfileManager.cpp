@@ -927,6 +927,25 @@ SlotInfoCopy LogfileManager::allocateAndWrite (Marker const& marker,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for the collector queue to get cleared for the given collection
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::waitForCollectorQueue (TRI_voc_cid_t cid,
+                                           double timeout) {
+  double const end = TRI_microtime() + timeout;
+
+  while (_collectorThread->hasQueuedOperations(cid)) {
+    usleep(10000);
+
+    if (TRI_microtime() > end) {
+      return TRI_ERROR_LOCKED;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finalize and seal the currently open logfile
 /// this is useful to ensure that any open writes up to this point have made
 /// it into a logfile

@@ -75,7 +75,12 @@ actions.defineHttp({
 /// @startDocuBlock JSF_get_admin_sleep
 /// @brief Suspend the execution for a specified duration before returnig
 ///
-/// @RESTHEADER{GET /_admin/sleep?duration=5, Sleep for 5 seconds}
+/// @RESTHEADER{GET /_admin/sleep, Sleep for a specified amount of seconds}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTURLPARAM{duration,integer,required}
+/// wait `duration` seconds until the reply is sent.
 ///
 /// @RESTDESCRIPTION
 ///
@@ -612,7 +617,7 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{POST /_admin/test, Runs tests on server}
 ///
-/// @RESTBODYPARAM{body,javascript,required}
+/// @RESTALLBODYPARAM{body,object,required}
 /// A JSON object containing an attribute *tests* which lists the files
 /// containing the test suites.
 ///
@@ -670,7 +675,7 @@ actions.defineHttp({
 ///
 /// @RESTHEADER{POST /_admin/execute, Execute program}
 ///
-/// @RESTBODYPARAM{body,javascript,required}
+/// @RESTALLBODYPARAM{body,string,required}
 /// The body to be executed.
 ///
 /// @RESTDESCRIPTION

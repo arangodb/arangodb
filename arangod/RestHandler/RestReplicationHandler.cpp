@@ -61,9 +61,9 @@ using namespace triagens::arango;
 // --SECTION--                                       initialize static variables
 // -----------------------------------------------------------------------------
 
-const uint64_t RestReplicationHandler::defaultChunkSize = 128 * 1024;
+uint64_t const RestReplicationHandler::defaultChunkSize = 128 * 1024;
 
-const uint64_t RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
+uint64_t const RestReplicationHandler::maxChunkSize     = 128 * 1024 * 1024;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -94,7 +94,7 @@ RestReplicationHandler::~RestReplicationHandler () {
 
 HttpHandler::status_t RestReplicationHandler::execute () {
   // extract the request type
-  const HttpRequest::HttpRequestType type = _request->requestType();
+  HttpRequest::HttpRequestType const type = _request->requestType();
 
   vector<string> const& suffix = _request->suffix();
 
@@ -746,14 +746,6 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
   TRI_voc_tick_t tick = UINT64_MAX;
 
   for (auto& it : ranges) {
-    auto r = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-
-    if (r == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-      return;
-    }
-
     if (it.tickMin == 0) {
       continue;
     }
@@ -776,6 +768,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_post_batch_replication
 /// @brief handle a dump batch command
 ///
 /// @RESTHEADER{POST /_api/replication/batch, Create new dump batch}
@@ -810,9 +803,11 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_batch_replication
 /// @brief handle a dump batch command
 ///
 /// @RESTHEADER{PUT /_api/replication/batch/{id}, Prolong existing dump batch}
@@ -848,9 +843,11 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_delete_batch_replication
 /// @brief handle a dump batch command
 ///
 /// @RESTHEADER{DELETE /_api/replication/batch/{id}, Deletes an existing dump batch}
@@ -880,6 +877,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandBatch () {
@@ -909,7 +907,7 @@ void RestReplicationHandler::handleCommandBatch () {
     int res = TRI_InsertBlockerCompactorVocBase(_vocbase, expires, &id);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      generateError(HttpResponse::BAD, res);
+      generateError(HttpResponse::responseCode(res), res);
       return;
     }
 
@@ -948,7 +946,7 @@ void RestReplicationHandler::handleCommandBatch () {
       _response = createResponse(HttpResponse::NO_CONTENT);
     }
     else {
-      generateError(HttpResponse::BAD, res);
+      generateError(HttpResponse::responseCode(res), res);
     }
     return;
   }
@@ -963,7 +961,7 @@ void RestReplicationHandler::handleCommandBatch () {
       _response = createResponse(HttpResponse::NO_CONTENT);
     }
     else {
-      generateError(HttpResponse::BAD, res);
+      generateError(HttpResponse::responseCode(res), res);
     }
     return;
   }
@@ -1386,7 +1384,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::responseCode(res), res);
   }
 }
 
@@ -1466,7 +1464,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::responseCode(res), res);
   }
 }
 
@@ -1956,7 +1954,7 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::responseCode(res), res);
   }
   else {
     TRI_json_t result;
@@ -2003,7 +2001,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::responseCode(res), res);
   }
   else {
     TRI_json_t result;
@@ -2773,7 +2771,7 @@ void RestReplicationHandler::handleCommandRestoreData () {
   int res = processRestoreData(resolver, cid, recycleIds, force, errorMsg);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::responseCode(res), res);
   }
   else {
     TRI_json_t result;
@@ -3063,7 +3061,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::BAD, res, errorMsg);
+    generateError(HttpResponse::responseCode(res), res, errorMsg);
     return;
   }
 
@@ -3117,7 +3115,7 @@ void RestReplicationHandler::handleCommandCreateKeys () {
    
     // turn off the compaction for the collection 
     TRI_voc_tick_t id;
-    res = TRI_InsertBlockerCompactorVocBase(_vocbase, 24.0 * 60.0 * 60.0, &id);
+    res = TRI_InsertBlockerCompactorVocBase(_vocbase, 1200.0, &id);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -3140,7 +3138,6 @@ void RestReplicationHandler::handleCommandCreateKeys () {
     catch (...) {
       throw;
     }
-         
 
     triagens::basics::Json json(triagens::basics::Json::Object);
     json.set("id", triagens::basics::Json(idString));
@@ -3157,7 +3154,7 @@ void RestReplicationHandler::handleCommandCreateKeys () {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::responseCode(res), res);
   }
 }
 
@@ -3249,7 +3246,7 @@ void RestReplicationHandler::handleCommandGetKeys () {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::responseCode(res), res);
   }
 }
 
@@ -3353,7 +3350,7 @@ void RestReplicationHandler::handleCommandFetchKeys () {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::responseCode(res), res);
   }
 }
 
@@ -3367,7 +3364,7 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
     return;
   }
   
-  std::string const& id = suffix[0];
+  std::string const& id = suffix[1];
 
   auto keys = static_cast<triagens::arango::CollectionKeysRepository*>(_vocbase->_collectionKeys);
   TRI_ASSERT(keys != nullptr);
@@ -3415,7 +3412,10 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
 /// Include system collections in the result. The default value is *true*.
 ///
 /// @RESTQUERYPARAM{ticks,boolean,optional}
-/// Whether or not to include tick values in the dump. Default value is *true*.
+/// Whether or not to include tick values in the dump. The default value is *true*.
+///
+/// @RESTQUERYPARAM{flush,boolean,optional}
+/// Whether or not to flush the WAL before dumping. The default value is *true*.
 ///
 /// @RESTDESCRIPTION
 /// Returns the data from the collection for the requested range.
@@ -3662,12 +3662,14 @@ void RestReplicationHandler::handleCommandDump () {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::responseCode(res), res);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_api_replication_makeSlave
+/// @brief Changes role to slave
+///
 /// @RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a slave of another}
 ///
 /// @RESTBODYPARAM{endpoint,string,required,string}
@@ -3913,7 +3915,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyConfigurationReplicationApplier(&config);
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::responseCode(res), res);
     return;
   }
   
@@ -3939,7 +3941,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyConfigurationReplicationApplier(&config);
-    generateError(HttpResponse::SERVER_ERROR, res, errorMsg);
+    generateError(HttpResponse::responseCode(res), res, errorMsg);
     return;
   }
   
@@ -3947,7 +3949,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyConfigurationReplicationApplier(&config);
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::responseCode(res), res);
     return;
   }
     
@@ -3956,7 +3958,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
   res =_vocbase->_replicationApplier->start(lastLogTick, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res);
+    generateError(HttpResponse::responseCode(res), res);
     return;
   }
 
@@ -3990,8 +3992,17 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 /// @RESTBODYPARAM{password,string,required,string}
 /// the password to use when connecting to the endpoint.
 ///
-/// @RESTBODYPARAM{includeSystem,boolean,required,}
+/// @RESTBODYPARAM{includeSystem,boolean,optional,}
 /// whether or not system collection operations will be applied
+///
+/// @RESTBODYPARAM{incremental,boolean,optional,}
+/// if set to *true*, then an incremental synchronization method will be used
+/// for synchronizing data in collections. This method is useful when 
+/// collections already exist locally, and only the remaining differences need
+/// to be transferred from the remote endpoint. In this case, the incremental
+/// synchronization can be faster than a full synchronization. 
+/// The default value is *false*, meaning that the complete data from the remote 
+/// collection will be transferred.
 ///
 /// @RESTBODYPARAM{restrictType,string,optional,string}
 /// an optional string value for collection filtering. When
@@ -4027,7 +4038,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 ///   was started. Use this value as the *from* value when starting the continuous
 ///   synchronization later.
 ///
-/// WARNING: calling this method will sychronise data from the collections found
+/// WARNING: calling this method will sychronize data from the collections found
 /// on the remote endpoint to the local ArangoDB database. All data in the local
 /// collections will be purged and replaced with data from the endpoint.
 ///
@@ -4062,18 +4073,19 @@ void RestReplicationHandler::handleCommandSync () {
     return;
   }
 
-  const string endpoint = JsonHelper::getStringValue(json.get(), "endpoint", "");
-  const string database = JsonHelper::getStringValue(json.get(), "database", _vocbase->_name);
-  const string username = JsonHelper::getStringValue(json.get(), "username", "");
-  const string password = JsonHelper::getStringValue(json.get(), "password", "");
-
+  std::string const endpoint = JsonHelper::getStringValue(json.get(), "endpoint", "");
+  std::string const database = JsonHelper::getStringValue(json.get(), "database", _vocbase->_name);
+  std::string const username = JsonHelper::getStringValue(json.get(), "username", "");
+  std::string const password = JsonHelper::getStringValue(json.get(), "password", "");
 
   if (endpoint.empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "<endpoint> must be a valid endpoint");
     return;
   }
 
-  bool includeSystem = JsonHelper::getBooleanValue(json.get(), "includeSystem", true);
+  bool const verbose       = JsonHelper::getBooleanValue(json.get(), "verbose", false);
+  bool const includeSystem = JsonHelper::getBooleanValue(json.get(), "includeSystem", true);
+  bool const incremental   = JsonHelper::getBooleanValue(json.get(), "incremental", false);
 
   std::unordered_map<string, bool> restrictCollections;
   TRI_json_t* restriction = JsonHelper::getObjectElement(json.get(), "restrictCollections");
@@ -4098,7 +4110,7 @@ void RestReplicationHandler::handleCommandSync () {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid value for <restrictCollections> or <restrictType>");
     return;
   }
-
+  
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
   config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
@@ -4106,15 +4118,16 @@ void RestReplicationHandler::handleCommandSync () {
   config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
   config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
   config._includeSystem = includeSystem;
-
-  InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType, false);
+  config._verbose = verbose;
+      
+  InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType, verbose);
   TRI_DestroyConfigurationReplicationApplier(&config);
 
   int res = TRI_ERROR_NO_ERROR;
   string errorMsg = "";
 
   try {
-    res = syncer.run(errorMsg, false);
+    res = syncer.run(errorMsg, incremental);
   }
   catch (...) {
     errorMsg = "caught an exception";
@@ -4122,22 +4135,21 @@ void RestReplicationHandler::handleCommandSync () {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, res, errorMsg);
+    generateError(HttpResponse::responseCode(res), res, errorMsg);
     return;
   }
 
   TRI_json_t result;
-
   TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
 
   TRI_json_t* jsonCollections = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (jsonCollections != nullptr) {
-    map<TRI_voc_cid_t, string>::const_iterator it;
-    const map<TRI_voc_cid_t, string>& c = syncer.getProcessedCollections();
+    std::map<TRI_voc_cid_t, std::string>::const_iterator it;
+    std::map<TRI_voc_cid_t, std::string> const& c = syncer.getProcessedCollections();
 
     for (it = c.begin(); it != c.end(); ++it) {
-      const string cidString = StringUtils::itoa((*it).first);
+      std::string const cidString = StringUtils::itoa((*it).first);
 
       TRI_json_t* ci = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 2);
 
@@ -4531,13 +4543,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   TRI_DestroyConfigurationReplicationApplier(&config);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION ||
-        res == TRI_ERROR_REPLICATION_RUNNING) {
-      generateError(HttpResponse::BAD, res);
-    }
-    else {
-      generateError(HttpResponse::SERVER_ERROR, res);
-    }
+    generateError(HttpResponse::responseCode(res), res);
     return;
   }
 

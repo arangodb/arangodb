@@ -185,11 +185,11 @@ namespace triagens {
 /// @brief track the write collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline void setWriteCollection (AstNode const* node) {
+        inline void addWriteCollection (AstNode const* node) {
           TRI_ASSERT(node->type == NODE_TYPE_COLLECTION ||
                      node->type == NODE_TYPE_PARAMETER);
 
-          _writeCollection = node;
+          _writeCollections.emplace_back(node);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -871,7 +871,7 @@ namespace triagens {
 /// @brief which collection is going to be modified in the query 
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode const*                     _writeCollection;
+        std::vector<AstNode const*>        _writeCollections;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not function calls may access collection data

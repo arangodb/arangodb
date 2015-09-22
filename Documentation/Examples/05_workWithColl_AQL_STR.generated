@@ -3,8 +3,8 @@ arangosh&gt; db._query(<span class="hljs-string">'FOR user IN example FILTER use
   { 
     <span class="hljs-string">"age"</span> : <span class="hljs-number">31</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Jane Smith"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/466216185"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"466216185"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"466216185"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/463184428"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"463184428"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"463184428"</span> 
   } 
 ]

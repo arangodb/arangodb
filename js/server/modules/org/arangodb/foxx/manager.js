@@ -36,7 +36,6 @@
 // -----------------------------------------------------------------------------
 
 const R = require('ramda');
-const internal = require('internal');
 const fs = require('fs');
 const joi = require('joi');
 const util = require('util');
@@ -60,6 +59,7 @@ const cluster = require('org/arangodb/cluster');
 const download = require('internal').download;
 const executeGlobalContextFunction = require('internal').executeGlobalContextFunction;
 const actions = require('org/arangodb/actions');
+const plainServerVersion = require("org/arangodb").plainServerVersion;
 const _ = require('underscore');
 
 const throwDownloadError = arangodb.throwDownloadError;
@@ -337,10 +337,14 @@ function checkManifest(filename, manifest) {
     }
   });
 
-  if (manifest.engines && manifest.engines.arangodb && !semver.satisfies(internal.version, manifest.engines.arangodb)) {
+  let serverVersion = plainServerVersion();
+
+  if (manifest.engines 
+   && manifest.engines.arangodb
+   && !semver.satisfies(serverVersion, manifest.engines.arangodb)) {
     console.warn(
       `Manifest "${filename}" for app "${manifest.name}":`
-      + ` ArangoDB version ${internal.version} probably not compatible`
+      + ` ArangoDB version ${serverVersion} probably not compatible`
       + ` with expected version ${manifest.engines.arangodb}.`
     );
   }
@@ -599,6 +603,7 @@ function uploadToPeerCoordinators(appInfo, coordinators) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Generates an App with the given options into the targetPath
 ////////////////////////////////////////////////////////////////////////////////
+
 function installAppFromGenerator(targetPath, options) {
   var invalidOptions = [];
   // Set default values:

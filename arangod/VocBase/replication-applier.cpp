@@ -1112,6 +1112,10 @@ int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
 
   WRITE_LOCKER(_statusLock);
 
+  if (_state._preventStart) {
+    return TRI_ERROR_LOCKED;
+  }
+
   if (_state._active) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -1154,6 +1158,52 @@ int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
   syncer.release();
 
   LOG_INFO("started replication applier for database '%s'", _databaseName.c_str());
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test if the replication applier is running
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_replication_applier_t::isRunning () const {
+  READ_LOCKER(_statusLock);
+    
+  return _state._active;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief block the replication applier from starting
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_replication_applier_t::preventStart () {
+  WRITE_LOCKER(_statusLock);
+   
+  if (_state._active) {
+    // already running
+    return TRI_ERROR_REPLICATION_RUNNING;
+  }
+
+  if (_state._preventStart) {
+    // someone else requested start prevention
+    return TRI_ERROR_LOCKED;
+  } 
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unblock the replication applier from starting
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_replication_applier_t::allowStart () {
+  WRITE_LOCKER(_statusLock);
+   
+  if (! _state._preventStart) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  _state._preventStart = false;
 
   return TRI_ERROR_NO_ERROR;
 }

@@ -90,6 +90,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/auth.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
 
@@ -856,9 +857,12 @@ int ArangoServer::startupServer () {
     LOG_FATAL_AND_EXIT("unable to start WAL logfile manager");
   }
 
+
   // .............................................................................
   // prepare the various parts of the Arango server
   // .............................................................................
+
+  KeyGenerator::Initialize();
 
   if (_dispatcherThreads < 1) {
     _dispatcherThreads = 1;

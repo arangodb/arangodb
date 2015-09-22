@@ -120,7 +120,23 @@ applier.properties = function (config) {
 /// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-function sync(config) {
+function sync (config) {
+  return internal.synchronizeReplication(config);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief performs a one-time synchronization with a remote endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+function syncCollection (collection, config) {
+  config = config || { };
+  config.restrictType = "include";
+  config.restrictCollections = [ collection ];
+  config.includeSystem = true;
+  if (! config.hasOwnProperty('verbose')) {
+    config.verbose = false;
+  }
+
   return internal.synchronizeReplication(config);
 }
 
@@ -128,7 +144,7 @@ function sync(config) {
 /// @brief returns the server's id
 ////////////////////////////////////////////////////////////////////////////////
 
-function serverId() {
+function serverId () {
   return internal.serverId();
 }
 
@@ -136,10 +152,11 @@ function serverId() {
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
-exports.logger   = logger;
-exports.applier  = applier;
-exports.sync     = sync;
-exports.serverId = serverId;
+exports.logger         = logger;
+exports.applier        = applier;
+exports.sync           = sync;
+exports.syncCollection = syncCollection;
+exports.serverId       = serverId;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

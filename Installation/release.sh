@@ -48,6 +48,8 @@ make swagger || exit 1
 
 git add -f Documentation/Examples/*.generated
 
+cd Documentation/Books; make ||exit 1
+
 case "$TAG" in
   *-alpha*|*-beta*|devel)
     git rm -f EXPERIMENTAL

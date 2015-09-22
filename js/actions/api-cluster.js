@@ -109,10 +109,11 @@ var internal = require("internal");
 ///
 /// @RESTHEADER{POST /_admin/cluster-test, Execute cluster roundtrip}
 ///
-/// @RESTBODYPARAM{body,anything,required}
+/// @RESTALLBODYPARAM{body,object,required}
+/// The body can be any type and is simply forwarded.
 ///
 /// @RESTDESCRIPTION
-/// See GET method. The body can be any type and is simply forwarded.
+/// See GET method.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -122,11 +123,11 @@ var internal = require("internal");
 ///
 /// @RESTHEADER{PUT /_admin/cluster-test, Execute cluster roundtrip}
 ///
-/// @RESTBODYPARAM{body,anything,required}
+/// @RESTALLBODYPARAM{body,object,required}
 ///
 /// @RESTDESCRIPTION
 /// See GET method. The body can be any type and is simply forwarded.
-// @endDocuBlock
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,7 +137,7 @@ var internal = require("internal");
 /// @RESTHEADER{DELETE /_admin/cluster-test, Delete cluster roundtrip}
 ///
 /// @RESTDESCRIPTION
-/// See GET method. The body can be any type and is simply forwarded.
+/// See GET method.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -146,7 +147,7 @@ var internal = require("internal");
 ///
 /// @RESTHEADER{PATCH /_admin/cluster-test, Update cluster roundtrip}
 ///
-/// @RESTBODYPARAM{body,anything,required}
+/// @RESTALLBODYPARAM{body,object,required}
 ///
 /// @RESTDESCRIPTION
 /// See GET method. The body can be any type and is simply forwarded.
@@ -160,7 +161,7 @@ var internal = require("internal");
 /// @RESTHEADER{HEAD /_admin/cluster-test, Execute cluster roundtrip}
 ///
 /// @RESTDESCRIPTION
-/// See GET method. The body can be any type and is simply forwarded.
+/// See GET method.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -280,7 +281,8 @@ function parseAuthorization (authorization) {
 ///
 /// @RESTHEADER{POST /_admin/clusterPlanner, Produce cluster startup plan}
 ///
-/// @RESTBODYPARAM{body,json,required}
+/// @RESTALLBODYPARAM{clusterPlan,object,required}
+/// A cluster plan object
 ///
 /// @RESTDESCRIPTION Given a description of a cluster, this plans the details
 /// of a cluster and returns a JSON description of a plan to start up this
@@ -341,37 +343,41 @@ actions.defineHttp({
 ///
 /// @RESTQUERYPARAMETERS
 ///
-/// @RESTBODYPARAM{body,json,required}
+/// @RESTBODYPARAM{clusterPlan,object,required,}
+/// is a cluster plan (see JSF_cluster_planner_POST),
 ///
-/// @RESTDESCRIPTION The body must be an object with the following properties:
+/// @RESTBODYPARAM{myname,string,required,string}
+/// is the ID of this dispatcher, this is used to decide
+/// which commands are executed locally and which are forwarded
+/// to other dispatchers
 ///
-///   - *clusterPlan*: is a cluster plan (see JSF_cluster_planner_POST),
-///   - *myname*: is the ID of this dispatcher, this is used to decide
-///     which commands are executed locally and which are forwarded
-///     to other dispatchers
-///   - *action*: can be one of the following:
+/// @RESTBODYPARAM{action,string,required,string}
+/// can be one of the following:
+///     - "launch": the cluster is launched for the first time, all
+///       data directories and log files are cleaned and created
+///     - "shutdown": the cluster is shut down, the additional property
+///       *runInfo* (see below) must be bound as well
+///     - "relaunch": the cluster is launched again, all data directories
+///       and log files are untouched and need to be there already
+///     - "cleanup": use this after a shutdown to remove all data in the
+///       data directories and all log files, use with caution
+///     - "isHealthy": checks whether or not the processes involved
+///       in the cluster are running or not. The additional property
+///       *runInfo* (see above) must be bound as well
+///     - "upgrade": performs an upgrade of a cluster, to this end,
+///       the agency is started, and then every server is once started
+///       with the "--upgrade" option, and then normally. Finally,
+///       the script "verion-check.js" is run on one of the coordinators
+///       for the cluster.
 ///
-///       - "launch": the cluster is launched for the first time, all
-///         data directories and log files are cleaned and created
-///       - "shutdown": the cluster is shut down, the additional property
-///         *runInfo* (see below) must be bound as well
-///       - "relaunch": the cluster is launched again, all data directories
-///         and log files are untouched and need to be there already
-///       - "cleanup": use this after a shutdown to remove all data in the
-///         data directories and all log files, use with caution
-///       - "isHealthy": checks whether or not the processes involved
-///         in the cluster are running or not. The additional property
-///         *runInfo* (see above) must be bound as well
-///       - "upgrade": performs an upgrade of a cluster, to this end,
-///         the agency is started, and then every server is once started
-///         with the "--upgrade" option, and then normally. Finally,
-///         the script "verion-check.js" is run on one of the coordinators
-///         for the cluster.
+/// @RESTBODYPARAM{runInfo,object,optional,}
+/// this is needed for the "shutdown" and "isHealthy" actions
+/// only and should be the structure that "launch", "relaunch" or
+/// "upgrade" returned. It contains runtime information like process
+/// IDs.
 ///
-///   - *runInfo*: this is needed for the "shutdown" and "isHealthy" actions
-///     only and should be the structure that "launch", "relaunch" or
-///     "upgrade" returned. It contains runtime information like process
-///     IDs.
+/// @RESTDESCRIPTION
+/// The body must be an object with the following properties:
 ///
 /// This call executes the plan by either doing the work personally
 /// or by delegating to other dispatchers.
@@ -580,6 +586,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_cluster_statistics_GET
 /// @brief allows to query the statistics of a DBserver in the cluster
 ///
 /// @RESTHEADER{GET /_admin/clusterStatistics, Queries statistics of DBserver}
@@ -598,6 +605,7 @@ actions.defineHttp({
 /// ID of a DBserver
 ///
 /// @RESTRETURNCODE{403} server is not a coordinator.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({

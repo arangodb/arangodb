@@ -443,6 +443,26 @@ void CollectorThread::run () {
   _stop = 2;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether there are queued operations left
+////////////////////////////////////////////////////////////////////////////////
+
+bool CollectorThread::hasQueuedOperations () {
+  MUTEX_LOCKER(_operationsQueueLock);
+
+  return ! _operationsQueue.empty();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether there are queued operations left
+////////////////////////////////////////////////////////////////////////////////
+
+bool CollectorThread::hasQueuedOperations (TRI_voc_cid_t cid) {
+  MUTEX_LOCKER(_operationsQueueLock);
+
+  return (_operationsQueue.find(cid) != _operationsQueue.end());
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -630,16 +650,6 @@ int CollectorThread::processQueuedOperations (bool& worked) {
   worked = true;
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether there are queued operations left
-////////////////////////////////////////////////////////////////////////////////
-
-bool CollectorThread::hasQueuedOperations () {
-  MUTEX_LOCKER(_operationsQueueLock);
-
-  return ! _operationsQueue.empty();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -834,8 +844,8 @@ int CollectorThread::collect (Logfile* logfile) {
   // We will sequentially scan the logfile for collection:
   TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_SEQUENTIAL);
   TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_WILLNEED);
-  TRI_DEFER (TRI_MMFileAdvise(df->_data, df->_maximalSize,
-                              TRI_MADVISE_RANDOM));
+  TRI_DEFER(TRI_MMFileAdvise(df->_data, df->_maximalSize,
+                             TRI_MADVISE_RANDOM));
 
   // create a state for the collector, beginning with the list of failed transactions
   CollectorState state;

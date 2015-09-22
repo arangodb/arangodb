@@ -159,13 +159,19 @@ namespace triagens {
 /// @brief set a progress message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setProgress (const std::string& message) {
+        void setProgress (std::string const& message) {
           _progress = message;
 
           if (_verbose) {
             LOG_INFO("synchronization progress: %s", message.c_str());
           }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send a WAL flush command
+////////////////////////////////////////////////////////////////////////////////
+
+        int sendFlush (std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send a "start batch" command
@@ -224,6 +230,13 @@ namespace triagens {
                             std::string const&,
                             TRI_voc_tick_t,
                             std::string&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief changes the properties of a collection, based on the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+
+        int changeCollection (TRI_vocbase_col_t*,
+                              struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the information about a collection

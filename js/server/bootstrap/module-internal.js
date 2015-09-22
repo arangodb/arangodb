@@ -126,7 +126,11 @@ exports.wal = {
   
   transactions: function () {
     return global.WAL_TRANSACTIONS.apply(null, arguments);
-  }
+  },
+
+  waitForCollector: function () {
+    return global.WAL_WAITCOLLECTOR.apply(null, arguments);
+  },
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -377,9 +381,3 @@ if (global.SYS_SEND_CHUNK) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:

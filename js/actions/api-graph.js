@@ -162,6 +162,7 @@ function matchError (req, res, doc, errorCode) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_post
 /// @brief create a graph
 ///
 /// @RESTHEADER{POST /_api/graph,create graph}
@@ -212,6 +213,7 @@ function matchError (req, res, doc, errorCode) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_graph (req, res) {
@@ -251,9 +253,10 @@ function post_graph_graph (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_properties
 /// @brief get graph properties
 ///
-/// @RESTHEADER{GET /_api/graph/`graph-name`,get the properties of a specific or all graphs}
+/// @RESTHEADER{GET /_api/graph/{graph-name},get the properties of a specific or all graphs}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -345,6 +348,7 @@ function post_graph_graph (req, res) {
 ///     db._graphs.remove("graph1");
 ///     db._graphs.remove("graph2");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_graph (req, res) {
@@ -368,9 +372,10 @@ function get_graph_graph (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_delete
 /// @brief deletes a graph
 ///
-/// @RESTHEADER{DELETE /_api/graph/`graph-name`,delete graph}
+/// @RESTHEADER{DELETE /_api/graph/{graph-name},delete graph}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -420,6 +425,7 @@ function get_graph_graph (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_graph (req, res) {
@@ -469,9 +475,10 @@ function delete_graph_graph (req, res) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_create_vertex
 /// @brief creates a graph vertex
 ///
-/// @RESTHEADER{POST /_api/graph/`graph-name`/vertex,create vertex}
+/// @RESTHEADER{POST /_api/graph/{graph-name}/vertex,create vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -519,6 +526,7 @@ function delete_graph_graph (req, res) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_vertex (req, res, g) {
@@ -555,9 +563,10 @@ function post_graph_vertex (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_get_vertex
 /// @brief gets the vertex properties
 ///
-/// @RESTHEADER{GET /_api/graph/`graph-name`/vertex/`vertex-name`,get vertex}
+/// @RESTHEADER{GET /_api/graph/{graph-name}/vertex/{vertex-name},get vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -624,6 +633,7 @@ function post_graph_vertex (req, res, g) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_vertex (req, res, g) {
@@ -649,9 +659,10 @@ function get_graph_vertex (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_delete_vertex
 /// @brief delete vertex
 ///
-/// @RESTHEADER{DELETE /_api/graph/`graph-name`/vertex/`vertex-name`,delete vertex}
+/// @RESTHEADER{DELETE /_api/graph/{graph-name}/vertex/{vertex-name},delete vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -714,6 +725,7 @@ function get_graph_vertex (req, res, g) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_vertex (req, res, g) {
@@ -812,9 +824,10 @@ function update_graph_vertex (req, res, g, isPatch) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_put_vertex
 /// @brief updates a vertex
 ///
-/// @RESTHEADER{PUT /_api/graph/`graph-name`/vertex/`vertex-name`,update vertex}
+/// @RESTHEADER{PUT /_api/graph/{graph-name}/vertex/{vertex-name},update vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -883,6 +896,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_graph_vertex (req, res, g) {
@@ -890,9 +904,10 @@ function put_graph_vertex (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_patch_vertex
 /// @brief updates a vertex
 ///
-/// @RESTHEADER{PATCH /_api/graph/`graph-name`/vertex/`vertex-name`,update vertex}
+/// @RESTHEADER{PATCH /_api/graph/{graph-name}/vertex/{vertex-name},update vertex}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -948,7 +963,7 @@ function put_graph_vertex (req, res, g) {
 /// is returned if the vertex was updated successfully and `waitForSync` was
 /// `false`.
 ///
-/// @RESTRETURNCODE{404}
+// @RESTRETURNCODE{404}
 /// is returned if the graph or the vertex was not found.
 /// The response body contains an error document in this case.
 ///
@@ -977,6 +992,7 @@ function put_graph_vertex (req, res, g) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function patch_graph_vertex (req, res, g) {
@@ -1076,9 +1092,10 @@ function process_labels_filter (data, labels, collname) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_get_vertices
 /// @brief gets the vertices of a graph
 ///
-/// @RESTHEADER{POST /_api/graph/`graph-name`/vertices,get vertices}
+/// @RESTHEADER{POST /_api/graph/{graph-name}/vertices,get vertices}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1133,6 +1150,7 @@ function process_labels_filter (data, labels, collname) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_all_vertices (req, res, g) {
@@ -1182,9 +1200,10 @@ function post_graph_all_vertices (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_vertex_get_neighbours
 /// @brief get neighbors of a vertex
 ///
-/// @RESTHEADER{POST /_api/graph/`graph-name`/vertices/`vertex-name`,get vertices}
+/// @RESTHEADER{POST /_api/graph/{graph-name}/vertices/{vertex-name},get vertices}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1288,6 +1307,7 @@ function post_graph_all_vertices (req, res, g) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_vertex_vertices (req, res, g) {
@@ -1362,9 +1382,10 @@ function post_graph_vertex_vertices (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_create_edge
 /// @brief creates an edge
 ///
-/// @RESTHEADER{POST /_api/graph/`graph-name`/edge,create edge}
+/// @RESTHEADER{POST /_api/graph/{graph-name}/edge,create edge}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1421,6 +1442,7 @@ function post_graph_vertex_vertices (req, res, g) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_edge (req, res, g) {
@@ -1465,9 +1487,10 @@ function post_graph_edge (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_get_edge_properties
 /// @brief get edge properties
 ///
-/// @RESTHEADER{GET /_api/graph/`graph-name`/edge/`edge-name`,get edge}
+/// @RESTHEADER{GET /_api/graph/{graph-name}/edge/{edge-name},get edge}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1534,6 +1557,7 @@ function post_graph_edge (req, res, g) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_edge (req, res, g) {
@@ -1558,9 +1582,10 @@ function get_graph_edge (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_delete_edge
 /// @brief deletes an edge
 ///
-/// @RESTHEADER{DELETE /_api/graph/`graph-name`/edge/`edge-name`,delete edge}
+/// @RESTHEADER{DELETE /_api/graph/{graph-name}/edge/{edge-name},delete edge}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1625,6 +1650,7 @@ function get_graph_edge (req, res, g) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_edge (req, res, g) {
@@ -1724,9 +1750,10 @@ function update_graph_edge (req, res, g, isPatch) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_update_edge
 /// @brief updates an edge
 ///
-/// @RESTHEADER{PUT /_api/graph/`graph-name`/edge/`edge-name`,update edge}
+/// @RESTHEADER{PUT /_api/graph/{graph-name}/edge/{edge-name},update edge}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1799,6 +1826,7 @@ function update_graph_edge (req, res, g, isPatch) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_graph_edge (req, res, g) {
@@ -1806,9 +1834,10 @@ function put_graph_edge (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_patch_edge
 /// @brief updates an edge
 ///
-/// @RESTHEADER{PATCH /_api/graph/`graph-name`/edge/`edge-name`,update edge}
+/// @RESTHEADER{PATCH /_api/graph/{graph-name}/edge/{edge-name},update edge}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1890,6 +1919,7 @@ function put_graph_edge (req, res, g) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function patch_graph_edge (req, res, g) {
@@ -1897,9 +1927,10 @@ function patch_graph_edge (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_fetch_edge
 /// @brief get edges of a graph
 ///
-/// @RESTHEADER{POST /_api/graph/`graph-name`/edges,get edges}
+/// @RESTHEADER{POST /_api/graph/{graph-name}/edges,get edges}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1959,6 +1990,7 @@ function patch_graph_edge (req, res, g) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_all_edges (req, res, g) {
@@ -2017,9 +2049,10 @@ function post_graph_all_edges (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_fetch_vertex_edge
 /// @brief get edges of a vertex
 ///
-/// @RESTHEADER{POST /_api/graph/`graph-name`/edges/`vertex-name`,get edges}
+/// @RESTHEADER{POST /_api/graph/{graph-name}/edges/{vertex-name},get edges}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -2086,6 +2119,7 @@ function post_graph_all_edges (req, res, g) {
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_vertex_edges (req, res, g) {

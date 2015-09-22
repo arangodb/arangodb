@@ -2,7 +2,7 @@ shell> curl --dump - http://localhost:8529/_api/gharial/social/vertex/female/ali
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json
-etag: <span class="hljs-number">550102265</span>
+etag: <span class="hljs-number">547070508</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -10,7 +10,7 @@ etag: <span class="hljs-number">550102265</span>
   <span class="hljs-string">"vertex"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"550102265"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"547070508"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   } 
 }

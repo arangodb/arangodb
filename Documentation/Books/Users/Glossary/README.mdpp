@@ -149,8 +149,10 @@ A hash index is used to find documents based on examples. A hash index can be cr
 
 A hash index will only be used by queries if all indexed attributes are present in the example or search query, and if all attributes are compared using the equality (== operator). That means the hash index does not support range queries.
 
-If the index is declared unique, then access to the indexed attributes should be fast. The performance degrades if the indexed attribute(s) contain(s) only very few distinct values.
+A unique hash index has an amortized complexity of O(1) for lookup, insert, update, and remove operations.
+The non-unique hash index is similar, but amortized lookup performance is O(n), with n being the number of
+index entries with the same lookup value.
 
 !SUBSECTION Skiplist Index 
 
-A skiplist is used to find ranges of documents.
+A skiplist is a sorted index type that can be used to find ranges of documents.

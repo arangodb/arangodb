@@ -16,11 +16,6 @@ you can build a graph using the Graph constructor.
     arango> g1 = new Graph("graph", "vertices", "edges");
     Graph("vertices", "edges")
 
-
-<!--
-@verbinclude graph25
--->
-
 It is possible to use different edges with the same vertices. For instance, to
 build a new graph with a different edge collection use
 
@@ -28,9 +23,5 @@ build a new graph with a different edge collection use
     
     arango> g2 = new Graph("graph", "vertices", "alternativeEdges");
     Graph("vertices", "alternativeEdges")
-
-<!--
-@verbinclude graph26
--->
 It is, however, impossible to use different vertices with the same edges. Edges
 are tied to the vertices.

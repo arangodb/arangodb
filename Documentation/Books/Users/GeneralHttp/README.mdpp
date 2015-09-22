@@ -98,7 +98,7 @@ the server must be started with the option [--server.disable-authentication](../
 Please note that requests using the HTTP OPTIONS method will be answered by
 ArangoDB in any case, even if no authentication data is sent by the client or if
 the authentication data is wrong. This is required for handling CORS preflight
-requests (see [Cross Origin Resource Sharing requests](#cross_origin_resource_sharing_(cors)_requests)). The response to an HTTP OPTIONS request
+requests (see [Cross Origin Resource Sharing requests](#cross_origin_resource_sharing_%28cors%29_requests)). The response to an HTTP OPTIONS request
 will be generic and not expose any private data.
 
 Please note that when authentication is turned on in ArangoDB, it will by

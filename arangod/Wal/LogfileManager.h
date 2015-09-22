@@ -497,6 +497,13 @@ namespace triagens {
                                        bool);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for the collector queue to get cleared for the given collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int waitForCollectorQueue (TRI_voc_cid_t,
+                                   double);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finalize and seal the currently open logfile
 /// this is useful to ensure that any open writes up to this point have made
 /// it into a logfile

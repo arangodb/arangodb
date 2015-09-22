@@ -123,13 +123,6 @@ The following date functions can be used with dates created by *DATE_TIMESTAMP* 
 
 - *DATE_LEAPYEAR(date)*: Returns whether the year of *date* is a leap year.
 
-  It can be used to determine the number of days in a month:
-
-```js
-LET daysInMonth = [29, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-RETURN daysInMonth[DATE_MONTH(date) == 2 && DATE_LEAPYEAR(date) ? 0 : DATE_MONTH(date)]
-```
-
 - *DATE_QUARTER(date)*: Returns the quarter of the given date (1-based):
 
   - 1: January, February, March
@@ -137,6 +130,8 @@ RETURN daysInMonth[DATE_MONTH(date) == 2 && DATE_LEAPYEAR(date) ? 0 : DATE_MONTH
   - 3: July, August, September
   - 4: October, November, December
 
+- *DATE_DAYS_IN_MONTH(date)*: Returns the number of days in *date*'s month (28..31).
+  
 The following other date functions are also available:
 
 - *DATE_NOW()*: Returns the current time as a timestamp.
@@ -161,7 +156,8 @@ The following other date functions are also available:
   - f, millisecond, milliseconds
 
   *amount* is the number of *unit*s to add (positive value) or subtract
-  (negative value).
+  (negative value). It is recommended to use positive values only, and use
+  `DATE_SUBTRACT()` for subtractions instead.
   
   Examples:
 
@@ -221,7 +217,7 @@ DATE_SUBTRACT(DATE_NOW(), "PT1H3M") // 1 hour and 30 minutes ago
 
 - *DATE_DIFF(date1, date2, unit, asFloat)*: Calculate the difference
   between two dates in given time *unit*, optionally with decimal places.
-  Returns a negative value if *date1* is greater than *date2*.
+  Returns a negative value if *date1* is greater than / after *date2*.
 
   *unit* can be either of the following to specify the time unit to return the
   difference in (case-insensitive):
@@ -235,7 +231,7 @@ DATE_SUBTRACT(DATE_NOW(), "PT1H3M") // 1 hour and 30 minutes ago
   - f, millisecond, milliseconds
 
 - *DATE_COMPARE(date1, date2, unitRangeStart, unitRangeEnd)*: Compare two
-  partial dates and return true if the match, false otherwise. The parts to
+  partial dates and return true if they match, false otherwise. The parts to
   compare are defined by a range of time units.
   
   The full range is: years, months, days, hours, minutes, seconds, milliseconds.
@@ -314,46 +310,64 @@ FOR user IN users
 
 - *DATE_FORMAT(date, format)*: Format a date according to the given format string.
   It supports the following placeholders (case-insensitive):
-  - %t: timestamp
-  - %o: ISO date (0000-00-00T00:00:00.000Z)
+  - %t: timestamp, in milliseconds since midnight 1970-01-01
+  - %z: ISO date (0000-00-00T00:00:00.000Z)
   - %w: day of week (0..6)
-  - %y: year (0000..9999)
-  - %m: month (01..12)
-  - %d: day (01..31)
-  - %h: hour (00..23)
-  - %i: minute (00..59)
-  - %s: second (00..59)
-  - %f: millisecond (000..999)
-  - %x: day of year (001..366)
-  - %k: ISO week date (01..53)
+  - %y: year (0..9999)
+  - %yy: year (00..99), abbreviated (last two digits)
+  - %yyyy: year (0000..9999), padded to length of 4
+  - %yyyyyy: year (-009999 .. +009999), with sign prefix and padded to length of 6
+  - %m: month (1..12)
+  - %mm: month (01..12), padded to length of 2
+  - %d: day (1..31)
+  - %dd: day (01..31), padded to length of 2
+  - %h: hour (0..23)
+  - %hh: hour (00..23), padded to length of 2
+  - %i: minute (0..59)
+  - %ii: minute (00..59), padded to length of 2
+  - %s: second (0..59)
+  - %ss: second (00..59), padded to length of 2
+  - %f: millisecond (0..999)
+  - %fff: millisecond (000..999), padded to length of 3
+  - %x: day of year (1..366)
+  - %xxx: day of year (001..366), padded to length of 3
+  - %k: ISO week date (1..53)
+  - %kk: ISO week date (01..53), padded to length of 2
   - %l: leap year (0 or 1)
   - %q: quarter (1..4)
+  - %a: days in month (28..31)
+  - %mmm: abbreviated English name of month (Jan..Dec)
+  - %mmmm: English name of month (January..December)
+  - %www: abbreviated English name of weekday (Sun..Sat)
+  - %wwww: English name of weekday (Sunday..Saturday)
+  - %&: special escape sequence for rare occasions
   - %%: literal %
+  - %: ignored
 
-  Month, day, hour, minute, second and ISO week date are zero-padded to 2
-  characters, millisecond and day of year to 3 characters. Year is zero-padded
-  to 4 characters, or 6 if year is negative (it will be 7 chars long however
-  because of the leading minus character, and is not suitable for comparisons
-  with 4-chars positive years). Timestamp is not padded.
+  `%yyyy` does not enforce a length of 4 for years before 0 and past 9999.
+  The same format as for `%yyyyyy` will used instead. `%yy` preserves the
+  sign for negative years and thus returns 3 characters in total.
   
-  Single `%` characters will appear as percent characters, as long as they aren't
-  followed by a valid placeholder letter. `%%` is only required to output a
-  placeholder literally.
+  Single `%` characters will be ignored. Use `%%` for a literal `%`. To resolve
+  ambiguities like in `%mmonth` (unpadded month number + the string "month")
+  between `%mm` + "onth" and `%m` + "month", use the escape sequence `%&`:
+  `%m%&month`.
   
   Note that this is a rather costly operation and may not be suitable for large
   datasets (like over 1 million dates). If possible, avoid formatting dates on
   server-side and leave it up to the client to do so. This function should only
   be used for special date comparisons or to store the formatted dates in the
-  database. Use the primitive `DATE_*()` functions together with `CONCAT()` if
-  possible for better performance.
+  database. For better performance, use the primitive `DATE_*()` functions
+  together with `CONCAT()` if possible.
 
   Examples:
   
 ```js
-DATE_FORMAT(DATE_NOW(), "%q/%y") // quarter and year (e.g. "3/2015")
-DATE_FORMAT(DATE_NOW(), "%d.%m.%y %h:%i:%s") // e.g. "18.09.2015 15:30:49"
+DATE_FORMAT(DATE_NOW(), "%q/%yyyy") // quarter and year (e.g. "3/2015")
+DATE_FORMAT(DATE_NOW(), "%dd.%mm.%yyyy %hh:%ii:%ss.%fff") // e.g. "18.09.2015 15:30:49.374"
+DATE_FORMAT("1969", "Summer of '%yy") // "Summer of '69"
 DATE_FORMAT("2016", "%%l = %l") // "%l = 1" (2016 is a leap year)
-DATE_FORMAT("2016-03-01", "% %x %") // "% 063 %"
+DATE_FORMAT("2016-03-01", "%xxx%") // "063", trailing % ignored
 ```
 
 !SECTION Working with dates and indices
@@ -389,6 +403,8 @@ date according to the Gregorian calendar system, even if inappropriate. That
 does not constitute a problem, unless you deal with dates prior to 1583 and
 especially years before Christ. The standard allows negative years, but requires
 special treatment of positive years too, if negative years are used (e.g.
-`+002015-05-15` and `-000753-01-01`). This is rarely used however, and thus not
-handled by AQL. Leap seconds are also ignored, just as they are in JavaScript as per
+`+002015-05-15` and `-000753-01-01`). This is rarely used however, and AQL does
+not use the 7-character version for years between 0 and 9999 in ISO strings.
+Keep in mind that they can't be properly compared to dates outside that range.
+Leap seconds are ignored, just as they are in JavaScript as per
 [ECMAScript Language Specifications](http://www.ecma-international.org/ecma-262/5.1/#sec-15.9.1.1).

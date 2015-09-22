@@ -64,6 +64,7 @@ RestBatchHandler::~RestBatchHandler () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_batch_processing
 /// @brief executes a batch request
 ///
 /// @RESTHEADER{POST /_api/batch,executes a batch request} /// TODOSWAGGER: contentype
@@ -140,6 +141,7 @@ RestBatchHandler::~RestBatchHandler () {
 ///
 /// The boundary (`SomeBoundaryValue`) is passed to the server in the HTTP
 /// `Content-Type` HTTP header.
+/// *Please note the reply is not displayed all accurate.*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestBatchMultipartHeader}
 ///     var parts = [
@@ -182,6 +184,7 @@ RestBatchHandler::~RestBatchHandler () {
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestBatchHandler::execute () {

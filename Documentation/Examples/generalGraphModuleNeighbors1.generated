@@ -5,56 +5,56 @@ arangosh&gt; graph._neighbors({isCapital : <span class="hljs-literal">true</span
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Hamburg"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1695606009"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1694605868"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1695409401"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1694409260"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Paris"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1696195833"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1695195692"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">4000000</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1695999225"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1694999084"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">80000</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1695999225"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1694999084"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">80000</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Hamburg"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1695606009"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1694605868"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1695409401"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1694409260"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Berlin"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1695212793"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1694212652"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"population"</span> : <span class="hljs-number">3000000</span> 
   } 

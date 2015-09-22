@@ -25,8 +25,8 @@ cannot make changes to the flex or bison files.
 
 !SUBSECTION Amazon Micro Instance
 
-@sohgoh has reported that it is very easy to install ArangoDB on an Amazon
-Micro Instance:
+The github user  @sohgoh has reported that it is very easy to install ArangoDB
+on an Amazon Micro Instance:
 
     amazon> sudo yum install readline-devel
     amazon> ./configure

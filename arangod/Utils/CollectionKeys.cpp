@@ -38,6 +38,7 @@
 #include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/vocbase.h"
+#include "Wal/LogfileManager.h"
 
 using namespace triagens::arango;
 
@@ -101,6 +102,8 @@ CollectionKeys::~CollectionKeys () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionKeys::create (TRI_voc_tick_t maxTick) {
+  triagens::wal::LogfileManager::instance()->waitForCollectorQueue(_document->_info._cid, 30.0);
+
   // try to acquire the exclusive lock on the compaction
   while (! TRI_CheckAndLockCompactorVocBase(_document->_vocbase)) {
     // didn't get it. try again...
@@ -138,6 +141,7 @@ void CollectionKeys::create (TRI_voc_tick_t maxTick) {
     triagens::basics::BucketPosition position;
 
     uint64_t total = 0;
+
     while (true) {
       auto ptr = idx->lookupSequential(position, total);
 
@@ -154,7 +158,7 @@ void CollectionKeys::create (TRI_voc_tick_t maxTick) {
       
       auto df = static_cast<TRI_df_marker_t const*>(marker);
 
-      if (df->_tick >= maxTick) {
+      if (df->_tick > maxTick) {
         continue;
       }
 

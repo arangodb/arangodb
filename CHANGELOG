@@ -1,6 +1,130 @@
 v2.7.0-rc1 (2015-09-11)
 -------------------
 
+* fix over-eager datafile compaction
+
+  This should reduce the need to compact directly after loading a collection when a
+  collection datafile contained many insertions and updates for the same documents. It
+  should also prevent from re-compacting already merged datafiles in case not many
+  changes were made. Compaction will also make fewer index lookups than before.
+
+* added `syncCollection()` function in module `org/arangodb/replication`
+
+  This allows synchronizing the data of a single collection from a master to a slave
+  server. Synchronization can either restore the whole collection by transferring all
+  documents from the master to the slave, or incrementally by only transferring documents
+  that differ. This is done by partitioning the collection's entire key space into smaller
+  chunks and comparing the data chunk-wise between master and slave. Only chunks that are
+  different will be re-transferred.
+
+  The `syncCollection()` function can be used as follows:
+
+      require("org/arangodb/replication").syncCollection(collectionName, options);
+
+  e.g.
+
+      require("org/arangodb/replication").syncCollection("myCollection", {
+        endpoint: "tcp://127.0.0.1:8529",  /* master */
+        username: "root",                  /* username for master */
+        password: "secret",                /* password for master */
+        incremental: true                  /* use incremental mode */
+      });
+
+
+* additionally allow the following characters in document keys:
+
+  `(` `)` `+` `,` `=` `;` `$` `!` `*` `'` `%`
+
+
+v2.7.0-rc1 (XXXX-XX-XX)
+-----------------------
+
+* added extra AQL functions for date and time calculation and manipulation. 
+  These functions were contributed by GitHub users @CoDEmanX and @friday. 
+  A big thanks for their work! 
+
+  The following extra date functions are available from 2.7 on:
+
+  * `DATE_DAYOFYEAR(date)`: Returns the day of year number of *date*.
+    The return values range from 1 to 365, or 366 in a leap year respectively.
+
+  * `DATE_ISOWEEK(date)`: Returns the ISO week date of *date*. 
+    The return values range from 1 to 53. Monday is considered the first day of the week. 
+    There are no fractional weeks, thus the last days in December may belong to the first 
+    week of the next year, and the first days in January may be part of the previous year's
+    last week.
+
+  * `DATE_LEAPYEAR(date)`: Returns whether the year of *date* is a leap year.
+
+  * `DATE_QUARTER(date)`: Returns the quarter of the given date (1-based):
+    * 1: January, February, March
+    * 2: April, May, June
+    * 3: July, August, September
+    * 4: October, November, December
+
+  - *DATE_DAYS_IN_MONTH(date)*: Returns the number of days in *date*'s month (28..31).
+    
+  * `DATE_ADD(date, amount, unit)`: Adds *amount* given in *unit* to *date* and
+    returns the calculated date.
+
+    *unit* can be either of the following to specify the time unit to add or
+    subtract (case-insensitive):
+    - y, year, years
+    - m, month, months
+    - w, week, weeks
+    - d, day, days
+    - h, hour, hours
+    - i, minute, minutes
+    - s, second, seconds
+    - f, millisecond, milliseconds
+
+    *amount* is the number of *unit*s to add (positive value) or subtract
+    (negative value).
+
+  * `DATE_SUBTRACT(date, amount, unit)`: Subtracts *amount* given in *unit* from
+    *date* and returns the calculated date.
+    
+    It works the same as `DATE_ADD()`, except that it subtracts. It is equivalent
+    to calling `DATE_ADD()` with a negative amount, except that `DATE_SUBTRACT()`
+    can also subtract ISO durations. Note that negative ISO durations are not
+    supported (i.e. starting with `-P`, like `-P1Y`).
+
+  * `DATE_DIFF(date1, date2, unit, asFloat)`: Calculate the difference
+    between two dates in given time *unit*, optionally with decimal places.
+    Returns a negative value if *date1* is greater than *date2*.
+
+  * `DATE_COMPARE(date1, date2, unitRangeStart, unitRangeEnd)`: Compare two
+    partial dates and return true if they match, false otherwise. The parts to
+    compare are defined by a range of time units.
+    
+    The full range is: years, months, days, hours, minutes, seconds, milliseconds.
+    Pass the unit to start from as *unitRangeStart*, and the unit to end with as
+    *unitRangeEnd*. All units in between will be compared. Leave out *unitRangeEnd*
+    to only compare *unitRangeStart*.
+
+  * `DATE_FORMAT(date, format)`: Format a date according to the given format string.
+    It supports the following placeholders (case-insensitive):
+    - %t: timestamp
+    - %z: ISO date (0000-00-00T00:00:00.000Z)
+    - %w: day of week (0..6)
+    - %y: year (0000..9999)
+    - %m: month (01..12)
+    - %d: day (01..31)
+    - %h: hour (00..23)
+    - %i: minute (00..59)
+    - %s: second (00..59)
+    - %f: millisecond (000..999)
+    - %x: day of year (001..366)
+    - %k: ISO week date (01..53)
+    - %l: leap year (0 or 1)
+    - %q: quarter (1..4)
+    - %a: days in month (28..31)
+    - %n: English name of month (January..December)
+    - %o: abbreviated English name of month (Jan..Dec)
+    - %e: English name of weekday (Sunday..Saturday)
+    - %g: abbreviated English name of weekday (Sun..Sat)
+    - %%: literal %
+
 * new WAL logfiles and datafiles are now created non-sparse
     
   This prevents SIGBUS signals being raised when memory of a sparse datafile is accessed 
@@ -311,7 +435,21 @@ v2.7.0-rc1 (2015-09-11)
   The "Applications" tab in the web interfaces has been renamed to "Services".
 
 
-v2.6.8 (XXXX-XX-XX)
+v2.6.9 (XXXX-XX-XX)
+-------------------
+
+* fixed failing AQL skiplist, sort and limit combination
+
+  When using a Skiplist index on an attribute (say "a") and then using sort
+  and skip on this attribute caused the result to be empty e.g.:
+    
+    require("internal").db.test.ensureSkiplist("a");
+    require("internal").db._query("FOR x IN test SORT x.a LIMIT 10, 10");
+
+  Was always empty no matter how many documents are stored in test.
+  This is now fixed.
+
+v2.6.8 (2015-09-09)
 -------------------
 
 * ARM only:
