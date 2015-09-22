@@ -69,31 +69,32 @@
     navigateByTab: function (e) {
       var tab = e.target || e.srcElement,
       navigateTo = tab.id,
-      onlyDropdown = false;
+      dropdown = false;
 
       if (navigateTo === "") {
         navigateTo = $(tab).attr("class");
       }
-      else if (navigateTo === "links") {
+      
+      if (navigateTo === "links") {
+        dropdown = true;
         $("#link_dropdown").slideToggle(1);
-        onlyDropdown = false;
         e.preventDefault();
       }
       else if (navigateTo === "tools") {
+        dropdown = true;
         $("#tools_dropdown").slideToggle(1);
-        onlyDropdown = false;
         e.preventDefault();
       }
       else if (navigateTo === "dbselection") {
+        dropdown = true;
         $("#dbs_dropdown").slideToggle(1);
-        onlyDropdown = false;
         e.preventDefault();
-        return;
       }
-      if (onlyDropdown) {
+
+      if (!dropdown) {
         window.App.navigate(navigateTo, {trigger: true});
+        e.preventDefault();
       }
-      e.preventDefault();
     },
 
     handleSelectNavigation: function () {
