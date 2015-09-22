@@ -67,25 +67,32 @@
     },
 
     navigateByTab: function (e) {
-      var tab = e.target || e.srcElement;
-      var navigateTo = tab.id;
+      var tab = e.target || e.srcElement,
+      navigateTo = tab.id,
+      onlyDropdown = false;
+
       if (navigateTo === "") {
         navigateTo = $(tab).attr("class");
       }
       else if (navigateTo === "links") {
         $("#link_dropdown").slideToggle(1);
+        onlyDropdown = false;
         e.preventDefault();
       }
       else if (navigateTo === "tools") {
         $("#tools_dropdown").slideToggle(1);
+        onlyDropdown = false;
         e.preventDefault();
       }
       else if (navigateTo === "dbselection") {
         $("#dbs_dropdown").slideToggle(1);
+        onlyDropdown = false;
         e.preventDefault();
         return;
       }
-      window.App.navigate(navigateTo, {trigger: true});
+      if (onlyDropdown) {
+        window.App.navigate(navigateTo, {trigger: true});
+      }
       e.preventDefault();
     },
 
