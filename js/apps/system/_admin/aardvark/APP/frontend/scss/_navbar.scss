@@ -23,6 +23,7 @@
   }
 
   .arango-collection-select {
+    @extend %inputs;
     position: relative;
     right: -22px;
     top: 4px;
