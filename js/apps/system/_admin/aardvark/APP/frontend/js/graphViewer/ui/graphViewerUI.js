@@ -494,15 +494,15 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       //create select option box 
       var optionBox = '<li class="enabled" style="float:right">'+
       '<select id="graphSize" class="documents-size">'+
-      '<option value="10">10 results</option>'+
-      '<option value="20" selected="">20 results</option>'+
-      '<option value="50">50 results</option>'+
-      '<option value="100">100 results</option>'+
-      '<option value="500">500 results</option>'+
-      '<option value="1000">1000 results</option>'+
-      '<option value="2500">2500 results</option>'+
-      '<option value="5000">5000 results</option>'+
-      '<option value="all">All results</option>'+
+      '<option value="10">10 vertices</option>'+
+      '<option value="20" selected="">20 vertices</option>'+
+      '<option value="50">50 vertices</option>'+
+      '<option value="100">100 vertices</option>'+
+      '<option value="500">500 vertices</option>'+
+      '<option value="1000">1000 vertices</option>'+
+      '<option value="2500">2500 vertices</option>'+
+      '<option value="5000">5000 vertices</option>'+
+      '<option value="all">All vertices</option>'+
       '</select>'+
       '</li>';
       $('.headerBar .headerButtonList').prepend(optionBox);
