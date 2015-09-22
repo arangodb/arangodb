@@ -134,7 +134,36 @@ void Condition::andCombine (AstNode const* node) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate indices for each condition
 ////////////////////////////////////////////////////////////////////////////////
-void Condition::findIndices() {
+
+void Condition::findIndices (EnumerateCollectionNode const* node) {
+  // We can only start after DNF transform
+  Variable const* reference = node->outVariable();
+  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
+  for (size_t i = 0; i < _root->numMembers(); ++i) {
+    findIndexForAndNode(_root->getMember(i), reference, node);
+  }
+}
+
+void Condition::findIndexForAndNode (AstNode const* node, Variable const* reference, EnumerateCollectionNode const* colNode) {
+  // We are not iterating through the DNF properly
+  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
+  std::unordered_set<std::string> attributes;
+  for (size_t i = 0; i < node->numMembers(); ++i) {
+    auto compareNode = node->getMember(i);
+    switch (compareNode->type) {
+      default:
+        for (size_t j = 0; j < compareNode->numMembers(); ++j) {
+          auto fuxxNode = compareNode->getMember(j);
+          if (fuxxNode->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+            // if (static_cast<Variable const*>(fuxxNode->getMember(0)->getData()) == reference) {
+            if (fuxxNode->getMember(0)->getData() == reference) {
+              attributes.emplace(fuxxNode->getStringValue());
+            }
+          }
+        }
+    }
+  }
+  // std::string node->getStringValue()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,181 +177,6 @@ void Condition::normalize (ExecutionPlan* plan) {
     return;
   }
 
-  std::function<AstNode*(AstNode*)> transformNode = [this, &transformNode] (AstNode* node) -> AstNode* {
-    if (node == nullptr) {
-      return nullptr;
-    }
-
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      // convert binary AND/OR into n-ary AND/OR
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-      node = _ast->createNodeBinaryOperator(Ast::NaryOperatorType(node->type), lhs, rhs);
-    }
-
-    TRI_ASSERT(node->type != NODE_TYPE_OPERATOR_BINARY_AND &&
-               node->type != NODE_TYPE_OPERATOR_BINARY_OR);
-
-    if (node->type == NODE_TYPE_OPERATOR_NARY_AND) {
-      // first recurse into subnodes
-      node->changeMember(0, transformNode(node->getMember(0)));
-      node->changeMember(1, transformNode(node->getMember(1)));
-
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      if (lhs->type == NODE_TYPE_OPERATOR_NARY_OR &&
-          rhs->type == NODE_TYPE_OPERATOR_NARY_OR) {
-        auto and1 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs->getMember(0), rhs->getMember(0)));
-        auto and2 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs->getMember(0), rhs->getMember(1)));
-        auto or1  = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, and1, and2);
-
-        auto and3 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs->getMember(1), rhs->getMember(0)));
-        auto and4 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs->getMember(1), rhs->getMember(1)));
-        auto or2  = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, and3, and4);
-
-        return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, or1, or2);
-      }
-      else if (lhs->type == NODE_TYPE_OPERATOR_NARY_OR) {
-        auto and1 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, rhs, lhs->getMember(0)));
-        auto and2 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, rhs, lhs->getMember(1)));
-
-        return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, and1, and2);
-      }
-      else if (rhs->type == NODE_TYPE_OPERATOR_NARY_OR) {
-        auto and1 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs, rhs->getMember(0)));
-        auto and2 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs, rhs->getMember(1)));
-
-        return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, and1, and2);
-      }
-    }
-    else if (node->type == NODE_TYPE_OPERATOR_NARY_OR) {
-      // recurse into subnodes
-      node->changeMember(0, transformNode(node->getMember(0)));
-      node->changeMember(1, transformNode(node->getMember(1)));
-    }
-    else if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
-      // push down logical negations
-      auto sub = node->getMemberUnchecked(0);
-
-      if (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
-          sub->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-        // ! (a && b)  =>  (! a) || (! b)
-        auto neg1 = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMember(0)));
-        auto neg2 = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMember(1)));
-    
-        neg1 = _ast->optimizeNotExpression(neg1);
-        neg2 = _ast->optimizeNotExpression(neg2);
-
-        return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, neg1, neg2);
-      }
-      else if (sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
-               sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-        // ! (a || b)  =>  (! a) && (! b)
-        auto neg1 = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMember(0)));
-        auto neg2 = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMember(1)));
-        
-        neg1 = _ast->optimizeNotExpression(neg1);
-        neg2 = _ast->optimizeNotExpression(neg2);
-
-        return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, neg1, neg2);
-      }
-        
-      node->changeMember(0, transformNode(sub));
-      return node;
-    }
-
-    return node;
-  };
-  
-  // collapse function. 
-  // this will collapse nested logical AND/OR nodes 
-  std::function<AstNode*(AstNode*)> collapseNesting = [this, &collapseNesting] (AstNode* node) -> AstNode* {
-    if (node == nullptr) {
-      return nullptr;
-    }
-
-    if (node->type == NODE_TYPE_OPERATOR_NARY_AND || 
-        node->type == NODE_TYPE_OPERATOR_NARY_OR) {
-      // first recurse into subnodes
-      size_t const n = node->numMembers();
-
-      for (size_t i = 0; i < n; ++i) {
-        auto sub = collapseNesting(node->getMemberUnchecked(i));
-
-        if (sub->type == node->type) {
-          // sub-node has the same type as parent node
-          // now merge the sub-nodes of the sub-node into the parent node
-          size_t const subNumMembers = sub->numMembers();
-
-          for (size_t j = 0; j < subNumMembers; ++j) {
-            node->addMember(sub->getMemberUnchecked(j));
-          }
-          // invalidate the child node which we just expanded
-          node->changeMember(i, _ast->createNodeNop());
-        }
-        else { 
-          // different type
-          node->changeMember(i, sub);
-        }
-      }
-    }
-
-    return node;
-  };
-
-  // finally create a top-level OR node if it does not already exist, and make sure that all second
-  // level nodes are AND nodes
-  // additionally, this processing step will remove all NOP nodes
-  std::function<AstNode*(AstNode*, int)> fixRoot = [this, &fixRoot] (AstNode* node, int level) -> AstNode* {
-    if (node == nullptr) {
-      return nullptr;
-    }
-
-    AstNodeType type;
-
-    if (level == 0) {
-      type = NODE_TYPE_OPERATOR_NARY_OR;
-    }
-    else {
-      type = NODE_TYPE_OPERATOR_NARY_AND;
-    }
-    // check if first-level node is an OR node
-    if (node->type != type) {
-      // create new root node
-      node = _ast->createNodeNaryOperator(type, node);
-    }
-
-    size_t const n = node->numMembers();
-    size_t j = 0;
-
-    for (size_t i = 0; i < n; ++i) {
-      auto sub = node->getMemberUnchecked(i);
-
-      if (sub->type == NODE_TYPE_NOP) {
-        // ignore this node
-        continue;
-      }
-
-      if (level == 0) {
-        // recurse into next level
-        node->changeMember(j, fixRoot(sub, level + 1));
-      }
-      else if (i != j) {
-        node->changeMember(j, sub);
-      }
-      ++j;
-    }
-
-    if (j != n) {
-      // adjust number of members (because of the NOP nodes removes)
-      node->reduceMembers(j);
-    }
-
-    return node;
-  };
-
   _root = transformNode(_root);
   _root = collapseNesting(_root);
   _root = fixRoot(_root, 0);
@@ -332,7 +186,6 @@ void Condition::normalize (ExecutionPlan* plan) {
   std::cout << "\n";
   dump();
   std::cout << "\n";
-
   _isNormalized = true;
 }
 
@@ -403,6 +256,7 @@ ConditionPart::ConditionPartCompareResult ConditionPart::ResultsTable[3][7][7] =
     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}
   }
 };
+
 void Condition::optimize (ExecutionPlan* plan) {
 
 //  normalize();
@@ -558,7 +412,7 @@ void Condition::optimize (ExecutionPlan* plan) {
         } // cross compare sub-and-nodes
       } // foreach sub-and-node
     fastForwardToNextOrItem:
-      true;
+      continue;
     }
   }
 
@@ -587,6 +441,9 @@ void Condition::dump () const {
     else if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       std::cout << "  (attribute " << node->getStringValue() << ")";
     }
+    else if (node->type == NODE_TYPE_REFERENCE) {
+      std::cout << "  (name " << node->getStringValue() << ")";
+    }
 
     std::cout << "\n";
     for (size_t i = 0; i < node->numMembers(); ++i) {
@@ -597,6 +454,175 @@ void Condition::dump () const {
   dumpNode(_root, 0);
 }
 
+AstNode* Condition::transformNode (AstNode* node) {
+  if (node == nullptr) {
+    return nullptr;
+  }
+
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
+      node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+    // convert binary AND/OR into n-ary AND/OR
+    auto lhs = node->getMember(0);
+    auto rhs = node->getMember(1);
+    node = _ast->createNodeBinaryOperator(Ast::NaryOperatorType(node->type), lhs, rhs);
+  }
+
+  TRI_ASSERT(node->type != NODE_TYPE_OPERATOR_BINARY_AND &&
+      node->type != NODE_TYPE_OPERATOR_BINARY_OR);
+
+  if (node->type == NODE_TYPE_OPERATOR_NARY_AND) {
+    // first recurse into subnodes
+    node->changeMember(0, transformNode(node->getMember(0)));
+    node->changeMember(1, transformNode(node->getMember(1)));
+
+    auto lhs = node->getMember(0);
+    auto rhs = node->getMember(1);
+
+    if (lhs->type == NODE_TYPE_OPERATOR_NARY_OR &&
+        rhs->type == NODE_TYPE_OPERATOR_NARY_OR) {
+      auto and1 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs->getMember(0), rhs->getMember(0)));
+      auto and2 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs->getMember(0), rhs->getMember(1)));
+      auto or1  = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, and1, and2);
+
+      auto and3 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs->getMember(1), rhs->getMember(0)));
+      auto and4 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs->getMember(1), rhs->getMember(1)));
+      auto or2  = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, and3, and4);
+
+      return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, or1, or2);
+    }
+    else if (lhs->type == NODE_TYPE_OPERATOR_NARY_OR) {
+      auto and1 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, rhs, lhs->getMember(0)));
+      auto and2 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, rhs, lhs->getMember(1)));
+
+      return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, and1, and2);
+    }
+    else if (rhs->type == NODE_TYPE_OPERATOR_NARY_OR) {
+      auto and1 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs, rhs->getMember(0)));
+      auto and2 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs, rhs->getMember(1)));
+
+      return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, and1, and2);
+    }
+  }
+  else if (node->type == NODE_TYPE_OPERATOR_NARY_OR) {
+    // recurse into subnodes
+    node->changeMember(0, transformNode(node->getMember(0)));
+    node->changeMember(1, transformNode(node->getMember(1)));
+  }
+  else if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+    // push down logical negations
+    auto sub = node->getMemberUnchecked(0);
+
+    if (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
+        sub->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      // ! (a && b)  =>  (! a) || (! b)
+      auto neg1 = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMember(0)));
+      auto neg2 = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMember(1)));
+
+      neg1 = _ast->optimizeNotExpression(neg1);
+      neg2 = _ast->optimizeNotExpression(neg2);
+
+      return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, neg1, neg2);
+    }
+    else if (sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
+        sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      // ! (a || b)  =>  (! a) && (! b)
+      auto neg1 = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMember(0)));
+      auto neg2 = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMember(1)));
+
+      neg1 = _ast->optimizeNotExpression(neg1);
+      neg2 = _ast->optimizeNotExpression(neg2);
+
+      return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, neg1, neg2);
+    }
+
+    node->changeMember(0, transformNode(sub));
+    return node;
+  }
+
+  return node;
+}
+
+AstNode* Condition::collapseNesting (AstNode* node) {
+  if (node == nullptr) {
+    return nullptr;
+  }
+
+  if (node->type == NODE_TYPE_OPERATOR_NARY_AND || 
+      node->type == NODE_TYPE_OPERATOR_NARY_OR) {
+    // first recurse into subnodes
+    size_t const n = node->numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      auto sub = collapseNesting(node->getMemberUnchecked(i));
+
+      if (sub->type == node->type) {
+        // sub-node has the same type as parent node
+        // now merge the sub-nodes of the sub-node into the parent node
+        size_t const subNumMembers = sub->numMembers();
+
+        for (size_t j = 0; j < subNumMembers; ++j) {
+          node->addMember(sub->getMemberUnchecked(j));
+        }
+        // invalidate the child node which we just expanded
+        node->changeMember(i, _ast->createNodeNop());
+      }
+      else { 
+        // different type
+        node->changeMember(i, sub);
+      }
+    }
+  }
+
+  return node;
+}
+
+AstNode* Condition::fixRoot (AstNode* node, int level) {
+  if (node == nullptr) {
+    return nullptr;
+  }
+
+  AstNodeType type;
+
+  if (level == 0) {
+    type = NODE_TYPE_OPERATOR_NARY_OR;
+  }
+  else {
+    type = NODE_TYPE_OPERATOR_NARY_AND;
+  }
+  // check if first-level node is an OR node
+  if (node->type != type) {
+    // create new root node
+    node = _ast->createNodeNaryOperator(type, node);
+  }
+
+  size_t const n = node->numMembers();
+  size_t j = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto sub = node->getMemberUnchecked(i);
+
+    if (sub->type == NODE_TYPE_NOP) {
+      // ignore this node
+      continue;
+    }
+
+    if (level == 0) {
+      // recurse into next level
+      node->changeMember(j, fixRoot(sub, level + 1));
+    }
+    else if (i != j) {
+      node->changeMember(j, sub);
+    }
+    ++j;
+  }
+
+  if (j != n) {
+    // adjust number of members (because of the NOP nodes removes)
+    node->reduceMembers(j);
+  }
+
+  return node;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

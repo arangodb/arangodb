@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
+#include "Aql/ExecutionNode.h"
 
 namespace triagens {
   namespace aql {
@@ -171,7 +172,7 @@ namespace triagens {
 /// @brief locate indices which can be used for conditions
 ////////////////////////////////////////////////////////////////////////////////
 
-        void findIndices ();
+        void findIndices (EnumerateCollectionNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the condition
@@ -179,6 +180,37 @@ namespace triagens {
 
         void dump () const;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transforms the AstNode
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* transformNode (AstNode*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Collapses nested logical AND/OR nodes
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* collapseNesting (AstNode*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Creates a top-level OR node if it does not already exist, and make sure that all second
+///        level nodes are AND nodes. Additionally, this processing step will
+///        remove all NOP nodes.
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* fixRoot (AstNode*, int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Finds all indexes that can match this single node
+////////////////////////////////////////////////////////////////////////////////
+
+        void findIndexForAndNode (AstNode const*, Variable const*, EnumerateCollectionNode const*);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
