@@ -150,26 +150,21 @@ void Condition::findIndexForAndNode (AstNode const* node, Variable const* refere
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
 
   std::vector<Index*> indexes = colNode->collection()->getIndexes();
+  std::vector<Index*> matching;
   for (auto& idx : indexes) {
     if (idx->canServeForConditionNode(node, reference)) {
-      std::cout << "We can use Index for var: " << reference->name << " in collection " << colNode->collection()->getName() << " " << idx->toJson() << std::endl;
+      matching.emplace_back(idx);
     }
-    // canServeForConditionNode
-    /*
-    switch (compareNode->type) {
-      default:
-        for (size_t j = 0; j < compareNode->numMembers(); ++j) {
-          auto fuxxNode = compareNode->getMember(j);
-          if (fuxxNode->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-            // if (static_cast<Variable const*>(fuxxNode->getMember(0)->getData()) == reference) {
-            if (fuxxNode->getMember(0)->getData() == reference) {
-              attributes.emplace(fuxxNode->getStringValue());
-            }
-          }
-        }
-    }
-    */
   }
+  std::cout << "We can use indexes for var: " << reference->name << " in collection " << colNode->collection()->getName() << ":" << std::endl;
+  for (auto& idx : matching) {
+    std::cout << "Type" << idx->type;
+    if (idx->hasSelectivityEstimate()) {
+      std::cout << " Estimate: " << idx->selectivityEstimate();
+    }
+    std::cout << std::endl;
+  }
+  std::cout << std::endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
