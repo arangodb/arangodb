@@ -2158,6 +2158,10 @@ div.queryline select, div.queryline input, input.search-input, .modal-body .sele
     margin-left: -5px;
     margin-top: -1px;
     width: 40%; }
+  .navbar .arango-collection-select {
+    position: relative;
+    right: -22px;
+    top: 4px; }
   .navbar .nav .dropdown .active > .dropdown-toggle, .navbar .nav .dropdown .open > .dropdown-toggle, .navbar .nav .dropdown .open.active > .dropdown-toggle {
     background: #788f3d; }
   .navbar .nav > .active > a {
@@ -4900,6 +4904,7 @@ div.dropdownInner {
   div.dropdownInner ul {
     border-left: 1px solid rgba(140, 138, 137, 0.25);
     display: inline;
+    list-style-type: none;
     margin-top: 10px;
     min-height: 105px;
     width: 230px; }
