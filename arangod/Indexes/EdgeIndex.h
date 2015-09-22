@@ -127,6 +127,9 @@ namespace triagens {
           return _edgesTo;
         }
 
+        bool canServeForConditionNode (triagens::aql::AstNode const*,
+                                       triagens::aql::Variable const*) const;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
