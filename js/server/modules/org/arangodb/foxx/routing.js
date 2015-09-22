@@ -262,20 +262,6 @@ var installAssets = function (app, routes) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the transform script
-////////////////////////////////////////////////////////////////////////////////
-
-var transformScript = function (file) {
-  if (/\.coffee$/.test(file)) {
-    return function (content) {
-      return preprocess(content, "coffee");
-    };
-  }
-
-  return preprocess;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create middleware matchers
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -668,18 +654,18 @@ var mountController = function (service, routes, mount, filename) {
   validateRoute(mount);
 
   // set up a context for the application start function
-  var tmpContext = {
+  var appContext = {
     prefix: arangodb.normalizeURL(`/${mount}`), // app mount
     foxxes: []
   };
 
-  service.run(filename, {appContext: tmpContext});
+  service.run(filename, {appContext, preprocess});
 
   // .............................................................................
   // routingInfo
   // .............................................................................
 
-  var foxxes = tmpContext.foxxes;
+  var foxxes = appContext.foxxes;
   for (var i = 0; i < foxxes.length; i++) {
     var foxx = foxxes[i];
     var ri = foxx.routingInfo;

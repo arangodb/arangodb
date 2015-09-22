@@ -348,6 +348,10 @@ class FoxxService {
       options.appContext
     );
 
+    if (options.preprocess) {
+      module.preprocess = options.preprocess;
+    }
+
     if (options.context) {
       Object.keys(options.context).forEach(function (key) {
         module.context[key] = options.context[key];

@@ -125,7 +125,8 @@ function Module(id, parent) {
   };
 
   if (parent) {
-      Object.keys(parent.context).forEach(function (key) {
+    this.preprocess = parent.preprocess;
+    Object.keys(parent.context).forEach(function (key) {
       if (!hasOwnProperty(this.context, key)) {
         this.context[key] = parent.context[key];
       }
@@ -482,6 +483,9 @@ Module.prototype.require = function(path) {
 Module.prototype._compile = function(content, filename) {
   // remove shebang
   content = content.replace(/^\#\!.*/, '');
+  if (this.preprocess) {
+    content = this.preprocess(content);
+  }
 
   // test for parse errors first and fail early if a parse error detected
   if (!internal.parse(content, filename)) {
