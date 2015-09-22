@@ -2,7 +2,7 @@
 
 const EventEmitter = require('events').EventEmitter;
 const internal = require('internal');
-const path = require('path');
+const fs = require('fs');
 
 module.exports = exports = new EventEmitter();
 
@@ -15,7 +15,7 @@ exports.stdout = {
   }
 };
 exports.cwd = function () {
-  return path.resolve(internal.appPath);
+  return fs.makeAbsolute('');
 };
 exports.nextTick = function (fn) {
   fn();

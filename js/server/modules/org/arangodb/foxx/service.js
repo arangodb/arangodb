@@ -1,11 +1,14 @@
 'use strict';
 const _ = require('underscore');
+const ArangoError = require('org/arangodb').ArangoError;
+const errors = require('org/arangodb').errors;
 const internal = require('internal');
 const assert = require('assert');
 const Module = require('module');
 const path = require('path');
 const fs = require('fs');
 const parameterTypes = require('org/arangodb/foxx/manager-utils').parameterTypes;
+const getReadableName = require('org/arangodb/foxx/manager-utils').getReadableName;
 const getExports = require('org/arangodb/foxx').getExports;
 
 const APP_PATH = internal.appPath ? path.resolve(internal.appPath) : undefined;
@@ -13,7 +16,99 @@ const STARTUP_PATH = internal.startupPath ? path.resolve(internal.startupPath) :
 const DEV_APP_PATH = internal.devAppPath ? path.resolve(internal.devAppPath) : undefined;
 
 class AppContext {
+  constructor(service) {
+    this.basePath = path.resolve(service.root, service.path);
+    this.comments = [];
+    Object.defineProperty(this, '_service', {
+      get() {
+        return service;
+      }
+    });
+  }
+
+  foxxFilename(filename) {
+    return fs.safeJoin(this._prefix, filename);
+  }
+
+  path(name) {
+    return path.join(this._prefix, name);
+  }
+
+  collectionName(name) {
+    let fqn = (
+      this.collectionPrefix
+      + name.replace(/[^a-z0-9]/ig, '_').replace(/(^_+|_+$)/g, '').substr(0, 64)
+    );
+    if (!fqn.length) {
+      throw new Error(`Cannot derive collection name from "${name}"`);
+    }
+  }
+
+  collection(name) {
+    return internal.db._collection(this.collectionName(name));
+  }
+
+  get _prefix() {
+    return this.basePath;
+  }
+
+  get baseUrl() {
+    return `/_db/${encodeURIComponent(internal.db._name())}/${this._service.mount.slice(1)}`;
+  }
+
+  get collectionPrefix() {
+    return this._service.collectionPrefix;
+  }
+
+  get mount() {
+    return this._service.mount;
+  }
+
+  get name() {
+    return this._service.name;
+  }
+
+  get version() {
+    return this._service.version;
+  }
+
+  get manifest() {
+    return this._service.manifest;
+  }
+
+  get isDevelopment() {
+    return this._service.isDevelopment;
+  }
+
+  get isProduction() {
+    return !this.isDevelopment;
+  }
+
+  get options() {
+    return this._service.options;
+  }
+
+  get configuration() {
+    return this._service.configuration;
+  }
+
+  get dependencies() {
+    return this._service.dependencies;
+  }
 }
+
+Object.defineProperties(AppContext.prototype, {
+  comment: {
+    value: function (str) {
+      this.comments.push(str);
+    }
+  },
+  clearComments: {
+    value: function () {
+      this.comments.splice(0, this.comments.length);
+    }
+  }
+});
 
 function createConfiguration(definitions) {
   const config = {};
@@ -33,7 +128,7 @@ function createDependencies(definitions, options) {
       configurable: true,
       enumerable: true,
       get() {
-        const mount = options.dependencies[name];
+        const mount = options[name];
         return mount ? getExports(mount) : undefined;
       }
     });
@@ -96,6 +191,7 @@ class FoxxService {
     this.main = new Module(`foxx:${data.mount}`);
     this.main.filename = path.resolve(this.root, this.path, lib, '.foxx');
     this.main.context.applicationContext = new AppContext(this);
+    this.main.context.console = require('org/arangodb/foxx/console')(this.mount);
   }
 
   applyConfiguration(config) {
@@ -161,6 +257,121 @@ class FoxxService {
     return warnings;
   }
 
+  _PRINT(context) {
+    context.output += `[FoxxService "${this.name}" (${this.version}) on ${this.mount}]`;
+  }
+
+  toJSON() {
+    const result = {
+      name: this.name,
+      version: this.version,
+      manifest: this.manifest,
+      path: this.path,
+      options: this.options,
+      mount: this.mount,
+      isSystem: this.isSystem,
+      isDevelopment: this.isDevelopment
+    };
+    if (this.error) {
+      result.error = this.error;
+    }
+    if (this.manifest.author) {
+      result.author = this.manifest.author;
+    }
+    if (this.manifest.description) {
+      result.description = this.manifest.description;
+    }
+    if (this.thumbnail) {
+      result.thumbnail = this.thumbnail;
+    }
+    return result;
+  }
+
+  simpleJSON() {
+    return {
+      name: this.name,
+      version: this.version,
+      mount: this.mount
+    };
+  }
+
+  development(isDevelopment) {
+    this.isDevelopment = isDevelopment;
+  }
+
+  getConfiguration(simple) {
+    var config = {};
+    var definitions = this.manifest.configuration;
+    var options = this.options.configuration;
+    _.each(definitions, function (dfn, name) {
+      var value = options[name] === undefined ? dfn.default : options[name];
+      config[name] = simple ? value : _.extend(_.clone(dfn), {
+        title: getReadableName(name),
+        current: value
+      });
+    });
+    return config;
+  }
+
+  getDependencies(simple) {
+    var deps = {};
+    var definitions = this.manifest.dependencies;
+    var options = this.options.dependencies;
+    _.each(definitions, function (dfn, name) {
+      deps[name] = simple ? options[name] : {
+        definition: dfn,
+        title: getReadableName(name),
+        current: options[name]
+      };
+    });
+    return deps;
+  }
+
+  needsConfiguration() {
+    var config = this.getConfiguration();
+    var deps = this.getDependencies();
+    return _.any(config, function (cfg) {
+      return cfg.current === undefined && cfg.required !== false;
+    }) || _.any(deps, function (dep) {
+      return dep.current === undefined && dep.definition.required !== false;
+    });
+  }
+
+  run(filename, options) {
+    options = options || {};
+    filename = path.resolve(this.main.context.__dirname, filename);
+
+    var module = new Module(filename, this.main);
+    module.context.applicationContext = _.extend(
+      new AppContext(this.main.context.applicationContext._service),
+      this.main.context.applicationContext,
+      options.appContext
+    );
+
+    if (options.context) {
+      Object.keys(options.context).forEach(function (key) {
+        module.context[key] = options.context[key];
+      });
+    }
+
+    try {
+      module.load(filename);
+      return module.exports;
+    } catch(e) {
+      if (e instanceof ArangoError) {
+        throw e;
+      }
+      var err = new ArangoError({
+        errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
+        errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message
+        + '\nFile: ' + filename
+      });
+      err.stack = e.stack;
+      err.cause = e;
+      throw err;
+    }
+  }
+
   get exports() {
     return this.main.exports;
   }
@@ -188,7 +399,7 @@ class FoxxService {
     if (this.isSystem) {
       return '';
     }
-    return this.mount.substr(1).replace(/-/g, '_').replace(/\//g, '_') + '_';
+    return this.mount.substr(1).replace(/[-.:/]/g, '_') + '_';
   }
 
   static get _startupPath() {
@@ -203,7 +414,7 @@ class FoxxService {
 
   static get _systemAppPath() {
     return APP_PATH ? (
-      path.join(this._appPath, 'apps', 'system')
+      path.join(STARTUP_PATH, 'apps', 'system')
     ) : undefined;
   }
 

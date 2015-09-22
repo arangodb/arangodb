@@ -193,7 +193,7 @@ var buildAssetRoute = function (app, path, basePath, asset) {
 var installAssets = function (app, routes) {
   var path;
 
-  var desc = app._manifest;
+  var desc = app.manifest;
 
   if (! desc) {
     throw new Error("Invalid application manifest");
@@ -206,7 +206,7 @@ var installAssets = function (app, routes) {
     for (path in desc.assets) {
       if (desc.assets.hasOwnProperty(path)) {
         var asset = desc.assets[path];
-        var basePath = fs.join(app._root, app._path);
+        var basePath = fs.join(app.root, app.path);
 
         if (asset.hasOwnProperty('basePath')) {
           basePath = asset.basePath;
@@ -247,8 +247,8 @@ var installAssets = function (app, routes) {
           action: {
             "do": "org/arangodb/actions/pathHandler",
             "options": {
-              root: app._root,
-              path: fs.join(app._path, directory),
+              root: app.root,
+              path: fs.join(app.path, directory),
               gzip: gzip
             }
           }
@@ -444,26 +444,26 @@ var exportApp = function (app) {
       errorMessage: errors.ERROR_APP_NEEDS_CONFIGURATION.message
     });
   }
-  if (!app._isDevelopment && isExported(app._mount)) {
-    return app._exports;
+  if (!app.isDevelopment && isExported(app.mount)) {
+    return app.main.exports;
   }
 
-  app._exports = {};
+  app.main.exports = {};
 
   // mount all exports
-  if (app._manifest.hasOwnProperty("exports")) {
-    var appExports = app._manifest.exports;
+  if (app.manifest.hasOwnProperty("exports")) {
+    var appExports = app.manifest.exports;
 
     if (typeof appExports === "string") {
-      app._exports = app.loadAppScript(appExports);
+      app.main.exports = app.run(appExports);
     } else if (appExports) {
       Object.keys(appExports).forEach(function (key) {
-        app._exports[key] = app.loadAppScript(appExports[key]);
+        app.main.exports[key] = app.run(appExports[key]);
       });
     }
   }
-  setIsExported(app._mount);
-  return app._exports;
+  setIsExported(app.mount);
+  return app.exports;
 
 };
 
@@ -512,7 +512,7 @@ var routeNeedsConfigurationApp = function(app) {
 
   return {
     urlPrefix: "",
-    name: 'foxx("' + app._mount + '")',
+    name: 'foxx("' + app.mount + '")',
     routes: [{
       "internal": true,
       "url" : {
@@ -523,7 +523,7 @@ var routeNeedsConfigurationApp = function(app) {
         "callback": function(req, res) {
           res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
           res.contentType = "text/html; charset=utf-8";
-          if (app._isDevelopment) {
+          if (app.isDevelopment) {
             res.body = "<html><head><title>Service Unavailable</title></head><body><p>" +
                        "This service is not configured.</p>";
             res.body += "<h3>Configuration Information</h3>";
@@ -558,7 +558,7 @@ var routeBrokenApp = function(app, err) {
 
   return {
     urlPrefix: "",
-    name: 'foxx("' + app._mount + '")',
+    name: 'foxx("' + app.mount + '")',
     routes: [{
       "internal": true,
       "url" : {
@@ -569,7 +569,7 @@ var routeBrokenApp = function(app, err) {
         "callback": function(req, res) {
           res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
           res.contentType = "text/html; charset=utf-8";
-          if (app._isDevelopment) {
+          if (app.isDevelopment) {
             var errToPrint = err.cause ? err.cause : err;
             res.body = "<html><head><title>" + escapeHTML(String(errToPrint)) +
                      "</title></head><body><pre>" + escapeHTML(String(errToPrint.stack)) + "</pre></body></html>";
@@ -602,12 +602,12 @@ var routeApp = function (app, isInstallProcess) {
     return routeNeedsConfigurationApp(app);
   }
 
-  var defaultDocument = app._manifest.defaultDocument;
+  var defaultDocument = app.manifest.defaultDocument;
 
   // setup the routes
   var routes = {
     urlPrefix: "",
-    name: 'foxx("' + app._mount + '")',
+    name: 'foxx("' + app.mount + '")',
     routes: [],
     middleware: [],
     context: {},
@@ -617,18 +617,18 @@ var routeApp = function (app, isInstallProcess) {
 
     appContext: {
       app: app,
-      module: app._context.appModule
+      module: app.main
     }
   };
 
-  if ((app._mount + defaultDocument) !== app._mount) {
+  if ((app.mount + defaultDocument) !== app.mount) {
     // only add redirection if src and target are not the same
     routes.routes.push({
       "url" : { match: "/" },
       "action" : {
         "do" : "org/arangodb/actions/redirectRequest",
         "options" : {
-          "permanently" : !app._isDevelopment,
+          "permanently" : !app.isDevelopment,
           "destination" : defaultDocument,
           "relative" : true
         }
@@ -637,7 +637,7 @@ var routeApp = function (app, isInstallProcess) {
   }
 
   // mount all controllers
-  var controllers = app._manifest.controllers;
+  var controllers = app.manifest.controllers;
 
   try {
     if (controllers) {
@@ -664,19 +664,16 @@ var routeApp = function (app, isInstallProcess) {
   return null;
 };
 
-var mountController = function (app, routes, mountPoint, file) {
-  validateRoute(mountPoint);
+var mountController = function (service, routes, mount, filename) {
+  validateRoute(mount);
 
   // set up a context for the application start function
   var tmpContext = {
-    prefix: arangodb.normalizeURL("/" + mountPoint), // app mount
+    prefix: arangodb.normalizeURL(`/${mount}`), // app mount
     foxxes: []
   };
 
-  app.loadAppScript(file, {
-    transform: transformScript(file),
-    appContext: tmpContext
-  });
+  service.run(filename, {appContext: tmpContext});
 
   // .............................................................................
   // routingInfo
@@ -689,11 +686,11 @@ var mountController = function (app, routes, mountPoint, file) {
 
     _.extend(routes.models, foxx.models);
 
-    if (ri.hasOwnProperty("middleware")) {
-      createMiddlewareMatchers(ri.middleware, routes, mountPoint, ri.urlPrefix);
+    if (ri.hasOwnProperty('middleware')) {
+      createMiddlewareMatchers(ri.middleware, routes, mount, ri.urlPrefix);
     }
-    if (ri.hasOwnProperty("routes")) {
-      transformRoutes(ri.routes, routes, mountPoint, ri.urlPrefix, app._isDevelopment);
+    if (ri.hasOwnProperty('routes')) {
+      transformRoutes(ri.routes, routes, mount, ri.urlPrefix, service._isDevelopment);
     }
   }
 };

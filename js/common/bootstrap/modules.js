@@ -114,17 +114,18 @@ function Module(id, parent) {
   }
 
   this.context = {
-    module: this,
-    exports: this.exports,
-    require: createRequire(this),
     print: internal.print,
     process: NATIVE_MODULES.process,
     console: NATIVE_MODULES.console,
+    module: this,
+    exports: this.exports,
+    require: createRequire(this),
     __filename: null,
     __dirname: null
   };
+
   if (parent) {
-    Object.keys(parent.context).forEach(function (key) {
+      Object.keys(parent.context).forEach(function (key) {
       if (!hasOwnProperty(this.context, key)) {
         this.context[key] = parent.context[key];
       }
@@ -560,6 +561,18 @@ Module._extensions['.json'] = function(module, filename) {
     err.message = filename + ': ' + err.message;
     throw err;
   }
+};
+
+
+Module._extensions['.coffee'] = function(module, filename) {
+  require('org/arangodb/deprecated')(
+    '2.8',
+    'CoffeeScript support is deprecated,'
+    + ' please pre-compile CoffeeScript modules to JavaScript using external build tools.'
+  );
+  var content = fs.readFileSync(filename, 'utf8');
+  var cs = require('coffee-script');
+  module._compile(cs.compile(stripBOM(content), {bare: true}), filename);
 };
 
 
