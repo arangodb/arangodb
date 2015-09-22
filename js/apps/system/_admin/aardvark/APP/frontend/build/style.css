@@ -6573,6 +6573,9 @@ div.gv_zoom_widget {
   div.gv_zoom_widget .ui-state-default {
     background: #f6f6f6; }
 
+#menubar {
+  margin: 0 0 10px 0; }
+
 div.gv_colour_list {
   max-height: 680px;
   overflow: auto;

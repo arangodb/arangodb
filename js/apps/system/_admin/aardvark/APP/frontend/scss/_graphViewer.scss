@@ -45,6 +45,10 @@ div.gv_zoom_widget {
 
 }
 
+#menubar {
+  margin: 0 0 10px 0;
+}
+
 div.gv_colour_list {
   @extend %pull-right;
   max-height: 680px;
