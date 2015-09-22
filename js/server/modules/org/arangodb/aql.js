@@ -6657,7 +6657,7 @@ function AQL_EDGES (edgeCollection,
     if (options && options.includeVertices) {
       for (let i = 0; i < result.length; ++i) {
         try {
-          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._from) };
+          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._to) };
         }
         catch (err) {
         }
@@ -6669,7 +6669,7 @@ function AQL_EDGES (edgeCollection,
     if (options && options.includeVertices) {
       for (let i = 0; i < result.length; ++i) {
         try {
-          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._to) };
+          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._from) };
         }
         catch (err) {
         }

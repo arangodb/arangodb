@@ -27,7 +27,6 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
 var internal = require("internal");
@@ -172,6 +171,174 @@ function ahuacatlQueryEdgesTestSuite () {
       assertEqual(actual, [ ]);
       
       assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "FOR e IN EDGES(UnitTestsAhuacatlEdge, 'thefox/thefox', 'outbound') SORT e.what RETURN e.what");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES() with includeVertices
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesAnyInclVertices : function () {
+      "use strict";
+      let actual;
+      const query = "FOR e IN EDGES(@@col, @start, @dir, null, {includeVertices: true}) SORT e.edge.what RETURN e.vertex._key";
+      let bindVars = {
+        "@col": "UnitTestsAhuacatlEdge",
+        "dir": "any"
+      };
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v1";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v2", "v3"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v2";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v1", "v3", "v4"]);
+      
+      bindVars.start = "UnitTestsAhuacatlVertex/v3";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v1", "v2", "v4", "v6", "v7", "v6", "v7"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v8";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/thefox";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+     
+      bindVars.start = "thefox/thefox";
+
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, query, bindVars);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES() with includeVertices
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesInInclVertices : function () {
+      "use strict";
+      let actual;
+      const query = "FOR e IN EDGES(@@col, @start, @dir, null, {includeVertices: true}) SORT e.edge.what RETURN e.vertex._key";
+      let bindVars = {
+        "@col": "UnitTestsAhuacatlEdge",
+        "dir": "inbound"
+      };
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v1";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, []);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v2";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v1", "v4"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v3";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v1", "v2", "v6", "v7"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v8";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+      
+      bindVars.start = "UnitTestsAhuacatlVertex/thefox";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+     
+      bindVars.start = "thefox/thefox";
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, query, bindVars);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES() with includeVertices
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesOutInclVertices : function () {
+      "use strict";
+      let actual;
+      const query = "FOR e IN EDGES(@@col, @start, @dir, null, {includeVertices: true}) SORT e.edge.what RETURN e.vertex._key";
+      let bindVars = {
+        "@col": "UnitTestsAhuacatlEdge",
+        "dir": "outbound"
+      };
+     
+      bindVars.start = "UnitTestsAhuacatlVertex/v1";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v2", "v3"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v2";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v3"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v3";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v4", "v6", "v7"]);
+      
+      bindVars.start = "UnitTestsAhuacatlVertex/v8";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v5";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+      
+      bindVars.start = "UnitTestsAhuacatlVertex/thefox";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+      
+      bindVars.start = "thefox/thefox";
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, query, bindVars);
+    }
+
+  };
+}
+
+function ahuacatlQueryNeighborsTestSuite () {
+  var vertex = null;
+  var edge   = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop("UnitTestsAhuacatlVertex");
+      db._drop("UnitTestsAhuacatlEdge");
+
+      vertex = db._create("UnitTestsAhuacatlVertex");
+      edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
+
+      vertex.save({ _key: "v1", name: "v1" });
+      vertex.save({ _key: "v2", name: "v2" });
+      vertex.save({ _key: "v3", name: "v3" });
+      vertex.save({ _key: "v4", name: "v4" });
+      vertex.save({ _key: "v5", name: "v5" });
+      vertex.save({ _key: "v6", name: "v6" });
+      vertex.save({ _key: "v7", name: "v7" });
+
+      function makeEdge (from, to) {
+        edge.save("UnitTestsAhuacatlVertex/" + from, "UnitTestsAhuacatlVertex/" + to, { what: from + "->" + to, _key: from + "_" + to });
+      }
+
+      makeEdge("v1", "v2");
+      makeEdge("v1", "v3");
+      makeEdge("v2", "v3");
+      makeEdge("v3", "v4");
+      makeEdge("v3", "v6");
+      makeEdge("v3", "v7");
+      makeEdge("v4", "v2");
+      makeEdge("v7", "v3");
+      makeEdge("v6", "v3");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop("UnitTestsAhuacatlVertex");
+      db._drop("UnitTestsAhuacatlEdge");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1733,6 +1900,7 @@ function ahuacatlQueryNeighborsErrorsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryEdgesTestSuite);
+jsunity.run(ahuacatlQueryNeighborsTestSuite);
 jsunity.run(ahuacatlQueryPathsTestSuite);
 jsunity.run(ahuacatlQueryShortestPathTestSuite);
 jsunity.run(ahuacatlQueryTraversalFilterTestSuite);
@@ -1741,7 +1909,6 @@ jsunity.run(ahuacatlQueryTraversalTreeTestSuite);
 if (internal.debugCanUseFailAt()) {
   jsunity.run(ahuacatlQueryNeighborsErrorsSuite);
 }
-
 return jsunity.done();
 
 // Local Variables:
