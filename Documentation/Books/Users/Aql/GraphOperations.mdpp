@@ -23,107 +23,127 @@ with *n* being the amount of vertices in the graph. For
 the amount of vertices in the graph, *x* the amount of start vertices and *y* the amount of
 target vertices. Hence a suggestion may be to use Dijkstra when x\*y < n and the functions supports choosing your algorithm.
 
+!SUBSECTION Example Graph
+All examples in this chapter will use this simple city graph:
+
+![Cities Example Graph](cities_graph.png)
+
+The example has the cities as *edges* in the *collections* `germanCity` and `frenchCity`. The *vertices* are their interconnects `french / german / international Highway`. We create it, inspect its *edges* and *vertices*, and drop it again:
+
+    @startDocuBlockInline graph_create_cities_sample
+    @EXAMPLE_ARANGOSH_OUTPUT{graph_create_cities_sample}
+    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var g = examples.loadGraph("routeplanner");
+    db.frenchCity.toArray();
+    db.germanCity.toArray();
+    db.germanHighway.toArray();
+    db.frenchHighway.toArray();
+    db.internationalHighway.toArray();
+    examples.dropGraph("routeplanner");
+    @END_EXAMPLE_ARANGOSH_RUN
+    @endDocuBlock graph_create_cities_sample
+
 !SUBSECTION Edges and Vertices related functions
 
 This section describes various AQL functions which can be used to receive information about the graph's vertices, edges, neighbor relationship and shared properties.
 
 !SUBSECTION GRAPH_EDGES
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_edges
+@startDocuBlock JSF_aql_general_graph_edges
 
 !SUBSECTION GRAPH_VERTICES
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_vertices
+@startDocuBlock JSF_aql_general_graph_vertices
 
 !SUBSECTION GRAPH_NEIGHBORS
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_neighbors
+@startDocuBlock JSF_aql_general_graph_neighbors
 
 !SUBSECTION GRAPH_COMMON_NEIGHBORS
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_common_neighbors
+@startDocuBlock JSF_aql_general_graph_common_neighbors
 
 !SUBSECTION GRAPH_COMMON_PROPERTIES
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_common_properties
+@startDocuBlock JSF_aql_general_graph_common_properties
 
 !SUBSECTION Shortest Paths, distances and traversals.
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
 This section describes AQL functions, that calculate paths from a subset of vertices in a graph to another subset of vertices.
 
 !SUBSECTION GRAPH_PATHS
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_paths
+@startDocuBlock JSF_aql_general_graph_paths
 
 !SUBSECTION GRAPH_SHORTEST_PATH
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_shortest_paths
+@startDocuBlock JSF_aql_general_graph_shortest_paths
 
 !SUBSECTION GRAPH_TRAVERSAL
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_traversal
+@startDocuBlock JSF_aql_general_graph_traversal
 
 !SUBSECTION GRAPH_TRAVERSAL_TREE
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_traversal_tree
+@startDocuBlock JSF_aql_general_graph_traversal_tree
 
 !SUBSECTION GRAPH_DISTANCE_TO
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_distance
+@startDocuBlock JSF_aql_general_graph_distance
 
 !SUBSECTION Graph measurements.
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
 This section describes AQL functions to calculate various graph related measurements as defined in the mathematical graph theory.
 
 !SUBSECTION GRAPH_ABSOLUTE_ECCENTRICITY
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_absolute_eccentricity
+@startDocuBlock JSF_aql_general_graph_absolute_eccentricity
 
 !SUBSECTION GRAPH_ECCENTRICITY
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_eccentricity
+@startDocuBlock JSF_aql_general_graph_eccentricity
 
 !SUBSECTION GRAPH_ABSOLUTE_CLOSENESS
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_absolute_closeness
+@startDocuBlock JSF_aql_general_graph_absolute_closeness
 
 !SUBSECTION GRAPH_CLOSENESS
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_closeness
+@startDocuBlock JSF_aql_general_graph_closeness
 
 !SUBSECTION GRAPH_ABSOLUTE_BETWEENNESS
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_absolute_betweenness
+@startDocuBlock JSF_aql_general_graph_absolute_betweenness
 
 !SUBSECTION GRAPH_BETWEENNESS
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_betweenness
+@startDocuBlock JSF_aql_general_graph_betweenness
 
 !SUBSECTION GRAPH_RADIUS
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_radius
+@startDocuBlock JSF_aql_general_graph_radius
 
 !SUBSECTION GRAPH_DIAMETER
-<!-- js/server/modules/org/arangodb/ahuacatl.js -->
+<!-- js/server/modules/org/arangodb/aql.js -->
 
-@startDocuBlock JSF_ahuacatl_general_graph_diameter
+@startDocuBlock JSF_aql_general_graph_diameter
 
