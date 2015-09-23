@@ -9,12 +9,12 @@ arangosh&gt; db._users.toArray()
       <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"simple"</span> : { 
         <span class="hljs-string">"method"</span> : <span class="hljs-string">"sha256"</span>, 
-        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"745d5c0c9c8c8be0d4ba45b5710b13e2dee6d860e3432895f97d27d8ccfe70b6"</span>, 
-        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"rtJskDe5i8RZfkFL"</span> 
+        <span class="hljs-string">"hash"</span> : <span class="hljs-string">"81c1e247ccb05c32ddc29078025e8a6050106425e95120f46c571a56f7f1fd48"</span>, 
+        <span class="hljs-string">"salt"</span> : <span class="hljs-string">"lxkHVHRJqpk9NdA3"</span> 
       } 
     }, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/1745452"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1745452"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1745452"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_users/1717219"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1717219"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1717219"</span> 
   } 
 ]

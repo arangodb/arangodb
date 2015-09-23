@@ -2,6 +2,6 @@ shell> curl --dump - http://localhost:8529/redirectMe
 
 HTTP/1.1 301 Moved Permanently
 content-type: text/html
-location: http://127.0.0.1:34796/somewhere.else/
+location: http://127.0.0.1:32627/somewhere.else/
 
-"<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href=\"http://127.0.0.1:34796/somewhere.else/\">http://127.0.0.1:34796/somewhere.else/</a>.</p></body></html>"
+"<span class="hljs-tag">&lt;<span class="hljs-title">html</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">head</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">title</span>&gt;</span>Moved<span class="hljs-tag">&lt;/<span class="hljs-title">title</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">head</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">body</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">h1</span>&gt;</span>Moved<span class="hljs-tag">&lt;/<span class="hljs-title">h1</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">p</span>&gt;</span>This page has moved to <span class="hljs-tag">&lt;<span class="hljs-title">a</span> <span class="hljs-attribute">href</span>=<span class="hljs-value">\"http:</span>//<span class="hljs-attribute">127.0.0.1:32627</span>/<span class="hljs-attribute">somewhere.else</span>/\"&gt;</span>http://127.0.0.1:32627/somewhere.else/<span class="hljs-tag">&lt;/<span class="hljs-title">a</span>&gt;</span>.<span class="hljs-tag">&lt;/<span class="hljs-title">p</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">body</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">html</span>&gt;</span>"

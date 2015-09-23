@@ -1715,7 +1715,7 @@ SERVER_OPT := \
 	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
-	--log.level error \
+	--log.level fatal \
         --wal.reserve-logfiles 1 \
 	--server.threads 4 \
 	$(SERVER_START)
@@ -1723,7 +1723,7 @@ SERVER_OPT := \
 CLIENT_OPT := \
 	--configuration none \
 	--javascript.startup-directory @top_srcdir@/js \
-	--log.level error \
+	--log.level fatal \
 	--no-colors \
 	--quiet
 
@@ -1831,7 +1831,6 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-foxx.js \
                @top_srcdir@/js/server/tests/shell-foxx-base-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-format-middleware.js \
-               @top_srcdir@/js/server/tests/shell-foxx-manager-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-model.js \
                @top_srcdir@/js/server/tests/shell-foxx-model-events-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-preprocessor.js \
@@ -2054,6 +2053,8 @@ JAVASCRIPT_JSLINT = \
 DEBUG_V8_FLAGS = -DV8_TARGET_ARCH_X64 -DENABLE_GDB_JIT_INTERFACE -DV8_DEPRECATION_WARNINGS -DV8_I18N_SUPPORT -DGTEST_HAS_POSIX_RE=0 -DGTEST_LANG_CXX11=0 -DUNIT_TEST -DGTEST_HAS_RTTI=0 -DENABLE_DISASSEMBLER -DV8_ENABLE_CHECKS -DOBJECT_PRINT -DVERIFY_HEAP -DDEBUG -DENABLE_EXTRA_CHECKS -DENABLE_HANDLE_ZAPPING -DOPTIMIZED_DEBUG
 @ENABLE_GOLD_FALSE@GOLD_V8_FLAGS = 
 @ENABLE_GOLD_TRUE@GOLD_V8_FLAGS = -fuse-ld=gold
+@ENABLE_GOLD_FALSE@GOLD_V8_GYP = -Dlinux_use_bundled_gold=0 -Dlinux_use_gold_flags=0
+@ENABLE_GOLD_TRUE@GOLD_V8_GYP = 
 V8DIR = @V8_DIR@
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
@@ -9508,10 +9509,10 @@ start-server:
 		done)
 # wait for unix domain socket enpoints:
 	@(test "$(PROTO)" == "unix" && \
-		while ! ./bin/arangosh  \
-			-c etc/relative/arangosh.conf \
+		while ! @builddir@/bin/arangosh $(CLIENT_OPT)  \
 			--server.endpoint unix://$(VOCDIR)/arango.sock \
-			--javascript.execute-string 'if (arango.GET("/_api/version").server === "arango") { 0; } else {1; }'; do \
+                        --server.disable-authentication true \
+                        --javascript.execute-string 'if (arango.GET("/_api/version").server === "arango") { 0; } else {1; }'; do \
 		    sleep 1; \
 		    echo .; \
 		done;) ||\
@@ -9566,7 +9567,7 @@ curl-request-get:
 @ENABLE_FAILURE_TESTS_TRUE@execute-recovery-test:
 @ENABLE_FAILURE_TESTS_TRUE@	@rm -rf "$(VOCDIR)"
 @ENABLE_FAILURE_TESTS_TRUE@	@mkdir -p "$(VOCDIR)/databases"
-@ENABLE_FAILURE_TESTS_TRUE@	@builddir@/bin/arangod "$(VOCDIR)" --no-server $(SERVER_OPT) --server.threads 1 --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup --log.level warning || true # the server will crash with segfault intentionally in this test
+@ENABLE_FAILURE_TESTS_TRUE@	@builddir@/bin/arangod "$(VOCDIR)" --no-server $(SERVER_OPT) --server.threads 1 --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup --log.level fatal || true # the server will crash with segfault intentionally in this test
 @ENABLE_FAILURE_TESTS_TRUE@	@rm -f core
 @ENABLE_FAILURE_TESTS_TRUE@	$(VALGRIND) @builddir@/bin/arangod --no-server "$(VOCDIR)" $(SERVER_OPT) --server.threads 1 --wal.ignore-logfile-errors true --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter recover || test "x$(FORCE)" == "x1"
 
@@ -9944,9 +9945,9 @@ unittests-import:
 ### starts two servers (master & slave) and checks for data drift
 ################################################################################
 
-.PHONY: unittests-replication unittests-replication-server unittests-replication-http unittests-replication-static unittests-replication-ongoing
+.PHONY: unittests-replication unittests-replication-server unittests-replication-http unittests-replication-sync unittests-replication-static unittests-replication-ongoing
 
-unittests-replication: unittests-replication-server unittests-replication-http unittests-replication-static unittests-replication-ongoing
+unittests-replication: unittests-replication-server unittests-replication-http unittests-replication-sync unittests-replication-static unittests-replication-ongoing
 
 unittests-replication-server:
 	@echo
@@ -9978,6 +9979,29 @@ unittests-replication-http:
 	while test -f $(PIDFILE); do sleep 1; done
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 	@rm -rf "$(VOCDIR)"
+	@echo
+
+unittests-replication-sync:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
+	$(MAKE) start-slave PID=$(PID) SERVER_START="--server.endpoint tcp://$(SLAVEHOST):$(SLAVEPORT) --server.disable-authentication true" PROTO=http
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< REPLICATION SYNC TESTS                                                     >>"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.execute-string "require('org/arangodb/users').save('replicator-user', 'replicator-password', true); require('org/arangodb/users').reload();"
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/replication-sync.js || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+	kill `cat $(SLAVEPIDFILE)`
+	while test -f $(PIDFILE); do sleep 1; done
+	while test -f $(SLAVEPIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+	@rm -rf "$(VOCDIR)"
+	@rm -rf "$(SLAVEDIR)"
 	@echo
 
 unittests-replication-static:
@@ -10396,6 +10420,15 @@ examples:
 			--javascript.execute /tmp/arangosh.examples.js ;\
 	fi
 
+examples-inspect-file:
+	@echo "generating /tmp/allExamples.html"
+	@(printf "<html><head></head><body><pre>\n"; \
+	   for thisExample in Documentation/Examples/*.generated; do \
+		printf "<hr>\n<h3>$$thisExample</h3>\n"; \
+		cat $$thisExample; \
+	done; \
+	printf "</pre></body></html>") > /tmp/allExamples.html
+
 ################################################################################
 ### @brief executes jslint
 ################################################################################
@@ -10526,74 +10559,74 @@ clean-libev:
 ################################################################################
 
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	  && $(MAKE) \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		CC="$(CC)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	        CFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	        CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@	        LDFLAGS="-march=armv6" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		CFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		LDFLAGS="-march=armv6" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_TRUE@		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	  && $(MAKE) \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC="$(CC)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	        CFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	        CXXFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@	        LDFLAGS="-march=armv6" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		CFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXXFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		LDFLAGS="-march=armv6" \
 @ENABLE_ARMV6_TRUE@@ENABLE_V8_DEBUG_FALSE@		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 
 ################################################################################
 ################################################################################
 
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	  && $(MAKE) \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	        CFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	        CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@	        LDFLAGS="-march=armv7" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		CFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		LDFLAGS="-march=armv7" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_TRUE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export GYPFLAGS=" -Darm_version=7 -Dstandalone_static_library=1" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export GYPFLAGS=" -Darm_version=7 -Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	  && $(MAKE) \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	        CFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	        CXXFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@	        LDFLAGS="-march=armv7" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		CFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXXFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		LDFLAGS="-march=armv7" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_TRUE@@ENABLE_V8_DEBUG_FALSE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
 ################################################################################
 ################################################################################
 
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	  export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	  && $(MAKE) \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	        LDFLAGS="-lc++" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	        CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@	        CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		LDFLAGS="-lc++" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_TRUE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
@@ -10601,43 +10634,43 @@ clean-libev:
 ################################################################################
 
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	  export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	  && $(MAKE) \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	        LDFLAGS="-lc++" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@                CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@	        CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		LDFLAGS="-lc++" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_TRUE@@ENABLE_V8_DEBUG_FALSE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
 ################################################################################
 ################################################################################
 
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@	  export GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@	  export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@	  && $(MAKE) \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@	        CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@	        CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_TRUE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	cd @top_srcdir@/3rdParty/$(V8DIR) \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	  export GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	  export GYPFLAGS="-Dstandalone_static_library=1 $(GOLD_V8_GYP)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	  && $(MAKE) \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CC="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CC.host="$(CC)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CXX="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CXX.host="$(CXX)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		LINK="$(CXX)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	        CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
-@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@	        CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+@ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
 @ENABLE_ARMV6_FALSE@@ENABLE_ARMV7_FALSE@@ENABLE_DARWIN_FALSE@@ENABLE_V8_DEBUG_FALSE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
 	touch @srcdir@/.v8-build-@TRI_BITS@

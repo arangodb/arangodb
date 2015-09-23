@@ -2,13 +2,13 @@ shell> curl --dump - http://localhost:8529/_api/graph/graph
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-number">775397932</span>
+etag: <span class="hljs-number">775107555</span>
 
 { 
   <span class="hljs-string">"graph"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/graph"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"graph"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"775397932"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"775107555"</span>, 
     <span class="hljs-string">"edgeDefinitions"</span> : [ 
       { 
         <span class="hljs-string">"collection"</span> : <span class="hljs-string">"edges"</span>, 
