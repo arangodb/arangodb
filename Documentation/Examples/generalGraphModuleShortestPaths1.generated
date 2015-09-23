@@ -10,7 +10,7 @@ arangosh&gt; g._shortestPath({}, {}, {weight : <span class="hljs-string">'distan
         <span class="hljs-string">"frenchCity/Paris"</span> 
       ], 
       <span class="hljs-string">"edges"</span> : [ 
-        <span class="hljs-string">"internationalHighway/1744909283"</span> 
+        <span class="hljs-string">"internationalHighway/1744892220"</span> 
       ], 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
     }, 
@@ -20,7 +20,7 @@ arangosh&gt; g._shortestPath({}, {}, {weight : <span class="hljs-string">'distan
         <span class="hljs-string">"frenchCity/Lyon"</span> 
       ], 
       <span class="hljs-string">"edges"</span> : [ 
-        <span class="hljs-string">"internationalHighway/1744712675"</span> 
+        <span class="hljs-string">"internationalHighway/1744695612"</span> 
       ], 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
     }, 
@@ -30,7 +30,7 @@ arangosh&gt; g._shortestPath({}, {}, {weight : <span class="hljs-string">'distan
         <span class="hljs-string">"frenchCity/Paris"</span> 
       ], 
       <span class="hljs-string">"edges"</span> : [ 
-        <span class="hljs-string">"internationalHighway/1745695715"</span> 
+        <span class="hljs-string">"internationalHighway/1745678652"</span> 
       ], 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
     }, 
@@ -40,7 +40,7 @@ arangosh&gt; g._shortestPath({}, {}, {weight : <span class="hljs-string">'distan
         <span class="hljs-string">"frenchCity/Lyon"</span> 
       ], 
       <span class="hljs-string">"edges"</span> : [ 
-        <span class="hljs-string">"internationalHighway/1745499107"</span> 
+        <span class="hljs-string">"internationalHighway/1745482044"</span> 
       ], 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
     }, 
@@ -50,7 +50,7 @@ arangosh&gt; g._shortestPath({}, {}, {weight : <span class="hljs-string">'distan
         <span class="hljs-string">"frenchCity/Paris"</span> 
       ], 
       <span class="hljs-string">"edges"</span> : [ 
-        <span class="hljs-string">"internationalHighway/1745105891"</span> 
+        <span class="hljs-string">"internationalHighway/1745088828"</span> 
       ], 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
     }, 
@@ -60,7 +60,7 @@ arangosh&gt; g._shortestPath({}, {}, {weight : <span class="hljs-string">'distan
         <span class="hljs-string">"frenchCity/Lyon"</span> 
       ], 
       <span class="hljs-string">"edges"</span> : [ 
-        <span class="hljs-string">"internationalHighway/1745302499"</span> 
+        <span class="hljs-string">"internationalHighway/1745285436"</span> 
       ], 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">1</span> 
     } 

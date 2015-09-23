@@ -6,7 +6,7 @@ arangosh&gt; query.edges([{type: <span class="hljs-string">"married"</span>}, {t
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1387869155"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1388704060"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
@@ -14,7 +14,7 @@ arangosh&gt; query.edges([{type: <span class="hljs-string">"married"</span>}, {t
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndCharly"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndCharly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1388131299"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1388966204"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
@@ -22,7 +22,7 @@ arangosh&gt; query.edges([{type: <span class="hljs-string">"married"</span>}, {t
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1387869155"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1388704060"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
@@ -30,7 +30,7 @@ arangosh&gt; query.edges([{type: <span class="hljs-string">"married"</span>}, {t
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/bobAndDiana"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bobAndDiana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1388524515"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1389359420"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 

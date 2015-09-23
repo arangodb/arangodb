@@ -6,25 +6,25 @@ arangosh&gt; query.vertices().toArray();
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1510224867"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1510207804"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1510552547"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1510535484"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1510945763"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1510928700"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1510749155"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1510732092"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
   } 
 ]

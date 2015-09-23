@@ -5,7 +5,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products/figures
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"639120355"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"635760956"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
@@ -56,7 +56,7 @@ location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"size"</span> : <span class="hljs-number">16120</span> 
     }, 
-    <span class="hljs-string">"lastTick"</span> : <span class="hljs-string">"639513571"</span>, 
+    <span class="hljs-string">"lastTick"</span> : <span class="hljs-string">"636154172"</span>, 
     <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span> 
   }, 
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
