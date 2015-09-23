@@ -166,7 +166,7 @@ namespace triagens {
                                      AstNode* reducedNode) const {
         TRI_ASSERT(internals != nullptr);
         auto internals = getInternals();
-        return internals->canServeForConditionNode(node, reference, nullptr);
+        return internals->canServeForConditionNode(node, reference, reducedNode);
       }
 
 // -----------------------------------------------------------------------------

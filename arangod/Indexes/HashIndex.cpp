@@ -693,8 +693,7 @@ int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
 }
 
 bool HashIndex::accessFitsIndex (triagens::aql::AstNode const* access,
-                                 triagens::aql::Variable const* reference,
-                                 std::unordered_set<std::string>& found) const {
+                                 triagens::aql::Variable const* reference) const {
   if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
     TRI_ASSERT(access->numMembers() == 1);
     if (access->getMember(0)->getData() != reference) {
@@ -708,7 +707,6 @@ bool HashIndex::accessFitsIndex (triagens::aql::AstNode const* access,
       TRI_AttributeNamesToString(field, comp);
       if (attr == comp) {
         // This index knows this attribute
-        found.emplace(attr);
         return true;
       }
     }
@@ -720,22 +718,26 @@ bool HashIndex::accessFitsIndex (triagens::aql::AstNode const* access,
 bool HashIndex::canServeForConditionNode (triagens::aql::AstNode const* node,
                                           triagens::aql::Variable const* reference,
                                           triagens::aql::AstNode* reducedNode) const {
-  std::unordered_set<std::string> found;
+  size_t removed = 0;
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
-      if (accessFitsIndex(op->getMember(0), reference, found) ||
-          accessFitsIndex(op->getMember(1), reference, found)) {
-        if (found.size() == _fields.size()) {
+      if (accessFitsIndex(op->getMember(0), reference) ||
+          accessFitsIndex(op->getMember(1), reference)) {
+        reducedNode->removeMemberUnchecked(i - removed);
+        removed++;
+        if (removed == _fields.size()) {
           return true;
         }
       }
     }
     else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
-      if (accessFitsIndex(op->getMember(0), reference, found)) {
-        if (found.size() == _fields.size()) {
+      if (accessFitsIndex(op->getMember(0), reference)) {
+        reducedNode->removeMemberUnchecked(i - removed);
+        removed++;
+        if (removed == _fields.size()) {
           return true;
         }
       }

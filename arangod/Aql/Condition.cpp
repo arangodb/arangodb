@@ -81,6 +81,35 @@ void ConditionPart::dump () const {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                            static helper function
+// -----------------------------------------------------------------------------
+static void dumpNode (AstNode const* node, int indent) {
+  if (node == nullptr) {
+    return;
+  }
+
+  for (int i = 0; i < indent * 2; ++i) {
+    std::cout << " ";
+  }
+
+  std::cout << node->getTypeString();
+  if (node->type == NODE_TYPE_VALUE) {
+    std::cout << "  (value " << triagens::basics::JsonHelper::toString(node->toJsonValue(TRI_UNKNOWN_MEM_ZONE)) << ")";
+  }
+  else if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    std::cout << "  (attribute " << node->getStringValue() << ")";
+  }
+  else if (node->type == NODE_TYPE_REFERENCE) {
+    std::cout << "  (name " << node->getStringValue() << ")";
+  }
+
+  std::cout << "\n";
+  for (size_t i = 0; i < node->numMembers(); ++i) {
+    dumpNode(node->getMember(i), indent + 1);
+  }
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -155,9 +184,11 @@ void Condition::findIndexForAndNode (AstNode const* node, Variable const* refere
     AstNode* reduced = node->clone(_ast);
     if (idx->canServeForConditionNode(node, reference, reduced)) {
       matching.emplace_back(idx);
-      triagens::basics::Json old(TRI_UNKNOWN_MEM_ZONE, node->toJson(TRI_UNKNOWN_MEM_ZONE, false));
-      triagens::basics::Json opt(TRI_UNKNOWN_MEM_ZONE, reduced->toJson(TRI_UNKNOWN_MEM_ZONE, false));
-      std::cout << old << "\n=>\n" << opt << std::endl;
+      std::cout << "\n===============\n" << std::endl;
+      dumpNode(node, 2);
+      std::cout << "\n=>\n" << std::endl;
+      dumpNode(reduced, 2);
+      std::cout << "\n===============\n" << std::endl;
     }
   }
   std::cout << "We can use indexes for var: " << reference->name << " in collection " << colNode->collection()->getName() << ":" << std::endl;
@@ -430,35 +461,8 @@ void Condition::optimize (ExecutionPlan* plan) {
 /// @brief dump a condition
 ////////////////////////////////////////////////////////////////////////////////
 
+
 void Condition::dump () const {
-  std::function<void(AstNode const*, int)> dumpNode;
-
-  dumpNode = [&dumpNode] (AstNode const* node, int indent) {
-    if (node == nullptr) {
-      return;
-    }
-
-    for (int i = 0; i < indent * 2; ++i) {
-      std::cout << " ";
-    }
-
-    std::cout << node->getTypeString();
-    if (node->type == NODE_TYPE_VALUE) {
-      std::cout << "  (value " << triagens::basics::JsonHelper::toString(node->toJsonValue(TRI_UNKNOWN_MEM_ZONE)) << ")";
-    }
-    else if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      std::cout << "  (attribute " << node->getStringValue() << ")";
-    }
-    else if (node->type == NODE_TYPE_REFERENCE) {
-      std::cout << "  (name " << node->getStringValue() << ")";
-    }
-
-    std::cout << "\n";
-    for (size_t i = 0; i < node->numMembers(); ++i) {
-      dumpNode(node->getMember(i), indent + 1);
-    }
-  };
-
   dumpNode(_root, 0);
 }
 

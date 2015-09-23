@@ -146,8 +146,7 @@ namespace triagens {
         int removeMulti (struct TRI_doc_mptr_t const*, bool);
 
         bool accessFitsIndex (triagens::aql::AstNode const*,
-                              triagens::aql::Variable const*,
-                              std::unordered_set<std::string>& found) const;
+                              triagens::aql::Variable const*) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private classes
