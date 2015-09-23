@@ -1,13 +1,10 @@
 
 ArangoDB Maintainers manual
----------------------------
----------------------------
----------------------------
+===========================
 This file contains documentation about the build process, documentation generation means, unittests - put short - if you want to hack parts of arangod this could be interesting for you.
 
 Configure
----------
----------
+=========
 --enable-relative - relative mode so you can run without make install
 --enable-maintainer-mode - generate lex/yacc files
 --with-backtrace - add backtraces to native code asserts & exceptions
@@ -15,14 +12,19 @@ Configure
 
 CFLAGS
 ------
- -DDEBUG_CLUSTER_COMM - Add backtraces to cluster requests so you can easily track their origin
+Add backtraces to cluster requests so you can easily track their origin:
+
+    -DDEBUG_CLUSTER_COMM
 
 V8 Special flags:
--DENABLE_GDB_JIT_INTERFACE
+
+    -DENABLE_GDB_JIT_INTERFACE
+
 (enable (broken) GDB intergation of JIT)
 At runtime arangod needs to be started with these options:
---javascript.v8-options="--gdbjit_dump"
---javascript.v8-options="--gdbjit_full"
+
+    --javascript.v8-options="--gdbjit_dump"
+    --javascript.v8-options="--gdbjit_full"
 
 Debugging the Make process
 --------------------------
@@ -30,13 +32,13 @@ If the compile goes wrong for no particular reason, appending 'verbose=' adds mo
 
 Runtime
 -------
- * start arangod with --console to get a debug console
- * Cheapen startup for valgrind: --no-server --javascript.gc-frequency 1000000 --javascript.gc-interval 65536 --scheduler.threads=1 --javascript.v8-contexts=1
- * to have backtraces output set this on the prompt: ENABLE_NATIVE_BACKTRACES(true)
+ * start arangod with `--console` to get a debug console
+ * Cheapen startup for valgrind: `--no-server --javascript.gc-frequency 1000000 --javascript.gc-interval 65536 --scheduler.threads=1 --javascript.v8-contexts=1`
+ * to have backtraces output set this on the prompt: `ENABLE_NATIVE_BACKTRACES(true)`
 
 Startup
 -------
-We now have a startup rc file: ~/.arangod.rc . It's evaled as javascript.
+We now have a startup rc file: `~/.arangod.rc`. It's evaled as javascript.
 A sample version to help working with the arangod rescue console may look like that:
 
     ENABLE_NATIVE_BACKTRACES(true);
@@ -53,8 +55,7 @@ A sample version to help working with the arangod rescue console may look like t
 
 
 JSLint
-------
-------
+======
 (we switched to jshint a while back - this is still named jslint for historical reasons)
 
 Make target
@@ -85,11 +86,10 @@ You can invoke it like this:
 
 
 ArangoDB Unittesting Framework
-------------------------------
-------------------------------
+==============================
 Dependencies
 ------------
- * Ruby, rspec, httparty
+ * Ruby, rspec, httparty, boost_test (compile time)
 
 
 Filename conventions
@@ -121,17 +121,21 @@ These tests aren't run automatically since they require a manual set up environm
 -----
 These tests are ran using the jasmine framework instead of jsunity.
 
+-nightly
+--------
+These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.
+
 Test frameworks used
 ====================
 There are several major places where unittests live: 
- - UnitTests/HttpInterface (rspec tests)
- - UnitTests/Basics (boost unittests)
- - UnitTests/Geo (boost unittests)
- - js/server/tests (runneable on the server)
- - js/common/tests (runneable on the server & via arangosh)
- - js/common/test-data
- - js/client/tests (runneable via arangosh)
- - /js/apps/system/aardvark/test
+ - *UnitTests/HttpInterface* rspec tests
+ - *UnitTests/Basics* boost unittests
+ - *UnitTests/Geo* boost unittests
+ - *js/server/tests* runneable on the server
+ - *js/common/tests* runneable on the server & via arangosh
+ - *js/common/test-data*
+ - *js/client/tests* runneable via arangosh
+ - *js/apps/system/aardvark/test*
 
 
 HttpInterface - RSpec Client Tests
@@ -142,15 +146,15 @@ TODO: which tests are these?
 jsUnity on arangod
 ------------------
 you can engage single tests when running arangod with console like this:
-require("jsunity").runTest("js/server/tests/aql-queries-simple.js");
+
+    require("jsunity").runTest("js/server/tests/aql-queries-simple.js");
 
 
 jsUnity via arangosh
 --------------------
 arangosh is similar, however, you can only run tests which are intended to be ran via arangosh:
-require("jsunity").runTest("js/client/tests/shell-client.js");
 
-
+    require("jsunity").runTest("js/client/tests/shell-client.js");
 
 jasmine tests
 -------------
@@ -168,11 +172,8 @@ UnitTests/Makefile.unittests
 Invocation methods
 ==================
 
-
-
 Make-targets
 ------------
-(used in travis CI integration)
 Most of the tests can be invoked via the main Makefile:
  - unittests
   - unittests-brief
@@ -204,7 +205,7 @@ Most of the tests can be invoked via the main Makefile:
 
 Javascript framework
 --------------------
-(used in Jenkins integration; required for running cluster tests)
+(used in Jenkins and Travis integration; required for running cluster tests)
 Invoked like that:
 
     scripts/unittest all
@@ -220,35 +221,22 @@ _________________
 
 The first parameter chooses the facility to execute.
 Available choices include:
- - all: (calls multiple) This target is utilized by most of the jenkins builds invoking unit tests.
- - single_client: (see Running a single unittestsuite)
- 
- - single_server: (see Running a single unittestsuite)
- - single_localserver: (see Running a single unittestsuite)
+ - *all*: (calls multiple) This target is utilized by most of the jenkins builds invoking unit tests.
+ - *single_client*: (see Running a single unittestsuite)
+
+ - *single_server*: (see Running a single unittestsuite)
+ - *single_localserver*: (see Running a single unittestsuite)
  - many more - call without arguments for more details.
-     
 
 Passing Options
 _______________
 
-(Old way: Options are passed in as one json; Please note that formating blanks may cause problems.
 Different facilities may take different options. The above mentioned usage output contains
 the full detail.
 
 A commandline for running a single test (-> with the facility 'single_server') using
-valgrind could look like this: 
-
- scripts/run scripts/unittest.js single_server \
-    '{"test":"js/server/tests/aql-escaping.js",'\
-    '"extraargs":["--server.threads=1",'\
-        '"--scheduler.threads=1",'\
-        '"--javascript.gc-frequency","1000000",'\
-        '"--javascript.gc-interval","65536"],'\
-    '"valgrind":"/usr/bin/valgrind",'\
-    '"valgrindargs":["--log-file=/tmp/valgrindlog.%p"]}'
-)
-Options are passed as regular long values in the syntax --option value --sub:option value.
-Using Valgrind could look like this:
+valgrind could look like this. Options are passed as regular long values in the
+syntax --option value --sub:option value. Using Valgrind could look like this:
 
     ./scripts/unittest single_server --test js/server/tests/aql-escaping.js \
       --extraargs:server.threads 1 \
@@ -273,9 +261,13 @@ Testing a single test with the frame work via arangosh:
 
     scripts/unittest single_client --test js/server/tests/aql-escaping.js
 
+
+Testing a single rspec test:
+
+    scripts/unittest http_server --test api-users-spec.rb
+
 scripts/unittest is mostly only a wrapper; The backend functionality lives in:
 **js/server/modules/org/arangodb/testing.js**
-
 
 Running foxx tests with a fake foxx Repo
 ----------------------------------------
@@ -307,8 +299,7 @@ make unittest
 js/common/modules/loadtestrunner.js
 
 Windows debugging
------------------
------------------
+=================
 For the average *nix user windows debugging has some awkward methods.
 
 Coredump generation
@@ -331,14 +322,13 @@ via the environment variable or in the menu. Given we want to store the symbols 
 You then will be able to see stack traces.
 
 Documentation
--------------
--------------
+=============
 Dependencies to build documentation:
 
-- [swagger 1.2](http://swagger.io/) for the API-Documentation inside aardvark
+- [swagger 2](http://swagger.io/) for the API-Documentation inside aardvark
 
 - Setuptools
-  
+
     https://pypi.python.org/pypi/setuptools
 
     Download setuptools zip file, extract to any folder, use bundled python 2.6 to install:
@@ -355,15 +345,12 @@ Dependencies to build documentation:
 
         python setup.py install
 
-- Node.js / io.js
-  
-    https://iojs.org/
+- [Node.js](https://nodejs.org/)
 
     Make sure the option to *Add to PATH* is enabled.
     After installation, the following commands should be available everywhere:
 
     - `node`
-    - `iojs` (if you installed io.js)
     - `npm`
 
     If not, add the installation path to your environment variable PATH.
@@ -382,25 +369,26 @@ Dependencies to build documentation:
 
 Generate users documentation
 ============================
-
-Simply run the `make` command in `arangodb/Documentation/Books`.
+If you've edited REST-Documentation, first invoke `make swagger`.
+If you've edited examples, see below howto regenerate them.
+Run the `make` command in `arangodb/Documentation/Books`.
 
 You may encounter permission problem with gitbook and its NPM invokations;
 In that case you need to run the command as root / Administrator.
 
-On windows you may see "device busy" errors, retry. Make shure you don't have 
+On windows you may see "device busy" errors, retry. Make shure you don't have
 intermediate files in the ppbooks / books -sub folder open (i.e. browser or editor)
 It can also temporarily occur during phases of high HDD / SSD load.
 
-The build-scripts contain several sanity checks, i.e. whether all examples are 
+The build-scripts contain several sanity checks, i.e. whether all examples are
 used, and no dead references are there. (see building examples in that case below)
 
 If the markdown files aren't converted to html, or `index.html` shows a single
-chapter only (content of `README.md`), make sure 
+chapter only (content of `README.md`), make sure
 [Cygwin create native symlinks](https://docs.arangodb.com/cookbook/CompilingUnderWindows.html)
 It does not, if `SUMMARY.md` in `Books/ppbooks/` looks like this:
 
-    !<symlink>ÿþf o o   
+    !<symlink>ÿþf o o
 
 If sub-chapters do not show in the navigation, try another browser (Firefox).
 Chrome's security policies are pretty strict about localhost and file://
@@ -440,7 +428,7 @@ generate
  - alternatively you can use generateExamples (i.e. on windows since the make target is not portable) like that:
     ./scripts/generateExamples
        --server.endpoint 'tcp://127.0.0.1:8529'
-       --withPython 3rdParty/V8-4.3.61/third_party/python_26/python26.exe 
+       --withPython 3rdParty/V8-4.3.61/third_party/python_26/python26.exe
        --onlyThisOne 'MOD.*'
  - `make examples-inspect-file` generates a file where you can inspect all examples for readability.
  - make swagger - on top level to generate the documentation interactively with the server
@@ -462,12 +450,11 @@ read / use the documentation
  - JS-Console - Tools/API - Interactive documentation which you can play with.
 
 arangod Example tool
---------------------
---------------------
+====================
 `make example` picks examples from the source code documentation, executes them, and creates a transcript including their results.
 *Hint: Windows users may use ./scripts/generateExamples for this purpose*
 
-To update 
+To update
 Heres how its details work:
   - all ending with *.cpp*, *.js* and *.mdpp* are searched.
   - all lines inside of source code starting with '///' are matched, all lines in .mdpp files.
@@ -501,10 +488,10 @@ naming scheme so they're executed in sequence. Using <modulename>_<sequencenumbe
     you have to specify *// xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)* so the exception will be caught;
     else the example is marked as broken.
     If you need to wrap that line, you may want to make the next line like this to suppress an empty line:
-    
+
         /// | someLongStatement()
         /// ~ // xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)
-    
+
  - RUN is intended to be pasted into a unix shell with *cURL* to demonstrate how the REST-HTTP-APIs work.
    The whole chunk of code is executed at once, and is expected **not to throw**.
    You should use **assert(condition)** to ensure the result is what you've expected.
@@ -517,9 +504,8 @@ naming scheme so they're executed in sequence. Using <modulename>_<sequencenumbe
 
 
 Swagger integration
--------------------
--------------------
-`make swagger` scans the sourcecode, and generates swagger output. 
+===================
+`make swagger` scans the sourcecode, and generates swagger output.
 It scans for all documentationblocks containing `@RESTHEADER`
 It is a prerequisite for integrating these blocks into the gitbook documentation.
 
@@ -529,10 +515,10 @@ lines with a long descriptions.
 Sections group a set of tokens; they don't have parameters.
 
 **Types**
-Swagger has several native types referenced below: 
+Swagger has several native types referenced below:
 *[integer|long|float|double|string|byte|binary|boolean|date|dateTime|password]* -
 [see the swagger documentation](https://github.com/swagger-api/swagger-spec/blob/master/versions/2.0.md#data-types)
-    
+
 It consists of several sections which in term have sub-parameters:
 **Supported Sections:**
 
@@ -566,9 +552,9 @@ RESTURLPARAM
 ------------
 Consists of 3 values separated by ',':
 Attributes:
-  - name: name of the parameter
-  - type: 
-  - [required|optionas] Optional is not supported anymore. Split the docublock into one with and one without.
+  - *name*: name of the parameter
+  - *type*:
+  - *[required|optionas]* Optional is not supported anymore. Split the docublock into one with and one without.
 
 Folowed by a long description.
 
