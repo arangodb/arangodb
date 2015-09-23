@@ -160,7 +160,9 @@ namespace triagens {
 
         void invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)>);
 
-        bool canServeForConditionNode (triagens::aql::AstNode const*, triagens::aql::Variable const*) const;
+        bool canServeForConditionNode (triagens::aql::AstNode const*,
+                                       triagens::aql::Variable const*,
+                                       triagens::aql::AstNode*) const override;
         
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

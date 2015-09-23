@@ -254,6 +254,10 @@ namespace triagens {
 
         SkiplistIterator* lookup (TRI_index_operator_t*, bool);
 
+        bool canServeForConditionNode (triagens::aql::AstNode const*,
+                                       triagens::aql::Variable const*,
+                                       triagens::aql::AstNode* reducedNode) const override;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -266,6 +270,10 @@ namespace triagens {
 
         int _CmpKeyElm (TRI_skiplist_index_key_t const* leftKey,
                        TRI_index_element_t const* rightElement);
+
+        bool accessFitsIndex (triagens::aql::AstNode const*,
+                              triagens::aql::Variable const*,
+                              std::unordered_set<std::string>&) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

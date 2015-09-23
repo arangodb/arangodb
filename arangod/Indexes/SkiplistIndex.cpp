@@ -29,6 +29,7 @@
 
 #include "SkiplistIndex.h"
 #include "Basics/logging.h"
+#include "Aql/AstNode.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
@@ -878,6 +879,88 @@ int SkiplistIndex::ElementElementComparator::operator() (TRI_index_element_t con
   }
   return 0;
 }
+
+bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
+                                     triagens::aql::Variable const* reference,
+                                     std::unordered_set<std::string>& found) const {
+  if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    TRI_ASSERT(access->numMembers() == 1);
+    if (access->getMember(0)->getData() != reference) {
+      // This access is not referencing this collection
+      return false;
+    }
+    // We have to check if this attribute string is used
+    std::string attr(access->getStringValue());
+    for (auto& field : _fields) {
+      std::string comp;
+      TRI_AttributeNamesToString(field, comp);
+      if (attr == comp) {
+        // This index knows this attribute
+        found.emplace(attr);
+        return true;
+      }
+    }
+  }
+  return false;
+
+}
+
+bool SkiplistIndex::canServeForConditionNode (triagens::aql::AstNode const* node,
+                                              triagens::aql::Variable const* reference,
+                                              triagens::aql::AstNode* reducedNode) const {
+  std::unordered_set<std::string> foundEq;
+  std::unordered_set<std::string> foundRange;
+  for (size_t i = 0; i < node->numMembers(); ++i) {
+    auto op = node->getMember(i);
+    switch (op->type) {
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+        TRI_ASSERT(op->numMembers() == 2);
+        if (! accessFitsIndex(op->getMember(0), reference, foundEq)) {
+          accessFitsIndex(op->getMember(1), reference, foundEq);
+        }
+        break;
+      /* Deactivated right now. Needs changes outside of this code
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+        TRI_ASSERT(op->numMembers() == 2);
+        if (accessFitsIndex(op->getMember(0), reference, found)) {
+          if (found.size() == _fields.size()) {
+            return true;
+          }
+        }
+        break;
+      */
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+        TRI_ASSERT(op->numMembers() == 2);
+        if (accessFitsIndex(op->getMember(0), reference, foundRange)) {
+          accessFitsIndex(op->getMember(1), reference, foundRange);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  bool canBeUsed = false;
+  for (auto& field : _fields) {
+    std::string f;
+    TRI_AttributeNamesToString(field, f);
+    if (foundEq.find(f) != foundEq.end()) {
+      // We can increase the value of this estimate
+      // and we can use this index for sure
+      canBeUsed = true;
+      continue;
+    }
+    if (foundRange.find(f) != foundRange.end()) {
+      // f is not used in equality check but as a bound
+      // We can only use the index up to this value
+      return true;
+    }
+  }
+  return canBeUsed;
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

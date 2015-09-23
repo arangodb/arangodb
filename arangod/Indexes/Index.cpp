@@ -428,7 +428,9 @@ bool Index::hasBatchInsert () const {
 /// @brief default implementation for canServeForConditionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::canServeForConditionNode (triagens::aql::AstNode const* node, triagens::aql::Variable const* reference) const {
+bool Index::canServeForConditionNode (triagens::aql::AstNode const* node,
+                                      triagens::aql::Variable const* reference,
+                                      triagens::aql::AstNode* reducedNode) const {
   return false;
 }
 

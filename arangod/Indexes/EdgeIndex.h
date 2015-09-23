@@ -128,7 +128,8 @@ namespace triagens {
         }
 
         bool canServeForConditionNode (triagens::aql::AstNode const*,
-                                       triagens::aql::Variable const*) const;
+                                       triagens::aql::Variable const*,
+                                       triagens::aql::AstNode*) const override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

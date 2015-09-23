@@ -152,17 +152,24 @@ void Condition::findIndexForAndNode (AstNode const* node, Variable const* refere
   std::vector<Index*> indexes = colNode->collection()->getIndexes();
   std::vector<Index*> matching;
   for (auto& idx : indexes) {
-    if (idx->canServeForConditionNode(node, reference)) {
+    AstNode* reduced = node->clone(_ast);
+    if (idx->canServeForConditionNode(node, reference, reduced)) {
       matching.emplace_back(idx);
+      triagens::basics::Json old(TRI_UNKNOWN_MEM_ZONE, node->toJson(TRI_UNKNOWN_MEM_ZONE, false));
+      triagens::basics::Json opt(TRI_UNKNOWN_MEM_ZONE, reduced->toJson(TRI_UNKNOWN_MEM_ZONE, false));
+      std::cout << old << "\n=>\n" << opt << std::endl;
     }
   }
   std::cout << "We can use indexes for var: " << reference->name << " in collection " << colNode->collection()->getName() << ":" << std::endl;
   for (auto& idx : matching) {
+    std::cout << idx->toJson() << std::endl;
+    /*
     std::cout << "Type" << idx->type;
     if (idx->hasSelectivityEstimate()) {
       std::cout << " Estimate: " << idx->selectivityEstimate();
     }
     std::cout << std::endl;
+    */
   }
   std::cout << std::endl;
 }

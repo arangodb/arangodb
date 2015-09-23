@@ -718,7 +718,8 @@ bool HashIndex::accessFitsIndex (triagens::aql::AstNode const* access,
 }
 
 bool HashIndex::canServeForConditionNode (triagens::aql::AstNode const* node,
-                                          triagens::aql::Variable const* reference) const {
+                                          triagens::aql::Variable const* reference,
+                                          triagens::aql::AstNode* reducedNode) const {
   std::unordered_set<std::string> found;
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);

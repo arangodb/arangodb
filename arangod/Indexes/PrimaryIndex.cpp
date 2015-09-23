@@ -288,19 +288,25 @@ static bool accessFitsIndex (triagens::aql::AstNode const* access, triagens::aql
   return false;
 }
 
-bool PrimaryIndex::canServeForConditionNode (triagens::aql::AstNode const* node, triagens::aql::Variable const* reference) const {
+bool PrimaryIndex::canServeForConditionNode (triagens::aql::AstNode const* node,
+                                             triagens::aql::Variable const* reference,
+                                             triagens::aql::AstNode* reducedNode) const {
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
       if (accessFitsIndex(op->getMember(0), reference) ||
           accessFitsIndex(op->getMember(1), reference)) {
+        // This index can at most cover one item
+        reducedNode->removeMemberUnchecked(i);
         return true;
       }
     }
     else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
       if (accessFitsIndex(op->getMember(0), reference)) {
+        // This index can at most cover one item
+        reducedNode->removeMemberUnchecked(i);
         return true;
       }
     }

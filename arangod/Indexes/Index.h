@@ -291,7 +291,9 @@ namespace triagens {
 
         virtual bool hasBatchInsert () const;
 
-        virtual bool canServeForConditionNode (triagens::aql::AstNode const*, triagens::aql::Variable const*) const;
+        virtual bool canServeForConditionNode (triagens::aql::AstNode const*,
+                                               triagens::aql::Variable const*,
+                                               triagens::aql::AstNode*) const;
 
         friend std::ostream& operator<< (std::ostream&, Index const*);
         friend std::ostream& operator<< (std::ostream&, Index const&);
