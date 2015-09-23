@@ -522,7 +522,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline size_t numMembers () const throw() {
-          return members._length;
+          return members.size();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -534,10 +534,10 @@ namespace triagens {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
 
-          int res = TRI_PushBackVectorPointer(&members, static_cast<void*>(node));
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            THROW_ARANGO_EXCEPTION(res);
+          try {
+            members.emplace_back(node);
+          } catch (...) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
         }
 
@@ -555,11 +555,10 @@ namespace triagens {
 
         void changeMember (size_t i,
                            AstNode* node) {
-          if (i >= members._length) {
+          if (i >= members.size()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
           }
-
-          members._buffer[i] = node;
+          members.at(i) = node;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -567,7 +566,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline void removeMemberUnchecked (size_t i) {
-          TRI_RemoveVectorPointer(&members, i);
+          members.erase(members.begin() + i);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -575,7 +574,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline AstNode* getMember (size_t i) const {
-          if (i >= members._length) {
+          if (i >= members.size()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
           }
           return getMemberUnchecked(i);
@@ -586,7 +585,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline AstNode* getMemberUnchecked (size_t i) const throw() {
-          return static_cast<AstNode*>(members._buffer[i]);
+          return members.at(i);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -594,10 +593,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void reduceMembers (size_t i) {
-          if (i > members._length) {
+          if (i > members.size()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
           }
-          members._length = i;
+          members.erase(members.begin() + i, members.end());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -790,7 +789,7 @@ namespace triagens {
 /// @brief the node's sub nodes
 ////////////////////////////////////////////////////////////////////////////////
       
-        TRI_vector_pointer_t      members;
+        std::vector<AstNode*>     members;
 
     };
 

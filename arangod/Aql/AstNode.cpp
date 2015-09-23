@@ -400,8 +400,6 @@ AstNode::AstNode (AstNodeType type)
   : type(type),
     flags(0),
     computedJson(nullptr) {
-
-  TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -609,7 +607,7 @@ AstNode::AstNode (Ast* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode::~AstNode () {
-  TRI_DestroyVectorPointer(&members);
+  members.clear();
   
   if (computedJson != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, computedJson);
@@ -648,14 +646,8 @@ void AstNode::sort () {
   TRI_ASSERT(type == NODE_TYPE_ARRAY);
   TRI_ASSERT_EXPENSIVE(isConstant());
 
-  auto const ptr = members._buffer;
-  auto const end = ptr + numMembers();
-
-  std::sort(ptr, end, [] (void const* lhs, void const* rhs) {
-    auto const l = static_cast<AstNode const*>(lhs);
-    auto const r = static_cast<AstNode const*>(rhs);
-
-    return (triagens::aql::CompareAstNodes(l, r, false) < 0);
+  std::sort(members.begin(), members.end(), [] (AstNode const* lhs, AstNode const* rhs) {
+    return (triagens::aql::CompareAstNodes(lhs, rhs, false) < 0);
   });
 
   setFlag(DETERMINED_SORTED, VALUE_SORTED);
@@ -893,7 +885,7 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
   }
   
   // dump sub-nodes 
-  size_t const n = TRI_LengthVectorPointer(&members);
+  size_t const n = members.size();
 
   if (n > 0) {
     TRI_json_t* subNodes = TRI_CreateArrayJson(zone, n);
