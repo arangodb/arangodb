@@ -2045,6 +2045,7 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
     };
 
     ~ConditionFinder () {
+      delete _condition;
     }
     
     bool before (ExecutionNode* en) override final {
