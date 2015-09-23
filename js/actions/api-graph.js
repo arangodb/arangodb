@@ -162,6 +162,58 @@ function matchError (req, res, doc, errorCode) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_post
+/// @brief create a graph
+///
+/// @RESTHEADER{POST /_api/graph,create graph}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until document has been synced to disk.
+///
+/// @RESTALLBODYPARAM{graph,json,required}
+/// The call expects a JSON object as body with the following attributes:
+/// `_key`: The name of the new graph.
+/// `vertices`: The name of the vertices collection.
+/// `edges`: The name of the egde collection.
+///
+/// @RESTDESCRIPTION
+/// Creates a new graph.
+///
+/// Returns an object with an attribute `graph` containing a
+/// list of all graph properties.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the graph was created successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the graph was created successfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if it failed.
+/// The response body contains an error document in this case.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphPostGraph}
+///     var url = "/_api/graph/";
+///     var response = logCurlRequest('POST',
+///                                   url,
+///                                   {_key : "graph", vertices : "vertices", edges : "edges"});
+///
+///     assert(response.code === 201 || response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_graph (req, res) {
@@ -201,6 +253,102 @@ function post_graph_graph (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_properties
+/// @brief get graph properties
+///
+/// @RESTHEADER{GET /_api/graph/{graph-name},get the properties of a specific or all graphs}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph.
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-None-Match,string,optional}
+/// If `graph-name` is specified, then this header can be used to check
+/// whether a specific graph has changed or not.
+///
+/// If the "If-None-Match" header is given, then it must contain exactly one
+/// etag. The document is returned if it has a different revision than the
+/// given etag. Otherwise a `HTTP 304` is returned.
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// If `graph-name` is specified, then this header can be used to check
+/// whether a specific graph has changed or not.
+///
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has the same revision ad the
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+///
+/// If `graph-name` is specified, returns an object with an attribute `graph`
+/// containing a JSON object with all properties of the specified graph.
+///
+/// If `graph-name` is not specified, returns a list of graph objects.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the graph was found (in case `graph-name` was specified)
+/// or the list of graphs was assembled successfully (in case `graph-name`
+/// was not specified).
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the graph was not found. This response code may only be
+/// returned if `graph-name` is specified in the request.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{304}
+/// "If-None-Match" header is given and the current graph has not a different
+/// version. This response code may only be returned if `graph-name` is
+/// specified in the request.
+///
+/// @RESTRETURNCODE{412}
+/// "If-Match" header or `rev` is given and the current graph has
+/// a different version. This response code may only be returned if `graph-name`
+/// is specified in the request.
+///
+/// @EXAMPLES
+///
+/// get graph by name
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetGraph}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var url = "/_api/graph/graph";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// get all graphs
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetGraphs}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     new Graph("graph1", "vertices1", "edges1");
+///     new Graph("graph2", "vertices2", "edges2");
+///     var url = "/_api/graph";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop("edges1");
+///     db._drop("vertices1");
+///     db._drop("edges2");
+///     db._drop("vertices2");
+///     db._graphs.remove("graph1");
+///     db._graphs.remove("graph2");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_graph (req, res) {
@@ -224,6 +372,60 @@ function get_graph_graph (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_delete
+/// @brief deletes a graph
+///
+/// @RESTHEADER{DELETE /_api/graph/{graph-name},delete graph}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has the same revision ad the
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+/// Deletes graph, edges and vertices
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the graph was deleted and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the graph was deleted and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the graph was not found.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{412}
+/// "If-Match" header or `rev` is given and the current graph has
+/// a different version
+///
+/// @EXAMPLES
+///
+/// delete graph by name
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteGraph}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var url = "/_api/graph/graph";
+///     var response = logCurlRequest('DELETE', url);
+///
+///     assert(response.code === 200 || response.code === 202);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_graph (req, res) {
@@ -273,6 +475,58 @@ function delete_graph_graph (req, res) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_create_vertex
+/// @brief creates a graph vertex
+///
+/// @RESTHEADER{POST /_api/graph/{graph-name}/vertex,create vertex}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until document has been sync to disk.
+///
+/// @RESTALLBODYPARAM{vertex,json,required}
+/// The call expects a JSON object as body with the vertex properties:
+/// - `_key`: The name of the vertex (optional).
+/// - further optional attributes.
+///
+/// @RESTDESCRIPTION
+/// Creates a vertex in a graph.
+///
+/// Returns an object with an attribute `vertex` containing a
+/// list of all vertex properties.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the graph was created successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the graph was created successfully and `waitForSync` was
+/// `false`.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphCreateVertex}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var url = "/_api/graph/graph/vertex";
+///     var response = logCurlRequest('POST', url, {"_key" : "v1", "optional1" : "val1" });
+///
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_vertex (req, res, g) {
@@ -309,6 +563,77 @@ function post_graph_vertex (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_get_vertex
+/// @brief gets the vertex properties
+///
+/// @RESTHEADER{GET /_api/graph/{graph-name}/vertex/{vertex-name},get vertex}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTURLPARAM{vertex-name,string,required}
+/// The name of the vertex
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// Revision of a vertex
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-None-Match,string,optional}
+/// If the "If-None-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has a different revision than the
+/// given etag. Otherwise a `HTTP 304` is returned.
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has the same revision ad the
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+/// Returns an object with an attribute `vertex` containing a
+/// list of all vertex properties.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the graph was found
+///
+/// @RESTRETURNCODE{304}
+/// "If-Match" header is given and the current graph has not a different
+/// version
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the graph or vertex was not found.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{412}
+/// "If-None-Match" header or `rev` is given and the current graph has
+/// a different version
+///
+/// @EXAMPLES
+///
+/// get vertex properties by name
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertex}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     g.addVertex("v1", {"optional1" : "val1" });
+///     var url = "/_api/graph/graph/vertex/v1";
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_vertex (req, res, g) {
@@ -334,6 +659,73 @@ function get_graph_vertex (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_delete_vertex
+/// @brief delete vertex
+///
+/// @RESTHEADER{DELETE /_api/graph/{graph-name}/vertex/{vertex-name},delete vertex}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTURLPARAM{vertex-name,string,required}
+/// The name of the vertex
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until document has been sync to disk.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// Revision of a vertex
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{If-Match,string,optional}
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has the same revision ad the
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+/// Deletes vertex and all in and out edges of the vertex
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the vertex was deleted and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the vertex was deleted and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the graph or the vertex was not found.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{412}
+/// "If-Match" header or `rev` is given and the current vertex has
+/// a different version
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteVertex}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     g.addVertex("v1", {"optional1" : "val1" });
+///     var url = "/_api/graph/graph/vertex/v1";
+///     var response = logCurlRequest('DELETE', url);
+///
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_vertex (req, res, g) {
@@ -432,6 +824,79 @@ function update_graph_vertex (req, res, g, isPatch) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_put_vertex
+/// @brief updates a vertex
+///
+/// @RESTHEADER{PUT /_api/graph/{graph-name}/vertex/{vertex-name},update vertex}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTURLPARAM{vertex-name,string,required}
+/// The name of the vertex
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until vertex has been sync to disk.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// Revision of a vertex
+///
+/// @RESTALLBODYPARAM{vertex,json,required}
+/// The call expects a JSON object as body with the new vertex properties.
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{if-match,string,optional}
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is updated, if it has the same revision ad the
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+/// Replaces the vertex properties.
+///
+/// Returns an object with an attribute `vertex` containing a
+/// list of all vertex properties.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the vertex was updated successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the vertex was updated successfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the graph or the vertex was not found.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{412}
+/// "If-Match" header or `rev` is given and the current vertex has
+/// a different version
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphChangeVertex}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     g.addVertex("v1", {"optional1" : "val1" });
+///     var url = "/_api/graph/graph/vertex/v1";
+///     var response = logCurlRequest('PUT', url, { "optional1" : "val2" });
+///
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_graph_vertex (req, res, g) {
@@ -439,6 +904,95 @@ function put_graph_vertex (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_patch_vertex
+/// @brief updates a vertex
+///
+/// @RESTHEADER{PATCH /_api/graph/{graph-name}/vertex/{vertex-name},update vertex}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTURLPARAM{vertex-name,string,required}
+/// The name of the vertex
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until vertex has been sync to disk.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// Revision of a vertex
+///
+/// @RESTQUERYPARAM{keepNull,boolean,optional}
+/// Modify the behavior of the patch command to remove any attribute
+///
+/// @RESTALLBODYPARAM{graph,json,required}
+/// The call expects a JSON object as body with the properties to patch.
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{if-match,string,optional}
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is updated, if it has the same revision ad the
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+/// Partially updates the vertex properties.
+///
+/// Setting an attribute value to `null` in the patch document will cause a value
+/// of `null` be saved for the attribute by default. If the intention is to
+/// delete existing attributes with the patch command, the URL parameter
+/// `keepNull` can be used with a value of `false`.
+/// This will modify the behavior of the patch command to remove any attributes
+/// from the existing document that are contained in the patch document
+/// with an attribute value of `null`.
+///
+/// Returns an object with an attribute `vertex` containing a
+/// list of all vertex properties.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the vertex was updated successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the vertex was updated successfully and `waitForSync` was
+/// `false`.
+///
+// @RESTRETURNCODE{404}
+/// is returned if the graph or the vertex was not found.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{412}
+/// "If-Match" header or `rev` is given and the current vertex has
+/// a different version
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphChangepVertex}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     g.addVertex("v1", { "optional1" : "val1" });
+///     var url = "/_api/graph/graph/vertex/v1";
+///     var response = logCurlRequest('PATCH', url, { "optional1" : "vertexPatch" });
+///
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     var response = logCurlRequest('PATCH', url, { "optional1" : null });
+///
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function patch_graph_vertex (req, res, g) {
@@ -538,6 +1092,65 @@ function process_labels_filter (data, labels, collname) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_get_vertices
+/// @brief gets the vertices of a graph
+///
+/// @RESTHEADER{POST /_api/graph/{graph-name}/vertices,get vertices}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTALLBODYPARAM{filter,json,required}
+/// The call expects a JSON object as body to filter the result:
+///
+/// @RESTDESCRIPTION
+/// Returns a cursor.
+///
+/// The call expects a JSON object as body to filter the result:
+///
+/// - `batchSize`: the batch size of the returned cursor
+/// - `limit`: limit the result size
+/// - `count`: return the total number of results (default "false")
+/// - `filter`: an optional filter
+///
+/// The attributes of filter
+/// - `properties`: filter by an array of vertex properties
+///
+/// The attributes of a property filter
+/// - `key`: filter the result vertices by a key value pair
+/// - `value`: the value of the `key`
+/// - `compare`: a compare operator
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the cursor was created
+///
+/// @EXAMPLES
+///
+/// Select all vertices
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertices}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     g.addVertex("v1", { "optional1" : "val1" });
+///     g.addVertex("v2", { "optional1" : "val1" });
+///     g.addVertex("v3", { "optional1" : "val1" });
+///     g.addVertex("v4", { "optional1" : "val1" });
+///     g.addVertex("v5", { "optional1" : "val1" });
+///     var url = "/_api/graph/graph/vertices";
+///     var response = logCurlRequest('POST', url, {"batchSize" : 100 });
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_all_vertices (req, res, g) {
@@ -587,6 +1200,114 @@ function post_graph_all_vertices (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_vertex_get_neighbours
+/// @brief get neighbors of a vertex
+///
+/// @RESTHEADER{POST /_api/graph/{graph-name}/vertices/{vertex-name},get vertices}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTURLPARAM{vertex-name,string,required}
+/// The key of the vertex
+///
+/// @RESTALLBODYPARAM{graph,json,required}
+/// The call expects a JSON object as body to filter the result:
+///
+/// @RESTDESCRIPTION
+/// Returns a cursor.
+///
+/// The call expects a JSON object as body to filter the result:
+///
+/// - `batchSize`: the batch size of the returned cursor
+/// - `limit`: limit the result size
+/// - `count`: return the total number of results (default "false")
+/// - `filter`: a optional filter
+///
+/// The attributes of filter
+/// - `direction`: Filter for inbound (value "in") or outbound (value "out")
+///   neighbors. Default value is "any".
+/// - `labels`: filter by an array of edge labels (empty array means no restriction)
+/// - `properties`: filter neighbors by an array of edge properties
+///
+/// The attributes of a property filter
+/// - `key`: filter the result vertices by a key value pair
+/// - `value`: the value of the `key`
+/// - `compare`: a compare operator
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the cursor was created
+///
+/// @EXAMPLES
+///
+/// Select all vertices
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertexVertices}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("v1", { "optional1" : "val1" });
+///     var v2 = g.addVertex("v2", { "optional1" : "val1" });
+///     var v3 = g.addVertex("v3", { "optional1" : "val1" });
+///     var v4 = g.addVertex("v4", { "optional1" : "val1" });
+///     var v5 = g.addVertex("v5", { "optional1" : "val1" });
+///     g.addEdge(v1,v5, 1);
+///     g.addEdge(v1,v2, 2);
+///     g.addEdge(v1,v3, 3);
+///     g.addEdge(v2,v4, 4);
+///     var url = "/_api/graph/graph/vertices/v2";
+///     var body = {
+///            "batchSize" : 100,
+///            "filter" : {
+///              "direction" : "any",
+///               "properties":[] }};
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 201);
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Select vertices by direction and property filter
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertexVertices2}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("v1", { "optional1" : "val1" });
+///     var v2 = g.addVertex("v2", { "optional1" : "val2" });
+///     var v3 = g.addVertex("v3", { "optional1" : "val2" });
+///     var v4 = g.addVertex("v4", { "optional1" : "val2" });
+///     var v5 = g.addVertex("v5", { "optional1" : "val1" });
+///     g.addEdge(v1, v5, 1);
+///     g.addEdge(v2, v1, 2);
+///     g.addEdge(v1, v3, 3);
+///     g.addEdge(v4, v2, 4);
+///     var url = "/_api/graph/graph/vertices/v2";
+///     var body = {
+///         "batchSize" : 100,
+///         "filter" : {
+///             "direction" : "out",
+///             "properties": [ {
+///                    "key": "optional1",
+///                    "value": "val2",
+///                    "compare" : "==" }, ] }};
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_vertex_vertices (req, res, g) {
@@ -661,6 +1382,67 @@ function post_graph_vertex_vertices (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_create_edge
+/// @brief creates an edge
+///
+/// @RESTHEADER{POST /_api/graph/{graph-name}/edge,create edge}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until edge has been sync to disk.
+///
+/// @RESTALLBODYPARAM{edge,json,required}
+/// The call expects a JSON object as body with the edge properties:
+///
+/// @RESTDESCRIPTION
+/// Creates an edge in a graph.
+///
+/// The call expects a JSON object as body with the edge properties:
+///
+/// - `_key`: The name of the edge (optional, if edge collection allows user defined keys).
+/// - `_from`: The name of the from vertex.
+/// - `_to`: The name of the to vertex.
+/// - `$label`: A label for the edge (optional).
+/// - further optional attributes.
+///
+/// Returns an object with an attribute `edge` containing the
+/// list of all edge properties.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the edge was created successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the edge was created successfully and `waitForSync` was
+/// `false`.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphCreateEdge}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var url = "/_api/graph/graph/edge";
+///     g.addVertex("vert1");
+///     g.addVertex("vert2");
+///     var body = {"_key" : "edge1", "_from" : "vert2", "_to" : "vert1", "optional1" : "val1"};
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_edge (req, res, g) {
@@ -705,6 +1487,77 @@ function post_graph_edge (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_get_edge_properties
+/// @brief get edge properties
+///
+/// @RESTHEADER{GET /_api/graph/{graph-name}/edge/{edge-name},get edge}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTURLPARAM{edge-name,string,required}
+/// The name of the edge
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// Revision of an edge
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{if-none-match,string,optional}
+/// If the "If-None-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has a different revision than the
+/// given etag. Otherwise a `HTTP 304` is returned.
+///
+/// @RESTHEADERPARAM{if-match,string,optional}
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has the same revision ad the
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+/// Returns an object with an attribute `edge` containing a
+/// list of all edge properties.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the edge was found
+///
+/// @RESTRETURNCODE{304}
+/// "If-Match" header is given and the current edge has not a different
+/// version
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the graph or edge was not found.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{412}
+/// "If-None-Match" header or `rev` is given and the current edge has
+/// a different version
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetEdge}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var url = "/_api/graph/graph/edge/edge1";
+///     var v1 = g.addVertex("vert1");
+///     var v2 = g.addVertex("vert2");
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" });
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_graph_edge (req, res, g) {
@@ -729,6 +1582,75 @@ function get_graph_edge (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_delete_edge
+/// @brief deletes an edge
+///
+/// @RESTHEADER{DELETE /_api/graph/{graph-name}/edge/{edge-name},delete edge}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTURLPARAM{edge-name,string,required}
+/// The name of the edge
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until edge has been sync to disk.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// Revision of an edge
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{if-match,string,optional}
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has the same revision ad the
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+/// Deletes an edge of the graph
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the edge was deletd successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the edge was deleted successfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the graph or the edge was not found.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{412}
+/// "If-Match" header or `rev` is given and the current edge has
+/// a different version
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphDeleteEdge}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("vert1");
+///     var v2 = g.addVertex("vert2");
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" });
+///     var url = "/_api/graph/graph/edge/edge1";
+///     var response = logCurlRequest('DELETE', url);
+///
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_graph_edge (req, res, g) {
@@ -828,6 +1750,83 @@ function update_graph_edge (req, res, g, isPatch) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_update_edge
+/// @brief updates an edge
+///
+/// @RESTHEADER{PUT /_api/graph/{graph-name}/edge/{edge-name},update edge}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTURLPARAM{edge-name,string,required}
+/// The name of the edge
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until edge has been sync to disk.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// Revision of an edge
+///
+/// @RESTALLBODYPARAM{edge,json,required}
+/// The call expects a JSON object as body with the new edge properties.
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{if-match,string,optional}
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has the same revision ad the
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+/// Replaces the optional edge properties.
+///
+/// The call expects a JSON object as body with the new edge properties.
+///
+/// Returns an object with an attribute `edge` containing a
+/// list of all edge properties.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the edge was updated successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the edge was updated successfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the graph or the edge was not found.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{412}
+/// "If-Match" header or `rev` is given and the current edge has
+/// a different version
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphChangeEdge}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("vert1");
+///     var v2 = g.addVertex("vert2");
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" });
+///     var url = "/_api/graph/graph/edge/edge1";
+///     var response = logCurlRequest('PUT', url, { "optional1" : "val2" });
+///
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_graph_edge (req, res, g) {
@@ -835,6 +1834,92 @@ function put_graph_edge (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_patch_edge
+/// @brief updates an edge
+///
+/// @RESTHEADER{PATCH /_api/graph/{graph-name}/edge/{edge-name},update edge}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTURLPARAM{edge-name,string,required}
+/// The name of the edge
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{waitForSync,boolean,optional}
+/// Wait until edge has been sync to disk.
+///
+/// @RESTQUERYPARAM{rev,string,optional}
+/// Revision of an edge
+///
+/// @RESTQUERYPARAM{keepNull,boolean,optional}
+/// Modify the behavior of the patch command to remove any attribute
+///
+/// @RESTALLBODYPARAM{edge-properties,json,required}
+/// The call expects a JSON object as body with the properties to patch.
+///
+/// @RESTHEADERPARAMETERS
+///
+/// @RESTHEADERPARAM{if-match,string,optional}
+/// If the "If-Match" header is given, then it must contain exactly one
+/// etag. The document is returned, if it has the same revision ad the
+/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
+/// you can supply the etag in an attribute `rev` in the URL.
+///
+/// @RESTDESCRIPTION
+/// Partially updates the edge properties.
+///
+/// Setting an attribute value to `null` in the patch document will cause a value
+/// of `null` be saved for the attribute by default. If the intention is to
+/// delete existing attributes with the patch command, the URL parameter
+/// `keepNull` can be used with a value of `false`.
+/// This will modify the behavior of the patch command to remove any attributes
+/// from the existing document that are contained in the patch document
+/// with an attribute value of `null`.
+///
+/// Returns an object with an attribute `edge` containing a
+/// list of all edge properties.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the edge was updated successfully and `waitForSync` was
+/// `true`.
+///
+/// @RESTRETURNCODE{202}
+/// is returned if the edge was updated successfully and `waitForSync` was
+/// `false`.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the graph or the edge was not found.
+/// The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{412}
+/// "If-Match" header or `rev` is given and the current edge has
+/// a different version
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphChangepEdge}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("vert1");
+///     var v2 = g.addVertex("vert2");
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" });
+///     var url = "/_api/graph/graph/edge/edge1";
+///     var response = logCurlRequest('PATCH', url, { "optional3" : "val3" });
+///
+///     assert(response.code === 202);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function patch_graph_edge (req, res, g) {
@@ -842,6 +1927,70 @@ function patch_graph_edge (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_fetch_edge
+/// @brief get edges of a graph
+///
+/// @RESTHEADER{POST /_api/graph/{graph-name}/edges,get edges}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTALLBODYPARAM{edge-properties,json,required}
+/// The call expects a JSON object as body to filter the result:
+///
+/// @RESTDESCRIPTION
+/// Returns a cursor.
+///
+/// The call expects a JSON object as body to filter the result:
+///
+/// - `batchSize`: the batch size of the returned cursor
+/// - `limit`: limit the result size
+/// - `count`: return the total number of results (default "false")
+/// - `filter`: a optional filter
+///
+/// The attributes of filter
+/// - `labels`: filter by an array of edge labels
+/// - `properties`: filter by an array of edge properties
+///
+/// The attributes of a property filter
+/// - `key`: filter the result edges by a key value pair
+/// - `value`: the value of the `key`
+/// - `compare`: a compare operator
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the cursor was created
+///
+/// @EXAMPLES
+///
+/// Select all edges
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetEdges}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("v1", { "optional1" : "val1" });
+///     var v2 = g.addVertex("v2", { "optional1" : "val1" });
+///     var v3 = g.addVertex("v3", { "optional1" : "val1" });
+///     var v4 = g.addVertex("v4", { "optional1" : "val1" });
+///     var v5 = g.addVertex("v5", { "optional1" : "val1" });
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" });
+///     g.addEdge(v1, v3, "edge2", { "optional1" : "val1" });
+///     g.addEdge(v2, v4, "edge3", { "optional1" : "val1" });
+///     g.addEdge(v1, v5, "edge4", { "optional1" : "val1" });
+///     var url = "/_api/graph/graph/edges";
+///     var response = logCurlRequest('POST', url, {"batchSize" : 100 });
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_all_edges (req, res, g) {
@@ -900,6 +2049,77 @@ function post_graph_all_edges (req, res, g) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_graph_fetch_vertex_edge
+/// @brief get edges of a vertex
+///
+/// @RESTHEADER{POST /_api/graph/{graph-name}/edges/{vertex-name},get edges}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{graph-name,string,required}
+/// The name of the graph
+///
+/// @RESTURLPARAM{vertex-name,string,required}
+/// The name of the vertex
+///
+/// @RESTALLBODYPARAM{edge-properties,json,required}
+/// The call expects a JSON object as body to filter the result:
+///
+/// @RESTDESCRIPTION
+///
+/// Returns a cursor.
+///
+/// The call expects a JSON object as body to filter the result:
+///
+/// - `batchSize`: the batch size of the returned cursor
+/// - `limit`: limit the result size
+/// - `count`: return the total number of results (default "false")
+/// - `filter`: a optional filter
+///
+/// The attributes of filter
+/// - `direction`: Filter for inbound (value "in") or outbound (value "out")
+///   neighbors. Default value is "any".
+/// - `labels`: filter by an array of edge labels
+/// - `properties`: filter neighbors by an array of properties
+///
+/// The attributes of a property filter
+/// - `key`: filter the result vertices by a key value pair
+/// - `value`: the value of the `key`
+/// - `compare`: a compare operator
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the cursor was created
+///
+/// @EXAMPLES
+///
+/// Select all edges
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestGraphGetVertexEdges}
+///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var g = new Graph("graph", "vertices", "edges");
+///     var v1 = g.addVertex("v1", { "optional1" : "val1" });
+///     var v2 = g.addVertex("v2", { "optional1" : "val1" });
+///     var v3 = g.addVertex("v3", { "optional1" : "val1" });
+///     var v4 = g.addVertex("v4", { "optional1" : "val1" });
+///     var v5 = g.addVertex("v5", { "optional1" : "val1" });
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" });
+///     g.addEdge(v1, v3, "edge2", { "optional1" : "val1" });
+///     g.addEdge(v2, v4, "edge3", { "optional1" : "val1" });
+///     g.addEdge(v1, v5, "edge4", { "optional1" : "val1" });
+///     var url = "/_api/graph/graph/edges/v2";
+///     var body = {"batchSize" : 100, "filter" : { "direction" : "any" }};
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop("edges");
+///     db._drop("vertices");
+///     db._graphs.remove("graph");
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_graph_vertex_edges (req, res, g) {

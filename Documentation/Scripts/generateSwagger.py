@@ -1229,7 +1229,7 @@ files = {
   "Database" : [ "js/actions/api-database.js" ],
   "Cluster" : ["js/actions/api-cluster.js"],
   "Documents" : [ "arangod/RestHandler/RestDocumentHandler.cpp" ],
-  "Graph" : ["js/apps/system/_api/gharial/APP/gharial.js"],
+  "Graph" : ["js/apps/system/_api/gharial/APP/gharial.js", "js/actions/api-graph.js" ],
   "Graph edges" : [ "arangod/RestHandler/RestEdgeHandler.cpp", "js/actions/api-edges.js" ],
   "Graph Traversal" : [ "js/actions/api-traversal.js" ],
   "Indexes" : [ "js/actions/api-index.js" ],
