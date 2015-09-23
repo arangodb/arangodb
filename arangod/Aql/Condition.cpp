@@ -94,7 +94,9 @@ static void dumpNode (AstNode const* node, int indent) {
 
   std::cout << node->getTypeString();
   if (node->type == NODE_TYPE_VALUE) {
-    std::cout << "  (value " << triagens::basics::JsonHelper::toString(node->toJsonValue(TRI_UNKNOWN_MEM_ZONE)) << ")";
+    TRI_json_t* jsonVal =  node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+    std::cout << "  (value " << triagens::basics::JsonHelper::toString(jsonVal) << ")";
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, jsonVal);
   }
   else if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     std::cout << "  (attribute " << node->getStringValue() << ")";
