@@ -1,5 +1,5 @@
 v2.7.0-rc2 (2015-09-22)
--------------------
+-----------------------
 
 * fix over-eager datafile compaction
 
@@ -35,6 +35,14 @@ v2.7.0-rc2 (2015-09-22)
 
   `(` `)` `+` `,` `=` `;` `$` `!` `*` `'` `%`
 
+
+v2.7.0-rc1 (2015-09-17)
+-----------------------
+
+* upgraded Swagger to version 2.0 for the Documentation
+ 
+  This gives the user better prepared test request structures.
+  More conversions will follow so finally client libraries can be auto-generated.
 
 * added extra AQL functions for date and time calculation and manipulation. 
   These functions were contributed by GitHub users @CoDEmanX and @friday. 
