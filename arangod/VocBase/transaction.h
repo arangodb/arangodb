@@ -256,6 +256,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t*,
                                   TRI_voc_cid_t,
                                   TRI_transaction_type_e,
                                   int,
+                                  bool,
                                   bool);
 
 ////////////////////////////////////////////////////////////////////////////////

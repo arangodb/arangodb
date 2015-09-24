@@ -31,21 +31,22 @@ collections are potentially non-repeatable.
 
 **EXAMPLES**:
 
-    db._executeTransaction({
-      collections: { 
-        read: "users"
-      },
-      action: function () {
-        // execute an AQL query that traverses a graph starting at a "users" vertex. 
-        // it is yet unknown into which other collections the query will traverse 
-        db._createStatement({ 
-          query: "FOR t IN TRAVERSAL(users, connections, "users/1234", "any", { }) RETURN t"
-        }).execute().toArray().forEach(function (d) {
-          // ...
-        });
-      }
+```js
+db._executeTransaction({
+  collections: { 
+    read: "users"
+  },
+  action: function () {
+    // execute an AQL query that traverses a graph starting at a "users" vertex. 
+    // it is yet unknown into which other collections the query will traverse 
+    db._createStatement({ 
+      query: "FOR t IN TRAVERSAL(users, connections, "users/1234", "any", { }) RETURN t"
+    }).execute().toArray().forEach(function (d) {
+      // ...
     });
-
+  }
+});
+```
 
 This automatic lazy addition of collections to a transaction also introduces the 
 possibility of deadlocks. Deadlocks may occur if there are concurrent transactions 
@@ -53,7 +54,7 @@ that try to acquire locks on the same collections lazily.
 
 To recover from a deadlock state, ArangoDB will give up waiting for a collection
 after a configurable amount of time. The wait time can be specified per transaction 
-using the optional*lockTimeout*attribute. If no value is specified, some default
+using the optional *lockTimeout* attribute. If no value is specified, some default
 value will be applied.
 
 If ArangoDB was waited at least *lockTimeout* seconds during lock acquisition, it
@@ -63,7 +64,32 @@ at least as many lock acquisition attempts as there are collections used in the
 transaction. The total lock wait time may thus be much higher than the value of
 *lockTimeout*.
 
-
 To avoid both deadlocks and non-repeatable reads, all collections used in a 
 transaction should always be specified if known in advance.
+
+In order to make a transaction fail when a non-declared collection is used inside
+a transaction for reading, the optional *allowImplicit* sub-attribute of *collections* 
+can be set to *false*:
+
+```js
+db._executeTransaction({
+  collections: { 
+    read: "users",
+    allowImplicit: false
+  },
+  action: function () {
+    // the below query will now fail because the collection connections has not 
+    // been specified in the list of collections used by the transaction
+    db._createStatement({ 
+      query: "FOR t IN TRAVERSAL(users, connections, "users/1234", "any", { }) RETURN t"
+    }).execute().toArray().forEach(function (d) {
+      // ...
+    });
+  }
+});
+```
+
+The default value for *allowImplicit* is *true*. Write-accessing collections that
+have not been declared in the *collections* array is never possible, regardless of
+the value of *allowImplicit*.
 

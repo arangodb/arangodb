@@ -934,7 +934,8 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
                                   TRI_voc_cid_t cid,
                                   TRI_transaction_type_e accessType,
                                   int nestingLevel,
-                                  bool force) {
+                                  bool force,
+                                  bool allowImplicitCollections) {
 
   LOG_TRX(trx, nestingLevel, "adding collection %llu", (unsigned long long) cid);
 
@@ -983,6 +984,10 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
 
   if (nestingLevel > 0 && accessType == TRI_TRANSACTION_WRITE) {
     // trying to write access a collection in an embedded transaction
+    return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
+  }
+
+  if (accessType == TRI_TRANSACTION_READ && ! allowImplicitCollections) {
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
 
