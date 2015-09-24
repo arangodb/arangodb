@@ -9,7 +9,6 @@ const path = require('path');
 const fs = require('fs');
 const parameterTypes = require('org/arangodb/foxx/manager-utils').parameterTypes;
 const getReadableName = require('org/arangodb/foxx/manager-utils').getReadableName;
-const getExports = require('org/arangodb/foxx').getExports;
 
 const APP_PATH = internal.appPath ? path.resolve(internal.appPath) : undefined;
 const STARTUP_PATH = internal.startupPath ? path.resolve(internal.startupPath) : undefined;
@@ -129,7 +128,7 @@ function createDependencies(definitions, options) {
       enumerable: true,
       get() {
         const mount = options[name];
-        return mount ? getExports(mount) : undefined;
+        return mount ? require('org/arangodb/foxx').getExports(mount) : null;
       }
     });
   });
