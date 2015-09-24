@@ -27,7 +27,7 @@
 
 #include "Aql/OptimizerRules.h"
 #include "Aql/AggregationOptions.h"
-#include "Aql/Condition.h"
+#include "Aql/ConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
@@ -2028,119 +2028,6 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief condition finder
-////////////////////////////////////////////////////////////////////////////////
-
-class ConditionFinder : public WalkerWorker<ExecutionNode> {
-
-  public:
-
-    ConditionFinder (ExecutionPlan* plan,
-                     Variable const* var) 
-      : _plan(plan),
-        _condition(nullptr),
-        _varIds() {
-
-      _varIds.emplace(var->id);
-    };
-
-    ~ConditionFinder () {
-      delete _condition;
-    }
-    
-    bool before (ExecutionNode* en) override final {
-      if (en->canThrow()) {
-        // something that can throw is not safe to optimize
-        _condition = nullptr;
-        return true;
-      }
-
-      switch (en->getType()) {
-        case EN::ENUMERATE_LIST:
-        case EN::AGGREGATE:
-        case EN::SCATTER:
-        case EN::DISTRIBUTE:
-        case EN::GATHER:
-        case EN::REMOTE:
-        case EN::SUBQUERY:        
-        case EN::SORT:
-        case EN::INDEX_RANGE:
-          // in these cases we simply ignore the intermediate nodes, note
-          // that we have taken care of nodes that could throw exceptions
-          // above.
-          break;
-        
-        case EN::SINGLETON:
-        case EN::INSERT:
-        case EN::REMOVE:
-        case EN::REPLACE:
-        case EN::UPDATE:
-        case EN::UPSERT:
-        case EN::RETURN:
-        case EN::NORESULTS:
-        case EN::ILLEGAL:
-          // in all these cases something is seriously wrong and we better abort
-
-          // fall-through intentional...
-        case EN::LIMIT:           
-          // if we meet a limit node between a filter and an enumerate
-          // collection, we abort . . .
-          return true;
-        
-        case EN::FILTER: {
-          std::vector<Variable const*>&& inVar = en->getVariablesUsedHere();
-          TRI_ASSERT(inVar.size() == 1);
-          // register which variable is used in a filter
-          _varIds.emplace(inVar[0]->id);
-          break;
-        }
-
-        case EN::CALCULATION: {
-          auto outvar = en->getVariablesSetHere();
-          TRI_ASSERT(outvar.size() == 1);
-
-          if (_varIds.find(outvar[0]->id) == _varIds.end()) {
-            // some non-interesting variable
-            break;
-          }
-
-          auto expression = static_cast<CalculationNode const*>(en)->expression()->node();
-
-          if (_condition == nullptr) {
-            // did not have any expression before. now save what we found
-            _condition = new Condition(_plan->getAst());
-          }
-
-          TRI_ASSERT(_condition != nullptr);
-          _condition->andCombine(expression);
-          break;
-        }
-
-        case EN::ENUMERATE_COLLECTION: {
-          // auto node = static_cast<EnumerateCollectionNode*>(en);
-          // auto var = node->getVariablesSetHere()[0];  // should only be 1
-          _condition->normalize(_plan);
-          _condition->findIndices(static_cast<EnumerateCollectionNode const*>(en));
-          break;
-        }
-      }
-
-      return false;
-    }
-
-    bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) final {
-      return false;
-    }
-
-  private:
-
-    ExecutionPlan*                 _plan;
-    Condition*                     _condition;
-    std::unordered_set<VariableId> _varIds;
-  
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief useIndex, try to use an index for filtering
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2658,7 +2545,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                         }
                       }
 
-                      auto indexRangeNode = new IndexRangeNode(
+                      std::unique_ptr<ExecutionNode> newNode(new IndexRangeNode(
                         _plan, 
                         _plan->nextId(), 
                         node->vocbase(), 
@@ -2667,9 +2554,8 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                         idx, 
                         indexOrCondition, 
                         false
-                      );
+                      ));
 
-                      std::unique_ptr<ExecutionNode> newNode(indexRangeNode);
                       size_t place = node->id();
 
                       std::unordered_map<size_t, size_t>::iterator it = _changesPlaces.find(place);
