@@ -106,12 +106,12 @@
             "frontend/js/modules/org/arangodb/tutorial.js",
             "frontend/js/modules/org/arangodb-common.js",
             "frontend/js/modules/org/arangodb.js",*/
-            "frontend/js/bootstrap/errors.js",
+            "frontend/js/bootstrap/modules/internal.js", // deps: -
+            "frontend/js/bootstrap/errors.js", // deps: internal
+            "frontend/js/bootstrap/modules/console.js", // deps: internal
+            "frontend/js/client/bootstrap/modules/internal.js", // deps: internal
             "frontend/js/bootstrap/monkeypatches.js",
-            "frontend/js/bootstrap/module-internal.js",
-            "frontend/js/client/bootstrap/module-internal.js",
-            "frontend/js/client/client.js",
-            "frontend/js/bootstrap/module-console.js"
+            "frontend/js/client/client.js"
           ],
           js: [
             "frontend/js/models/*",

@@ -1,11 +1,14 @@
+/*eslint curly:0, key-spacing:0, no-redeclare:0, no-unused-vars:0, quotes:0 */
+'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief node helper module "util"
+/// @brief module "util"
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2015 triAGENS GmbH, Cologne, Germany
+/// Copyright 2015 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,39 +24,45 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler, Alan Plum
-/// @author Copyright 2010-2015, triAGENS GmbH, Cologne, Germany
+/// @author Alan Plum
+/// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ///
-/// Parts of the code are based on:
+/// Based on Node.js 4.1.0 /lib/util.js:
 ///
-/// Copyright Joyent, Inc. and other Node contributors.
+/// Copyright Node.js contributors. All rights reserved.
 ///
-/// Permission is hereby granted, free of charge, to any person obtaining a
-/// copy of this software and associated documentation files (the
-/// "Software"), to deal in the Software without restriction, including
-/// without limitation the rights to use, copy, modify, merge, publish,
-/// distribute, sublicense, and/or sell copies of the Software, and to permit
-/// persons to whom the Software is furnished to do so, subject to the
-/// following conditions:
+/// Permission is hereby granted, free of charge, to any person obtaining a copy
+/// of this software and associated documentation files (the "Software"), to
+/// deal in the Software without restriction, including without limitation the
+/// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+/// sell copies of the Software, and to permit persons to whom the Software is
+/// furnished to do so, subject to the following conditions:
 ///
-/// The above copyright notice and this permission notice shall be included
-/// in all copies or substantial portions of the Software.
+/// The above copyright notice and this permission notice shall be included in
+/// all copies or substantial portions of the Software.
 ///
-/// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-/// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-/// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-/// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-/// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-/// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-/// USE OR OTHER DEALINGS IN THE SOFTWARE.
+/// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+/// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+/// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+/// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+/// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+/// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+/// IN THE SOFTWARE.
+///
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     Module "util"
-// -----------------------------------------------------------------------------
+const Buffer = require('buffer').Buffer;
 
-var console = require('console');
-var Buffer = require('buffer').Buffer;
+function deprecate(fn, msg) {
+  var warned = false;
+  return function () {
+    if (!warned) {
+      warned = true;
+      console.warnLines(msg);
+    }
+    return fn.apply(this, arguments);
+  };
+}
 
 function arangoPrint(obj) {
   var ctx = {output: ''};
@@ -61,9 +70,9 @@ function arangoPrint(obj) {
   return ctx.output;
 }
 
-var formatRegExp = /%[sdj%]/g;
+const formatRegExp = /%[sdj%]/g;
 exports.format = function(f) {
-  if (!isString(f)) {
+  if (typeof f !== 'string') {
     var objects = [];
     for (var i = 0; i < arguments.length; i++) {
       if (arguments[i] && typeof arguments[i]._PRINT === 'function') {
@@ -74,6 +83,8 @@ exports.format = function(f) {
     }
     return objects.join(' ');
   }
+
+  if (arguments.length === 1) return f;
 
   var i = 1;
   var args = arguments;
@@ -90,12 +101,13 @@ exports.format = function(f) {
         } catch (_) {
           return '[Circular]';
         }
+        // falls through
       default:
         return x;
     }
   });
   for (var x = args[i]; i < len; x = args[++i]) {
-    if (isNull(x) || !isObject(x)) {
+    if (x === null || (typeof x !== 'object' && typeof x !== 'symbol')) {
       str += ' ' + x;
     } else {
       if (x && typeof x._PRINT === 'function') {
@@ -109,8 +121,11 @@ exports.format = function(f) {
 };
 
 
-exports.deprecate = function(fn, msg) {
-  return fn;
+exports.deprecate = deprecate;
+
+
+exports.debuglog = function() {
+  return function() {};
 };
 
 
@@ -131,7 +146,7 @@ function inspect(obj, opts) {
   // legacy...
   if (arguments.length >= 3) ctx.depth = arguments[2];
   if (arguments.length >= 4) ctx.colors = arguments[3];
-  if (isBoolean(opts)) {
+  if (typeof opts === 'boolean') {
     // legacy...
     ctx.showHidden = opts;
   } else if (opts) {
@@ -139,10 +154,10 @@ function inspect(obj, opts) {
     exports._extend(ctx, opts);
   }
   // set default options
-  if (isUndefined(ctx.showHidden)) ctx.showHidden = false;
-  if (isUndefined(ctx.depth)) ctx.depth = 2;
-  if (isUndefined(ctx.colors)) ctx.colors = false;
-  if (isUndefined(ctx.customInspect)) ctx.customInspect = true;
+  if (ctx.showHidden === undefined) ctx.showHidden = false;
+  if (ctx.depth === undefined) ctx.depth = 2;
+  if (ctx.colors === undefined) ctx.colors = false;
+  if (ctx.customInspect === undefined) ctx.customInspect = true;
   if (ctx.colors) ctx.stylize = stylizeWithColor;
   return formatValue(ctx, obj, ctx.depth);
 }
@@ -209,18 +224,34 @@ function arrayToHash(array) {
 }
 
 
+function getConstructorOf(obj) {
+  while (obj) {
+    var descriptor = Object.getOwnPropertyDescriptor(obj, 'constructor');
+    if (descriptor !== undefined &&
+        typeof descriptor.value === 'function' &&
+        descriptor.value.name !== '') {
+      return descriptor.value;
+    }
+
+    obj = Object.getPrototypeOf(obj);
+  }
+
+  return null;
+}
+
+
 function formatValue(ctx, value, recurseTimes) {
   // Provide a hook for user-specified inspect functions.
   // Check that value is an object with an inspect function on it
   if (ctx.customInspect &&
       value &&
-      isFunction(value.inspect) &&
+      typeof value.inspect === 'function' &&
       // Filter out the util module, it's inspect function is special
       value.inspect !== exports.inspect &&
       // Also filter out any prototype objects using the circular check.
       !(value.constructor && value.constructor.prototype === value)) {
     var ret = value.inspect(recurseTimes, ctx);
-    if (!isString(ret)) {
+    if (typeof ret !== 'string') {
       ret = formatValue(ctx, ret, recurseTimes);
     }
     return ret;
@@ -238,16 +269,7 @@ function formatValue(ctx, value, recurseTimes) {
 
   if (ctx.showHidden) {
     keys = Object.getOwnPropertyNames(value);
-  }
-
-  if (typeof Object.getOwnPropertySymbols === 'function') {
-    var symbols = Object.getOwnPropertySymbols(value);
-    keys = keys.concat(symbols);
-    symbols.forEach(function (symbol) {
-      if (Object.getOwnPropertyDescriptor(value, symbol).enumerable) {
-        visibleKeys[symbol] = true;
-      }
-    });
+    keys = keys.concat(Object.getOwnPropertySymbols(value));
   }
 
   // This could be a boxed primitive (new String(), etc.), check valueOf()
@@ -264,7 +286,7 @@ function formatValue(ctx, value, recurseTimes) {
     // ignore...
   }
 
-  if (isString(raw)) {
+  if (typeof raw === 'string') {
     // for boxed Strings, we have to remove the 0-n indexed entries,
     // since they just noisey up the output and are redundant
     keys = keys.filter(function(key) {
@@ -274,7 +296,7 @@ function formatValue(ctx, value, recurseTimes) {
 
   // Some type of object without properties can be shortcutted.
   if (keys.length === 0) {
-    if (isFunction(value)) {
+    if (typeof value === 'function') {
       var name = value.name ? ': ' + value.name : '';
       return ctx.stylize('[Function' + name + ']', 'special');
     }
@@ -288,30 +310,57 @@ function formatValue(ctx, value, recurseTimes) {
       return formatError(value);
     }
     // now check the `raw` value to handle boxed primitives
-    if (isString(raw)) {
+    if (typeof raw === 'string') {
       formatted = formatPrimitiveNoColor(ctx, raw);
       return ctx.stylize('[String: ' + formatted + ']', 'string');
     }
-    if (isNumber(raw)) {
+    if (typeof raw === 'number') {
       formatted = formatPrimitiveNoColor(ctx, raw);
       return ctx.stylize('[Number: ' + formatted + ']', 'number');
     }
-    if (isBoolean(raw)) {
+    if (typeof raw === 'boolean') {
       formatted = formatPrimitiveNoColor(ctx, raw);
       return ctx.stylize('[Boolean: ' + formatted + ']', 'boolean');
     }
   }
 
-  var base = '', array = false, braces = ['{', '}'];
+  var constructor = getConstructorOf(value);
+  var base = '', empty = false, braces, formatter;
 
-  // Make Array say that they are Array
-  if (isArray(value)) {
-    array = true;
+  if (Array.isArray(value)) {
+    if (constructor === Array)
+      constructor = null;
     braces = ['[', ']'];
+    empty = value.length === 0;
+    formatter = formatArray;
+  } else if (value instanceof Set) {
+    braces = ['{', '}'];
+    // With `showHidden`, `length` will display as a hidden property for
+    // arrays. For consistency's sake, do the same for `size`, even though this
+    // property isn't selected by Object.getOwnPropertyNames().
+    if (ctx.showHidden)
+      keys.unshift('size');
+    empty = value.size === 0;
+    formatter = formatSet;
+  } else if (value instanceof Map) {
+    braces = ['{', '}'];
+    // Ditto.
+    if (ctx.showHidden)
+      keys.unshift('size');
+    empty = value.size === 0;
+    formatter = formatMap;
+  } else {
+    if (constructor === Object)
+      constructor = null;
+    braces = ['{', '}'];
+    empty = true;  // No other data than keys.
+    formatter = formatObject;
   }
 
+  empty = empty === true && keys.length === 0;
+
   // Make functions say that they are functions
-  if (isFunction(value)) {
+  if (typeof value === 'function') {
     var n = value.name ? ': ' + value.name : '';
     base = ' [Function' + n + ']';
   }
@@ -332,19 +381,19 @@ function formatValue(ctx, value, recurseTimes) {
   }
 
   // Make boxed primitive Strings look like such
-  if (isString(raw)) {
+  if (typeof raw === 'string') {
     formatted = formatPrimitiveNoColor(ctx, raw);
     base = ' ' + '[String: ' + formatted + ']';
   }
 
   // Make boxed primitive Numbers look like such
-  if (isNumber(raw)) {
+  if (typeof raw === 'number') {
     formatted = formatPrimitiveNoColor(ctx, raw);
     base = ' ' + '[Number: ' + formatted + ']';
   }
 
   // Make boxed primitive Booleans look like such
-  if (isBoolean(raw)) {
+  if (typeof raw === 'boolean') {
     formatted = formatPrimitiveNoColor(ctx, raw);
     base = ' ' + '[Boolean: ' + formatted + ']';
   }
@@ -353,7 +402,11 @@ function formatValue(ctx, value, recurseTimes) {
     base = ' ' + arangoPrint(value);
   }
 
-  if (keys.length === 0 && (!array || value.length === 0)) {
+  // Add constructor name if available
+  if (base === '' && constructor)
+    braces[0] = constructor.name + ' ' + braces[0];
+
+  if (empty === true) {
     return braces[0] + base + braces[1];
   }
 
@@ -367,14 +420,7 @@ function formatValue(ctx, value, recurseTimes) {
 
   ctx.seen.push(value);
 
-  var output;
-  if (array) {
-    output = formatArray(ctx, value, recurseTimes, visibleKeys, keys);
-  } else {
-    output = keys.map(function(key) {
-      return formatProperty(ctx, value, recurseTimes, visibleKeys, key, array);
-    });
-  }
+  var output = formatter(ctx, value, recurseTimes, visibleKeys, keys);
 
   ctx.seen.pop();
 
@@ -383,26 +429,32 @@ function formatValue(ctx, value, recurseTimes) {
 
 
 function formatPrimitive(ctx, value) {
-  if (isUndefined(value))
+  if (value === undefined)
     return ctx.stylize('undefined', 'undefined');
-  if (isString(value)) {
-    var simple = JSON.stringify(value);
+
+  // For some reason typeof null is "object", so special case here.
+  if (value === null)
+    return ctx.stylize('null', 'null');
+
+  var type = typeof value;
+
+  if (type === 'string') {
+    var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
+        .replace(/'/g, "\\'")
+        .replace(/\\"/g, '"') + '\'';
     return ctx.stylize(simple, 'string');
   }
-  if (isNumber(value)) {
+  if (type === 'number') {
     // Format -0 as '-0'. Strict equality won't distinguish 0 from -0,
     // so instead we use the fact that 1 / -0 < 0 whereas 1 / 0 > 0 .
     if (value === 0 && 1 / value < 0)
       return ctx.stylize('-0', 'number');
     return ctx.stylize('' + value, 'number');
   }
-  if (isBoolean(value))
+  if (type === 'boolean')
     return ctx.stylize('' + value, 'boolean');
-  // For some reason typeof null is "object", so special case here.
-  if (isNull(value))
-    return ctx.stylize('null', 'null');
   // es6 symbol primitive
-  if (isSymbol(value))
+  if (type === 'symbol')
     return ctx.stylize(value.toString(), 'symbol');
 }
 
@@ -421,6 +473,13 @@ function formatError(value) {
 }
 
 
+function formatObject(ctx, value, recurseTimes, visibleKeys, keys) {
+  return keys.map(function(key) {
+    return formatProperty(ctx, value, recurseTimes, visibleKeys, key, false);
+  });
+}
+
+
 function formatArray(ctx, value, recurseTimes, visibleKeys, keys) {
   var output = [];
   for (var i = 0, l = value.length; i < l; ++i) {
@@ -432,7 +491,7 @@ function formatArray(ctx, value, recurseTimes, visibleKeys, keys) {
     }
   }
   keys.forEach(function(key) {
-    if (!key.match(/^\d+$/)) {
+    if (typeof key === 'symbol' || !key.match(/^\d+$/)) {
       output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
           key, true));
     }
@@ -440,6 +499,37 @@ function formatArray(ctx, value, recurseTimes, visibleKeys, keys) {
   return output;
 }
 
+
+function formatSet(ctx, value, recurseTimes, visibleKeys, keys) {
+  var output = [];
+  value.forEach(function(v) {
+    var nextRecurseTimes = recurseTimes === null ? null : recurseTimes - 1;
+    var str = formatValue(ctx, v, nextRecurseTimes);
+    output.push(str);
+  });
+  keys.forEach(function(key) {
+    output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
+                               key, false));
+  });
+  return output;
+}
+
+
+function formatMap(ctx, value, recurseTimes, visibleKeys, keys) {
+  var output = [];
+  value.forEach(function(v, k) {
+    var nextRecurseTimes = recurseTimes === null ? null : recurseTimes - 1;
+    var str = formatValue(ctx, k, nextRecurseTimes);
+    str += ' => ';
+    str += formatValue(ctx, v, nextRecurseTimes);
+    output.push(str);
+  });
+  keys.forEach(function(key) {
+    output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
+                               key, false));
+  });
+  return output;
+}
 
 function formatProperty(ctx, value, recurseTimes, visibleKeys, key, array) {
   var name, str, desc;
@@ -456,11 +546,15 @@ function formatProperty(ctx, value, recurseTimes, visibleKeys, key, array) {
     }
   }
   if (!hasOwnProperty(visibleKeys, key)) {
-    name = '[' + key + ']';
+    if (typeof key === 'symbol') {
+      name = '[' + ctx.stylize(key.toString(), 'symbol') + ']';
+    } else {
+      name = '[' + key + ']';
+    }
   }
   if (!str) {
     if (ctx.seen.indexOf(desc.value) < 0) {
-      if (isNull(recurseTimes)) {
+      if (recurseTimes === null) {
         str = formatValue(ctx, desc.value, null);
       } else {
         str = formatValue(ctx, desc.value, recurseTimes - 1);
@@ -480,20 +574,20 @@ function formatProperty(ctx, value, recurseTimes, visibleKeys, key, array) {
       str = ctx.stylize('[Circular]', 'special');
     }
   }
-  if (isUndefined(name)) {
-    if (isSymbol(key)) {
-      name = ctx.stylize(key.toString(), 'name');
+  if (name === undefined) {
+    if (array && key.match(/^\d+$/)) {
+      return str;
+    }
+    name = JSON.stringify('' + key);
+    if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
+      name = name.substr(1, name.length - 2);
+      name = ctx.stylize(name, 'name');
     } else {
-      if (array && key.match(/^\d+$/)) {
-        return str;
-      }
-      name = JSON.stringify('' + key);
-      if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
-        name = name.substr(1, name.length - 2);
-        name = ctx.stylize(name, 'name');
-      } else {
-        name = ctx.stylize(name, 'string');
-      }
+      name = name.replace(/'/g, "\\'")
+                 .replace(/\\"/g, '"')
+                 .replace(/(^"|"$)/g, "'")
+                 .replace(/\\\\/g, '\\');
+      name = ctx.stylize(name, 'string');
     }
   }
 
@@ -508,7 +602,10 @@ function reduceToSingleString(output, base, braces) {
 
   if (length > 60) {
     return braces[0] +
-           (base === '' ? '' : base + '\n ') +
+           // If the opening "brace" is too large, like in the case of "Set {",
+           // we need to force the first item to be on the next line or the
+           // items will not line up correctly.
+           (base === '' && braces[0].length === 1 ? '' : base + '\n ') +
            ' ' +
            output.join(',\n  ') +
            ' ' +
@@ -521,7 +618,7 @@ function reduceToSingleString(output, base, braces) {
 
 // NOTE: These type checking functions intentionally don't use `instanceof`
 // because it is fragile and can be easily faked with `Object.create()`.
-var isArray = exports.isArray = Array.isArray;
+exports.isArray = Array.isArray;
 
 function isBoolean(arg) {
   return typeof arg === 'boolean';
@@ -534,7 +631,7 @@ function isNull(arg) {
 exports.isNull = isNull;
 
 function isNullOrUndefined(arg) {
-  return arg == null;
+  return arg === null || arg === undefined;
 }
 exports.isNullOrUndefined = isNullOrUndefined;
 
@@ -554,28 +651,27 @@ function isSymbol(arg) {
 exports.isSymbol = isSymbol;
 
 function isUndefined(arg) {
-  return arg === void 0;
+  return arg === undefined;
 }
 exports.isUndefined = isUndefined;
 
 function isRegExp(re) {
-  return isObject(re) && objectToString(re) === '[object RegExp]';
+  return objectToString(re) === '[object RegExp]';
 }
 exports.isRegExp = isRegExp;
 
 function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
+  return arg !== null && typeof arg === 'object';
 }
 exports.isObject = isObject;
 
 function isDate(d) {
-  return isObject(d) && objectToString(d) === '[object Date]';
+  return objectToString(d) === '[object Date]';
 }
 exports.isDate = isDate;
 
 function isError(e) {
-  return isObject(e) &&
-      (objectToString(e) === '[object Error]' || e instanceof Error);
+  return objectToString(e) === '[object Error]' || e instanceof Error;
 }
 exports.isError = isError;
 
@@ -586,18 +682,11 @@ exports.isFunction = isFunction;
 
 function isPrimitive(arg) {
   return arg === null ||
-         typeof arg === 'boolean' ||
-         typeof arg === 'number' ||
-         typeof arg === 'string' ||
-         typeof arg === 'symbol' ||  // ES6 symbol
-         typeof arg === 'undefined';
+         typeof arg !== 'object' && typeof arg !== 'function';
 }
 exports.isPrimitive = isPrimitive;
 
-function isBuffer(arg) {
-  return arg instanceof Buffer;
-}
-exports.isBuffer = isBuffer;
+exports.isBuffer = Buffer.isBuffer;
 
 function objectToString(o) {
   return Object.prototype.toString.call(o);
@@ -609,8 +698,8 @@ function pad(n) {
 }
 
 
-var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
-              'Oct', 'Nov', 'Dec'];
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
+                'Oct', 'Nov', 'Dec'];
 
 // 26 Feb 16:19:34
 function timestamp() {
@@ -640,8 +729,23 @@ exports.log = function() {
  * @param {function} ctor Constructor function which needs to inherit the
  *     prototype.
  * @param {function} superCtor Constructor function to inherit prototype from.
+ * @throws {TypeError} Will error if either constructor is null, or if
+ *     the super constructor lacks a prototype.
  */
 exports.inherits = function(ctor, superCtor) {
+
+  if (ctor === undefined || ctor === null)
+    throw new TypeError('The constructor to `inherits` must not be ' +
+                        'null or undefined.');
+
+  if (superCtor === undefined || superCtor === null)
+    throw new TypeError('The super constructor to `inherits` must not ' +
+                        'be null or undefined.');
+
+  if (superCtor.prototype === undefined)
+    throw new TypeError('The super constructor to `inherits` must ' +
+                        'have a prototype.');
+
   ctor.super_ = superCtor;
   ctor.prototype = Object.create(superCtor.prototype, {
     constructor: {
@@ -655,7 +759,7 @@ exports.inherits = function(ctor, superCtor) {
 
 exports._extend = function(origin, add) {
   // Don't do anything if add isn't an object
-  if (!add || !isObject(add)) return origin;
+  if (add === null || typeof add !== 'object') return origin;
 
   var keys = Object.keys(add);
   var i = keys.length;
@@ -669,11 +773,80 @@ function hasOwnProperty(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:
+// Deprecated old stuff.
+
+exports.p = deprecate(function() {
+  for (var i = 0, len = arguments.length; i < len; ++i) {
+    console.error(exports.inspect(arguments[i]));
+  }
+}, 'util.p is deprecated. Use console.error instead.');
+
+
+exports.exec = deprecate(function() {
+  return require('child_process').exec.apply(this, arguments);
+}, 'util.exec is deprecated. Use child_process.exec instead.');
+
+
+exports.print = deprecate(function() {
+  for (var i = 0, len = arguments.length; i < len; ++i) {
+    process.stdout.write(String(arguments[i]));
+  }
+}, 'util.print is deprecated. Use console.log instead.');
+
+
+exports.puts = deprecate(function() {
+  for (var i = 0, len = arguments.length; i < len; ++i) {
+    process.stdout.write(arguments[i] + '\n');
+  }
+}, 'util.puts is deprecated. Use console.log instead.');
+
+
+exports.debug = deprecate(function(x) {
+  process.stderr.write('DEBUG: ' + x + '\n');
+}, 'util.debug is deprecated. Use console.error instead.');
+
+
+exports.error = deprecate(function(x) {
+  for (var i = 0, len = arguments.length; i < len; ++i) {
+    process.stderr.write(arguments[i] + '\n');
+  }
+}, 'util.error is deprecated. Use console.error instead.');
+
+
+exports.pump = deprecate(function(readStream, writeStream, cb) {
+  var callbackCalled = false;
+
+  function call(a, b, c) {
+    if (cb && !callbackCalled) {
+      cb(a, b, c);
+      callbackCalled = true;
+    }
+  }
+
+  readStream.addListener('data', function(chunk) {
+    if (writeStream.write(chunk) === false) readStream.pause();
+  });
+
+  writeStream.addListener('drain', function() {
+    readStream.resume();
+  });
+
+  readStream.addListener('end', function() {
+    writeStream.end();
+  });
+
+  readStream.addListener('close', function() {
+    call();
+  });
+
+  readStream.addListener('error', function(err) {
+    writeStream.end();
+    call(err);
+  });
+
+  writeStream.addListener('error', function(err) {
+    readStream.destroy();
+    call(err);
+  });
+}, 'util.pump is deprecated. Use readableStream.pipe instead.');

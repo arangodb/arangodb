@@ -32,7 +32,7 @@
   var FoxxController = require("org/arangodb/foxx").Controller,
       UnauthorizedError = require("http-errors").Unauthorized,
       internal = require("internal"),
-      Configuration = require("models/configuration").Model,
+      Configuration = require("./models/configuration").Model,
       controller = new FoxxController(applicationContext),
       db = require("internal").db,
       FoxxManager = require("org/arangodb/foxx/manager");

@@ -34,13 +34,13 @@ JAVASCRIPT_BROWSER = \
 	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/replication.js \
 	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/simple-query-common.js \
 	\
+	js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap/modules/internal.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap/modules/console.js \
 	js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap/errors.js \
 	js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap/monkeypatches.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap/module-internal.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap/module-console.js \
 	\
 	js/apps/system/_admin/aardvark/APP/frontend/js/client/client.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/client/bootstrap/module-internal.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/client/bootstrap/modules/internal.js \
 	\
 	js/apps/system/_admin/aardvark/APP/frontend/js/modules/underscore.js
 
