@@ -62,14 +62,18 @@ def example_content(filepath, fh, tag):
   CURL_STATE_HEADER = 2
   CURL_STATE_BODY = 3
 
+  curlState = CURL_STATE_CMD
+
   # read in the context, split into long and short
   infile = open(filepath, 'r')
 
   for line in infile:
     if first:
       arangosh = line.startswith("arangosh&gt;")
-      curl = line.startswith("shell&gt; curl")
+      curl = line.startswith("shell> curl")
       first = False
+      if not curl and not arangosh:
+        raise Exception("failed to detect curl or arangosh example in %s while inpecting %s", filepath, tag)
 
     if arangosh:
       if line.startswith("arangosh&gt;") or line.startswith("........&gt;"):
