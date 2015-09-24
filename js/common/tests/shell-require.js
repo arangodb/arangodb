@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertNull, module */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the module and package require
