@@ -136,7 +136,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-controller-path"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_FILE_NOT_FOUND, e);
+        validateError(errors.ERROR_SYS_ERROR, e);
       }
     });
 
@@ -181,7 +181,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-exports-path"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_FILE_NOT_FOUND, e);
+        validateError(errors.ERROR_SYS_ERROR, e);
       }
     });
 
@@ -199,7 +199,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-setup-path"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_FILE_NOT_FOUND, e);
+        validateError(errors.ERROR_SYS_ERROR, e);
       }
     });
 
@@ -208,7 +208,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "missing-controller-file"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_FILE_NOT_FOUND, e);
+        validateError(errors.ERROR_SYS_ERROR, e);
       }
     });
 
@@ -217,7 +217,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "missing-exports-file"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_FILE_NOT_FOUND, e);
+        validateError(errors.ERROR_SYS_ERROR, e);
       }
     });
 
@@ -226,7 +226,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "missing-setup-file"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_FILE_NOT_FOUND, e);
+        validateError(errors.ERROR_SYS_ERROR, e);
       }
     });
   });
