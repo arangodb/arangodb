@@ -156,7 +156,7 @@ Module._pathCache = {};
 Module._dbCache = {};
 Module._extensions = {};
 var modulePaths = GLOBAL_PATHS;
-Module.globalPaths = [];
+Module.globalPaths = modulePaths;
 
 
 // given a module name, and a list of paths to test, returns the first
@@ -188,7 +188,11 @@ function readPackage(requestPath) {
   var json = fs.read(longPath);
 
   try {
-    var pkg = packageMainCache[requestPath] = JSON.parse(json).main;
+    var pkg = JSON.parse(json).main;
+    if (pkg === 'index') {
+      pkg = 'index.js';
+    }
+    packageMainCache[requestPath] = pkg;
   } catch (e) {
     e.path = jsonPath;
     e.message = 'Error parsing ' + jsonPath + ': ' + e.message;
@@ -318,7 +322,7 @@ Module._resolveLookupPaths = function(request, parent) {
 
   var start = request.substring(0, 2);
   if (start !== './' && start !== '..') {
-    var paths = modulePaths;
+    var paths = modulePaths.slice(0);
     if (parent) {
       if (!parent.paths) parent.paths = [];
       paths = parent.paths.concat(paths);
