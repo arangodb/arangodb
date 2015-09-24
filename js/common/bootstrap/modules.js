@@ -189,9 +189,6 @@ function readPackage(requestPath) {
 
   try {
     var pkg = JSON.parse(json).main;
-    if (pkg === 'index') {
-      pkg = 'index.js';
-    }
     packageMainCache[requestPath] = pkg;
   } catch (e) {
     e.path = jsonPath;
