@@ -242,7 +242,7 @@ function print () {
 function ArangoConnection () {
   this._databaseName = "_system";
 
-  var path = window.document.location.pathname;
+  var path = global.document.location.pathname;
 
   if (path.substr(0, 5) === '/_db/') {
     var i = 5, n = path.length;
@@ -565,13 +565,17 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
 /// @brief globally rewrite URLs for AJAX requests to contain the database name
 ////////////////////////////////////////////////////////////////////////////////
 
-  $(document).ajaxSend(function(event, jqxhr, settings) {
+  $(global.document).ajaxSend(function(event, jqxhr, settings) {
     settings.url = internal.arango.databasePrefix(settings.url);
   });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
+
+  global.DEFINE_MODULE = function (name, exports) {
+    $.extend(require(name), exports);
+  };
 
 }());
 

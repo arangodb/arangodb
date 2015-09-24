@@ -1,6 +1,9 @@
 /*jshint -W051:true */
 /*global jqconsole, Symbol */
+/*eslint-disable */
+global.DEFINE_MODULE('console', (function () {
 'use strict';
+/*eslint-enable */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "console"
@@ -33,21 +36,20 @@
 // --SECTION--                                                  Module "console"
 // -----------------------------------------------------------------------------
 
-(function () {
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-var exports = require("console");
-var sprintf = require("internal").sprintf;
-var inspect = require("internal").inspect;
+var exports = {};
+var internal = require('internal');
+var sprintf = internal.sprintf;
+var inspect = internal.inspect;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief group level
 ////////////////////////////////////////////////////////////////////////////////
 
-var groupLevel = "";
+var groupLevel = '';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timers
@@ -80,7 +82,7 @@ else {
   // this will work in the web interface
   log = function (level, message) {
     if (typeof jqconsole !== 'undefined') {
-      jqconsole.Write(message + "\n", 'jssuccess');
+      jqconsole.Write(message + '\n', 'jssuccess');
     }
   };
 }
@@ -98,22 +100,22 @@ function logGroup (level, msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function prepareArgs (args) {
-  var ShapedJson = require("internal").ShapedJson;
+  var ShapedJson = require('internal').ShapedJson;
   var result = [];
 
-  if (0 < args.length && typeof args[0] !== "string") {
-    result.push("%s");
+  if (args.length > 0 && typeof args[0] !== 'string') {
+    result.push('%s');
   }
 
-  for (var i = 0; i < args.length; ++i) {
-    var arg = args[i];
+  for (let i = 0; i < args.length; ++i) {
+    let arg = args[i];
 
-    if (typeof arg === "object") {
+    if (typeof arg === 'object') {
       if (ShapedJson !== undefined && arg instanceof ShapedJson) {
         arg = inspect(arg, {prettyPrint: false});
       }
       else if (arg === null) {
-        arg = "null";
+        arg = 'null';
       }
       else if (arg instanceof Date || arg instanceof RegExp) {
         arg = String(arg);
@@ -149,10 +151,10 @@ exports.assert = function (condition) {
     msg = sprintf.apply(sprintf, prepareArgs(args));
   }
   catch (e) {
-    msg = e + ": " + args;
+    msg = msg = `${e}: ${args}`;
   }
 
-  logGroup("error", msg);
+  logGroup('error', msg);
 
   require('assert').ok(condition, msg);
 };
@@ -168,10 +170,10 @@ exports.debug = function () {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
   }
   catch (e) {
-    msg = e + ": " + arguments;
+    msg = `${e}: ${arguments}`;
   }
 
-  logGroup("debug", msg);
+  logGroup('debug', msg);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,14 +187,13 @@ exports.debugLines = function () {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
   }
   catch (e) {
-    msg = e + ": " + arguments;
+    msg = `${e}: ${arguments}`;
   }
 
-  var a = msg.split("\n");
-  var i;
+  var a = msg.split('\n');
 
-  for (i = 0;  i < a.length;  ++i) {
-    logGroup("debug", a[i]);
+  for (let i = 0; i < a.length; ++i) {
+    logGroup('debug', a[i]);
   }
 };
 
@@ -201,7 +202,7 @@ exports.debugLines = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.dir = function (object) {
-  logGroup("info", inspect(object));
+  logGroup('info', inspect(object));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,10 +216,10 @@ exports.error = function () {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
   }
   catch (e) {
-    msg = e + ": " + arguments;
+    msg = `${e}: ${arguments}`;
   }
 
-  logGroup("error", msg);
+  logGroup('error', msg);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,12 +233,12 @@ exports.errorLines = function () {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
   }
   catch (e) {
-    msg = e + ": " + arguments;
+    msg = `${e}: ${arguments}`;
   }
 
-  var a = msg.split("\n");
-  for (var i = 0; i < a.length; ++i) {
-    logGroup("error", a[i]);
+  var a = msg.split('\n');
+  for (let i = 0; i < a.length; ++i) {
+    logGroup('error', a[i]);
   }
 };
 
@@ -261,11 +262,11 @@ exports.group = function () {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
   }
   catch (e) {
-    msg = e + ": " + arguments;
+    msg = `${e}: ${arguments}`;
   }
 
-  groupLevel = groupLevel + "  ";
-  logGroup("info", msg);
+  groupLevel = groupLevel + '  ';
+  logGroup('info', msg);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -279,11 +280,11 @@ exports.groupCollapsed = function () {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
   }
   catch (e) {
-    msg = e + ": " + arguments;
+    msg = `${e}: ${arguments}`;
   }
 
-  logGroup("info", msg);
-  groupLevel = groupLevel + "  ";
+  logGroup('info', msg);
+  groupLevel = groupLevel + '  ';
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -305,10 +306,9 @@ exports.info = function () {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
   }
   catch (e) {
-    msg = e + ": " + arguments;
+    msg = `${e}: ${arguments}`;
   }
-
-  logGroup("info", msg);
+  logGroup('info', msg);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -322,14 +322,13 @@ exports.infoLines = function () {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
   }
   catch (e) {
-    msg = e + ": " + arguments;
+    msg = `${e}: ${arguments}`;
   }
 
-  var a = msg.split("\n");
-  var i;
+  var a = msg.split('\n');
 
-  for (i = 0;  i < a.length;  ++i) {
-    logGroup("info", a[i]);
+  for (let i = 0; i < a.length; ++i) {
+    logGroup('info', a[i]);
   }
 };
 
@@ -367,7 +366,7 @@ exports.timeEnd = function(label) {
   var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
   var time = timers[symbol];
 
-  if (! time) {
+  if (!time) {
     throw new Error('No such label: ' + label);
   }
 
@@ -375,7 +374,7 @@ exports.timeEnd = function(label) {
 
   delete timers[symbol];
 
-  logGroup("info", sprintf('%s: %dms', label, duration));
+  logGroup('info', sprintf('%s: %dms', label, duration));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,13 +386,12 @@ exports.trace = function () {
   err.name = 'Trace';
   err.message = sprintf.apply(sprintf, prepareArgs(arguments));
   Error.captureStackTrace(err, exports.trace);
-  var a = err.stack.split("\n");
+  var a = err.stack.split('\n');
   while (!a[a.length - 1]) {
     a.pop();
   }
-  var i;
-  for (i = 0;  i < a.length;  ++i) {
-    logGroup("info", a[i]);
+  for (let i = 0; i < a.length; ++i) {
+    logGroup('info', a[i]);
   }
 };
 
@@ -408,10 +406,10 @@ exports.warn = function () {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
   }
   catch (e) {
-    msg = e + ": " + arguments;
+    msg = `${e}: ${arguments}`;
   }
 
-  logGroup("warning", msg);
+  logGroup('warning', msg);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -425,18 +423,19 @@ exports.warnLines = function () {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
   }
   catch (e) {
-    msg = e + ": " + arguments;
+    msg = `${e}: ${arguments}`;
   }
 
-  var a = msg.split("\n");
+  var a = msg.split('\n');
   var i;
 
-  for (i = 0;  i < a.length;  ++i) {
-    logGroup("warning", a[i]);
+  for (i = 0; i < a.length; ++i) {
+    logGroup('warning', a[i]);
   }
 };
 
-}());
+return exports;
+}()));
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -55,7 +55,7 @@
     )
   };
   var fs = require("fs");
-  var defaultThumb = require("/lib/defaultThumbnail").defaultThumb;
+  var defaultThumb = require("./lib/defaultThumbnail").defaultThumb;
 
   controller.activateSessions({
     autoCreateSession: false,
@@ -212,7 +212,7 @@
     var mount = validateMount(req);
     var app = FoxxManager.lookupApp(mount);
     if (app.hasOwnProperty("_thumbnail")) {
-      res.body = app._thumbnail;
+      res.body = app.thumbnail;
     } else {
       res.body = defaultThumb;
     }
@@ -345,7 +345,7 @@
   controller.get("/download/zip", function(req, res) {
     var mount = validateMount(req);
     var app = FoxxManager.lookupApp(mount);
-    var dir = fs.join(fs.makeAbsolute(app._root), app._path);
+    var dir = fs.join(fs.makeAbsolute(app.root), app.path);
     var zipPath = fmUtils.zipDirectory(dir);
     res.set("Content-Type", "application/octet-stream");
     res.set("Content-Disposition", "attachment; filename=app.zip");

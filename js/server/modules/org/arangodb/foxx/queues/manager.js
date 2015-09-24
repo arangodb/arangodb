@@ -136,7 +136,9 @@ exports.manage = function () {
       } else {
         runInDatabase();
       }
-    } catch (e) {}
+    } catch (e) {
+      // noop
+    }
   });
 
   // switch back into previous database
@@ -151,12 +153,15 @@ exports.run = function () {
     return;
   }
 
+  var queues = require('org/arangodb/foxx/queues');
+  queues.create('default');
+
   // wakeup/poll interval for Foxx queues
   var period = 1;
   if (options.hasOwnProperty('server.foxx-queues-poll-interval')) {
     period = options['server.foxx-queues-poll-interval'];
   }
-      
+
   global.KEYSPACE_CREATE('queue-control', 1, true);
 
   var initialDatabase = db._name();
@@ -164,12 +169,14 @@ exports.run = function () {
     try {
       db._useDatabase(name);
       db._jobs.updateByExample({status: 'progress'}, {status: 'pending'});
-      require('org/arangodb/foxx/queues')._updateQueueDelay();
-    } catch(e) {}
+      queues._updateQueueDelay();
+    } catch(e) {
+      // noop
+    }
   });
   db._useDatabase(initialDatabase);
 
-  return tasks.register({
+  tasks.register({
     command: function () {
       require('org/arangodb/foxx/queues/manager').manage();
     },

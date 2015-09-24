@@ -1,5 +1,8 @@
-/*jshint -W051:true */
+/*jshint -W051:true, evil:true */
+/*eslint-disable */
+(function () {
 'use strict';
+/*eslint-enable */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -33,11 +36,9 @@
 // --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
 
-(function () {
-
-var exports = require("internal");
-var fs = require("fs");
-var console = require("console");
+var exports = require('internal');
+var console = require('console');
+var fs = require('fs');
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -101,7 +102,7 @@ delete global.FE_VERSION_CHECK;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.resetEngine = function () {
-  require("org/arangodb/actions").reloadRouting();
+  require('org/arangodb/actions').reloadRouting();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,14 +124,14 @@ exports.wal = {
   properties: function () {
     return global.WAL_PROPERTIES.apply(null, arguments);
   },
-  
+
   transactions: function () {
     return global.WAL_TRANSACTIONS.apply(null, arguments);
   },
 
   waitForCollector: function () {
     return global.WAL_WAITCOLLECTOR.apply(null, arguments);
-  },
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,19 +158,19 @@ if (global.THROW_COLLECTION_NOT_LOADED) {
 
 // autoload specific modules
 exports.autoloadModules = function () {
-  console.debug("autoloading actions");
-  var modules = exports.db._collection("_modules");
+  console.debug('autoloading actions');
+  var modules = exports.db._collection('_modules');
 
   if (modules !== null) {
     modules = modules.byExample({ autoload: true }).toArray();
     modules.forEach(function(module) {
 
       // this module is only meant to be executed in one thread
-      if (exports.threadNumber !== 0 && ! module.perThread) {
+      if (exports.threadNumber !== 0 && !module.perThread) {
         return;
       }
 
-      console.debug("autoloading module: %s", module.path);
+      console.debug('autoloading module: %s', module.path);
 
       try {
 
@@ -180,18 +181,19 @@ exports.autoloadModules = function () {
 
         // execute a user function
         else if (module.func !== undefined) {
-            /*jshint evil: true */
+            /*eslint-disable */
             var func = new Function(module.func);
+            /*eslint-enable */
             func();
         }
       }
       catch (err) {
-        console.error("error while loading startup module '%s': %s", module.name || module.path, String(err));
+        console.error('error while loading startup module "%s": %s', module.name || module.path, String(err));
       }
     });
   }
 
-  console.debug("autoloading actions finished");
+  console.debug('autoloading actions finished');
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,14 +215,14 @@ else {
 
 if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
   exports.reloadAqlFunctions = function () {
-    exports.executeGlobalContextFunction("reloadAql");
-    require("org/arangodb/aql").reload();
+    exports.executeGlobalContextFunction('reloadAql');
+    require('org/arangodb/aql').reload();
   };
   delete global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
 }
 else {
   exports.reloadAqlFunctions = function () {
-    require("org/arangodb/aql").reload();
+    require('org/arangodb/aql').reload();
   };
 }
 
@@ -353,28 +355,28 @@ if (global.SYS_SEND_CHUNK) {
 /// @brief create sid
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_CREATE_SID) {
-    exports.createSid = global.SYS_CREATE_SID;
-    delete global.SYS_CREATE_SID;
-  }
+if (global.SYS_CREATE_SID) {
+  exports.createSid = global.SYS_CREATE_SID;
+  delete global.SYS_CREATE_SID;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clear sid
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_CLEAR_SID) {
-    exports.clearSid = global.SYS_CLEAR_SID;
-    delete global.SYS_CLEAR_SID;
-  }
+if (global.SYS_CLEAR_SID) {
+  exports.clearSid = global.SYS_CLEAR_SID;
+  delete global.SYS_CLEAR_SID;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief access sid
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_ACCESS_SID) {
-    exports.accessSid = global.SYS_ACCESS_SID;
-    delete global.SYS_ACCESS_SID;
-  }
+if (global.SYS_ACCESS_SID) {
+  exports.accessSid = global.SYS_ACCESS_SID;
+  delete global.SYS_ACCESS_SID;
+}
 
 }());
 

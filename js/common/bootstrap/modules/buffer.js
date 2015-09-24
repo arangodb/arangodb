@@ -1,3 +1,25 @@
+/*eslint
+  camelcase:0
+  curly:0,
+  eqeqeq:0,
+  no-proto:0,
+  no-redeclare:0,
+  no-return-assign:0,
+  no-unused-expressions:0,
+  no-unused-vars:0
+  */
+/*jshint ignore:start */
+/*eslint-disable */
+global.DEFINE_MODULE('buffer', (function () {
+'use strict';
+/*eslint-enable */
+
+const exports = {};
+
+var SlowBuffer = require('internal').SlowBuffer;
+
+require('internal').setFastBufferConstructor(Buffer);
+
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -18,12 +40,6 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-// NODE: var SlowBuffer = process.binding('buffer').SlowBuffer;
-var SlowBuffer = require("internal").SlowBuffer;
-var assert = require('assert');
-
-require("internal").setFastBufferConstructor(Buffer);
 
 exports.INSPECT_MAX_BYTES = 50;
 
@@ -949,3 +965,7 @@ Buffer.prototype.writeDoubleBE = function(value, offset, noAssert) {
     checkOffset(offset, 8, this.length);
   this.parent.writeDoubleBE(value, this.offset + offset, !!noAssert);
 };
+
+return exports;
+
+}()));
