@@ -36,7 +36,8 @@ var ArangoError = arangodb.ArangoError;
 var fs = require("fs");
 var Module = require('module');
 var errors = require("internal").errors;
-var basePath = fs.makeAbsolute(fs.join(module.startupPath(), "common", "test-data", "apps"));
+var internal = require('internal');
+var basePath = fs.makeAbsolute(fs.join(internal.startupPath, "common", "test-data", "apps"));
 
 function validateError(type, error) {
   expect(error instanceof ArangoError).toBeTruthy();
