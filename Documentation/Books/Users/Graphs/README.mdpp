@@ -1,0 +1,103 @@
+!SECTION ArangoDB Graphs
+
+!SUBSECTION General Graphs
+General graphs are completely managed by arangodb, and thus also [visible in the webinterface](../WebInterface/REAOME.md#graphs_tab).
+They use the ful spectrum of ArangoDBs graph features. You may access them via several interfaces.
+
+ - [AQL Graph Operations](../Aql/GraphOperations.md)
+ - [the RESTful General Graph interface](../HttpGharial/README.md)
+ - [The javascript General Graph implementation, as you may use it in FOXX Services](../General-Graphs/README.md)
+    * [Graph Management](../General-Graphs/Management.md)
+    * [Graph Functions](../General-Graphs/Functions.md)
+    * [Fluent Query Interface](../General-Graphs/FluentAQLInterface.md)
+
+!SUBSECTION Blueprint Graphs
+*Blueprint 2 graphs* are a superset of *general Graphs* (they require vertices to be named). We offer [blueprints support via an api compatible java driver](https://github.com/arangodb/blueprints-arangodb-graph).
+
+!SUBSECTION Using partial infrastructures
+Sometimes you may not need all the powers of the general graph facilities, but some of its bits may be valuable to you.
+You [may use AQL Graph Functions](../Aql/GraphFunctions.md) that are a little deeper explained in the [traversals](../Traversals/README.md) and the [Working with Edges](../Edges/README.md) Chapter.
+
+!SUBSECTION Example Graphs
+ArangoDB comes with a set of easily graspable graphs that are used to demonstrace the APIs.
+The module `org/arangodb/graph-examples/example-graph` contains scripts that can be used to create instances of these graphs in your ArangoDB.
+Once you've created them, you can [inspect them in the webinterface](../WebInterface/REAOME.md#graphs_tab) - which was used to create the pictures below.
+
+!SUBSUBSECTION The Knows\_Graph
+A set of persons knowing each other:
+![Persons relation Example Graph](knows_graph.png)
+
+The *knows* graph consists of one *vertex collection* `persons` connected via one *edge collection* `knows`.
+It will contain five persons *Alice*, *Bob*, *Charlie*, *Dave* and *Eve*.
+We will have the following directed relations:
+  - *Alice* knows *Bob*
+  - *Bob* knows *Charlie*
+  - *Bob* knows *Dave*
+  - *Eve* knows *Alice*
+  - *Eve* knows *Bob*
+
+This is how we create it, inspect its *vertices* and *edges*, and drop it again:
+    @startDocuBlockInline graph_create_knows_sample
+    @EXAMPLE_ARANGOSH_OUTPUT{graph_create_knows_sample}
+    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var g = examples.loadGraph("knows_graph");
+    db.persons.toArray()
+    db.knows.toArray();
+    examples.dropGraph("knows_graph");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock graph_create_knows_sample
+
+
+!SUBSUBSECTION The Social Graph
+A set of persons and their relations:
+
+![Social Example Graph](social_graph.png)
+
+This example has female and male persons as *vertices* in two *vertex collections* - `female` and `male`. The *edges* are their connections in the `relation` *edge collection*.
+This is how we create it, inspect its *vertices* and *edges*, and drop it again:
+
+    @startDocuBlockInline graph_create_social_sample
+    @EXAMPLE_ARANGOSH_OUTPUT{graph_create_social_sample}
+    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var graph = examples.loadGraph("social");
+    db.female.toArray()
+    db.male.toArray()
+    db.relation.toArray()
+    examples.dropGraph("social");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock graph_create_social_sample
+
+
+!SUBSUBSECTION The City Graph
+A set of european cities, and their fictional traveling distances as connections:
+
+![Cities Example Graph](cities_graph.png)
+
+The example has the cities as *vertices* in several *vertex collections* - `germanCity` and `frenchCity`. The *edges* are their interconnections in several *edge collections* `french / german / international Highway`. This is how we create it, inspect its *edges* and *vertices*, and drop it again:
+
+    @startDocuBlockInline graph_create_cities_sample
+    @EXAMPLE_ARANGOSH_OUTPUT{graph_create_cities_sample}
+    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var g = examples.loadGraph("routeplanner");
+    db.frenchCity.toArray();
+    db.germanCity.toArray();
+    db.germanHighway.toArray();
+    db.frenchHighway.toArray();
+    db.internationalHighway.toArray();
+    examples.dropGraph("routeplanner");
+    @END_EXAMPLE_ARANGOSH_RUN
+    @endDocuBlock graph_create_cities_sample
+
+
+!SUBSECTION Cookbook examples
+The above referenced chapters describe the various APIs of ArangoDBs graph engine with small examples. Our cookbook has some more real life examples:
+
+ - [Traversing a graph in full depth](https://docs.arangodb.com/cookbook/Fulldepth.html)
+ - [Search for vertices of special type connecting a given subgraph](https://docs.arangodb.com/cookbook/FindingConnectedVerticesForSubgraphs.html)
+ - [Using an example vertex with the java driver](https://docs.arangodb.com/cookbook/JavaDriverGraphExampleVertex.html)
+ - [Retrieving documents from ArangoDB without knowing the structure](https://docs.arangodb.com/cookbook/JavaDriverBaseDocument.html)
+ - [Using a custom visitor from node.js](https://docs.arangodb.com/cookbook/UsingCustomVisitorFromNodeJs.html)
+ - [AQL Example Queries on an Actors and Movies Database](https://docs.arangodb.com/cookbook/GraphExampleActorsAndMovies.html)
+
+!SUBSECTION Higher volume graph examples
+All of the above examples are rather small so they are easy cromprehensible and can demonstrate the way the functionality works. There are however several datasets freely available on the web that are a lot bigger. [We collected some of them with import scripts](https://github.com/triAGENS/ArangoDB-Data/) so you may play around with them. Another huge graph is the [Pokec social network](https://snap.stanford.edu/data/soc-pokec.html) from Slovakia that we [used for performance testing on several databases](https://www.arangodb.com/2015/06/multi-model-benchmark/); You will find importing scripts etc. in this blogpost.

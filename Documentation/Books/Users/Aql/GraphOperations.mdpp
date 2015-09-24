@@ -24,24 +24,9 @@ the amount of vertices in the graph, *x* the amount of start vertices and *y* th
 target vertices. Hence a suggestion may be to use Dijkstra when x\*y < n and the functions supports choosing your algorithm.
 
 !SUBSECTION Example Graph
-All examples in this chapter will use this simple city graph:
+All examples in this chapter will use [this simple city graph](../Graphs/README.md#the_city_graph):
 
-![Cities Example Graph](cities_graph.png)
-
-The example has the cities as *edges* in the *collections* `germanCity` and `frenchCity`. The *vertices* are their interconnects `french / german / international Highway`. We create it, inspect its *edges* and *vertices*, and drop it again:
-
-    @startDocuBlockInline graph_create_cities_sample
-    @EXAMPLE_ARANGOSH_OUTPUT{graph_create_cities_sample}
-    var examples = require("org/arangodb/graph-examples/example-graph.js");
-    var g = examples.loadGraph("routeplanner");
-    db.frenchCity.toArray();
-    db.germanCity.toArray();
-    db.germanHighway.toArray();
-    db.frenchHighway.toArray();
-    db.internationalHighway.toArray();
-    examples.dropGraph("routeplanner");
-    @END_EXAMPLE_ARANGOSH_RUN
-    @endDocuBlock graph_create_cities_sample
+![Cities Example Graph](../Graphs/cities_graph.png)
 
 !SUBSECTION Edges and Vertices related functions
 
