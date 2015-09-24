@@ -601,7 +601,7 @@ for(i = 0;i < arguments.length;i += 2) {e[arguments[i]] = arguments[i + 1];}}ret
 /// `collection.byExampleHash(index, example)`
 ///
 /// Selects all documents from the specified hash index that match the
-/// specified example example and returns a cursor.
+/// specified example and returns a cursor.
 ///
 /// You can use *toArray*, *next*, or *hasNext* to access the
 /// result. The result can be limited using the *skip* and *limit*
@@ -642,10 +642,10 @@ for(i = 0;i < arguments.length;i += 2) {e[arguments[i]] = arguments[i + 1];}}ret
 ArangoCollection.prototype.byExampleHash = function(index,example){var sq=this.byExample(example);sq._index = index;sq._type = "hash";return sq;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example using a skiplist index
 /// @startDocuBlock collectionByExampleSkiplist
-/// `collection}.byExampleSkiplist(index, example)
+/// `collection.byExampleSkiplist(index, example)`
 ///
 /// Selects all documents from the specified skiplist index that match the
-/// specified example example and returns a cursor.
+/// specified example and returns a cursor.
 ///
 /// You can use *toArray*, *next*, or *hasNext* to access the
 /// result. The result can be limited using the *skip* and *limit*
@@ -680,7 +680,7 @@ ArangoCollection.prototype.byExampleHash = function(index,example){var sq=this.b
 ///
 /// will match.
 ///
-/// `collection.byExampleHash(index-id, path1, value1, ...)`
+/// `collection.byExampleSkiplist(index, path1, value1, ...)`
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 ArangoCollection.prototype.byExampleSkiplist = function(index,example){var sq=this.byExample(example);sq._index = index;sq._type = "skiplist";return sq;}; ////////////////////////////////////////////////////////////////////////////////
