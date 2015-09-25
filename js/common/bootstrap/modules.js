@@ -389,10 +389,10 @@ Module._resolveDbModule = function (request) {
 Module._load = function(request, parent, isMain) {
   var filename = request;
   var dbModule = false;
-  var match = request.match(/^\/?db:\/(\/_modules)?(\/.+)/);
+  var match = request.match(/^\/?db:(\/(\/_modules)?)?(\/.+)/);
 
   if (match) {
-    dbModule = Module._resolveDbModule(match[2]);
+    dbModule = Module._resolveDbModule(match[3]);
     if (!dbModule) {
       var err = new Error("Cannot find module '" + request + "'");
       err.code = 'MODULE_NOT_FOUND';
