@@ -559,7 +559,8 @@ static bool accessFitsIndex (triagens::aql::AstNode const* access, triagens::aql
 
 bool EdgeIndex::canServeForConditionNode (triagens::aql::AstNode const* node,
                                           triagens::aql::Variable const* reference,
-                                          triagens::aql::AstNode* reducedNode) const {
+                                          std::vector<std::string> const* reducedNode,
+                                          double& estimatedCost) const {
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {

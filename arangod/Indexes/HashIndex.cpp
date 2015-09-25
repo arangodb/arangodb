@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HashIndex.h"
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
@@ -693,19 +694,38 @@ int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
 }
 
 bool HashIndex::accessFitsIndex (triagens::aql::AstNode const* access,
-                                 triagens::aql::Variable const* reference) const {
+                                 triagens::aql::AstNode const* other,
+                                 triagens::aql::Variable const* reference,
+                                 std::unordered_set<size_t>& found) const {
   if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
     TRI_ASSERT(access->numMembers() == 1);
     if (access->getMember(0)->getData() != reference) {
       // This access is not referencing this collection
       return false;
     }
+    std::unordered_set<aql::Variable const*> variables;
+    triagens::aql::Ast::getReferencedVariables(other, variables);
+    if (variables.find(reference) != variables.end()) {
+      return false;
+    }
+    if (_sparse) {
+      if (! other->isConstant()) {
+        return false;
+      }
+      if (other->isNullValue()) {
+        return false;
+      }
+      // Check for IN [1, null, 2]
+      // If sparse this should not be allowed!
+    }
     // We have to check if this attribute string is used
     std::string attr(access->getStringValue());
-    for (auto& field : _fields) {
+    for (size_t i = 0; i < _fields.size(); ++i) {
+      auto field = _fields[i];
       std::string comp;
       TRI_AttributeNamesToString(field, comp);
       if (attr == comp) {
+        found.emplace(i);
         // This index knows this attribute
         return true;
       }
@@ -717,31 +737,38 @@ bool HashIndex::accessFitsIndex (triagens::aql::AstNode const* access,
 
 bool HashIndex::canServeForConditionNode (triagens::aql::AstNode const* node,
                                           triagens::aql::Variable const* reference,
-                                          triagens::aql::AstNode* reducedNode) const {
-  size_t removed = 0;
+                                          std::vector<std::string> const* sortAttributes,
+                                          double& estimatedCost) const {
+  std::unordered_set<size_t> found;
+  estimatedCost = 0.0;
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
-      if (accessFitsIndex(op->getMember(0), reference) ||
-          accessFitsIndex(op->getMember(1), reference)) {
-        reducedNode->removeMemberUnchecked(i - removed);
-        removed++;
-        if (removed == _fields.size()) {
-          return true;
+      if (accessFitsIndex(op->getMember(0), op->getMember(1), reference, found) ||
+          accessFitsIndex(op->getMember(1), op->getMember(0), reference, found)) {
+        // On the other side no occurence of "a" is allowed
+        // a.a == a.b no index here.
+        // a.a == EXPRESSION runtime index only NOT handled here but in IndexRangeBlock
+        // Each attribute is at most accessed once in the given node
+        if (found.size() == _fields.size()) {
+          break;
         }
       }
     }
     else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
-      if (accessFitsIndex(op->getMember(0), reference)) {
-        reducedNode->removeMemberUnchecked(i - removed);
-        removed++;
-        if (removed == _fields.size()) {
-          return true;
+      if (accessFitsIndex(op->getMember(0), op->getMember(1), reference, found)) {
+        if (found.size() == _fields.size()) {
+          break;
         }
       }
+      // TODO build value in a.x if x is array
     }
+  }
+  if (found.size() == _fields.size()) {
+    estimatedCost = selectivityEstimate();
+    return true;
   }
   return false;
 }

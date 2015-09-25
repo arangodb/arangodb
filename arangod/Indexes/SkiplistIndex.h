@@ -256,7 +256,8 @@ namespace triagens {
 
         bool canServeForConditionNode (triagens::aql::AstNode const*,
                                        triagens::aql::Variable const*,
-                                       triagens::aql::AstNode* reducedNode) const override;
+                                       std::vector<std::string> const*,
+                                       double&) const override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

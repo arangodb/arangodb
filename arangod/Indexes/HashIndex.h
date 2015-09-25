@@ -122,7 +122,9 @@ namespace triagens {
 
         bool canServeForConditionNode (triagens::aql::AstNode const*,
                                        triagens::aql::Variable const*,
-                                       triagens::aql::AstNode*) const override;
+                                       std::vector<std::string> const*,
+                                       double&) const override;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -145,8 +147,10 @@ namespace triagens {
 
         int removeMulti (struct TRI_doc_mptr_t const*, bool);
 
-        bool accessFitsIndex (triagens::aql::AstNode const*,
-                              triagens::aql::Variable const*) const;
+        bool accessFitsIndex (triagens::aql::AstNode const* access,
+                              triagens::aql::AstNode const* other,
+                              triagens::aql::Variable const* reference,
+                              std::unordered_set<size_t>& found) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private classes

@@ -161,12 +161,13 @@ namespace triagens {
         internals = idx;
       }
 
-      bool canServeForConditionNode (AstNode const* node,
-                                     Variable const* reference,
-                                     AstNode* reducedNode) const {
+      bool canServeForConditionNode (triagens::aql::AstNode const* node,
+                                     triagens::aql::Variable const* reference,
+                                     std::vector<std::string> const* sortAttributes,
+                                     double& estimatedCost) const {
         TRI_ASSERT(internals != nullptr);
         auto internals = getInternals();
-        return internals->canServeForConditionNode(node, reference, reducedNode);
+        return internals->canServeForConditionNode(node, reference, sortAttributes, estimatedCost);
       }
 
 // -----------------------------------------------------------------------------

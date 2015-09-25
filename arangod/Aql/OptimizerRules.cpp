@@ -2043,7 +2043,7 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
     auto nn = static_cast<FilterNode*>(n);
     auto invars = nn->getVariablesUsedHere();
     TRI_ASSERT(invars.size() == 1);
-    ConditionFinder finder(plan, invars[0]); //, changesPlaces, changes);
+    ConditionFinder finder(plan, invars[0]);
     nn->walk(&finder);
   }
   

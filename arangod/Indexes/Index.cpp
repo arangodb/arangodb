@@ -429,8 +429,10 @@ bool Index::hasBatchInsert () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Index::canServeForConditionNode (triagens::aql::AstNode const* node,
-                                      triagens::aql::Variable const* reference,
-                                      triagens::aql::AstNode* reducedNode) const {
+                               triagens::aql::Variable const* reference,
+                               std::vector<std::string> const* sortAttributes,
+                               double& estimatedCost) const {
+  estimatedCost = 0;
   return false;
 }
 

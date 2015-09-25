@@ -166,31 +166,28 @@ void Condition::andCombine (AstNode const* node) {
 /// @brief locate indices for each condition
 ////////////////////////////////////////////////////////////////////////////////
 
-void Condition::findIndices (EnumerateCollectionNode const* node) {
+void Condition::findIndexes (EnumerateCollectionNode const* node) {
   // We can only start after DNF transform
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
   Variable const* reference = node->outVariable();
   for (size_t i = 0; i < _root->numMembers(); ++i) {
-    findIndexForAndNode(_root->getMember(i), reference, node);
+    setIndexForAndNode(_root->getMember(i), reference, node);
   }
 }
 
-void Condition::findIndexForAndNode (AstNode const* node, Variable const* reference, EnumerateCollectionNode const* colNode) {
+void Condition::setIndexForAndNode (AstNode const* node, Variable const* reference, EnumerateCollectionNode const* colNode) {
   // We can only iterate through a proper DNF
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
 
   std::vector<Index*> indexes = colNode->collection()->getIndexes();
   std::vector<Index*> matching;
+  std::vector<std::string> sortAttributes; // TODO has to be internal
   for (auto& idx : indexes) {
-    AstNode* reduced = node->clone(_ast);
-    if (idx->canServeForConditionNode(node, reference, reduced)) {
+    double estimatedCost;
+
+    if (idx->canServeForConditionNode(node, reference, &sortAttributes, estimatedCost)) {
       matching.emplace_back(idx);
-      std::cout << "\n===============\n" << std::endl;
-      dumpNode(node, 2);
-      std::cout << "\n=>\n" << std::endl;
-      dumpNode(reduced, 2);
-      std::cout << "\n===============\n" << std::endl;
     }
   }
   std::cout << "We can use indexes for var: " << reference->name << " in collection " << colNode->collection()->getName() << ":" << std::endl;

@@ -907,7 +907,8 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
 
 bool SkiplistIndex::canServeForConditionNode (triagens::aql::AstNode const* node,
                                               triagens::aql::Variable const* reference,
-                                              triagens::aql::AstNode* reducedNode) const {
+                                              std::vector<std::string> const* sortAttributes,
+                                              double& estimatedCost ) const {
   std::unordered_set<std::string> foundEq;
   std::unordered_set<std::string> foundRange;
   for (size_t i = 0; i < node->numMembers(); ++i) {

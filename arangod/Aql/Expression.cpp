@@ -149,7 +149,7 @@ Expression::~Expression () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Expression::variables (std::unordered_set<Variable const*>& result) const {
-  return Ast::getReferencedVariables(_node, result);
+  Ast::getReferencedVariables(_node, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

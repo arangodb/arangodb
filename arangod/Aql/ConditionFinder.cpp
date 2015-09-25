@@ -100,12 +100,38 @@ bool ConditionFinder::before (ExecutionNode* en) {
     }
 
     case EN::ENUMERATE_COLLECTION: {
-       // auto node = static_cast<EnumerateCollectionNode*>(en);
-       // auto var = node->getVariablesSetHere()[0];  // should only be 1
-       _condition->normalize(_plan);
-       _condition->findIndices(static_cast<EnumerateCollectionNode const*>(en));
-       break;
-     }
+      _condition->normalize(_plan);
+      auto node = static_cast<EnumerateCollectionNode const*>(en);
+      _condition->findIndexes(node);
+
+      // TODO Build new IndexRangeNode
+      /*
+      std::unique_ptr<ExecutionNode> newNode(new IndexRangeNode(
+        _plan, 
+        _plan->nextId(), 
+        node->vocbase(), 
+        node->collection(), 
+        node->outVariable(), 
+        idx, 
+        _condition,
+        false
+      ));
+
+      size_t place = node->id();
+
+      std::unordered_map<size_t, size_t>::iterator it = _changesPlaces.find(place);
+
+      if (it == _changesPlaces.end()) {
+        _changes.emplace_back(place, std::vector<ExecutionNode*>());
+        it = _changesPlaces.emplace(place, _changes.size() - 1).first;
+      }
+
+      std::vector<ExecutionNode*>& vec = _changes[it->second].second;
+      vec.emplace_back(newNode.release());
+      */
+
+      break;
+    }
   }
   return false;
 }
