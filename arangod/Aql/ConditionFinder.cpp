@@ -100,11 +100,16 @@ bool ConditionFinder::before (ExecutionNode* en) {
     }
 
     case EN::ENUMERATE_COLLECTION: {
-      _condition->normalize(_plan);
+      std::cout << "---Hit Enum---" << std::endl;
       auto node = static_cast<EnumerateCollectionNode const*>(en);
+      if (_changes.find(node->id()) != _changes.end()) {
+        std::cout << "Already optimized " << node->id() << std::endl;
+        break;
+      }
+      _condition->normalize(_plan);
       std::vector<Index const*> usedIndexes;
       _condition->findIndexes(node, usedIndexes);
-      std::cout << "Number of indexes used: " << usedIndexes.size() << std::endl;
+      std::cout << node->id() << " Number of indexes used: " << usedIndexes.size() << std::endl;
 
       std::unique_ptr<ExecutionNode> newNode(new IndexNode(
         _plan, 
@@ -117,31 +122,8 @@ bool ConditionFinder::before (ExecutionNode* en) {
         false
       ));
 
-      // TODO Build new IndexRangeNode
-      /*
-      std::unique_ptr<ExecutionNode> newNode(new IndexRangeNode(
-        _plan, 
-        _plan->nextId(), 
-        node->vocbase(), 
-        node->collection(), 
-        node->outVariable(), 
-        idx, 
-        _condition,
-        false
-      ));
-
-      size_t place = node->id();
-
-      std::unordered_map<size_t, size_t>::iterator it = _changesPlaces.find(place);
-
-      if (it == _changesPlaces.end()) {
-        _changes.emplace_back(place, std::vector<ExecutionNode*>());
-        it = _changesPlaces.emplace(place, _changes.size() - 1).first;
-      }
-
-      std::vector<ExecutionNode*>& vec = _changes[it->second].second;
-      vec.emplace_back(newNode.release());
-      */
+      // We keep this nodes change
+      _changes.emplace(node->id(), newNode.release());
 
       break;
     }
