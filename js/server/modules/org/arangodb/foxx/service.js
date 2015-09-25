@@ -41,6 +41,7 @@ class AppContext {
     if (!fqn.length) {
       throw new Error(`Cannot derive collection name from "${name}"`);
     }
+    return fqn;
   }
 
   collection(name) {
