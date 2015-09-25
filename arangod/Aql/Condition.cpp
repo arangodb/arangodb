@@ -166,13 +166,18 @@ void Condition::andCombine (AstNode const* node) {
 /// @brief locate indices for each condition
 ////////////////////////////////////////////////////////////////////////////////
 
-void Condition::findIndexes (EnumerateCollectionNode const* node) {
+void Condition::findIndexes (EnumerateCollectionNode const* node, std::vector<Index*> usedIndexes) {
   // We can only start after DNF transform
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
   Variable const* reference = node->outVariable();
   for (size_t i = 0; i < _root->numMembers(); ++i) {
-    setIndexForAndNode(_root->getMember(i), reference, node);
+    setIndexForAndNode(_root->getMember(i), reference, node, usedIndexes));
+    if (i != usedIndexes.size()) {
+      // We are not able to find an index for this AND block. Sorry we have to abort here
+      usedIndexes.clear();
+      break;
+    }
   }
 }
 
@@ -181,27 +186,21 @@ void Condition::setIndexForAndNode (AstNode const* node, Variable const* referen
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
 
   std::vector<Index*> indexes = colNode->collection()->getIndexes();
-  std::vector<Index*> matching;
   std::vector<std::string> sortAttributes; // TODO has to be internal
+  double bestCost = -1.0; // All costs are > 0, so if we have found one we can use it.
+  Index* bestIndex;
+
   for (auto& idx : indexes) {
     double estimatedCost;
 
     if (idx->canServeForConditionNode(node, reference, &sortAttributes, estimatedCost)) {
-      matching.emplace_back(idx);
+      if (bestCost < estimatedCost) {
+        bestIndex = idx;
+      }
     }
   }
   std::cout << "We can use indexes for var: " << reference->name << " in collection " << colNode->collection()->getName() << ":" << std::endl;
-  for (auto& idx : matching) {
-    std::cout << idx->toJson() << std::endl;
-    /*
-    std::cout << "Type" << idx->type;
-    if (idx->hasSelectivityEstimate()) {
-      std::cout << " Estimate: " << idx->selectivityEstimate();
-    }
-    std::cout << std::endl;
-    */
-  }
-  std::cout << std::endl;
+  std::cout << "We use: " << bestIndex->toJson() << std::endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

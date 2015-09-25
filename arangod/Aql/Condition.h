@@ -172,7 +172,7 @@ namespace triagens {
 /// @brief locate indices which can be used for conditions
 ////////////////////////////////////////////////////////////////////////////////
 
-        void findIndexes (EnumerateCollectionNode const*);
+        void findIndexes (EnumerateCollectionNode const*, std::vector<Index*>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the condition
