@@ -172,7 +172,7 @@ namespace triagens {
 /// @brief locate indices which can be used for conditions
 ////////////////////////////////////////////////////////////////////////////////
 
-        void findIndexes (EnumerateCollectionNode const*, std::vector<Index*>);
+        void findIndexes (EnumerateCollectionNode const*, std::vector<Index*>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the condition
@@ -210,7 +210,7 @@ namespace triagens {
 /// @brief Finds all indexes that can match this single node
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setIndexForAndNode (AstNode const*, Variable const*, EnumerateCollectionNode const*);
+        void setIndexForAndNode (AstNode const*, Variable const*, EnumerateCollectionNode const*, std::vector<Index*>&);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------

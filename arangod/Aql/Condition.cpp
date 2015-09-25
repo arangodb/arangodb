@@ -166,14 +166,14 @@ void Condition::andCombine (AstNode const* node) {
 /// @brief locate indices for each condition
 ////////////////////////////////////////////////////////////////////////////////
 
-void Condition::findIndexes (EnumerateCollectionNode const* node, std::vector<Index*> usedIndexes) {
+void Condition::findIndexes (EnumerateCollectionNode const* node, std::vector<Index*>& usedIndexes) {
   // We can only start after DNF transform
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
   Variable const* reference = node->outVariable();
   for (size_t i = 0; i < _root->numMembers(); ++i) {
-    setIndexForAndNode(_root->getMember(i), reference, node, usedIndexes));
-    if (i != usedIndexes.size()) {
+    setIndexForAndNode(_root->getMember(i), reference, node, usedIndexes);
+    if (i + 1  != usedIndexes.size()) {
       // We are not able to find an index for this AND block. Sorry we have to abort here
       usedIndexes.clear();
       break;
@@ -181,14 +181,15 @@ void Condition::findIndexes (EnumerateCollectionNode const* node, std::vector<In
   }
 }
 
-void Condition::setIndexForAndNode (AstNode const* node, Variable const* reference, EnumerateCollectionNode const* colNode) {
+void Condition::setIndexForAndNode (AstNode const* node, Variable const* reference, EnumerateCollectionNode const* colNode, std::vector<Index*>& usedIndexes) {
   // We can only iterate through a proper DNF
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
 
   std::vector<Index*> indexes = colNode->collection()->getIndexes();
   std::vector<std::string> sortAttributes; // TODO has to be internal
   double bestCost = -1.0; // All costs are > 0, so if we have found one we can use it.
-  Index* bestIndex;
+  // This code is never responsible for the content of this pointer.
+  Index* bestIndex = nullptr;
 
   for (auto& idx : indexes) {
     double estimatedCost;
@@ -199,8 +200,11 @@ void Condition::setIndexForAndNode (AstNode const* node, Variable const* referen
       }
     }
   }
-  std::cout << "We can use indexes for var: " << reference->name << " in collection " << colNode->collection()->getName() << ":" << std::endl;
-  std::cout << "We use: " << bestIndex->toJson() << std::endl;
+  if (bestIndex != nullptr) {
+    std::cout << "We can use indexes for var: " << reference->name << " in collection " << colNode->collection()->getName() << ":" << std::endl;
+    std::cout << "We use: " << bestIndex->toJson() << std::endl;
+    usedIndexes.emplace_back(bestIndex);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

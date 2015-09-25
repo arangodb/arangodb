@@ -102,7 +102,9 @@ bool ConditionFinder::before (ExecutionNode* en) {
     case EN::ENUMERATE_COLLECTION: {
       _condition->normalize(_plan);
       auto node = static_cast<EnumerateCollectionNode const*>(en);
-      _condition->findIndexes(node);
+      std::vector<Index*> usedIndexes;
+      _condition->findIndexes(node, usedIndexes);
+      std::cout << "Number of indexes used: " << usedIndexes.size() << std::endl;
 
       // TODO Build new IndexRangeNode
       /*
