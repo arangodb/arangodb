@@ -166,7 +166,7 @@ void Condition::andCombine (AstNode const* node) {
 /// @brief locate indices for each condition
 ////////////////////////////////////////////////////////////////////////////////
 
-void Condition::findIndexes (EnumerateCollectionNode const* node, std::vector<Index*>& usedIndexes) {
+void Condition::findIndexes (EnumerateCollectionNode const* node, std::vector<Index const*>& usedIndexes) {
   // We can only start after DNF transform
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
@@ -181,15 +181,18 @@ void Condition::findIndexes (EnumerateCollectionNode const* node, std::vector<In
   }
 }
 
-void Condition::setIndexForAndNode (AstNode const* node, Variable const* reference, EnumerateCollectionNode const* colNode, std::vector<Index*>& usedIndexes) {
+void Condition::setIndexForAndNode (AstNode const* node, 
+                                    Variable const* reference, 
+                                    EnumerateCollectionNode const* colNode, 
+                                    std::vector<Index const*>& usedIndexes) {
   // We can only iterate through a proper DNF
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
 
-  std::vector<Index*> indexes = colNode->collection()->getIndexes();
+  std::vector<Index const*> indexes = colNode->collection()->getIndexes();
   std::vector<std::string> sortAttributes; // TODO has to be internal
   double bestCost = -1.0; // All costs are > 0, so if we have found one we can use it.
   // This code is never responsible for the content of this pointer.
-  Index* bestIndex = nullptr;
+  Index const* bestIndex = nullptr;
 
   for (auto& idx : indexes) {
     double estimatedCost;

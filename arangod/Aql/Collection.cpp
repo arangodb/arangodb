@@ -172,7 +172,7 @@ std::vector<std::string> Collection::shardKeys () const {
 /// @brief returns the indexes of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<Index*> Collection::getIndexes () const {
+std::vector<Index const*> Collection::getIndexes () const {
   fillIndexes();
 
   return indexes;
@@ -182,7 +182,7 @@ std::vector<Index*> Collection::getIndexes () const {
 /// @brief return an index by its id
 ////////////////////////////////////////////////////////////////////////////////
   
-Index* Collection::getIndex (TRI_idx_iid_t id) const {
+Index const* Collection::getIndex (TRI_idx_iid_t id) const {
   fillIndexes();
 
   for (auto const& idx : indexes) {
@@ -198,7 +198,7 @@ Index* Collection::getIndex (TRI_idx_iid_t id) const {
 /// @brief return an index by its id
 ////////////////////////////////////////////////////////////////////////////////
   
-Index* Collection::getIndex (std::string const& id) const {
+Index const* Collection::getIndex (std::string const& id) const {
   return getIndex(triagens::basics::StringUtils::uint64(id));
 }
 

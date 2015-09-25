@@ -1269,7 +1269,7 @@ size_t EnumerateCollectionNode::getUsableFieldsOfIndex (Index const* idx,
 // so that . . . 
 
 void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<std::string> const& attrs, 
-                                                           std::vector<Index*>& idxs, 
+                                                           std::vector<Index const*>& idxs, 
                                                            std::vector<size_t>& prefixes) const {
 
   auto const& indexes = _collection->getIndexes();

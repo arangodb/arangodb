@@ -2286,7 +2286,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
                   _modified = true;
                 }
                 else {
-                  std::vector<Index*> idxs;
+                  std::vector<Index const*> idxs;
                   std::vector<size_t> prefixes;
                   // {idxs.at(i)->_fields[0]..idxs.at(i)->_fields[prefixes.at(i)]}
                   // is a subset of <attrs>

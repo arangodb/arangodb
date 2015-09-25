@@ -160,19 +160,19 @@ namespace triagens {
 /// @brief returns the indexes of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::vector<Index*> getIndexes () const; 
+      std::vector<Index const*> getIndexes () const; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return an index by its id
 ////////////////////////////////////////////////////////////////////////////////
   
-      Index* getIndex (TRI_idx_iid_t) const;
+      Index const* getIndex (TRI_idx_iid_t) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return an index by its id
 ////////////////////////////////////////////////////////////////////////////////
   
-      Index* getIndex (std::string const&) const;
+      Index const* getIndex (std::string const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the collection uses the default sharding
@@ -244,7 +244,7 @@ namespace triagens {
       TRI_vocbase_t*               vocbase;
       TRI_transaction_type_e       accessType;
       bool                         isReadWrite;
-      std::vector<Index*> mutable  indexes;
+      std::vector<Index const*> mutable  indexes;
       int64_t mutable              numDocuments = UNINITIALIZED;
 
       static int64_t const         UNINITIALIZED = -1;
