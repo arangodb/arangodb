@@ -245,6 +245,17 @@
             ext: '.js.gz'
           }]
         },
+        clusterMinJS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['clusterFrontend/build/cluster.min.js'],
+            dest: '.',
+            ext: '.min.js.gz'
+          }]
+        },
         aceJS: {
           options: {
             mode: 'gzip'
@@ -276,6 +287,17 @@
             src: ['build/sharedLibs.js'],
             dest: '.',
             ext: '.js.gz'
+          }]
+        },
+        sharedMinJS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['build/sharedLibs.min.js'],
+            dest: '.',
+            ext: '.min.js.gz'
           }]
         }
       },
