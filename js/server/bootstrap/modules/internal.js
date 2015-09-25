@@ -93,6 +93,14 @@ delete global.DISPATCHER_THREADS;
 exports.frontendVersionCheck = global.FE_VERSION_CHECK;
 delete global.FE_VERSION_CHECK;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reloadRouting
+////////////////////////////////////////////////////////////////////////////////
+
+exports.reloadRouting = function () {
+  require("org/arangodb/actions").reloadRouting(); 
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
