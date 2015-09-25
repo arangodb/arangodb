@@ -302,60 +302,6 @@ function TransactionsImplicitCollectionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief uses an implicitly declared collection for writing
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseForWriting : function () {
-      try {
-        db._executeTransaction({
-          collections: { },
-          action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
-          params: { cn1: cn1 }
-        });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses an implicitly declared collection for writing
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseReadForWriting : function () {
-      try {
-        db._executeTransaction({
-          collections: { read: cn1 },
-          action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
-          params: { cn1: cn1 }
-        });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses an implicitly declared collection for writing
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseOtherForWriting : function () {
-      try {
-        db._executeTransaction({
-          collections: { write: cn2 },
-          action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
-          params: { cn1: cn1 }
-        });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief uses an explicitly declared collection for reading
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -455,26 +401,7 @@ function TransactionsImplicitCollectionsSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses an implicitly declared collection for writing
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseOtherForWriteAllowImplicit : function () {
-      try {
-        db._executeTransaction({
-          collections: { read: cn1, allowImplicit : true },
-          action: "function (params) { var db = require('internal').db; db._collection(params.cn2).truncate(); }",
-          params: { cn2: cn2 }
-        });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
-      }
     }
-
   };
 }
 
