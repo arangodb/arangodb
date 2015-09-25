@@ -32,8 +32,10 @@ using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
 
 bool ConditionFinder::before (ExecutionNode* en) {
-  if (en->canThrow()) {
+  if (! _varIds.empty() && en->canThrow()) {
+    // we already found a FILTER and
     // something that can throw is not safe to optimize
+    delete _condition;
     _condition = nullptr;
     return true;
   }
@@ -49,26 +51,22 @@ bool ConditionFinder::before (ExecutionNode* en) {
     case EN::SORT:
     case EN::INDEX:
     case EN::INDEX_RANGE:
-      // in these cases we simply ignore the intermediate nodes, note
-      // that we have taken care of nodes that could throw exceptions
-      // above.
-      break;
-
-    case EN::SINGLETON:
     case EN::INSERT:
     case EN::REMOVE:
     case EN::REPLACE:
     case EN::UPDATE:
     case EN::UPSERT:
     case EN::RETURN:
+    case EN::LIMIT:           
+      // in these cases we simply ignore the intermediate nodes, note
+      // that we have taken care of nodes that could throw exceptions
+      // above.
+      break;
+
+    case EN::SINGLETON:
     case EN::NORESULTS:
     case EN::ILLEGAL:
       // in all these cases something is seriously wrong and we better abort
-
-      // fall-through intentional...
-    case EN::LIMIT:           
-      // if we meet a limit node between a filter and an enumerate
-      // collection, we abort . . .
       return true;
 
     case EN::FILTER: {

@@ -2050,36 +2050,24 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
     changes.clear();
   };
 
-  try {
-    for (auto const& n : nodes) {
-      if (n->getType() == EN::FILTER) { 
-        auto nn = static_cast<FilterNode*>(n);
-        auto invars = nn->getVariablesUsedHere();
-        TRI_ASSERT(invars.size() == 1);
-        ConditionFinder finder(plan, invars[0], &changes);
-        nn->walk(&finder);
-      }
-    }
+  TRI_DEFER(cleanupChanges());
 
-    std::cout << "Candidates to replace " << changes.size() << std::endl;
+  for (auto const& n : nodes) {
+    ConditionFinder finder(plan, &changes);
+    n->walk(&finder);
   }
-  catch (...) {
-    cleanupChanges();
-    throw;
-  }
-  try { 
-    if (changes.size() > 0) {
-      modified = true;
-      for (auto change = changes.cbegin(); change != changes.cend() ; ++change) {
-        plan->registerNode(change->second);
-        plan->replaceNode(plan->getNodeById(change->first), change->second);
-        changes.erase(change);
-      }
+
+  std::cout << "Candidates to replace " << changes.size() << std::endl;
+  
+  if (! changes.empty()) {
+    modified = true;
+    for (auto& it : changes) {
+      plan->registerNode(it.second);
+      plan->replaceNode(plan->getNodeById(it.first), it.second);
+
+      // prevent double deletion by cleanupChanges below
+      it.second = nullptr;
     }
-  }
-  catch (...) {
-    cleanupChanges();
-    throw;
   }
 
   // Is this relevant??
