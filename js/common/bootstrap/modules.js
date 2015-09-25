@@ -69,7 +69,7 @@ const GLOBAL_PATHS = [];
 global.MODULES_PATH.forEach(function (p) {
   p = fs.normalize(fs.makeAbsolute(p));
   GLOBAL_PATHS.push(p);
-  if (p.match(/\/node\/?$/)) {
+  if (p.match(/[\/\\]node[\/\\]?$/)) {
     GLOBAL_PATHS.push(path.join(p, 'node_modules'));
   }
 });
