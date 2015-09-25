@@ -60,6 +60,7 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
   { static_cast<int>(SINGLETON),                    "SingletonNode" },
   { static_cast<int>(ENUMERATE_COLLECTION),         "EnumerateCollectionNode" },
   { static_cast<int>(ENUMERATE_LIST),               "EnumerateListNode" },
+  { static_cast<int>(INDEX),                        "IndexNode" },
   { static_cast<int>(INDEX_RANGE),                  "IndexRangeNode" },
   { static_cast<int>(LIMIT),                        "LimitNode" },
   { static_cast<int>(CALCULATION),                  "CalculationNode" },
@@ -230,6 +231,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       return new NoResultsNode(plan, oneNode);
     case INDEX_RANGE:
       return new IndexRangeNode(plan, oneNode);
+    case INDEX:
+      return new IndexNode(plan, oneNode);
     case REMOTE:
       return new RemoteNode(plan, oneNode);
     case GATHER: {
@@ -912,7 +915,8 @@ ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone (ExecutionPlan* 
 void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
   switch (en->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: 
-    case ExecutionNode::INDEX_RANGE: {
+    case ExecutionNode::INDEX_RANGE: 
+    case ExecutionNode::INDEX: {
       depth++;
       nrRegsHere.emplace_back(1);
       // create a copy of the last value here
@@ -926,7 +930,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       totalNrRegs++;
       break;
     }
-
+    
     case ExecutionNode::ENUMERATE_LIST: {
       depth++;
       nrRegsHere.emplace_back(1);
@@ -1478,6 +1482,122 @@ double EnumerateListNode::estimateCost (size_t& nrItems) const {
 
   nrItems = length * incoming;
   return depCost + static_cast<double>(length) * incoming; 
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              methods of IndexNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for IndexNode - TODO
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexNode::toJsonHelper (triagens::basics::Json& nodes,
+                              TRI_memory_zone_t* zone,
+                              bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));
+  // call base class method
+
+  if (json.isEmpty()) {
+    return;
+  }
+ 
+  // Now put info about vocbase and cid in there
+  json("database", triagens::basics::Json(_vocbase->_name))
+      ("collection", triagens::basics::Json(_collection->getName()))
+      ("outVariable", _outVariable->toJson());
+ 
+//  json("index", _index->toJson()); 
+  json("reverse", triagens::basics::Json(_reverse));
+
+  // And add it:
+  nodes(json);
+}
+
+ExecutionNode* IndexNode::clone (ExecutionPlan* plan,
+                                 bool withDependencies,
+                                 bool withProperties) const {
+  auto outVariable = _outVariable;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+  }
+
+  // TODO FIXME
+  auto c = new IndexNode(plan, _id, _vocbase, _collection, 
+                         outVariable, _indexes, _condition, _reverse);
+
+  cloneHelper(c, plan, withDependencies, withProperties);
+
+  return static_cast<ExecutionNode*>(c);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for IndexNode from Json - TODO
+////////////////////////////////////////////////////////////////////////////////
+
+IndexNode::IndexNode (ExecutionPlan* plan,
+                      triagens::basics::Json const& json)
+  : ExecutionNode(plan, json),
+    _vocbase(plan->getAst()->query()->vocbase()),
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), "collection"))),
+    _outVariable(varFromJson(plan->getAst(), json, "outVariable")),
+    _indexes(),
+    _condition(nullptr), 
+    _reverse(false) {
+
+    // TODO FIXME
+/*
+  // now the index . . . 
+  // TODO the following could be a constructor method for
+  // an Index object when these are actually used
+  auto index = JsonHelper::checkAndGetObjectValue(json.json(), "index");
+  auto iid   = JsonHelper::checkAndGetStringValue(index, "id");
+
+  _index = _collection->getIndex(iid);
+*/  
+  _reverse = JsonHelper::checkAndGetBooleanValue(json.json(), "reverse");
+
+//  if (_index == nullptr) {
+//    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index not found");
+//  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of an index range node is a multiple of the cost of
+/// its unique dependency - TODO
+////////////////////////////////////////////////////////////////////////////////
+ 
+double IndexNode::estimateCost (size_t& nrItems) const { 
+  nrItems = 1; // TODO FIXME
+  return 1.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, returning a vector
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<Variable const*> IndexNode::getVariablesUsedHere () const {
+  std::unordered_set<Variable const*> s;
+  // actual work is done by that method  
+  getVariablesUsedHere(s); 
+
+  // copy result into vector
+  std::vector<Variable const*> v;
+  v.reserve(s.size());
+
+  for (auto const& vv : s) {
+    v.emplace_back(const_cast<Variable*>(vv));
+  }
+  return v;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place - TODO
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexNode::getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const {
+  // TODO FIXME
 }
 
 // -----------------------------------------------------------------------------
@@ -2499,6 +2619,7 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
       depth = 0;
     }
     else if (en->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+             en->getType() == ExecutionNode::INDEX ||
              en->getType() == ExecutionNode::INDEX_RANGE ||
              en->getType() == ExecutionNode::ENUMERATE_LIST ||
              en->getType() == ExecutionNode::AGGREGATE) {

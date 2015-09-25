@@ -67,6 +67,7 @@ static ExecutionBlock* CreateBlock (ExecutionEngine* engine,
     case ExecutionNode::INDEX_RANGE: {
       return new IndexRangeBlock(engine, static_cast<IndexRangeNode const*>(en));
     }
+    // TODO FIXME add INDEX
     case ExecutionNode::ENUMERATE_COLLECTION: {
       return new EnumerateCollectionBlock(engine,
                                           static_cast<EnumerateCollectionNode const*>(en));
