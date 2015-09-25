@@ -2068,10 +2068,10 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
   try { 
     if (changes.size() > 0) {
       modified = true;
-      for (auto& change : changes) {
-        plan->registerNode(change.second);
-        plan->replaceNode(plan->getNodeById(change.first), change.second);
-        // TODO properly clear changes! 
+      for (auto change = changes.cbegin(); change != changes.cend() ; ++change) {
+        plan->registerNode(change->second);
+        plan->replaceNode(plan->getNodeById(change->first), change->second);
+        changes.erase(change);
       }
     }
   }
