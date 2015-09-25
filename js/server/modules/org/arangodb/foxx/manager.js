@@ -112,7 +112,7 @@ const manifestSchema = {
       .pattern(RE_FQPATH, joi.string().required())
     )
   ),
-  defaultDocument: joi.string().allow('').allow(null).default(null),
+  defaultDocument: joi.string().allow('').allow(null).default('index.html'),
   dependencies: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
