@@ -1714,28 +1714,12 @@ static bool RunUnitTests (v8::Isolate* isolate, v8::Handle<v8::Context> context)
 
 static bool RunScripts (v8::Isolate* isolate,
                         v8::Handle<v8::Context> context,
-                        const vector<string>& scripts,
-                        const bool execute) {
+                        std::vector<std::string> const& scripts,
+                        bool execute) {
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
 
-  bool ok;
-
-  ok = true;
-
-  TRI_GET_GLOBALS();
-  TRI_GET_GLOBAL(ExecuteFileCallback, v8::Function);
-
-  if (ExecuteFileCallback.IsEmpty()) {
-    string msg = "no execute function has been registered";
-
-    BaseClient.printErrLine(msg.c_str());
-    BaseClient.log("%s", msg.c_str());
-
-    BaseClient.flushLog();
-
-    return false;
-  }
+  bool ok = true;
 
   for (size_t i = 0;  i < scripts.size();  ++i) {
     if (! FileUtils::exists(scripts[i])) {
@@ -1761,8 +1745,9 @@ static bool RunScripts (v8::Isolate* isolate,
       auto dirname = TRI_Dirname(TRI_ObjectToString(filename).c_str());
       current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), TRI_V8_STRING(dirname));
       TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
-      
-      ExecuteFileCallback->Call(ExecuteFileCallback, 1, args);
+     
+      TRI_ExecuteGlobalJavaScriptFile(isolate, scripts[i].c_str()); 
+
       // restore old values for __dirname and __filename
       if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
         current->Delete(TRI_V8_ASCII_STRING("__filename"));
