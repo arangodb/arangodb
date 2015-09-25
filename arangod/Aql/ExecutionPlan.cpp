@@ -1500,12 +1500,22 @@ std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (ExecutionNode::NodeT
 /// @brief find nodes of a certain types
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
-                                  std::vector<ExecutionNode::NodeType> const& types,
-                                  bool enterSubqueries) {
+std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (std::vector<ExecutionNode::NodeType> const& types,
+                                                            bool enterSubqueries) {
 
   std::vector<ExecutionNode*> result;
   NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
+  root()->walk(&finder);
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find all end nodes in a plan
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<ExecutionNode*> ExecutionPlan::findEndNodes (bool enterSubqueries) const {
+  std::vector<ExecutionNode*> result;
+  EndNodeFinder finder(result, enterSubqueries);
   root()->walk(&finder);
   return result;
 }
