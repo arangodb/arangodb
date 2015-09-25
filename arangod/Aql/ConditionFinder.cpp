@@ -106,6 +106,17 @@ bool ConditionFinder::before (ExecutionNode* en) {
       _condition->findIndexes(node, usedIndexes);
       std::cout << "Number of indexes used: " << usedIndexes.size() << std::endl;
 
+      std::unique_ptr<ExecutionNode> newNode(new IndexNode(
+        _plan, 
+        _plan->nextId(), 
+        node->vocbase(), 
+        node->collection(), 
+        node->outVariable(), 
+        usedIndexes, 
+        _condition,
+        false
+      ));
+
       // TODO Build new IndexRangeNode
       /*
       std::unique_ptr<ExecutionNode> newNode(new IndexRangeNode(

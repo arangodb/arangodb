@@ -32,6 +32,7 @@
 #include "Aql/AggregationOptions.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
+#include "Aql/Condition.h"
 #include "Aql/Expression.h"
 #include "Aql/Index.h"
 #include "Aql/ModificationOptions.h"
@@ -1176,6 +1177,39 @@ namespace triagens {
         Variable const* _outVariable;
 
     };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class IndexNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class IndexNode: public ExecutionNode {
+
+      public:
+
+        IndexNode (ExecutionPlan* plan,
+                   size_t id,
+                   TRI_vocbase_t* vocbase, 
+                   Collection const* collection,
+                   Variable const* outVariable,
+                   std::vector<Index const*> indexes,
+                   Condition const* condition,
+                   bool reverse)
+          : ExecutionNode(plan, id), 
+            _vocbase(vocbase), 
+            _collection(collection),
+            _outVariable(outVariable),
+            _indexes(indexes),
+            _condition(condition),
+            _reverse(reverse) {
+        }
+
+        IndexNode (ExecutionPlan*, triagens::basics::Json const& base);
+
+        ~IndexNode () {
+        }
+
+    }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class IndexRangeNode
