@@ -363,6 +363,21 @@ Module._resolveLookupPaths = function(request, parent) {
   return [id, [path.dirname(parent.filename)]];
 };
 
+Module._resolveDbModule = function (request) {
+  if (request.charAt(0) !== '/') {
+    request = '/' + request;
+  }
+  var dbModule = Module._dbCache[request];
+  if (!dbModule) {
+    dbModule = internal.db._modules.firstExample({path: request});
+    if (!dbModule) {
+      return null;
+    }
+    Module._dbCache[request] = dbModule;
+  }
+  return dbModule;
+};
+
 
 // Check the cache for the requested file.
 // 1. If a module already exists in the cache: return its exports object.
@@ -374,39 +389,28 @@ Module._resolveLookupPaths = function(request, parent) {
 Module._load = function(request, parent, isMain) {
   var filename = request;
   var dbModule = false;
+  var match = request.match(/^\/?db:\/(\/_modules)?(\/.+)/);
 
-  if (!request.startsWith('db://')) {
+  if (match) {
+    dbModule = Module._resolveDbModule(match[2]);
+    if (!dbModule) {
+      var err = new Error("Cannot find module '" + request + "'");
+      err.code = 'MODULE_NOT_FOUND';
+      throw err;
+    }
+  } else {
     try {
       filename = Module._resolveFilename(request, parent);
     } catch (e) {
-      
-      if (request.charAt(0) !== '/') {
-        request = '/' + request;
-      }
-      dbModule = Module._dbCache[request];
+      dbModule = Module._resolveDbModule(request);
       if (!dbModule) {
-        dbModule = internal.db._modules.firstExample({path: request});
-        if (!dbModule) {
-          throw e;
-        }
-        Module._dbCache[request] = dbModule;
+        throw e;
       }
     }
   }
-  else {
-    if (request.charAt(0) !== '/') {
-      request = '/' + request;
-    }
-    dbModule = Module._dbCache[request];
-    if (!dbModule) {
-      dbModule = internal.db._modules.firstExample({path: request});
-      if (dbModule) {
-        Module._dbCache[request] = dbModule;
-      }
-      else {
-        throw new Error("failed to locate module " + request + " in _modules!");
-      }
-    }
+
+  if (dbModule) {
+    filename = dbModule.path;
   }
 
   var cachedModule = Module._cache[filename];
