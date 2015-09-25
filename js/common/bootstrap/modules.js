@@ -375,19 +375,37 @@ Module._load = function(request, parent, isMain) {
   var filename = request;
   var dbModule = false;
 
-  try {
-    filename = Module._resolveFilename(request, parent);
-  } catch (e) {
+  if (!request.startsWith('db://')) {
+    try {
+      filename = Module._resolveFilename(request, parent);
+    } catch (e) {
+      
+      if (request.charAt(0) !== '/') {
+        request = '/' + request;
+      }
+      dbModule = Module._dbCache[request];
+      if (!dbModule) {
+        dbModule = internal.db._modules.firstExample({path: request});
+        if (!dbModule) {
+          throw e;
+        }
+        Module._dbCache[request] = dbModule;
+      }
+    }
+  }
+  else {
     if (request.charAt(0) !== '/') {
       request = '/' + request;
     }
     dbModule = Module._dbCache[request];
     if (!dbModule) {
       dbModule = internal.db._modules.firstExample({path: request});
-      if (!dbModule) {
-        throw e;
+      if (dbModule) {
+        Module._dbCache[request] = dbModule;
       }
-      Module._dbCache[request] = dbModule;
+      else {
+        throw new Error("failed to locate module " + request + " in _modules!");
+      }
     }
   }
 
