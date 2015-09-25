@@ -1836,6 +1836,7 @@ bool ExecutionPlan::isDeadSimple () const {
     if (nodeType == ExecutionNode::SUBQUERY ||
         nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
         nodeType == ExecutionNode::ENUMERATE_LIST ||
+        nodeType == ExecutionNode::INDEX || 
         nodeType == ExecutionNode::INDEX_RANGE) {
       // these node types are not simple
       return false;

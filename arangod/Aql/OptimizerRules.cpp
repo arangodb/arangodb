@@ -846,6 +846,7 @@ int triagens::aql::removeSortRandRule (Optimizer* opt,
         case EN::FILTER: 
         case EN::SUBQUERY:
         case EN::ENUMERATE_LIST:
+        case EN::INDEX: // TODO FIXME
         case EN::INDEX_RANGE: {
           // if we found another SortNode, an AggregateNode, FilterNode, a SubqueryNode, 
           // an EnumerateListNode or an IndexRangeNode
@@ -1046,6 +1047,7 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
         shouldMove = true;
       } 
       else if (currentType == EN::INDEX_RANGE ||
+               currentType == EN::INDEX ||
                currentType == EN::ENUMERATE_COLLECTION ||
                currentType == EN::ENUMERATE_LIST ||
                currentType == EN::AGGREGATE ||
@@ -2125,6 +2127,7 @@ class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         case EN::SUBQUERY:        
         case EN::SORT:
         case EN::INDEX_RANGE:
+        case EN::INDEX:
           break;
 
         case EN::CALCULATION: {
@@ -2966,6 +2969,7 @@ class SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
         if (node->getType() == EN::ENUMERATE_COLLECTION ||
             node->getType() == EN::INDEX_RANGE ||
+            node->getType() == EN::INDEX ||
             node->getType() == EN::ENUMERATE_LIST) {
           // we are contained in an outer loop
           return true;
@@ -3095,6 +3099,7 @@ class SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::REMOTE:
       case EN::ILLEGAL:
       case EN::LIMIT:                      // LIMIT is criterion to stop
+      case EN::INDEX: // TODO FIXME
         return true;  // abort.
 
       case EN::SORT:     // pulling two sorts together is done elsewhere.
@@ -3561,6 +3566,7 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
     std::vector<ExecutionNode::NodeType> const types = { 
       ExecutionNode::ENUMERATE_COLLECTION, 
       ExecutionNode::INDEX_RANGE,
+      ExecutionNode::INDEX,
       ExecutionNode::INSERT,
       ExecutionNode::UPDATE,
       ExecutionNode::REPLACE,
@@ -3594,6 +3600,10 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
         collection = static_cast<EnumerateCollectionNode*>(node)->collection();
       }
       else if (nodeType == ExecutionNode::INDEX_RANGE) {
+        vocbase = static_cast<IndexRangeNode*>(node)->vocbase();
+        collection = static_cast<IndexRangeNode*>(node)->collection();
+      }
+      else if (nodeType == ExecutionNode::INDEX) {
         vocbase = static_cast<IndexRangeNode*>(node)->vocbase();
         collection = static_cast<IndexRangeNode*>(node)->collection();
       }
@@ -3921,6 +3931,7 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::SORT:
+        case EN::INDEX:
         case EN::INDEX_RANGE:
         case EN::ENUMERATE_COLLECTION:
           //do break
@@ -4018,6 +4029,7 @@ int triagens::aql::distributeSortToClusterRule (Optimizer* opt,
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::INDEX_RANGE:
+        case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -4291,6 +4303,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         case EN::ILLEGAL:
         case EN::LIMIT:           
         case EN::SORT:
+        case EN::INDEX:
         case EN::INDEX_RANGE: {
           // if we meet any of the above, then we abort . . .
         }
@@ -4832,6 +4845,7 @@ int triagens::aql::patchUpdateStatementsRule (Optimizer* opt,
       auto const type = dep->getType();
 
       if (type == EN::ENUMERATE_LIST || 
+          type == EN::INDEX ||
           type == EN::INDEX_RANGE ||
           type == EN::SUBQUERY) {
         // not suitable

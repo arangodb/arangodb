@@ -47,6 +47,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:        
     case EN::SORT:
+    case EN::INDEX:
     case EN::INDEX_RANGE:
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
