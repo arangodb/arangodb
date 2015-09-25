@@ -102,7 +102,7 @@ static void dumpNode (AstNode const* node, int indent) {
     std::cout << "  (attribute " << node->getStringValue() << ")";
   }
   else if (node->type == NODE_TYPE_REFERENCE) {
-    std::cout << "  (name " << node->getStringValue() << ")";
+    std::cout << "  (name " << static_cast<Variable const*>(node->getData())->name << ")";
   }
 
   std::cout << "\n";
