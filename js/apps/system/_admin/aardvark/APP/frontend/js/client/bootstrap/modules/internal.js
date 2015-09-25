@@ -43,7 +43,6 @@ var exports = require('internal');
 
 if (global.ArangoConnection) {
   exports.ArangoConnection = global.ArangoConnection;
-  delete global.ArangoConnection;
 }
 
 if (global.SYS_ARANGO) {
