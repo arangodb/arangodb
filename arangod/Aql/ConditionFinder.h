@@ -47,7 +47,9 @@ namespace triagens {
                          std::unordered_map<size_t, ExecutionNode*>* changes)
           : _plan(plan),
             _condition(nullptr),
-            _varIds(),
+            _filterVariables(),
+            _sortVariables(),
+            _sortExpression(nullptr),
             _changes(changes) {
         };
 
@@ -63,7 +65,9 @@ namespace triagens {
 
         ExecutionPlan*                     _plan;
         Condition*                         _condition;
-        std::unordered_set<VariableId>     _varIds;
+        std::unordered_set<VariableId>     _filterVariables;
+        std::unordered_set<VariableId>     _sortVariables;
+        AstNode const*                     _sortExpression;
         // note: this class will never free the contents of this map
         std::unordered_map<size_t, ExecutionNode*>* _changes;
     

@@ -32,7 +32,7 @@ using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
 
 bool ConditionFinder::before (ExecutionNode* en) {
-  if (! _varIds.empty() && en->canThrow()) {
+  if (! _filterVariables.empty() && en->canThrow()) {
     // we already found a FILTER and
     // something that can throw is not safe to optimize
     delete _condition;
@@ -48,7 +48,6 @@ bool ConditionFinder::before (ExecutionNode* en) {
     case EN::GATHER:
     case EN::REMOTE:
     case EN::SUBQUERY:        
-    case EN::SORT:
     case EN::INDEX:
     case EN::INDEX_RANGE:
     case EN::INSERT:
@@ -57,23 +56,35 @@ bool ConditionFinder::before (ExecutionNode* en) {
     case EN::UPDATE:
     case EN::UPSERT:
     case EN::RETURN:
-    case EN::LIMIT:           
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
+      break;
+    
+    case EN::LIMIT:           
+      // LIMIT invalidates the sort expression we already found
+      _sortExpression = nullptr;
       break;
 
     case EN::SINGLETON:
     case EN::NORESULTS:
     case EN::ILLEGAL:
-      // in all these cases something is seriously wrong and we better abort
+      // in all these cases we better abort
       return true;
 
     case EN::FILTER: {
        std::vector<Variable const*>&& inVar = en->getVariablesUsedHere();
        TRI_ASSERT(inVar.size() == 1);
-       // register which variable is used in a filter
-       _varIds.emplace(inVar[0]->id);
+       // register which variable is used in a FILTER
+       _filterVariables.emplace(inVar[0]->id);
+       break;
+     }
+    
+    case EN::SORT: {
+       std::vector<Variable const*>&& inVar = en->getVariablesUsedHere();
+       TRI_ASSERT(inVar.size() == 1);
+       // register which variable is used in a SORT
+       _sortVariables.emplace(inVar[0]->id);
        break;
      }
 
@@ -81,20 +92,28 @@ bool ConditionFinder::before (ExecutionNode* en) {
       auto outvar = en->getVariablesSetHere();
       TRI_ASSERT(outvar.size() == 1);
 
-      if (_varIds.find(outvar[0]->id) == _varIds.end()) {
-        // some non-interesting variable
-        break;
+      if (_filterVariables.find(outvar[0]->id) != _filterVariables.end()) {
+        // a variable used in a FILTER
+        auto expressionNode = static_cast<CalculationNode const*>(en)->expression()->node();
+
+        if (_condition == nullptr) {
+          // did not have any expression before. now save what we found
+          _condition = new Condition(_plan->getAst());
+        }
+
+        TRI_ASSERT(_condition != nullptr);
+        _condition->andCombine(expressionNode);
       }
+      else if (_sortVariables.find(outvar[0]->id) != _sortVariables.end()) {
+        // a variable used in a SORT
+        auto expressionNode = static_cast<CalculationNode const*>(en)->expression()->node();
 
-      auto expression = static_cast<CalculationNode const*>(en)->expression()->node();
-
-      if (_condition == nullptr) {
-        // did not have any expression before. now save what we found
-        _condition = new Condition(_plan->getAst());
+        // only store latest SORT condition
+        if (_sortExpression == nullptr) {
+          // did not have any expression before. now save what we found
+          _sortExpression = expressionNode;
+        }
       }
-
-      TRI_ASSERT(_condition != nullptr);
-      _condition->andCombine(expression);
       break;
     }
 
