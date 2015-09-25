@@ -101,48 +101,31 @@ bool ConditionFinder::before (ExecutionNode* en) {
     }
 
     case EN::ENUMERATE_COLLECTION: {
-      _condition->normalize(_plan);
       auto node = static_cast<EnumerateCollectionNode const*>(en);
+      if (_changes->find(node->id()) != _changes->end()) {
+        std::cout << "Already optimized " << node->id() << std::endl;
+        break;
+      }
+      _condition->normalize(_plan);
       std::vector<Index const*> usedIndexes;
       _condition->findIndexes(node, usedIndexes);
-      std::cout << "Number of indexes used: " << usedIndexes.size() << std::endl;
+      std::cout << node->id() << " Number of indexes used: " << usedIndexes.size() << std::endl;
+      if (usedIndexes.size() != 0) {
+        // We either cann find indexes for everything or findIndexes will clear out usedIndexes
+        std::unique_ptr<ExecutionNode> newNode(new IndexNode(
+          _plan, 
+          _plan->nextId(), 
+          node->vocbase(), 
+          node->collection(), 
+          node->outVariable(), 
+          usedIndexes, 
+          _condition,
+          false
+        ));
 
-      std::unique_ptr<ExecutionNode> newNode(new IndexNode(
-        _plan, 
-        _plan->nextId(), 
-        node->vocbase(), 
-        node->collection(), 
-        node->outVariable(), 
-        usedIndexes, 
-        _condition,
-        false
-      ));
-
-      // TODO Build new IndexRangeNode
-      /*
-      std::unique_ptr<ExecutionNode> newNode(new IndexRangeNode(
-        _plan, 
-        _plan->nextId(), 
-        node->vocbase(), 
-        node->collection(), 
-        node->outVariable(), 
-        idx, 
-        _condition,
-        false
-      ));
-
-      size_t place = node->id();
-
-      std::unordered_map<size_t, size_t>::iterator it = _changesPlaces.find(place);
-
-      if (it == _changesPlaces.end()) {
-        _changes.emplace_back(place, std::vector<ExecutionNode*>());
-        it = _changesPlaces.emplace(place, _changes.size() - 1).first;
+        // We keep this nodes change
+        _changes->emplace(node->id(), newNode.release());
       }
-
-      std::vector<ExecutionNode*>& vec = _changes[it->second].second;
-      vec.emplace_back(newNode.release());
-      */
 
       break;
     }

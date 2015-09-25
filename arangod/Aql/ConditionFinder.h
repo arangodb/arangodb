@@ -43,12 +43,15 @@ namespace triagens {
 
       public:
 
-        ConditionFinder (ExecutionPlan* plan,
-                         Variable const* var) 
+        ConditionFinder (
+            ExecutionPlan* plan,
+            Variable const* var,
+            std::unordered_map<size_t, ExecutionNode*>* changes
+          )
           : _plan(plan),
             _condition(nullptr),
-            _varIds() {
-
+            _varIds(),
+            _changes(changes) {
           _varIds.emplace(var->id);
         };
 
@@ -56,15 +59,17 @@ namespace triagens {
           delete _condition;
         }
      
-      bool before (ExecutionNode* en) override final;
+        bool before (ExecutionNode* en) override final;
 
-      bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) final;
+        bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) final;
 
-    private:
+      private:
 
-      ExecutionPlan*                     _plan;
-      Condition*                         _condition;
-      std::unordered_set<VariableId>     _varIds;
+        ExecutionPlan*                     _plan;
+        Condition*                         _condition;
+        std::unordered_set<VariableId>     _varIds;
+        //!! NOTE: This Class will never free the content of this map
+        std::unordered_map<size_t, ExecutionNode*>* _changes;
     
     };
   }

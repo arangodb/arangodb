@@ -2041,20 +2041,52 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
   bool modified = false;
   std::vector<ExecutionNode*>&& nodes = plan->findEndNodes(true);
 
-  for (auto const& n : nodes) {
-    if (n->getType() == EN::FILTER) { 
-      auto nn = static_cast<FilterNode*>(n);
-      auto invars = nn->getVariablesUsedHere();
-      TRI_ASSERT(invars.size() == 1);
-      ConditionFinder finder(plan, invars[0]);
-      nn->walk(&finder);
+  std::unordered_map<size_t, ExecutionNode*> changes;
+
+  auto cleanupChanges = [&] () -> void {
+    for (auto& v : changes) {
+      delete v.second;
+    }
+    changes.clear();
+  };
+
+  try {
+    for (auto const& n : nodes) {
+      if (n->getType() == EN::FILTER) { 
+        auto nn = static_cast<FilterNode*>(n);
+        auto invars = nn->getVariablesUsedHere();
+        TRI_ASSERT(invars.size() == 1);
+        ConditionFinder finder(plan, invars[0], &changes);
+        nn->walk(&finder);
+      }
+    }
+
+    std::cout << "Candidates to replace " << changes.size() << std::endl;
+  }
+  catch (...) {
+    cleanupChanges();
+    throw;
+  }
+  try { 
+    if (changes.size() > 0) {
+      modified = true;
+      for (auto change = changes.cbegin(); change != changes.cend() ; ++change) {
+        plan->registerNode(change->second);
+        plan->replaceNode(plan->getNodeById(change->first), change->second);
+        changes.erase(change);
+      }
     }
   }
-  
+  catch (...) {
+    cleanupChanges();
+    throw;
+  }
+
+  // Is this relevant??
   if (modified) {
     plan->findVarUsage();
   }
-  
+
   opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
