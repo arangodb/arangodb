@@ -211,7 +211,7 @@
     res.transformations = [ "base64decode" ];
     var mount = validateMount(req);
     var app = FoxxManager.lookupApp(mount);
-    if (app.hasOwnProperty("_thumbnail")) {
+    if (app.hasOwnProperty("thumbnail")) {
       res.body = app.thumbnail;
     } else {
       res.body = defaultThumb;
