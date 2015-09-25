@@ -33,6 +33,10 @@ namespace triagens {
   namespace aql {
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  class NodeFinder
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -44,9 +48,9 @@ template<>
 NodeFinder<ExecutionNode::NodeType>::NodeFinder (ExecutionNode::NodeType lookingFor,
                                                  std::vector<ExecutionNode*>& out,
                                                  bool enterSubqueries) 
- : _lookingFor(lookingFor), 
-   _out(out), 
-   _enterSubqueries(enterSubqueries) {
+  : _lookingFor(lookingFor), 
+    _out(out), 
+    _enterSubqueries(enterSubqueries) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,6 +98,45 @@ bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before (ExecutionNode* en
     }
   }
   return false;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class EndNodeFinder
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief node finder for one node type
+////////////////////////////////////////////////////////////////////////////////
+
+EndNodeFinder::EndNodeFinder (std::vector<ExecutionNode*>& out,
+                              bool enterSubqueries) 
+  : _out(out), 
+    _found({ false }),
+    _enterSubqueries(enterSubqueries) {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief before method for one node type
+////////////////////////////////////////////////////////////////////////////////
+
+bool EndNodeFinder::before (ExecutionNode* en) {
+  TRI_ASSERT(! _found.empty());
+  if (! _found.back()) {
+    // no node found yet. note that we found one on this level
+    _out.emplace_back(en);
+    _found[_found.size() - 1] = true;
+  }
+
+  // if we don't need to enter subqueries, we can stop after the first node that we found
+  return (! _enterSubqueries);
 }
 
   }  // namespace triagens::aql

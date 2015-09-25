@@ -63,6 +63,36 @@ namespace triagens {
         }
 
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class EndNodeFinder
+// -----------------------------------------------------------------------------
+
+    class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
+
+        std::vector<ExecutionNode*>& _out;
+
+        std::vector<bool> _found;
+
+        bool _enterSubqueries;
+
+      public:
+
+        EndNodeFinder (std::vector<ExecutionNode*>&,
+                       bool);
+
+        bool before (ExecutionNode*) override final;
+
+        bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
+          _found.push_back(false);
+          return _enterSubqueries;
+        }
+        
+        void leaveSubquery (ExecutionNode*, ExecutionNode*) override final {
+          _found.pop_back();
+        }
+
+    };
   }
 }
 
