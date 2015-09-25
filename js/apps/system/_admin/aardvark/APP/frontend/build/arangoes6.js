@@ -2211,7 +2211,7 @@ ArangoCollection.prototype.byExample = function (example) {
 /// `collection.byExampleHash(index, example)`
 ///
 /// Selects all documents from the specified hash index that match the
-/// specified example example and returns a cursor.
+/// specified example and returns a cursor.
 ///
 /// You can use *toArray*, *next*, or *hasNext* to access the
 /// result. The result can be limited using the *skip* and *limit*
@@ -2261,10 +2261,10 @@ ArangoCollection.prototype.byExampleHash = function (index, example) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example using a skiplist index
 /// @startDocuBlock collectionByExampleSkiplist
-/// `collection}.byExampleSkiplist(index, example)
+/// `collection.byExampleSkiplist(index, example)`
 ///
 /// Selects all documents from the specified skiplist index that match the
-/// specified example example and returns a cursor.
+/// specified example and returns a cursor.
 ///
 /// You can use *toArray*, *next*, or *hasNext* to access the
 /// result. The result can be limited using the *skip* and *limit*
@@ -2299,7 +2299,7 @@ ArangoCollection.prototype.byExampleHash = function (index, example) {
 ///
 /// will match.
 ///
-/// `collection.byExampleHash(index-id, path1, value1, ...)`
+/// `collection.byExampleSkiplist(index, path1, value1, ...)`
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
