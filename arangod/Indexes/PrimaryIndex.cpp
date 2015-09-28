@@ -311,6 +311,12 @@ bool PrimaryIndex::canServeForConditionNode (triagens::aql::AstNode const* node,
   return false;
 }
 
+IndexIterator* PrimaryIndex::iteratorForCondition (triagens::aql::AstNode const*) const {
+  // TODO
+  return nullptr;
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

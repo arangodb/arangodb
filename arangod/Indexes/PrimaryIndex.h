@@ -164,6 +164,8 @@ namespace triagens {
                                        triagens::aql::Variable const*,
                                        std::vector<std::string> const*,
                                        double&) const override;
+
+        IndexIterator* iteratorForCondition (triagens::aql::AstNode const*) const;
         
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

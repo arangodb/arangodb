@@ -46,6 +46,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Function.cpp \
 	arangod/Aql/Functions.cpp \
 	arangod/Aql/grammar.cpp \
+	arangod/Aql/IndexBlock.cpp \
 	arangod/Aql/IndexRangeBlock.cpp \
 	arangod/Aql/ModificationBlock.cpp \
 	arangod/Aql/NodeFinder.cpp \

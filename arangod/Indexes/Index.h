@@ -145,6 +145,29 @@ struct TRI_index_element_t {
 namespace triagens {
   namespace arango {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Baseclass to iterate over all indexes. An iterator is requested at
+///        the index itself.
+////////////////////////////////////////////////////////////////////////////////
+
+    class IndexIterator {
+
+      public:
+
+        IndexIterator () {}
+        IndexIterator (IndexIterator const&) = delete;
+        IndexIterator& operator= (IndexIterator const&) = delete;
+        
+        virtual ~IndexIterator ();
+
+        virtual size_t size () const;
+
+        virtual bool hasNext () const;
+
+        virtual TRI_index_element_t* next ();
+
+        virtual void initCursor ();
+    };
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Index
 // -----------------------------------------------------------------------------
@@ -296,6 +319,8 @@ namespace triagens {
                                                std::vector<std::string> const*,
                                                double&) const;
 
+        virtual IndexIterator* iteratorForCondition (triagens::aql::AstNode const*) const;
+
         friend std::ostream& operator<< (std::ostream&, Index const*);
         friend std::ostream& operator<< (std::ostream&, Index const&);
 
@@ -312,6 +337,8 @@ namespace triagens {
         std::vector<std::vector<triagens::basics::AttributeName>> const        _fields;
                
     };
+
+
 
   }
 }

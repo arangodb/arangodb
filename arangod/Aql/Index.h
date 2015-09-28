@@ -165,9 +165,15 @@ namespace triagens {
                                      triagens::aql::Variable const* reference,
                                      std::vector<std::string> const* sortAttributes,
                                      double& estimatedCost) const {
-        TRI_ASSERT(internals != nullptr);
         auto internals = getInternals();
         return internals->canServeForConditionNode(node, reference, sortAttributes, estimatedCost);
+      }
+
+      arango::IndexIterator* getIterator (triagens::aql::AstNode const* condition) const {
+        auto internals = getInternals();
+        // TODO: Convention: condition is fully evaluated and contains only
+        // constant values
+        return internals->iteratorForCondition(condition);
       }
 
 // -----------------------------------------------------------------------------

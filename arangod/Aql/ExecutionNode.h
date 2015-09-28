@@ -1299,10 +1299,10 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getIndex, hand out the indexes used
+/// @brief getIndexes, hand out the indexes used
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Index const*> getIndexes () {
+        std::vector<Index const*> getIndexes () const {
           return _indexes;
         }
 

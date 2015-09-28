@@ -166,7 +166,7 @@ namespace triagens {
 /// @brief get the resulting structure for the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* getConditions () {
+        AstNode* getConditions () const {
           return _root;
         }
 
