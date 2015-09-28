@@ -1,6 +1,10 @@
+
 !CHAPTER Manage your graphs
 
 The graph module provides functions dealing with graph structures.
+Examples will explain the API on the [social graph](../Graphs/README.md#the_social_graph):
+
+![Social Example Graph](../Graphs/social_graph.png)
 
 !SUBSECTION First Steps with Graphs
 
