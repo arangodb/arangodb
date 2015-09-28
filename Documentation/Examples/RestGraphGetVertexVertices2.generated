@@ -1,5 +1,17 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/graph/graph/vertices/v2 &lt;&lt;EOF</span>
-{<span class="hljs-string">"batchSize"</span> : <span class="hljs-number">100</span>, <span class="hljs-string">"filter"</span> : {<span class="hljs-string">"direction"</span> : <span class="hljs-string">"out"</span>, <span class="hljs-string">"properties"</span>:[ { <span class="hljs-string">"key"</span>: <span class="hljs-string">"optional1"</span>, <span class="hljs-string">"value"</span>: <span class="hljs-string">"val2"</span>, <span class="hljs-string">"compare"</span> : <span class="hljs-string">"=="</span> }, ] }}
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertices/v2 &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"batchSize"</span> : <span class="hljs-number">100</span>, 
+  <span class="hljs-string">"filter"</span> : { 
+    <span class="hljs-string">"direction"</span> : <span class="hljs-string">"out"</span>, 
+    <span class="hljs-string">"properties"</span> : [ 
+      { 
+        <span class="hljs-string">"key"</span> : <span class="hljs-string">"optional1"</span>, 
+        <span class="hljs-string">"value"</span> : <span class="hljs-string">"val2"</span>, 
+        <span class="hljs-string">"compare"</span> : <span class="hljs-string">"=="</span> 
+      } 
+    ] 
+  } 
+}
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created

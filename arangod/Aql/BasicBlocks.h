@@ -184,6 +184,7 @@ namespace triagens {
           : ExecutionBlock(engine, ep), 
             _offset(ep->_offset), 
             _limit(ep->_limit),
+            _count(0),
             _state(0), // start in the beginning
             _fullCount(ep->_fullCount) { 
         }

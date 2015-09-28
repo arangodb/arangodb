@@ -44,7 +44,7 @@
             msg: "Can only contain [a-zA-Z0-9_-%]"
           },
           {
-            rule: Joi.string().regex(/^\/[^_]/),
+            rule: Joi.string().regex(/^\/([^_]|_open\/)/),
             msg: "Mountpoints with _ are reserved for internal use"
           },
           {

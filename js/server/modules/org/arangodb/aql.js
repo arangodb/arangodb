@@ -3,7 +3,7 @@
 /*global CPP_SHORTEST_PATH, CPP_NEIGHBORS, Set */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, internal query functions
+/// @brief Aql, internal query functions
 ///
 /// @file
 ///
@@ -5397,7 +5397,7 @@ function AQL_PATHS (vertices, edgeCollection, direction, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_paths
+/// @startDocuBlock JSF_aql_general_graph_paths
 /// The GRAPH\_PATHS function returns all paths of a graph.
 ///
 /// `GRAPH_PATHS (graphName, options)`
@@ -6617,7 +6617,7 @@ function IS_EXAMPLE_SET (example) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_shortest_paths
+/// @startDocuBlock JSF_aql_general_graph_shortest_paths
 /// The GRAPH\_SHORTEST\_PATH function returns all shortest paths of a graph.
 ///
 /// `GRAPH_SHORTEST_PATH (graphName, startVertexExample, endVertexExample, options)`
@@ -6866,7 +6866,7 @@ function AQL_TRAVERSAL (vertexCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_traversal
+/// @startDocuBlock JSF_aql_general_graph_traversal
 /// The GRAPH\_TRAVERSAL function traverses through the graph.
 ///
 /// `GRAPH_TRAVERSAL (graphName, startVertexExample, direction, options)`
@@ -7049,7 +7049,7 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_distance
+/// @startDocuBlock JSF_aql_general_graph_distance
 /// The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.
 ///
 /// `GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
@@ -7121,7 +7121,7 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_traversal_tree
+/// @startDocuBlock JSF_aql_general_graph_traversal_tree
 /// The GRAPH\_TRAVERSAL\_TREE function traverses through the graph.
 ///
 /// `GRAPH_TRAVERSAL_TREE (graphName, startVertexExample, direction, connectName, options)`
@@ -7222,7 +7222,7 @@ function AQL_EDGES (edgeCollection,
     if (options && options.includeVertices) {
       for (let i = 0; i < result.length; ++i) {
         try {
-          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._from) };
+          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._to) };
         }
         catch (err) {
         }
@@ -7234,7 +7234,7 @@ function AQL_EDGES (edgeCollection,
     if (options && options.includeVertices) {
       for (let i = 0; i < result.length; ++i) {
         try {
-          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._to) };
+          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._from) };
         }
         catch (err) {
         }
@@ -7387,7 +7387,7 @@ function AQL_NEIGHBORS (vertexCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_neighbors
+/// @startDocuBlock JSF_aql_general_graph_neighbors
 /// The GRAPH\_NEIGHBORS function returns all neighbors of vertices.
 ///
 /// `GRAPH_NEIGHBORS (graphName, vertexExample, options)`
@@ -7613,7 +7613,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_edges
+/// @startDocuBlock JSF_aql_general_graph_edges
 ///
 /// `GRAPH_EDGES (graphName, vertexExample, options)`
 ///
@@ -7785,7 +7785,7 @@ function AQL_GRAPH_EDGES (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_vertices
+/// @startDocuBlock JSF_aql_general_graph_vertices
 /// The GRAPH\_VERTICES function returns all vertices.
 ///
 /// `GRAPH_VERTICES (graphName, vertexExample, options)`
@@ -7858,7 +7858,7 @@ function AQL_GRAPH_VERTICES (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_common_neighbors
+/// @startDocuBlock JSF_aql_general_graph_common_neighbors
 /// *The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
 /// defined by the examples.*
 ///
@@ -7995,7 +7995,7 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_common_properties
+/// @startDocuBlock JSF_aql_general_graph_common_properties
 ///
 /// `GRAPH_COMMON_PROPERTIES (graphName, vertex1Example, vertex2Examples, options)`
 ///
@@ -8167,7 +8167,7 @@ function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_absolute_eccentricity
+/// @startDocuBlock JSF_aql_general_graph_absolute_eccentricity
 ///
 /// `GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)`
 ///
@@ -8280,7 +8280,7 @@ function TRAVERSAL_ECCENTRICITY_VISITOR (config, result, node, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_eccentricity
+/// @startDocuBlock JSF_aql_general_graph_eccentricity
 ///
 /// `GRAPH_ECCENTRICITY (graphName, options)`
 ///
@@ -8384,7 +8384,7 @@ function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_absolute_closeness
+/// @startDocuBlock JSF_aql_general_graph_absolute_closeness
 ///
 /// `GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options)`
 ///
@@ -8542,7 +8542,7 @@ function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_closeness
+/// @startDocuBlock JSF_aql_general_graph_closeness
 ///
 /// `GRAPH_CLOSENESS (graphName, options)`
 ///
@@ -8650,7 +8650,7 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_absolute_betweenness
+/// @startDocuBlock JSF_aql_general_graph_absolute_betweenness
 ///
 /// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, vertexExample, options)`
 ///
@@ -8746,7 +8746,7 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_betweenness
+/// @startDocuBlock JSF_aql_general_graph_betweenness
 ///
 /// `GRAPH_BETWEENNESS (graphName, options)`
 ///
@@ -8827,7 +8827,7 @@ function AQL_GRAPH_BETWEENNESS (graphName, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_radius
+/// @startDocuBlock JSF_aql_general_graph_radius
 ///
 /// `GRAPH_RADIUS (graphName, options)`
 ///
@@ -8914,7 +8914,7 @@ function AQL_GRAPH_RADIUS (graphName, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_diameter
+/// @startDocuBlock JSF_aql_general_graph_diameter
 ///
 /// `GRAPH_DIAMETER (graphName, options)`
 ///

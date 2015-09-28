@@ -103,8 +103,8 @@ def getRestReplyBodyParam(param):
     try:
         rc += unwrapPostJson(getReference(thisVerb['responses'][param]['schema'], route, verb), 0)
     except Exception:
-        print "failed to search " + param + " in: "
-        print json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True)
+        print >>sys.stderr,"failed to search " + param + " in: "
+        print >>sys.stderr,json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True)
         raise
     return rc + "</ul>\n"
 
@@ -117,6 +117,8 @@ SIMPL_REPL_DICT = {
 "@RESTRETURNCODES"      : "\n**Return Codes**\n",
 "@PARAMS"               : "\n**Parameters**\n",
 "@RESTPARAMS"           : "",
+"@RESTURLPARAMS"        : "\n**URL Parameters**\n",
+"@RESTQUERYPARAMS"      : "\n**Query Parameters**\n",
 "@RESTBODYPARAM"        : getRestBodyParam,
 "@RESTREPLYBODY"        : getRestReplyBodyParam,
 "@RESTQUERYPARAM"       : "@RESTPARAM",
@@ -136,11 +138,12 @@ r'''
 @RESTRETURNCODES|                   # -> \n**Return Codes**\n
 @PARAMS|                            # -> \n**Parameters**\n
 @RESTPARAMS|                        # -> <empty>
+@RESTURLPARAMS|                     # -> <empty>
+@RESTQUERYPARAMS|                   # -> <empty>
 @PARAM|                             # -> @RESTPARAM
 @RESTURLPARAM|                      # -> @RESTPARAM
 @RESTQUERYPARAM|                    # -> @RESTPARAM
 @RESTHEADERPARAM|                   # -> @RESTPARAM
-@RESTBODYPARAM|                     # -> @RESTPARAM
 @EXAMPLES|                          # -> \n**Examples**\n
 @RESTPARAMETERS|                    # -> <empty>
 @RESTREPLYBODY\{(.*)\}              # -> call body function
@@ -325,6 +328,19 @@ def replaceCodeIndex(lines):
   #lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
   return lines
 
+RXUnEscapeMDInLinks = re.compile("\\\\_")
+def setAnchor(param):
+    unescapedParam = RXUnEscapeMDInLinks.sub("_", param)
+    return "<a name=\"" + unescapedParam + "\">#</a>" 
+
+RXFinal = [
+    (re.compile(r"@anchor (.*)"), setAnchor),
+]
+def replaceCodeFullFile(lines):
+    for (oneRX, repl) in RXFinal:
+        lines = oneRX.sub(repl, lines)
+    return lines
+
 ################################################################################
 # main loop over all files
 ################################################################################
@@ -364,11 +380,11 @@ def findStartCode(fd,full_path):
             textFile = replaceText(textFile, full_path, find)
             #print textFile
 
-    #try:
-    #    textFile = replaceCode(textFile)
-    #except:
-    #    print >>sys.stderr, "while parsing :\n"  + textFile
-    #    raise
+    try:
+        textFile = replaceCodeFullFile(textFile)
+    except:
+        print >>sys.stderr, "while parsing :\n"  + textFile
+        raise
     #print "9" * 80
     #print textFile
     outFD = open(full_path, "w")
@@ -396,9 +412,9 @@ def replaceTextInline(text, pathOfFile, searchText):
   global dokuBlocks
   if not searchText in dokuBlocks[1]:
       print >> sys.stderr, "Failed to locate the inline docublock '%s' for replacing it into the file '%s'\n have:" % (searchText, pathOfFile)
-      print dokuBlocks[1].keys()
-      print '*' * 80
-      print text
+      print >> sys.stderr, dokuBlocks[1].keys()
+      print >> sys.stderr, '*' * 80
+      print >> sys.stderr, text
       exit(1)
   rePattern = r'(?s)\s*@startDocuBlockInline\s+'+ searchText +'.*@endDocuBlock\s' + searchText
   # (?s) is equivalent to flags=re.DOTALL but works in Python 2.6

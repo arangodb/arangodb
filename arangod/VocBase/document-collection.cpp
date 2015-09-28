@@ -3256,13 +3256,13 @@ static int FillIndexSequential (TRI_document_collection_t* document,
 
   idx->sizeHint(nrUsed);
 
+  if (nrUsed > 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  static const int LoopSize = 10000;
-  int counter = 0;
-  int loops = 0;
+    static const int LoopSize = 10000;
+    int counter = 0;
+    int loops = 0;
 #endif
 
-  if (nrUsed > 0) {
     triagens::basics::BucketPosition position;
     uint64_t total = 0;
 

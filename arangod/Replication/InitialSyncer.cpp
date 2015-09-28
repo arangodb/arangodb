@@ -948,11 +948,10 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   }
 
   size_t nextStart = 0;
-  size_t currentChunkId;
 
   // now process each chunk
   for (size_t i = 0; i < n; ++i) {
-    currentChunkId = i;
+    size_t const currentChunkId = i;
 
     // read remote chunk
     auto chunk = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), i));

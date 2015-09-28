@@ -25,8 +25,6 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-
 #include "Aql/ExecutionNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
@@ -788,6 +786,7 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
 /// @brief static analysis debugger
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
   RegisterPlanningDebugger () 
     : indent(0) {
@@ -829,6 +828,8 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
     std::cout << std::endl;
   }
 };
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief planRegisters
@@ -3259,11 +3260,10 @@ void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
         
 double RemoteNode::estimateCost (size_t& nrItems) const {
-  double depCost;
   if (_dependencies.size() == 1) {
     // This will usually be the case, however, in the context of the
     // instantiation it is possible that there is no dependency...
-    depCost = _dependencies[0]->estimateCost(nrItems);
+    double depCost = _dependencies[0]->estimateCost(nrItems);
     return depCost + nrItems;   // we need to process them all
   }
   // We really should not get here, but if so, do something bordering on 

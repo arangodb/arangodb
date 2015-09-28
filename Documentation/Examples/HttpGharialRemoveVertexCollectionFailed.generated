@@ -1,4 +1,4 @@
-shell&gt; curl -X DELETE --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial/social/vertex/male</span>
+shell> curl -X DELETE --dump - http://localhost:8529/_api/gharial/social/vertex/male
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request
 content-type: application/json

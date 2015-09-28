@@ -72,7 +72,7 @@ To start, we'll define a simple action handler in a module */ownTest*:
     @startDocuBlockInline MOD_01a_routingCreateOwnTest
     @EXAMPLE_ARANGOSH_OUTPUT{MOD_01a_routingCreateOwnTest}
     |db._modules.save({
-    |  path: "/db:/ownTest",
+    |  path: "/db://ownTest",
     |  content:
     |     "exports.do = function(req, res, options, next) {"+
     |     "  res.body = 'test';" +
@@ -90,7 +90,7 @@ the action to the route */ourtest*, execute the following command:
     @startDocuBlockInline MOD_01b_routingEnableOwnTest
     @EXAMPLE_ARANGOSH_OUTPUT{MOD_01b_routingEnableOwnTest}
     |db._routing.save({
-    |  url: "/ourtest",
+    |  url: "/ourtest", 
     |  action: {
     |    controller: "db://ownTest"
     |  }
@@ -163,7 +163,7 @@ Use the following for a permanent redirect:
     var url = "/redirectMe";
     var response = logCurlRequest('GET', url);
     assert(response.code === 301);
-    logRawResponse(response);
+    logHtmlResponse(response);
     db._query("FOR route IN _routing FILTER route.url == '/redirectMe' REMOVE route in _routing")
     require("internal").reloadRouting()
     @END_EXAMPLE_ARANGOSH_RUN
@@ -342,7 +342,7 @@ Then we send some curl requests to these sample routes:
                "/subdirectory/ourtest/3"];
     for (var i = 0; i < 3; i++) {
       var response = logCurlRequest('GET', url[i]);
-      assert(response.code === 200);
+      assert(response.code === 202);
       logJsonResponse(response);
     }
     db._query("FOR route IN _routing FILTER route.middleware[0].url.match == '/subdirectory/*' REMOVE route in _routing");

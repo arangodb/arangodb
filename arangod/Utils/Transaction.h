@@ -90,6 +90,7 @@ namespace triagens {
               _hints(0),
               _timeout(0.0),
               _waitForSync(false),
+              _allowImplicitCollections(true),
               _isReal(true),
               _trx(nullptr),
               _vocbase(vocbase),
@@ -749,6 +750,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the allowImplicitCollections property
+////////////////////////////////////////////////////////////////////////////////
+
+        void setAllowImplicitCollections (bool value) {
+          _allowImplicitCollections = value;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read- or write-lock a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -759,9 +768,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          int res = TRI_LockCollectionTransaction(trxCollection, type, _nestingLevel);
-
-          return res;
+          return TRI_LockCollectionTransaction(trxCollection, type, _nestingLevel);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -775,9 +782,7 @@ namespace triagens {
             return TRI_ERROR_TRANSACTION_INTERNAL;
           }
 
-          int res = TRI_UnlockCollectionTransaction(trxCollection, type, _nestingLevel);
-
-          return res;
+          return TRI_UnlockCollectionTransaction(trxCollection, type, _nestingLevel);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -790,9 +795,7 @@ namespace triagens {
             return false;
           }
 
-          bool locked = TRI_IsLockedCollectionTransaction(trxCollection, type, _nestingLevel);
-
-          return locked;
+          return TRI_IsLockedCollectionTransaction(trxCollection, type, _nestingLevel);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1213,7 +1216,7 @@ namespace triagens {
                                    TRI_transaction_type_e type) {
           TRI_ASSERT(_trx != nullptr);
 
-          int res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel, false);
+          int res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel, false, _allowImplicitCollections);
 
           if (res != TRI_ERROR_NO_ERROR) {
             return registerError(res);
@@ -1237,7 +1240,7 @@ namespace triagens {
             res = TRI_ERROR_TRANSACTION_INTERNAL;
           }
           else {
-            res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel, false);
+            res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel, false, _allowImplicitCollections);
           }
 
           if (res != TRI_ERROR_NO_ERROR) {
@@ -1372,6 +1375,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _waitForSync;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allow implicit collections for transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _allowImplicitCollections;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not this is a "real" transaction

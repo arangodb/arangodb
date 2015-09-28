@@ -1,13 +1,63 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
+* POSTing to org/arangodb/actions/echoRequest now returns 202
+
+* loading modules from collections syntax changed from /db:/module to /db://module
+
+* allow Foxx apps to be installed underneath URL path `/_open/`, so they can be
+  (intentionally) accessed without authentication. 
+
+* added *allowImplicit* sub-attribute in collections declaration of transactions.
+  The *allowImplicit* attributes allows making transactions fail should they
+  read-access a collection that was not explicitly declared in the *collections* 
+  array of the transaction.
+
+
+v2.7.0-rc2 (2015-09-22)
+-----------------------
+
+* fix over-eager datafile compaction
+
+  This should reduce the need to compact directly after loading a collection when a
+  collection datafile contained many insertions and updates for the same documents. It
+  should also prevent from re-compacting already merged datafiles in case not many
+  changes were made. Compaction will also make fewer index lookups than before.
+
+* added `syncCollection()` function in module `org/arangodb/replication`
+
+  This allows synchronizing the data of a single collection from a master to a slave
+  server. Synchronization can either restore the whole collection by transferring all
+  documents from the master to the slave, or incrementally by only transferring documents
+  that differ. This is done by partitioning the collection's entire key space into smaller
+  chunks and comparing the data chunk-wise between master and slave. Only chunks that are
+  different will be re-transferred.
+
+  The `syncCollection()` function can be used as follows:
+
+      require("org/arangodb/replication").syncCollection(collectionName, options);
+
+  e.g.
+
+      require("org/arangodb/replication").syncCollection("myCollection", {
+        endpoint: "tcp://127.0.0.1:8529",  /* master */
+        username: "root",                  /* username for master */
+        password: "secret",                /* password for master */
+        incremental: true                  /* use incremental mode */
+      });
+
 
 * additionally allow the following characters in document keys:
 
   `(` `)` `+` `,` `=` `;` `$` `!` `*` `'` `%`
 
 
-v2.7.0-rc1 (XXXX-XX-XX)
+v2.7.0-rc1 (2015-09-17)
 -----------------------
+
+* upgraded Swagger to version 2.0 for the Documentation
+ 
+  This gives the user better prepared test request structures.
+  More conversions will follow so finally client libraries can be auto-generated.
 
 * added extra AQL functions for date and time calculation and manipulation. 
   These functions were contributed by GitHub users @CoDEmanX and @friday. 
@@ -74,26 +124,39 @@ v2.7.0-rc1 (XXXX-XX-XX)
 
   * `DATE_FORMAT(date, format)`: Format a date according to the given format string.
     It supports the following placeholders (case-insensitive):
-    - %t: timestamp
+    - %t: timestamp, in milliseconds since midnight 1970-01-01
     - %z: ISO date (0000-00-00T00:00:00.000Z)
     - %w: day of week (0..6)
-    - %y: year (0000..9999)
-    - %m: month (01..12)
-    - %d: day (01..31)
-    - %h: hour (00..23)
-    - %i: minute (00..59)
-    - %s: second (00..59)
-    - %f: millisecond (000..999)
-    - %x: day of year (001..366)
-    - %k: ISO week date (01..53)
+    - %y: year (0..9999)
+    - %yy: year (00..99), abbreviated (last two digits)
+    - %yyyy: year (0000..9999), padded to length of 4
+    - %yyyyyy: year (-009999 .. +009999), with sign prefix and padded to length of 6
+    - %m: month (1..12)
+    - %mm: month (01..12), padded to length of 2
+    - %d: day (1..31)
+    - %dd: day (01..31), padded to length of 2
+    - %h: hour (0..23)
+    - %hh: hour (00..23), padded to length of 2
+    - %i: minute (0..59)
+    - %ii: minute (00..59), padded to length of 2
+    - %s: second (0..59)
+    - %ss: second (00..59), padded to length of 2
+    - %f: millisecond (0..999)
+    - %fff: millisecond (000..999), padded to length of 3
+    - %x: day of year (1..366)
+    - %xxx: day of year (001..366), padded to length of 3
+    - %k: ISO week date (1..53)
+    - %kk: ISO week date (01..53), padded to length of 2
     - %l: leap year (0 or 1)
     - %q: quarter (1..4)
     - %a: days in month (28..31)
-    - %n: English name of month (January..December)
-    - %o: abbreviated English name of month (Jan..Dec)
-    - %e: English name of weekday (Sunday..Saturday)
-    - %g: abbreviated English name of weekday (Sun..Sat)
+    - %mmm: abbreviated English name of month (Jan..Dec)
+    - %mmmm: English name of month (January..December)
+    - %www: abbreviated English name of weekday (Sun..Sat)
+    - %wwww: English name of weekday (Sunday..Saturday)
+    - %&: special escape sequence for rare occasions
     - %%: literal %
+    - %: ignored
 
 * new WAL logfiles and datafiles are now created non-sparse
     
@@ -405,7 +468,21 @@ v2.7.0-rc1 (XXXX-XX-XX)
   The "Applications" tab in the web interfaces has been renamed to "Services".
 
 
-v2.6.8 (XXXX-XX-XX)
+v2.6.9 (XXXX-XX-XX)
+-------------------
+
+* fixed failing AQL skiplist, sort and limit combination
+
+  When using a Skiplist index on an attribute (say "a") and then using sort
+  and skip on this attribute caused the result to be empty e.g.:
+    
+    require("internal").db.test.ensureSkiplist("a");
+    require("internal").db._query("FOR x IN test SORT x.a LIMIT 10, 10");
+
+  Was always empty no matter how many documents are stored in test.
+  This is now fixed.
+
+v2.6.8 (2015-09-09)
 -------------------
 
 * ARM only:

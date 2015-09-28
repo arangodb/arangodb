@@ -212,7 +212,7 @@
 /// @RESTHEADER{GET /_api/gharial, List all graphs}
 /// 
 /// @RESTDESCRIPTION
-/// Lists all graph names stored in this database.ssss
+/// Lists all graph names stored in this database.
 /// 
 /// @RESTRETURNCODES
 /// 
@@ -340,13 +340,13 @@
 /// @startDocuBlock JSF_general_graph_get_http_examples
 /// @brief Get a graph from the graph module.
 /// 
-/// @RESTHEADER{GET /_api/gharial/graph-name, Get a graph}
+/// @RESTHEADER{GET /_api/gharial/{graph-name}, Get a graph}
 /// 
 /// @RESTDESCRIPTION
 /// Gets a graph from the collection *\_graphs*.
 /// Returns the definition content of this graph.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -406,17 +406,17 @@
 /// @startDocuBlock JSF_general_graph_drop_http_examples
 /// @brief delete an existing graph
 /// 
-/// @RESTHEADER{DELETE /_api/gharial/graph-name, Drop a graph}
+/// @RESTHEADER{DELETE /_api/gharial/{graph-name}, Drop a graph}
 /// 
 /// @RESTDESCRIPTION
 /// Removes a graph from the collection *\_graphs*.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTPARAM{dropCollections, boolean, optional}
 /// Drop collections of this graph as well.
@@ -479,12 +479,12 @@
 /// @startDocuBlock JSF_general_graph_list_vertex_http_examples
 /// @brief Lists all vertex collections used in this graph.
 /// 
-/// @RESTHEADER{GET /_api/gharial/graph-name/vertex, List vertex collections}
+/// @RESTHEADER{GET /_api/gharial/{graph-name}/vertex, List vertex collections}
 /// 
 /// @RESTDESCRIPTION
 /// Lists all vertex collections within this graph.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -546,13 +546,13 @@
 /// @startDocuBlock JSF_general_graph_vertex_collection_add_http_examples
 /// @brief Add an additional vertex collection to the graph.
 /// 
-/// @RESTHEADER{POST /_api/gharial/graph-name/vertex, Add vertex collection}
+/// @RESTHEADER{POST /_api/gharial/{graph-name}/vertex, Add vertex collection}
 /// 
 /// @RESTDESCRIPTION
 /// Adds a vertex collection to the set of collections of the graph. If the
 /// collection does not exist, it will be created.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -626,13 +626,13 @@
 /// @startDocuBlock JSF_general_graph_vertex_collection_remove_http_examples
 /// @brief Remove a vertex collection form the graph.
 /// 
-/// @RESTHEADER{DELETE /_api/gharial/graph-name/vertex/collection-name, Remove vertex collection}
+/// @RESTHEADER{DELETE /_api/gharial/{graph-name}/vertex/{collection-name}, Remove vertex collection}
 /// 
 /// @RESTDESCRIPTION
 /// Removes a vertex collection from the graph and optionally deletes the collection,
 /// if it is not used in any other graph.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -640,7 +640,7 @@
 /// @RESTPARAM{collection-name, string, required}
 /// The name of the vertex collection.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTPARAM{dropCollection, boolean, optional}
 /// Drop the collection as well.
@@ -749,12 +749,12 @@
 /// @startDocuBlock JSF_general_graph_list_edge_http_examples
 /// @brief Lists all edge definitions
 /// 
-/// @RESTHEADER{GET /_api/gharial/graph-name/edge, List edge definitions}
+/// @RESTHEADER{GET /_api/gharial/{graph-name}/edge, List edge definitions}
 /// 
 /// @RESTDESCRIPTION
 /// Lists all edge collections within this graph.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -807,7 +807,7 @@
 /// @startDocuBlock JSF_general_graph_edge_definition_add_http_examples
 /// @brief Add a new edge definition to the graph
 /// 
-/// @RESTHEADER{POST /_api/gharial/graph-name/edge, Add edge definition}
+/// @RESTHEADER{POST /_api/gharial/{graph-name}/edge, Add edge definition}
 /// 
 /// @RESTDESCRIPTION
 /// Adds an additional edge definition to the graph.
@@ -816,7 +816,7 @@
 /// with exactly the same definition. It is not possible to store a definition "e" from "v1" to "v2" in the one
 /// graph, and "e" from "v2" to "v1" in the other graph.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -907,13 +907,13 @@
 /// @startDocuBlock JSF_general_graph_edge_definition_modify_http_examples
 /// @brief Replace an existing edge definition
 /// 
-/// @RESTHEADER{POST /_api/gharial/graph-name/edge/definition-name, Replace an edge definition}
+/// @RESTHEADER{POST /_api/gharial/{graph-name}/edge/{definition-name}, Replace an edge definition}
 /// 
 /// @RESTDESCRIPTION
 /// Change one specific edge definition.
 /// This will modify all occurrences of this definition in all graphs known to your database.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -1019,14 +1019,14 @@
 /// @startDocuBlock JSF_general_graph_edge_definition_remove_http_examples
 /// @brief Remove an edge definition form the graph
 /// 
-/// @RESTHEADER{DELETE /_api/gharial/graph-name/edge/definition-name, Remove an edge definition from the graph}
+/// @RESTHEADER{DELETE /_api/gharial/{graph-name}/edge/{definition-name}, Remove an edge definition from the graph}
 /// 
 /// @RESTDESCRIPTION
 /// Remove one edge definition from the graph.
 /// This will only remove the edge collection, the vertex collections remain untouched and can still be used
 /// in your queries.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -1034,7 +1034,7 @@
 /// @RESTPARAM{definition-name, string, required}
 /// The name of the edge collection used in the definition.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTPARAM{dropCollection, boolean, optional}
 /// Drop the collection as well.
@@ -1116,12 +1116,12 @@
 /// @startDocuBlock JSF_general_graph_vertex_create_http_examples
 /// @brief create a new vertex
 /// 
-/// @RESTHEADER{POST /system/gharial/graph-name/vertex/collection-name, Create a vertex}
+/// @RESTHEADER{POST /_api/gharial/{graph-name}/vertex/{collection-name}, Create a vertex}
 /// 
 /// @RESTDESCRIPTION
 /// Adds a vertex to the given collection.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -1129,7 +1129,7 @@
 /// @RESTPARAM{collection-name, string, required} 
 /// The name of the vertex collection the vertex belongs to.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTPARAM{waitForSync, boolean, optional}
 /// Define if the request should wait until synced to disk.
@@ -1207,12 +1207,12 @@
 /// @startDocuBlock JSF_general_graph_vertex_get_http_examples
 /// @brief fetches an existing vertex
 /// 
-/// @RESTHEADER{GET /system/gharial/graph-name/vertex/collection-name/vertex-key, Get a vertex}
+/// @RESTHEADER{GET /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}, Get a vertex}
 /// 
 /// @RESTDESCRIPTION
 /// Gets a vertex from the given collection.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -1223,7 +1223,7 @@
 /// @RESTPARAM{vertex-key, string, required} 
 /// The *_key* attribute of the vertex.
 /// 
-/// @RESTHEADERPARAMS
+/// @RESTHEADERPARAMETERS
 /// 
 /// @RESTPARAM{if-match, string, optional}
 /// If the "If-Match" header is given, then it must contain exactly one etag. The document is returned,
@@ -1293,12 +1293,12 @@
 /// @startDocuBlock JSF_general_graph_vertex_replace_http_examples
 /// @brief replaces an existing vertex
 /// 
-/// @RESTHEADER{PUT /system/gharial/graph-name/vertex/collection-name/vertex-key, Replace a vertex}
+/// @RESTHEADER{PUT /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}, Replace a vertex}
 /// 
 /// @RESTDESCRIPTION
 /// Replaces the data of a vertex in the collection.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -1309,12 +1309,12 @@
 /// @RESTPARAM{vertex-key, string, required} 
 /// The *_key* attribute of the vertex.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTPARAM{waitForSync, boolean, optional}
 /// Define if the request should wait until synced to disk.
 /// 
-/// @RESTHEADERPARAMS
+/// @RESTHEADERPARAMETERS
 /// 
 /// @RESTPARAM{if-match, string, optional}
 /// If the "If-Match" header is given, then it must contain exactly one etag. The document is updated,
@@ -1404,12 +1404,12 @@
 /// @startDocuBlock JSF_general_graph_vertex_modify_http_examples
 /// @brief replace an existing vertex
 /// 
-/// @RESTHEADER{PATCH /system/gharial/graph-name/vertex/collection-name/vertex-key, Modify a vertex}
+/// @RESTHEADER{PATCH /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}, Modify a vertex}
 /// 
 /// @RESTDESCRIPTION
 /// Updates the data of the specific vertex in the collection.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -1420,7 +1420,7 @@
 /// @RESTPARAM{vertex-key, string, required} 
 /// The *_key* attribute of the vertex.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTPARAM{waitForSync, boolean, optional}
 /// Define if the request should wait until synced to disk.
@@ -1428,7 +1428,7 @@
 /// @RESTPARAM{keepNull, boolean, optional}
 /// Define if values set to null should be stored. By default the key is removed from the document.
 /// 
-/// @RESTHEADERPARAMS
+/// @RESTHEADERPARAMETERS
 /// 
 /// @RESTPARAM{if-match, string, optional}
 /// If the "If-Match" header is given, then it must contain exactly one etag. The document is updated,
@@ -1520,12 +1520,12 @@
 /// @startDocuBlock JSF_general_graph_vertex_delete_http_examples
 /// @brief removes a vertex from a graph
 /// 
-/// @RESTHEADER{DELETE /system/gharial/graph-name/vertex/collection-name/vertex-key, Remove a vertex}
+/// @RESTHEADER{DELETE /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}, Remove a vertex}
 /// 
 /// @RESTDESCRIPTION
 /// Removes a vertex from the collection.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -1536,12 +1536,12 @@
 /// @RESTPARAM{vertex-key, string, required} 
 /// The *_key* attribute of the vertex.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTPARAM{waitForSync, boolean, optional}
 /// Define if the request should wait until synced to disk.
 /// 
-/// @RESTHEADERPARAMS
+/// @RESTHEADERPARAMETERS
 /// 
 /// @RESTPARAM{if-match, string, optional}
 /// If the "If-Match" header is given, then it must contain exactly one etag. The document is updated,
@@ -1622,7 +1622,7 @@
 /// @startDocuBlock JSF_general_graph_edge_create_http_examples
 /// @brief Creates an edge in an existing graph
 ///
-/// @RESTHEADER{POST /system/gharial/graph-name/edge/collection-name, Create an edge}
+/// @RESTHEADER{POST /_api/gharial/{graph-name}/edge/{collection-name}, Create an edge}
 /// 
 /// @RESTDESCRIPTION
 /// Creates a new edge in the collection.
@@ -1630,7 +1630,7 @@
 /// Furthermore the edge has to be valid in the definition of this
 /// [edge collection](../Glossary/index.html#edge_collection).
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -1638,7 +1638,7 @@
 /// @RESTPARAM{collection-name, string, required} 
 /// The name of the edge collection the edge belongs to.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTPARAM{waitForSync, boolean, optional}
 /// Define if the request should wait until synced to disk.
@@ -1742,12 +1742,12 @@
 /// @startDocuBlock JSF_general_graph_edge_get_http_examples
 /// @brief fetch an edge
 /// 
-/// @RESTHEADER{GET /system/gharial/graph-name/edge/collection-name/edge-key, Get an edge}
+/// @RESTHEADER{GET /_api/gharial/{graph-name}/edge/{collection-name}/{edge-key}, Get an edge}
 /// 
 /// @RESTDESCRIPTION
 /// Gets an edge from the given collection.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -1758,7 +1758,7 @@
 /// @RESTPARAM{edge-key, string, required} 
 /// The *_key* attribute of the vertex.
 /// 
-/// @RESTHEADERPARAMS
+/// @RESTHEADERPARAMETERS
 /// 
 /// @RESTPARAM{if-match, string, optional}
 /// If the "If-Match" header is given, then it must contain exactly one etag. The document is returned,
@@ -1831,12 +1831,12 @@
 /// @startDocuBlock JSF_general_graph_edge_replace_http_examples
 /// @brief replace the content of an existing edge
 ///
-/// @RESTHEADER{PUT /system/gharial/graph-name/edge/collection-name/edge-key, Replace an edge}
+/// @RESTHEADER{PUT /_api/gharial/{graph-name}/edge/{collection-name}/{edge-key}, Replace an edge}
 /// 
 /// @RESTDESCRIPTION
 /// Replaces the data of an edge in the collection.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -1847,12 +1847,12 @@
 /// @RESTPARAM{edge-key, string, required} 
 /// The *_key* attribute of the vertex.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTPARAM{waitForSync, boolean, optional}
 /// Define if the request should wait until synced to disk.
 /// 
-/// @RESTHEADERPARAMS
+/// @RESTHEADERPARAMETERS
 /// 
 /// @RESTPARAM{if-match, string, optional}
 /// If the "If-Match" header is given, then it must contain exactly one etag. The document is updated,
@@ -1941,12 +1941,12 @@
 /// @startDocuBlock JSF_general_graph_edge_modify_http_examples
 /// @brief modify an existing edge
 ///
-/// @RESTHEADER{PATCH /system/gharial/graph-name/edge/collection-name/edge-key, Modify an edge}
+/// @RESTHEADER{PATCH /_api/gharial/{graph-name}/edge/{collection-name}/{edge-key}, Modify an edge}
 /// 
 /// @RESTDESCRIPTION
 /// Updates the data of the specific edge in the collection.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -1957,7 +1957,7 @@
 /// @RESTPARAM{edge-key, string, required}
 /// The *_key* attribute of the vertex.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTPARAM{waitForSync, boolean, optional}
 /// Define if the request should wait until synced to disk.
@@ -2047,12 +2047,12 @@
 /// @startDocuBlock JSF_general_graph_edge_delete_http_examples
 /// @brief removes an edge from graph
 /// 
-/// @RESTHEADER{DELETE /system/gharial/graph-name/edge/collection-name/edge-key, Remove an edge}
+/// @RESTHEADER{DELETE /_api/gharial/{graph-name}/edge/{collection-name}/{edge-key}, Remove an edge}
 /// 
 /// @RESTDESCRIPTION
 /// Removes an edge from the collection.
 /// 
-/// @RESTURLPARAMS
+/// @RESTURLPARAMETERS
 /// 
 /// @RESTPARAM{graph-name, string, required}
 /// The name of the graph.
@@ -2063,12 +2063,12 @@
 /// @RESTPARAM{edge-key, string, required} 
 /// The *_key* attribute of the vertex.
 /// 
-/// @RESTQUERYPARAMS
+/// @RESTQUERYPARAMETERS
 /// 
 /// @RESTPARAM{waitForSync, boolean, optional}
 /// Define if the request should wait until synced to disk.
 /// 
-/// @RESTHEADERPARAMS
+/// @RESTHEADERPARAMETERS
 /// 
 /// @RESTPARAM{if-match, string, optional}
 /// If the "If-Match" header is given, then it must contain exactly one etag. The document is updated,

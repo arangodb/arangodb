@@ -185,6 +185,9 @@
     },
 
     render: function(mode) {
+
+      var self = this;
+
       $(this.el).html(this.template.render({
         app: this.model,
         db: arangoHelper.currentDatabase(),
@@ -200,8 +203,9 @@
 
       if (mode === 'swagger') {
         $.get( "./foxxes/docs/swagger.json?mount=" + encodeURIComponent(this.model.get('mount')), function(data) {
-          if (Object.keys(data.paths).length <= 1) {
-            $('#app-info').show(); 
+          if (Object.keys(data.paths).length < 1) {
+            self.render('readme');
+            $('#app-show-swagger').attr('disabled', 'true');
           }
         });
       }

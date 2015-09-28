@@ -1,10 +1,10 @@
-shell&gt; curl -X PUT --header <span class="hljs-string">'x-arango-async: store'</span> --dump - http:<span class="hljs-comment">//localhost:8529/_api/version</span>
+shell> curl -X PUT --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
-content-type: text/plain; charset=utf-<span class="hljs-number">8</span>
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">605883938</span>
+HTTP/1.1 202 Accepted
+content-type: text/plain; charset=utf-8
+x-arango-async-id: 595894828
 
-shell&gt; curl -X DELETE --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/all</span>
+shell> curl -X DELETE --dump - http://localhost:8529/_api/job/all
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>

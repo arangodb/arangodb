@@ -38,22 +38,27 @@
   var startupPath = global.STARTUP_PATH;
   var load = global.SYS_LOAD;
 
-  if (startupPath === "") {
-    startupPath = ".";
+  if (startupPath === '') {
+    startupPath = '.';
   }
 
-  load(startupPath + "/common/bootstrap/modules.js");
-  load(startupPath + "/common/bootstrap/module-internal.js");
-  load(startupPath + "/common/bootstrap/module-fs.js");
-  load(startupPath + "/common/bootstrap/module-console.js");
-  load(startupPath + "/common/bootstrap/errors.js");
-  load(startupPath + "/common/bootstrap/monkeypatches.js");
-  load(startupPath + "/server/bootstrap/module-internal.js");
+  load(`${startupPath}/common/bootstrap/scaffolding.js`);
+  load(`${startupPath}/common/bootstrap/modules/internal.js`); // deps: -
+  load(`${startupPath}/common/bootstrap/errors.js`); // deps: internal
+  load(`${startupPath}/common/bootstrap/modules/console.js`); // deps: internal
+  load(`${startupPath}/common/bootstrap/modules/assert.js`); // deps: -
+  load(`${startupPath}/common/bootstrap/modules/buffer.js`); // deps: internal
+  load(`${startupPath}/common/bootstrap/modules/fs.js`); // deps: internal, buffer (hidden)
+  load(`${startupPath}/common/bootstrap/modules/path.js`); // deps: internal, fs
+  load(`${startupPath}/server/bootstrap/modules/internal.js`); // deps: internal, fs, console
+  load(`${startupPath}/common/bootstrap/modules.js`); // must come last before patches
+  load(`${startupPath}/common/bootstrap/monkeypatches.js`);
 }());
 
 // common globals
-global.Buffer = require("buffer").Buffer;
-global.process = require("process");
+global.console = require('console');
+global.Buffer = require('buffer').Buffer;
+global.process = require('process');
 global.setInterval = function () {};
 global.clearInterval = function () {};
 global.setTimeout = function () {};
@@ -81,13 +86,13 @@ global.aqlQuery = function () {
 };
 
 // extend prototypes for internally defined classes
-require("org/arangodb");
+require('org/arangodb');
 
 // load the actions from the actions directory
-require("org/arangodb/actions").startup();
+require('org/arangodb/actions').startup();
 
 // initialize AQL
-require("org/arangodb/aql");
+require('org/arangodb/aql');
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

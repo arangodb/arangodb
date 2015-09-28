@@ -66,6 +66,7 @@ div.dropdownInner {
     @extend %pull-left;
     border-left: 1px solid $c-content-border;
     display: inline;
+    list-style-type: none;
     margin-top: 10px;
     min-height: 105px;
     width: 230px;

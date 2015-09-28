@@ -1,4 +1,4 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/graph/ &lt;&lt;EOF</span>
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/ &lt;&lt;EOF
 { 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"graph"</span>, 
   <span class="hljs-string">"vertices"</span> : <span class="hljs-string">"vertices"</span>, 
@@ -8,13 +8,13 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-number">812191266</span>
+etag: <span class="hljs-number">803447340</span>
 
 { 
   <span class="hljs-string">"graph"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/graph"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"graph"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"812191266"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"803447340"</span>, 
     <span class="hljs-string">"edgeDefinitions"</span> : [ 
       { 
         <span class="hljs-string">"collection"</span> : <span class="hljs-string">"edges"</span>, 

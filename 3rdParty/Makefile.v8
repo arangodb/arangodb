@@ -14,7 +14,7 @@ DEBUG_V8_FLAGS = -DV8_TARGET_ARCH_X64 -DENABLE_GDB_JIT_INTERFACE -DV8_DEPRECATIO
 
 if ENABLE_GOLD
 GOLD_V8_FLAGS = -fuse-ld=gold
-GOLD_V8_GYP = 
+GOLD_V8_GYP =
 else
 GOLD_V8_FLAGS =
 GOLD_V8_GYP = -Dlinux_use_bundled_gold=0 -Dlinux_use_gold_flags=0
@@ -45,9 +45,9 @@ if ENABLE_V8_DEBUG
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-	        LDFLAGS="-march=armv6" \
+		CFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		LDFLAGS="-march=armv6" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 else
@@ -59,9 +59,9 @@ else
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
-	        LDFLAGS="-march=armv6" \
+		CFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
+		LDFLAGS="-march=armv6" \
 		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 endif
 else # ! ENABLE_ARM6
@@ -80,9 +80,9 @@ if ENABLE_V8_DEBUG
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-	        LDFLAGS="-march=armv7" \
+		CFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv7 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		LDFLAGS="-march=armv7" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 else
@@ -94,9 +94,9 @@ else
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
-	        LDFLAGS="-march=armv7" \
+		CFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O2 -g -fsigned-char -march=armv7 $(GOLD_V8_FLAGS)" \
+		LDFLAGS="-march=armv7" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif
 
@@ -115,9 +115,9 @@ if ENABLE_V8_DEBUG
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        LDFLAGS="-lc++" \
-	        CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
-	        CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
+		LDFLAGS="-lc++" \
+		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
+		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
@@ -134,9 +134,9 @@ else # ! ENABLE_V8_DEBUG
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        LDFLAGS="-lc++" \
-                CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
-	        CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
+		LDFLAGS="-lc++" \
+		CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
+		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif # ENABLE_V8_DEBUG
 
@@ -154,8 +154,8 @@ if ENABLE_V8_DEBUG
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 else # ! ENABLE_V8_DEBUG
@@ -167,8 +167,8 @@ else # ! ENABLE_V8_DEBUG
 		CXX="$(CXX)" \
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
-	        CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
-	        CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+		CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS)" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif # ENABLE_V8_DEBUG
 endif # ENABLE_DARWIN

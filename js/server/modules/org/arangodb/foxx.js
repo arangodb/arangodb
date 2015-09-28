@@ -27,18 +27,22 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.Controller = require("org/arangodb/foxx/controller").Controller;
-exports.Model = require("org/arangodb/foxx/model").Model;
-exports.Repository = require("org/arangodb/foxx/repository").Repository;
-exports.queues = require("org/arangodb/foxx/queues");
-exports.createQuery = require("org/arangodb/foxx/query").createQuery;
-exports.toJSONSchema = require("org/arangodb/foxx/schema").toJSONSchema;
+exports.Controller = require('org/arangodb/foxx/controller').Controller;
+exports.Model = require('org/arangodb/foxx/model').Model;
+exports.Repository = require('org/arangodb/foxx/repository').Repository;
+exports.queues = require('org/arangodb/foxx/queues');
+exports.createQuery = require('org/arangodb/foxx/query').createQuery;
+exports.toJSONSchema = require('org/arangodb/foxx/schema').toJSONSchema;
 
-var manager = require("org/arangodb/foxx/manager");
-var arangodb = require("org/arangodb");
+const manager = require('org/arangodb/foxx/manager');
+const deprecated = require('org/arangodb/deprecated');
 
+exports.getExports = function (path) {
+  return manager.requireApp('/' + path.replace(/(^\/+|\/+$)/, ''));
+};
 exports.requireApp = function (path) {
-  return manager.requireApp(arangodb.normalizeURL('/' + path));
+  deprecated('2.8', 'Foxx.requireApp has been renamed to Foxx.getExports.');
+  return exports.getExports(path);
 };
 
 // -----------------------------------------------------------------------------

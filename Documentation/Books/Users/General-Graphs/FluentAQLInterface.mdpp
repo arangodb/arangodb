@@ -8,6 +8,10 @@ As an example you can start with a set of vertices, select their direct neighbor
 The result of this query will be the set of outgoing edges.
 For each part of the query it is possible to further refine the resulting set of elements by giving examples for them.
 
+Examples will explain the API on the [social graph](../Graphs/README.md#the_social_graph):
+
+![Social Example Graph](../Graphs/social_graph.png)
+
 !SECTION Definition of examples
 
 @startDocuBlock JSF_general_graph_example_description
@@ -22,7 +26,7 @@ Therefore you get exactly this two entry points:
 * Select a set of edges
 * Select a set of vertices
 
-!SUBSECTION  Edges
+!SUBSECTION Edges
 
 @startDocuBlock JSF_general_graph_edges
 
