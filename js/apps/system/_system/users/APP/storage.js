@@ -31,7 +31,7 @@ if (applicationContext.mount.indexOf('/_system/') === 0) {
 
 function resolve(username) {
   var user = users.firstExample({user: username});
-  if (!user.get('_key')) {
+  if (user === null || !user.get('_key')) {
     return null;
   }
   return user;
