@@ -1553,15 +1553,16 @@ IndexNode::IndexNode (ExecutionPlan* plan,
 
   auto indexes = JsonHelper::checkAndGetObjectValue(json.json(), "indexes");
 
-  size_t length = indexes.size();
+  TRI_ASSERT(TRI_IsArrayJson(indexes));
+  size_t length = TRI_LengthArrayJson(indexes);
   _indexes.reserve(length);
   for (size_t i = 0; i < length; ++i) {
-    auto iid  = JsonHelper::checkAndGetStringValue(_indexes.at(i), "id");
+    auto iid  = JsonHelper::checkAndGetStringValue(TRI_LookupArrayJson(indexes, i), "id");
     auto index = _collection->getIndex(iid);
-    if (_index == nullptr) {
+    if (index == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index not found");
     }
-    _indexes.push(index);
+    _indexes.push_back(index);
   }
   _reverse = JsonHelper::checkAndGetBooleanValue(json.json(), "reverse");
 }
@@ -1611,7 +1612,6 @@ void IndexNode::getVariablesUsedHere (std::unordered_set<Variable const*>& vars)
   for (auto const& vv : s) {
     v.emplace_back(const_cast<Variable*>(vv));
   }
-  return v;
 }
 
 // -----------------------------------------------------------------------------
