@@ -41,6 +41,10 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
+  namespace basics {
+    struct AttributeName;
+  }
+
   namespace arango {
 
     class PrimaryIndex : public Index {
@@ -162,7 +166,7 @@ namespace triagens {
 
         bool canServeForConditionNode (triagens::aql::AstNode const*,
                                        triagens::aql::Variable const*,
-                                       std::vector<std::string> const*,
+                                       std::vector<std::vector<triagens::basics::AttributeName>> const*,
                                        double&) const override;
         
 // -----------------------------------------------------------------------------

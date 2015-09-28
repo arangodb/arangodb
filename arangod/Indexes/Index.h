@@ -293,7 +293,7 @@ namespace triagens {
 
         virtual bool canServeForConditionNode (triagens::aql::AstNode const*,
                                                triagens::aql::Variable const*,
-                                               std::vector<std::string> const*,
+                                               std::vector<std::vector<triagens::basics::AttributeName>> const*,
                                                double&) const;
 
         friend std::ostream& operator<< (std::ostream&, Index const*);

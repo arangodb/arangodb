@@ -737,7 +737,7 @@ bool HashIndex::accessFitsIndex (triagens::aql::AstNode const* access,
 
 bool HashIndex::canServeForConditionNode (triagens::aql::AstNode const* node,
                                           triagens::aql::Variable const* reference,
-                                          std::vector<std::string> const* sortAttributes,
+                                          std::vector<std::vector<triagens::basics::AttributeName>> const* sortAttributes,
                                           double& estimatedCost) const {
   std::unordered_set<size_t> found;
   estimatedCost = 0.0;

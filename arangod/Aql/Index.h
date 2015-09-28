@@ -38,6 +38,10 @@
 #include "Indexes/PathBasedIndex.h"
 
 namespace triagens {
+  namespace basics {
+    struct AttributeName;
+  }
+
   namespace aql {
 
 // -----------------------------------------------------------------------------
@@ -163,9 +167,8 @@ namespace triagens {
 
       bool canServeForConditionNode (triagens::aql::AstNode const* node,
                                      triagens::aql::Variable const* reference,
-                                     std::vector<std::string> const* sortAttributes,
+                                     std::vector<std::vector<triagens::basics::AttributeName>> const* sortAttributes,
                                      double& estimatedCost) const {
-        TRI_ASSERT(internals != nullptr);
         auto internals = getInternals();
         return internals->canServeForConditionNode(node, reference, sortAttributes, estimatedCost);
       }

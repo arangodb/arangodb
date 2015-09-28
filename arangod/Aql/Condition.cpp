@@ -175,7 +175,7 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
   Variable const* reference = node->outVariable();
 
   for (size_t i = 0; i < _root->numMembers(); ++i) {
-    if (! findIndexForAndNode(_root->getMember(i), reference, node, usedIndexes)) {
+    if (! findIndexForAndNode(_root->getMember(i), reference, node, usedIndexes, sortExpression)) {
       // We are not able to find an index for this AND block. Sorry we have to abort here
       return false;
     }
@@ -193,15 +193,18 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
 bool Condition::findIndexForAndNode (AstNode const* node, 
                                      Variable const* reference, 
                                      EnumerateCollectionNode const* colNode, 
-                                     std::vector<Index const*>& usedIndexes) {
+                                     std::vector<Index const*>& usedIndexes,
+                                     AstNode const* sortExpression) {
   // We can only iterate through a proper DNF
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
 
-  std::vector<Index const*> indexes = colNode->collection()->getIndexes();
-  std::vector<std::string> sortAttributes; // TODO has to be internal
   double bestCost = -1.0; // All costs are > 0, so if we have found one we can use it.
   // This code is never responsible for the content of this pointer.
   Index const* bestIndex = nullptr;
+
+  std::vector<std::vector<triagens::basics::AttributeName>> sortAttributes = buildSortAttributes(sortExpression); 
+   
+  std::vector<Index const*> indexes = colNode->collection()->getIndexes();
 
   for (auto& idx : indexes) {
     double estimatedCost;
@@ -209,6 +212,7 @@ bool Condition::findIndexForAndNode (AstNode const* node,
     if (idx->canServeForConditionNode(node, reference, &sortAttributes, estimatedCost)) {
       if (bestCost < estimatedCost) {
         bestIndex = idx;
+        bestCost = estimatedCost;
       }
     }
   }
@@ -222,6 +226,20 @@ bool Condition::findIndexForAndNode (AstNode const* node,
   usedIndexes.emplace_back(bestIndex);
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds sort attributes from a sort expression
+////////////////////////////////////////////////////////////////////////////////
+        
+std::vector<std::vector<triagens::basics::AttributeName>> Condition::buildSortAttributes (AstNode const* node) {
+  std::vector<std::vector<triagens::basics::AttributeName>> result;
+
+if (node != nullptr) {
+  std::cout << "SORT: " << node->getTypeString() << "\n";
+}
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
