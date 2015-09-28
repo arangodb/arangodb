@@ -124,26 +124,39 @@ v2.7.0-rc1 (2015-09-17)
 
   * `DATE_FORMAT(date, format)`: Format a date according to the given format string.
     It supports the following placeholders (case-insensitive):
-    - %t: timestamp
+    - %t: timestamp, in milliseconds since midnight 1970-01-01
     - %z: ISO date (0000-00-00T00:00:00.000Z)
     - %w: day of week (0..6)
-    - %y: year (0000..9999)
-    - %m: month (01..12)
-    - %d: day (01..31)
-    - %h: hour (00..23)
-    - %i: minute (00..59)
-    - %s: second (00..59)
-    - %f: millisecond (000..999)
-    - %x: day of year (001..366)
-    - %k: ISO week date (01..53)
+    - %y: year (0..9999)
+    - %yy: year (00..99), abbreviated (last two digits)
+    - %yyyy: year (0000..9999), padded to length of 4
+    - %yyyyyy: year (-009999 .. +009999), with sign prefix and padded to length of 6
+    - %m: month (1..12)
+    - %mm: month (01..12), padded to length of 2
+    - %d: day (1..31)
+    - %dd: day (01..31), padded to length of 2
+    - %h: hour (0..23)
+    - %hh: hour (00..23), padded to length of 2
+    - %i: minute (0..59)
+    - %ii: minute (00..59), padded to length of 2
+    - %s: second (0..59)
+    - %ss: second (00..59), padded to length of 2
+    - %f: millisecond (0..999)
+    - %fff: millisecond (000..999), padded to length of 3
+    - %x: day of year (1..366)
+    - %xxx: day of year (001..366), padded to length of 3
+    - %k: ISO week date (1..53)
+    - %kk: ISO week date (01..53), padded to length of 2
     - %l: leap year (0 or 1)
     - %q: quarter (1..4)
     - %a: days in month (28..31)
-    - %n: English name of month (January..December)
-    - %o: abbreviated English name of month (Jan..Dec)
-    - %e: English name of weekday (Sunday..Saturday)
-    - %g: abbreviated English name of weekday (Sun..Sat)
+    - %mmm: abbreviated English name of month (Jan..Dec)
+    - %mmmm: English name of month (January..December)
+    - %www: abbreviated English name of weekday (Sun..Sat)
+    - %wwww: English name of weekday (Sunday..Saturday)
+    - %&: special escape sequence for rare occasions
     - %%: literal %
+    - %: ignored
 
 * new WAL logfiles and datafiles are now created non-sparse
     
