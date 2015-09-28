@@ -118,11 +118,16 @@ bool ConditionFinder::before (ExecutionNode* en) {
     }
 
     case EN::ENUMERATE_COLLECTION: {
+      if (_condition == nullptr) {
+        // No one used a filter up to now. Leave this node
+        break;
+      }
       auto node = static_cast<EnumerateCollectionNode const*>(en);
       if (_changes->find(node->id()) != _changes->end()) {
         std::cout << "Already optimized " << node->id() << std::endl;
         break;
       }
+      TRI_ASSERT(_condition != nullptr);
       _condition->normalize(_plan);
       std::vector<Index const*> usedIndexes;
       _condition->findIndexes(node, usedIndexes);
