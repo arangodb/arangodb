@@ -166,13 +166,17 @@ namespace triagens {
 /// @brief get the resulting structure for the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* getConditions () {return _root;};
+        AstNode* getConditions () {
+          return _root;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief locate indices which can be used for conditions
+/// @brief locate indexes which can be used for conditions
 ////////////////////////////////////////////////////////////////////////////////
 
-        void findIndexes (EnumerateCollectionNode const*, std::vector<Index const*>&);
+        bool findIndexes (EnumerateCollectionNode const*, 
+                          std::vector<Index const*>&, 
+                          AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the condition
@@ -187,7 +191,7 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Transforms the AstNode
+/// @brief transforms the AstNode
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* transformNode (AstNode*);
@@ -207,10 +211,13 @@ namespace triagens {
         AstNode* fixRoot (AstNode*, int);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Finds all indexes that can match this single node
+/// @brief finds the best index that can match this single node
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setIndexForAndNode (AstNode const*, Variable const*, EnumerateCollectionNode const*, std::vector<Index const*>&);
+        bool findIndexForAndNode (AstNode const*, 
+                                  Variable const*, 
+                                  EnumerateCollectionNode const*, 
+                                  std::vector<Index const*>&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

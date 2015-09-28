@@ -129,11 +129,12 @@ bool ConditionFinder::before (ExecutionNode* en) {
       }
       TRI_ASSERT(_condition != nullptr);
       _condition->normalize(_plan);
+
       std::vector<Index const*> usedIndexes;
-      _condition->findIndexes(node, usedIndexes);
-      std::cout << node->id() << " Number of indexes used: " << usedIndexes.size() << std::endl;
-      if (usedIndexes.size() != 0) {
-        // We either cann find indexes for everything or findIndexes will clear out usedIndexes
+      if (_condition->findIndexes(node, usedIndexes, _sortExpression)) {
+        TRI_ASSERT(! usedIndexes.empty());
+        std::cout << node->id() << " Number of indexes used: " << usedIndexes.size() << std::endl;
+          // We either cann find indexes for everything or findIndexes will clear out usedIndexes
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
           _plan, 
           _plan->nextId(), 
