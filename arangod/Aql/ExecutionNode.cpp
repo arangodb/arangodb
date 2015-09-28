@@ -1489,7 +1489,7 @@ double EnumerateListNode::estimateCost (size_t& nrItems) const {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for IndexNode - TODO
+/// @brief toJson, for IndexNode
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexNode::toJsonHelper (triagens::basics::Json& nodes,
@@ -1506,8 +1506,13 @@ void IndexNode::toJsonHelper (triagens::basics::Json& nodes,
   json("database", triagens::basics::Json(_vocbase->_name))
       ("collection", triagens::basics::Json(_collection->getName()))
       ("outVariable", _outVariable->toJson());
+
+  triagens::basics::Json indexes(triagens::basics::Json::Array, _indexes.size());
+  for (auto& index : _indexes) {
+    indexes.add(index->toJson());
+  }
  
-//  json("index", _index->toJson()); 
+  json("indexes", indexes); 
   json("reverse", triagens::basics::Json(_reverse));
 
   // And add it:
@@ -1523,7 +1528,6 @@ ExecutionNode* IndexNode::clone (ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  // TODO FIXME
   auto c = new IndexNode(plan, _id, _vocbase, _collection, 
                          outVariable, _indexes, _condition, _reverse);
 
@@ -1533,7 +1537,7 @@ ExecutionNode* IndexNode::clone (ExecutionPlan* plan,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor for IndexNode from Json - TODO
+/// @brief constructor for IndexNode from Json
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexNode::IndexNode (ExecutionPlan* plan,
@@ -1546,21 +1550,20 @@ IndexNode::IndexNode (ExecutionPlan* plan,
     _condition(nullptr), 
     _reverse(false) {
 
-    // TODO FIXME
-/*
-  // now the index . . . 
-  // TODO the following could be a constructor method for
-  // an Index object when these are actually used
-  auto index = JsonHelper::checkAndGetObjectValue(json.json(), "index");
-  auto iid   = JsonHelper::checkAndGetStringValue(index, "id");
 
-  _index = _collection->getIndex(iid);
-*/  
+  auto indexes = JsonHelper::checkAndGetObjectValue(json.json(), "indexes");
+
+  size_t length = indexes.size();
+  _indexes.reserve(length);
+  for (size_t i = 0; i < length; ++i) {
+    auto iid  = JsonHelper::checkAndGetStringValue(_indexes.at(i), "id");
+    auto index = _collection->getIndex(iid);
+    if (_index == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index not found");
+    }
+    _indexes.push(index);
+  }
   _reverse = JsonHelper::checkAndGetBooleanValue(json.json(), "reverse");
-
-//  if (_index == nullptr) {
-//    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index not found");
-//  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1593,11 +1596,22 @@ std::vector<Variable const*> IndexNode::getVariablesUsedHere () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, modifying the set in-place - TODO
+/// @brief getVariablesUsedHere, modifying the set in-place
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexNode::getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const {
-  // TODO FIXME
+  std::unordered_set<Variable const*> s;
+  // actual work is done by that method  
+  getVariablesUsedHere(s); 
+
+  // copy result into vector
+  std::vector<Variable const*> v;
+  v.reserve(s.size());
+
+  for (auto const& vv : s) {
+    v.emplace_back(const_cast<Variable*>(vv));
+  }
+  return v;
 }
 
 // -----------------------------------------------------------------------------
