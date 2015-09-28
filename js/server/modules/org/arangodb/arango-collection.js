@@ -297,7 +297,7 @@ ArangoCollection.prototype.edges = function (vertex) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns inbound edges connected to a vertex
 /// @startDocuBlock collectionEdgesInbound
-/// `collection.edges(vertex-id)`
+/// `collection.inEdges(vertex-id)`
 ///
 /// Returns inbound edges connected to the vertex specified by *vertex-id*.
 /// @endDocuBlock
@@ -310,7 +310,7 @@ ArangoCollection.prototype.inEdges = function (vertex) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns outbound edges connected to a vertex
 /// @startDocuBlock collectionEdgesOutbound
-/// `collection.edges(vertex-id)`
+/// `collection.outEdges(vertex-id)`
 ///
 /// Returns outbound edges connected to the vertex specified by *vertex-id*.
 /// @endDocuBlock
