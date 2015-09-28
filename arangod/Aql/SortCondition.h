@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cap constraint
+/// @brief index sort condition
 ///
 /// @file
 ///
@@ -22,27 +22,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_CAP_CONSTRAINT_H
-#define ARANGODB_INDEXES_CAP_CONSTRAINT_H 1
+#ifndef ARANGODB_AQL_SORT_CONDITION_H
+#define ARANGODB_AQL_SORT_CONDITION_H 1
 
 #include "Basics/Common.h"
-#include "Indexes/Index.h"
-#include "VocBase/vocbase.h"
-#include "VocBase/voc-types.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class CapConstraint
-// -----------------------------------------------------------------------------
+#include "Aql/Variable.h"
+#include "Basics/AttributeNameParser.h"
 
 namespace triagens {
-  namespace arango {
+  namespace aql {
+    struct AstNode;
 
-    class CapConstraint : public Index {
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class SortCondition
+// -----------------------------------------------------------------------------
+
+    class SortCondition {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -50,14 +50,17 @@ namespace triagens {
 
       public:
 
-        CapConstraint () = delete;
+        SortCondition () = delete;
+        SortCondition (SortCondition const&) = delete;
+        SortCondition& operator= (SortCondition const&) = delete;
 
-        CapConstraint (TRI_idx_iid_t,
-                       struct TRI_document_collection_t*,
-                       size_t,
-                       int64_t);
+        explicit SortCondition (std::vector<std::pair<AstNode const*, bool>> const&);
 
-        ~CapConstraint ();
+        SortCondition (std::vector<std::pair<VariableId, bool>> const&, 
+                       std::unordered_map<VariableId, AstNode const*> const&); 
+
+        ~SortCondition () {
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -66,67 +69,29 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum number of documents in the collection
+/// @brief whether or not the condition consists only of attribute accesses
 ////////////////////////////////////////////////////////////////////////////////
-  
-        int64_t count () const {
-          return _count;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum size of documents in the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        int64_t size () const {
-          return _size;
-        }
         
-        IndexType type () const override final {
-          return Index::TRI_IDX_TYPE_CAP_CONSTRAINT;
-        }
-        
-        bool isSorted () const override final {
-          return false;
+        inline bool isOnlyAttributeAccess () const {
+          return _onlyAttributeAccess;
         }
 
-        bool hasSelectivityEstimate () const override final {
-          return false;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not all conditions have the same sort order
+////////////////////////////////////////////////////////////////////////////////
+        
+        inline bool isUnidirectional () const {
+          return _unidirectional;
         }
-        
-        bool dumpFields () const override final {
-          return false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not there are fields
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isEmpty () const {
+          return _fields.empty();
         }
 
-        size_t memory () const override final;
-
-        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
-        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
-  
-        int insert (struct TRI_doc_mptr_t const*, bool) override final;
-         
-        int remove (struct TRI_doc_mptr_t const*, bool) override final;
-        
-        int postInsert (struct TRI_transaction_collection_s*, struct TRI_doc_mptr_t const*) override final;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-        int initialize ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief apply the cap constraint for the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        int apply (TRI_document_collection_t*,
-                   struct TRI_transaction_collection_s*);
-        
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -134,28 +99,28 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum number of documents in the collection
-////////////////////////////////////////////////////////////////////////////////
-  
-        int64_t const _count;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum size of documents in the collection
+/// @brief sort expressions
 ////////////////////////////////////////////////////////////////////////////////
 
-        int64_t const _size;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
-
-      public:
+        std::vector<std::pair<AstNode const*, bool>> _expressions;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum size
+/// @brief fields used in the sort conditions
 ////////////////////////////////////////////////////////////////////////////////
 
-        static int64_t const MinSize;
+        std::vector<std::pair<std::string, std::vector<triagens::basics::AttributeName>>> _fields;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the sort is unidirectional
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _unidirectional;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether the sort only consists of attribute accesses
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _onlyAttributeAccess;
     };
 
   }

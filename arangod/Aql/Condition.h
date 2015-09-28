@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
+#include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
 
 namespace triagens {
@@ -177,7 +178,7 @@ namespace triagens {
 
         bool findIndexes (EnumerateCollectionNode const*, 
                           std::vector<Index const*>&, 
-                          AstNode const*);
+                          SortCondition const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the condition
@@ -219,13 +220,7 @@ namespace triagens {
                                   Variable const*, 
                                   EnumerateCollectionNode const*, 
                                   std::vector<Index const*>&,
-                                  AstNode const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds sort attributes from a sort expression
-////////////////////////////////////////////////////////////////////////////////
-        
-        std::vector<std::vector<triagens::basics::AttributeName>> buildSortAttributes (AstNode const*);
+                                  SortCondition const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

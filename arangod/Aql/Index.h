@@ -30,6 +30,7 @@
 #ifndef ARANGODB_AQL_INDEX_H
 #define ARANGODB_AQL_INDEX_H 1
 
+#include "Aql/SortCondition.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
@@ -38,10 +39,6 @@
 #include "Indexes/PathBasedIndex.h"
 
 namespace triagens {
-  namespace basics {
-    struct AttributeName;
-  }
-
   namespace aql {
 
 // -----------------------------------------------------------------------------
@@ -165,12 +162,20 @@ namespace triagens {
         internals = idx;
       }
 
-      bool canServeForConditionNode (triagens::aql::AstNode const* node,
-                                     triagens::aql::Variable const* reference,
-                                     std::vector<std::vector<triagens::basics::AttributeName>> const* sortAttributes,
-                                     double& estimatedCost) const {
-        auto internals = getInternals();
-        return internals->canServeForConditionNode(node, reference, sortAttributes, estimatedCost);
+      bool isSorted () const {
+        return getInternals()->isSorted();
+      }
+
+      bool supportsFilterCondition (triagens::aql::AstNode const* node,
+                                    triagens::aql::Variable const* reference,
+                                    double& estimatedCost) const {
+        return getInternals()->supportsFilterCondition(node, reference, estimatedCost);
+      }
+      
+      bool supportsSortCondition (triagens::aql::SortCondition const* sortCondition,
+                                  triagens::aql::Variable const* reference,
+                                  double& estimatedCost) const {
+        return getInternals()->supportsSortCondition(sortCondition, reference, estimatedCost);
       }
 
 // -----------------------------------------------------------------------------

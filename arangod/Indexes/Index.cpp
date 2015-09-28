@@ -22,17 +22,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Index.h"
+#include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
 #include "VocBase/server.h"
 #include "VocBase/VocShaper.h"
-
 
 using namespace triagens::arango;
 
@@ -425,14 +425,24 @@ bool Index::hasBatchInsert () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default implementation for canServeForConditionNode
+/// @brief default implementation for supportsFilterCondition
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::canServeForConditionNode (triagens::aql::AstNode const* node,
-                                      triagens::aql::Variable const* reference,
-                                      std::vector<std::vector<triagens::basics::AttributeName>> const* sortAttributes,
-                                      double& estimatedCost) const {
-  estimatedCost = 0;
+bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
+                                     triagens::aql::Variable const* reference,
+                                     double& estimatedCost) const {
+  estimatedCost = 0.0;
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default implementation for supportsSortCondition
+////////////////////////////////////////////////////////////////////////////////
+
+bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondition,
+                                   triagens::aql::Variable const* reference,
+                                   double& estimatedCost) const {
+  estimatedCost = 0.0;
   return false;
 }
 

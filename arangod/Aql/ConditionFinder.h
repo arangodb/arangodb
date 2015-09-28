@@ -47,15 +47,17 @@ namespace triagens {
                          std::unordered_map<size_t, ExecutionNode*>* changes)
           : _plan(plan),
             _condition(nullptr),
-            _filterVariables(),
-            _sortVariables(),
-            _sortExpression(nullptr),
+            _variableDefinitions(),
+            _filters(),
+            _sorts(),
             _changes(changes) {
         };
 
         ~ConditionFinder () {
           delete _condition;
         }
+
+        std::vector<std::pair<AstNode const*, bool>> translateSorts () const;
      
         bool before (ExecutionNode* en) override final;
 
@@ -63,13 +65,13 @@ namespace triagens {
 
       private:
 
-        ExecutionPlan*                     _plan;
-        Condition*                         _condition;
-        std::unordered_set<VariableId>     _filterVariables;
-        std::unordered_set<VariableId>     _sortVariables;
-        AstNode const*                     _sortExpression;
+        ExecutionPlan*                                 _plan;
+        Condition*                                     _condition;
+        std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
+        std::unordered_set<VariableId>                 _filters;
+        std::vector<std::pair<VariableId, bool>>       _sorts;
         // note: this class will never free the contents of this map
-        std::unordered_map<size_t, ExecutionNode*>* _changes;
+        std::unordered_map<size_t, ExecutionNode*>*    _changes;
     
     };
   }
