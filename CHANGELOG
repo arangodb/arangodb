@@ -1,3 +1,27 @@
+v2.8.0 (XXXX-XX-XX)
+-------------------
+
+* Added array indexes
+  We added a new feature to hash- and skiplist indexes to allow them to index
+  array attributes in documents.
+  To define an index on an array we use the following syntax:
+  
+  Say we have the following document:
+  {
+    tags: ["AQL","ArangoDB","Index"]
+  }
+
+  We can now set a hashIndex (or skiplistindex) in the following way:
+  
+  arangosh> db.colName.ensureHashIndex("tags[*]");
+  
+  Now we can use AQL to find all documents having "ArangoDB" in their
+  tags array:
+  
+  FOR x IN colName FILTER "ArangoDB" IN x.tags RETURN x
+
+
+
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
