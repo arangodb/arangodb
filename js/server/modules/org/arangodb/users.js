@@ -98,7 +98,7 @@ var validatePassword = function (password) {
   }
 
   if (password === "ARANGODB_DEFAULT_ROOT_PASSWORD") {
-    password = require("process").env['ARANGODB_DEFAULT_ROOT_PASSWORD'] || "";
+    password = require("process").env.ARANGODB_DEFAULT_ROOT_PASSWORD || "";
   }
 
   return password;
