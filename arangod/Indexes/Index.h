@@ -22,7 +22,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +60,7 @@ TRI_index_search_value_t;
 namespace triagens {
   namespace aql {
     struct AstNode;
+    class SortCondition;
     struct Variable;
   }
 }
@@ -233,6 +234,23 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index fields names
+////////////////////////////////////////////////////////////////////////////////
+
+        inline std::vector<std::vector<std::string>> fieldNames () const {
+          std::vector<std::vector<std::string>> result;
+
+          for (auto const& it : _fields) {
+            std::vector<std::string> parts;
+            for (auto const& it2 : it) {
+              parts.emplace_back(it2.name);
+            }
+            result.emplace_back(std::move(parts));
+          }
+          return result;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the underlying collection
 ////////////////////////////////////////////////////////////////////////////////
         
@@ -294,6 +312,7 @@ namespace triagens {
                              TRI_json_t const* rhs);
 
         virtual IndexType type () const = 0;
+        virtual bool isSorted () const = 0;
         virtual bool hasSelectivityEstimate () const = 0;
         virtual double selectivityEstimate () const;
         virtual size_t memory () const = 0;
@@ -314,10 +333,13 @@ namespace triagens {
 
         virtual bool hasBatchInsert () const;
 
-        virtual bool canServeForConditionNode (triagens::aql::AstNode const*,
-                                               triagens::aql::Variable const*,
-                                               std::vector<std::string> const*,
-                                               double&) const;
+        virtual bool supportsFilterCondition (triagens::aql::AstNode const*,
+                                              triagens::aql::Variable const*,
+                                              double&) const;
+        
+        virtual bool supportsSortCondition (triagens::aql::SortCondition const*,
+                                            triagens::aql::Variable const*,
+                                            double&) const;
 
         virtual IndexIterator* iteratorForCondition (triagens::aql::AstNode const*) const;
 

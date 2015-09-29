@@ -1,4 +1,4 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial/social/edge</span>
+shell> curl --dump - http://localhost:8529/_api/gharial/social/edge
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json

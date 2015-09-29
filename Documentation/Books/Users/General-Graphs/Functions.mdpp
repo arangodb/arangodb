@@ -3,6 +3,12 @@
 This chapter describes various functions on a graph.
 A lot of these accept a vertex (or edge) example as parameter as defined in the next section.
 
+
+Examples will explain the API on the [the city graph](../Graphs/README.md#the_city_graph):
+
+![Social Example Graph](../Graphs/cities_graph.png)
+
+
 !SECTION Definition of examples
 
 @startDocuBlock JSF_general_graph_example_description

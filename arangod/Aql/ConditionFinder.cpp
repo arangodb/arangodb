@@ -27,14 +27,17 @@
 
 #include "Aql/ConditionFinder.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/SortCondition.h"
 
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
 
 bool ConditionFinder::before (ExecutionNode* en) {
-  if (! _filterVariables.empty() && en->canThrow()) {
+  if (! _variableDefinitions.empty() && en->canThrow()) {
     // we already found a FILTER and
     // something that can throw is not safe to optimize
+    _filters.clear();
+    _sorts.clear();
     delete _condition;
     _condition = nullptr;
     return true;
@@ -63,7 +66,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
     
     case EN::LIMIT:           
       // LIMIT invalidates the sort expression we already found
-      _sortExpression = nullptr;
+      _sorts.clear();
       break;
 
     case EN::SINGLETON:
@@ -73,46 +76,40 @@ bool ConditionFinder::before (ExecutionNode* en) {
       return true;
 
     case EN::FILTER: {
-       std::vector<Variable const*>&& inVar = en->getVariablesUsedHere();
-       TRI_ASSERT(inVar.size() == 1);
+       std::vector<Variable const*>&& invars = en->getVariablesUsedHere();
+       TRI_ASSERT(invars.size() == 1);
        // register which variable is used in a FILTER
-       _filterVariables.emplace(inVar[0]->id);
+       _filters.emplace(invars[0]->id);
        break;
      }
     
     case EN::SORT: {
-       std::vector<Variable const*>&& inVar = en->getVariablesUsedHere();
-       TRI_ASSERT(inVar.size() == 1);
-       // register which variable is used in a SORT
-       _sortVariables.emplace(inVar[0]->id);
+       // register which variables are used in a SORT
+       if (_sorts.empty()) {
+         for (auto& it : static_cast<SortNode const*>(en)->getElements()) {
+           _sorts.emplace_back(std::make_pair((it.first)->id, it.second));
+         }
+       }
        break;
      }
 
     case EN::CALCULATION: {
-      auto outvar = en->getVariablesSetHere();
-      TRI_ASSERT(outvar.size() == 1);
+      auto outvars = en->getVariablesSetHere();
+      TRI_ASSERT(outvars.size() == 1);
 
-      if (_filterVariables.find(outvar[0]->id) != _filterVariables.end()) {
+      _variableDefinitions.emplace(outvars[0]->id, static_cast<CalculationNode const*>(en)->expression()->node());
+      
+      if (_condition == nullptr) {
+        // did not have any expression before. now save what we found
+        _condition = new Condition(_plan->getAst());
+      }
+
+      if (_filters.find(outvars[0]->id) != _filters.end()) {
         // a variable used in a FILTER
         auto expressionNode = static_cast<CalculationNode const*>(en)->expression()->node();
 
-        if (_condition == nullptr) {
-          // did not have any expression before. now save what we found
-          _condition = new Condition(_plan->getAst());
-        }
-
         TRI_ASSERT(_condition != nullptr);
         _condition->andCombine(expressionNode);
-      }
-      else if (_sortVariables.find(outvar[0]->id) != _sortVariables.end()) {
-        // a variable used in a SORT
-        auto expressionNode = static_cast<CalculationNode const*>(en)->expression()->node();
-
-        // only store latest SORT condition
-        if (_sortExpression == nullptr) {
-          // did not have any expression before. now save what we found
-          _sortExpression = expressionNode;
-        }
       }
       break;
     }
@@ -122,16 +119,20 @@ bool ConditionFinder::before (ExecutionNode* en) {
         // No one used a filter up to now. Leave this node
         break;
       }
+
       auto node = static_cast<EnumerateCollectionNode const*>(en);
       if (_changes->find(node->id()) != _changes->end()) {
         std::cout << "Already optimized " << node->id() << std::endl;
         break;
       }
+
       TRI_ASSERT(_condition != nullptr);
       _condition->normalize(_plan);
 
       std::vector<Index const*> usedIndexes;
-      if (_condition->findIndexes(node, usedIndexes, _sortExpression)) {
+      SortCondition sortCondition(_sorts, _variableDefinitions);
+
+      if (_condition->findIndexes(node, usedIndexes, sortCondition)) {
         TRI_ASSERT(! usedIndexes.empty());
         std::cout << node->id() << " Number of indexes used: " << usedIndexes.size() << std::endl;
           // We either cann find indexes for everything or findIndexes will clear out usedIndexes

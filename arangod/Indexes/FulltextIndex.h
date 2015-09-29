@@ -72,6 +72,10 @@ namespace triagens {
         IndexType type () const override final {
           return Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
         }
+        
+        bool isSorted () const override final {
+          return false;
+        }
 
         bool hasSelectivityEstimate () const override final {
           return false;

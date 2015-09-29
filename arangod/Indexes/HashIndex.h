@@ -45,6 +45,9 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
+  namespace aql {
+    class SortCondition;
+  }
   namespace arango {
 
     class HashIndex : public PathBasedIndex {
@@ -73,6 +76,10 @@ namespace triagens {
         
         IndexType type () const override final {
           return Index::TRI_IDX_TYPE_HASH_INDEX;
+        }
+        
+        bool isSorted () const override final {
+          return false;
         }
 
         bool hasSelectivityEstimate () const override final {
@@ -119,11 +126,9 @@ namespace triagens {
                     TRI_index_element_t*&,
                     size_t batchSize) const;
 
-
-        bool canServeForConditionNode (triagens::aql::AstNode const*,
-                                       triagens::aql::Variable const*,
-                                       std::vector<std::string> const*,
-                                       double&) const override;
+        bool supportsFilterCondition (triagens::aql::AstNode const*,
+                                      triagens::aql::Variable const*,
+                                      double&) const override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

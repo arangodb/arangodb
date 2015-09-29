@@ -28,8 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SkiplistIndex.h"
-#include "Basics/logging.h"
 #include "Aql/AstNode.h"
+#include "Aql/SortCondition.h"
+#include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
@@ -905,10 +906,9 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
 
 }
 
-bool SkiplistIndex::canServeForConditionNode (triagens::aql::AstNode const* node,
-                                              triagens::aql::Variable const* reference,
-                                              std::vector<std::string> const* sortAttributes,
-                                              double& estimatedCost ) const {
+bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
+                                             triagens::aql::Variable const* reference,
+                                             double& estimatedCost) const {
   std::unordered_set<std::string> foundEq;
   std::unordered_set<std::string> foundRange;
   for (size_t i = 0; i < node->numMembers(); ++i) {
@@ -962,6 +962,12 @@ bool SkiplistIndex::canServeForConditionNode (triagens::aql::AstNode const* node
   return canBeUsed;
 }
 
+bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* sortCondition,
+                                           triagens::aql::Variable const* reference,
+                                           double& estimatedCost) const {
+  estimatedCost = 0.0;
+  return false;
+}        
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

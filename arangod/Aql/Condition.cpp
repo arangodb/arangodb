@@ -168,14 +168,14 @@ void Condition::andCombine (AstNode const* node) {
 
 bool Condition::findIndexes (EnumerateCollectionNode const* node, 
                              std::vector<Index const*>& usedIndexes,
-                             AstNode const* sortExpression) {
+                             SortCondition const& sortCondition) {
   // We can only start after DNF transformation
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
   Variable const* reference = node->outVariable();
 
   for (size_t i = 0; i < _root->numMembers(); ++i) {
-    if (! findIndexForAndNode(_root->getMember(i), reference, node, usedIndexes)) {
+    if (! findIndexForAndNode(_root->getMember(i), reference, node, usedIndexes, sortCondition)) {
       // We are not able to find an index for this AND block. Sorry we have to abort here
       return false;
     }
@@ -193,23 +193,54 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
 bool Condition::findIndexForAndNode (AstNode const* node, 
                                      Variable const* reference, 
                                      EnumerateCollectionNode const* colNode, 
-                                     std::vector<Index const*>& usedIndexes) {
+                                     std::vector<Index const*>& usedIndexes,
+                                     SortCondition const& sortCondition) {
   // We can only iterate through a proper DNF
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
 
-  std::vector<Index const*> indexes = colNode->collection()->getIndexes();
-  std::vector<std::string> sortAttributes; // TODO has to be internal
-  double bestCost = -1.0; // All costs are > 0, so if we have found one we can use it.
   // This code is never responsible for the content of this pointer.
   Index const* bestIndex = nullptr;
 
-  for (auto& idx : indexes) {
-    double estimatedCost;
+  static double const MaxFilterCost = 10.0;
+  static double const MaxSortCost   = 10.0;
 
-    if (idx->canServeForConditionNode(node, reference, &sortAttributes, estimatedCost)) {
-      if (bestCost < estimatedCost) {
-        bestIndex = idx;
+  double bestCost = -1.0; // All costs are > 0, so if we have found one we can use it.
+  std::vector<Index const*> indexes = colNode->collection()->getIndexes();
+
+  for (auto& idx : indexes) {
+    double totalCost = 0.0;
+    double estimatedCost = 0.0;
+    
+    std::cout << "CHECKING INDEX : " << triagens::basics::JsonHelper::toString(idx->getInternals()->toJson(TRI_UNKNOWN_MEM_ZONE, false).json()) << "\n";
+
+    // check if the index supports the filter expression
+    if (idx->supportsFilterCondition(node, reference, estimatedCost)) {
+      std::cout << "- INDEX SUPPORTS FILTER CONDITION\n";
+      // index supports the filter expression
+      totalCost += estimatedCost;
+    }
+    else {
+      std::cout << "- INDEX DOES NOT SUPPORT FILTER CONDITION\n";
+      totalCost += MaxFilterCost;
+    }
+
+
+    if (! sortCondition.isEmpty() &&
+        sortCondition.isOnlyAttributeAccess()) {
+      if (idx->isSorted() &&
+          idx->supportsSortCondition(&sortCondition, reference, estimatedCost)) {
+        std::cout << "- INDEX SUPPORTS SORT CONDITION\n";
+        totalCost += estimatedCost;
       }
+      else {
+        std::cout << "- INDEX DOES NOT SUPPORT SORT CONDITION\n";
+        totalCost += MaxSortCost;
+      }
+    }
+
+    if (bestCost < totalCost) {
+      bestIndex = idx;
+      bestCost = totalCost;
     }
   }
 

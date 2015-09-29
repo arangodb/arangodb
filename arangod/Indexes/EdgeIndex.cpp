@@ -28,10 +28,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EdgeIndex.h"
+#include "Aql/AstNode.h"
+#include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
-#include "Aql/AstNode.h"
+#include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/transaction.h"
@@ -537,47 +539,15 @@ int EdgeIndex::sizeHint (size_t size) {
   return _edgesTo->resize(static_cast<uint32_t>(size + 2049));
 }
 
-static bool accessFitsIndex (triagens::aql::AstNode const* access, triagens::aql::Variable const* reference) {
-  if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    TRI_ASSERT(access->numMembers() == 1);
-    if (access->getMember(0)->getData() != reference) {
-      // This access is not referencing this collection
-      return false;
-    }
-    auto l = access->getStringLength();
-    if (l == 3 &&
-        strcmp(access->getStringValue(), TRI_VOC_ATTRIBUTE_TO) == 0) {
-      return true;
-    }
-    if (l == 5 &&
-        strcmp(access->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0) {
-      return true;
-    }
-  }
-  return false;
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether the index supports the condition
+////////////////////////////////////////////////////////////////////////////////
 
-bool EdgeIndex::canServeForConditionNode (triagens::aql::AstNode const* node,
-                                          triagens::aql::Variable const* reference,
-                                          std::vector<std::string> const* reducedNode,
-                                          double& estimatedCost) const {
-  for (size_t i = 0; i < node->numMembers(); ++i) {
-    auto op = node->getMember(i);
-    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-      TRI_ASSERT(op->numMembers() == 2);
-      if (accessFitsIndex(op->getMember(0), reference) ||
-          accessFitsIndex(op->getMember(1), reference)) {
-        return true;
-      }
-    }
-    else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      TRI_ASSERT(op->numMembers() == 2);
-      if (accessFitsIndex(op->getMember(0), reference)) {
-        return true;
-      }
-    }
-  }
-  return false;
+bool EdgeIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
+                                         triagens::aql::Variable const* reference,
+                                         double& estimatedCost) const {
+  SimpleAttributeEqualityMatcher matcher({ { TRI_VOC_ATTRIBUTE_FROM }, { TRI_VOC_ATTRIBUTE_TO } });
+  return matcher.matchOne(this, node, reference, estimatedCost);
 }
 
 // -----------------------------------------------------------------------------

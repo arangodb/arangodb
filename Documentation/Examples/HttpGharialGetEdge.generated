@@ -1,8 +1,8 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/gharial/social/edge/relation/aliceAndBob</span>
+shell> curl --dump - http://localhost:8529/_api/gharial/social/edge/relation/aliceAndBob
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json
-etag: <span class="hljs-number">552930850</span>
+etag: <span class="hljs-number">542941740</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -10,7 +10,7 @@ etag: <span class="hljs-number">552930850</span>
   <span class="hljs-string">"edge"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"552930850"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"542941740"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 

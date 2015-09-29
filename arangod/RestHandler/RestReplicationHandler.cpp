@@ -746,14 +746,6 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
   TRI_voc_tick_t tick = UINT64_MAX;
 
   for (auto& it : ranges) {
-    auto r = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-
-    if (r == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-      return;
-    }
-
     if (it.tickMin == 0) {
       continue;
     }
@@ -3676,6 +3668,8 @@ void RestReplicationHandler::handleCommandDump () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_api_replication_makeSlave
+/// @brief Changes role to slave
+///
 /// @RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a slave of another}
 ///
 /// @RESTBODYPARAM{endpoint,string,required,string}

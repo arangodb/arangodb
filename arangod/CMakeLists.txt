@@ -104,6 +104,7 @@ add_executable(
     Aql/Scopes.cpp
     Aql/ShortStringStorage.cpp
     Aql/SortBlock.cpp
+    Aql/SortCondition.cpp
     Aql/SubqueryBlock.cpp
     Aql/tokens.cpp
     Aql/V8Expression.cpp

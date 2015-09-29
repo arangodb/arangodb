@@ -213,7 +213,7 @@ class Sessions {
     if (typeof this.configuration.sessionStorage !== 'string') {
       return this.configuration.sessionStorage;
     }
-    return Foxx.requireApp(this.configuration.sessionStorage).sessionStorage;
+    return Foxx.getExports(this.configuration.sessionStorage).sessionStorage;
   }
 }
 

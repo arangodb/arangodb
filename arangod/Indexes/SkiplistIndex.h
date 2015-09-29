@@ -48,6 +48,10 @@ typedef struct {
 TRI_skiplist_index_key_t;
 
 namespace triagens {
+  namespace aql {
+    class SortCondition;
+  }
+
   namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,6 +234,10 @@ namespace triagens {
         IndexType type () const override final {
           return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
         }
+        
+        bool isSorted () const override final {
+          return false;
+        }
 
         bool hasSelectivityEstimate () const override final {
           return false;
@@ -254,10 +262,13 @@ namespace triagens {
 
         SkiplistIterator* lookup (TRI_index_operator_t*, bool);
 
-        bool canServeForConditionNode (triagens::aql::AstNode const*,
-                                       triagens::aql::Variable const*,
-                                       std::vector<std::string> const*,
-                                       double&) const override;
+        bool supportsFilterCondition (triagens::aql::AstNode const*,
+                                      triagens::aql::Variable const*,
+                                      double&) const override;
+        
+        bool supportsSortCondition (triagens::aql::SortCondition const*,
+                                    triagens::aql::Variable const*,
+                                    double&) const override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

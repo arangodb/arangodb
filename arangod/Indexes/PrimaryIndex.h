@@ -41,6 +41,13 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
+  namespace aql {
+    class SortCondition;
+  }
+  namespace basics {
+    struct AttributeName;
+  }
+
   namespace arango {
 
     class PrimaryIndex : public Index {
@@ -74,6 +81,10 @@ namespace triagens {
         
         IndexType type () const override final {
           return Index::TRI_IDX_TYPE_PRIMARY_INDEX;
+        }
+
+        bool isSorted () const override final {
+          return false;
         }
 
         bool hasSelectivityEstimate () const override final {
@@ -160,12 +171,11 @@ namespace triagens {
 
         void invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)>);
 
-        bool canServeForConditionNode (triagens::aql::AstNode const*,
-                                       triagens::aql::Variable const*,
-                                       std::vector<std::string> const*,
-                                       double&) const override;
-
         IndexIterator* iteratorForCondition (triagens::aql::AstNode const*) const;
+
+        bool supportsFilterCondition (triagens::aql::AstNode const*,
+                                      triagens::aql::Variable const*,
+                                      double&) const override;
         
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

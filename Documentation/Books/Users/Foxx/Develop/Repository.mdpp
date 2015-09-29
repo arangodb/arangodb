@@ -149,7 +149,7 @@ access to additional index-specific methods like **range** or **fulltext** (see 
 
 The syntax for defining indexes is the same used in [*collection.ensureIndex*](../../IndexHandling/README.md).
 
-@EXAMPLES
+**Examples**
 
 ```js
 var Foxx = require('org/arangodb/foxx');

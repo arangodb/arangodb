@@ -589,44 +589,40 @@ in_or_into_collection:
 
 remove_statement:
     T_REMOVE expression in_or_into_collection options {
-      if (! parser->configureWriteQuery(AQL_QUERY_REMOVE, $3, $4)) {
+      if (! parser->configureWriteQuery($3, $4)) {
         YYABORT;
       }
       auto node = parser->ast()->createNodeRemove($2, $3, $4);
       parser->ast()->addOperation(node);
-      parser->setWriteNode(node);
     }
   ;
 
 insert_statement:
     T_INSERT expression in_or_into_collection options {
-      if (! parser->configureWriteQuery(AQL_QUERY_INSERT, $3, $4)) {
+      if (! parser->configureWriteQuery($3, $4)) {
         YYABORT;
       }
       auto node = parser->ast()->createNodeInsert($2, $3, $4);
       parser->ast()->addOperation(node);
-      parser->setWriteNode(node);
     }
   ;
 
 update_parameters:
     expression in_or_into_collection options {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $2, $3)) {
+      if (! parser->configureWriteQuery($2, $3)) {
         YYABORT;
       }
 
       AstNode* node = parser->ast()->createNodeUpdate(nullptr, $1, $2, $3);
       parser->ast()->addOperation(node);
-      parser->setWriteNode(node);
     }
   | expression T_WITH expression in_or_into_collection options {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $4, $5)) {
+      if (! parser->configureWriteQuery($4, $5)) {
         YYABORT;
       }
 
       AstNode* node = parser->ast()->createNodeUpdate($1, $3, $4, $5);
       parser->ast()->addOperation(node);
-      parser->setWriteNode(node);
     }
   ;
 
@@ -637,22 +633,20 @@ update_statement:
 
 replace_parameters:
     expression in_or_into_collection options {
-      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $2, $3)) {
+      if (! parser->configureWriteQuery($2, $3)) {
         YYABORT;
       }
 
       AstNode* node = parser->ast()->createNodeReplace(nullptr, $1, $2, $3);
       parser->ast()->addOperation(node);
-      parser->setWriteNode(node);
     }
   | expression T_WITH expression in_or_into_collection options {
-      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $4, $5)) {
+      if (! parser->configureWriteQuery($4, $5)) {
         YYABORT;
       }
 
       AstNode* node = parser->ast()->createNodeReplace($1, $3, $4, $5);
       parser->ast()->addOperation(node);
-      parser->setWriteNode(node);
     }
   ;
 
@@ -676,7 +670,7 @@ upsert_statement:
       // and in a later return thing
       parser->pushStack(parser->ast()->createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), true));
     } expression T_INSERT expression update_or_replace expression in_or_into_collection options {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPSERT, $8, $9)) {
+      if (! parser->configureWriteQuery($8, $9)) {
         YYABORT;
       }
 
@@ -718,7 +712,6 @@ upsert_statement:
 
       auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), $5, $7, $8, $9);
       parser->ast()->addOperation(node);
-      parser->setWriteNode(node);
     }
   ;
 

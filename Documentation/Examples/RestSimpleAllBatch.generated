@@ -1,5 +1,5 @@
-shell&gt; curl -X PUT --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/simple/all &lt;&lt;EOF</span>
-{ <span class="hljs-string">"collection"</span>: <span class="hljs-string">"products"</span>, <span class="hljs-string">"batchSize"</span> : <span class="hljs-number">3</span> }
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all &lt;&lt;EOF
+{ "collection": "products", "batchSize" : 3 }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
@@ -8,26 +8,26 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"Hello2"</span> : <span class="hljs-string">"World2"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/840896034"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"840896034"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"840896034"</span> 
+      <span class="hljs-string">"Hello5"</span> : <span class="hljs-string">"World5"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/835887660"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"835887660"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"835887660"</span> 
     }, 
     { 
-      <span class="hljs-string">"Hello3"</span> : <span class="hljs-string">"World3"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/841223714"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"841223714"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"841223714"</span> 
+      <span class="hljs-string">"Hello2"</span> : <span class="hljs-string">"World2"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/834904620"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"834904620"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"834904620"</span> 
     }, 
     { 
       <span class="hljs-string">"Hello1"</span> : <span class="hljs-string">"World1"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/840568354"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"840568354"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"840568354"</span> 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/834576940"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"834576940"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"834576940"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"842075682"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"836084268"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"extra"</span> : { 
     <span class="hljs-string">"stats"</span> : { 

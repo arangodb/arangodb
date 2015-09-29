@@ -1,5 +1,10 @@
-shell&gt; curl -X POST --data-binary @- --dump - http:<span class="hljs-comment">//localhost:8529/_api/traversal &lt;&lt;EOF</span>
-{ <span class="hljs-string">"startVertex"</span>: <span class="hljs-string">"persons/alice"</span>, <span class="hljs-string">"graphName"</span> : <span class="hljs-string">"knows_graph"</span>, <span class="hljs-string">"direction"</span> : <span class="hljs-string">"outbound"</span>, <span class="hljs-string">"visitor"</span> : <span class="hljs-string">"result.visited.vertices.push(vertex._id);"</span>}
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"startVertex"</span> : <span class="hljs-string">"persons/alice"</span>, 
+  <span class="hljs-string">"graphName"</span> : <span class="hljs-string">"knows_graph"</span>, 
+  <span class="hljs-string">"direction"</span> : <span class="hljs-string">"outbound"</span>, 
+  <span class="hljs-string">"visitor"</span> : <span class="hljs-string">"result.visited.vertices.push(vertex._id);"</span> 
+}
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK

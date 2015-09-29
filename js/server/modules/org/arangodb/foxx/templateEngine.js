@@ -31,9 +31,10 @@
 
 var _ = require('underscore');
 var fs = require('fs');
+var internal = require('internal');
 var i = require('i')();
 var templatePath = fs.join(
-  module.startupPath(),
+  internal.startupPath,
   'server',
   'modules',
   'org',
