@@ -2,7 +2,7 @@ shell&gt; curl -X PUT --header <span class="hljs-string">'x-arango-async: store'
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: text/plain; charset=utf-<span class="hljs-number">8</span>
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">602070619</span>
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">602078117</span>
 
 shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_admin/time</span>
 
@@ -10,11 +10,11 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> O
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  <span class="hljs-string">"time"</span> : <span class="hljs-number">1441784810.838411</span>, 
+  <span class="hljs-string">"time"</span> : <span class="hljs-number">1443537467.451308</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }
-shell&gt; curl -X DELETE --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/expired?stamp=1441784810.838411</span>
+shell&gt; curl -X DELETE --dump - http:<span class="hljs-comment">//localhost:8529/_api/job/expired?stamp=1443537467.451308</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>

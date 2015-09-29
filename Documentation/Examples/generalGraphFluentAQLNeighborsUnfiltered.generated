@@ -6,13 +6,13 @@ arangosh&gt; query.neighbors().toArray();
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1458298459"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1457191845"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1458495067"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1457388453"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
   } 
 ]

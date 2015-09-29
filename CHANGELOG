@@ -1,4 +1,4 @@
-v2.6.9 (XXXX-XX-XX)
+v2.6.9 (2015-09-29)
 -------------------
 
 * added "special" password ARANGODB_DEFAULT_ROOT_PASSWORD. If you pass

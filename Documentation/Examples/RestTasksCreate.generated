@@ -6,15 +6,15 @@ HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> O
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"909303387"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"904985509"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"SampleTask"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
   <span class="hljs-string">"period"</span> : <span class="hljs-number">2</span>, 
-  <span class="hljs-string">"created"</span> : <span class="hljs-number">1441784823.658971</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">1443537480.426369</span>, 
   <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function(params) { require('internal').print(params); })(params)"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }
-shell&gt; curl -X DELETE --dump - http:<span class="hljs-comment">//localhost:8529/_api/tasks/909303387</span>
+shell&gt; curl -X DELETE --dump - http:<span class="hljs-comment">//localhost:8529/_api/tasks/904985509</span>
 

@@ -5,25 +5,25 @@ arangosh&gt; graph._vertices().toArray();
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1909251675"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1907686309"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1908530779"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1906965413"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1908858459"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1907293093"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1909055067"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1907489701"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
   } 
 ]

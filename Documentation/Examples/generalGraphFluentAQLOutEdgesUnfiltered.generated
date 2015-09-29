@@ -6,7 +6,7 @@ arangosh&gt; query.outEdges().toArray();
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1478090331"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1476983717"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
@@ -14,7 +14,7 @@ arangosh&gt; query.outEdges().toArray();
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndCharly"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndCharly"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1478352475"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1477245861"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
@@ -22,7 +22,7 @@ arangosh&gt; query.outEdges().toArray();
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/bobAndDiana"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bobAndDiana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1478745691"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1477639077"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/bob"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 

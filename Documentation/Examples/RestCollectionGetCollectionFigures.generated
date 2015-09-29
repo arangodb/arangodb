@@ -5,7 +5,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products/figures
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"644537947"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"644676517"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
@@ -20,8 +20,8 @@ location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products
   <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
   <span class="hljs-string">"figures"</span> : { 
     <span class="hljs-string">"alive"</span> : { 
-      <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"size"</span> : <span class="hljs-number">0</span> 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"size"</span> : <span class="hljs-number">88</span> 
     }, 
     <span class="hljs-string">"dead"</span> : { 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
@@ -45,19 +45,19 @@ location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products
       <span class="hljs-string">"fileSize"</span> : <span class="hljs-number">0</span> 
     }, 
     <span class="hljs-string">"shapes"</span> : { 
-      <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"size"</span> : <span class="hljs-number">0</span> 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"size"</span> : <span class="hljs-number">104</span> 
     }, 
     <span class="hljs-string">"attributes"</span> : { 
-      <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"size"</span> : <span class="hljs-number">0</span> 
+      <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"size"</span> : <span class="hljs-number">48</span> 
     }, 
     <span class="hljs-string">"indexes"</span> : { 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"size"</span> : <span class="hljs-number">2008</span> 
     }, 
-    <span class="hljs-string">"lastTick"</span> : <span class="hljs-string">"644931163"</span>, 
-    <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">1</span> 
+    <span class="hljs-string">"lastTick"</span> : <span class="hljs-string">"645069733"</span>, 
+    <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span> 
   }, 
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
