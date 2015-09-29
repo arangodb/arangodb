@@ -1,4 +1,9 @@
-body, input, textarea, .page-title span, .pingback a.url {
+@charset "UTF-8";
+body,
+input,
+textarea,
+.page-title span,
+.pingback a.url {
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400; }
 
@@ -6,38 +11,32 @@ body, input, textarea, .page-title span, .pingback a.url {
   font-family: 'Open Sans';
   font-style: normal;
   font-weight: 300;
-  src: local('Open Sans Light'), local('OpenSans-Light'), url('../fonts/opensans/OpenSansLight.woff') format('woff'); }
-
+  src: local("Open Sans Light"), local("OpenSans-Light"), url("../fonts/opensans/OpenSansLight.woff") format("woff"); }
 @font-face {
   font-family: 'Open Sans';
   font-style: normal;
   font-weight: 400;
-  src: local('Open Sans'), local('OpenSans'), url('../fonts/opensans/OpenSans.woff') format('woff'); }
-
+  src: local("Open Sans"), local("OpenSans"), url("../fonts/opensans/OpenSans.woff") format("woff"); }
 @font-face {
   font-family: 'Open Sans';
   font-style: normal;
   font-weight: 700;
-  src: local('Open Sans Bold'), local('OpenSans-Bold'), url('../fonts/opensans/OpenSansBold.woff') format('woff'); }
-
+  src: local("Open Sans Bold"), local("OpenSans-Bold"), url("../fonts/opensans/OpenSansBold.woff") format("woff"); }
 @font-face {
   font-family: 'Open Sans';
   font-style: italic;
   font-weight: 300;
-  src: local('Open Sans Light Italic'), local('OpenSansLight-Italic'), url('../fonts/opensans/OpenSansLightItalic.woff') format('woff'); }
-
+  src: local("Open Sans Light Italic"), local("OpenSansLight-Italic"), url("../fonts/opensans/OpenSansLightItalic.woff") format("woff"); }
 @font-face {
   font-family: 'Open Sans';
   font-style: italic;
   font-weight: 400;
-  src: local('Open Sans Italic'), local('OpenSans-Italic'), url('../fonts/opensans/OpenSansItalic.woff') format('woff'); }
-
+  src: local("Open Sans Italic"), local("OpenSans-Italic"), url("../fonts/opensans/OpenSansItalic.woff") format("woff"); }
 @font-face {
   font-family: 'Open Sans';
   font-style: italic;
   font-weight: 700;
-  src: local('Open Sans Bold Italic'), local('OpenSans-BoldItalic'), url('../fonts/opensans/OpenSansBoldItalic.woff') format('woff'); }
-
+  src: local("Open Sans Bold Italic"), local("OpenSans-BoldItalic"), url("../fonts/opensans/OpenSansBoldItalic.woff") format("woff"); }
 /*!
  *  Font Awesome 4.3.0 by @davegandy - http://fontawesome.io - @fontawesome
  *  License - http://fontawesome.io/license (Font: SIL OFL 1.1, CSS: MIT License)
@@ -46,11 +45,10 @@ body, input, textarea, .page-title span, .pingback a.url {
  * -------------------------- */
 @font-face {
   font-family: 'FontAwesome';
-  src: url('../fonts/fontawesome/fontawesome-webfont.eot?v=4.3.0');
-  src: url('../fonts/fontawesome/fontawesome-webfont.eot?#iefix&v=4.3.0') format('embedded-opentype'), url('../fonts/fontawesome/fontawesome-webfont.woff2?v=4.3.0') format('woff2'), url('../fonts/fontawesome/fontawesome-webfont.woff?v=4.3.0') format('woff'), url('../fonts/fontawesome/fontawesome-webfont.ttf?v=4.3.0') format('truetype'), url('../fonts/fontawesome/fontawesome-webfont.svg?v=4.3.0#fontawesomeregular') format('svg');
+  src: url("../fonts/fontawesome/fontawesome-webfont.eot?v=4.3.0");
+  src: url("../fonts/fontawesome/fontawesome-webfont.eot?#iefix&v=4.3.0") format("embedded-opentype"), url("../fonts/fontawesome/fontawesome-webfont.woff2?v=4.3.0") format("woff2"), url("../fonts/fontawesome/fontawesome-webfont.woff?v=4.3.0") format("woff"), url("../fonts/fontawesome/fontawesome-webfont.ttf?v=4.3.0") format("truetype"), url("../fonts/fontawesome/fontawesome-webfont.svg?v=4.3.0#fontawesomeregular") format("svg");
   font-weight: normal;
   font-style: normal; }
-
 .fa {
   display: inline-block;
   font: normal normal normal 14px/1 FontAwesome;
@@ -62,7 +60,7 @@ body, input, textarea, .page-title span, .pingback a.url {
 
 /* makes the font 33% larger relative to the icon container */
 .fa-lg {
-  font-size: 1.3333333333em;
+  font-size: 1.33333em;
   line-height: 0.75em;
   vertical-align: -15%; }
 
@@ -79,28 +77,28 @@ body, input, textarea, .page-title span, .pingback a.url {
   font-size: 5em; }
 
 .fa-fw {
-  width: 1.2857142857em;
+  width: 1.28571em;
   text-align: center; }
 
 .fa-ul {
   padding-left: 0;
-  margin-left: 2.1428571429em;
+  margin-left: 2.14286em;
   list-style-type: none; }
   .fa-ul > li {
     position: relative; }
 
 .fa-li {
   position: absolute;
-  left: -2.1428571429em;
-  width: 2.1428571429em;
-  top: 0.1428571429em;
+  left: -2.14286em;
+  width: 2.14286em;
+  top: 0.14286em;
   text-align: center; }
   .fa-li.fa-lg {
-    left: -1.8571428571em; }
+    left: -1.85714em; }
 
 .fa-border {
   padding: .2em .25em .15em;
-  border: solid .08em #eee;
+  border: solid 0.08em #eee;
   border-radius: .1em; }
 
 .pull-right {
@@ -126,20 +124,16 @@ body, input, textarea, .page-title span, .pingback a.url {
   0% {
     -webkit-transform: rotate(0deg);
     transform: rotate(0deg); }
-
   100% {
     -webkit-transform: rotate(359deg);
     transform: rotate(359deg); } }
-
 @keyframes fa-spin {
   0% {
     -webkit-transform: rotate(0deg);
     transform: rotate(0deg); }
-
   100% {
     -webkit-transform: rotate(359deg);
     transform: rotate(359deg); } }
-
 .fa-rotate-90 {
   filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=1);
   -webkit-transform: rotate(90deg);
@@ -170,7 +164,11 @@ body, input, textarea, .page-title span, .pingback a.url {
   -ms-transform: scale(1, -1);
   transform: scale(1, -1); }
 
-:root .fa-rotate-90, :root .fa-rotate-180, :root .fa-rotate-270, :root .fa-flip-horizontal, :root .fa-flip-vertical {
+:root .fa-rotate-90,
+:root .fa-rotate-180,
+:root .fa-rotate-270,
+:root .fa-flip-horizontal,
+:root .fa-flip-vertical {
   filter: none; }
 
 .fa-stack {
@@ -199,1561 +197,1635 @@ body, input, textarea, .page-title span, .pingback a.url {
 /* Font Awesome uses the Unicode Private Use Area (PUA) to ensure screen
    readers do not read off random characters that represent icons */
 .fa-glass:before {
-  content: "\f000"; }
+  content: ""; }
 
 .fa-music:before {
-  content: "\f001"; }
+  content: ""; }
 
 .fa-search:before {
-  content: "\f002"; }
+  content: ""; }
 
 .fa-envelope-o:before {
-  content: "\f003"; }
+  content: ""; }
 
 .fa-heart:before {
-  content: "\f004"; }
+  content: ""; }
 
 .fa-star:before {
-  content: "\f005"; }
+  content: ""; }
 
 .fa-star-o:before {
-  content: "\f006"; }
+  content: ""; }
 
 .fa-user:before {
-  content: "\f007"; }
+  content: ""; }
 
 .fa-film:before {
-  content: "\f008"; }
+  content: ""; }
 
 .fa-th-large:before {
-  content: "\f009"; }
+  content: ""; }
 
 .fa-th:before {
-  content: "\f00a"; }
+  content: ""; }
 
 .fa-th-list:before {
-  content: "\f00b"; }
+  content: ""; }
 
 .fa-check:before {
-  content: "\f00c"; }
+  content: ""; }
 
-.fa-remove:before, .fa-close:before, .fa-times:before {
-  content: "\f00d"; }
+.fa-remove:before,
+.fa-close:before,
+.fa-times:before {
+  content: ""; }
 
 .fa-search-plus:before {
-  content: "\f00e"; }
+  content: ""; }
 
 .fa-search-minus:before {
-  content: "\f010"; }
+  content: ""; }
 
 .fa-power-off:before {
-  content: "\f011"; }
+  content: ""; }
 
 .fa-signal:before {
-  content: "\f012"; }
+  content: ""; }
 
-.fa-gear:before, .fa-cog:before {
-  content: "\f013"; }
+.fa-gear:before,
+.fa-cog:before {
+  content: ""; }
 
 .fa-trash-o:before {
-  content: "\f014"; }
+  content: ""; }
 
 .fa-home:before {
-  content: "\f015"; }
+  content: ""; }
 
 .fa-file-o:before {
-  content: "\f016"; }
+  content: ""; }
 
 .fa-clock-o:before {
-  content: "\f017"; }
+  content: ""; }
 
 .fa-road:before {
-  content: "\f018"; }
+  content: ""; }
 
 .fa-download:before {
-  content: "\f019"; }
+  content: ""; }
 
 .fa-arrow-circle-o-down:before {
-  content: "\f01a"; }
+  content: ""; }
 
 .fa-arrow-circle-o-up:before {
-  content: "\f01b"; }
+  content: ""; }
 
 .fa-inbox:before {
-  content: "\f01c"; }
+  content: ""; }
 
 .fa-play-circle-o:before {
-  content: "\f01d"; }
+  content: ""; }
 
-.fa-rotate-right:before, .fa-repeat:before {
-  content: "\f01e"; }
+.fa-rotate-right:before,
+.fa-repeat:before {
+  content: ""; }
 
 .fa-refresh:before {
-  content: "\f021"; }
+  content: ""; }
 
 .fa-list-alt:before {
-  content: "\f022"; }
+  content: ""; }
 
 .fa-lock:before {
-  content: "\f023"; }
+  content: ""; }
 
 .fa-flag:before {
-  content: "\f024"; }
+  content: ""; }
 
 .fa-headphones:before {
-  content: "\f025"; }
+  content: ""; }
 
 .fa-volume-off:before {
-  content: "\f026"; }
+  content: ""; }
 
 .fa-volume-down:before {
-  content: "\f027"; }
+  content: ""; }
 
 .fa-volume-up:before {
-  content: "\f028"; }
+  content: ""; }
 
 .fa-qrcode:before {
-  content: "\f029"; }
+  content: ""; }
 
 .fa-barcode:before {
-  content: "\f02a"; }
+  content: ""; }
 
 .fa-tag:before {
-  content: "\f02b"; }
+  content: ""; }
 
 .fa-tags:before {
-  content: "\f02c"; }
+  content: ""; }
 
 .fa-book:before {
-  content: "\f02d"; }
+  content: ""; }
 
 .fa-bookmark:before {
-  content: "\f02e"; }
+  content: ""; }
 
 .fa-print:before {
-  content: "\f02f"; }
+  content: ""; }
 
 .fa-camera:before {
-  content: "\f030"; }
+  content: ""; }
 
 .fa-font:before {
-  content: "\f031"; }
+  content: ""; }
 
 .fa-bold:before {
-  content: "\f032"; }
+  content: ""; }
 
 .fa-italic:before {
-  content: "\f033"; }
+  content: ""; }
 
 .fa-text-height:before {
-  content: "\f034"; }
+  content: ""; }
 
 .fa-text-width:before {
-  content: "\f035"; }
+  content: ""; }
 
 .fa-align-left:before {
-  content: "\f036"; }
+  content: ""; }
 
 .fa-align-center:before {
-  content: "\f037"; }
+  content: ""; }
 
 .fa-align-right:before {
-  content: "\f038"; }
+  content: ""; }
 
 .fa-align-justify:before {
-  content: "\f039"; }
+  content: ""; }
 
 .fa-list:before {
-  content: "\f03a"; }
+  content: ""; }
 
-.fa-dedent:before, .fa-outdent:before {
-  content: "\f03b"; }
+.fa-dedent:before,
+.fa-outdent:before {
+  content: ""; }
 
 .fa-indent:before {
-  content: "\f03c"; }
+  content: ""; }
 
 .fa-video-camera:before {
-  content: "\f03d"; }
+  content: ""; }
 
-.fa-photo:before, .fa-image:before, .fa-picture-o:before {
-  content: "\f03e"; }
+.fa-photo:before,
+.fa-image:before,
+.fa-picture-o:before {
+  content: ""; }
 
 .fa-pencil:before {
-  content: "\f040"; }
+  content: ""; }
 
 .fa-map-marker:before {
-  content: "\f041"; }
+  content: ""; }
 
 .fa-adjust:before {
-  content: "\f042"; }
+  content: ""; }
 
 .fa-tint:before {
-  content: "\f043"; }
+  content: ""; }
 
-.fa-edit:before, .fa-pencil-square-o:before {
-  content: "\f044"; }
+.fa-edit:before,
+.fa-pencil-square-o:before {
+  content: ""; }
 
 .fa-share-square-o:before {
-  content: "\f045"; }
+  content: ""; }
 
 .fa-check-square-o:before {
-  content: "\f046"; }
+  content: ""; }
 
 .fa-arrows:before {
-  content: "\f047"; }
+  content: ""; }
 
 .fa-step-backward:before {
-  content: "\f048"; }
+  content: ""; }
 
 .fa-fast-backward:before {
-  content: "\f049"; }
+  content: ""; }
 
 .fa-backward:before {
-  content: "\f04a"; }
+  content: ""; }
 
 .fa-play:before {
-  content: "\f04b"; }
+  content: ""; }
 
 .fa-pause:before {
-  content: "\f04c"; }
+  content: ""; }
 
 .fa-stop:before {
-  content: "\f04d"; }
+  content: ""; }
 
 .fa-forward:before {
-  content: "\f04e"; }
+  content: ""; }
 
 .fa-fast-forward:before {
-  content: "\f050"; }
+  content: ""; }
 
 .fa-step-forward:before {
-  content: "\f051"; }
+  content: ""; }
 
 .fa-eject:before {
-  content: "\f052"; }
+  content: ""; }
 
 .fa-chevron-left:before {
-  content: "\f053"; }
+  content: ""; }
 
 .fa-chevron-right:before {
-  content: "\f054"; }
+  content: ""; }
 
 .fa-plus-circle:before {
-  content: "\f055"; }
+  content: ""; }
 
 .fa-minus-circle:before {
-  content: "\f056"; }
+  content: ""; }
 
 .fa-times-circle:before {
-  content: "\f057"; }
+  content: ""; }
 
 .fa-check-circle:before {
-  content: "\f058"; }
+  content: ""; }
 
 .fa-question-circle:before {
-  content: "\f059"; }
+  content: ""; }
 
 .fa-info-circle:before {
-  content: "\f05a"; }
+  content: ""; }
 
 .fa-crosshairs:before {
-  content: "\f05b"; }
+  content: ""; }
 
 .fa-times-circle-o:before {
-  content: "\f05c"; }
+  content: ""; }
 
 .fa-check-circle-o:before {
-  content: "\f05d"; }
+  content: ""; }
 
 .fa-ban:before {
-  content: "\f05e"; }
+  content: ""; }
 
 .fa-arrow-left:before {
-  content: "\f060"; }
+  content: ""; }
 
 .fa-arrow-right:before {
-  content: "\f061"; }
+  content: ""; }
 
 .fa-arrow-up:before {
-  content: "\f062"; }
+  content: ""; }
 
 .fa-arrow-down:before {
-  content: "\f063"; }
+  content: ""; }
 
-.fa-mail-forward:before, .fa-share:before {
-  content: "\f064"; }
+.fa-mail-forward:before,
+.fa-share:before {
+  content: ""; }
 
 .fa-expand:before {
-  content: "\f065"; }
+  content: ""; }
 
 .fa-compress:before {
-  content: "\f066"; }
+  content: ""; }
 
 .fa-plus:before {
-  content: "\f067"; }
+  content: ""; }
 
 .fa-minus:before {
-  content: "\f068"; }
+  content: ""; }
 
 .fa-asterisk:before {
-  content: "\f069"; }
+  content: ""; }
 
 .fa-exclamation-circle:before {
-  content: "\f06a"; }
+  content: ""; }
 
 .fa-gift:before {
-  content: "\f06b"; }
+  content: ""; }
 
 .fa-leaf:before {
-  content: "\f06c"; }
+  content: ""; }
 
 .fa-fire:before {
-  content: "\f06d"; }
+  content: ""; }
 
 .fa-eye:before {
-  content: "\f06e"; }
+  content: ""; }
 
 .fa-eye-slash:before {
-  content: "\f070"; }
+  content: ""; }
 
-.fa-warning:before, .fa-exclamation-triangle:before {
-  content: "\f071"; }
+.fa-warning:before,
+.fa-exclamation-triangle:before {
+  content: ""; }
 
 .fa-plane:before {
-  content: "\f072"; }
+  content: ""; }
 
 .fa-calendar:before {
-  content: "\f073"; }
+  content: ""; }
 
 .fa-random:before {
-  content: "\f074"; }
+  content: ""; }
 
 .fa-comment:before {
-  content: "\f075"; }
+  content: ""; }
 
 .fa-magnet:before {
-  content: "\f076"; }
+  content: ""; }
 
 .fa-chevron-up:before {
-  content: "\f077"; }
+  content: ""; }
 
 .fa-chevron-down:before {
-  content: "\f078"; }
+  content: ""; }
 
 .fa-retweet:before {
-  content: "\f079"; }
+  content: ""; }
 
 .fa-shopping-cart:before {
-  content: "\f07a"; }
+  content: ""; }
 
 .fa-folder:before {
-  content: "\f07b"; }
+  content: ""; }
 
 .fa-folder-open:before {
-  content: "\f07c"; }
+  content: ""; }
 
 .fa-arrows-v:before {
-  content: "\f07d"; }
+  content: ""; }
 
 .fa-arrows-h:before {
-  content: "\f07e"; }
+  content: ""; }
 
-.fa-bar-chart-o:before, .fa-bar-chart:before {
-  content: "\f080"; }
+.fa-bar-chart-o:before,
+.fa-bar-chart:before {
+  content: ""; }
 
 .fa-twitter-square:before {
-  content: "\f081"; }
+  content: ""; }
 
 .fa-facebook-square:before {
-  content: "\f082"; }
+  content: ""; }
 
 .fa-camera-retro:before {
-  content: "\f083"; }
+  content: ""; }
 
 .fa-key:before {
-  content: "\f084"; }
+  content: ""; }
 
-.fa-gears:before, .fa-cogs:before {
-  content: "\f085"; }
+.fa-gears:before,
+.fa-cogs:before {
+  content: ""; }
 
 .fa-comments:before {
-  content: "\f086"; }
+  content: ""; }
 
 .fa-thumbs-o-up:before {
-  content: "\f087"; }
+  content: ""; }
 
 .fa-thumbs-o-down:before {
-  content: "\f088"; }
+  content: ""; }
 
 .fa-star-half:before {
-  content: "\f089"; }
+  content: ""; }
 
 .fa-heart-o:before {
-  content: "\f08a"; }
+  content: ""; }
 
 .fa-sign-out:before {
-  content: "\f08b"; }
+  content: ""; }
 
 .fa-linkedin-square:before {
-  content: "\f08c"; }
+  content: ""; }
 
 .fa-thumb-tack:before {
-  content: "\f08d"; }
+  content: ""; }
 
 .fa-external-link:before {
-  content: "\f08e"; }
+  content: ""; }
 
 .fa-sign-in:before {
-  content: "\f090"; }
+  content: ""; }
 
 .fa-trophy:before {
-  content: "\f091"; }
+  content: ""; }
 
 .fa-github-square:before {
-  content: "\f092"; }
+  content: ""; }
 
 .fa-upload:before {
-  content: "\f093"; }
+  content: ""; }
 
 .fa-lemon-o:before {
-  content: "\f094"; }
+  content: ""; }
 
 .fa-phone:before {
-  content: "\f095"; }
+  content: ""; }
 
 .fa-square-o:before {
-  content: "\f096"; }
+  content: ""; }
 
 .fa-bookmark-o:before {
-  content: "\f097"; }
+  content: ""; }
 
 .fa-phone-square:before {
-  content: "\f098"; }
+  content: ""; }
 
 .fa-twitter:before {
-  content: "\f099"; }
+  content: ""; }
 
-.fa-facebook-f:before, .fa-facebook:before {
-  content: "\f09a"; }
+.fa-facebook-f:before,
+.fa-facebook:before {
+  content: ""; }
 
 .fa-github:before {
-  content: "\f09b"; }
+  content: ""; }
 
 .fa-unlock:before {
-  content: "\f09c"; }
+  content: ""; }
 
 .fa-credit-card:before {
-  content: "\f09d"; }
+  content: ""; }
 
 .fa-rss:before {
-  content: "\f09e"; }
+  content: ""; }
 
 .fa-hdd-o:before {
-  content: "\f0a0"; }
+  content: ""; }
 
 .fa-bullhorn:before {
-  content: "\f0a1"; }
+  content: ""; }
 
 .fa-bell:before {
-  content: "\f0f3"; }
+  content: ""; }
 
 .fa-certificate:before {
-  content: "\f0a3"; }
+  content: ""; }
 
 .fa-hand-o-right:before {
-  content: "\f0a4"; }
+  content: ""; }
 
 .fa-hand-o-left:before {
-  content: "\f0a5"; }
+  content: ""; }
 
 .fa-hand-o-up:before {
-  content: "\f0a6"; }
+  content: ""; }
 
 .fa-hand-o-down:before {
-  content: "\f0a7"; }
+  content: ""; }
 
 .fa-arrow-circle-left:before {
-  content: "\f0a8"; }
+  content: ""; }
 
 .fa-arrow-circle-right:before {
-  content: "\f0a9"; }
+  content: ""; }
 
 .fa-arrow-circle-up:before {
-  content: "\f0aa"; }
+  content: ""; }
 
 .fa-arrow-circle-down:before {
-  content: "\f0ab"; }
+  content: ""; }
 
 .fa-globe:before {
-  content: "\f0ac"; }
+  content: ""; }
 
 .fa-wrench:before {
-  content: "\f0ad"; }
+  content: ""; }
 
 .fa-tasks:before {
-  content: "\f0ae"; }
+  content: ""; }
 
 .fa-filter:before {
-  content: "\f0b0"; }
+  content: ""; }
 
 .fa-briefcase:before {
-  content: "\f0b1"; }
+  content: ""; }
 
 .fa-arrows-alt:before {
-  content: "\f0b2"; }
+  content: ""; }
 
-.fa-group:before, .fa-users:before {
-  content: "\f0c0"; }
+.fa-group:before,
+.fa-users:before {
+  content: ""; }
 
-.fa-chain:before, .fa-link:before {
-  content: "\f0c1"; }
+.fa-chain:before,
+.fa-link:before {
+  content: ""; }
 
 .fa-cloud:before {
-  content: "\f0c2"; }
+  content: ""; }
 
 .fa-flask:before {
-  content: "\f0c3"; }
+  content: ""; }
 
-.fa-cut:before, .fa-scissors:before {
-  content: "\f0c4"; }
+.fa-cut:before,
+.fa-scissors:before {
+  content: ""; }
 
-.fa-copy:before, .fa-files-o:before {
-  content: "\f0c5"; }
+.fa-copy:before,
+.fa-files-o:before {
+  content: ""; }
 
 .fa-paperclip:before {
-  content: "\f0c6"; }
+  content: ""; }
 
-.fa-save:before, .fa-floppy-o:before {
-  content: "\f0c7"; }
+.fa-save:before,
+.fa-floppy-o:before {
+  content: ""; }
 
 .fa-square:before {
-  content: "\f0c8"; }
+  content: ""; }
 
-.fa-navicon:before, .fa-reorder:before, .fa-bars:before {
-  content: "\f0c9"; }
+.fa-navicon:before,
+.fa-reorder:before,
+.fa-bars:before {
+  content: ""; }
 
 .fa-list-ul:before {
-  content: "\f0ca"; }
+  content: ""; }
 
 .fa-list-ol:before {
-  content: "\f0cb"; }
+  content: ""; }
 
 .fa-strikethrough:before {
-  content: "\f0cc"; }
+  content: ""; }
 
 .fa-underline:before {
-  content: "\f0cd"; }
+  content: ""; }
 
 .fa-table:before {
-  content: "\f0ce"; }
+  content: ""; }
 
 .fa-magic:before {
-  content: "\f0d0"; }
+  content: ""; }
 
 .fa-truck:before {
-  content: "\f0d1"; }
+  content: ""; }
 
 .fa-pinterest:before {
-  content: "\f0d2"; }
+  content: ""; }
 
 .fa-pinterest-square:before {
-  content: "\f0d3"; }
+  content: ""; }
 
 .fa-google-plus-square:before {
-  content: "\f0d4"; }
+  content: ""; }
 
 .fa-google-plus:before {
-  content: "\f0d5"; }
+  content: ""; }
 
 .fa-money:before {
-  content: "\f0d6"; }
+  content: ""; }
 
 .fa-caret-down:before {
-  content: "\f0d7"; }
+  content: ""; }
 
 .fa-caret-up:before {
-  content: "\f0d8"; }
+  content: ""; }
 
 .fa-caret-left:before {
-  content: "\f0d9"; }
+  content: ""; }
 
 .fa-caret-right:before {
-  content: "\f0da"; }
+  content: ""; }
 
 .fa-columns:before {
-  content: "\f0db"; }
+  content: ""; }
 
-.fa-unsorted:before, .fa-sort:before {
-  content: "\f0dc"; }
+.fa-unsorted:before,
+.fa-sort:before {
+  content: ""; }
 
-.fa-sort-down:before, .fa-sort-desc:before {
-  content: "\f0dd"; }
+.fa-sort-down:before,
+.fa-sort-desc:before {
+  content: ""; }
 
-.fa-sort-up:before, .fa-sort-asc:before {
-  content: "\f0de"; }
+.fa-sort-up:before,
+.fa-sort-asc:before {
+  content: ""; }
 
 .fa-envelope:before {
-  content: "\f0e0"; }
+  content: ""; }
 
 .fa-linkedin:before {
-  content: "\f0e1"; }
+  content: ""; }
 
-.fa-rotate-left:before, .fa-undo:before {
-  content: "\f0e2"; }
+.fa-rotate-left:before,
+.fa-undo:before {
+  content: ""; }
 
-.fa-legal:before, .fa-gavel:before {
-  content: "\f0e3"; }
+.fa-legal:before,
+.fa-gavel:before {
+  content: ""; }
 
-.fa-dashboard:before, .fa-tachometer:before {
-  content: "\f0e4"; }
+.fa-dashboard:before,
+.fa-tachometer:before {
+  content: ""; }
 
 .fa-comment-o:before {
-  content: "\f0e5"; }
+  content: ""; }
 
 .fa-comments-o:before {
-  content: "\f0e6"; }
+  content: ""; }
 
-.fa-flash:before, .fa-bolt:before {
-  content: "\f0e7"; }
+.fa-flash:before,
+.fa-bolt:before {
+  content: ""; }
 
 .fa-sitemap:before {
-  content: "\f0e8"; }
+  content: ""; }
 
 .fa-umbrella:before {
-  content: "\f0e9"; }
+  content: ""; }
 
-.fa-paste:before, .fa-clipboard:before {
-  content: "\f0ea"; }
+.fa-paste:before,
+.fa-clipboard:before {
+  content: ""; }
 
 .fa-lightbulb-o:before {
-  content: "\f0eb"; }
+  content: ""; }
 
 .fa-exchange:before {
-  content: "\f0ec"; }
+  content: ""; }
 
 .fa-cloud-download:before {
-  content: "\f0ed"; }
+  content: ""; }
 
 .fa-cloud-upload:before {
-  content: "\f0ee"; }
+  content: ""; }
 
 .fa-user-md:before {
-  content: "\f0f0"; }
+  content: ""; }
 
 .fa-stethoscope:before {
-  content: "\f0f1"; }
+  content: ""; }
 
 .fa-suitcase:before {
-  content: "\f0f2"; }
+  content: ""; }
 
 .fa-bell-o:before {
-  content: "\f0a2"; }
+  content: ""; }
 
 .fa-coffee:before {
-  content: "\f0f4"; }
+  content: ""; }
 
 .fa-cutlery:before {
-  content: "\f0f5"; }
+  content: ""; }
 
 .fa-file-text-o:before {
-  content: "\f0f6"; }
+  content: ""; }
 
 .fa-building-o:before {
-  content: "\f0f7"; }
+  content: ""; }
 
 .fa-hospital-o:before {
-  content: "\f0f8"; }
+  content: ""; }
 
 .fa-ambulance:before {
-  content: "\f0f9"; }
+  content: ""; }
 
 .fa-medkit:before {
-  content: "\f0fa"; }
+  content: ""; }
 
 .fa-fighter-jet:before {
-  content: "\f0fb"; }
+  content: ""; }
 
 .fa-beer:before {
-  content: "\f0fc"; }
+  content: ""; }
 
 .fa-h-square:before {
-  content: "\f0fd"; }
+  content: ""; }
 
 .fa-plus-square:before {
-  content: "\f0fe"; }
+  content: ""; }
 
 .fa-angle-double-left:before {
-  content: "\f100"; }
+  content: ""; }
 
 .fa-angle-double-right:before {
-  content: "\f101"; }
+  content: ""; }
 
 .fa-angle-double-up:before {
-  content: "\f102"; }
+  content: ""; }
 
 .fa-angle-double-down:before {
-  content: "\f103"; }
+  content: ""; }
 
 .fa-angle-left:before {
-  content: "\f104"; }
+  content: ""; }
 
 .fa-angle-right:before {
-  content: "\f105"; }
+  content: ""; }
 
 .fa-angle-up:before {
-  content: "\f106"; }
+  content: ""; }
 
 .fa-angle-down:before {
-  content: "\f107"; }
+  content: ""; }
 
 .fa-desktop:before {
-  content: "\f108"; }
+  content: ""; }
 
 .fa-laptop:before {
-  content: "\f109"; }
+  content: ""; }
 
 .fa-tablet:before {
-  content: "\f10a"; }
+  content: ""; }
 
-.fa-mobile-phone:before, .fa-mobile:before {
-  content: "\f10b"; }
+.fa-mobile-phone:before,
+.fa-mobile:before {
+  content: ""; }
 
 .fa-circle-o:before {
-  content: "\f10c"; }
+  content: ""; }
 
 .fa-quote-left:before {
-  content: "\f10d"; }
+  content: ""; }
 
 .fa-quote-right:before {
-  content: "\f10e"; }
+  content: ""; }
 
 .fa-spinner:before {
-  content: "\f110"; }
+  content: ""; }
 
 .fa-circle:before {
-  content: "\f111"; }
+  content: ""; }
 
-.fa-mail-reply:before, .fa-reply:before {
-  content: "\f112"; }
+.fa-mail-reply:before,
+.fa-reply:before {
+  content: ""; }
 
 .fa-github-alt:before {
-  content: "\f113"; }
+  content: ""; }
 
 .fa-folder-o:before {
-  content: "\f114"; }
+  content: ""; }
 
 .fa-folder-open-o:before {
-  content: "\f115"; }
+  content: ""; }
 
 .fa-smile-o:before {
-  content: "\f118"; }
+  content: ""; }
 
 .fa-frown-o:before {
-  content: "\f119"; }
+  content: ""; }
 
 .fa-meh-o:before {
-  content: "\f11a"; }
+  content: ""; }
 
 .fa-gamepad:before {
-  content: "\f11b"; }
+  content: ""; }
 
 .fa-keyboard-o:before {
-  content: "\f11c"; }
+  content: ""; }
 
 .fa-flag-o:before {
-  content: "\f11d"; }
+  content: ""; }
 
 .fa-flag-checkered:before {
-  content: "\f11e"; }
+  content: ""; }
 
 .fa-terminal:before {
-  content: "\f120"; }
+  content: ""; }
 
 .fa-code:before {
-  content: "\f121"; }
+  content: ""; }
 
-.fa-mail-reply-all:before, .fa-reply-all:before {
-  content: "\f122"; }
+.fa-mail-reply-all:before,
+.fa-reply-all:before {
+  content: ""; }
 
-.fa-star-half-empty:before, .fa-star-half-full:before, .fa-star-half-o:before {
-  content: "\f123"; }
+.fa-star-half-empty:before,
+.fa-star-half-full:before,
+.fa-star-half-o:before {
+  content: ""; }
 
 .fa-location-arrow:before {
-  content: "\f124"; }
+  content: ""; }
 
 .fa-crop:before {
-  content: "\f125"; }
+  content: ""; }
 
 .fa-code-fork:before {
-  content: "\f126"; }
+  content: ""; }
 
-.fa-unlink:before, .fa-chain-broken:before {
-  content: "\f127"; }
+.fa-unlink:before,
+.fa-chain-broken:before {
+  content: ""; }
 
 .fa-question:before {
-  content: "\f128"; }
+  content: ""; }
 
 .fa-info:before {
-  content: "\f129"; }
+  content: ""; }
 
 .fa-exclamation:before {
-  content: "\f12a"; }
+  content: ""; }
 
 .fa-superscript:before {
-  content: "\f12b"; }
+  content: ""; }
 
 .fa-subscript:before {
-  content: "\f12c"; }
+  content: ""; }
 
 .fa-eraser:before {
-  content: "\f12d"; }
+  content: ""; }
 
 .fa-puzzle-piece:before {
-  content: "\f12e"; }
+  content: ""; }
 
 .fa-microphone:before {
-  content: "\f130"; }
+  content: ""; }
 
 .fa-microphone-slash:before {
-  content: "\f131"; }
+  content: ""; }
 
 .fa-shield:before {
-  content: "\f132"; }
+  content: ""; }
 
 .fa-calendar-o:before {
-  content: "\f133"; }
+  content: ""; }
 
 .fa-fire-extinguisher:before {
-  content: "\f134"; }
+  content: ""; }
 
 .fa-rocket:before {
-  content: "\f135"; }
+  content: ""; }
 
 .fa-maxcdn:before {
-  content: "\f136"; }
+  content: ""; }
 
 .fa-chevron-circle-left:before {
-  content: "\f137"; }
+  content: ""; }
 
 .fa-chevron-circle-right:before {
-  content: "\f138"; }
+  content: ""; }
 
 .fa-chevron-circle-up:before {
-  content: "\f139"; }
+  content: ""; }
 
 .fa-chevron-circle-down:before {
-  content: "\f13a"; }
+  content: ""; }
 
 .fa-html5:before {
-  content: "\f13b"; }
+  content: ""; }
 
 .fa-css3:before {
-  content: "\f13c"; }
+  content: ""; }
 
 .fa-anchor:before {
-  content: "\f13d"; }
+  content: ""; }
 
 .fa-unlock-alt:before {
-  content: "\f13e"; }
+  content: ""; }
 
 .fa-bullseye:before {
-  content: "\f140"; }
+  content: ""; }
 
 .fa-ellipsis-h:before {
-  content: "\f141"; }
+  content: ""; }
 
 .fa-ellipsis-v:before {
-  content: "\f142"; }
+  content: ""; }
 
 .fa-rss-square:before {
-  content: "\f143"; }
+  content: ""; }
 
 .fa-play-circle:before {
-  content: "\f144"; }
+  content: ""; }
 
 .fa-ticket:before {
-  content: "\f145"; }
+  content: ""; }
 
 .fa-minus-square:before {
-  content: "\f146"; }
+  content: ""; }
 
 .fa-minus-square-o:before {
-  content: "\f147"; }
+  content: ""; }
 
 .fa-level-up:before {
-  content: "\f148"; }
+  content: ""; }
 
 .fa-level-down:before {
-  content: "\f149"; }
+  content: ""; }
 
 .fa-check-square:before {
-  content: "\f14a"; }
+  content: ""; }
 
 .fa-pencil-square:before {
-  content: "\f14b"; }
+  content: ""; }
 
 .fa-external-link-square:before {
-  content: "\f14c"; }
+  content: ""; }
 
 .fa-share-square:before {
-  content: "\f14d"; }
+  content: ""; }
 
 .fa-compass:before {
-  content: "\f14e"; }
+  content: ""; }
 
-.fa-toggle-down:before, .fa-caret-square-o-down:before {
-  content: "\f150"; }
+.fa-toggle-down:before,
+.fa-caret-square-o-down:before {
+  content: ""; }
 
-.fa-toggle-up:before, .fa-caret-square-o-up:before {
-  content: "\f151"; }
+.fa-toggle-up:before,
+.fa-caret-square-o-up:before {
+  content: ""; }
 
-.fa-toggle-right:before, .fa-caret-square-o-right:before {
-  content: "\f152"; }
+.fa-toggle-right:before,
+.fa-caret-square-o-right:before {
+  content: ""; }
 
-.fa-euro:before, .fa-eur:before {
-  content: "\f153"; }
+.fa-euro:before,
+.fa-eur:before {
+  content: ""; }
 
 .fa-gbp:before {
-  content: "\f154"; }
+  content: ""; }
 
-.fa-dollar:before, .fa-usd:before {
-  content: "\f155"; }
+.fa-dollar:before,
+.fa-usd:before {
+  content: ""; }
 
-.fa-rupee:before, .fa-inr:before {
-  content: "\f156"; }
+.fa-rupee:before,
+.fa-inr:before {
+  content: ""; }
 
-.fa-cny:before, .fa-rmb:before, .fa-yen:before, .fa-jpy:before {
-  content: "\f157"; }
+.fa-cny:before,
+.fa-rmb:before,
+.fa-yen:before,
+.fa-jpy:before {
+  content: ""; }
 
-.fa-ruble:before, .fa-rouble:before, .fa-rub:before {
-  content: "\f158"; }
+.fa-ruble:before,
+.fa-rouble:before,
+.fa-rub:before {
+  content: ""; }
 
-.fa-won:before, .fa-krw:before {
-  content: "\f159"; }
+.fa-won:before,
+.fa-krw:before {
+  content: ""; }
 
-.fa-bitcoin:before, .fa-btc:before {
-  content: "\f15a"; }
+.fa-bitcoin:before,
+.fa-btc:before {
+  content: ""; }
 
 .fa-file:before {
-  content: "\f15b"; }
+  content: ""; }
 
 .fa-file-text:before {
-  content: "\f15c"; }
+  content: ""; }
 
 .fa-sort-alpha-asc:before {
-  content: "\f15d"; }
+  content: ""; }
 
 .fa-sort-alpha-desc:before {
-  content: "\f15e"; }
+  content: ""; }
 
 .fa-sort-amount-asc:before {
-  content: "\f160"; }
+  content: ""; }
 
 .fa-sort-amount-desc:before {
-  content: "\f161"; }
+  content: ""; }
 
 .fa-sort-numeric-asc:before {
-  content: "\f162"; }
+  content: ""; }
 
 .fa-sort-numeric-desc:before {
-  content: "\f163"; }
+  content: ""; }
 
 .fa-thumbs-up:before {
-  content: "\f164"; }
+  content: ""; }
 
 .fa-thumbs-down:before {
-  content: "\f165"; }
+  content: ""; }
 
 .fa-youtube-square:before {
-  content: "\f166"; }
+  content: ""; }
 
 .fa-youtube:before {
-  content: "\f167"; }
+  content: ""; }
 
 .fa-xing:before {
-  content: "\f168"; }
+  content: ""; }
 
 .fa-xing-square:before {
-  content: "\f169"; }
+  content: ""; }
 
 .fa-youtube-play:before {
-  content: "\f16a"; }
+  content: ""; }
 
 .fa-dropbox:before {
-  content: "\f16b"; }
+  content: ""; }
 
 .fa-stack-overflow:before {
-  content: "\f16c"; }
+  content: ""; }
 
 .fa-instagram:before {
-  content: "\f16d"; }
+  content: ""; }
 
 .fa-flickr:before {
-  content: "\f16e"; }
+  content: ""; }
 
 .fa-adn:before {
-  content: "\f170"; }
+  content: ""; }
 
 .fa-bitbucket:before {
-  content: "\f171"; }
+  content: ""; }
 
 .fa-bitbucket-square:before {
-  content: "\f172"; }
+  content: ""; }
 
 .fa-tumblr:before {
-  content: "\f173"; }
+  content: ""; }
 
 .fa-tumblr-square:before {
-  content: "\f174"; }
+  content: ""; }
 
 .fa-long-arrow-down:before {
-  content: "\f175"; }
+  content: ""; }
 
 .fa-long-arrow-up:before {
-  content: "\f176"; }
+  content: ""; }
 
 .fa-long-arrow-left:before {
-  content: "\f177"; }
+  content: ""; }
 
 .fa-long-arrow-right:before {
-  content: "\f178"; }
+  content: ""; }
 
 .fa-apple:before {
-  content: "\f179"; }
+  content: ""; }
 
 .fa-windows:before {
-  content: "\f17a"; }
+  content: ""; }
 
 .fa-android:before {
-  content: "\f17b"; }
+  content: ""; }
 
 .fa-linux:before {
-  content: "\f17c"; }
+  content: ""; }
 
 .fa-dribbble:before {
-  content: "\f17d"; }
+  content: ""; }
 
 .fa-skype:before {
-  content: "\f17e"; }
+  content: ""; }
 
 .fa-foursquare:before {
-  content: "\f180"; }
+  content: ""; }
 
 .fa-trello:before {
-  content: "\f181"; }
+  content: ""; }
 
 .fa-female:before {
-  content: "\f182"; }
+  content: ""; }
 
 .fa-male:before {
-  content: "\f183"; }
+  content: ""; }
 
-.fa-gittip:before, .fa-gratipay:before {
-  content: "\f184"; }
+.fa-gittip:before,
+.fa-gratipay:before {
+  content: ""; }
 
 .fa-sun-o:before {
-  content: "\f185"; }
+  content: ""; }
 
 .fa-moon-o:before {
-  content: "\f186"; }
+  content: ""; }
 
 .fa-archive:before {
-  content: "\f187"; }
+  content: ""; }
 
 .fa-bug:before {
-  content: "\f188"; }
+  content: ""; }
 
 .fa-vk:before {
-  content: "\f189"; }
+  content: ""; }
 
 .fa-weibo:before {
-  content: "\f18a"; }
+  content: ""; }
 
 .fa-renren:before {
-  content: "\f18b"; }
+  content: ""; }
 
 .fa-pagelines:before {
-  content: "\f18c"; }
+  content: ""; }
 
 .fa-stack-exchange:before {
-  content: "\f18d"; }
+  content: ""; }
 
 .fa-arrow-circle-o-right:before {
-  content: "\f18e"; }
+  content: ""; }
 
 .fa-arrow-circle-o-left:before {
-  content: "\f190"; }
+  content: ""; }
 
-.fa-toggle-left:before, .fa-caret-square-o-left:before {
-  content: "\f191"; }
+.fa-toggle-left:before,
+.fa-caret-square-o-left:before {
+  content: ""; }
 
 .fa-dot-circle-o:before {
-  content: "\f192"; }
+  content: ""; }
 
 .fa-wheelchair:before {
-  content: "\f193"; }
+  content: ""; }
 
 .fa-vimeo-square:before {
-  content: "\f194"; }
+  content: ""; }
 
-.fa-turkish-lira:before, .fa-try:before {
-  content: "\f195"; }
+.fa-turkish-lira:before,
+.fa-try:before {
+  content: ""; }
 
 .fa-plus-square-o:before {
-  content: "\f196"; }
+  content: ""; }
 
 .fa-space-shuttle:before {
-  content: "\f197"; }
+  content: ""; }
 
 .fa-slack:before {
-  content: "\f198"; }
+  content: ""; }
 
 .fa-envelope-square:before {
-  content: "\f199"; }
+  content: ""; }
 
 .fa-wordpress:before {
-  content: "\f19a"; }
+  content: ""; }
 
 .fa-openid:before {
-  content: "\f19b"; }
+  content: ""; }
 
-.fa-institution:before, .fa-bank:before, .fa-university:before {
-  content: "\f19c"; }
+.fa-institution:before,
+.fa-bank:before,
+.fa-university:before {
+  content: ""; }
 
-.fa-mortar-board:before, .fa-graduation-cap:before {
-  content: "\f19d"; }
+.fa-mortar-board:before,
+.fa-graduation-cap:before {
+  content: ""; }
 
 .fa-yahoo:before {
-  content: "\f19e"; }
+  content: ""; }
 
 .fa-google:before {
-  content: "\f1a0"; }
+  content: ""; }
 
 .fa-reddit:before {
-  content: "\f1a1"; }
+  content: ""; }
 
 .fa-reddit-square:before {
-  content: "\f1a2"; }
+  content: ""; }
 
 .fa-stumbleupon-circle:before {
-  content: "\f1a3"; }
+  content: ""; }
 
 .fa-stumbleupon:before {
-  content: "\f1a4"; }
+  content: ""; }
 
 .fa-delicious:before {
-  content: "\f1a5"; }
+  content: ""; }
 
 .fa-digg:before {
-  content: "\f1a6"; }
+  content: ""; }
 
 .fa-pied-piper:before {
-  content: "\f1a7"; }
+  content: ""; }
 
 .fa-pied-piper-alt:before {
-  content: "\f1a8"; }
+  content: ""; }
 
 .fa-drupal:before {
-  content: "\f1a9"; }
+  content: ""; }
 
 .fa-joomla:before {
-  content: "\f1aa"; }
+  content: ""; }
 
 .fa-language:before {
-  content: "\f1ab"; }
+  content: ""; }
 
 .fa-fax:before {
-  content: "\f1ac"; }
+  content: ""; }
 
 .fa-building:before {
-  content: "\f1ad"; }
+  content: ""; }
 
 .fa-child:before {
-  content: "\f1ae"; }
+  content: ""; }
 
 .fa-paw:before {
-  content: "\f1b0"; }
+  content: ""; }
 
 .fa-spoon:before {
-  content: "\f1b1"; }
+  content: ""; }
 
 .fa-cube:before {
-  content: "\f1b2"; }
+  content: ""; }
 
 .fa-cubes:before {
-  content: "\f1b3"; }
+  content: ""; }
 
 .fa-behance:before {
-  content: "\f1b4"; }
+  content: ""; }
 
 .fa-behance-square:before {
-  content: "\f1b5"; }
+  content: ""; }
 
 .fa-steam:before {
-  content: "\f1b6"; }
+  content: ""; }
 
 .fa-steam-square:before {
-  content: "\f1b7"; }
+  content: ""; }
 
 .fa-recycle:before {
-  content: "\f1b8"; }
+  content: ""; }
 
-.fa-automobile:before, .fa-car:before {
-  content: "\f1b9"; }
+.fa-automobile:before,
+.fa-car:before {
+  content: ""; }
 
-.fa-cab:before, .fa-taxi:before {
-  content: "\f1ba"; }
+.fa-cab:before,
+.fa-taxi:before {
+  content: ""; }
 
 .fa-tree:before {
-  content: "\f1bb"; }
+  content: ""; }
 
 .fa-spotify:before {
-  content: "\f1bc"; }
+  content: ""; }
 
 .fa-deviantart:before {
-  content: "\f1bd"; }
+  content: ""; }
 
 .fa-soundcloud:before {
-  content: "\f1be"; }
+  content: ""; }
 
 .fa-database:before {
-  content: "\f1c0"; }
+  content: ""; }
 
 .fa-file-pdf-o:before {
-  content: "\f1c1"; }
+  content: ""; }
 
 .fa-file-word-o:before {
-  content: "\f1c2"; }
+  content: ""; }
 
 .fa-file-excel-o:before {
-  content: "\f1c3"; }
+  content: ""; }
 
 .fa-file-powerpoint-o:before {
-  content: "\f1c4"; }
+  content: ""; }
 
-.fa-file-photo-o:before, .fa-file-picture-o:before, .fa-file-image-o:before {
-  content: "\f1c5"; }
+.fa-file-photo-o:before,
+.fa-file-picture-o:before,
+.fa-file-image-o:before {
+  content: ""; }
 
-.fa-file-zip-o:before, .fa-file-archive-o:before {
-  content: "\f1c6"; }
+.fa-file-zip-o:before,
+.fa-file-archive-o:before {
+  content: ""; }
 
-.fa-file-sound-o:before, .fa-file-audio-o:before {
-  content: "\f1c7"; }
+.fa-file-sound-o:before,
+.fa-file-audio-o:before {
+  content: ""; }
 
-.fa-file-movie-o:before, .fa-file-video-o:before {
-  content: "\f1c8"; }
+.fa-file-movie-o:before,
+.fa-file-video-o:before {
+  content: ""; }
 
 .fa-file-code-o:before {
-  content: "\f1c9"; }
+  content: ""; }
 
 .fa-vine:before {
-  content: "\f1ca"; }
+  content: ""; }
 
 .fa-codepen:before {
-  content: "\f1cb"; }
+  content: ""; }
 
 .fa-jsfiddle:before {
-  content: "\f1cc"; }
+  content: ""; }
 
-.fa-life-bouy:before, .fa-life-buoy:before, .fa-life-saver:before, .fa-support:before, .fa-life-ring:before {
-  content: "\f1cd"; }
+.fa-life-bouy:before,
+.fa-life-buoy:before,
+.fa-life-saver:before,
+.fa-support:before,
+.fa-life-ring:before {
+  content: ""; }
 
 .fa-circle-o-notch:before {
-  content: "\f1ce"; }
+  content: ""; }
 
-.fa-ra:before, .fa-rebel:before {
-  content: "\f1d0"; }
+.fa-ra:before,
+.fa-rebel:before {
+  content: ""; }
 
-.fa-ge:before, .fa-empire:before {
-  content: "\f1d1"; }
+.fa-ge:before,
+.fa-empire:before {
+  content: ""; }
 
 .fa-git-square:before {
-  content: "\f1d2"; }
+  content: ""; }
 
 .fa-git:before {
-  content: "\f1d3"; }
+  content: ""; }
 
 .fa-hacker-news:before {
-  content: "\f1d4"; }
+  content: ""; }
 
 .fa-tencent-weibo:before {
-  content: "\f1d5"; }
+  content: ""; }
 
 .fa-qq:before {
-  content: "\f1d6"; }
+  content: ""; }
 
-.fa-wechat:before, .fa-weixin:before {
-  content: "\f1d7"; }
+.fa-wechat:before,
+.fa-weixin:before {
+  content: ""; }
 
-.fa-send:before, .fa-paper-plane:before {
-  content: "\f1d8"; }
+.fa-send:before,
+.fa-paper-plane:before {
+  content: ""; }
 
-.fa-send-o:before, .fa-paper-plane-o:before {
-  content: "\f1d9"; }
+.fa-send-o:before,
+.fa-paper-plane-o:before {
+  content: ""; }
 
 .fa-history:before {
-  content: "\f1da"; }
+  content: ""; }
 
-.fa-genderless:before, .fa-circle-thin:before {
-  content: "\f1db"; }
+.fa-genderless:before,
+.fa-circle-thin:before {
+  content: ""; }
 
 .fa-header:before {
-  content: "\f1dc"; }
+  content: ""; }
 
 .fa-paragraph:before {
-  content: "\f1dd"; }
+  content: ""; }
 
 .fa-sliders:before {
-  content: "\f1de"; }
+  content: ""; }
 
 .fa-share-alt:before {
-  content: "\f1e0"; }
+  content: ""; }
 
 .fa-share-alt-square:before {
-  content: "\f1e1"; }
+  content: ""; }
 
 .fa-bomb:before {
-  content: "\f1e2"; }
+  content: ""; }
 
-.fa-soccer-ball-o:before, .fa-futbol-o:before {
-  content: "\f1e3"; }
+.fa-soccer-ball-o:before,
+.fa-futbol-o:before {
+  content: ""; }
 
 .fa-tty:before {
-  content: "\f1e4"; }
+  content: ""; }
 
 .fa-binoculars:before {
-  content: "\f1e5"; }
+  content: ""; }
 
 .fa-plug:before {
-  content: "\f1e6"; }
+  content: ""; }
 
 .fa-slideshare:before {
-  content: "\f1e7"; }
+  content: ""; }
 
 .fa-twitch:before {
-  content: "\f1e8"; }
+  content: ""; }
 
 .fa-yelp:before {
-  content: "\f1e9"; }
+  content: ""; }
 
 .fa-newspaper-o:before {
-  content: "\f1ea"; }
+  content: ""; }
 
 .fa-wifi:before {
-  content: "\f1eb"; }
+  content: ""; }
 
 .fa-calculator:before {
-  content: "\f1ec"; }
+  content: ""; }
 
 .fa-paypal:before {
-  content: "\f1ed"; }
+  content: ""; }
 
 .fa-google-wallet:before {
-  content: "\f1ee"; }
+  content: ""; }
 
 .fa-cc-visa:before {
-  content: "\f1f0"; }
+  content: ""; }
 
 .fa-cc-mastercard:before {
-  content: "\f1f1"; }
+  content: ""; }
 
 .fa-cc-discover:before {
-  content: "\f1f2"; }
+  content: ""; }
 
 .fa-cc-amex:before {
-  content: "\f1f3"; }
+  content: ""; }
 
 .fa-cc-paypal:before {
-  content: "\f1f4"; }
+  content: ""; }
 
 .fa-cc-stripe:before {
-  content: "\f1f5"; }
+  content: ""; }
 
 .fa-bell-slash:before {
-  content: "\f1f6"; }
+  content: ""; }
 
 .fa-bell-slash-o:before {
-  content: "\f1f7"; }
+  content: ""; }
 
 .fa-trash:before {
-  content: "\f1f8"; }
+  content: ""; }
 
 .fa-copyright:before {
-  content: "\f1f9"; }
+  content: ""; }
 
 .fa-at:before {
-  content: "\f1fa"; }
+  content: ""; }
 
 .fa-eyedropper:before {
-  content: "\f1fb"; }
+  content: ""; }
 
 .fa-paint-brush:before {
-  content: "\f1fc"; }
+  content: ""; }
 
 .fa-birthday-cake:before {
-  content: "\f1fd"; }
+  content: ""; }
 
 .fa-area-chart:before {
-  content: "\f1fe"; }
+  content: ""; }
 
 .fa-pie-chart:before {
-  content: "\f200"; }
+  content: ""; }
 
 .fa-line-chart:before {
-  content: "\f201"; }
+  content: ""; }
 
 .fa-lastfm:before {
-  content: "\f202"; }
+  content: ""; }
 
 .fa-lastfm-square:before {
-  content: "\f203"; }
+  content: ""; }
 
 .fa-toggle-off:before {
-  content: "\f204"; }
+  content: ""; }
 
 .fa-toggle-on:before {
-  content: "\f205"; }
+  content: ""; }
 
 .fa-bicycle:before {
-  content: "\f206"; }
+  content: ""; }
 
 .fa-bus:before {
-  content: "\f207"; }
+  content: ""; }
 
 .fa-ioxhost:before {
-  content: "\f208"; }
+  content: ""; }
 
 .fa-angellist:before {
-  content: "\f209"; }
+  content: ""; }
 
 .fa-cc:before {
-  content: "\f20a"; }
+  content: ""; }
 
-.fa-shekel:before, .fa-sheqel:before, .fa-ils:before {
-  content: "\f20b"; }
+.fa-shekel:before,
+.fa-sheqel:before,
+.fa-ils:before {
+  content: ""; }
 
 .fa-meanpath:before {
-  content: "\f20c"; }
+  content: ""; }
 
 .fa-buysellads:before {
-  content: "\f20d"; }
+  content: ""; }
 
 .fa-connectdevelop:before {
-  content: "\f20e"; }
+  content: ""; }
 
 .fa-dashcube:before {
-  content: "\f210"; }
+  content: ""; }
 
 .fa-forumbee:before {
-  content: "\f211"; }
+  content: ""; }
 
 .fa-leanpub:before {
-  content: "\f212"; }
+  content: ""; }
 
 .fa-sellsy:before {
-  content: "\f213"; }
+  content: ""; }
 
 .fa-shirtsinbulk:before {
-  content: "\f214"; }
+  content: ""; }
 
 .fa-simplybuilt:before {
-  content: "\f215"; }
+  content: ""; }
 
 .fa-skyatlas:before {
-  content: "\f216"; }
+  content: ""; }
 
 .fa-cart-plus:before {
-  content: "\f217"; }
+  content: ""; }
 
 .fa-cart-arrow-down:before {
-  content: "\f218"; }
+  content: ""; }
 
 .fa-diamond:before {
-  content: "\f219"; }
+  content: ""; }
 
 .fa-ship:before {
-  content: "\f21a"; }
+  content: ""; }
 
 .fa-user-secret:before {
-  content: "\f21b"; }
+  content: ""; }
 
 .fa-motorcycle:before {
-  content: "\f21c"; }
+  content: ""; }
 
 .fa-street-view:before {
-  content: "\f21d"; }
+  content: ""; }
 
 .fa-heartbeat:before {
-  content: "\f21e"; }
+  content: ""; }
 
 .fa-venus:before {
-  content: "\f221"; }
+  content: ""; }
 
 .fa-mars:before {
-  content: "\f222"; }
+  content: ""; }
 
 .fa-mercury:before {
-  content: "\f223"; }
+  content: ""; }
 
 .fa-transgender:before {
-  content: "\f224"; }
+  content: ""; }
 
 .fa-transgender-alt:before {
-  content: "\f225"; }
+  content: ""; }
 
 .fa-venus-double:before {
-  content: "\f226"; }
+  content: ""; }
 
 .fa-mars-double:before {
-  content: "\f227"; }
+  content: ""; }
 
 .fa-venus-mars:before {
-  content: "\f228"; }
+  content: ""; }
 
 .fa-mars-stroke:before {
-  content: "\f229"; }
+  content: ""; }
 
 .fa-mars-stroke-v:before {
-  content: "\f22a"; }
+  content: ""; }
 
 .fa-mars-stroke-h:before {
-  content: "\f22b"; }
+  content: ""; }
 
 .fa-neuter:before {
-  content: "\f22c"; }
+  content: ""; }
 
 .fa-facebook-official:before {
-  content: "\f230"; }
+  content: ""; }
 
 .fa-pinterest-p:before {
-  content: "\f231"; }
+  content: ""; }
 
 .fa-whatsapp:before {
-  content: "\f232"; }
+  content: ""; }
 
 .fa-server:before {
-  content: "\f233"; }
+  content: ""; }
 
 .fa-user-plus:before {
-  content: "\f234"; }
+  content: ""; }
 
 .fa-user-times:before {
-  content: "\f235"; }
+  content: ""; }
 
-.fa-hotel:before, .fa-bed:before {
-  content: "\f236"; }
+.fa-hotel:before,
+.fa-bed:before {
+  content: ""; }
 
 .fa-viacoin:before {
-  content: "\f237"; }
+  content: ""; }
 
 .fa-train:before {
-  content: "\f238"; }
+  content: ""; }
 
 .fa-subway:before {
-  content: "\f239"; }
+  content: ""; }
 
 .fa-medium:before {
-  content: "\f23a"; }
+  content: ""; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, ul.navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .search-field, .machineClass, .scenarioMachine {
   float: left; }
@@ -1849,9 +1921,12 @@ a.warning.coordinator, a.warning.dbserver {
   .button-notification:hover, .button-notification:focus {
     background-color: #f87c0f; }
 
-[class^='button-']:disabled, [class*=' button-']:disabled, .button-inactive {
+[class^='button-']:disabled,
+[class*=' button-']:disabled, .button-inactive {
   background-color: #d3d3d3; }
-  [class^='button-']:hover:disabled, [class*=' button-']:hover:disabled, .button-inactive:hover, [class^='button-']:focus:disabled, [class*=' button-']:focus:disabled, .button-inactive:focus {
+  [class^='button-']:hover:disabled,
+  [class*=' button-']:hover:disabled, .button-inactive:hover, [class^='button-']:focus:disabled,
+  [class*=' button-']:focus:disabled, .button-inactive:focus {
     background-color: #d3d3d3; }
 
 a.headerButton.disabled, a.inactive.coordinator, a.inactive.dbserver {
@@ -1925,7 +2000,9 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.script-dropdown-menu, ul.gv-dro
 
 .navbar {
   -webkit-font-smoothing: subpixel-antialiased; }
-  .navbar .nav li.dropdown .active > .dropdown-toggle, .navbar .nav li.dropdown .open > .dropdown-toggle, .navbar .nav li.dropdown .open.active > .dropdown-toggle {
+  .navbar .nav li.dropdown .active > .dropdown-toggle,
+  .navbar .nav li.dropdown .open > .dropdown-toggle,
+  .navbar .nav li.dropdown .open.active > .dropdown-toggle {
     background: #788f3d; }
 
 nav.navbar {
@@ -1969,7 +2046,9 @@ ul.navlist {
         margin-right: 5px; }
       ul.navlist li.navbar-spacer:hover {
         background-color: #a0a0a0; }
-  ul.navlist > li.active, ul.navlist li.dropdown-item:hover, ul.navlist > li:hover {
+  ul.navlist > li.active,
+  ul.navlist li.dropdown-item:hover,
+  ul.navlist > li:hover {
     background-color: #8aa051; }
   ul.navlist li.dropdown-item {
     margin-left: 0; }
@@ -2111,7 +2190,8 @@ div.footer-right {
 .button-header {
   margin-top: 5px; }
 
-[class^='button-']:disabled, [class*=' button-']:disabled {
+[class^='button-']:disabled,
+[class*=' button-']:disabled {
   cursor: not-allowed; }
 
 .addButton {
@@ -2160,7 +2240,9 @@ a.headerButton, a.button-gui {
 a.headerButton {
   margin-top: 2px;
   position: relative; }
-  a.headerButton .fa, a.headerButton [class^="icon_"], a.headerButton [class*=" icon_"] {
+  a.headerButton .fa,
+  a.headerButton [class^="icon_"],
+  a.headerButton [class*=" icon_"] {
     display: block;
     height: 23px;
     line-height: 23px;
@@ -2169,7 +2251,8 @@ a.headerButton {
     text-align: center;
     top: 0;
     width: 27px; }
-  a.headerButton .icon_arangodb_arrowleft, a.headerButton .icon_arangodb_arrowright {
+  a.headerButton .icon_arangodb_arrowleft,
+  a.headerButton .icon_arangodb_arrowright {
     font-weight: bold; }
   a.headerButton.activated {
     background-color: #788f3d;
@@ -2247,10 +2330,10 @@ button.gv-icon-small {
   width: 16px; }
 
 button.gv-icon-small.delete {
-  background-image: url('../img/icon_delete.png'); }
+  background-image: url("../img/icon_delete.png"); }
 
 button.gv-icon-small.add {
-  background-image: url('../img/plus_icon.png'); }
+  background-image: url("../img/plus_icon.png"); }
 
 button.gv-icon-btn {
   -moz-border-radius: 0 !important;
@@ -2296,23 +2379,27 @@ button.gv-zoom-btn {
   vertical-align: baseline;
   width: 14px; }
   button.gv-zoom-btn.pan-right {
-    background-image: url('../img/gv_arrow_right.png'); }
+    background-image: url("../img/gv_arrow_right.png"); }
   button.gv-zoom-btn.pan-left {
-    background-image: url('../img/gv_arrow_left.png'); }
+    background-image: url("../img/gv_arrow_left.png"); }
   button.gv-zoom-btn.pan-top {
-    background-image: url('../img/gv_arrow_top.png'); }
+    background-image: url("../img/gv_arrow_top.png"); }
   button.gv-zoom-btn.pan-bottom {
-    background-image: url('../img/gv_arrow_bottom.png'); }
+    background-image: url("../img/gv_arrow_bottom.png"); }
 
-a.pagination-button, ul.arango-pagination a {
+a.pagination-button,
+ul.arango-pagination a {
   -moz-border-radius: 2px;
   -webkit-border-radius: 2px;
   border-radius: 2px; }
 
-.badge, .label, .btn {
+.badge,
+.label,
+.btn {
   text-shadow: none !important; }
 
-.thumbnail, .navbar-inner {
+.thumbnail,
+.navbar-inner {
   -moz-border-radius: 0;
   -webkit-border-radius: 0;
   border-radius: 0;
@@ -2330,7 +2417,8 @@ button {
   padding-bottom: 4px !important;
   padding-top: 4px !important; }
 
-button.btn-overview, button.btn-server {
+button.btn-overview,
+button.btn-server {
   margin: 5px; }
 
 button.btn-server {
@@ -2541,23 +2629,23 @@ div.resizecontainer {
 @media (max-width: 798px) {
   #arangoCollectionUl {
     display: none; }
+
   #collectionsDropdown ul {
     width: auto !important; }
+
   #arangoCollectionSelect {
     display: inline-block; } }
-
 @media (min-width: 799px) and (max-width: 1041px) {
   #arangoCollectionUl a {
     font-size: 12px;
     padding: 10px 5px; } }
-
 @media (min-width: 1042px) and (max-width: 1284px) {
   #arangoCollectionUl a {
     font-size: 14px; } }
-
 @media (min-width: 250px) and (max-width: 489px) {
   div.resizecontainer {
     width: 228px; }
+
   .dashboard-large-chart {
     width: 148px; }
     .dashboard-large-chart .dashboard-sub-bar {
@@ -2565,8 +2653,10 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       height: 190px;
       width: 138px; }
+
   .dashboard-sub-bar-menu {
     font-size: 12px; }
+
   .dashboard-medium-chart {
     width: 98px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -2584,6 +2674,7 @@ div.resizecontainer {
       width: 98px; }
     .dashboard-medium-chart #clusterGraphs svg text {
       font-size: 10px; }
+
   .dashboard-small-chart {
     width: 68px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -2597,19 +2688,23 @@ div.resizecontainer {
           fill: #666;
           font-size: 10px;
           font-weight: 400; }
+
   .dashboard-tendency-container .dashboard-tendency-chart {
     height: 78.25px; }
-    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 9px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
-      height: 25.0833333333px;
-      line-height: 25.0833333333px; }
+      height: 25.08333px;
+      line-height: 25.08333px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
-      height: 40.1666666667px;
-      line-height: 19.0833333333px;
+      height: 40.16667px;
+      line-height: 19.08333px;
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 56px; }
+
   .dashboard-bar-chart-container {
     height: 77.75px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
@@ -2631,6 +2726,7 @@ div.resizecontainer {
           height: 38.5px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 56px; }
+
   .modal-chart-detail {
     bottom: 12.1% !important;
     left: 50%;
@@ -2647,6 +2743,7 @@ div.resizecontainer {
       width: 10px; }
     .modal-chart-detail .modal-inner-detail {
       width: 208px; }
+
   .modal-body .dashboard-large-chart {
     width: 143px; }
     .modal-body .dashboard-large-chart .dashboard-sub-bar {
@@ -2669,7 +2766,9 @@ div.resizecontainer {
       width: 53px; }
       .modal-body .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
         width: 53px; }
-  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
     width: 6.5px; }
   .modal-body .dashboard-tendency-container .dashboard-sub-bar {
     width: 51px; }
@@ -2683,26 +2782,34 @@ div.resizecontainer {
     width: 42px; }
   .modal-body .dashboard-bar-chart-container .dashboard-sub-bar {
     width: 56px; }
+
   .percentage {
     font-size: 14px; }
+
   .absolut {
     font-size: 14px;
     font-weight: 300; }
+
   .dashboard-sub-bar {
     font-size: 10px;
     font-weight: 400; }
+
   .dashboard-subtitle-bar {
     font-size: 14px;
     font-weight: 300; }
+
   .dashboard-figure {
     font-size: 16px;
     font-weight: 400; }
+
   .dashboard-figurePer {
     font-size: 14px;
     font-weight: 300; }
+
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 10px;
     font-weight: 400; }
+
   .dashboard-legend {
     display: none;
     font-size: 10px;
@@ -2710,19 +2817,21 @@ div.resizecontainer {
     height: 195px;
     margin-top: -3px;
     width: 0; }
+
   .dashboard-half-height-legend {
     display: none;
     font-size: 10px;
     height: 100px;
     width: 0; }
+
   .application-detail-view section.info {
     width: 228px; }
   .application-detail-view aside.meta {
     display: none; } }
-
 @media (min-width: 490px) and (max-width: 729px) {
   div.resizecontainer {
     width: 468px; }
+
   .dashboard-large-chart {
     width: 308px; }
     .dashboard-large-chart .dashboard-sub-bar {
@@ -2730,8 +2839,10 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       height: 190px;
       width: 298px; }
+
   .dashboard-sub-bar-menu {
     font-size: 12px; }
+
   .dashboard-medium-chart {
     width: 218px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -2749,6 +2860,7 @@ div.resizecontainer {
       width: 218px; }
     .dashboard-medium-chart #clusterGraphs svg text {
       font-size: 10px; }
+
   .dashboard-small-chart {
     width: 148px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -2762,19 +2874,23 @@ div.resizecontainer {
           fill: #666;
           font-size: 10px;
           font-weight: 400; }
+
   .dashboard-tendency-container .dashboard-tendency-chart {
     height: 78.25px; }
-    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 49px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
-      height: 25.0833333333px;
-      line-height: 25.0833333333px; }
+      height: 25.08333px;
+      line-height: 25.08333px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
-      height: 40.1666666667px;
-      line-height: 19.0833333333px;
+      height: 40.16667px;
+      line-height: 19.08333px;
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 136px; }
+
   .dashboard-bar-chart-container {
     height: 77.75px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
@@ -2796,6 +2912,7 @@ div.resizecontainer {
           height: 38.5px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 136px; }
+
   .modal-chart-detail {
     bottom: 12.1% !important;
     left: 50%;
@@ -2812,6 +2929,7 @@ div.resizecontainer {
       width: 10px; }
     .modal-chart-detail .modal-inner-detail {
       width: 448px; }
+
   .modal-body .dashboard-large-chart {
     width: 303px; }
     .modal-body .dashboard-large-chart .dashboard-sub-bar {
@@ -2834,7 +2952,9 @@ div.resizecontainer {
       width: 133px; }
       .modal-body .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
         width: 133px; }
-  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
     width: 46.5px; }
   .modal-body .dashboard-tendency-container .dashboard-sub-bar {
     width: 131px; }
@@ -2848,26 +2968,34 @@ div.resizecontainer {
     width: 122px; }
   .modal-body .dashboard-bar-chart-container .dashboard-sub-bar {
     width: 136px; }
+
   .percentage {
     font-size: 14px; }
+
   .absolut {
     font-size: 14px;
     font-weight: 300; }
+
   .dashboard-sub-bar {
     font-size: 10px;
     font-weight: 400; }
+
   .dashboard-subtitle-bar {
     font-size: 14px;
     font-weight: 300; }
+
   .dashboard-figure {
     font-size: 16px;
     font-weight: 400; }
+
   .dashboard-figurePer {
     font-size: 14px;
     font-weight: 300; }
+
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 10px;
     font-weight: 400; }
+
   .dashboard-legend {
     display: none;
     font-size: 10px;
@@ -2875,19 +3003,21 @@ div.resizecontainer {
     height: 195px;
     margin-top: -3px;
     width: 0; }
+
   .dashboard-half-height-legend {
     display: none;
     font-size: 10px;
     height: 100px;
     width: 0; }
+
   .application-detail-view section.info {
     width: 468px; }
   .application-detail-view aside.meta {
     display: none; } }
-
 @media (min-width: 730px) and (max-width: 969px) {
   div.resizecontainer {
     width: 708px; }
+
   .dashboard-large-chart {
     width: 468px; }
     .dashboard-large-chart .dashboard-sub-bar {
@@ -2895,8 +3025,10 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       height: 190px;
       width: 458px; }
+
   .dashboard-sub-bar-menu {
     font-size: 12px; }
+
   .dashboard-medium-chart {
     width: 338px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -2914,6 +3046,7 @@ div.resizecontainer {
       width: 338px; }
     .dashboard-medium-chart #clusterGraphs svg text {
       font-size: 10px; }
+
   .dashboard-small-chart {
     width: 228px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -2927,19 +3060,23 @@ div.resizecontainer {
           fill: #666;
           font-size: 10px;
           font-weight: 400; }
+
   .dashboard-tendency-container .dashboard-tendency-chart {
     height: 78.25px; }
-    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 89px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
-      height: 25.0833333333px;
-      line-height: 25.0833333333px; }
+      height: 25.08333px;
+      line-height: 25.08333px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
-      height: 40.1666666667px;
-      line-height: 19.0833333333px;
+      height: 40.16667px;
+      line-height: 19.08333px;
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 216px; }
+
   .dashboard-bar-chart-container {
     height: 77.75px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
@@ -2961,6 +3098,7 @@ div.resizecontainer {
           height: 38.5px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 216px; }
+
   .modal-chart-detail {
     bottom: 12.1% !important;
     left: 50%;
@@ -2977,6 +3115,7 @@ div.resizecontainer {
       width: 10px; }
     .modal-chart-detail .modal-inner-detail {
       width: 688px; }
+
   .modal-body .dashboard-large-chart {
     width: 463px; }
     .modal-body .dashboard-large-chart .dashboard-sub-bar {
@@ -2999,7 +3138,9 @@ div.resizecontainer {
       width: 213px; }
       .modal-body .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
         width: 213px; }
-  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
     width: 86.5px; }
   .modal-body .dashboard-tendency-container .dashboard-sub-bar {
     width: 211px; }
@@ -3013,26 +3154,34 @@ div.resizecontainer {
     width: 202px; }
   .modal-body .dashboard-bar-chart-container .dashboard-sub-bar {
     width: 216px; }
+
   .percentage {
     font-size: 14px; }
+
   .absolut {
     font-size: 14px;
     font-weight: 300; }
+
   .dashboard-sub-bar {
     font-size: 10px;
     font-weight: 400; }
+
   .dashboard-subtitle-bar {
     font-size: 14px;
     font-weight: 300; }
+
   .dashboard-figure {
     font-size: 16px;
     font-weight: 400; }
+
   .dashboard-figurePer {
     font-size: 14px;
     font-weight: 300; }
+
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 10px;
     font-weight: 400; }
+
   .dashboard-legend {
     display: none;
     font-size: 10px;
@@ -3040,17 +3189,19 @@ div.resizecontainer {
     height: 195px;
     margin-top: -3px;
     width: 0; }
+
   .dashboard-half-height-legend {
     display: none;
     font-size: 10px;
     height: 100px;
     width: 0; }
+
   .application-detail-view section.info {
     width: 508px; } }
-
 @media (min-width: 970px) and (max-width: 1209px) {
   div.resizecontainer {
     width: 948px; }
+
   .dashboard-large-chart {
     width: 628px; }
     .dashboard-large-chart .dashboard-sub-bar {
@@ -3058,8 +3209,10 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       height: 225px;
       width: 498px; }
+
   .dashboard-sub-bar-menu {
     font-size: 13px; }
+
   .dashboard-medium-chart {
     width: 458px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3077,6 +3230,7 @@ div.resizecontainer {
       width: 458px; }
     .dashboard-medium-chart #clusterGraphs svg text {
       font-size: 11px; }
+
   .dashboard-small-chart {
     width: 308px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3090,40 +3244,45 @@ div.resizecontainer {
           fill: #666;
           font-size: 11px;
           font-weight: 400; }
+
   .dashboard-tendency-container .dashboard-tendency-chart {
     height: 96.5px; }
-    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 129px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
-      height: 31.1666666667px;
-      line-height: 31.1666666667px; }
+      height: 31.16667px;
+      line-height: 31.16667px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
-      height: 52.3333333333px;
-      line-height: 25.1666666667px;
+      height: 52.33333px;
+      line-height: 25.16667px;
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 296px; }
+
   .dashboard-bar-chart-container {
     height: 96px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
       height: 96px;
       width: 298px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
-        height: 31.3333333333px;
-        line-height: 31.3333333333px; }
+        height: 31.33333px;
+        line-height: 31.33333px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 197.4px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           width: 83.4px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 45.6666666667px;
-        line-height: 45.6666666667px;
+        height: 45.66667px;
+        line-height: 45.66667px;
         padding: 5px 8px 10px;
         width: 282px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 50.6666666667px; }
+          height: 50.66667px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 296px; }
+
   .modal-chart-detail {
     bottom: 12.1% !important;
     left: 50%;
@@ -3139,6 +3298,7 @@ div.resizecontainer {
       width: 130px; }
     .modal-chart-detail .modal-inner-detail {
       width: 808px; }
+
   .modal-body .dashboard-large-chart {
     width: 623px; }
     .modal-body .dashboard-large-chart .dashboard-sub-bar {
@@ -3161,7 +3321,9 @@ div.resizecontainer {
       width: 293px; }
       .modal-body .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
         width: 293px; }
-  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
     width: 126.5px; }
   .modal-body .dashboard-tendency-container .dashboard-sub-bar {
     width: 291px; }
@@ -3175,42 +3337,52 @@ div.resizecontainer {
     width: 282px; }
   .modal-body .dashboard-bar-chart-container .dashboard-sub-bar {
     width: 296px; }
+
   .percentage {
     font-size: 15px; }
+
   .absolut {
     font-size: 15px;
     font-weight: 300; }
+
   .dashboard-sub-bar {
     font-size: 11px;
     font-weight: 400; }
+
   .dashboard-subtitle-bar {
     font-size: 15px;
     font-weight: 300; }
+
   .dashboard-figure {
     font-size: 18px;
     font-weight: 400; }
+
   .dashboard-figurePer {
     font-size: 16px;
     font-weight: 300; }
+
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 11px;
     font-weight: 400; }
+
   .dashboard-legend {
     font-size: 11px;
     font-weight: 400;
     height: 230px;
     margin-top: -3px;
     width: 120px; }
+
   .dashboard-half-height-legend {
     font-size: 11px;
     height: 117.5px;
     width: 60px; }
+
   .application-detail-view section.info {
     width: 748px; } }
-
 @media (min-width: 1210px) and (max-width: 1449px) {
   div.resizecontainer {
     width: 1188px; }
+
   .dashboard-large-chart {
     width: 788px; }
     .dashboard-large-chart .dashboard-sub-bar {
@@ -3218,8 +3390,10 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       height: 260px;
       width: 648px; }
+
   .dashboard-sub-bar-menu {
     font-size: 15px; }
+
   .dashboard-medium-chart {
     width: 578px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3237,6 +3411,7 @@ div.resizecontainer {
       width: 578px; }
     .dashboard-medium-chart #clusterGraphs svg text {
       font-size: 12px; }
+
   .dashboard-small-chart {
     width: 388px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3250,9 +3425,12 @@ div.resizecontainer {
           fill: #666;
           font-size: 13px;
           font-weight: 400; }
+
   .dashboard-tendency-container .dashboard-tendency-chart {
     height: 114px; }
-    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 169px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
       height: 37px;
@@ -3263,27 +3441,29 @@ div.resizecontainer {
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 376px; }
+
   .dashboard-bar-chart-container {
     height: 113.5px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
       height: 113.5px;
       width: 378px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
-        height: 37.1666666667px;
-        line-height: 37.1666666667px; }
+        height: 37.16667px;
+        line-height: 37.16667px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 253.4px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           width: 107.4px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 57.3333333333px;
-        line-height: 57.3333333333px;
+        height: 57.33333px;
+        line-height: 57.33333px;
         padding: 5px 8px 10px;
         width: 362px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 62.3333333333px; }
+          height: 62.33333px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 376px; }
+
   .modal-chart-detail {
     bottom: 12.1% !important;
     left: 50%;
@@ -3299,6 +3479,7 @@ div.resizecontainer {
       width: 140px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1038px; }
+
   .modal-body .dashboard-large-chart {
     width: 783px; }
     .modal-body .dashboard-large-chart .dashboard-sub-bar {
@@ -3321,7 +3502,9 @@ div.resizecontainer {
       width: 373px; }
       .modal-body .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
         width: 373px; }
-  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
     width: 166.5px; }
   .modal-body .dashboard-tendency-container .dashboard-sub-bar {
     width: 371px; }
@@ -3335,42 +3518,52 @@ div.resizecontainer {
     width: 362px; }
   .modal-body .dashboard-bar-chart-container .dashboard-sub-bar {
     width: 376px; }
+
   .percentage {
     font-size: 18px; }
+
   .absolut {
     font-size: 18px;
     font-weight: 300; }
+
   .dashboard-sub-bar {
     font-size: 13px;
     font-weight: 400; }
+
   .dashboard-subtitle-bar {
     font-size: 18px;
     font-weight: 300; }
+
   .dashboard-figure {
     font-size: 22px;
     font-weight: 400; }
+
   .dashboard-figurePer {
     font-size: 20px;
     font-weight: 300; }
+
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 13px;
     font-weight: 400; }
+
   .dashboard-legend {
     font-size: 12px;
     font-weight: 400;
     height: 265px;
     margin-top: -3px;
     width: 130px; }
+
   .dashboard-half-height-legend {
     font-size: 12px;
     height: 135px;
     width: 65px; }
+
   .application-detail-view section.info {
     width: 988px; } }
-
 @media (min-width: 1450px) and (max-width: 1689px) {
   div.resizecontainer {
     width: 1428px; }
+
   .dashboard-large-chart {
     width: 948px; }
     .dashboard-large-chart .dashboard-sub-bar {
@@ -3378,8 +3571,10 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       height: 290px;
       width: 798px; }
+
   .dashboard-sub-bar-menu {
     font-size: 15px; }
+
   .dashboard-medium-chart {
     width: 698px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3397,6 +3592,7 @@ div.resizecontainer {
       width: 698px; }
     .dashboard-medium-chart #clusterGraphs svg text {
       font-size: 13px; }
+
   .dashboard-small-chart {
     width: 468px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3410,9 +3606,12 @@ div.resizecontainer {
           fill: #666;
           font-size: 13px;
           font-weight: 400; }
+
   .dashboard-tendency-container .dashboard-tendency-chart {
     height: 129px; }
-    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 209px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
       height: 42px;
@@ -3423,27 +3622,29 @@ div.resizecontainer {
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 456px; }
+
   .dashboard-bar-chart-container {
     height: 128.5px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
       height: 128.5px;
       width: 458px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
-        height: 42.1666666667px;
-        line-height: 42.1666666667px; }
+        height: 42.16667px;
+        line-height: 42.16667px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 309.4px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           width: 131.4px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 67.3333333333px;
-        line-height: 67.3333333333px;
+        height: 67.33333px;
+        line-height: 67.33333px;
         padding: 5px 8px 10px;
         width: 442px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 72.3333333333px; }
+          height: 72.33333px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 456px; }
+
   .modal-chart-detail {
     bottom: 12.1% !important;
     left: 50%;
@@ -3459,6 +3660,7 @@ div.resizecontainer {
       width: 150px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1268px; }
+
   .modal-body .dashboard-large-chart {
     width: 943px; }
     .modal-body .dashboard-large-chart .dashboard-sub-bar {
@@ -3481,7 +3683,9 @@ div.resizecontainer {
       width: 453px; }
       .modal-body .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
         width: 453px; }
-  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
     width: 206.5px; }
   .modal-body .dashboard-tendency-container .dashboard-sub-bar {
     width: 451px; }
@@ -3495,42 +3699,52 @@ div.resizecontainer {
     width: 442px; }
   .modal-body .dashboard-bar-chart-container .dashboard-sub-bar {
     width: 456px; }
+
   .percentage {
     font-size: 20px; }
+
   .absolut {
     font-size: 20px;
     font-weight: 300; }
+
   .dashboard-sub-bar {
     font-size: 13px;
     font-weight: 400; }
+
   .dashboard-subtitle-bar {
     font-size: 20px;
     font-weight: 300; }
+
   .dashboard-figure {
     font-size: 26px;
     font-weight: 400; }
+
   .dashboard-figurePer {
     font-size: 24px;
     font-weight: 300; }
+
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 13px;
     font-weight: 400; }
+
   .dashboard-legend {
     font-size: 13px;
     font-weight: 400;
     height: 295px;
     margin-top: -3px;
     width: 140px; }
+
   .dashboard-half-height-legend {
     font-size: 13px;
     height: 150px;
     width: 70px; }
+
   .application-detail-view section.info {
     width: 1228px; } }
-
 @media (min-width: 1690px) and (max-width: 1929px) {
   div.resizecontainer {
     width: 1668px; }
+
   .dashboard-large-chart {
     width: 1108px; }
     .dashboard-large-chart .dashboard-sub-bar {
@@ -3538,8 +3752,10 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       height: 330px;
       width: 938px; }
+
   .dashboard-sub-bar-menu {
     font-size: 16px; }
+
   .dashboard-medium-chart {
     width: 818px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3557,6 +3773,7 @@ div.resizecontainer {
       width: 818px; }
     .dashboard-medium-chart #clusterGraphs svg text {
       font-size: 14px; }
+
   .dashboard-small-chart {
     width: 548px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3570,40 +3787,45 @@ div.resizecontainer {
           fill: #666;
           font-size: 14px;
           font-weight: 400; }
+
   .dashboard-tendency-container .dashboard-tendency-chart {
     height: 149px; }
-    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 249px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
-      height: 48.6666666667px;
-      line-height: 48.6666666667px; }
+      height: 48.66667px;
+      line-height: 48.66667px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
-      height: 87.3333333333px;
-      line-height: 42.6666666667px;
+      height: 87.33333px;
+      line-height: 42.66667px;
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 536px; }
+
   .dashboard-bar-chart-container {
     height: 148.5px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
       height: 148.5px;
       width: 538px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
-        height: 48.8333333333px;
-        line-height: 48.8333333333px; }
+        height: 48.83333px;
+        line-height: 48.83333px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 365.4px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           width: 155.4px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 80.6666666667px;
-        line-height: 80.6666666667px;
+        height: 80.66667px;
+        line-height: 80.66667px;
         padding: 5px 8px 10px;
         width: 522px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 85.6666666667px; }
+          height: 85.66667px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 536px; }
+
   .modal-chart-detail {
     bottom: 12.1% !important;
     left: 50%;
@@ -3619,6 +3841,7 @@ div.resizecontainer {
       width: 170px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1488px; }
+
   .modal-body .dashboard-large-chart {
     width: 1103px; }
     .modal-body .dashboard-large-chart .dashboard-sub-bar {
@@ -3641,7 +3864,9 @@ div.resizecontainer {
       width: 533px; }
       .modal-body .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
         width: 533px; }
-  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
     width: 246.5px; }
   .modal-body .dashboard-tendency-container .dashboard-sub-bar {
     width: 531px; }
@@ -3655,42 +3880,52 @@ div.resizecontainer {
     width: 522px; }
   .modal-body .dashboard-bar-chart-container .dashboard-sub-bar {
     width: 536px; }
+
   .percentage {
     font-size: 24px; }
+
   .absolut {
     font-size: 24px;
     font-weight: 300; }
+
   .dashboard-sub-bar {
     font-size: 14px;
     font-weight: 400; }
+
   .dashboard-subtitle-bar {
     font-size: 24px;
     font-weight: 300; }
+
   .dashboard-figure {
     font-size: 30px;
     font-weight: 400; }
+
   .dashboard-figurePer {
     font-size: 28px;
     font-weight: 300; }
+
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 14px;
     font-weight: 400; }
+
   .dashboard-legend {
     font-size: 14px;
     font-weight: 400;
     height: 335px;
     margin-top: -3px;
     width: 160px; }
+
   .dashboard-half-height-legend {
     font-size: 14px;
     height: 170px;
     width: 80px; }
+
   .application-detail-view section.info {
     width: 1468px; } }
-
 @media (min-width: 1930px) and (max-width: 2169px) {
   div.resizecontainer {
     width: 1908px; }
+
   .dashboard-large-chart {
     width: 1268px; }
     .dashboard-large-chart .dashboard-sub-bar {
@@ -3698,8 +3933,10 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       height: 390px;
       width: 1088px; }
+
   .dashboard-sub-bar-menu {
     font-size: 17px; }
+
   .dashboard-medium-chart {
     width: 938px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3717,6 +3954,7 @@ div.resizecontainer {
       width: 938px; }
     .dashboard-medium-chart #clusterGraphs svg text {
       font-size: 15px; }
+
   .dashboard-small-chart {
     width: 628px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3730,40 +3968,45 @@ div.resizecontainer {
           fill: #666;
           font-size: 14px;
           font-weight: 400; }
+
   .dashboard-tendency-container .dashboard-tendency-chart {
     height: 179px; }
-    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 289px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
-      height: 58.6666666667px;
-      line-height: 58.6666666667px; }
+      height: 58.66667px;
+      line-height: 58.66667px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
-      height: 107.3333333333px;
-      line-height: 52.6666666667px;
+      height: 107.33333px;
+      line-height: 52.66667px;
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 616px; }
+
   .dashboard-bar-chart-container {
     height: 178.5px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
       height: 178.5px;
       width: 618px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
-        height: 58.8333333333px;
-        line-height: 58.8333333333px; }
+        height: 58.83333px;
+        line-height: 58.83333px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 421.4px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           width: 179.4px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 100.6666666667px;
-        line-height: 100.6666666667px;
+        height: 100.66667px;
+        line-height: 100.66667px;
         padding: 5px 8px 10px;
         width: 602px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 105.6666666667px; }
+          height: 105.66667px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 616px; }
+
   .modal-chart-detail {
     bottom: 12.1% !important;
     left: 50%;
@@ -3779,6 +4022,7 @@ div.resizecontainer {
       width: 180px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1718px; }
+
   .modal-body .dashboard-large-chart {
     width: 1263px; }
     .modal-body .dashboard-large-chart .dashboard-sub-bar {
@@ -3801,7 +4045,9 @@ div.resizecontainer {
       width: 613px; }
       .modal-body .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
         width: 613px; }
-  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
     width: 286.5px; }
   .modal-body .dashboard-tendency-container .dashboard-sub-bar {
     width: 611px; }
@@ -3815,42 +4061,52 @@ div.resizecontainer {
     width: 602px; }
   .modal-body .dashboard-bar-chart-container .dashboard-sub-bar {
     width: 616px; }
+
   .percentage {
     font-size: 28px; }
+
   .absolut {
     font-size: 28px;
     font-weight: 300; }
+
   .dashboard-sub-bar {
     font-size: 15px;
     font-weight: 400; }
+
   .dashboard-subtitle-bar {
     font-size: 28px;
     font-weight: 300; }
+
   .dashboard-figure {
     font-size: 34px;
     font-weight: 400; }
+
   .dashboard-figurePer {
     font-size: 32px;
     font-weight: 300; }
+
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 14px;
     font-weight: 400; }
+
   .dashboard-legend {
     font-size: 15px;
     font-weight: 400;
     height: 395px;
     margin-top: -3px;
     width: 170px; }
+
   .dashboard-half-height-legend {
     font-size: 15px;
     height: 200px;
     width: 85px; }
+
   .application-detail-view section.info {
     width: 1708px; } }
-
 @media (min-width: 2170px) and (max-width: 2409px) {
   div.resizecontainer {
     width: 2148px; }
+
   .dashboard-large-chart {
     width: 1428px; }
     .dashboard-large-chart .dashboard-sub-bar {
@@ -3858,8 +4114,10 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       height: 290px;
       width: 1278px; }
+
   .dashboard-sub-bar-menu {
     font-size: 17px; }
+
   .dashboard-medium-chart {
     width: 1058px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -3877,6 +4135,7 @@ div.resizecontainer {
       width: 1058px; }
     .dashboard-medium-chart #clusterGraphs svg text {
       font-size: 15px; }
+
   .dashboard-small-chart {
     width: 708px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -3890,9 +4149,12 @@ div.resizecontainer {
           fill: #666;
           font-size: 15px;
           font-weight: 400; }
+
   .dashboard-tendency-container .dashboard-tendency-chart {
     height: 129px; }
-    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 329px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
       height: 42px;
@@ -3903,27 +4165,29 @@ div.resizecontainer {
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 696px; }
+
   .dashboard-bar-chart-container {
     height: 128.5px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
       height: 128.5px;
       width: 698px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
-        height: 42.1666666667px;
-        line-height: 42.1666666667px; }
+        height: 42.16667px;
+        line-height: 42.16667px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 477.4px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           width: 203.4px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 67.3333333333px;
-        line-height: 67.3333333333px;
+        height: 67.33333px;
+        line-height: 67.33333px;
         padding: 5px 8px 10px;
         width: 682px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 72.3333333333px; }
+          height: 72.33333px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 696px; }
+
   .modal-chart-detail {
     bottom: 12.1% !important;
     left: 50%;
@@ -3939,6 +4203,7 @@ div.resizecontainer {
       width: 150px; }
     .modal-chart-detail .modal-inner-detail {
       width: 1988px; }
+
   .modal-body .dashboard-large-chart {
     width: 1423px; }
     .modal-body .dashboard-large-chart .dashboard-sub-bar {
@@ -3961,7 +4226,9 @@ div.resizecontainer {
       width: 693px; }
       .modal-body .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
         width: 693px; }
-  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
     width: 326.5px; }
   .modal-body .dashboard-tendency-container .dashboard-sub-bar {
     width: 691px; }
@@ -3975,42 +4242,52 @@ div.resizecontainer {
     width: 682px; }
   .modal-body .dashboard-bar-chart-container .dashboard-sub-bar {
     width: 696px; }
+
   .percentage {
     font-size: 22px; }
+
   .absolut {
     font-size: 22px;
     font-weight: 300; }
+
   .dashboard-sub-bar {
     font-size: 15px;
     font-weight: 400; }
+
   .dashboard-subtitle-bar {
     font-size: 22px;
     font-weight: 300; }
+
   .dashboard-figure {
     font-size: 36px;
     font-weight: 400; }
+
   .dashboard-figurePer {
     font-size: 34px;
     font-weight: 300; }
+
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
     font-weight: 400; }
+
   .dashboard-legend {
     font-size: 15px;
     font-weight: 400;
     height: 295px;
     margin-top: -3px;
     width: 140px; }
+
   .dashboard-half-height-legend {
     font-size: 15px;
     height: 150px;
     width: 70px; }
+
   .application-detail-view section.info {
     width: 1948px; } }
-
 @media (min-width: 2410px) and (max-width: 2649px) {
   div.resizecontainer {
     width: 2388px; }
+
   .dashboard-large-chart {
     width: 1588px; }
     .dashboard-large-chart .dashboard-sub-bar {
@@ -4018,8 +4295,10 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       height: 290px;
       width: 1438px; }
+
   .dashboard-sub-bar-menu {
     font-size: 17px; }
+
   .dashboard-medium-chart {
     width: 1178px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -4037,6 +4316,7 @@ div.resizecontainer {
       width: 1178px; }
     .dashboard-medium-chart #clusterGraphs svg text {
       font-size: 15px; }
+
   .dashboard-small-chart {
     width: 788px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -4050,9 +4330,12 @@ div.resizecontainer {
           fill: #666;
           font-size: 15px;
           font-weight: 400; }
+
   .dashboard-tendency-container .dashboard-tendency-chart {
     height: 129px; }
-    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 369px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
       height: 42px;
@@ -4063,27 +4346,29 @@ div.resizecontainer {
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 776px; }
+
   .dashboard-bar-chart-container {
     height: 128.5px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
       height: 128.5px;
       width: 778px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
-        height: 42.1666666667px;
-        line-height: 42.1666666667px; }
+        height: 42.16667px;
+        line-height: 42.16667px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 533.4px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           width: 227.4px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 67.3333333333px;
-        line-height: 67.3333333333px;
+        height: 67.33333px;
+        line-height: 67.33333px;
         padding: 5px 8px 10px;
         width: 762px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 72.3333333333px; }
+          height: 72.33333px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 776px; }
+
   .modal-chart-detail {
     bottom: 12.1% !important;
     left: 50%;
@@ -4099,6 +4384,7 @@ div.resizecontainer {
       width: 150px; }
     .modal-chart-detail .modal-inner-detail {
       width: 2228px; }
+
   .modal-body .dashboard-large-chart {
     width: 1583px; }
     .modal-body .dashboard-large-chart .dashboard-sub-bar {
@@ -4121,7 +4407,9 @@ div.resizecontainer {
       width: 773px; }
       .modal-body .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
         width: 773px; }
-  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
     width: 366.5px; }
   .modal-body .dashboard-tendency-container .dashboard-sub-bar {
     width: 771px; }
@@ -4135,42 +4423,52 @@ div.resizecontainer {
     width: 762px; }
   .modal-body .dashboard-bar-chart-container .dashboard-sub-bar {
     width: 776px; }
+
   .percentage {
     font-size: 22px; }
+
   .absolut {
     font-size: 22px;
     font-weight: 300; }
+
   .dashboard-sub-bar {
     font-size: 15px;
     font-weight: 400; }
+
   .dashboard-subtitle-bar {
     font-size: 22px;
     font-weight: 300; }
+
   .dashboard-figure {
     font-size: 36px;
     font-weight: 400; }
+
   .dashboard-figurePer {
     font-size: 34px;
     font-weight: 300; }
+
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
     font-weight: 400; }
+
   .dashboard-legend {
     font-size: 15px;
     font-weight: 400;
     height: 295px;
     margin-top: -3px;
     width: 140px; }
+
   .dashboard-half-height-legend {
     font-size: 15px;
     height: 150px;
     width: 70px; }
+
   .application-detail-view section.info {
     width: 2188px; } }
-
 @media (min-width: 2650px) and (max-width: 2889px) {
   div.resizecontainer {
     width: 2628px; }
+
   .dashboard-large-chart {
     width: 1748px; }
     .dashboard-large-chart .dashboard-sub-bar {
@@ -4178,8 +4476,10 @@ div.resizecontainer {
     .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart {
       height: 290px;
       width: 1598px; }
+
   .dashboard-sub-bar-menu {
     font-size: 17px; }
+
   .dashboard-medium-chart {
     width: 1298px; }
     .dashboard-medium-chart .dashboard-sub-bar {
@@ -4197,6 +4497,7 @@ div.resizecontainer {
       width: 1298px; }
     .dashboard-medium-chart #clusterGraphs svg text {
       font-size: 15px; }
+
   .dashboard-small-chart {
     width: 868px; }
     .dashboard-small-chart .dashboard-sub-bar {
@@ -4210,9 +4511,12 @@ div.resizecontainer {
           fill: #666;
           font-size: 15px;
           font-weight: 400; }
+
   .dashboard-tendency-container .dashboard-tendency-chart {
     height: 129px; }
-    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+    .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
       width: 409px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar {
       height: 42px;
@@ -4223,27 +4527,29 @@ div.resizecontainer {
       padding-top: 5px; }
   .dashboard-tendency-container .dashboard-sub-bar {
     width: 856px; }
+
   .dashboard-bar-chart-container {
     height: 128.5px; }
     .dashboard-bar-chart-container .dashboard-bar-chart {
       height: 128.5px;
       width: 858px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
-        height: 42.1666666667px;
-        line-height: 42.1666666667px; }
+        height: 42.16667px;
+        line-height: 42.16667px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 589.4px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           width: 251.4px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 67.3333333333px;
-        line-height: 67.3333333333px;
+        height: 67.33333px;
+        line-height: 67.33333px;
         padding: 5px 8px 10px;
         width: 842px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 72.3333333333px; }
+          height: 72.33333px; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
       width: 856px; }
+
   .modal-chart-detail {
     bottom: 12.1% !important;
     left: 50%;
@@ -4259,6 +4565,7 @@ div.resizecontainer {
       width: 150px; }
     .modal-chart-detail .modal-inner-detail {
       width: 2468px; }
+
   .modal-body .dashboard-large-chart {
     width: 1743px; }
     .modal-body .dashboard-large-chart .dashboard-sub-bar {
@@ -4281,7 +4588,9 @@ div.resizecontainer {
       width: 853px; }
       .modal-body .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
         width: 853px; }
-  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar, .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
+  .modal-body .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
     width: 406.5px; }
   .modal-body .dashboard-tendency-container .dashboard-sub-bar {
     width: 851px; }
@@ -4295,39 +4604,48 @@ div.resizecontainer {
     width: 842px; }
   .modal-body .dashboard-bar-chart-container .dashboard-sub-bar {
     width: 856px; }
+
   .percentage {
     font-size: 22px; }
+
   .absolut {
     font-size: 22px;
     font-weight: 300; }
+
   .dashboard-sub-bar {
     font-size: 15px;
     font-weight: 400; }
+
   .dashboard-subtitle-bar {
     font-size: 22px;
     font-weight: 300; }
+
   .dashboard-figure {
     font-size: 36px;
     font-weight: 400; }
+
   .dashboard-figurePer {
     font-size: 34px;
     font-weight: 300; }
+
   .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
     font-weight: 400; }
+
   .dashboard-legend {
     font-size: 15px;
     font-weight: 400;
     height: 295px;
     margin-top: -3px;
     width: 140px; }
+
   .dashboard-half-height-legend {
     font-size: 15px;
     height: 150px;
     width: 70px; }
+
   .application-detail-view section.info {
     width: 2428px; } }
-
 div.centralRow {
   margin-top: 40px;
   margin-bottom: 40px; }
@@ -4379,7 +4697,8 @@ div.centralContent {
   color: #333;
   font-size: 23px; }
 
-li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
+li a [class^="icon_arangodb"],
+li a [class*=" icon_arangodb"] {
   font-size: 18px;
   position: absolute;
   right: 4px;
@@ -4444,7 +4763,8 @@ div.queryline {
   div.queryline .textDiv {
     margin-right: 10px;
     margin-top: 4px; }
-  div.queryline select, div.queryline input {
+  div.queryline select,
+  div.queryline input {
     margin-bottom: 5px; }
   div.queryline.querylineAdd span {
     color: #fff;
@@ -4512,7 +4832,7 @@ div.input-append button.gv_example_toggle {
   margin-right: 6px; }
 
 img.gv-throbber {
-  background-image: url('../img/swagger/throbber.gif'); }
+  background-image: url("../img/swagger/throbber.gif"); }
 
 span.gv_caret {
   margin-top: 2px !important; }
@@ -4537,7 +4857,7 @@ input.search-input {
   margin-left: 15px; }
 
 .search-submit-icon, .gv-search-submit-icon {
-  background-image: url('../img/enter_icon.png');
+  background-image: url("../img/enter_icon.png");
   background-size: 14px;
   height: 14px;
   margin-left: -18px;
@@ -4592,7 +4912,7 @@ div.headerBar {
   div.headerBar input[type="radio"] {
     display: none; }
     div.headerBar input[type="radio"] + label span {
-      background: url('../img/check_radio_sheet.png') -38px top no-repeat;
+      background: url("../img/check_radio_sheet.png") -38px top no-repeat;
       cursor: pointer;
       display: inline-block;
       height: 19px;
@@ -4600,7 +4920,7 @@ div.headerBar {
       vertical-align: middle;
       width: 19px; }
   div.headerBar input[type="radio"]:checked + label span {
-    background: url('../img/check_radio_sheet.png') -57px top no-repeat; }
+    background: url("../img/check_radio_sheet.png") -57px top no-repeat; }
 
 div.headerBar a.arangoHeader {
   color: #fff;
@@ -4638,10 +4958,10 @@ div.headerBar > div.headerButtonBar {
   padding-left: 0; }
 
 .css-label {
-  background-image: url('../img/dark-check-green.png'); }
+  background-image: url("../img/dark-check-green.png"); }
 
 .css-label-round {
-  background-image: url('../img/dark-check-green-round.png'); }
+  background-image: url("../img/dark-check-green-round.png"); }
 
 .modal-header, .modal-dashboard-header {
   background-color: #686766;
@@ -4671,7 +4991,9 @@ div.headerBar > div.headerButtonBar {
   font-family: 'Open Sans', sans-serif !important;
   font-size: 14px;
   font-weight: 300; }
-  .modal-body input, .modal-body select, .modal-body textarea {
+  .modal-body input,
+  .modal-body select,
+  .modal-body textarea {
     margin-top: 10px; }
   .modal-body input[type='checkbox'] {
     margin-bottom: 10px; }
@@ -4758,7 +5080,8 @@ div.headerBar > div.headerButtonBar {
   padding-bottom: 3px;
   padding-top: 3px; }
 
-.modal-backdrop, .modal-backdrop.fade.in {
+.modal-backdrop,
+.modal-backdrop.fade.in {
   opacity: .4; }
 
 .modal {
@@ -4805,7 +5128,8 @@ pre.gv-object-view {
   margin-right: 0;
   padding-bottom: 9px; }
 
-.modal table tr, .thBorderBottom {
+.modal table tr,
+.thBorderBottom {
   border-bottom: 1px solid #f7f3f2 !important; }
 
 .modal-delete-confirmation {
@@ -4826,7 +5150,8 @@ pre.gv-object-view {
   min-width: 200px;
   padding: 3px;
   text-align: left; }
-.createModalDialog .figures1, .createModalDialog .figures2 {
+.createModalDialog .figures1,
+.createModalDialog .figures2 {
   margin-bottom: 20px;
   width: 255px; }
 .createModalDialog .figures2 {
@@ -4848,7 +5173,11 @@ pre.gv-object-view {
   margin-right: 24px;
   width: 360px; }
 
-#control_event_node_edit_modal, #control_event_edge_edit_modal, #control_event_node_delete_modal, #control_event_edge_delete_modal, #control_event_new_node_modal {
+#control_event_node_edit_modal,
+#control_event_edge_edit_modal,
+#control_event_node_delete_modal,
+#control_event_edge_delete_modal,
+#control_event_new_node_modal {
   margin-left: -320px;
   width: 640px; }
 
@@ -5131,3 +5460,5 @@ div .bigtile {
   position: absolute;
   right: 0;
   text-align: left; }
+
+/*# sourceMappingURL=style.css.map */
