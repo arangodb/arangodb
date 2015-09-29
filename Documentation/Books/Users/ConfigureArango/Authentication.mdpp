@@ -43,6 +43,10 @@ This will create a new ArangoDB user. The username must be specified in
 *user* and must not be empty.
 
 The password must be given as a string, too, but can be left empty if required.
+If you pass the special value *ARANGODB_DEFAULT_ROOT_PASSWORD*, the password
+will be set the value stored in the environment variable
+`ARANGODB_DEFAULT_ROOT_PASSWORD`. This can be used to pass an instance variable
+into ArangoDB. For example, the instance identifier from Amazon.
 
 If the *active* attribute is not specified, it defaults to *true*. The
 *extra* attribute can be used to save custom data with the user.

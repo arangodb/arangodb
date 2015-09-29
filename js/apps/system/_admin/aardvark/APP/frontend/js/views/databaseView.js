@@ -334,7 +334,7 @@
         window.modalView.createPasswordEntry(
           "newPassword",
           "Password",
-          "",
+          "ARANGODB_DEFAULT_ROOT_PASSWORD",
           false,
           "",
           false
