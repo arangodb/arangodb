@@ -49,11 +49,9 @@ PathBasedIndex::PathBasedIndex (TRI_idx_iid_t iid,
                                 std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
                                 bool unique,
                                 bool sparse) 
-  : Index(iid, collection, fields),
+  : Index(iid, collection, fields, unique, sparse),
     _shaper(_collection->getShaper()),
     _paths(fillPidPaths()),
-    _unique(unique),
-    _sparse(sparse),
     _useExpansion(false) {
 
   TRI_ASSERT(! fields.empty());

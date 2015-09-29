@@ -208,35 +208,39 @@ bool Condition::findIndexForAndNode (AstNode const* node,
   std::vector<Index const*> indexes = colNode->collection()->getIndexes();
 
   for (auto& idx : indexes) {
-    double totalCost = 0.0;
-    double estimatedCost = 0.0;
+    double filterCost = 0.0;
+    double sortCost   = 0.0;
     
     std::cout << "CHECKING INDEX : " << triagens::basics::JsonHelper::toString(idx->getInternals()->toJson(TRI_UNKNOWN_MEM_ZONE, false).json()) << "\n";
 
     // check if the index supports the filter expression
+    double estimatedCost;
     if (idx->supportsFilterCondition(node, reference, estimatedCost)) {
       std::cout << "- INDEX SUPPORTS FILTER CONDITION\n";
       // index supports the filter expression
-      totalCost += estimatedCost;
+      filterCost = estimatedCost;
     }
     else {
       std::cout << "- INDEX DOES NOT SUPPORT FILTER CONDITION\n";
-      totalCost += MaxFilterCost;
+      filterCost = MaxFilterCost;
     }
-
 
     if (! sortCondition.isEmpty() &&
         sortCondition.isOnlyAttributeAccess()) {
+      double estimatedCost;
       if (idx->isSorted() &&
           idx->supportsSortCondition(&sortCondition, reference, estimatedCost)) {
         std::cout << "- INDEX SUPPORTS SORT CONDITION\n";
-        totalCost += estimatedCost;
+        sortCost = estimatedCost;
       }
       else {
         std::cout << "- INDEX DOES NOT SUPPORT SORT CONDITION\n";
-        totalCost += MaxSortCost;
+        sortCost = MaxSortCost;
       }
     }
+
+    std::cout << "- INDEX FILTER COST: " << filterCost << ", SORT COST: " << sortCost << "\n";
+    double const totalCost = filterCost + sortCost;
 
     if (bestCost < totalCost) {
       bestIndex = idx;

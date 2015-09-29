@@ -82,7 +82,7 @@ static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
 // -----------------------------------------------------------------------------
 
 PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection) 
-  : Index(0, collection, std::vector<std::vector<triagens::basics::AttributeName>>( { { { TRI_VOC_ATTRIBUTE_KEY, false } } } )),
+  : Index(0, collection, std::vector<std::vector<triagens::basics::AttributeName>>( { { { TRI_VOC_ATTRIBUTE_KEY, false } } } ), true, false),
     _primaryIndex(nullptr) {
 
   uint32_t indexBuckets = 1;

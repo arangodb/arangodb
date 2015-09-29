@@ -46,10 +46,14 @@ using namespace triagens::arango;
 
 Index::Index (TRI_idx_iid_t iid,
               TRI_document_collection_t* collection,
-              std::vector<std::vector<triagens::basics::AttributeName>> const& fields) 
+              std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+              bool unique,
+              bool sparse) 
   : _iid(iid),
     _collection(collection),
-    _fields(fields) {
+    _fields(fields),
+    _unique(unique),
+    _sparse(sparse) {
 }
 
 Index::~Index () {

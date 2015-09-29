@@ -71,24 +71,27 @@ namespace triagens {
                               triagens::aql::Variable const* reference,
                               double& estimatedCost) const {
           std::unordered_set<size_t> found;
-
+                    
           for (size_t i = 0; i < node->numMembers(); ++i) {
             auto op = node->getMember(i);
             if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
               TRI_ASSERT(op->numMembers() == 2);
               if (accessFitsIndex(index, op->getMember(0), op->getMember(1), reference, found) ||
                   accessFitsIndex(index, op->getMember(1), op->getMember(0), reference, found)) {
-                return true;
+                // we can use the index
+                return indexCosts(index, estimatedCost);
               }
             }
             else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
               TRI_ASSERT(op->numMembers() == 2);
               if (accessFitsIndex(index, op->getMember(0), op->getMember(1), reference, found)) {
-                return true;
+                // we can use the index
+                return indexCosts(index, estimatedCost) * op->getMember(1)->numMembers();
               }
             }
           }
 
+          estimatedCost = 1.0; // set to highest possible cost by default
           return false;
         }
 
@@ -101,6 +104,7 @@ namespace triagens {
                               triagens::aql::Variable const* reference,
                               double& estimatedCost) const {
           std::unordered_set<size_t> found;
+          size_t values = 0;
 
           for (size_t i = 0; i < node->numMembers(); ++i) {
             auto op = node->getMember(i);
@@ -108,18 +112,34 @@ namespace triagens {
               TRI_ASSERT(op->numMembers() == 2);
               if (accessFitsIndex(index, op->getMember(0), op->getMember(1), reference, found) ||
                   accessFitsIndex(index, op->getMember(1), op->getMember(0), reference, found)) {
-               break;
+                if (found.size() == _attributes.size()) {
+                  // got enough attributes
+                  break;
+                }
               }
             }
             else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
               TRI_ASSERT(op->numMembers() == 2);
               if (accessFitsIndex(index, op->getMember(0), op->getMember(1), reference, found)) {
-                break;
+                values += op->getMember(1)->numMembers();
+                if (found.size() == _attributes.size()) {
+                  // got enough attributes
+                  break;
+                }
               }
             }
           }
 
-          return (found.size() == _attributes.size());
+          if (found.size() == _attributes.size()) {
+            // can only use this index if all index attributes are covered by the condition
+            if (values == 0) {
+              values = 1;
+            }
+            return indexCosts(index, estimatedCost) / static_cast<double>(index->fields().size()) * static_cast<double>(values);
+          }
+
+          estimatedCost = 1.0; // set to highest possible cost by default
+          return false;
         }
 
 // -----------------------------------------------------------------------------
@@ -127,6 +147,29 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the costs of using this index
+/// costs returned are scaled from 0.0 to 1.0, with 0.0 being the lowest cost
+////////////////////////////////////////////////////////////////////////////////
+
+        bool indexCosts (triagens::arango::Index const* index,
+                         double& estimatedCost) const {
+          if (index->hasSelectivityEstimate()) {
+            // use index selectivity estimate
+            estimatedCost = 1.0 - index->selectivityEstimate(); 
+          }
+          else if (index->unique()) {
+            // index is unique. now use a low value for the costs
+            estimatedCost = std::numeric_limits<double>::epsilon();
+          }
+          else {
+            // set to highest possible cost by default
+            estimatedCost = 1.0; 
+          }
+          // can use this index
+          return true;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the access fits
@@ -139,10 +182,7 @@ namespace triagens {
                               std::unordered_set<size_t>& found) const {
           if (index->type() == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX || 
               index->type() == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-            auto pathBasedIndex = static_cast<triagens::arango::PathBasedIndex const*>(index);
-            bool const sparse = pathBasedIndex->sparse();
-
-            if (sparse) {
+            if (index->sparse()) {
               if (! other->isConstant()) {
                 return false;
               }
