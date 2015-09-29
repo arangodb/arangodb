@@ -50,11 +50,14 @@ namespace triagens {
             _filterVariables(),
             _sortVariables(),
             _sortExpression(nullptr),
-            _changes(changes) {
+            _changes(changes),
+            _shouldFreeCondition(true) {
         };
 
         ~ConditionFinder () {
-          delete _condition;
+          if (_shouldFreeCondition) {
+            delete _condition;
+          }
         }
      
         bool before (ExecutionNode* en) override final;
@@ -70,6 +73,7 @@ namespace triagens {
         AstNode const*                     _sortExpression;
         // note: this class will never free the contents of this map
         std::unordered_map<size_t, ExecutionNode*>* _changes;
+        bool                              _shouldFreeCondition;
     
     };
   }

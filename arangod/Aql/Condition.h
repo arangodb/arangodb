@@ -166,9 +166,7 @@ namespace triagens {
 /// @brief get the resulting structure for the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* getConditions () const {
-          return _root;
-        }
+        AstNode* getConditions () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate indexes which can be used for conditions

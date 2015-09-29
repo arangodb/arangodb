@@ -38,6 +38,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/IndexBlock.h"
 #include "Aql/IndexRangeBlock.h"
 #include "Aql/ModificationBlock.h"
 #include "Aql/QueryRegistry.h"
@@ -67,7 +68,9 @@ static ExecutionBlock* CreateBlock (ExecutionEngine* engine,
     case ExecutionNode::INDEX_RANGE: {
       return new IndexRangeBlock(engine, static_cast<IndexRangeNode const*>(en));
     }
-    // TODO FIXME add INDEX
+    case ExecutionNode::INDEX: {
+      return new IndexBlock(engine, static_cast<IndexNode const*>(en));
+    }
     case ExecutionNode::ENUMERATE_COLLECTION: {
       return new EnumerateCollectionBlock(engine,
                                           static_cast<EnumerateCollectionNode const*>(en));

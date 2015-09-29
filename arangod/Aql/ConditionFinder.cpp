@@ -146,6 +146,9 @@ bool ConditionFinder::before (ExecutionNode* en) {
           false
         ));
 
+        // We handed over the condition to the new IndexNode
+        _shouldFreeCondition = false;
+
         // We keep this nodes change
         _changes->emplace(node->id(), newNode.release());
       }

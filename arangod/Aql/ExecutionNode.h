@@ -1209,6 +1209,7 @@ namespace triagens {
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
+          TRI_ASSERT(_condition != nullptr);
         }
 
         IndexNode (ExecutionPlan*, triagens::basics::Json const& base);
