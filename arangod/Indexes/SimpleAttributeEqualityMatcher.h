@@ -34,6 +34,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "Basics/AttributeNameParser.h"
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 
@@ -52,7 +53,7 @@ namespace triagens {
 
       public:
 
-        SimpleAttributeEqualityMatcher (std::vector<std::vector<std::string>> const& attributes)
+        SimpleAttributeEqualityMatcher (std::vector<std::vector<triagens::basics::AttributeName>> const& attributes)
           : _attributes(attributes) {
         }
          
@@ -217,7 +218,8 @@ namespace triagens {
 
             bool match = true;
             for (size_t j = 0; j < _attributes[i].size(); ++j) {
-              if (_attributes[i][j] != fieldNames[j]) {
+              if (_attributes[i][j].shouldExpand ||
+                  _attributes[i][j].name != fieldNames[j]) {
                 match = false;
                 break;
               }
@@ -243,7 +245,7 @@ namespace triagens {
 /// @brief array of attributes used for comparisons
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::vector<std::string>> _attributes;
+        std::vector<std::vector<triagens::basics::AttributeName>> _attributes;
 
     };
                

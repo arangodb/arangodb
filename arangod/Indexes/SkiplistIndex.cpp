@@ -1032,14 +1032,27 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
     return estimatedCost * static_cast<double>(values);
   }
 
-  estimatedCost = 1.0; // set to highest possible cost by default
   return false;
 }
 
 bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* sortCondition,
                                            triagens::aql::Variable const* reference,
                                            double& estimatedCost) const {
-  estimatedCost = 0.0;
+  TRI_ASSERT(sortCondition != nullptr);
+
+  if (! _useExpansion &&
+      sortCondition->isUnidirectional() && 
+      sortCondition->isOnlyAttributeAccess()) {
+
+    size_t const coveredAttributes = sortCondition->isCoveredBy(reference, _fields);
+
+    if (coveredAttributes >= sortCondition->numAttributes()) {
+      estimatedCost = 0.0;
+      return true;
+    }
+  }
+
+  estimatedCost = 1.0;
   return false;
 }        
 

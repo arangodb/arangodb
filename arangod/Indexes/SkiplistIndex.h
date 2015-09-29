@@ -238,7 +238,7 @@ namespace triagens {
         }
         
         bool isSorted () const override final {
-          return false;
+          return true;
         }
 
         bool hasSelectivityEstimate () const override final {

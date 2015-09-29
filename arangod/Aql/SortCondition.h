@@ -92,6 +92,22 @@ namespace triagens {
           return _fields.empty();
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of attributes in condition
+////////////////////////////////////////////////////////////////////////////////
+
+        inline size_t numAttributes () const {
+          return _fields.size();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the number of attributes in the sort condition covered
+/// by the specified index fields
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t isCoveredBy (Variable const*,
+                            std::vector<std::vector<triagens::basics::AttributeName>> const&) const;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -108,7 +124,7 @@ namespace triagens {
 /// @brief fields used in the sort conditions
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<std::string, std::vector<triagens::basics::AttributeName>>> _fields;
+        std::vector<std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>> _fields;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the sort is unidirectional

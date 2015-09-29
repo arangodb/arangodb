@@ -437,6 +437,7 @@ bool Index::hasBatchInsert () const {
 bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
                                      triagens::aql::Variable const* reference,
                                      double& estimatedCost) const {
+  // by default, no filter conditions are supported
   estimatedCost = 0.0;
   return false;
 }
@@ -447,7 +448,8 @@ bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
 
 bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondition,
                                    triagens::aql::Variable const* reference,
-                                   double& estimatedCost) const {
+                                   double& estimatedCost) const { 
+  // by default, no sort conditions are supported
   estimatedCost = 0.0;
   return false;
 }
