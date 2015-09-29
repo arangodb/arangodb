@@ -508,7 +508,8 @@ void Condition::optimize (ExecutionPlan* plan) {
 }
 
 AstNode* Condition::getConditions () const {
-  return _ast->clone(_root);
+  return _root;
+  // return _ast->clone(_root);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
