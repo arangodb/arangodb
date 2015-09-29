@@ -46,7 +46,7 @@
   var sprintf = internal.sprintf;
   var db = internal.db;
 
-  var defaultRootPW = require("process").env['ARANGODB_DEFAULT_ROOT_PASSWORD'] || "";
+  var defaultRootPW = require("process").env.ARANGODB_DEFAULT_ROOT_PASSWORD || "";
 
   function upgrade () {
 
