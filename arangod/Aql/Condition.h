@@ -40,6 +40,8 @@ namespace triagens {
 
     class Ast;
     class EnumerateCollectionNode;
+    class ExecutionPlan;
+    struct Index;
     struct Variable;
 
 // -----------------------------------------------------------------------------

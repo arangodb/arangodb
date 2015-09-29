@@ -882,84 +882,158 @@ int SkiplistIndex::ElementElementComparator::operator() (TRI_index_element_t con
 }
 
 bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
+                                     triagens::aql::AstNode const* other,
+                                     triagens::aql::AstNode const* op,
                                      triagens::aql::Variable const* reference,
-                                     std::unordered_set<std::string>& found) const {
-  if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    TRI_ASSERT(access->numMembers() == 1);
-    if (access->getMember(0)->getData() != reference) {
-      // This access is not referencing this collection
-      return false;
+                                     std::unordered_map<size_t, std::vector<triagens::aql::AstNodeType>>& found) const {
+  if (! this->canUseConditionPart(access, other, op, reference)) {
+    return false;
+  }
+  
+  if (access->type != triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    return false;
+  }
+          
+  std::vector<std::string> fieldNames;
+  while (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    fieldNames.emplace_back(std::string(access->getStringValue(), access->getStringLength()));
+    access = access->getMember(0);
+  }
+
+  if (access->type != triagens::aql::NODE_TYPE_REFERENCE) {
+    return false;
+  }
+
+  if (access->getData() != reference) {
+    // this access is not referencing this collection
+    return false;
+  }
+
+  triagens::aql::AstNodeType opType = op->type;
+  if (opType == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    opType = triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ;
+  }
+          
+  for (size_t i = 0; i < _fields.size(); ++i) {
+    if (_fields[i].size() != fieldNames.size()) {
+      // attribute path length differs
+      continue;
     }
-    // We have to check if this attribute string is used
-    std::string attr(access->getStringValue());
-    for (auto& field : _fields) {
-      std::string comp;
-      TRI_AttributeNamesToString(field, comp);
-      if (attr == comp) {
-        // This index knows this attribute
-        found.emplace(attr);
-        return true;
+
+    bool match = true;
+    for (size_t j = 0; j < _fields[i].size(); ++j) {
+      if (_fields[i][j] != fieldNames[j]) {
+        match = false;
+        break;
       }
     }
-  }
-  return false;
 
+    if (match) {
+      // mark ith attribute as being covered
+      auto it = found.find(i);
+
+      if (it == found.end()) {
+        found.emplace(i, std::vector<triagens::aql::AstNodeType>{ opType });
+      }
+      else {
+        (*it).second.emplace_back(opType);
+      }
+
+      return true;
+    }
+  }
+
+  return false;
 }
 
 bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
                                              triagens::aql::Variable const* reference,
                                              double& estimatedCost) const {
-  std::unordered_set<std::string> foundEq;
-  std::unordered_set<std::string> foundRange;
+  std::unordered_map<size_t, std::vector<triagens::aql::AstNodeType>> found;
+  size_t values = 0;
+  
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
+
     switch (op->type) {
       case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-        TRI_ASSERT(op->numMembers() == 2);
-        if (! accessFitsIndex(op->getMember(0), reference, foundEq)) {
-          accessFitsIndex(op->getMember(1), reference, foundEq);
-        }
-        break;
-      /* Deactivated right now. Needs changes outside of this code
-      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-        TRI_ASSERT(op->numMembers() == 2);
-        if (accessFitsIndex(op->getMember(0), reference, found)) {
-          if (found.size() == _fields.size()) {
-            return true;
-          }
-        }
-        break;
-      */
       case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
       case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
       case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
         TRI_ASSERT(op->numMembers() == 2);
-        if (accessFitsIndex(op->getMember(0), reference, foundRange)) {
-          accessFitsIndex(op->getMember(1), reference, foundRange);
+        accessFitsIndex(op->getMember(0), op->getMember(1), op, reference, found);
+        accessFitsIndex(op->getMember(1), op->getMember(0), op, reference, found);
+        break;
+
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+        if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference, found)) {
+          values += op->getMember(1)->numMembers();
         }
         break;
+
       default:
         break;
     }
   }
-  bool canBeUsed = false;
-  for (auto& field : _fields) {
-    std::string f;
-    TRI_AttributeNamesToString(field, f);
-    if (foundEq.find(f) != foundEq.end()) {
-      // We can increase the value of this estimate
-      // and we can use this index for sure
-      canBeUsed = true;
-      continue;
+
+  bool lastContainsEquality = true;
+  size_t attributesCovered = 0;
+  size_t attributesCoveredByEquality = 0;
+  estimatedCost = 1.0;
+
+  for (size_t i = 0; i < _fields.size(); ++i) {
+    auto it = found.find(i);
+
+    if (it == found.end()) {
+      // index attribute not covered by condition
+      break;
     }
-    if (foundRange.find(f) != foundRange.end()) {
-      // f is not used in equality check but as a bound
-      // We can only use the index up to this value
-      return true;
+
+    // check if the current condition contains an equality condition
+    auto const& types = (*it).second;
+    bool containsEquality = false;
+    for (size_t j = 0; j < types.size(); ++j) {
+      if (types[j] == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+        containsEquality = true;
+        break;
+      }
     }
+
+    if (! containsEquality && ! lastContainsEquality) {
+      // unsupported condition. must abort
+      break;
+    }
+
+    ++attributesCovered;
+    if (containsEquality) {
+      ++attributesCoveredByEquality;
+    }
+
+    if (containsEquality) {
+      estimatedCost /= 10.0;
+    }
+    else {
+      estimatedCost /= 2.0 * static_cast<double>(types.size());
+    }
+
+    lastContainsEquality = containsEquality;
   }
-  return canBeUsed;
+
+  if (attributesCoveredByEquality == _fields.size() && unique()) {
+    // index is unique and condition covers all attributes by equality
+    estimatedCost = std::numeric_limits<double>::epsilon();
+  }
+
+  if (attributesCovered > 0) {
+    if (values == 0) {
+      values = 1;
+    }
+    return estimatedCost * static_cast<double>(values);
+  }
+
+  estimatedCost = 1.0; // set to highest possible cost by default
+  return false;
 }
 
 bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* sortCondition,

@@ -28,6 +28,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Index.h"
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
@@ -448,6 +450,45 @@ bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondi
                                    double& estimatedCost) const {
   estimatedCost = 0.0;
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform some base checks for an index condition part
+////////////////////////////////////////////////////////////////////////////////
+        
+bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
+                                 triagens::aql::AstNode const* other,
+                                 triagens::aql::AstNode const* op,
+                                 triagens::aql::Variable const* reference) const {
+  if (_sparse) {
+    if (! other->isConstant()) {
+      return false;
+    }
+
+    if (other->isNullValue()) {
+      return false;
+    }
+
+    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+        other->type == triagens::aql::NODE_TYPE_ARRAY) {
+      size_t const n = other->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        if (other->getMemberUnchecked(i)->isNullValue()) {
+          return false;
+        }
+      }
+    }
+  }
+
+  // test if the reference variable is contained on both side of the expression
+  std::unordered_set<aql::Variable const*> variables;
+  triagens::aql::Ast::getReferencedVariables(other, variables);
+  if (variables.find(reference) != variables.end()) {
+    // yes. then we cannot use an index here
+    return false;
+  }
+
+  return true;
 }
 
 namespace triagens {

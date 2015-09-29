@@ -342,6 +342,11 @@ namespace triagens {
                                             triagens::aql::Variable const*,
                                             double&) const;
 
+        bool canUseConditionPart (triagens::aql::AstNode const* access,
+                                  triagens::aql::AstNode const* other,
+                                  triagens::aql::AstNode const* op,
+                                  triagens::aql::Variable const* reference) const;
+
         friend std::ostream& operator<< (std::ostream&, Index const*);
         friend std::ostream& operator<< (std::ostream&, Index const&);
 
