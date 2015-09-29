@@ -459,6 +459,10 @@ v2.7.0-rc1 (2015-09-17)
 v2.6.9 (XXXX-XX-XX)
 -------------------
 
+* added "special" password ARANGODB_DEFAULT_ROOT_PASSWORD. If you pass
+  ARANGODB_DEFAULT_ROOT_PASSWORD as password, it will read the password
+  from the environment variable ARANGODB_DEFAULT_ROOT_PASSWORD
+
 * fixed failing AQL skiplist, sort and limit combination
 
   When using a Skiplist index on an attribute (say "a") and then using sort
