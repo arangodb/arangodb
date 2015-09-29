@@ -96,6 +96,12 @@ var validatePassword = function (password) {
 
     throw err;
   }
+
+  if (password === "ARANGODB_DEFAULT_ROOT_PASSWORD") {
+    password = require("process").env['ARANGODB_DEFAULT_ROOT_PASSWORD'] || "";
+  }
+
+  return password;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +136,7 @@ exports.save = function (username, password, active, userData, changePassword) {
 
   // validate input
   validateName(username);
-  validatePassword(password);
+  password = validatePassword(password);
 
   if (active === undefined || active === null) {
     active = true; // this is the default value
@@ -183,7 +189,7 @@ exports.replace = function (username, password, active, userData, changePassword
 
   // validate input
   validateName(username);
-  validatePassword(password);
+  password = validatePassword(password);
 
   if (active === undefined || active === null) {
     active = true; // this is the default
@@ -230,7 +236,7 @@ exports.update = function (username, password, active, userData, changePassword)
   validateName(username);
 
   if (password !== undefined) {
-    validatePassword(password);
+    password = validatePassword(password);
   }
 
   var users = getStorage();
@@ -420,7 +426,7 @@ exports.changePassword = function (token, password) {
     return false;
   }
 
-  validatePassword(password);
+  password = validatePassword(password);
 
   var authData = user._shallowCopy.authData;
 
