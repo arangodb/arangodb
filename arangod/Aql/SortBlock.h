@@ -30,10 +30,13 @@
 
 #include "Basics/Common.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionNode.h"
-#include "Utils/AqlTransaction.h"
+#include "Aql/SortNode.h"
 
 namespace triagens {
+  namespace arango {
+    class AqlTransaction;
+  }
+
   namespace aql {
 
     class AqlItemBlock;

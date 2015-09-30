@@ -68,6 +68,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/ShortStringStorage.cpp \
 	arangod/Aql/SortBlock.cpp \
 	arangod/Aql/SortCondition.cpp \
+	arangod/Aql/SortNode.cpp \
 	arangod/Aql/SubqueryBlock.cpp \
 	arangod/Aql/tokens.cpp \
 	arangod/Aql/V8Expression.cpp \

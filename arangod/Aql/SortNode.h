@@ -1,0 +1,209 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief SortNode
+///
+/// @file 
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Max Neunhoeffer
+/// @author Copyright 2014, triagens GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef ARANGODB_AQL_SORT_NODE_H
+#define ARANGODB_AQL_SORT_NODE_H 1
+
+#include "Basics/Common.h"
+#include "Aql/Ast.h"
+#include "Aql/ExecutionNode.h"
+#include "Aql/types.h"
+#include "Aql/Variable.h"
+#include "Basics/JsonHelper.h"
+#include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
+
+namespace triagens {
+  namespace basics {
+    class StringBuffer;
+  }
+
+  namespace aql {
+    class ExecutionBlock;
+    class ExecutionPlan;
+    class RedundantCalculationsReplacer;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    class SortNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class SortNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class SortNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class SortBlock;
+      friend class RedundantCalculationsReplacer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        SortNode (ExecutionPlan* plan,
+                  size_t id,
+                  SortElementVector const& elements,
+                  bool stable) 
+          : ExecutionNode(plan, id),
+            _elements(elements),
+            _stable(stable) {
+
+        }
+        
+        SortNode (ExecutionPlan* plan,
+                  triagens::basics::Json const& base,
+                  SortElementVector const& elements,
+                  bool stable);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        NodeType getType () const override final {
+          return SORT;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the sort is stable
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isStable () const {
+          return _stable;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final {
+          auto c = new SortNode(plan, _id, _elements, _stable);
+
+          cloneHelper(c, plan, withDependencies, withProperties);
+
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost (size_t&) const override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, returning a vector
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
+          std::vector<Variable const*> v;
+          v.reserve(_elements.size());
+
+          for (auto& p : _elements) {
+            v.emplace_back(p.first);
+          }
+          return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere, modifying the set in-place
+////////////////////////////////////////////////////////////////////////////////
+
+        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final { 
+          for (auto& p : _elements) {
+            vars.emplace(p.first);
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get Variables Used Here including ASC/DESC
+////////////////////////////////////////////////////////////////////////////////
+
+        SortElementVector const& getElements () const {
+          return _elements;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all sort information 
+////////////////////////////////////////////////////////////////////////////////
+
+        SortInformation getSortInformation (ExecutionPlan*,
+                                            triagens::basics::StringBuffer*) const;
+
+        std::vector<std::pair<ExecutionNode*, bool>> getCalcNodePairs ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief simplifies the expressions of the sort node
+/// this will sort expressions if they are constant
+/// the method will return true if all sort expressions were removed after
+/// simplification, and false otherwise
+////////////////////////////////////////////////////////////////////////////////
+
+        bool simplify (ExecutionPlan*);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pairs, consisting of variable and sort direction
+/// (true = ascending | false = descending)
+////////////////////////////////////////////////////////////////////////////////
+
+        SortElementVector _elements;
+
+////////////////////////////////////////////////////////////////////////////////
+/// whether or not the sort is stable
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _stable;
+    };
+
+  }   // namespace triagens::aql
+}  // namespace triagens
+
+#endif
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:
+
+

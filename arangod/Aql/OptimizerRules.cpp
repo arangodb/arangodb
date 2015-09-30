@@ -34,6 +34,7 @@
 #include "Aql/Function.h"
 #include "Aql/IndexRangeNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/SortNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 

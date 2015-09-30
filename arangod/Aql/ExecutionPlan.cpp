@@ -37,6 +37,7 @@
 #include "Aql/NodeFinder.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
+#include "Aql/SortNode.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/JsonHelper.h"

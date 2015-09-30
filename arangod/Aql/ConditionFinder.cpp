@@ -29,6 +29,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexNode.h"
 #include "Aql/SortCondition.h"
+#include "Aql/SortNode.h"
 
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
