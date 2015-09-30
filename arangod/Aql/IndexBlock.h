@@ -32,6 +32,8 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/IndexNode.h"
+#include "Aql/RangeInfo.h"
 #include "Utils/AqlTransaction.h"
 #include "VocBase/shaped-json.h"
 

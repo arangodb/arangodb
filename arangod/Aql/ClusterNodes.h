@@ -30,16 +30,10 @@
 
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
-//#include "Aql/Collection.h"
-//#include "Aql/Condition.h"
-//#include "Aql/Expression.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
-//#include "Aql/types.h"
 #include "Aql/Variable.h"
-//#include "Aql/WalkerWorker.h"
 #include "Basics/JsonHelper.h"
-//#include "lib/Basics/json-utilities.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

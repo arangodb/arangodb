@@ -27,6 +27,7 @@
 
 #include "Aql/ConditionFinder.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/IndexNode.h"
 #include "Aql/SortCondition.h"
 
 using namespace triagens::aql;

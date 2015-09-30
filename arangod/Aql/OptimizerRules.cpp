@@ -32,6 +32,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
+#include "Aql/IndexRangeNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 
