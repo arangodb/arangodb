@@ -211,11 +211,12 @@
     res.transformations = [ "base64decode" ];
     var mount = validateMount(req);
     var app = FoxxManager.lookupApp(mount);
-    if (app.hasOwnProperty("thumbnail")) {
+    if (app.hasOwnProperty("thumbnail") && app.thumbnail !== null) {
       res.body = app.thumbnail;
     } else {
       res.body = defaultThumb;
     }
+
     // evil mimetype detection attempt...
     var start = require("internal").base64Decode(res.body.substr(0, 8));
     if (start.indexOf("PNG") !== -1) {

@@ -319,6 +319,13 @@ win32.relative = function(from, to) {
 
 
 win32._makeLong = function(path) {
+  return path;
+  // UNC path building is currently deactivated. 
+  // The reason is that the internal file access functions cannot handle
+  // UNC names at all. They would need to be changed to use the special 
+  // Windows wide-char file system function variants.
+ 
+/* 
   // Note: this will *probably* throw somewhere.
   if (typeof path !== 'string')
     return path;
@@ -340,6 +347,7 @@ win32._makeLong = function(path) {
   }
 
   return path;
+*/
 };
 
 

@@ -234,7 +234,8 @@ Module._findPath = function(request, paths) {
     paths = [''];
   }
 
-  var trailingSlash = (request.slice(-1) === '/');
+  var s = request.slice(-1);
+  var trailingSlash = (s === '/' || s === '\\');
 
   var cacheKey = JSON.stringify({request: request, paths: paths});
   if (Module._pathCache[cacheKey]) {
@@ -297,7 +298,7 @@ Module._nodeModulePaths = function(from) {
   // note: this approach *only* works when the path is guaranteed
   // to be absolute.  Doing a fully-edge-case-correct path.split
   // that works on both Windows and Posix is non-trivial.
-  var splitRe = internal.platform === 'win32' ? /[\/\\]/ : /\//;
+  var splitRe = (internal.platform === 'win32' || internal.platform === 'win64') ? /[\/\\]/ : /\//;
   var paths = [];
   var parts = from.split(splitRe);
 
@@ -390,7 +391,7 @@ Module._load = function(request, parent, isMain) {
   var filename = request;
   var dbModule = false;
   var match = request.match(/^\/?db:(\/(\/_modules)?)?(\/.+)/);
-
+  
   if (match) {
     dbModule = Module._resolveDbModule(match[3]);
     if (!dbModule) {
@@ -456,6 +457,7 @@ Module._resolveFilename = function(request, parent) {
   var resolvedModule = Module._resolveLookupPaths(request, parent);
   var id = resolvedModule[0];
   var paths = resolvedModule[1];
+	
 
   // look up the filename first, since that's the cache key.
   var filename = Module._findPath(request, paths);
