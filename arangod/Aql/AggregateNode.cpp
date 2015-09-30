@@ -55,7 +55,8 @@ AggregateNode::AggregateNode (ExecutionPlan* plan,
     _keepVariables(keepVariables),
     _variableMap(variableMap),
     _count(count),
-    _isDistinctCommand(isDistinctCommand) {
+    _isDistinctCommand(isDistinctCommand),
+    _specialized(false) {
 
 }
 

@@ -1200,7 +1200,7 @@ void Ast::injectBindParameters (BindParameters& parameters) {
 
         for (auto const& it : _writeCollections) {
           if (it->type == NODE_TYPE_PARAMETER &&
-              ::strcmp(param, it->getStringValue()) == 0) {
+              strcmp(param, it->getStringValue()) == 0) {
             isWriteCollection = true;
             break;
           }
@@ -1216,7 +1216,7 @@ void Ast::injectBindParameters (BindParameters& parameters) {
           // must update AST info now for all nodes that contained this parameter
           for (size_t i = 0; i < _writeCollections.size(); ++i) {
             if (_writeCollections[i]->type == NODE_TYPE_PARAMETER &&
-                ::strcmp(param, _writeCollections[i]->getStringValue()) == 0) {
+                strcmp(param, _writeCollections[i]->getStringValue()) == 0) {
               _writeCollections[i] = node;
               // no break here. replace all occurrences
             }

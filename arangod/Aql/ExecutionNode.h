@@ -331,7 +331,7 @@ namespace triagens {
                ++it) {
             if (*it == ep) {
               try {
-                _dependencies.erase(it);
+                it = _dependencies.erase(it);
               }
               catch (...) {
                 return false;
