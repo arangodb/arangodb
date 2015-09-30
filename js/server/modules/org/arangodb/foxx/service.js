@@ -400,9 +400,6 @@ class FoxxService {
   }
 
   get collectionPrefix() {
-    if (this.isSystem) {
-      return '';
-    }
     return this.mount.substr(1).replace(/[-.:/]/g, '_') + '_';
   }
 
