@@ -67,7 +67,7 @@ IndexBlock::IndexBlock (ExecutionEngine* engine,
     _indexes(en->getIndexes()),
     _iterator(nullptr),
     _condition(en->_condition->getConditions()),
-    _freeCondition(true),
+    _freeCondition(false),
     _hasV8Expression(false) {
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
