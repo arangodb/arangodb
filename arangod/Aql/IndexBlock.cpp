@@ -67,7 +67,7 @@ IndexBlock::IndexBlock (ExecutionEngine* engine,
     _indexes(en->getIndexes()),
     _anyBoundVariable(false),
     _iterator(nullptr),
-    _condition(en->_condition->getConditions()),
+    _condition(en->_condition->root()),
     _freeCondition(false),
     _hasV8Expression(false) {
 

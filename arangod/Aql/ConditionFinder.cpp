@@ -101,14 +101,14 @@ bool ConditionFinder::before (ExecutionNode* en) {
 
       _variableDefinitions.emplace(outvars[0]->id, static_cast<CalculationNode const*>(en)->expression()->node());
       
-      if (_condition == nullptr) {
-        // did not have any expression before. now save what we found
-        _condition = new Condition(_plan->getAst());
-      }
-
       if (_filters.find(outvars[0]->id) != _filters.end()) {
         // a variable used in a FILTER
         auto expressionNode = static_cast<CalculationNode const*>(en)->expression()->node();
+        
+        if (_condition == nullptr) {
+          // did not have any expression before. now save what we found
+          _condition = new Condition(_plan->getAst());
+        }
 
         TRI_ASSERT(_condition != nullptr);
         _condition->andCombine(expressionNode);

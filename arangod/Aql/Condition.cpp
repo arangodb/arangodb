@@ -83,6 +83,7 @@ void ConditionPart::dump () const {
 // -----------------------------------------------------------------------------
 // --SECTION--                                            static helper function
 // -----------------------------------------------------------------------------
+
 static void dumpNode (AstNode const* node, int indent) {
   if (node == nullptr) {
     return;
@@ -351,7 +352,6 @@ ConditionPart::ConditionPartCompareResult ConditionPart::ResultsTable[3][7][7] =
 };
 
 void Condition::optimize (ExecutionPlan* plan) {
-
 //  normalize();
   typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
   typedef std::unordered_map<std::string, UsagePositionType> AttributeUsageType;
@@ -389,9 +389,13 @@ void Condition::optimize (ExecutionPlan* plan) {
       }
     }
   };
-  
+ 
+  if (_root == nullptr) {
+    return;
+  } 
 
-  TRI_ASSERT(_root != nullptr && _root->type == NODE_TYPE_OPERATOR_NARY_OR);
+  TRI_ASSERT(_root != nullptr);
+  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
   // handle sub nodes or top-level OR node
   size_t const n = _root->numMembers();
@@ -509,11 +513,6 @@ void Condition::optimize (ExecutionPlan* plan) {
     }
   }
 
-}
-
-AstNode* Condition::getConditions () const {
-  return _root;
-  // return _ast->clone(_root);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
