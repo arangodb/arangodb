@@ -29,11 +29,12 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/BasicBlocks.cpp \
 	arangod/Aql/BindParameters.cpp \
 	arangod/Aql/CalculationBlock.cpp \
+	arangod/Aql/ClusterBlocks.cpp \
+	arangod/Aql/ClusterNodes.cpp \
 	arangod/Aql/Collection.cpp \
 	arangod/Aql/CollectionScanner.cpp \
 	arangod/Aql/Condition.cpp \
 	arangod/Aql/ConditionFinder.cpp \
-	arangod/Aql/ClusterBlocks.cpp \
 	arangod/Aql/EnumerateCollectionBlock.cpp \
 	arangod/Aql/EnumerateListBlock.cpp \
 	arangod/Aql/ExecutionBlock.cpp \

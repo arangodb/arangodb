@@ -27,6 +27,7 @@
 
 #include "Aql/OptimizerRules.h"
 #include "Aql/AggregationOptions.h"
+#include "Aql/ClusterNodes.h"
 #include "Aql/ConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"

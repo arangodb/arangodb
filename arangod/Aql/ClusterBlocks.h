@@ -29,6 +29,7 @@
 #define ARANGODB_AQL_CLUSTER_BLOCKS_H 1
 
 #include "Basics/Common.h"
+#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
