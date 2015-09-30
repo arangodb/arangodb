@@ -31,6 +31,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
+#include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
 #include "VocBase/server.h"
@@ -497,6 +498,7 @@ TRI_index_element_t* IndexIterator::next () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexIterator::initCursor () {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform some base checks for an index condition part
