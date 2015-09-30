@@ -907,7 +907,7 @@ void GeoResultsInsertPoint(GeoResults * gr, int slot, double snmd)
                 if(gr->snmd[jj1]>gr->snmd[jj2])
                 {
                     temp=jj1;
-                    jj1=jj2;
+                    // jj1=jj2;
                     jj2=temp;
                 }
                     /* so now jj2 is >= jj1 */

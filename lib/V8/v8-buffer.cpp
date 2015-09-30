@@ -1166,6 +1166,10 @@ static void JS_Copy (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_RANGE_ERROR("sourceEnd out of bounds");
   }
 
+  if (target_data == nullptr || source == nullptr || source->_data == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid pointer value");
+  }
+
   size_t to_copy = MIN(MIN(source_end - source_start,
                            target_length - target_start),
                            source->_length - source_start);

@@ -236,6 +236,8 @@ namespace triagens {
 
             // This might throw, is catched outside
             b._table = new Element* [targetSize];
+            
+            b._nrAlloc = targetSize;
 
 #ifdef __linux__
             if (b._nrAlloc > 1000000) {
@@ -251,10 +253,9 @@ namespace triagens {
               b._table[i] = nullptr;
             }
 
-            b._nrAlloc = targetSize;
-
             if (b._nrUsed > 0) {
               uint64_t const n = b._nrAlloc;
+              TRI_ASSERT(n > 0);
 
               for (uint64_t j = 0; j < oldAlloc; j++) {
                 Element* element = oldTable[j];
