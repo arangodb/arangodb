@@ -34,6 +34,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/JsonHelper.h"
 
 namespace triagens {
   namespace aql {
@@ -145,6 +146,26 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the condition root
+////////////////////////////////////////////////////////////////////////////////
+
+        inline AstNode const* root () const {
+          return _root;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the condition as a Json object
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::Json toJson (TRI_memory_zone_t* zone) const {
+          if (_root == nullptr) {
+            return triagens::basics::Json(triagens::basics::Json::Object);
+          }
+
+          return triagens::basics::Json(zone, _root->toJson(zone, false));
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a sub-condition to the condition

@@ -1504,8 +1504,8 @@ void IndexNode::toJsonHelper (triagens::basics::Json& nodes,
   }
  
   // Now put info about vocbase and cid in there
-  json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->getName()))
+  json("database",    triagens::basics::Json(_vocbase->_name))
+      ("collection",  triagens::basics::Json(_collection->getName()))
       ("outVariable", _outVariable->toJson());
 
   triagens::basics::Json indexes(triagens::basics::Json::Array, _indexes.size());
@@ -1514,6 +1514,13 @@ void IndexNode::toJsonHelper (triagens::basics::Json& nodes,
   }
  
   json("indexes", indexes); 
+
+  if (_condition != nullptr) {
+    json("condition", _condition->toJson(TRI_UNKNOWN_MEM_ZONE)); 
+  }
+  else {
+    json("condition", triagens::basics::Json(triagens::basics::Json::Object));
+  }
 
   // And add it:
   nodes(json);
@@ -1554,12 +1561,15 @@ IndexNode::IndexNode (ExecutionPlan* plan,
   TRI_ASSERT(TRI_IsArrayJson(indexes));
   size_t length = TRI_LengthArrayJson(indexes);
   _indexes.reserve(length);
+
   for (size_t i = 0; i < length; ++i) {
     auto iid  = JsonHelper::checkAndGetStringValue(TRI_LookupArrayJson(indexes, i), "id");
     auto index = _collection->getIndex(iid);
+
     if (index == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index not found");
     }
+
     _indexes.emplace_back(index);
   }
 }

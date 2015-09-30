@@ -311,7 +311,7 @@ namespace triagens {
                             bool) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a JSON representation of the node to the JSON list specified
+/// @brief adds a JSON representation of the node to the JSON array specified
 /// in the first argument
 ////////////////////////////////////////////////////////////////////////////////
 
