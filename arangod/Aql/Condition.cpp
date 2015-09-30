@@ -463,7 +463,7 @@ void Condition::optimize (ExecutionPlan* plan) {
             switch (res) {
             case CompareResult::IMPOSSIBLE: /// geht weg
               std::cout << "IMPOSSIBLE WHERE\n";
-              j = positions.size(); 
+              //j = positions.size(); 
               // we remove this one, so fast forward the loops to their end:
               /// TODO: does an empty _root imply false?
               /// or do we need to replace this and node by a false node?
