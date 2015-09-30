@@ -29,6 +29,7 @@
 
 #include "Aql/ExecutionEngine.h"
 #include "Aql/AggregateBlock.h"
+#include "Aql/AggregateNode.h"
 #include "Aql/AggregationOptions.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/CalculationBlock.h"

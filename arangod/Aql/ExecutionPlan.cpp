@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionPlan.h"
+#include "Aql/AggregateNode.h"
 #include "Aql/AggregationOptions.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"

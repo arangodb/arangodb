@@ -41,6 +41,7 @@
 namespace triagens {
   namespace aql {
 
+    class AggregateNode;
     class Ast;
     struct AstNode;
     class CalculationNode;

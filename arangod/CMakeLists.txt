@@ -61,6 +61,7 @@ add_executable(
     ApplicationServer/ApplicationFeature.cpp
     ApplicationServer/ApplicationServer.cpp
     Aql/AggregateBlock.cpp
+    Aql/AggregateNode.cpp
     Aql/AggregationOptions.cpp
     Aql/AqlItemBlock.cpp
     Aql/AqlItemBlockManager.cpp
