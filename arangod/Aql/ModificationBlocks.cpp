@@ -25,7 +25,7 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ModificationBlock.h"
+#include "Aql/ModificationBlocks.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"

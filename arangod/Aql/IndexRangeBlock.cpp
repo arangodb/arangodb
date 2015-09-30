@@ -25,7 +25,7 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/IndexRangeBlock.h"
+#include "IndexRangeBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
 #include "Basics/ScopeGuard.h"

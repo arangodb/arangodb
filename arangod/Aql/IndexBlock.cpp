@@ -26,7 +26,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/IndexBlock.h"
+#include "IndexBlock.h"
+#include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
 #include "Basics/ScopeGuard.h"

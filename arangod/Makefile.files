@@ -51,7 +51,8 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/IndexNode.cpp \
 	arangod/Aql/IndexRangeBlock.cpp \
 	arangod/Aql/IndexRangeNode.cpp \
-	arangod/Aql/ModificationBlock.cpp \
+	arangod/Aql/ModificationBlocks.cpp \
+	arangod/Aql/ModificationNodes.cpp \
 	arangod/Aql/NodeFinder.cpp \
 	arangod/Aql/Optimizer.cpp \
 	arangod/Aql/OptimizerRules.cpp \

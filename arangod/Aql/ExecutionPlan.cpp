@@ -27,12 +27,13 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ExecutionPlan.h"
+#include "ExecutionPlan.h"
 #include "Aql/AggregationOptions.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
+#include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"

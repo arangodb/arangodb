@@ -92,7 +92,8 @@ add_executable(
     Aql/IndexNode.cpp
     Aql/IndexRangeBlock.cpp
     Aql/IndexRangeNode.cpp
-    Aql/ModificationBlock.cpp
+    Aql/ModificationBlocks.cpp
+    Aql/ModificationNodes.cpp
     Aql/NodeFinder.cpp
     Aql/Optimizer.cpp
     Aql/OptimizerRules.cpp

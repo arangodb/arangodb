@@ -40,7 +40,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexBlock.h"
 #include "Aql/IndexRangeBlock.h"
-#include "Aql/ModificationBlock.h"
+#include "Aql/ModificationBlocks.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortBlock.h"
 #include "Aql/SubqueryBlock.h"
