@@ -1514,7 +1514,6 @@ void IndexNode::toJsonHelper (triagens::basics::Json& nodes,
   }
  
   json("indexes", indexes); 
-  json("reverse", triagens::basics::Json(_reverse));
 
   // And add it:
   nodes(json);
@@ -1530,7 +1529,7 @@ ExecutionNode* IndexNode::clone (ExecutionPlan* plan,
   }
 
   auto c = new IndexNode(plan, _id, _vocbase, _collection, 
-                         outVariable, _indexes, _condition, _reverse);
+                         outVariable, _indexes, _condition);
 
   cloneHelper(c, plan, withDependencies, withProperties);
 
@@ -1548,9 +1547,7 @@ IndexNode::IndexNode (ExecutionPlan* plan,
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), "collection"))),
     _outVariable(varFromJson(plan->getAst(), json, "outVariable")),
     _indexes(),
-    _condition(nullptr), 
-    _reverse(false) {
-
+    _condition(nullptr) { 
 
   auto indexes = JsonHelper::checkAndGetObjectValue(json.json(), "indexes");
 
@@ -1563,9 +1560,8 @@ IndexNode::IndexNode (ExecutionPlan* plan,
     if (index == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index not found");
     }
-    _indexes.push_back(index);
+    _indexes.emplace_back(index);
   }
-  _reverse = JsonHelper::checkAndGetBooleanValue(json.json(), "reverse");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

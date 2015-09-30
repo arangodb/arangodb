@@ -1196,15 +1196,13 @@ namespace triagens {
                    Collection const* collection,
                    Variable const* outVariable,
                    std::vector<Index const*> indexes,
-                   Condition const* condition,
-                   bool reverse)
+                   Condition const* condition)
           : ExecutionNode(plan, id), 
             _vocbase(vocbase), 
             _collection(collection),
             _outVariable(outVariable),
             _indexes(indexes),
-            _condition(condition),
-            _reverse(reverse) {
+            _condition(condition) {
           
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);
@@ -1292,14 +1290,6 @@ namespace triagens {
         double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a reverse index traversal is used
-////////////////////////////////////////////////////////////////////////////////
-
-        void reverse (bool value) {
-          _reverse = value;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getIndexes, hand out the indexes used
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1343,11 +1333,6 @@ namespace triagens {
                    
         Condition const* _condition;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use a reverse index scan
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _reverse;
     };
 
 ////////////////////////////////////////////////////////////////////////////////

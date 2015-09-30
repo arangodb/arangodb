@@ -143,11 +143,10 @@ bool ConditionFinder::before (ExecutionNode* en) {
           node->collection(), 
           node->outVariable(), 
           usedIndexes, 
-          _condition,
-          false
+          _condition
         ));
 
-        // We handed over the condition to the new IndexNode
+        // We handed over the condition to the created IndexNode
         _shouldFreeCondition = false;
 
         // We keep this nodes change
