@@ -737,6 +737,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           else {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
           }
+
+          if (remoteNode == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+          }
           
           auto&& shardIds = collection->shardIds();
 

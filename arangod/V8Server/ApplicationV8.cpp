@@ -568,7 +568,7 @@ void ApplicationV8::collectGarbage () {
   // can be performed more early for all dirty contexts. The flag is set
   // to false again once all contexts have been cleaned up and there is nothing
   // more to do
-  bool useReducedWait = false;
+  volatile bool useReducedWait = false;
 
   // the time we'll wait for a signal
   uint64_t const regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);

@@ -1125,6 +1125,7 @@ namespace triagens {
           IndexType oldAlloc = b._nrAlloc;
 
           b._nrAlloc = static_cast<IndexType>(TRI_NearPrime(static_cast<uint64_t>(size)));
+
           try {
             b._table = new EntryType[b._nrAlloc];
 #ifdef __linux__
