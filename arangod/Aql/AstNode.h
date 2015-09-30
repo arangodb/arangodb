@@ -35,7 +35,6 @@
 #include "Basics/json.h"
 #include "Basics/vector.h"
 #include "Basics/JsonHelper.h"
-#include "Aql/Query.h"
 
 namespace triagens {
   namespace basics {

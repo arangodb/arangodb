@@ -197,48 +197,54 @@ bool Condition::findIndexForAndNode (AstNode const* node,
                                      SortCondition const& sortCondition) {
   // We can only iterate through a proper DNF
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
+  
+  static double const MaxFilterCost = 2.0;
+  static double const MaxSortCost   = 2.0;
 
   // This code is never responsible for the content of this pointer.
   Index const* bestIndex = nullptr;
+  double bestCost        = MaxFilterCost + MaxSortCost + std::numeric_limits<double>::epsilon(); 
 
-  static double const MaxFilterCost = 10.0;
-  static double const MaxSortCost   = 10.0;
-
-  double bestCost = -1.0; // All costs are > 0, so if we have found one we can use it.
   std::vector<Index const*> indexes = colNode->collection()->getIndexes();
 
   for (auto& idx : indexes) {
-    double totalCost = 0.0;
-    double estimatedCost = 0.0;
+    double filterCost = 0.0;
+    double sortCost   = 0.0;
     
-    std::cout << "CHECKING INDEX : " << triagens::basics::JsonHelper::toString(idx->getInternals()->toJson(TRI_UNKNOWN_MEM_ZONE, false).json()) << "\n";
-
     // check if the index supports the filter expression
+    double estimatedCost;
     if (idx->supportsFilterCondition(node, reference, estimatedCost)) {
-      std::cout << "- INDEX SUPPORTS FILTER CONDITION\n";
-      // index supports the filter expression
-      totalCost += estimatedCost;
+      // index supports the filter condition
+      filterCost = estimatedCost;
     }
     else {
-      std::cout << "- INDEX DOES NOT SUPPORT FILTER CONDITION\n";
-      totalCost += MaxFilterCost;
+      // index does not support the filter condition
+      filterCost = MaxFilterCost;
     }
-
 
     if (! sortCondition.isEmpty() &&
-        sortCondition.isOnlyAttributeAccess()) {
+        sortCondition.isOnlyAttributeAccess() &&
+        sortCondition.isUnidirectional()) {
+      // only go in here if we actually have a sort condition and it can in
+      // general be supported by an index. for this, a sort condition must not
+      // be empty, must consist only of attribute access, and all attributes
+      // must be sorted in the direction
+      double estimatedCost;
       if (idx->isSorted() &&
           idx->supportsSortCondition(&sortCondition, reference, estimatedCost)) {
-        std::cout << "- INDEX SUPPORTS SORT CONDITION\n";
-        totalCost += estimatedCost;
+        // index supports the sort condition
+        sortCost = estimatedCost;
       }
       else {
-        std::cout << "- INDEX DOES NOT SUPPORT SORT CONDITION\n";
-        totalCost += MaxSortCost;
+        // index does not support the sort condition
+        sortCost = MaxSortCost;
       }
     }
 
-    if (bestCost < totalCost) {
+    // std::cout << "INDEX: " << triagens::basics::JsonHelper::toString(idx->getInternals()->toJson(TRI_UNKNOWN_MEM_ZONE, false).json()) << ", FILTER COST: " << filterCost << ", SORT COST: " << sortCost << "\n";
+    double const totalCost = filterCost + sortCost;
+
+    if (totalCost < bestCost) {
       bestIndex = idx;
       bestCost = totalCost;
     }
@@ -248,8 +254,6 @@ bool Condition::findIndexForAndNode (AstNode const* node,
     return false;
   }
 
-  std::cout << "We can use indexes for var: " << reference->name << " in collection " << colNode->collection()->getName() << ":" << std::endl;
-  std::cout << "We use: " << bestIndex->toJson() << std::endl;
   usedIndexes.emplace_back(bestIndex);
 
   return true;

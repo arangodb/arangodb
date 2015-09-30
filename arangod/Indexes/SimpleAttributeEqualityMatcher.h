@@ -34,6 +34,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "Basics/AttributeNameParser.h"
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 
@@ -52,7 +53,7 @@ namespace triagens {
 
       public:
 
-        SimpleAttributeEqualityMatcher (std::vector<std::vector<std::string>> const& attributes)
+        SimpleAttributeEqualityMatcher (std::vector<std::vector<triagens::basics::AttributeName>> const& attributes)
           : _attributes(attributes) {
         }
          
@@ -64,6 +65,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief match a single of the attributes
+/// this is used for the primary index and the edge index
 ////////////////////////////////////////////////////////////////////////////////
         
         inline bool matchOne (triagens::arango::Index const* index,
@@ -71,29 +73,34 @@ namespace triagens {
                               triagens::aql::Variable const* reference,
                               double& estimatedCost) const {
           std::unordered_set<size_t> found;
-
+                    
           for (size_t i = 0; i < node->numMembers(); ++i) {
             auto op = node->getMember(i);
+
             if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
               TRI_ASSERT(op->numMembers() == 2);
-              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), reference, found) ||
-                  accessFitsIndex(index, op->getMember(1), op->getMember(0), reference, found)) {
-                return true;
+              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, found) ||
+                  accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference, found)) {
+                // we can use the index
+                return indexCosts(index, estimatedCost);
               }
             }
             else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
               TRI_ASSERT(op->numMembers() == 2);
-              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), reference, found)) {
-                return true;
+              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, found)) {
+                // we can use the index
+                return indexCosts(index, estimatedCost) * op->getMember(1)->numMembers();
               }
             }
           }
 
+          estimatedCost = 1.0; // set to highest possible cost by default
           return false;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief match all of the attributes, in any order
+/// this is used for the hash index
 ////////////////////////////////////////////////////////////////////////////////
         
         inline bool matchAll (triagens::arango::Index const* index,
@@ -101,25 +108,43 @@ namespace triagens {
                               triagens::aql::Variable const* reference,
                               double& estimatedCost) const {
           std::unordered_set<size_t> found;
+          size_t values = 0;
 
           for (size_t i = 0; i < node->numMembers(); ++i) {
             auto op = node->getMember(i);
+
             if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
               TRI_ASSERT(op->numMembers() == 2);
-              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), reference, found) ||
-                  accessFitsIndex(index, op->getMember(1), op->getMember(0), reference, found)) {
-               break;
+              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, found) ||
+                  accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference, found)) {
+                if (found.size() == _attributes.size()) {
+                  // got enough attributes
+                  break;
+                }
               }
             }
             else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
               TRI_ASSERT(op->numMembers() == 2);
-              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), reference, found)) {
-                break;
+              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, found)) {
+                values += op->getMember(1)->numMembers();
+                if (found.size() == _attributes.size()) {
+                  // got enough attributes
+                  break;
+                }
               }
             }
           }
 
-          return (found.size() == _attributes.size());
+          if (found.size() == _attributes.size()) {
+            // can only use this index if all index attributes are covered by the condition
+            if (values == 0) {
+              values = 1;
+            }
+            return indexCosts(index, estimatedCost) / static_cast<double>(index->fields().size()) * static_cast<double>(values);
+          }
+
+          estimatedCost = 1.0; // set to highest possible cost by default
+          return false;
         }
 
 // -----------------------------------------------------------------------------
@@ -129,34 +154,40 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the costs of using this index
+/// costs returned are scaled from 0.0 to 1.0, with 0.0 being the lowest cost
+////////////////////////////////////////////////////////////////////////////////
+
+        bool indexCosts (triagens::arango::Index const* index,
+                         double& estimatedCost) const {
+          if (index->unique()) {
+            // index is unique, and the condition covers all attributes
+            // now use a low value for the costs
+            estimatedCost = std::numeric_limits<double>::epsilon();
+          }
+          else if (index->hasSelectivityEstimate()) {
+            // use index selectivity estimate
+            estimatedCost = 1.0 - index->selectivityEstimate(); 
+          }
+          else {
+            // set to highest possible cost by default
+            estimatedCost = 1.0; 
+          }
+          // can use this index
+          return true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the access fits
 ////////////////////////////////////////////////////////////////////////////////
 
         bool accessFitsIndex (triagens::arango::Index const* index,
                               triagens::aql::AstNode const* access,
                               triagens::aql::AstNode const* other,
+                              triagens::aql::AstNode const* op,
                               triagens::aql::Variable const* reference,
                               std::unordered_set<size_t>& found) const {
-          if (index->type() == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX || 
-              index->type() == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-            auto pathBasedIndex = static_cast<triagens::arango::PathBasedIndex const*>(index);
-            bool const sparse = pathBasedIndex->sparse();
-
-            if (sparse) {
-              if (! other->isConstant()) {
-                return false;
-              }
-              if (other->isNullValue()) {
-                return false;
-              }
-            }
-          }
-
-          // test if the reference variable is contained on both side of the expression
-          std::unordered_set<aql::Variable const*> variables;
-          triagens::aql::Ast::getReferencedVariables(other, variables);
-          if (variables.find(reference) != variables.end()) {
-            // yes. then we cannot use an index here
+          if (! index->canUseConditionPart(access, other, op, reference)) {
             return false;
           }
 
@@ -187,7 +218,8 @@ namespace triagens {
 
             bool match = true;
             for (size_t j = 0; j < _attributes[i].size(); ++j) {
-              if (_attributes[i][j] != fieldNames[j]) {
+              if (_attributes[i][j].shouldExpand ||
+                  _attributes[i][j].name != fieldNames[j]) {
                 match = false;
                 break;
               }
@@ -213,7 +245,7 @@ namespace triagens {
 /// @brief array of attributes used for comparisons
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::vector<std::string>> _attributes;
+        std::vector<std::vector<triagens::basics::AttributeName>> _attributes;
 
     };
                

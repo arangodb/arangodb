@@ -36,7 +36,6 @@
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 #include "Indexes/Index.h"
-#include "Indexes/PathBasedIndex.h"
 
 namespace triagens {
   namespace aql {
@@ -69,9 +68,8 @@ namespace triagens {
         }
         else if (type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX ||
                  type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-          auto pathBasedIndex = static_cast<triagens::arango::PathBasedIndex const*>(idx);
-          sparse = pathBasedIndex->sparse();
-          unique = pathBasedIndex->unique();
+          sparse = idx->sparse();
+          unique = idx->unique();
         }
       }
       

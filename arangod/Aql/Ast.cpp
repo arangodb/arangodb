@@ -31,6 +31,7 @@
 #include "Aql/Arithmetic.h"
 #include "Aql/Collection.h"
 #include "Aql/Executor.h"
+#include "Aql/Query.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/collection.h"

@@ -28,6 +28,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Index.h"
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
@@ -46,10 +48,14 @@ using namespace triagens::arango;
 
 Index::Index (TRI_idx_iid_t iid,
               TRI_document_collection_t* collection,
-              std::vector<std::vector<triagens::basics::AttributeName>> const& fields) 
+              std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+              bool unique,
+              bool sparse) 
   : _iid(iid),
     _collection(collection),
-    _fields(fields) {
+    _fields(fields),
+    _unique(unique),
+    _sparse(sparse) {
 }
 
 Index::~Index () {
@@ -431,6 +437,7 @@ bool Index::hasBatchInsert () const {
 bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
                                      triagens::aql::Variable const* reference,
                                      double& estimatedCost) const {
+  // by default, no filter conditions are supported
   estimatedCost = 0.0;
   return false;
 }
@@ -441,7 +448,8 @@ bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
 
 bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondition,
                                    triagens::aql::Variable const* reference,
-                                   double& estimatedCost) const {
+                                   double& estimatedCost) const { 
+  // by default, no sort conditions are supported
   estimatedCost = 0.0;
   return false;
 }
@@ -489,6 +497,44 @@ TRI_index_element_t* IndexIterator::next () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexIterator::initCursor () {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform some base checks for an index condition part
+////////////////////////////////////////////////////////////////////////////////
+        
+bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
+                                 triagens::aql::AstNode const* other,
+                                 triagens::aql::AstNode const* op,
+                                 triagens::aql::Variable const* reference) const {
+  if (_sparse) {
+    if (! other->isConstant()) {
+      return false;
+    }
+
+    if (other->isNullValue()) {
+      return false;
+    }
+
+    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+        other->type == triagens::aql::NODE_TYPE_ARRAY) {
+      size_t const n = other->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        if (other->getMemberUnchecked(i)->isNullValue()) {
+          return false;
+        }
+      }
+    }
+  }
+
+  // test if the reference variable is contained on both side of the expression
+  std::unordered_set<aql::Variable const*> variables;
+  triagens::aql::Ast::getReferencedVariables(other, variables);
+  if (variables.find(reference) != variables.end()) {
+    // yes. then we cannot use an index here
+    return false;
+  }
+
+  return true;
 }
 
 namespace triagens {

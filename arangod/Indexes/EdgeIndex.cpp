@@ -336,7 +336,7 @@ static bool IsEqualElementEdgeToByKey (void const* left,
 
 EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                       TRI_document_collection_t* collection) 
-  : Index(iid, collection, std::vector<std::vector<triagens::basics::AttributeName>>({ { { TRI_VOC_ATTRIBUTE_FROM, false } }, { { TRI_VOC_ATTRIBUTE_TO , false } } })),
+  : Index(iid, collection, std::vector<std::vector<triagens::basics::AttributeName>>({ { { TRI_VOC_ATTRIBUTE_FROM, false } }, { { TRI_VOC_ATTRIBUTE_TO , false } } }), false, false),
     _edgesFrom(nullptr),
     _edgesTo(nullptr),
     _numBuckets(1) {
@@ -546,7 +546,10 @@ int EdgeIndex::sizeHint (size_t size) {
 bool EdgeIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
                                          triagens::aql::Variable const* reference,
                                          double& estimatedCost) const {
-  SimpleAttributeEqualityMatcher matcher({ { TRI_VOC_ATTRIBUTE_FROM }, { TRI_VOC_ATTRIBUTE_TO } });
+  SimpleAttributeEqualityMatcher matcher({ 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false) }, 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false) } 
+  });
   return matcher.matchOne(this, node, reference, estimatedCost);
 }
 

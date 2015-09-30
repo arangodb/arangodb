@@ -31,6 +31,7 @@
 #define ARANGODB_INDEXES_SKIPLIST_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Aql/AstNode.h"
 #include "Basics/SkipList.h"
 #include "Indexes/PathBasedIndex.h"
 #include "IndexOperators/index-operator.h"
@@ -50,6 +51,7 @@ TRI_skiplist_index_key_t;
 namespace triagens {
   namespace aql {
     class SortCondition;
+    struct Variable;
   }
 
   namespace arango {
@@ -236,7 +238,7 @@ namespace triagens {
         }
         
         bool isSorted () const override final {
-          return false;
+          return true;
         }
 
         bool hasSelectivityEstimate () const override final {
@@ -284,8 +286,10 @@ namespace triagens {
                        TRI_index_element_t const* rightElement);
 
         bool accessFitsIndex (triagens::aql::AstNode const*,
+                              triagens::aql::AstNode const*,
+                              triagens::aql::AstNode const*,
                               triagens::aql::Variable const*,
-                              std::unordered_set<std::string>&) const;
+                              std::unordered_map<size_t, std::vector<triagens::aql::AstNodeType>>&) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

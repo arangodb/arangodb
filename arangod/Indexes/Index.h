@@ -187,7 +187,9 @@ namespace triagens {
 
         Index (TRI_idx_iid_t,
                struct TRI_document_collection_t*,
-               std::vector<std::vector<triagens::basics::AttributeName> >const&);
+               std::vector<std::vector<triagens::basics::AttributeName> >const&,
+               bool unique,
+               bool sparse);
 
         virtual ~Index ();
 
@@ -265,6 +267,22 @@ namespace triagens {
         std::string context () const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the index is sparse
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool sparse () const {
+          return _sparse;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the index is unique
+////////////////////////////////////////////////////////////////////////////////
+        
+        inline bool unique () const {
+          return _unique;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the name of the index
 ////////////////////////////////////////////////////////////////////////////////
         
@@ -312,7 +330,13 @@ namespace triagens {
                              TRI_json_t const* rhs);
 
         virtual IndexType type () const = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the index is sorted
+////////////////////////////////////////////////////////////////////////////////
+
         virtual bool isSorted () const = 0;
+
         virtual bool hasSelectivityEstimate () const = 0;
         virtual double selectivityEstimate () const;
         virtual size_t memory () const = 0;
@@ -343,6 +367,11 @@ namespace triagens {
 
         virtual IndexIterator* iteratorForCondition (triagens::aql::AstNode const*) const;
 
+        bool canUseConditionPart (triagens::aql::AstNode const* access,
+                                  triagens::aql::AstNode const* other,
+                                  triagens::aql::AstNode const* op,
+                                  triagens::aql::Variable const* reference) const;
+
         friend std::ostream& operator<< (std::ostream&, Index const*);
         friend std::ostream& operator<< (std::ostream&, Index const&);
 
@@ -357,6 +386,10 @@ namespace triagens {
         struct TRI_document_collection_t*                                      _collection;
 
         std::vector<std::vector<triagens::basics::AttributeName>> const        _fields;
+
+        bool const                                                             _unique;
+
+        bool const                                                             _sparse;
                
     };
 
