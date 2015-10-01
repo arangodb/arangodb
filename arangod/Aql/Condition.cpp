@@ -170,6 +170,7 @@ void Condition::andCombine (AstNode const* node) {
 bool Condition::findIndexes (EnumerateCollectionNode const* node, 
                              std::vector<Index const*>& usedIndexes,
                              SortCondition const& sortCondition) {
+  TRI_ASSERT(usedIndexes.empty());
   // We can only start after DNF transformation
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
@@ -211,12 +212,16 @@ bool Condition::findIndexForAndNode (AstNode const* node,
   for (auto& idx : indexes) {
     double filterCost = 0.0;
     double sortCost   = 0.0;
+
+    bool supportsFilter = false;
+    bool supportsSort   = false;
     
     // check if the index supports the filter expression
     double estimatedCost;
     if (idx->supportsFilterCondition(node, reference, estimatedCost)) {
       // index supports the filter condition
       filterCost = estimatedCost;
+      supportsFilter = true;
     }
     else {
       // index does not support the filter condition
@@ -235,11 +240,16 @@ bool Condition::findIndexForAndNode (AstNode const* node,
           idx->supportsSortCondition(&sortCondition, reference, estimatedCost)) {
         // index supports the sort condition
         sortCost = estimatedCost;
+        supportsSort = true;
       }
       else {
         // index does not support the sort condition
         sortCost = MaxSortCost;
       }
+    }
+
+    if (! supportsFilter && ! supportsSort) {
+      continue;
     }
 
     // std::cout << "INDEX: " << triagens::basics::JsonHelper::toString(idx->getInternals()->toJson(TRI_UNKNOWN_MEM_ZONE, false).json()) << ", FILTER COST: " << filterCost << ", SORT COST: " << sortCost << "\n";
