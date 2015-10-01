@@ -51,6 +51,11 @@ book-check-markdown-leftovers:
 		find books/$(NAME) -name '*.html' -exec grep '\.md"' {} \; -print; \
 		exit 1; \
 	fi
+	@if test "`find books/$(NAME) -name '*.html' -exec grep '\.md#' {} \; -print | wc -l`" -gt 0; then \
+		echo "found dangling markdown links: "; \
+		find books/$(NAME) -name '*.html' -exec grep '\.md#' {} \; -print; \
+		exit 1; \
+	fi
 
 build-book-symlinks:
 	echo "generate backwards compatibility symlinks:"

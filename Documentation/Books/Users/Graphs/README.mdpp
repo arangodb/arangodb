@@ -1,15 +1,15 @@
 !SECTION ArangoDB Graphs
 
 !SUBSECTION General Graphs
-General graphs are completely managed by arangodb, and thus also [visible in the webinterface](../WebInterface/REAOME.md#graphs_tab).
+General graphs are completely managed by arangodb, and thus also [visible in the webinterface](../WebInterface/README.md#graphs-tab).
 They use the ful spectrum of ArangoDBs graph features. You may access them via several interfaces.
 
  - [AQL Graph Operations](../Aql/GraphOperations.md)
  - [the RESTful General Graph interface](../HttpGharial/README.md)
- - [The javascript General Graph implementation, as you may use it in FOXX Services](../General-Graphs/README.md)
-    * [Graph Management](../General-Graphs/Management.md)
-    * [Graph Functions](../General-Graphs/Functions.md)
-    * [Fluent Query Interface](../General-Graphs/FluentAQLInterface.md)
+ - [The javascript General Graph implementation, as you may use it in FOXX Services](../GeneralGraphs/README.md)
+    * [Graph Management](../GeneralGraphs/Management.md)
+    * [Graph Functions](../GeneralGraphs/Functions.md)
+    * [Fluent Query Interface](../GeneralGraphs/FluentAQLInterface.md)
 
 !SUBSECTION Blueprint Graphs
 *Blueprint 2 graphs* are a superset of *general Graphs* (they require vertices to be named). We offer [blueprints support via an api compatible java driver](https://github.com/arangodb/blueprints-arangodb-graph).
@@ -21,7 +21,7 @@ You [may use AQL Graph Functions](../Aql/GraphFunctions.md) that are a little de
 !SUBSECTION Example Graphs
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrace the APIs.
 The module `org/arangodb/graph-examples/example-graph` contains scripts that can be used to create instances of these graphs in your ArangoDB.
-Once you've created them, you can [inspect them in the webinterface](../WebInterface/REAOME.md#graphs_tab) - which was used to create the pictures below.
+Once you've created them, you can [inspect them in the webinterface](../WebInterface/README.md#graphs-tab) - which was used to create the pictures below.
 
 !SUBSUBSECTION The Knows\_Graph
 A set of persons knowing each other:
