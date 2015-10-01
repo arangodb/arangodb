@@ -28,7 +28,7 @@ An edge definition is always a directed relation of a graph. Each graph can have
 **Warning: Deprecated**
 
 This function is deprecated and will be removed soon.
-Please use [Relation](../General-Graphs/Management.html#relation) instead.
+Please use [Relation](../GeneralGraphs/Management.html#relation) instead.
 
 @startDocuBlock JSF_general_graph_undirectedRelation
 
@@ -37,7 +37,7 @@ Please use [Relation](../General-Graphs/Management.html#relation) instead.
 **Warning: Deprecated**
 
 This function is deprecated and will be removed soon.
-Please use [Relation](../General-Graphs/Management.html#relation) instead.
+Please use [Relation](../GeneralGraphs/Management.html#relation) instead.
 
 @startDocuBlock JSF_general_graph_directedRelation
 
