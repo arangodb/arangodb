@@ -905,6 +905,9 @@ def restreplybody(cargo, r=Regexen()):
     else:
         required = False
 
+    if currentReturnCode == 0:
+        raise Exception("failed to add text to reply body: (have to specify the HTTP-code first) " + parameters(last))
+
     rcBlock = currentDocuBlock + '_rc_' +  currentReturnCode
     #if currentReturnCode:
     if restReplyBodyParam == None:
