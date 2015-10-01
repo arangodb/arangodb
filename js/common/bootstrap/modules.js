@@ -372,7 +372,12 @@ Module._resolveDbModule = function (request) {
   if (!dbModule) {
     dbModule = internal.db._modules.firstExample({path: request});
     if (!dbModule) {
-      return null;
+      // try again, but prefix module with '/db' as some modules seem
+      // to have been saved with that prefix...
+      dbModule = internal.db._modules.firstExample({path: '/db:' + request});
+      if (!dbModule) {
+        return null;
+      }
     }
     Module._dbCache[request] = dbModule;
   }

@@ -1,8 +1,5 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
-* POSTing to org/arangodb/actions/echoRequest now returns 202
-
-* loading modules from collections syntax changed from /db:/module to /db://module
 
 * allow Foxx apps to be installed underneath URL path `/_open/`, so they can be
   (intentionally) accessed without authentication. 
