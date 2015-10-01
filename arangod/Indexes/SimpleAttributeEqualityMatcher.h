@@ -153,8 +153,9 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the condition parts that the index is responsible for
+/// this is used for the primary index and the edge index
 /// requires that a previous matchOne() returned true
-/// the caller is responsible for freeing the returned AstNode*
+/// the caller must not free the returned AstNode*, as it belongs to the ast
 ////////////////////////////////////////////////////////////////////////////////
         
         triagens::aql::AstNode* getOne (triagens::aql::Ast* ast,
@@ -169,6 +170,7 @@ namespace triagens {
             if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
                 op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
               TRI_ASSERT(op->numMembers() == 2);
+              // note: accessFitsIndex will increase _found in case of a condition match
               bool matches = accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference);
 
               if (! matches && op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
@@ -185,6 +187,57 @@ namespace triagens {
             }
           }
 
+          TRI_ASSERT(false);
+          return nullptr;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the condition parts that the index is responsible for
+/// this is used for the hash index
+/// requires that a previous matchAll() returned true
+/// the caller must not free the returned AstNode*, as it belongs to the ast
+////////////////////////////////////////////////////////////////////////////////
+        
+        triagens::aql::AstNode* getAll (triagens::aql::Ast* ast,
+                                        triagens::arango::Index const* index,
+                                        triagens::aql::AstNode const* node,
+                                        triagens::aql::Variable const* reference) {
+          _found.clear();
+          std::vector<triagens::aql::AstNode const*> parts;
+
+          for (size_t i = 0; i < node->numMembers(); ++i) {
+            auto op = node->getMember(i);
+
+            if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+                op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+              TRI_ASSERT(op->numMembers() == 2);
+              // note: accessFitsIndex will increase _found in case of a condition match
+              bool matches = accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference);
+
+              if (! matches && op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+                // EQ is symmetric
+                matches = accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference);
+              }
+
+              if (matches) {
+                parts.emplace_back(op);
+
+                if (_found.size() == _attributes.size()) {
+                  // got enough matches
+                  std::unique_ptr<triagens::aql::AstNode> node(ast->createNodeNaryOperator(triagens::aql::NODE_TYPE_OPERATOR_NARY_AND));
+
+                  for (auto& it : parts) {
+                    node->addMember(ast->clone(it));
+                  }
+
+                  // done
+                  return node.release();
+                }
+              }
+            }
+          }
+
+          TRI_ASSERT(false);
           return nullptr;
         }
 

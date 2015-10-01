@@ -300,11 +300,13 @@ ________________________________________________________________________________
 
 Windows debugging
 =================
-For the average *nix user windows debugging has some awkward methods.
+For the average \*nix user windows debugging has some awkward methods.
 
 Coredump generation
 -------------------
-Coredumps can be created using the task manager; switch it to detail view, the context menu offers to *create dump file*; the generated file ends in a directory that explorer hides from you - AppData - you have to type that in the location bar. This however only for running processes which is not as useful as having dumps of crashing processes. While its a common feature to turn on coredumps with the system facilities on *nix systems, its not as easy in windows. You need an external program [from the Sysinternals package: ProcDump](https://technet.microsoft.com/en-us/sysinternals/dd996900.aspx). First look up the PID of arangod, you can finde it in the brackets in the arangodb logfile. Then invoke *procdump* like this:
+Coredumps can be created using the task manager; switch it to detail view, the context menu offers to *create dump file*; the generated file ends in a directory that explorer hides from you - AppData - you have to type that in the location bar.
+This however only for running processes which is not as useful as having dumps of crashing processes. While its a common feature to turn on coredumps with the system facilities on \*nix systems, its not as easy in windows.
+You need an external program [from the Sysinternals package: ProcDump](https://technet.microsoft.com/en-us/sysinternals/dd996900.aspx). First look up the PID of arangod, you can finde it in the brackets in the arangodb logfile. Then invoke *procdump* like this:
 
     procdump -accepteula -e -ma < PID of arangod >
 

@@ -454,60 +454,59 @@ void Condition::optimize (ExecutionPlan* plan) {
             if (! current.valueNode->isConstant() || ! other.valueNode->isConstant()) {
               continue;
             }
+            
+            // Results are -1, 0, 1, move to 0,1,2 for the lookup:
             ConditionPart::ConditionPartCompareResult res = ConditionPart::ResultsTable
-              // Results are -1, 0, 1, move to 0,1,2 for the lookup:
               [CompareAstNodes(current.valueNode, other.valueNode, false) + 1] 
               [current.whichCompareOperation()]
               [other.whichCompareOperation()];
 
             switch (res) {
-            case CompareResult::IMPOSSIBLE: /// geht weg
-              std::cout << "IMPOSSIBLE WHERE\n";
-              //j = positions.size(); 
-              // we remove this one, so fast forward the loops to their end:
-              /// TODO: does an empty _root imply false?
-              /// or do we need to replace this and node by a false node?
-              // while (!it.end()) it++;
-              // while (!it2.end()) it++; TODOx
-              _root->removeMemberUnchecked(i);
-              /// i -= 1; <- wenn wir das ohne goto machen...
-              goto fastForwardToNextOrItem;
-              break;
-            case CompareResult::SELF_CONTAINED_IN_OTHER: /// self kann weg
-              std::cout << "SELF IS CONTAINED IN OTHER\n";
-              andNode->removeMemberUnchecked(positions[0].first);
-              goto restartThisOrItem;
-              break;
-            case CompareResult::OTHER_CONTAINED_IN_SELF: /// other kann weg 
-              std::cout << "OTHER IS CONTAINED IN SELF\n";
-              andNode->removeMemberUnchecked(positions[j].first);
-              goto restartThisOrItem;
-              break;
-            case CompareResult::CONVERT_EQUAL: { /// beide gehen, werden umgeformt zu a == x (== y)
-              andNode->removeMemberUnchecked(positions[j].first);
-              auto origNode = andNode->getMemberUnchecked(positions[0].first);
-              auto newNode = plan->getAst()->createNode(NODE_TYPE_OPERATOR_BINARY_EQ);
-              for (uint32_t iMemb = 0; iMemb < origNode->numMembers(); iMemb++) {
-                newNode->addMember(origNode->getMemberUnchecked(iMemb));
+              case CompareResult::IMPOSSIBLE: {
+                // impossible condition
+                // j = positions.size(); 
+                // we remove this one, so fast forward the loops to their end:
+                _root->removeMemberUnchecked(i);
+                /// i -= 1; <- wenn wir das ohne goto machen...
+                goto fastForwardToNextOrItem;
               }
+              case CompareResult::SELF_CONTAINED_IN_OTHER: {
+                std::cout << "SELF IS CONTAINED IN OTHER\n";
+                andNode->removeMemberUnchecked(positions[0].first);
+                goto restartThisOrItem;
+              }
+              case CompareResult::OTHER_CONTAINED_IN_SELF: { 
+                std::cout << "OTHER IS CONTAINED IN SELF\n";
+                andNode->removeMemberUnchecked(positions[j].first);
+                goto restartThisOrItem;
+              }
+              case CompareResult::CONVERT_EQUAL: { /// beide gehen, werden umgeformt zu a == x (== y)
+                andNode->removeMemberUnchecked(positions[j].first);
+                auto origNode = andNode->getMemberUnchecked(positions[0].first);
+                auto newNode = plan->getAst()->createNode(NODE_TYPE_OPERATOR_BINARY_EQ);
+                for (uint32_t iMemb = 0; iMemb < origNode->numMembers(); iMemb++) {
+                  newNode->addMember(origNode->getMemberUnchecked(iMemb));
+                }
 
-              andNode->changeMember(positions[0].first, newNode);
-              
-              std::cout << "RESULT equals X/Y\n";
-            }
-              break;
-            case CompareResult::DISJOINT: /// beide bleiben
-              std::cout << "DISJOINT\n";
-              break;
-            case CompareResult::UNKNOWN: //// beide bleiben
-              std::cout << "UNKNOWN\n";
-              break;
+                andNode->changeMember(positions[0].first, newNode);
+                std::cout << "RESULT equals X/Y\n";
+                break;
+              }
+              case CompareResult::DISJOINT: {
+                std::cout << "DISJOINT\n";
+                break;
+              }
+              case CompareResult::UNKNOWN: {
+                std::cout << "UNKNOWN\n";
+                break;
+              }
             }
 
             ++j;
           }
         } // cross compare sub-and-nodes
       } // foreach sub-and-node
+
     fastForwardToNextOrItem:
       continue;
     }
@@ -518,7 +517,6 @@ void Condition::optimize (ExecutionPlan* plan) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump a condition
 ////////////////////////////////////////////////////////////////////////////////
-
 
 void Condition::dump () const {
   dumpNode(_root, 0);

@@ -2,7 +2,7 @@
 
 Examples will explain the API on the [knows graph](../Graphs/README.md#the_knows_graph):
 
-![Social Example Graph](../Graphs/relations_graph.png)
+![Social Example Graph](../Graphs/knows_graph.png)
 
 @startDocuBlock JSF_general_graph_edge_create_http_examples
 
