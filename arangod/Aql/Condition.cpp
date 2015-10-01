@@ -385,7 +385,7 @@ void Condition::optimize (ExecutionPlan* plan) {
         dst.erase(dst.begin() + dst.size() - 1);
       }
       else {
-        dst.emplace_back(std::make_pair(position, side));
+        dst.emplace_back(position, side);
       }
     }
   };

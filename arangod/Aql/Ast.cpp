@@ -787,32 +787,6 @@ AstNode* Ast::createNodeBinaryOperator (AstNodeType type,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST n-ary operator node
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::createNodeNaryOperator (AstNodeType type) {
-  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND ||
-             type == NODE_TYPE_OPERATOR_NARY_OR);
-
-  return createNode(type);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST n-ary operator node
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::createNodeNaryOperator (AstNodeType type,
-                                      AstNode const* child) {
-  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND ||
-             type == NODE_TYPE_OPERATOR_NARY_OR);
-
-  AstNode* node = createNode(type);
-  node->addMember(child);
-
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST ternary operator node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1159,6 +1133,32 @@ AstNode* Ast::createNodeRange (AstNode const* start,
 
 AstNode* Ast::createNodeNop () {
   return const_cast<AstNode*>(&NopNode);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST n-ary operator node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeNaryOperator (AstNodeType type) {
+  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND ||
+             type == NODE_TYPE_OPERATOR_NARY_OR);
+
+  return createNode(type);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST n-ary operator node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeNaryOperator (AstNodeType type,
+                                      AstNode const* child) {
+  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND ||
+             type == NODE_TYPE_OPERATOR_NARY_OR);
+
+  AstNode* node = createNode(type);
+  node->addMember(child);
+
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

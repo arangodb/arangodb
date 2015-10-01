@@ -54,7 +54,9 @@ namespace triagens {
       public:
 
         SimpleAttributeEqualityMatcher (std::vector<std::vector<triagens::basics::AttributeName>> const& attributes)
-          : _attributes(attributes) {
+          : _attributes(attributes),
+            _found() {
+
         }
          
 // -----------------------------------------------------------------------------
@@ -68,27 +70,29 @@ namespace triagens {
 /// this is used for the primary index and the edge index
 ////////////////////////////////////////////////////////////////////////////////
         
-        inline bool matchOne (triagens::arango::Index const* index,
-                              triagens::aql::AstNode const* node,
-                              triagens::aql::Variable const* reference,
-                              double& estimatedCost) const {
-          std::unordered_set<size_t> found;
+        bool matchOne (triagens::arango::Index const* index,
+                       triagens::aql::AstNode const* node,
+                       triagens::aql::Variable const* reference,
+                       double& estimatedCost) {
+          _found.clear();
                     
           for (size_t i = 0; i < node->numMembers(); ++i) {
             auto op = node->getMember(i);
 
             if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
               TRI_ASSERT(op->numMembers() == 2);
-              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, found) ||
-                  accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference, found)) {
+              // EQ is symmetric
+              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference) ||
+                  accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference)) {
                 // we can use the index
                 return indexCosts(index, estimatedCost);
               }
             }
             else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
               TRI_ASSERT(op->numMembers() == 2);
-              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, found)) {
+              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference)) {
                 // we can use the index
+                // use slightly different cost calculation for IN that for EQ
                 return indexCosts(index, estimatedCost) * op->getMember(1)->numMembers();
               }
             }
@@ -103,11 +107,11 @@ namespace triagens {
 /// this is used for the hash index
 ////////////////////////////////////////////////////////////////////////////////
         
-        inline bool matchAll (triagens::arango::Index const* index,
-                              triagens::aql::AstNode const* node,
-                              triagens::aql::Variable const* reference,
-                              double& estimatedCost) const {
-          std::unordered_set<size_t> found;
+        bool matchAll (triagens::arango::Index const* index,
+                       triagens::aql::AstNode const* node,
+                       triagens::aql::Variable const* reference,
+                       double& estimatedCost) {
+          _found.clear();
           size_t values = 0;
 
           for (size_t i = 0; i < node->numMembers(); ++i) {
@@ -115,9 +119,9 @@ namespace triagens {
 
             if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
               TRI_ASSERT(op->numMembers() == 2);
-              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, found) ||
-                  accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference, found)) {
-                if (found.size() == _attributes.size()) {
+              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference) ||
+                  accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference)) {
+                if (_found.size() == _attributes.size()) {
                   // got enough attributes
                   break;
                 }
@@ -125,9 +129,9 @@ namespace triagens {
             }
             else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
               TRI_ASSERT(op->numMembers() == 2);
-              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, found)) {
+              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference)) {
                 values += op->getMember(1)->numMembers();
-                if (found.size() == _attributes.size()) {
+                if (_found.size() == _attributes.size()) {
                   // got enough attributes
                   break;
                 }
@@ -135,7 +139,7 @@ namespace triagens {
             }
           }
 
-          if (found.size() == _attributes.size()) {
+          if (_found.size() == _attributes.size()) {
             // can only use this index if all index attributes are covered by the condition
             if (values == 0) {
               values = 1;
@@ -145,6 +149,43 @@ namespace triagens {
 
           estimatedCost = 1.0; // set to highest possible cost by default
           return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the condition parts that the index is responsible for
+/// requires that a previous matchOne() returned true
+/// the caller is responsible for freeing the returned AstNode*
+////////////////////////////////////////////////////////////////////////////////
+        
+        triagens::aql::AstNode* getOne (triagens::aql::Ast* ast,
+                                        triagens::arango::Index const* index,
+                                        triagens::aql::AstNode const* node,
+                                        triagens::aql::Variable const* reference) {
+          _found.clear();
+                    
+          for (size_t i = 0; i < node->numMembers(); ++i) {
+            auto op = node->getMember(i);
+
+            if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+                op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+              TRI_ASSERT(op->numMembers() == 2);
+              bool matches = accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference);
+
+              if (! matches && op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+                matches = accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference);
+              }
+
+              if (matches) {
+                // we can use the index
+                std::unique_ptr<triagens::aql::AstNode> eqNode(ast->clone(op));
+                auto node = ast->createNodeNaryOperator(triagens::aql::NODE_TYPE_OPERATOR_NARY_AND, eqNode.get());
+                eqNode.release();
+                return node;
+              }
+            }
+          }
+
+          return nullptr;
         }
 
 // -----------------------------------------------------------------------------
@@ -185,8 +226,7 @@ namespace triagens {
                               triagens::aql::AstNode const* access,
                               triagens::aql::AstNode const* other,
                               triagens::aql::AstNode const* op,
-                              triagens::aql::Variable const* reference,
-                              std::unordered_set<size_t>& found) const {
+                              triagens::aql::Variable const* reference) {
           if (! index->canUseConditionPart(access, other, op, reference)) {
             return false;
           }
@@ -227,7 +267,7 @@ namespace triagens {
 
             if (match) {
               // mark ith attribute as being covered
-              found.emplace(i);
+              _found.emplace(i);
               return true;
             }
           }
@@ -246,6 +286,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<std::vector<triagens::basics::AttributeName>> _attributes;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief an internal map to mark which condition parts were useful and 
+/// covered by the index
+////////////////////////////////////////////////////////////////////////////////
+          
+        std::unordered_set<size_t> _found;
 
     };
                
