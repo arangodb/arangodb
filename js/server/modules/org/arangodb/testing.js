@@ -58,6 +58,7 @@ var optionsDocumentation = [
   '   - `skipGraph`: if set to true the Graph tests are skipped',
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipArangoB`: if set to true benchmark tests are skipped',
+  '   - `skipArangoBNonConnKeepAlive`: if set to true benchmark tests are skipped',
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipMemoryIntense`: tests using lots of resources will be skippet.',
@@ -128,6 +129,7 @@ var optionsDefaults = { "cluster": false,
                         "skipMemoryIntense": false,
                         "skipAql": false,
                         "skipArangoB": false,
+                        "skipArangoBNonConnKeepAlive": false,
                         "skipRanges": false,
                         "skipLogAnalysis": false,
                         "username": "root",
@@ -1904,6 +1906,11 @@ testFuncs.arangob = function (options) {
   var continueTesting = true;
 
   for (i = 0; i < benchTodo.length; i++) {
+    if ((options.skipArangoBNonConnKeepAlive) && 
+        benchTodo[i].hasOwnProperty('keep-alive') && 
+        (benchTodo[i]['keep-alive'] === "false")) {
+      benchTodo[i]['keep-alive'] = true;
+    }
     // On the cluster we do not yet have working transaction functionality:
     if (! options.cluster ||
         (benchTodo[i].test !== "counttrx" &&
