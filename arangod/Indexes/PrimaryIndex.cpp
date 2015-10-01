@@ -312,7 +312,7 @@ IndexIterator* PrimaryIndex::iteratorForCondition (triagens::aql::Ast* ast,
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_ID, false) },
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_KEY, false) } 
   });
-  std::unique_ptr<triagens::aql::AstNode> allVals(matcher.getOne(ast, this, node, reference));
+  triagens::aql::AstNode* allVals = matcher.getOne(ast, this, node, reference);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
   TRI_ASSERT(allVals->numMembers() == 1);
   auto comp = allVals->getMember(0);
