@@ -155,7 +155,7 @@ namespace triagens {
 /// @brief get the condition parts that the index is responsible for
 /// this is used for the primary index and the edge index
 /// requires that a previous matchOne() returned true
-/// the caller is responsible for freeing the returned AstNode*
+/// the caller must not free the returned AstNode*, as it belongs to the ast
 ////////////////////////////////////////////////////////////////////////////////
         
         triagens::aql::AstNode* getOne (triagens::aql::Ast* ast,
@@ -195,7 +195,7 @@ namespace triagens {
 /// @brief get the condition parts that the index is responsible for
 /// this is used for the hash index
 /// requires that a previous matchAll() returned true
-/// the caller is responsible for freeing the returned AstNode*
+/// the caller must not free the returned AstNode*, as it belongs to the ast
 ////////////////////////////////////////////////////////////////////////////////
         
         triagens::aql::AstNode* getAll (triagens::aql::Ast* ast,
