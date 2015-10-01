@@ -50,6 +50,33 @@ namespace triagens {
 
   namespace arango {
 
+    class PrimaryIndexIterator : public IndexIterator {
+ 
+      public:
+
+        PrimaryIndexIterator (
+          PrimaryIndex const* index,
+          char const* key
+        ) : 
+          _index(index),
+          _key(key),
+          _hasReturned(false) {
+        };
+
+        ~PrimaryIndexIterator () {};
+
+        TRI_doc_mptr_copy_t* next () override;
+
+        void initCursor () override;
+
+      private:
+
+        PrimaryIndex const*      _index;
+        char const*              _key;
+        bool                     _hasReturned;
+
+    };
+
     class PrimaryIndex : public Index {
 
 // -----------------------------------------------------------------------------
@@ -171,7 +198,9 @@ namespace triagens {
 
         void invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)>);
 
-        IndexIterator* iteratorForCondition (triagens::aql::AstNode const*) const;
+        IndexIterator* iteratorForCondition (triagens::aql::Ast*,
+                                             triagens::aql::AstNode const*,
+                                             triagens::aql::Variable const*) const;
 
         bool supportsFilterCondition (triagens::aql::AstNode const*,
                                       triagens::aql::Variable const*,

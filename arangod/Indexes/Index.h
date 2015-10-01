@@ -59,6 +59,7 @@ TRI_index_search_value_t;
 
 namespace triagens {
   namespace aql {
+    class Ast;
     struct AstNode;
     class SortCondition;
     struct Variable;
@@ -146,6 +147,9 @@ struct TRI_index_element_t {
 namespace triagens {
   namespace arango {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class IndexIterator
+// -----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Baseclass to iterate over all indexes. An iterator is requested at
 ///        the index itself.
@@ -165,10 +169,11 @@ namespace triagens {
 
         virtual bool hasNext () const;
 
-        virtual TRI_index_element_t* next ();
+        virtual TRI_doc_mptr_copy_t* next ();
 
         virtual void initCursor ();
     };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Index
 // -----------------------------------------------------------------------------
@@ -365,7 +370,9 @@ namespace triagens {
                                             triagens::aql::Variable const*,
                                             double&) const;
 
-        virtual IndexIterator* iteratorForCondition (triagens::aql::AstNode const*) const;
+        virtual IndexIterator* iteratorForCondition (triagens::aql::Ast*,
+                                                     triagens::aql::AstNode const*,
+                                                     triagens::aql::Variable const*) const;
 
         bool canUseConditionPart (triagens::aql::AstNode const* access,
                                   triagens::aql::AstNode const* other,

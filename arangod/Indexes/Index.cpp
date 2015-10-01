@@ -455,7 +455,11 @@ bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondi
   return false;
 }
 
-IndexIterator* Index::iteratorForCondition (triagens::aql::AstNode const*) const {
+IndexIterator* Index::iteratorForCondition (
+    triagens::aql::Ast* ast,
+    triagens::aql::AstNode const* node,
+    triagens::aql::Variable const* reference
+  ) const {
   // The super class index cannot iterate.
   // Specialisation has to manage this.
   return nullptr;
@@ -489,7 +493,7 @@ bool IndexIterator::hasNext () const {
 /// @brief default implementation for next
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_element_t* IndexIterator::next () {
+TRI_doc_mptr_copy_t* IndexIterator::next () {
   return nullptr;
 }
 

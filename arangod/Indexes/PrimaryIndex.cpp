@@ -74,6 +74,26 @@ static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                        class PrimaryIndexIterator
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+TRI_doc_mptr_copy_t* PrimaryIndexIterator::next () {
+  if (_hasReturned) {
+    return nullptr;
+  }
+  _hasReturned = true;
+  return static_cast<TRI_doc_mptr_copy_t*>(_index->lookupKey(_key));
+}
+
+void PrimaryIndexIterator::initCursor () {
+  _hasReturned = false;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                class PrimaryIndex
 // -----------------------------------------------------------------------------
         
@@ -284,8 +304,32 @@ bool PrimaryIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
   return matcher.matchOne(this, node, reference, estimatedCost);
 }
 
-IndexIterator* PrimaryIndex::iteratorForCondition (triagens::aql::AstNode const*) const {
-  // TODO
+IndexIterator* PrimaryIndex::iteratorForCondition (triagens::aql::Ast* ast,
+                                                   triagens::aql::AstNode const* node,
+                                                   triagens::aql::Variable const* reference) const {
+  TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+  SimpleAttributeEqualityMatcher matcher({ 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_ID, false) },
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_KEY, false) } 
+  });
+  std::unique_ptr<triagens::aql::AstNode> allVals(matcher.getOne(ast, this, node, reference));
+  TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+  TRI_ASSERT(allVals->numMembers() == 1);
+  auto comp = allVals->getMember(0);
+  TRI_ASSERT(comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+  auto attrNode = comp->getMember(0);
+  auto valNode = comp->getMember(1);
+  if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    attrNode = comp->getMember(1);
+    valNode = comp->getMember(0);
+  }
+  TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS); 
+  if (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_KEY) == 0) {
+    return new PrimaryIndexIterator(this, valNode->getStringValue());
+  }
+  else {
+    // TODO _id stuff
+  }
   return nullptr;
 }
 

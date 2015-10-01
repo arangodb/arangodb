@@ -66,7 +66,7 @@ namespace triagens {
 /// are non-empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-    class SkiplistIterator : public IndexIterator {
+    class SkiplistIterator {
 
       private:
 
@@ -138,13 +138,13 @@ namespace triagens {
       
       public:
         
-        size_t size () const override;
+        size_t size () const;
 
-        bool hasNext () const override;
+        bool hasNext () const;
 
-        TRI_index_element_t* next () override;
+        TRI_index_element_t* next ();
 
-        void initCursor () override;
+        void initCursor ();
 
         void findHelper (
           TRI_index_operator_t const* indexOperator,

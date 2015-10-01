@@ -498,12 +498,14 @@ bool IndexBlock::initIndexes () {
   
   // TODO _condition has to be evaluated at this point!
   _currentIndex = 0;
-  _iterator = _indexes[_currentIndex]->getIterator(_condition);
+  auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
+  auto ast = static_cast<IndexNode const*>(getPlanNode())->_plan->getAst();
+  _iterator = _indexes[_currentIndex]->getIterator(ast, _condition->getMember(_currentIndex), outVariable);
   // TODO Not sure if this loop is necessary after all.
   while (_iterator == nullptr) {
     ++_currentIndex;
     if (_currentIndex < _indexes.size()) {
-      _iterator = _indexes[_currentIndex]->getIterator(_condition);
+      _iterator = _indexes[_currentIndex]->getIterator(ast, _condition->getMember(_currentIndex), outVariable);
     }
     else {
       // We were not able to initialize any index with this condition
@@ -527,7 +529,9 @@ void IndexBlock::startNextIterator () {
   ++_currentIndex;
   if (_currentIndex < _indexes.size()) {
     // TODO _condition has to be evaluated at this point!
-    _iterator = _indexes[_currentIndex]->getIterator(_condition);
+    auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
+    auto ast = static_cast<IndexNode const*>(getPlanNode())->_plan->getAst();
+    _iterator = _indexes[_currentIndex]->getIterator(ast, _condition->getMember(_currentIndex), outVariable);
   }
   else {
     // If all indexes have been exhausted we set _iterator to nullptr;
@@ -565,7 +569,7 @@ bool IndexBlock::readIndex (size_t atMost) {
   try {
     size_t nrSent = 0;
     while (nrSent < atMost && _iterator != nullptr) {
-      TRI_index_element_t* indexElement = _iterator->next();
+      TRI_doc_mptr_copy_t* indexElement = _iterator->next();
       if (indexElement == nullptr) {
         startNextIterator();
       }
@@ -574,7 +578,7 @@ bool IndexBlock::readIndex (size_t atMost) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        _documents.emplace_back(*(indexElement->document()));
+        _documents.emplace_back(*indexElement);
         ++nrSent;
         ++_engine->_stats.scannedIndex;
       }
