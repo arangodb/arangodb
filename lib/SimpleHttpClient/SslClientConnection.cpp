@@ -344,7 +344,7 @@ bool SslClientConnection::prepare (double timeout, bool isWrite) const {
 
     struct timeval t;
     t.tv_sec = (long) timeout;
-    t.tv_usec = (long) ((timeout - TV_SEC) * 1000000.0);
+    t.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
 
     res = select(sockn, readFds, writeFds, nullptr, &t);
 
