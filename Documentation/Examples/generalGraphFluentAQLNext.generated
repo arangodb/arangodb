@@ -5,27 +5,27 @@ arangosh&gt; query.next();
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/diana"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"diana"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1445503532"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1385028039"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Diana"</span> 
 }
 arangosh&gt; query.next();
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1444782636"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1384307143"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
 }
 arangosh&gt; query.next();
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1445110316"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1384634823"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
 }
 arangosh&gt; query.next();
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1445306924"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1384831431"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
 }

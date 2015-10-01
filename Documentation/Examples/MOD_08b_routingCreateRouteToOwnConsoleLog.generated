@@ -5,13 +5,13 @@ arangosh&gt; db._routing.save({
 ........&gt;        match: <span class="hljs-string">"/subdirectory/*"</span>
 ........&gt;      },
 ........&gt;      action: {
-........&gt;        <span class="hljs-keyword">do</span>: <span class="hljs-string">"db://OwnMiddlewareTest/logRequest"</span>
+........&gt;        <span class="hljs-keyword">do</span>: <span class="hljs-string">"/db://OwnMiddlewareTest/logRequest"</span>
 ........&gt;      }
 ........&gt;    }
 ........&gt;  ]
 ........&gt; });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/606970412"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"606970412"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"606970412"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/53902357"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"53902357"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"53902357"</span> 
 }

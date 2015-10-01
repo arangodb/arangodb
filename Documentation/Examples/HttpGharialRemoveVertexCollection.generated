@@ -2,7 +2,7 @@ shell> curl -X DELETE --dump - http://localhost:8529/_api/gharial/social/vertex/
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json
-etag: <span class="hljs-number">581476908</span>
+etag: <span class="hljs-number">588372423</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -24,6 +24,6 @@ etag: <span class="hljs-number">581476908</span>
     ], 
     <span class="hljs-string">"orphanCollections"</span> : [ ], 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"581476908"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"588372423"</span> 
   } 
 }
