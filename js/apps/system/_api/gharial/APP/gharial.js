@@ -254,12 +254,13 @@
 /// 
 /// @RESTDESCRIPTION
 /// The creation of a graph requires the name of the graph and a definition of its edges.
+/// [See also edge definitions](../GeneralGraphs/Management.md#edge-definitions).
 /// 
 /// @RESTBODYPARAM{name,string,required,string}
 /// Name of the graph.
 /// 
 /// @RESTBODYPARAM{edgeDefinitions,string,optional,string}
-/// An array of definitions for the edges, see [edge definitions](../General-Graphs/Management.md#edge_definitions).
+/// An array of definitions for the edge
 /// 
 /// @RESTBODYPARAM{orphanCollections,string,optional,string}
 /// An array of additional vertex collections.
