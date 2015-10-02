@@ -396,6 +396,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         else if ((*en)->getType() == ExecutionNode::INDEX_RANGE) {
           collection = const_cast<Collection*>(static_cast<IndexRangeNode*>((*en))->collection());
         }
+        else if ((*en)->getType() == ExecutionNode::INDEX) {
+          collection = const_cast<Collection*>(static_cast<IndexNode*>((*en))->collection());
+        }
         else if ((*en)->getType() == ExecutionNode::INSERT ||
                  (*en)->getType() == ExecutionNode::UPDATE ||
                  (*en)->getType() == ExecutionNode::REPLACE ||
