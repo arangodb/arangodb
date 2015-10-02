@@ -3630,8 +3630,8 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
         collection = static_cast<IndexRangeNode*>(node)->collection();
       }
       else if (nodeType == ExecutionNode::INDEX) {
-        vocbase = static_cast<IndexRangeNode*>(node)->vocbase();
-        collection = static_cast<IndexRangeNode*>(node)->collection();
+        vocbase = static_cast<IndexNode*>(node)->vocbase();
+        collection = static_cast<IndexNode*>(node)->collection();
       }
       else if (nodeType == ExecutionNode::INSERT ||
                nodeType == ExecutionNode::UPDATE ||
