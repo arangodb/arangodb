@@ -935,6 +935,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       totalNrRegs++;
       break;
     }
+
     case ExecutionNode::INDEX_RANGE: {
       depth++;
       nrRegsHere.emplace_back(1);
@@ -949,6 +950,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       totalNrRegs++;
       break;
     }
+
     case ExecutionNode::INDEX: {
       depth++;
       nrRegsHere.emplace_back(1);
@@ -963,7 +965,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       totalNrRegs++;
       break;
     }
-    
+
     case ExecutionNode::ENUMERATE_LIST: {
       depth++;
       nrRegsHere.emplace_back(1);

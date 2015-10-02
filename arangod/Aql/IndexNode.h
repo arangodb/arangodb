@@ -22,7 +22,6 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Jan Steemann
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -32,8 +31,6 @@
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/RangeInfo.h"
-#include "Aql/Range.h"
 #include "Aql/types.h"
 #include "Aql/Variable.h"
 #include "Basics/JsonHelper.h"
@@ -213,5 +210,4 @@ namespace triagens {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
 

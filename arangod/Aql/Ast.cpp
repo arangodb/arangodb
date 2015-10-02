@@ -2831,6 +2831,8 @@ std::pair<std::string, bool> Ast::normalizeFunctionName (char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNode (AstNodeType type) {
+  TRI_ASSERT(_query != nullptr);
+
   auto node = new AstNode(type);
 
   try {

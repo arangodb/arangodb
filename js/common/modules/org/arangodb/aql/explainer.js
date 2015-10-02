@@ -484,11 +484,10 @@ function processQuery (query, explain) {
         return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + variableName(node.inVariable) + "   " + annotation("/* list iteration */");
       case "IndexNode":
         collectionVariables[node.outVariable.id] = node.collection;
-        var indexes = node.indexes;
         var types = [ ];
-        for (var i = 0; i < indexes.length; ++i) {
-          types.push((indexes[i].reverse ? "reverse " : "") + indexes[i].type + " index scan");
-        }
+        node.indexes.forEach(function (idx) {
+          types.push((idx.reverse ? "reverse " : "") + idx.type + " index scan");
+        });
         // TODO
         //index.ranges = [ ];
         //index.collection = node.collection;

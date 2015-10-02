@@ -1590,10 +1590,10 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
     bool const _ownsVarSetBy;
 
     VarUsageFinder () 
-      : _varSetBy(new std::unordered_map<VariableId, ExecutionNode*>()),
+      : _varSetBy(nullptr),
         _ownsVarSetBy(true) {
       
-      TRI_ASSERT(_varSetBy != nullptr);
+      _varSetBy = new std::unordered_map<VariableId, ExecutionNode*>();
     }
     
     explicit VarUsageFinder (std::unordered_map<VariableId, ExecutionNode*>* varSetBy) 
@@ -1614,6 +1614,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
       en->invalidateVarUsage();
       en->setVarsUsedLater(_usedLater);
       // Add variables used here to _usedLater:
+
       en->getVariablesUsedHere(_usedLater);
 
       return false;
@@ -1622,7 +1623,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
     void after (ExecutionNode* en) override final {
       // Add variables set here to _valid:
       auto&& setHere = en->getVariablesSetHere();
-
+      
       for (auto& v : setHere) {
         _valid.emplace(v);
         _varSetBy->emplace(v->id, en);

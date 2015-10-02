@@ -33,6 +33,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
+#include "Aql/IndexNode.h"
 #include "Aql/IndexRangeNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SortNode.h"
@@ -42,14 +43,6 @@
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using EN   = triagens::aql::ExecutionNode;
-
-#if 0
-#define ENTER_BLOCK try { (void) 0;
-#define LEAVE_BLOCK } catch (...) { std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ << ":" << __LINE__ << "!\n"; throw; }
-#else
-#define ENTER_BLOCK
-#define LEAVE_BLOCK
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           rules for the optimizer
@@ -2043,7 +2036,6 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
                                    Optimizer::Rule const* rule) {
   
   // These are all the FILTER nodes where we start
-  bool modified = false;
   std::vector<ExecutionNode*>&& nodes = plan->findEndNodes(true);
 
   std::unordered_map<size_t, ExecutionNode*> changes;
@@ -2056,7 +2048,7 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
   };
 
   TRI_DEFER(cleanupChanges());
-
+    
   for (auto const& n : nodes) {
     ConditionFinder finder(plan, &changes);
     n->walk(&finder);
@@ -2065,21 +2057,23 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
   std::cout << "Candidates to replace " << changes.size() << std::endl;
   
   if (! changes.empty()) {
-    modified = true;
+    // clone the original plan
+    std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
+
     for (auto& it : changes) {
-      plan->registerNode(it.second);
-      plan->replaceNode(plan->getNodeById(it.first), it.second);
+      ExecutionNode* newNode = it.second->clone(newPlan.get(), true, false);
+      newPlan->registerNode(newNode);
+      newPlan->replaceNode(newPlan->getNodeById(it.first), newNode);
 
       // prevent double deletion by cleanupChanges below
       it.second = nullptr;
     }
+    opt->addPlan(newPlan.release(), rule, true);
+    changes.clear();
   }
-
-  if (modified) {
-    plan->findVarUsage();
+  else {
+    opt->addPlan(plan, rule, false);
   }
-
-  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3459,6 +3453,11 @@ static bool NextPermutationTuple (std::vector<size_t>& data,
 int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
                                                         ExecutionPlan* plan,
                                                         Optimizer::Rule const* rule) {
+  // TODO FIXME: rule currently disabled because it breaks the IndexNode stuff
+  opt->addPlan(plan, rule, false);
+  return TRI_ERROR_NO_ERROR;
+
+
   std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(EN::ENUMERATE_COLLECTION, true);
 
   std::unordered_set<ExecutionNode*> nodesSet;
@@ -3555,7 +3554,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
             newPlan->insertDependency(parent, newNodes[permTuple[j]]);
           }
         }
-
+    
         // OK, the new plan is ready, let's report it:
         if (! opt->addPlan(newPlan, rule, true)) {
           // have enough plans. stop permutations

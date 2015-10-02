@@ -55,6 +55,7 @@ namespace triagens {
         };
 
         ~ConditionFinder () {
+          // TODO: decide whether conditions should belong to individual IndexNodes or are shared
           if (_shouldFreeCondition) {
             delete _condition;
           }

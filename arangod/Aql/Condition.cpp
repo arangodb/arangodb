@@ -141,6 +141,22 @@ Condition::~Condition () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clone the condition
+////////////////////////////////////////////////////////////////////////////////
+
+Condition* Condition::clone () const {
+  std::unique_ptr<Condition> copy(new Condition(_ast));
+
+  if (_root != nullptr) {
+    copy->_root = _root->clone(_ast); 
+  }
+
+  copy->_isNormalized = _isNormalized;
+
+  return copy.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a sub-condition to the condition
 /// the sub-condition will be AND-combined with the existing condition(s)
 ////////////////////////////////////////////////////////////////////////////////

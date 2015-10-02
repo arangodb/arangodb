@@ -21,7 +21,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
+/// @author Michael Hackstein
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -86,6 +86,7 @@ ExecutionNode* IndexNode::clone (ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
+  // TODO: check if we need to clone _condition or if we can reuse it here
   auto c = new IndexNode(plan, _id, _vocbase, _collection, 
                          outVariable, _indexes, _condition);
 
@@ -132,7 +133,7 @@ IndexNode::IndexNode (ExecutionPlan* plan,
  
 double IndexNode::estimateCost (size_t& nrItems) const { 
   nrItems = 1; // TODO FIXME
-  return 1.0;
+  return 0.00000001; // TODO FIXME
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,11 +156,15 @@ std::vector<Variable const*> IndexNode::getVariablesUsedHere () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, modifying the set in-place - TODO
+/// @brief getVariablesUsedHere, modifying the set in-place
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexNode::getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const {
-  // This is not yet clear how the variables will be stored
+  if (_condition != nullptr) {
+    Ast::getReferencedVariables(_condition->root(), vars);
+
+    vars.erase(_outVariable);
+  }
 }
 
 // Local Variables:

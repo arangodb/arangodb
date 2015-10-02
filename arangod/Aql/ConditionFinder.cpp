@@ -137,7 +137,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
       if (_condition->findIndexes(node, usedIndexes, sortCondition)) {
         TRI_ASSERT(! usedIndexes.empty());
         std::cout << node->id() << " Number of indexes used: " << usedIndexes.size() << std::endl;
-          // We either cann find indexes for everything or findIndexes will clear out usedIndexes
+          // We either can find indexes for everything or findIndexes will clear out usedIndexes
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
           _plan, 
           _plan->nextId(), 
@@ -145,14 +145,15 @@ bool ConditionFinder::before (ExecutionNode* en) {
           node->collection(), 
           node->outVariable(), 
           usedIndexes, 
-          _condition
+          _condition->clone()
         ));
 
         // We handed over the condition to the created IndexNode
-        _shouldFreeCondition = false;
+        _shouldFreeCondition = false; // TODO: check if we can get rid of this variable 
 
         // We keep this nodes change
-        _changes->emplace(node->id(), newNode.release());
+        _changes->emplace(node->id(), newNode.get());
+        newNode.release();
       }
 
       break;
