@@ -867,7 +867,7 @@ function runThere (options, instanceInfo, file) {
     var t;
     if (file.indexOf("-spec") === -1) {
       t = 'var runTest = require("jsunity").runTest; '+
-          'return runTest(' + JSON.stringify(file) + ');';
+          'return runTest(' + JSON.stringify(file) + ', true);';
     }
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
@@ -912,7 +912,7 @@ function runHere (options, instanceInfo, file) {
   try {
     if (file.indexOf("-spec") === -1) {
       var runTest = require("jsunity").runTest; 
-      result = runTest(file);
+      result = runTest(file, true);
     }
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
