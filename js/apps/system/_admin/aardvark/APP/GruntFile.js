@@ -47,6 +47,8 @@
             "frontend/js/lib/jquery.form.js",
             "frontend/js/lib/jquery.uploadfile.js",
             "frontend/js/lib/jquery.textfill.min.js",
+            "frontend/js/lib/cytoscape.min.js",
+            "frontend/js/lib/cola.min.js",
             "frontend/js/lib/select2.min.js",
             "frontend/js/lib/handlebars-1.0.rc.1.js",
             "frontend/js/lib/jsoneditor-min.js",
