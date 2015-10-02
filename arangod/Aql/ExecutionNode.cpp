@@ -912,8 +912,7 @@ ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone (ExecutionPlan* 
 
 void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
   switch (en->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION: 
-    case ExecutionNode::INDEX_RANGE: {
+    case ExecutionNode::ENUMERATE_COLLECTION: { 
       depth++;
       nrRegsHere.emplace_back(1);
       // create a copy of the last value here
@@ -923,7 +922,22 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
 
       auto ep = static_cast<EnumerateCollectionNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
+      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
+      totalNrRegs++;
+      break;
+    }
+    
+    case ExecutionNode::INDEX_RANGE: {
+      depth++;
+      nrRegsHere.emplace_back(1);
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      RegisterId registerId = 1 + nrRegs.back();
+      nrRegs.emplace_back(registerId);
+
+      auto ep = static_cast<IndexRangeNode const*>(en);
+      TRI_ASSERT(ep != nullptr);
+      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       break;
     }
