@@ -106,10 +106,10 @@ void IndexBlock::buildExpressions () {
     AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
     auto jsonified = a.toJson(_trx, myCollection, true);
     a.destroy();
-    AstNode const* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);
-    en->_plan->replaceNode(_condition->getMember(toReplace.orMember)
-                                     ->getMember(toReplace.andMember)
-                                     ->getMember(toReplace.operatorMember));
+    AstNode* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);
+    _condition->getMember(toReplace.orMember)
+              ->getMember(toReplace.andMember)
+              ->changeMember(toReplace.operatorMember, evaluatedNode);
   }
 
   /*
@@ -361,8 +361,7 @@ int IndexBlock::initialize () {
       auto lhs = leaf->getMember(0);
       auto rhs = leaf->getMember(1);
 
-      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
-          lhs->getAttributeVariable() == outVariable) {
+      if (lhs->isAttributeAccessForVariable(outVariable)) {
         // Index is responsible for the left side, check if right side has to be evaluated
         if (! rhs->isConstant()) {
           instantiateExpression(i, j, 1, rhs);
