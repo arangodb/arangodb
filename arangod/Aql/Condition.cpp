@@ -460,20 +460,36 @@ void Condition::optimize (ExecutionPlan* plan) {
           auto leftNode = andNode->getMemberUnchecked(positions[0].first);
 
           ConditionPart current(variable, attributeName, 0, leftNode, positions[0].second);
+
+          if (! current.valueNode->isConstant()) {
+            continue;
+          }
+
           // current.dump();
           size_t j = 1;
           
           while (j < positions.size()) {
             auto rightNode = andNode->getMemberUnchecked(positions[j].first);
-          
-            if (leftNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
-                rightNode->type == NODE_TYPE_OPERATOR_BINARY_IN) {
-              // merge IN with IN on same attribute
-              TRI_ASSERT(leftNode->numMembers() == 2);
-              TRI_ASSERT(rightNode->numMembers() == 2);
+            
+            ConditionPart other(variable, attributeName, j, rightNode, positions[j].second);
 
-              if (leftNode->getMemberUnchecked(1)->isConstant() && 
+            if (! other.valueNode->isConstant()) {
+              ++j;
+              continue;
+            }
+            
+             
+            // IN-merging 
+            if (leftNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
+                leftNode->getMemberUnchecked(1)->isConstant()) {
+              TRI_ASSERT(leftNode->numMembers() == 2);
+          
+              if (rightNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
                   rightNode->getMemberUnchecked(1)->isConstant()) {
+                // merge IN with IN on same attribute
+                TRI_ASSERT(rightNode->numMembers() == 2);
+
+std::cout << "MERGING IN WITH IN\n";
                 auto merged = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, 
                                                              leftNode->getMemberUnchecked(0), 
                                                              mergeInOperations(leftNode, rightNode));
@@ -481,14 +497,45 @@ void Condition::optimize (ExecutionPlan* plan) {
                 andNode->changeMember(positions[0].first, merged);
                 goto restartThisOrItem;
               }
-            }
+              else if (rightNode->isSimpleComparisonOperator()) {
+                // merge other comparison operator with IN
+                TRI_ASSERT(rightNode->numMembers() == 2);
 
-            ConditionPart other(variable, attributeName, j, rightNode, positions[j].second);
+                std::cout << "FOUND SOMETHING\n";
+                auto inNode = _ast->createNodeArray();
+                auto values = leftNode->getMemberUnchecked(1);
+                
+                for (size_t k = 0; k < values->numMembers(); ++k) {
+                  auto value = values->getMemberUnchecked(k);
+                  ConditionPart::ConditionPartCompareResult res = ConditionPart::ResultsTable
+                    [CompareAstNodes(current.valueNode, value, false) + 1]
+                    [0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
+                    [other.whichCompareOperation()];
 
-            if (! current.valueNode->isConstant() || ! other.valueNode->isConstant()) {
-              continue;
+std::cout << "RES IS: " << res << "\n";
+                  bool const keep = (res == CompareResult::OTHER_CONTAINED_IN_SELF || res == CompareResult::CONVERT_EQUAL);
+                  if (keep) {
+                    inNode->addMember(value);
+                  }
+                }
+
+                if (inNode->numMembers() == 0) {
+std::cout << "NOTHING LEFT AFTER MERGE\n";
+                  // no values left after merging -> IMPOSSIBLE
+                  _root->removeMemberUnchecked(i);
+                  goto fastForwardToNextOrItem;
+                }
+              
+std::cout << "STILL SOMETHING LEFT AFTER MERGE\n";
+                // use the new array of values
+                andNode->getMemberUnchecked(positions[0].first)->changeMember(1, inNode);
+                // remove the other operator
+                andNode->removeMemberUnchecked(positions[j].first);
+                goto restartThisOrItem;
+              }
             }
-            
+            // end of IN-merging
+
             // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
             ConditionPart::ConditionPartCompareResult res = ConditionPart::ResultsTable
               [CompareAstNodes(current.valueNode, other.valueNode, false) + 1] 

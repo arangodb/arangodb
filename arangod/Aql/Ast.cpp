@@ -1052,7 +1052,9 @@ AstNode* Ast::createNodeMergedArray (AstNode const* lhs,
     auto it = cache.find(json);
 
     if (it != cache.end()) {
-      node->addMember(clone((*it).second));
+      // TODO: check if the node needs cloning or if we can get away without
+      // node->addMember(clone((*it).second));
+      node->addMember((*it).second); 
     }
   }
 
@@ -1778,8 +1780,11 @@ AstNode const* Ast::deduplicateArray (AstNode const* node) {
   copy->members.reserve(cache.size());
 
   for (auto& it : cache) {
-    copy->addMember(clone(it.second));
+    // TODO: check if the node needs cloning or if we can get away without
+    // copy->addMember(clone((*it).second));
+    copy->addMember(it.second);
   }
+
   return copy;
 }
 

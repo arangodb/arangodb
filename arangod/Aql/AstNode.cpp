@@ -1416,6 +1416,19 @@ bool AstNode::isConstant () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node is a simple comparison operator
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::isSimpleComparisonOperator () const {
+  return (type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+          type == NODE_TYPE_OPERATOR_BINARY_NE ||
+          type == NODE_TYPE_OPERATOR_BINARY_LT ||
+          type == NODE_TYPE_OPERATOR_BINARY_LE ||
+          type == NODE_TYPE_OPERATOR_BINARY_GT ||
+          type == NODE_TYPE_OPERATOR_BINARY_GE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is a comparison operator
 ////////////////////////////////////////////////////////////////////////////////
 
