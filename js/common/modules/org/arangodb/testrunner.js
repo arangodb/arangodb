@@ -29,7 +29,7 @@ function runJSUnityTests(tests) {
     }
 
     try {
-      res = runTest(file);
+      res = runTest(file, true);
       allResults.push(res);
       result = result && res.status;
     } catch (err) {
