@@ -6641,43 +6641,43 @@ function IS_EXAMPLE_SET (example) {
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample* : An example for the desired start Vertices
-/// (see [example](#short_explanation_of_the_example_parameter)).
+///   (see [example](#short_explanation_of_the_example_parameter)).
 /// * *endVertexExample*   : An example for the desired
-/// end Vertices (see [example](#short_explanation_of_the_example_parameter)).
+///   end Vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options* (optional) : An object containing the following options:
 ///   * *direction*                        : The direction of the edges as a string.
-///   Possible values are *outbound*, *inbound* and *any* (default).
+///     Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
-///   collection names. Only edges from these collections will be considered for the path.
+///     collection names. Only edges from these collections will be considered for the path.
 ///   * *startVertexCollectionRestriction* : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   start vertex of a path.
+///     collection names. Only vertices from these collections will be considered as
+///     start vertex of a path.
 ///   * *endVertexCollectionRestriction*   : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   end vertex of a path.
+///     collection names. Only vertices from these collections will be considered as
+///     end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the
-///   edges in the shortest paths
-///   (see [example](#short_explanation_of_the_example_parameter)).
+///     edges in the shortest paths
+///     (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
-///   the shortest paths. If both start and end vertex examples are empty
-///   [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
-///   used, otherwise the default is [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
+///     the shortest paths. If both start and end vertex examples are empty
+///     [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
+///     used, otherwise the default is [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 ///   * *weight*                           : The name of the attribute of
-///   the edges containing the length as a string.
+///     the edges containing the length as a string.
 ///   * *defaultWeight*                    : Only used with the option *weight*.
-///   If an edge does not have the attribute named as defined in option *weight* this default
-///   is used as length.
-///   If no default is supplied the default would be positive Infinity so the path could
-///   not be calculated.
+///     If an edge does not have the attribute named as defined in option *weight* this default
+///     is used as length.
+///     If no default is supplied the default would be positive Infinity so the path could
+///     not be calculated.
 ///   * *stopAtFirstMatch*                 : Only useful if targetVertices is an example that matches 
-///   to more than one vertex. If so only the shortest path to
-///   the closest of these target vertices is returned.
-///   This flag is of special use if you have target pattern and
-///   you want to know which vertex with this pattern is matched first.
+///     to more than one vertex. If so only the shortest path to
+///     the closest of these target vertices is returned.
+///     This flag is of special use if you have target pattern and
+///     you want to know which vertex with this pattern is matched first.
 ///   * *includeData*                      : Triggers if only *_id*'s are returned (*false*, default)
-///   or if data is included for all objects as well (*true*)
-///   This will modify the content of *vertex*, *path.vertices*
-///   and *path.edges*. 
+///     or if data is included for all objects as well (*true*)
+///     This will modify the content of *vertex*, *path.vertices*
+///     and *path.edges*. 
 ///
 /// NOTE: Since version 2.6 we have included a new optional parameter *includeData*.
 /// This parameter triggers if the result contains the real data object *true* or
