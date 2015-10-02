@@ -421,6 +421,19 @@ void Condition::optimize (ExecutionPlan* plan) {
     for (size_t j = 0; j < andNumMembers; ++j) {
       deduplicateInOperation(andNode->getMemberUnchecked(j));
     }
+    // move IN operation to the front to make comparison code below simpler
+    andNode->sortMembers([] (AstNode const* lhs, AstNode const* rhs) -> bool {
+      if (lhs->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+        if (rhs->type != NODE_TYPE_OPERATOR_BINARY_IN) {
+          return true; // IN < other
+        }
+        // fallthrough 
+      }
+      else if (rhs->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+        return false; // other > IN
+      }
+      return (lhs < rhs); // compare pointers to have a deterministic order
+    });
 
     if (andNumMembers > 1) {
       // optimization is only necessary if an AND node has members
@@ -456,7 +469,6 @@ void Condition::optimize (ExecutionPlan* plan) {
           }
 
           // multiple occurrences of the same attribute
-          std::cout << "ATTRIBUTE " << attributeName << " occurs in " << positions.size() << " positions\n";
           auto leftNode = andNode->getMemberUnchecked(positions[0].first);
 
           ConditionPart current(variable, attributeName, 0, leftNode, positions[0].second);
@@ -489,7 +501,6 @@ void Condition::optimize (ExecutionPlan* plan) {
                 // merge IN with IN on same attribute
                 TRI_ASSERT(rightNode->numMembers() == 2);
 
-std::cout << "MERGING IN WITH IN\n";
                 auto merged = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, 
                                                              leftNode->getMemberUnchecked(0), 
                                                              mergeInOperations(leftNode, rightNode));
@@ -501,18 +512,16 @@ std::cout << "MERGING IN WITH IN\n";
                 // merge other comparison operator with IN
                 TRI_ASSERT(rightNode->numMembers() == 2);
 
-                std::cout << "FOUND SOMETHING\n";
                 auto inNode = _ast->createNodeArray();
                 auto values = leftNode->getMemberUnchecked(1);
                 
                 for (size_t k = 0; k < values->numMembers(); ++k) {
                   auto value = values->getMemberUnchecked(k);
                   ConditionPart::ConditionPartCompareResult res = ConditionPart::ResultsTable
-                    [CompareAstNodes(current.valueNode, value, false) + 1]
+                    [CompareAstNodes(value, other.valueNode, false) + 1]
                     [0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
                     [other.whichCompareOperation()];
 
-std::cout << "RES IS: " << res << "\n";
                   bool const keep = (res == CompareResult::OTHER_CONTAINED_IN_SELF || res == CompareResult::CONVERT_EQUAL);
                   if (keep) {
                     inNode->addMember(value);
@@ -520,13 +529,11 @@ std::cout << "RES IS: " << res << "\n";
                 }
 
                 if (inNode->numMembers() == 0) {
-std::cout << "NOTHING LEFT AFTER MERGE\n";
                   // no values left after merging -> IMPOSSIBLE
                   _root->removeMemberUnchecked(i);
                   goto fastForwardToNextOrItem;
                 }
               
-std::cout << "STILL SOMETHING LEFT AFTER MERGE\n";
                 // use the new array of values
                 andNode->getMemberUnchecked(positions[0].first)->changeMember(1, inNode);
                 // remove the other operator

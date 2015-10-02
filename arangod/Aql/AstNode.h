@@ -36,6 +36,8 @@
 #include "Basics/vector.h"
 #include "Basics/JsonHelper.h"
 
+#include <functional>
+
 namespace triagens {
   namespace basics {
     class StringBuffer;
@@ -663,6 +665,14 @@ namespace triagens {
 
         inline AstNode* getMemberUnchecked (size_t i) const throw() {
           return members.at(i);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort members with a custom comparison function
+////////////////////////////////////////////////////////////////////////////////
+    
+        void sortMembers (std::function<bool(AstNode const*, AstNode const*)> const& func) {
+          std::sort(members.begin(), members.end(), func);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

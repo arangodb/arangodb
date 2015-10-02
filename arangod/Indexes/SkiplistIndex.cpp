@@ -890,24 +890,15 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
     return false;
   }
   
-  if (access->type != triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    return false;
-  }
-          
-  std::vector<std::string> fieldNames;
-  while (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    fieldNames.emplace_back(std::string(access->getStringValue(), access->getStringLength()));
-    access = access->getMember(0);
-  }
+  std::pair<triagens::aql::Variable const*, std::vector<std::string>> attributeData;
 
-  if (access->type != triagens::aql::NODE_TYPE_REFERENCE) {
-    return false;
-  }
-
-  if (access->getData() != reference) {
+  if (! access->isAttributeAccessForVariable(attributeData) ||
+      attributeData.first != reference) {
     // this access is not referencing this collection
     return false;
   }
+          
+  std::vector<std::string>& fieldNames = attributeData.second;
 
   triagens::aql::AstNodeType opType = op->type;
   if (opType == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
