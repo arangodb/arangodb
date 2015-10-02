@@ -49,6 +49,36 @@ namespace triagens {
     class ExecutionEngine;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                          NodePath
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct to hold the member-indexes in the _condition node
+////////////////////////////////////////////////////////////////////////////////
+
+    struct NonConstExpression {
+      size_t const orMember;
+      size_t const andMember;
+      size_t const operatorMember;
+      Expression* expression;
+
+      NonConstExpression (
+          size_t const orM,
+          size_t const andM,
+          size_t const opM,
+          Expression* exp)
+      : orMember(orM),
+        andMember(andM),
+        operatorMember(opM),
+        expression(exp) {
+      }
+
+      ~NonConstExpression () {
+        delete expression;
+      }
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   IndexRangeBlock
 // -----------------------------------------------------------------------------
 
@@ -209,18 +239,11 @@ namespace triagens {
         std::vector<Index const*> _indexes;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _allBoundsConstant, this indicates whether all given bounds
-/// are constant
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<bool> _allBoundsConstant;
-        bool _anyBoundVariable;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _allVariableBoundExpressions, list of all variable bound expressions
+/// @brief _nonConstExpressions, list of all non const expressions, mapped
+/// by their _condition node path indexes
 ////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<Expression*> _allVariableBoundExpressions;
+        std::vector<NonConstExpression> _nonConstExpressions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _inVars, a vector containing for each expression above

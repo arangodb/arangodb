@@ -2075,7 +2075,6 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
     }
   }
 
-  // Is this relevant??
   if (modified) {
     plan->findVarUsage();
   }

@@ -65,7 +65,6 @@ IndexBlock::IndexBlock (ExecutionEngine* engine,
     _collection(en->collection()),
     _posInDocs(0),
     _indexes(en->getIndexes()),
-    _anyBoundVariable(false),
     _iterator(nullptr),
     _condition(en->_condition->root()),
     _freeCondition(false),
@@ -81,12 +80,6 @@ IndexBlock::IndexBlock (ExecutionEngine* engine,
 
   std::vector<Index const*> indexes = en->getIndexes();
 
-  _allBoundsConstant.reserve(_condition->numMembers());
-
-  // TODO Check whether all Condition Entries are constant
-  for (size_t i = 0; i < _condition->numMembers(); ++i) {
-    _allBoundsConstant.push_back(true);
-  }
 }
 
 IndexBlock::~IndexBlock () {
@@ -97,30 +90,31 @@ IndexBlock::~IndexBlock () {
   }
 }
 
-bool IndexBlock::hasV8Expression () const {
-  // TODO
-  for (auto const& expression : _allVariableBoundExpressions) {
-    TRI_ASSERT(expression != nullptr);
-
-    if (expression->isV8()) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void IndexBlock::buildExpressions () {
-  /*
-  bool const useHighBounds = this->useHighBounds(); 
-
   size_t posInExpressions = 0;
-    
+
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
+
   AqlItemBlock* cur = _buffer.front();
-        
-  // TODO
   auto en = static_cast<IndexNode const*>(getPlanNode());
+  auto ast = en->_plan->getAst();
+  for (size_t posInExpressions = 0; posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
+    auto toReplace = _nonConstExpressions[posInExpressions];
+    auto exp = toReplace.expression;
+    TRI_document_collection_t const* myCollection = nullptr; 
+    AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
+    auto jsonified = a.toJson(_trx, myCollection, true);
+    a.destroy();
+    AstNode* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);
+    _condition->getMember(toReplace.orMember)
+              ->getMember(toReplace.andMember)
+              ->changeMember(toReplace.operatorMember, evaluatedNode);
+  }
+
+  /*
+  bool const useHighBounds = this->useHighBounds(); 
+  // TODO
   std::unique_ptr<IndexOrCondition> newCondition;
 
   for (size_t i = 0; i < en->_ranges.size(); i++) {
@@ -144,7 +138,6 @@ void IndexBlock::buildExpressions () {
       for (auto const& l : r._lows) {
         Expression* e = _allVariableBoundExpressions[posInExpressions];
         TRI_ASSERT(e != nullptr);
-        TRI_document_collection_t const* myCollection = nullptr; 
         AqlValue a = e->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
         posInExpressions++;
 
@@ -320,22 +313,22 @@ int IndexBlock::initialize () {
     }
   }
 
-  _allVariableBoundExpressions.clear();
+  _nonConstExpressions.clear();
 
   // instantiate expressions:
-  auto instantiateExpression = [&] (RangeInfoBound const& b) -> void {
-    AstNode const* a = b.getExpressionAst(_engine->getQuery()->ast());
+  auto instantiateExpression = [&] (size_t i, size_t j, size_t k, AstNode const* a) -> void {
     Expression* expression = nullptr;
  
     {
       // all new AstNodes are registered with the Ast in the Query
       std::unique_ptr<Expression> e(new Expression(_engine->getQuery()->ast(), a));
 
-      TRI_IF_FAILURE("IndexRangeBlock::initialize") {
+      TRI_IF_FAILURE("IndexBlock::initialize") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      _allVariableBoundExpressions.emplace_back(e.get());
+      _hasV8Expression |= e->isV8();
+      _nonConstExpressions.emplace_back(i, j, k, e.get());
       expression = e.release();
     }
 
@@ -357,73 +350,36 @@ int IndexBlock::initialize () {
     }
   };
 
-  // Get the ranges from the node:
+  auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
+
   for (size_t i = 0; i < _condition->numMembers(); ++i) {
-    if (! _allBoundsConstant[i]) {
-      try {
-        auto andCondition = _condition->getMember(i);
-        // STILL TODO
-        TRI_ASSERT(false);
-        /*
-        for (auto const& r : orRanges[i]) {
-          for (auto const& l : r._lows) {
-            instantiateExpression(l);
-          }
+    auto andCond = _condition->getMember(i);
+    for (size_t j = 0; j < andCond->numMembers(); ++j) {
+      auto leaf = andCond->getMember(i);
+      // We only support binary conditions
+      TRI_ASSERT(leaf->numMembers() == 2);
+      auto lhs = leaf->getMember(0);
+      auto rhs = leaf->getMember(1);
 
-          if (useHighBounds()) {
-            for (auto const& h : r._highs) {
-              instantiateExpression(h);
-            }
+      if (lhs->isAttributeAccessForVariable(outVariable)) {
+        // Index is responsible for the left side, check if right side has to be evaluated
+        if (! rhs->isConstant()) {
+          instantiateExpression(i, j, 1, rhs);
+          TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
         }
-        TRI_IF_FAILURE("IndexRangeBlock::initializeExpressions") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      } else {
+        // Index is responsible for the right side, check if left side has to be evaluated
+        if (! lhs->isConstant()) {
+          instantiateExpression(i, j, 0, lhs);
+          TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
         }
-        */
-      }
-      catch (...) {
-        for (auto& e : _allVariableBoundExpressions) {
-          delete e;
-        }
-        _allVariableBoundExpressions.clear();
-        throw;
       }
     }
   }
-  /* TODO
-  auto en = static_cast<IndexNode const*>(getPlanNode());
-  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
-  
-  for (size_t i = 0; i < orRanges.size(); i++) {
-    if (! _allBoundsConstant[i]) {
-      try {
-        for (auto const& r : orRanges[i]) {
-          for (auto const& l : r._lows) {
-            instantiateExpression(l);
-          }
-
-          if (useHighBounds()) {
-            for (auto const& h : r._highs) {
-              instantiateExpression(h);
-            }
-          }
-        }
-        TRI_IF_FAILURE("IndexRangeBlock::initializeExpressions") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-      }
-      catch (...) {
-        for (auto& e : _allVariableBoundExpressions) {
-          delete e;
-        }
-        _allVariableBoundExpressions.clear();
-        throw;
-      }
-    }
-  }
-    
-  _hasV8Expression = hasV8Expression();
-  */
 
   return res;
   LEAVE_BLOCK;
@@ -451,7 +407,7 @@ bool IndexBlock::initIndexes () {
 
   // Find out about the actual values for the bounds in the variable bound case:
 
-  if (_anyBoundVariable) {
+  if (! _nonConstExpressions.empty()) {
     if (_hasV8Expression) {
       bool const isRunningInCluster = triagens::arango::ServerState::instance()->isRunningInCluster();
 
@@ -466,8 +422,8 @@ bool IndexBlock::initIndexes () {
             // must invalidate the expression now as we might be called from
             // different threads
             if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
-              for (auto const& e : _allVariableBoundExpressions) {
-                e->invalidate();
+              for (auto const& e : _nonConstExpressions) {
+                e.expression->invalidate();
               }
             }
           
@@ -496,12 +452,11 @@ bool IndexBlock::initIndexes () {
     }
   }
   
-  // TODO _condition has to be evaluated at this point!
   _currentIndex = 0;
   auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
   auto ast = static_cast<IndexNode const*>(getPlanNode())->_plan->getAst();
   _iterator = _indexes[_currentIndex]->getIterator(ast, _condition->getMember(_currentIndex), outVariable);
-  // TODO Not sure if this loop is necessary after all.
+
   while (_iterator == nullptr) {
     ++_currentIndex;
     if (_currentIndex < _indexes.size()) {
@@ -528,7 +483,6 @@ void IndexBlock::freeCondition () {
 void IndexBlock::startNextIterator () {
   ++_currentIndex;
   if (_currentIndex < _indexes.size()) {
-    // TODO _condition has to be evaluated at this point!
     auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
     auto ast = static_cast<IndexNode const*>(getPlanNode())->_plan->getAst();
     _iterator = _indexes[_currentIndex]->getIterator(ast, _condition->getMember(_currentIndex), outVariable);

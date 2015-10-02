@@ -328,7 +328,11 @@ IndexIterator* PrimaryIndex::iteratorForCondition (triagens::aql::Ast* ast,
     return new PrimaryIndexIterator(this, valNode->getStringValue());
   }
   else {
-    // TODO _id stuff
+    TRI_ASSERT(strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_ID) == 0);
+    // TODO validate collection id
+    char const* key = strchr(attrNode->getStringValue(), '/');
+    std::cout << key << "\n";
+    
   }
   return nullptr;
 }
