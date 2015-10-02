@@ -2084,7 +2084,19 @@ testFuncs.authentication_parameters = function (options) {
   return results;
 };
 
-var internalMembers = ["code", "error", "status", "duration", "failed", "total", "crashed", "all_ok", "ok", "message", "suiteName"];
+var internalMembers = [
+  "code",
+  "error",
+  "status",
+  "duration",
+  "failed",
+  "total",
+  "crashed",
+  "all_ok",
+  "ok",
+  "message",
+  "suiteName"
+];
 
 function unitTestPrettyPrintResults(r) {
   var testrun;
