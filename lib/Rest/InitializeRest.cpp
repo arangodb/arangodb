@@ -65,11 +65,11 @@ namespace {
   // The compiler chooses the right one from the following two,
   // according to the type of the return value of pthread_self():
 
-  template<typename T> void setter (CRYPTO_THREADID* id, T p) {
+  template<typename T> inline void setter (CRYPTO_THREADID* id, T p) {
     CRYPTO_THREADID_set_pointer(id, p);
   }
   
-  template<> void setter (CRYPTO_THREADID* id, unsigned long val) {
+  template<> inline void setter (CRYPTO_THREADID* id, unsigned long val) {
     CRYPTO_THREADID_set_numeric(id, val);
   }
 
