@@ -48,7 +48,7 @@ operator is again an array.
 To demonstrate the array expansion operator, let's go on with the following three 
 example *users* documents:
 
-```
+```json
 [ 
   { 
     name: "john",
@@ -88,7 +88,7 @@ FOR u IN users
 
 This will produce:
 
-```
+```json
 [ 
   { "name" : "john", "friends" : [ "tina", "helga", "alfred" ] }, 
   { "name" : "yves", "friends" : [ "sergei", "tiffany" ] }, 
@@ -129,7 +129,7 @@ FOR u IN users
 
 The above will return:
 
-```
+```json
 [ 
   [ 
     "tina is a friend of john", 
@@ -162,7 +162,7 @@ FOR u IN users
 
 As we have multiple users, the overall result is a nested array:
 
-```
+```json
 [ 
   [ 
     "tina", 
@@ -194,13 +194,14 @@ RETURN (
 ```
 
 By now appending the <i>[\*\*]</i> operator the end of the query, the query result becomes:
+
 ```
 RETURN (
   FOR u IN users RETURN u.friends[*].name
 )[**]
 ```
 
-```
+```json
 [ 
   [ 
     "tina", 
