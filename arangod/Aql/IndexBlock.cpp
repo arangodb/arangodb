@@ -91,8 +91,6 @@ IndexBlock::~IndexBlock () {
 }
 
 void IndexBlock::buildExpressions () {
-  size_t posInExpressions = 0;
-
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
 
