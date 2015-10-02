@@ -42,8 +42,8 @@ namespace triagens {
   }
 
   namespace aql {
-
     class Ast;
+    struct Variable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type for node flags
@@ -464,6 +464,77 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of type attribute access
+////////////////////////////////////////////////////////////////////////////////
+  
+        bool isAttributeAccess () const {
+          return (type == NODE_TYPE_ATTRIBUTE_ACCESS);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of type attribute access that
+/// refers to a variable reference
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isAttributeAccessForVariable () const {
+          if (! isAttributeAccess()) {
+            return false;
+          }
+
+          auto node = this;
+          while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+            node = node->getMember(0);
+          }
+          return (node->type == NODE_TYPE_REFERENCE);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of type attribute access that
+/// refers to the specified variable reference
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isAttributeAccessForVariable (Variable const* variable) const {
+          if (! isAttributeAccess()) {
+            return false;
+          }
+
+          auto node = this;
+          while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+            node = node->getMember(0);
+          }
+          if (node->type != NODE_TYPE_REFERENCE) {
+            return false;
+          }
+          return (static_cast<Variable const*>(node->getData()) == variable);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of type attribute access that
+/// refers to the specified variable reference
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isAttributeAccessForVariable (std::pair<Variable const*, std::vector<std::string>>& attributes) const {
+          if (! isAttributeAccess()) {
+            return false;
+          }
+
+          attributes.first = nullptr;
+
+          auto node = this;
+          while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+            attributes.second.emplace_back(std::string(node->getStringValue(), node->getStringLength()));
+            node = node->getMember(0);
+          }
+          if (node->type != NODE_TYPE_REFERENCE) {
+            attributes.second.clear();
+            return false;
+          }
+
+          attributes.first = static_cast<Variable const*>(node->getData());
+          return true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is simple enough to be used in a simple
 /// expression
 /// this may also set the FLAG_SIMPLE flag for the node
@@ -477,6 +548,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isConstant () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node is a simple comparison operator
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isSimpleComparisonOperator () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is a comparison operator
