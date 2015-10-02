@@ -32,8 +32,9 @@
 #include "Aql/Collection.h"
 #include "Aql/Executor.h"
 #include "Aql/Query.h"
-#include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
+#include "Basics/json-utilities.h"
+#include "Basics/tri-strings.h"
 #include "VocBase/collection.h"
 
 using namespace triagens::aql;
@@ -1687,6 +1688,55 @@ AstNode* Ast::clone (AstNode const* node) {
     copy->addMember(clone(node->getMemberUnchecked(i)));
   }
 
+  return copy;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deduplicate an array
+/// will return the original node if no modifications were made, and a new
+/// node if the array contained modifications
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode const* Ast::deduplicateArray (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+
+  if (! node->isArray() || ! node->isConstant()) {
+    return node;
+  }
+
+  // ok, now we're sure node is a constant array
+  size_t const n = node->numMembers();
+
+  if (n <= 1) {
+    // nothing to do
+    return node;
+  }
+
+  std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
+    n,
+    triagens::basics::JsonHash(), 
+    triagens::basics::JsonEqual()
+  );
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMemberUnchecked(i);
+    auto json = member->computeJson();
+        
+    if (cache.find(json) == cache.end()) {
+      cache.emplace(json, member);
+    }
+  }
+
+  if (cache.size() == n) {
+    // no duplicates
+    return node;
+  }
+
+  // we got duplicates. now create a copy of the deduplicated values
+  auto copy = createNodeArray();
+  for (auto& it : cache) {
+    copy->addMember(clone(it.second));
+  }
   return copy;
 }
 

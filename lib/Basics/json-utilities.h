@@ -31,7 +31,6 @@
 #define ARANGODB_BASICS_JSON__UTILITIES_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/json.h"
 
 // -----------------------------------------------------------------------------
@@ -125,7 +124,7 @@ namespace triagens {
   namespace basics {
 
     struct JsonHash {
-      size_t operator() (TRI_json_t const* value) const {
+      inline size_t operator() (TRI_json_t const* value) const {
         return TRI_FastHashJson(value);
       }
     };
@@ -135,10 +134,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     struct JsonEqual {    
-      bool operator() (TRI_json_t const* lhs,
-                       TRI_json_t const* rhs) const {
-        int res = TRI_CompareValuesJson(lhs, rhs, false);
-        return (res == 0);
+      inline bool operator() (TRI_json_t const* lhs,
+                              TRI_json_t const* rhs) const {
+
+        return (TRI_CompareValuesJson(lhs, rhs, false) == 0);
       }
     };
 

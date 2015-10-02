@@ -331,7 +331,7 @@ void Condition::normalize (ExecutionPlan* plan) {
 // If a condition (A) is a consequence of another (B), the solution set of A is larger than that of B
 //  -> A can be dropped.
 
-ConditionPart::ConditionPartCompareResult ConditionPart::ResultsTable[3][7][7] = {
+ConditionPart::ConditionPartCompareResult const ConditionPart::ResultsTable[3][7][7] = {
   { // X < Y
     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, DISJOINT},
     {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT, SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT},
@@ -465,7 +465,7 @@ void Condition::optimize (ExecutionPlan* plan) {
               continue;
             }
             
-            // Results are -1, 0, 1, move to 0,1,2 for the lookup:
+            // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
             ConditionPart::ConditionPartCompareResult res = ConditionPart::ResultsTable
               [CompareAstNodes(current.valueNode, other.valueNode, false) + 1] 
               [current.whichCompareOperation()]
@@ -520,12 +520,63 @@ void Condition::optimize (ExecutionPlan* plan) {
     fastForwardToNextOrItem:
       continue;
     }
+
   }
 
+  // finally deduplicate all IN arrays
+  deduplicateInValues(_root);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump a condition
+/// @brief deduplicate IN condition values
+/// this may modify the node in place
+////////////////////////////////////////////////////////////////////////////////
+
+void Condition::deduplicateInValues (AstNode* root) {
+  TRI_ASSERT(root != nullptr);
+  TRI_ASSERT(root->type == NODE_TYPE_OPERATOR_NARY_OR);
+
+  size_t const n = root->numMembers();
+  
+  // check if any of the AND-branches contains an IN
+  for (size_t i = 0; i < n; ++i) { // foreach AND-Node
+    auto andNode = _root->getMemberUnchecked(i);
+    TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+
+    size_t const andNumMembers = andNode->numMembers();
+
+    if (andNumMembers == 0) {
+      continue;
+    }
+
+    for (size_t j = 0; j < andNumMembers; ++j) {
+      auto operand = andNode->getMemberUnchecked(j);
+
+      if (operand->type != NODE_TYPE_OPERATOR_BINARY_IN) {
+        continue;
+      }
+
+      // found an IN
+      TRI_ASSERT(operand->numMembers() == 2);
+
+      auto rhs = operand->getMemberUnchecked(1);
+
+      if (! rhs->isArray() || ! rhs->isConstant()) {
+        continue;
+      }
+
+      auto deduplicated = _ast->deduplicateArray(rhs);
+
+      if (deduplicated != rhs) {
+        // there were duplicates
+        operand->changeMember(1, const_cast<AstNode*>(deduplicated));
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump the condition for debug purposes
 ////////////////////////////////////////////////////////////////////////////////
 
 void Condition::dump () const {

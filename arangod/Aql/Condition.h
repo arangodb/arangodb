@@ -65,14 +65,14 @@ namespace triagens {
     struct ConditionPart {
 
       enum ConditionPartCompareResult {
-        IMPOSSIBLE = 0,
+        IMPOSSIBLE              = 0,
         SELF_CONTAINED_IN_OTHER = 1,
         OTHER_CONTAINED_IN_SELF = 2,
-        DISJOINT = 3,
-        CONVERT_EQUAL = 4,
-        UNKNOWN = 5
+        DISJOINT                = 3,
+        CONVERT_EQUAL           = 4,
+        UNKNOWN                 = 5
       };
-      static ConditionPartCompareResult ResultsTable[3][7][7];
+      static ConditionPartCompareResult const ResultsTable[3][7][7];
 
       ConditionPart () = delete;
 
@@ -102,6 +102,10 @@ namespace triagens {
           return 6; // not a compare operator.
         }
       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump the condition for debug purposes
+////////////////////////////////////////////////////////////////////////////////
 
       void dump () const;
       
@@ -206,6 +210,13 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deduplicate IN condition values
+/// this may modify the node in place
+////////////////////////////////////////////////////////////////////////////////
+
+        void deduplicateInValues (AstNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transforms the AstNode
