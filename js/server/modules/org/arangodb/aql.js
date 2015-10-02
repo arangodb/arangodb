@@ -6670,14 +6670,14 @@ function IS_EXAMPLE_SET (example) {
 ///   If no default is supplied the default would be positive Infinity so the path could
 ///   not be calculated.
 ///   * *stopAtFirstMatch*                 : Only useful if targetVertices is an example that matches 
-///                                          to more than one vertex. If so only the shortest path to
-///                                          the closest of these target vertices is returned.
-///                                          This flag is of special use if you have target pattern and
-///                                          you want to know which vertex with this pattern is matched first.
+///   to more than one vertex. If so only the shortest path to
+///   the closest of these target vertices is returned.
+///   This flag is of special use if you have target pattern and
+///   you want to know which vertex with this pattern is matched first.
 ///   * *includeData*                      : Triggers if only *_id*'s are returned (*false*, default)
-///                                          or if data is included for all objects as well (*true*)
-///                                          This will modify the content of *vertex*, *path.vertices*
-///                                          and *path.edges*. 
+///   or if data is included for all objects as well (*true*)
+///   This will modify the content of *vertex*, *path.vertices*
+///   and *path.edges*. 
 ///
 /// NOTE: Since version 2.6 we have included a new optional parameter *includeData*.
 /// This parameter triggers if the result contains the real data object *true* or
@@ -7402,7 +7402,7 @@ function AQL_NEIGHBORS (vertexCollection,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-///                          vertices (see [example](#short_explanation_of_the_example_parameter)).
+///   vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options*            : An object containing the following options:
 ///   * *direction*                        : The direction
 ///     of the edges. Possible values are *outbound*, *inbound* and *any* (default).
@@ -7859,8 +7859,8 @@ function AQL_GRAPH_VERTICES (graphName,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_aql_general_graph_common_neighbors
-/// *The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
-/// defined by the examples.*
+/// The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
+/// defined by the examples.
 ///
 /// `GRAPH_COMMON_NEIGHBORS (graphName, vertex1Example, vertex2Examples,
 /// optionsVertex1, optionsVertex2)`
