@@ -1,7 +1,7 @@
 /*jshint browser: true */
 /*jshint unused: false */
 /*jshint maxlen: 999999 */
-/*global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require, Viva*/
+/*global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require, cy, cytoscape*/
 
 (function() {
   "use strict";
