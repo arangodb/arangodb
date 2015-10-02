@@ -1019,6 +1019,47 @@ AstNode* Ast::createNodeArray () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST unique array node, AND-merged from two other arrays
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeMergedArray (AstNode const* lhs, 
+                                     AstNode const* rhs) {
+  TRI_ASSERT(lhs->isArray() && lhs->isConstant());
+  TRI_ASSERT(rhs->isArray() && rhs->isConstant());
+
+  size_t const nl = lhs->numMembers();
+  size_t const nr = rhs->numMembers();
+
+  std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
+    nl + nr,
+    triagens::basics::JsonHash(), 
+    triagens::basics::JsonEqual()
+  );
+
+  for (size_t i = 0; i < nl; ++i) {
+    auto member = lhs->getMemberUnchecked(i);
+    auto json = member->computeJson();
+        
+    cache.emplace(json, member);
+  }
+  
+  auto node = createNodeArray();
+
+  for (size_t i = 0; i < nr; ++i) {
+    auto member = rhs->getMemberUnchecked(i);
+    auto json = member->computeJson();
+        
+    auto it = cache.find(json);
+
+    if (it != cache.end()) {
+      node->addMember(clone((*it).second));
+    }
+  }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST object node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1734,6 +1775,8 @@ AstNode const* Ast::deduplicateArray (AstNode const* node) {
 
   // we got duplicates. now create a copy of the deduplicated values
   auto copy = createNodeArray();
+  copy->members.reserve(cache.size());
+
   for (auto& it : cache) {
     copy->addMember(clone(it.second));
   }
@@ -2597,6 +2640,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json,
   if (json->_type == TRI_JSON_ARRAY) {
     auto node = createNodeArray();
     size_t const n = TRI_LengthArrayJson(json);
+    node->members.reserve(n);
 
     for (size_t i = 0; i < n; ++i) {
       node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i)), copyStringValues)); 

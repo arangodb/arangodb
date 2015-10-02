@@ -416,6 +416,11 @@ void Condition::optimize (ExecutionPlan* plan) {
 
   restartThisOrItem:
     size_t const andNumMembers = andNode->numMembers();
+  
+    // deduplicate all IN arrays
+    for (size_t j = 0; j < andNumMembers; ++j) {
+      deduplicateInOperation(andNode->getMemberUnchecked(j));
+    }
 
     if (andNumMembers > 1) {
       // optimization is only necessary if an AND node has members
@@ -452,14 +457,33 @@ void Condition::optimize (ExecutionPlan* plan) {
 
           // multiple occurrences of the same attribute
           std::cout << "ATTRIBUTE " << attributeName << " occurs in " << positions.size() << " positions\n";
+          auto leftNode = andNode->getMemberUnchecked(positions[0].first);
 
-          ConditionPart current(variable, attributeName, 0, andNode->getMemberUnchecked(positions[0].first), positions[0].second);
+          ConditionPart current(variable, attributeName, 0, leftNode, positions[0].second);
           // current.dump();
           size_t j = 1;
-
+          
           while (j < positions.size()) {
+            auto rightNode = andNode->getMemberUnchecked(positions[j].first);
+          
+            if (leftNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
+                rightNode->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+              // merge IN with IN on same attribute
+              TRI_ASSERT(leftNode->numMembers() == 2);
+              TRI_ASSERT(rightNode->numMembers() == 2);
 
-            ConditionPart other(variable, attributeName, j, andNode->getMemberUnchecked(positions[j].first), positions[j].second);
+              if (leftNode->getMemberUnchecked(1)->isConstant() && 
+                  rightNode->getMemberUnchecked(1)->isConstant()) {
+                auto merged = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, 
+                                                             leftNode->getMemberUnchecked(0), 
+                                                             mergeInOperations(leftNode, rightNode));
+                andNode->removeMemberUnchecked(positions[j].first);
+                andNode->changeMember(positions[0].first, merged);
+                goto restartThisOrItem;
+              }
+            }
+
+            ConditionPart other(variable, attributeName, j, rightNode, positions[j].second);
 
             if (! current.valueNode->isConstant() || ! other.valueNode->isConstant()) {
               continue;
@@ -494,7 +518,7 @@ void Condition::optimize (ExecutionPlan* plan) {
                 andNode->removeMemberUnchecked(positions[j].first);
                 auto origNode = andNode->getMemberUnchecked(positions[0].first);
                 auto newNode = plan->getAst()->createNode(NODE_TYPE_OPERATOR_BINARY_EQ);
-                for (uint32_t iMemb = 0; iMemb < origNode->numMembers(); iMemb++) {
+                for (size_t iMemb = 0; iMemb < origNode->numMembers(); iMemb++) {
                   newNode->addMember(origNode->getMemberUnchecked(iMemb));
                 }
 
@@ -503,7 +527,6 @@ void Condition::optimize (ExecutionPlan* plan) {
                 break;
               }
               case CompareResult::DISJOINT: {
-                std::cout << "DISJOINT\n";
                 break;
               }
               case CompareResult::UNKNOWN: {
@@ -523,8 +546,6 @@ void Condition::optimize (ExecutionPlan* plan) {
 
   }
 
-  // finally deduplicate all IN arrays
-  deduplicateInValues(_root);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -532,47 +553,44 @@ void Condition::optimize (ExecutionPlan* plan) {
 /// this may modify the node in place
 ////////////////////////////////////////////////////////////////////////////////
 
-void Condition::deduplicateInValues (AstNode* root) {
-  TRI_ASSERT(root != nullptr);
-  TRI_ASSERT(root->type == NODE_TYPE_OPERATOR_NARY_OR);
-
-  size_t const n = root->numMembers();
-  
-  // check if any of the AND-branches contains an IN
-  for (size_t i = 0; i < n; ++i) { // foreach AND-Node
-    auto andNode = _root->getMemberUnchecked(i);
-    TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-
-    size_t const andNumMembers = andNode->numMembers();
-
-    if (andNumMembers == 0) {
-      continue;
-    }
-
-    for (size_t j = 0; j < andNumMembers; ++j) {
-      auto operand = andNode->getMemberUnchecked(j);
-
-      if (operand->type != NODE_TYPE_OPERATOR_BINARY_IN) {
-        continue;
-      }
-
-      // found an IN
-      TRI_ASSERT(operand->numMembers() == 2);
-
-      auto rhs = operand->getMemberUnchecked(1);
-
-      if (! rhs->isArray() || ! rhs->isConstant()) {
-        continue;
-      }
-
-      auto deduplicated = _ast->deduplicateArray(rhs);
-
-      if (deduplicated != rhs) {
-        // there were duplicates
-        operand->changeMember(1, const_cast<AstNode*>(deduplicated));
-      }
-    }
+void Condition::deduplicateInOperation (AstNode* operation) {
+  if (operation->type != NODE_TYPE_OPERATOR_BINARY_IN) {
+    return;
   }
+
+  // found an IN
+  TRI_ASSERT(operation->numMembers() == 2);
+
+  auto rhs = operation->getMemberUnchecked(1);
+
+  if (! rhs->isArray() || ! rhs->isConstant()) {
+    return;
+  }
+
+  auto deduplicated = _ast->deduplicateArray(rhs);
+
+  if (deduplicated != rhs) {
+    // there were duplicates
+    operation->changeMember(1, const_cast<AstNode*>(deduplicated));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge the values from two IN operations
+////////////////////////////////////////////////////////////////////////////////
+        
+AstNode* Condition::mergeInOperations (AstNode const* lhs, 
+                                       AstNode const* rhs) {
+  TRI_ASSERT(lhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
+  TRI_ASSERT(rhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
+  
+  auto lValue = lhs->getMemberUnchecked(1);
+  auto rValue = rhs->getMemberUnchecked(1);
+
+  TRI_ASSERT(lValue->isArray() && lValue->isConstant());
+  TRI_ASSERT(rValue->isArray() && rValue->isConstant());
+
+  return _ast->createNodeMergedArray(lValue, rValue);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -191,6 +191,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     struct AstNode {
+      friend class Ast;
 
       static std::unordered_map<int, std::string const> const Operators;
       static std::unordered_map<int, std::string const> const TypeNames;

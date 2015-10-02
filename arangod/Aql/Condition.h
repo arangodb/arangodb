@@ -84,22 +84,22 @@ namespace triagens {
 
       ~ConditionPart ();
 
-      inline uint whichCompareOperation() const {
+      inline int whichCompareOperation() const {
         switch (operatorType) {
-        case NODE_TYPE_OPERATOR_BINARY_EQ:
-          return 0;
-        case NODE_TYPE_OPERATOR_BINARY_NE:
-          return 1;
-        case NODE_TYPE_OPERATOR_BINARY_LT:
-          return 2;
-        case NODE_TYPE_OPERATOR_BINARY_LE:
-          return 3;
-        case NODE_TYPE_OPERATOR_BINARY_GE:
-          return 4;
-        case NODE_TYPE_OPERATOR_BINARY_GT:
-          return 5;
-        default:
-          return 6; // not a compare operator.
+          case NODE_TYPE_OPERATOR_BINARY_EQ:
+            return 0;
+          case NODE_TYPE_OPERATOR_BINARY_NE:
+            return 1;
+          case NODE_TYPE_OPERATOR_BINARY_LT:
+            return 2;
+          case NODE_TYPE_OPERATOR_BINARY_LE:
+            return 3;
+          case NODE_TYPE_OPERATOR_BINARY_GE:
+            return 4;
+          case NODE_TYPE_OPERATOR_BINARY_GT:
+            return 5;
+          default:
+            return 6; // not a compare operator.
         }
       }
 
@@ -216,7 +216,13 @@ namespace triagens {
 /// this may modify the node in place
 ////////////////////////////////////////////////////////////////////////////////
 
-        void deduplicateInValues (AstNode*);
+        void deduplicateInOperation (AstNode*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merge the values from two IN operations
+////////////////////////////////////////////////////////////////////////////////
+        
+        AstNode* mergeInOperations (AstNode const*, AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transforms the AstNode
