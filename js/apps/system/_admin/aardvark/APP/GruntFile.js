@@ -83,7 +83,8 @@
             "frontend/js/arango/arango.js",
             "frontend/js/arango/templateEngine.js",
             "frontend/js/shell/browser.js",
-            "frontend/js/config/dygraphConfig.js",/*
+            "frontend/js/config/dygraphConfig.js" 
+            /*
             "frontend/js/modules/underscore.js",
             "frontend/js/modules/org/arangodb/aql/explainer.js",
             "frontend/js/modules/org/arangodb/aql/functions.js",
@@ -107,13 +108,14 @@
             "frontend/js/modules/org/arangodb/simple-query.js",
             "frontend/js/modules/org/arangodb/tutorial.js",
             "frontend/js/modules/org/arangodb-common.js",
-            "frontend/js/modules/org/arangodb.js",*/
-            "frontend/js/bootstrap/errors.js",
-            "frontend/js/bootstrap/monkeypatches.js",
-            "frontend/js/bootstrap/module-internal.js",
-            "frontend/js/client/bootstrap/module-internal.js",
-            "frontend/js/client/client.js",
-            "frontend/js/bootstrap/module-console.js"
+            "frontend/js/modules/org/arangodb.js",
+            "frontend/js/bootstrap/modules/internal.js", // deps: -
+            "frontend/js/bootstrap/errors.js", // deps: internal
+            "frontend/js/bootstrap/modules/console.js", // deps: internal
+            "frontend/js/bootstrap/monkeypatches.js", 
+            "frontend/js/client/bootstrap/modules/internal.js", // deps: internal
+            "frontend/js/client/client.js"
+            */
           ],
           js: [
             "frontend/js/models/*",
@@ -247,6 +249,17 @@
             ext: '.js.gz'
           }]
         },
+        clusterMinJS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['clusterFrontend/build/cluster.min.js'],
+            dest: '.',
+            ext: '.min.js.gz'
+          }]
+        },
         aceJS: {
           options: {
             mode: 'gzip'
@@ -278,6 +291,17 @@
             src: ['build/sharedLibs.js'],
             dest: '.',
             ext: '.js.gz'
+          }]
+        },
+        sharedMinJS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['build/sharedLibs.min.js'],
+            dest: '.',
+            ext: '.min.js.gz'
           }]
         }
       },
@@ -357,6 +381,12 @@
         sharedES: {
           src: [
             "frontend/js/modules/**/*.js",
+            "frontend/js/bootstrap/modules/internal.js", 
+            "frontend/js/bootstrap/errors.js",
+            "frontend/js/bootstrap/modules/console.js",
+            "frontend/js/client/bootstrap/modules/internal.js", 
+            "frontend/js/bootstrap/monkeypatches.js", 
+            "frontend/js/client/client.js"
           ],
           dest: 'frontend/build/arangoes6.js',
           options: {

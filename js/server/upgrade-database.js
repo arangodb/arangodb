@@ -39,11 +39,14 @@
   var internal = require("internal");
   var fs = require("fs");
   var console = require("console");
+  var Module = require('module');
   var userManager = require("org/arangodb/users");
   require("org/arangodb/cluster"); // TODO Is this unused or magic?
   var currentVersion = require("org/arangodb/database-version").CURRENT_VERSION;
   var sprintf = internal.sprintf;
   var db = internal.db;
+
+  var defaultRootPW = require("process").env.ARANGODB_DEFAULT_ROOT_PASSWORD || "";
 
   function upgrade () {
 
@@ -599,7 +602,7 @@
 
         if (! foundUser && users.count() === 0) {
           // only add account if user has not created his/her own accounts already
-          userManager.save("root", "", true);
+          userManager.save("root", defaultRootPW, true);
         }
 
         return true;
@@ -1321,7 +1324,7 @@
         var appsToZip = aal.byExample({type: "app", isSystem: false});
         while (appsToZip.hasNext()) {
           tmp = appsToZip.next();
-          path = fs.join(module.oldAppPath(), tmp.path);
+          path = fs.join(Module._oldAppPath, tmp.path);
           try {
             mapAppZip[tmp.app] = fmUtils.zipDirectory(path);
           } catch (e) {
@@ -1331,7 +1334,7 @@
 
         // 2. If development mode, Zip all development APPs and create a map name => zipFile
         
-        var devPath = module.devAppPath();
+        var devPath = Module._devAppPath;
         var mapDevAppZip = {};
         var i;
         if (devPath !== undefined) {
@@ -1351,7 +1354,7 @@
         // 3. Remove old appPath
 
         try {
-          fs.removeDirectoryRecursive(module.oldAppPath(), true);
+          fs.removeDirectoryRecursive(Module._oldAppPath, true);
         } catch(e) {
         }
         

@@ -63,7 +63,7 @@ db._executeTransaction({
 *read* and *write* are optional attributes, and only need to be specified if 
 the operations inside the transactions demand for it.
 
-The contents of *read* or *write* can each be lists with collection names or a 
+The contents of *read* or *write* can each be lists arrays collection names or a 
 single collection name (as a string):
 
 ```js
@@ -79,6 +79,29 @@ db._executeTransaction({
 Even without specifying them, it is still possible to read from such collections
 from within a transaction, but with relaxed isolation. Please refer to 
 [Transactions Locking](../Transactions/LockingAndIsolation.md) for more details.
+
+In order to make a transaction fail when a non-declared collection is used inside
+for reading, the optional *allowImplicit* sub-attribute of *collections* can be
+set to *false*:
+
+```js
+db._executeTransaction({
+  collections: {
+    read: "recommendations",
+    allowImplicit: false  /* this disallows read access to other collections
+                             than specified */
+  },
+  action: function () {
+    var db = require("org/arangodb").db;
+    return db.foobar.toArray(); /* will fail because db.foobar must not be accessed
+                                   for reading inside this transaction */
+  }
+});
+```
+
+The default value for *allowImplicit* is *true*. Write-accessing collections that
+have not been declared in the *collections* array is never possible, regardless of
+the value of *allowImplicit*.
 
 !SUBSECTION Declaration of data modification and retrieval operations
 

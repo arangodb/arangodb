@@ -55,7 +55,7 @@
     )
   };
   var fs = require("fs");
-  var defaultThumb = require("/lib/defaultThumbnail").defaultThumb;
+  var defaultThumb = require("./lib/defaultThumbnail").defaultThumb;
 
   controller.activateSessions({
     autoCreateSession: false,
@@ -211,11 +211,12 @@
     res.transformations = [ "base64decode" ];
     var mount = validateMount(req);
     var app = FoxxManager.lookupApp(mount);
-    if (app.hasOwnProperty("_thumbnail")) {
-      res.body = app._thumbnail;
+    if (app.hasOwnProperty("thumbnail") && app.thumbnail !== null) {
+      res.body = app.thumbnail;
     } else {
       res.body = defaultThumb;
     }
+
     // evil mimetype detection attempt...
     var start = require("internal").base64Decode(res.body.substr(0, 8));
     if (start.indexOf("PNG") !== -1) {
@@ -345,7 +346,7 @@
   controller.get("/download/zip", function(req, res) {
     var mount = validateMount(req);
     var app = FoxxManager.lookupApp(mount);
-    var dir = fs.join(fs.makeAbsolute(app._root), app._path);
+    var dir = fs.join(fs.makeAbsolute(app.root), app.path);
     var zipPath = fmUtils.zipDirectory(dir);
     res.set("Content-Type", "application/octet-stream");
     res.set("Content-Disposition", "attachment; filename=app.zip");

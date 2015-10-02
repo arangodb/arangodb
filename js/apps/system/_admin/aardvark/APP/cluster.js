@@ -76,7 +76,7 @@
         var config = plans.loadConfig(),
           k;
         if (!config) {
-          return;
+          return null;
         }
         k = new cluster.Kickstarter(config.plan);
         k.runInfo = config.runInfo;
@@ -89,7 +89,7 @@
           );
           return {
             username: auth.substr(0, auth.indexOf(":")),
-            passwd: auth.substr(auth.indexOf(":")+1) || ""
+            passwd: auth.substr(auth.indexOf(":") + 1) || ""
           };
         }
         return {
@@ -219,7 +219,13 @@
     });
 
     controller.get("/healthcheck", function(req, res) {
-      var out = getStarter().isHealthy();
+      var k = getStarter();
+      if (! k) {
+        res.json(false);
+        res.status = 200;
+        return;
+      }
+      var out = k.isHealthy();
       var answer = true;
       if (out.error) {
         _.each(out.results, function(res) {
@@ -235,6 +241,11 @@
 
     controller.get("/shutdown", function(req, res) {
       var k = getStarter();
+      if (! k) {
+        res.json({ error: true, errorMessage: "could not shut down cluster" });
+        res.status = 500;
+        return;
+      }
       var shutdownInfo = k.shutdown();
       if (shutdownInfo.error) {
         require("console").log("%s", JSON.stringify(shutdownInfo.results));
@@ -246,6 +257,12 @@
       //uname pswd
 
       var k = getStarter();
+      if (! k) {
+        res.json({ error: true, errorMessage: "could not upgrade cluster" });
+        res.status = 500;
+        return;
+      }
+
       var u = plans.getCredentials();
       var r = k.upgrade(u.name, u.passwd);
       if (r.error === true) {
@@ -256,21 +273,29 @@
         plans.replaceRunInfo(r.runInfo);
         res.json("ok");
       }
-
     });
 
     controller.get("/cleanup", function(req, res) {
       var k = getStarter();
+      if (! k) {
+        res.json({ error: true, errorMessage: "could not cleanup cluster" });
+        res.status = 500;
+        return;
+      }
       var shutdownInfo = k.shutdown();
       cleanUp();
       if (shutdownInfo.error) {
         require("console").log("%s", JSON.stringify(shutdownInfo.results));
-        return;
       }
     });
 
     controller.get("/relaunch", function(req, res) {
       var k = getStarter();
+      if (! k) {
+        res.json({ error: true, errorMessage: "could not relaunch cluster" });
+        res.status = 500;
+        return;
+      }
       var u = plans.getCredentials();
       var r = k.relaunch(u.name, u.passwd);
       if (r.error) {

@@ -1504,6 +1504,64 @@ struct AqlInsertTest : public BenchmarkOperation {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                       AQL v8 test
+// -----------------------------------------------------------------------------
+
+struct AqlV8Test : public BenchmarkOperation {
+  AqlV8Test ()
+    : BenchmarkOperation () {
+  }
+
+  ~AqlV8Test () {
+  }
+
+  bool setUp (SimpleHttpClient* client) {
+    return DeleteCollection(client, Collection) &&
+           CreateCollection(client, Collection, 2);
+  }
+
+  void tearDown () {
+  }
+
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return std::string("/_api/cursor");
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    TRI_string_buffer_t* buffer;
+    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+
+    TRI_AppendStringStringBuffer(buffer, "{\"query\":\"INSERT { _key: \\\"test");
+    TRI_AppendInt64StringBuffer(buffer, (int64_t) globalCounter);
+    TRI_AppendStringStringBuffer(buffer, "\\\"");
+    
+    uint64_t const n = Complexity;
+    for (uint64_t i = 1; i <= n; ++i) {
+      TRI_AppendStringStringBuffer(buffer, ",\\\"value");
+      TRI_AppendUInt64StringBuffer(buffer, i);
+      TRI_AppendStringStringBuffer(buffer, "\\\":RAND(),\\\"test");
+      TRI_AppendUInt64StringBuffer(buffer, i);
+      TRI_AppendStringStringBuffer(buffer, "\\\":RANDOM_TOKEN(32)");
+    }
+
+    TRI_AppendStringStringBuffer(buffer, " } INTO ");
+    TRI_AppendStringStringBuffer(buffer, Collection.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\"}");
+
+    *length = TRI_LengthStringBuffer(buffer);
+    *mustFree = true;
+    char* ptr = TRI_StealStringBuffer(buffer);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+    return (const char*) ptr;
+  }
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -1685,6 +1743,9 @@ static BenchmarkOperation* GetTestCase (const std::string& name) {
   }
   if (name == "aqlinsert") {
     return new AqlInsertTest();
+  }
+  if (name == "aqlv8") {
+    return new AqlV8Test();
   }
 
   return nullptr;

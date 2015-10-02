@@ -90,7 +90,7 @@ the action to the route */ourtest*, execute the following command:
     @startDocuBlockInline MOD_01b_routingEnableOwnTest
     @EXAMPLE_ARANGOSH_OUTPUT{MOD_01b_routingEnableOwnTest}
     |db._routing.save({
-    |  url: "/ourtest",
+    |  url: "/ourtest", 
     |  action: {
     |    controller: "db://ownTest"
     |  }

@@ -1,3 +1,10 @@
+/*eslint curly:0, eqeqeq:0, no-extra-boolean-cast:0 */
+/*jshint ignore:start */
+/*eslint-disable */
+global.DEFINE_MODULE('assert', (function () {
+'use strict';
+/*eslint-enable */
+
 // http://wiki.commonjs.org/wiki/Unit_Testing/1.0
 //
 // THIS IS NOT TESTED NOR LIKELY TO WORK OUTSIDE V8!
@@ -23,35 +30,46 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // UTILITY
-var util = require('util');
 var pSlice = Array.prototype.slice;
 
 // 1. The assert module provides functions that throw
 // AssertionError's when particular conditions are not met. The
 // assert module must conform to the following interface.
 
-var assert = module.exports = ok;
+var assert = ok;
 
 // 2. The AssertionError is defined in assert.
 // new assert.AssertionError({ message: message,
 //                             actual: actual,
 //                             expected: expected })
 
-assert.AssertionError = function AssertionError(options) {
-  this.name = 'AssertionError';
-  this.message = options.message;
-  this.actual = options.actual;
-  this.expected = options.expected;
-  this.operator = options.operator;
-  var stackStartFunction = options.stackStartFunction || fail;
+assert.AssertionError = class AssertionError extends Error {
+  constructor(options) {
+    super(options.message);
+    this.name = 'AssertionError';
+    this.actual = options.actual;
+    this.expected = options.expected;
+    this.operator = options.operator;
+    var stackStartFunction = options.stackStartFunction || fail;
 
-  if (Error.captureStackTrace) {
-    Error.captureStackTrace(this, stackStartFunction);
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, stackStartFunction);
+    }
+  }
+
+  toString() {
+    if (this.message) {
+      return [this.name + ':', this.message].join(' ');
+    } else {
+      return [
+        this.name + ':',
+        truncate(JSON.stringify(this.actual, replacer), 128),
+        this.operator,
+        truncate(JSON.stringify(this.expected, replacer), 128)
+      ].join(' ');
+    }
   }
 };
-
-// assert.AssertionError instanceof Error
-util.inherits(assert.AssertionError, Error);
 
 function replacer(key, value) {
   if (value === undefined) {
@@ -73,19 +91,6 @@ function truncate(s, n) {
     return s;
   }
 }
-
-assert.AssertionError.prototype.toString = function() {
-  if (this.message) {
-    return [this.name + ':', this.message].join(' ');
-  } else {
-    return [
-      this.name + ':',
-      truncate(JSON.stringify(this.actual, replacer), 128),
-      this.operator,
-      truncate(JSON.stringify(this.expected, replacer), 128)
-    ].join(' ');
-  }
-};
 
 // At present only the three keys mentioned above are used and
 // understood by the spec. Implementations or sub modules can pass
@@ -277,7 +282,7 @@ function expectedException(actual, expected) {
     return false;
   }
 
-  if (Object.prototype.toString.call(expected) == '[object RegExp]') {
+  if (Object.prototype.toString.call(expected) === '[object RegExp]') {
     return expected.test(actual);
   } else if (actual instanceof expected) {
     return true;
@@ -322,13 +327,21 @@ function _throws(shouldThrow, block, expected, message) {
 // 11. Expected to throw an error:
 // assert.throws(block, Error_opt, message_opt);
 
-assert.throws = function(block, /*optional*/error, /*optional*/message) {
+assert.throws = function(/*block, ?error, ?message*/) {
   _throws.apply(this, [true].concat(pSlice.call(arguments)));
 };
 
 // EXTENSION! This is annoying to write outside this module.
-assert.doesNotThrow = function(block, /*optional*/message) {
+assert.doesNotThrow = function(/*block, ?message*/) {
   _throws.apply(this, [false].concat(pSlice.call(arguments)));
 };
 
-assert.ifError = function(err) { if (err) {throw err;}};
+assert.ifError = function(err) {
+  if (err) {
+    throw err;
+  }
+};
+
+return assert;
+
+}()));

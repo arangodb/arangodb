@@ -228,12 +228,10 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
     return false;
   }
 
-  struct timeval tv;
-  tv.tv_sec = (long) timeout;
-  tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
-  
   fd_set fdset;
-  do {
+
+  // handle interrupt
+  do { 
     FD_ZERO(&fdset);
     FD_SET(fd, &fdset);
 
@@ -248,15 +246,19 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
     }
 
     int sockn = (int) (fd + 1);
-    res = select(sockn, readFds, writeFds, nullptr, &tv);
+
+    struct timeval t;
+    t.tv_sec = (long) timeout;
+    t.tv_usec = (long) ((timeout - (double) t.tv_sec) * 1000000.0);
+
+    res = select(sockn, readFds, writeFds, nullptr, &t);
+
     if ((res == -1 && errno == EINTR)) {
       int myerrno = errno;
       double end = TRI_microtime();
       errno = myerrno;
       timeout = timeout - (end - start);
       start = end;
-      tv.tv_sec = (long) timeout;
-      tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
     }
   } while (res == -1 && errno == EINTR && timeout > 0.0);
 #endif

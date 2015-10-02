@@ -43,7 +43,7 @@ const semver = require('semver');
 const utils = require('org/arangodb/foxx/manager-utils');
 const store = require('org/arangodb/foxx/store');
 const deprecated = require('org/arangodb/deprecated');
-const ArangoApp = require('org/arangodb/foxx/arangoApp').ArangoApp;
+const FoxxService = require('org/arangodb/foxx/service');
 const TemplateEngine = require('org/arangodb/foxx/templateEngine').Engine;
 const routeApp = require('org/arangodb/foxx/routing').routeApp;
 const exportApp = require('org/arangodb/foxx/routing').exportApp;
@@ -112,7 +112,7 @@ const manifestSchema = {
       .pattern(RE_FQPATH, joi.string().required())
     )
   ),
-  defaultDocument: joi.string().allow('').optional(),
+  defaultDocument: joi.string().allow('').allow(null).default('index.html'),
   dependencies: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -147,7 +147,7 @@ const manifestSchema = {
   ),
   isSystem: joi.boolean().default(false),
   keywords: joi.array().optional(),
-  lib: joi.string().optional(),
+  lib: joi.string().default('.'),
   license: joi.string().optional(),
   name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).required(),
   repository: (
@@ -262,8 +262,8 @@ function refillCaches(dbname) {
 
   while (cursor.hasNext()) {
     var config = _.clone(cursor.next());
-    var app = new ArangoApp(config);
-    var mount = app._mount;
+    var app = new FoxxService(config);
+    var mount = app.mount;
     cache[mount] = app;
     routes.push(mount);
   }
@@ -306,42 +306,29 @@ function checkMountedSystemApps(dbname) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function checkManifest(filename, manifest) {
-  var validationErrors = [];
+  const serverVersion = plainServerVersion();
+  const validationErrors = [];
 
   Object.keys(manifestSchema).forEach(function (key) {
-
-    var schema = manifestSchema[key];
-    var value = manifest[key];
-    var result = joi.validate(value, schema);
+    let schema = manifestSchema[key];
+    let value = manifest[key];
+    let result = joi.validate(value, schema);
     if (result.value !== undefined) {
       manifest[key] = result.value;
     }
     if (result.error) {
-      var message = result.error.message.replace(/^"value"/, util.format('"%s"', key));
-      if (value === undefined) {
-        message = util.format(
-          'Manifest "%s": attribute %s.',
-          filename,
-          message
-        );
-      } else {
-        message = util.format(
-          'Manifest "%s": attribute %s (was "%s").',
-          filename,
-          message,
-          manifest[key]
-        );
-      }
+      let error = result.error.message.replace(/^"value"/, `"${key}"`);
+      let message = `Manifest "${filename}": attribute ${error} (was "${util.format(value)}").`;
       validationErrors.push(message);
       console.error(message);
     }
   });
 
-  let serverVersion = plainServerVersion();
-
-  if (manifest.engines 
-   && manifest.engines.arangodb
-   && !semver.satisfies(serverVersion, manifest.engines.arangodb)) {
+  if (
+    manifest.engines
+    && manifest.engines.arangodb
+    && !semver.satisfies(serverVersion, manifest.engines.arangodb)
+   ) {
     console.warn(
       `Manifest "${filename}" for app "${manifest.name}":`
       + ` ArangoDB version ${serverVersion} probably not compatible`
@@ -461,9 +448,9 @@ function isSystemMount(mount) {
 
 function computeRootAppPath(mount) {
   if (isSystemMount(mount)) {
-    return module.systemAppPath();
+    return FoxxService._systemAppPath;
   }
-  return module.appPath();
+  return FoxxService._appPath;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -502,12 +489,12 @@ function computeAppPath(mount) {
 
 function executeAppScript(scriptName, app, argv) {
   var readableName = utils.getReadableName(scriptName);
-  var scripts = app._manifest.scripts;
+  var scripts = app.manifest.scripts;
 
   // Only run setup/teardown scripts if they exist
   if (scripts[scriptName] || (scriptName !== 'setup' && scriptName !== 'teardown')) {
     try {
-      return app.loadAppScript(scripts[scriptName], {
+      return app.run(scripts[scriptName], {
         appContext: {
           argv: argv ? (Array.isArray(argv) ? argv : [argv]) : []
         }
@@ -515,7 +502,7 @@ function executeAppScript(scriptName, app, argv) {
     } catch (e) {
       if (!(e.cause || e).statusCode) {
         let details = String((e.cause || e).stack || e.cause || e);
-        console.errorLines(`Running script "${readableName}" not possible for mount "${app._mount}":\n${details}`);
+        console.errorLines(`Running script "${readableName}" not possible for mount "${app.mount}":\n${details}`);
       }
       throw e;
     }
@@ -569,7 +556,7 @@ function appConfig(mount, options, activateDevelopment) {
 function createApp(mount, options, activateDevelopment) {
   var dbname = arangodb.db._name();
   var config = appConfig(mount, options, activateDevelopment);
-  var app = new ArangoApp(config);
+  var app = new FoxxService(config);
   appCache[dbname][mount] = app;
   return app;
 }
@@ -833,10 +820,10 @@ function readme(mount) {
   let app = lookupApp(mount);
   let path, readmeText;
 
-  path = fs.join(app._root, app._path, 'README.md');
+  path = fs.join(app.root, app.path, 'README.md');
   readmeText = fs.exists(path) && fs.read(path);
   if (!readmeText) {
-    path = fs.join(app._root, app._path, 'README');
+    path = fs.join(app.root, app.path, 'README');
     readmeText = fs.exists(path) && fs.read(path);
   }
   return readmeText || null;
@@ -945,7 +932,7 @@ function rescanFoxx(mount) {
       if (definition !== null) {
         collection.remove(definition._key);
       }
-      _scanFoxx(mount, old._options, old._isDevelopment);
+      _scanFoxx(mount, old.options, old.isDevelopment);
     }
   });
 }
@@ -990,7 +977,7 @@ function _validateApp(appInfo) {
   var tempPath = fs.getTempFile('apps', false);
   try {
     _buildAppInPath(appInfo, tempPath, {});
-    var tmp = new ArangoApp(fakeAppConfig(tempPath));
+    var tmp = new FoxxService(fakeAppConfig(tempPath));
     if (!tmp.needsConfiguration()) {
       routeApp(tmp, true);
       exportApp(tmp);
@@ -1388,7 +1375,7 @@ function upgrade(appInfo, mount, options) {
       options.configuration[key] = oldConf[key];
     }
   });
-  var oldDeps = oldApp._options.dependencies || {};
+  var oldDeps = oldApp.options.dependencies || {};
   options.dependencies = options.dependencies || {};
   Object.keys(oldDeps).forEach(function (key) {
     if (!options.dependencies.hasOwnProperty(key)) {
@@ -1476,7 +1463,7 @@ function configure(mount, options) {
     [ mount ] );
   utils.validateMount(mount, true);
   var app = lookupApp(mount);
-  var invalid = app.configure(options.configuration || {});
+  var invalid = app.applyConfiguration(options.configuration || {});
   if (invalid.length > 0) {
     // TODO Error handling
     console.log(invalid);
@@ -1497,7 +1484,7 @@ function updateDeps(mount, options) {
     [ mount ] );
   utils.validateMount(mount, true);
   var app = lookupApp(mount);
-  var invalid = app.updateDeps(options.dependencies || {});
+  var invalid = app.applyDependencies(options.dependencies || {});
   if (invalid.length > 0) {
     // TODO Error handling
     console.log(invalid);
@@ -1559,7 +1546,7 @@ function syncWithFolder(options) {
   options.replace = true;
   appCache = appCache || {};
   appCache[dbname] = {};
-  var folders = fs.listTree(module.appPath()).filter(filterAppRoots);
+  var folders = fs.listTree(FoxxService._appPath).filter(filterAppRoots);
   var collection = utils.getStorage();
   return folders.map(function (folder) {
     var mount;
