@@ -1,4 +1,4 @@
-v2.7.0 (XXXX-XX-XX)
+v2.7.0-rc3 (2015-10-05)
 -------------------
 
 * fixed replication with a 2.6 replication configuration and issues with a 2.6 master
@@ -13,6 +13,10 @@ v2.7.0 (XXXX-XX-XX)
   read-access a collection that was not explicitly declared in the *collections* 
   array of the transaction.
 
+* added "special" password ARANGODB_DEFAULT_ROOT_PASSWORD. If you pass
+  ARANGODB_DEFAULT_ROOT_PASSWORD as password, it will read the password
+  from the environment variable ARANGODB_DEFAULT_ROOT_PASSWORD
+  
 
 v2.7.0-rc2 (2015-09-22)
 -----------------------

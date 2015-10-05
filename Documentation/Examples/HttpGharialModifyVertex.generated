@@ -6,15 +6,15 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json
-etag: <span class="hljs-number">570093884</span>
+etag: <span class="hljs-number">570068097</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span>, 
   <span class="hljs-string">"vertex"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"570093884"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"567931196"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"570068097"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"567905409"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span> 
   } 
 }

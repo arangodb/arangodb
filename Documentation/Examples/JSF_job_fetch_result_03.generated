@@ -2,15 +2,15 @@ shell> curl -X PUT --header 'x-arango-async: store' --dump - http://localhost:85
 
 HTTP/1.1 202 Accepted
 content-type: text/plain; charset=utf-8
-x-arango-async-id: 596439356
+x-arango-async-id: 596413569
 
-shell> curl -X PUT --dump - http://localhost:8529/_api/job/596439356
+shell> curl -X PUT --dump - http://localhost:8529/_api/job/596413569
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">596439356</span>
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">596413569</span>
 
 { 
   <span class="hljs-string">"server"</span> : <span class="hljs-string">"arango"</span>, 
-  <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.7.0-rc2"</span> 
+  <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.7.0-rc3"</span> 
 }
