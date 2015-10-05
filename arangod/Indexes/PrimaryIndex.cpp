@@ -34,6 +34,7 @@
 #include "Basics/hashes.h"
 #include "Basics/logging.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
@@ -329,10 +330,14 @@ IndexIterator* PrimaryIndex::iteratorForCondition (triagens::aql::Ast* ast,
   }
   else {
     TRI_ASSERT(strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_ID) == 0);
-    // TODO validate collection id
-    char const* key = strchr(attrNode->getStringValue(), '/');
-    std::cout << key << "\n";
-    
+    CollectionNameResolver resolver(_collection->_vocbase);
+    char const* key = strchr(valNode->getStringValue(), '/');
+    std::string collectionPart(valNode->getStringValue(), key);
+    TRI_voc_cid_t cid = resolver.getCollectionId(collectionPart);
+    if (cid == _collection->_info._cid) {
+      ++key; // Ignore the /
+      return new PrimaryIndexIterator(this, key);
+    }
   }
   return nullptr;
 }
