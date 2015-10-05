@@ -30,6 +30,7 @@
 #include "SkiplistIndex.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
@@ -890,7 +891,7 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
     return false;
   }
   
-  std::pair<triagens::aql::Variable const*, std::vector<std::string>> attributeData;
+  std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> attributeData;
 
   if (! access->isAttributeAccessForVariable(attributeData) ||
       attributeData.first != reference) {
@@ -898,7 +899,7 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
     return false;
   }
           
-  std::vector<std::string>& fieldNames = attributeData.second;
+  std::vector<triagens::basics::AttributeName> const& fieldNames = attributeData.second;
 
   triagens::aql::AstNodeType opType = op->type;
   if (opType == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {

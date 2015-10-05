@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_ASTNODE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/vector.h"
@@ -515,24 +516,24 @@ namespace triagens {
 /// refers to the specified variable reference
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isAttributeAccessForVariable (std::pair<Variable const*, std::vector<std::string>>& attributes) const {
+        bool isAttributeAccessForVariable (std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>& result) const {
           if (! isAttributeAccess()) {
             return false;
           }
 
-          attributes.first = nullptr;
+          result.first = nullptr;
 
           auto node = this;
           while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-            attributes.second.emplace_back(std::string(node->getStringValue(), node->getStringLength()));
+            result.second.emplace_back(triagens::basics::AttributeName(std::string(node->getStringValue(), node->getStringLength()), false));
             node = node->getMember(0);
           }
           if (node->type != NODE_TYPE_REFERENCE) {
-            attributes.second.clear();
+            result.second.clear();
             return false;
           }
 
-          attributes.first = static_cast<Variable const*>(node->getData());
+          result.first = static_cast<Variable const*>(node->getData());
           return true;
         }
 

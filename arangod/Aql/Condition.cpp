@@ -103,7 +103,7 @@ static void dumpNode (AstNode const* node, int indent) {
     std::cout << "  (attribute " << node->getStringValue() << ")";
   }
   else if (node->type == NODE_TYPE_REFERENCE) {
-    std::cout << "  (name " << static_cast<Variable const*>(node->getData())->name << ")";
+    std::cout << "  (variable name " << static_cast<Variable const*>(node->getData())->name << ")";
   }
 
   std::cout << "\n";
@@ -378,22 +378,32 @@ ConditionPart::ConditionPartCompareResult const ConditionPart::ResultsTable[3][7
 };
 
 void Condition::optimize (ExecutionPlan* plan) {
-//  normalize();
   typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
   typedef std::unordered_map<std::string, UsagePositionType> AttributeUsageType;
   typedef std::unordered_map<Variable const*, AttributeUsageType> VariableUsageType;
       
   auto storeAttributeAccess = [] (VariableUsageType& variableUsage, AstNode const* node, size_t position, AttributeSideType side) {
-    auto&& attributeAccess = Ast::extractAttributeAccess(node);
-    auto variable = attributeAccess.first;
+    std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
+    if (! node->isAttributeAccessForVariable(result)) {
+      return;
+    }
+    auto variable = result.first;
 
     if (variable != nullptr) {
       auto it = variableUsage.find(variable);
-      auto const& attributeName = attributeAccess.second;
 
       if (it == variableUsage.end()) {
         // nothing recorded yet for variable
         it = variableUsage.emplace(variable, AttributeUsageType()).first;
+      }
+
+      // TODO: fix this      
+      std::string attributeName;
+      for (size_t i = 0; i < result.second.size(); ++i) {
+        if (i > 0) {
+          attributeName.push_back('.');
+        }
+        attributeName.append(result.second[i].name);
       }
 
       auto it2 = (*it).second.find(attributeName);
@@ -437,6 +447,7 @@ void Condition::optimize (ExecutionPlan* plan) {
     for (size_t j = 0; j < andNumMembers; ++j) {
       deduplicateInOperation(andNode->getMemberUnchecked(j));
     }
+
     // move IN operation to the front to make comparison code below simpler
     andNode->sortMembers([] (AstNode const* lhs, AstNode const* rhs) -> bool {
       if (lhs->type == NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -465,7 +476,8 @@ void Condition::optimize (ExecutionPlan* plan) {
           if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
             storeAttributeAccess(variableUsage, lhs, j, ATTRIBUTE_LEFT);
           }
-          if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+              rhs->type == NODE_TYPE_EXPANSION) {
             storeAttributeAccess(variableUsage, rhs, j, ATTRIBUTE_RIGHT);
           }
         }
@@ -506,7 +518,6 @@ void Condition::optimize (ExecutionPlan* plan) {
               continue;
             }
             
-             
             // IN-merging 
             if (leftNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
                 leftNode->getMemberUnchecked(1)->isConstant()) {
@@ -517,9 +528,11 @@ void Condition::optimize (ExecutionPlan* plan) {
                 // merge IN with IN on same attribute
                 TRI_ASSERT(rightNode->numMembers() == 2);
 
-                auto merged = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, 
-                                                             leftNode->getMemberUnchecked(0), 
-                                                             mergeInOperations(leftNode, rightNode));
+                auto merged = _ast->createNodeBinaryOperator(
+                  NODE_TYPE_OPERATOR_BINARY_IN, 
+                  leftNode->getMemberUnchecked(0), 
+                  mergeInOperations(leftNode, rightNode)
+                );
                 andNode->removeMemberUnchecked(positions[j].first);
                 andNode->changeMember(positions[0].first, merged);
                 goto restartThisOrItem;

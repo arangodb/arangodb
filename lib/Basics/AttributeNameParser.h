@@ -1,5 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Parser for Attibute Names. Tokenizes the attribute by dots and handles [*] expansion.
+/// @brief Parser for attibute names
+/// Tokenizes the attribute by dots and handles [*] expansion.
 ///
 /// @file
 ///
@@ -50,13 +51,13 @@ namespace triagens {
       std::string name;
       bool shouldExpand;
 
-      AttributeName (std::string const& name)
+      explicit AttributeName (std::string const& name)
         : AttributeName(name, false) {
       }
 
-      AttributeName (std::string const& pName, bool pExpand)
-        : name(pName), 
-          shouldExpand(pExpand) { 
+      AttributeName (std::string const& name, bool expand)
+        : name(name), 
+          shouldExpand(expand) { 
       }
 
       AttributeName (AttributeName const& other) 
@@ -104,7 +105,6 @@ namespace triagens {
 
   }
 }
-
 
 #endif
 

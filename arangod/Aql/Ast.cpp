@@ -1552,33 +1552,6 @@ void Ast::validateAndOptimize () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract attribute access information from a node
-////////////////////////////////////////////////////////////////////////////////
-
-std::pair<Variable const*, std::string> Ast::extractAttributeAccess (AstNode const* node) {
-  TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
-
-  std::string attributeName;
-
-  while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    if (attributeName.empty()) {
-      attributeName = node->getStringValue();
-    }
-    else {
-      attributeName = node->getStringValue() + '.' + attributeName;
-    }
-    node = node->getMember(0);
-  }
-
-  if (node->type == NODE_TYPE_REFERENCE) {
-    auto variable = static_cast<Variable const*>(node->getData());
-    return std::make_pair(variable, attributeName);
-  }
-
-  return std::make_pair(nullptr, std::string());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determines the variables referenced in an expression
 ////////////////////////////////////////////////////////////////////////////////
 

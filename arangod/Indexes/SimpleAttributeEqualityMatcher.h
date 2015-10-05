@@ -284,7 +284,7 @@ namespace triagens {
             return false;
           }
 
-          std::pair<triagens::aql::Variable const*, std::vector<std::string>> attributeData;
+          std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> attributeData;
 
           if (! access->isAttributeAccessForVariable(attributeData) ||
               attributeData.first != reference) {
@@ -292,7 +292,7 @@ namespace triagens {
             return false;
           }
 
-          std::vector<std::string>& fieldNames = attributeData.second;
+          std::vector<triagens::basics::AttributeName> const& fieldNames = attributeData.second;
     
           for (size_t i = 0; i < _attributes.size(); ++i) {
             if (_attributes[i].size() != fieldNames.size()) {
@@ -303,7 +303,7 @@ namespace triagens {
             bool match = true;
             for (size_t j = 0; j < _attributes[i].size(); ++j) {
               if (_attributes[i][j].shouldExpand ||
-                  _attributes[i][j].name != fieldNames[j]) {
+                  _attributes[i][j] != fieldNames[j]) {
                 match = false;
                 break;
               }

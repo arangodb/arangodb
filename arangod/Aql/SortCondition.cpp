@@ -159,7 +159,7 @@ size_t SortCondition::isCoveredBy (Variable const* reference,
     bool found = true;
     for (size_t j = 0; j < indexAttributes[i].size(); ++j) {
       if (indexAttributes[i][j].shouldExpand ||
-          fieldNames[j] != indexAttributes[i][j].name) {
+          fieldNames[j] != indexAttributes[i][j]) {
         // expanded attribute or different attribute
         found = false;
         break;
