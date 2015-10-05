@@ -1137,6 +1137,8 @@ namespace triagens {
          
         friend std::ostream& operator<< (std::ostream&, Json const*);
         friend std::ostream& operator<< (std::ostream&, Json const&);
+        friend std::ostream& operator<< (std::ostream&, TRI_json_t const*);
+        friend std::ostream& operator<< (std::ostream&, TRI_json_t const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

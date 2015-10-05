@@ -46,19 +46,13 @@ namespace triagens {
         ConditionFinder (ExecutionPlan* plan,
                          std::unordered_map<size_t, ExecutionNode*>* changes)
           : _plan(plan),
-            _condition(nullptr),
             _variableDefinitions(),
             _filters(),
             _sorts(),
-            _changes(changes),
-            _shouldFreeCondition(true) {
+            _changes(changes) {
         };
 
         ~ConditionFinder () {
-          // TODO: decide whether conditions should belong to individual IndexNodes or are shared
-          if (_shouldFreeCondition) {
-            delete _condition;
-          }
         }
 
         std::vector<std::pair<AstNode const*, bool>> translateSorts () const;
@@ -70,13 +64,11 @@ namespace triagens {
       private:
 
         ExecutionPlan*                                 _plan;
-        Condition*                                     _condition;
         std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
         std::unordered_set<VariableId>                 _filters;
         std::vector<std::pair<VariableId, bool>>       _sorts;
         // note: this class will never free the contents of this map
         std::unordered_map<size_t, ExecutionNode*>*    _changes;
-        bool                                           _shouldFreeCondition;
     
     };
   }

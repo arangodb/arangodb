@@ -919,7 +919,7 @@ ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone (ExecutionPlan* 
   return other.release();
 }
 
-void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
+void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
   switch (en->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
       depth++;
@@ -931,11 +931,11 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
 
       auto ep = static_cast<EnumerateCollectionNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
+      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       break;
     }
-
+    
     case ExecutionNode::INDEX_RANGE: {
       depth++;
       nrRegsHere.emplace_back(1);

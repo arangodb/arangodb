@@ -219,6 +219,7 @@ std::string JsonHelper::toString (TRI_json_t const* json) {
   int res = TRI_StringifyJson(&buffer, json);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyStringBuffer(&buffer);
     return "";
   }
 
@@ -375,6 +376,26 @@ namespace triagens {
     std::ostream& operator<< (std::ostream& stream,
                               Json const& json) {
       stream << json.toString();
+      return stream;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the JSON contents to an output stream
+////////////////////////////////////////////////////////////////////////////////
+     
+    std::ostream& operator<< (std::ostream& stream,
+                              TRI_json_t const* json) {
+      stream << JsonHelper::toString(json);
+      return stream;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the JSON contents to an output stream
+////////////////////////////////////////////////////////////////////////////////
+
+    std::ostream& operator<< (std::ostream& stream,
+                              TRI_json_t const& json) {
+      stream << JsonHelper::toString(&json);
       return stream;
     }
 
