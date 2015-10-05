@@ -3,12 +3,12 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<s
 arangosh&gt; graph.female.save({name: <span class="hljs-string">"Lynda"</span>, _key: <span class="hljs-string">"linda"</span>});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/linda"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1850732860"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1788054657"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"linda"</span> 
 }
 arangosh&gt; graph.female.update(<span class="hljs-string">"female/linda"</span>, {name: <span class="hljs-string">"Linda"</span>, _key: <span class="hljs-string">"linda"</span>});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/linda"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1850929468"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1788251265"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"linda"</span> 
 }

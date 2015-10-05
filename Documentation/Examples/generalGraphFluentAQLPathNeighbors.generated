@@ -7,13 +7,13 @@ arangosh&gt; query.neighbors().path().toArray();
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1463415100"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1400736897"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
     }, 
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1463939388"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1401261185"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
     } 
   ], 
@@ -21,13 +21,13 @@ arangosh&gt; query.neighbors().path().toArray();
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1463415100"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1400736897"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
     }, 
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1463742780"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1401064577"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
     } 
   ] 

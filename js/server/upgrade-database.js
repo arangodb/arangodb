@@ -45,6 +45,8 @@
   var sprintf = internal.sprintf;
   var db = internal.db;
 
+  var defaultRootPW = require("process").env['ARANGODB_DEFAULT_ROOT_PASSWORD'] || "";
+
   function upgrade () {
 
 // -----------------------------------------------------------------------------
@@ -599,7 +601,7 @@
 
         if (! foundUser && users.count() === 0) {
           // only add account if user has not created his/her own accounts already
-          userManager.save("root", "", true);
+          userManager.save("root", defaultRootPW, true);
         }
 
         return true;
