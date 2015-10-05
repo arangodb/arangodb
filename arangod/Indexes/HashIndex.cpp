@@ -114,6 +114,32 @@ static bool IsEqualKeyElementHash (TRI_index_search_value_t const* left,
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                           class HashIndexIterator
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+TRI_doc_mptr_copy_t* HashIndexIterator::next () {
+  if (_buffer.empty()) {
+    _index->lookup(&_searchValue, _buffer);
+    if (_buffer.empty()) {
+      return nullptr;
+    }
+  }
+  if (_posInBuffer < _buffer.size()) {
+    _posInBuffer++;
+    return &(_buffer[_posInBuffer - 1]);
+  }
+  return nullptr;
+}
+
+void HashIndexIterator::initCursor () {
+  _buffer.clear();
+  _posInBuffer = 0;
+}
+// -----------------------------------------------------------------------------
 // --SECTION--                                      class HashIndex::UniqueArray
 // -----------------------------------------------------------------------------
 
@@ -704,6 +730,78 @@ bool HashIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
                                          double& estimatedCost) const {
   SimpleAttributeEqualityMatcher matcher(fields());
   return matcher.matchAll(this, node, reference, estimatedCost);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an IndexIterator for the given Condition
+////////////////////////////////////////////////////////////////////////////////
+
+IndexIterator* HashIndex::iteratorForCondition (triagens::aql::Ast* ast,
+                                                triagens::aql::AstNode const* node,
+                                                triagens::aql::Variable const* reference) const {
+  TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+  SimpleAttributeEqualityMatcher matcher(fields());
+  size_t const n = fields().size();
+  triagens::aql::AstNode* allVals = matcher.getAll(ast, this, node, reference);
+  TRI_ASSERT(allVals->numMembers() == n);
+
+  TRI_index_search_value_t searchValue;
+
+  // setup storage
+  searchValue._length = n;
+  searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t), true));
+
+  if (searchValue._values == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  auto flds = fields();
+  auto shaper = _collection->getShaper(); 
+
+  // Convert AstNode -> TRI_index_search_value_t
+  for (size_t i = 0; i < n; ++i) {
+    auto comp = allVals->getMember(i);
+    TRI_ASSERT(comp->numMembers() == 2);
+    std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> paramPair;
+    auto access = comp->getMember(0);
+    auto value = comp->getMember(1);
+    if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
+      access = comp->getMember(1);
+      value = comp->getMember(0);
+      if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
+        // Both side do not have a correct AttributeAccess, this should not happen and indicates
+        // an error in the optimizer
+        TRI_ASSERT(false);
+        return nullptr;
+      }
+    }
+    bool filled = false;
+    // value is the value node-side and paramPair.second contains this attributes access.
+    // Now iterator through the paths and fill searchValue
+    for (size_t j = 0; j < n; ++j) {
+      auto f = flds[j];
+      if (f == paramPair.second) {
+        filled = true;
+        auto shaped = TRI_ShapedJsonJson(shaper, value->toJsonValue(TRI_UNKNOWN_MEM_ZONE), false); 
+        if (shaped == nullptr) {
+          TRI_ASSERT(false);
+          return nullptr;
+        }
+        searchValue._values[j] = *shaped;
+        TRI_Free(shaper->memoryZone(), shaped);
+        break;
+      }
+    }
+    if (! filled) {
+      // We have an attribute access this index does not cover, should not happen
+      TRI_ASSERT(false);
+      return nullptr;
+    }
+
+  }
+  // We have successfully build a searchValue by now.
+  // Create the iterator
+
+  return new HashIndexIterator(this, searchValue);
 }
 
 // -----------------------------------------------------------------------------

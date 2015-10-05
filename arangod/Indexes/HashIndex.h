@@ -50,6 +50,34 @@ namespace triagens {
   }
   namespace arango {
 
+    class HashIndexIterator : public IndexIterator {
+
+      public:
+
+        HashIndexIterator (
+            HashIndex const* index,
+            TRI_index_search_value_t searchValue
+        ) :
+          _index(index),
+          _searchValue(searchValue),
+          _posInBuffer(0) {
+        }
+
+        ~HashIndexIterator() {};
+
+        TRI_doc_mptr_copy_t* next () override;
+
+        void initCursor () override;
+
+      private:
+
+        HashIndex const*                  _index;
+        TRI_index_search_value_t          _searchValue;
+        std::vector<TRI_doc_mptr_copy_t>  _buffer;
+        size_t                            _posInBuffer;
+
+    };
+
     class HashIndex : public PathBasedIndex {
 
 // -----------------------------------------------------------------------------
@@ -129,6 +157,10 @@ namespace triagens {
         bool supportsFilterCondition (triagens::aql::AstNode const*,
                                       triagens::aql::Variable const*,
                                       double&) const override;
+
+        IndexIterator* iteratorForCondition (triagens::aql::Ast*,
+                                             triagens::aql::AstNode const*,
+                                             triagens::aql::Variable const*) const override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
