@@ -1324,7 +1324,7 @@
         var appsToZip = aal.byExample({type: "app", isSystem: false});
         while (appsToZip.hasNext()) {
           tmp = appsToZip.next();
-          path = fs.join(Module._oldAppPath, tmp.path);
+          path = fs.join(Module._oldAppPath(), tmp.path);
           try {
             mapAppZip[tmp.app] = fmUtils.zipDirectory(path);
           } catch (e) {
@@ -1334,7 +1334,7 @@
 
         // 2. If development mode, Zip all development APPs and create a map name => zipFile
         
-        var devPath = Module._devAppPath;
+        var devPath = Module._devAppPath();
         var mapDevAppZip = {};
         var i;
         if (devPath !== undefined) {
@@ -1354,7 +1354,7 @@
         // 3. Remove old appPath
 
         try {
-          fs.removeDirectoryRecursive(Module._oldAppPath, true);
+          fs.removeDirectoryRecursive(Module._oldAppPath(), true);
         } catch(e) {
         }
         
