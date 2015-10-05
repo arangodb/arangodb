@@ -1,6 +1,8 @@
 v2.7.0 (XXXX-XX-XX)
 -------------------
 
+* fixed replication with a 2.6 replication configuration and issues with a 2.6 master
+
 * raised default value of `--server.descriptors-minimum` to 1024
 
 * allow Foxx apps to be installed underneath URL path `/_open/`, so they can be
