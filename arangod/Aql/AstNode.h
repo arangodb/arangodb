@@ -467,11 +467,42 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a value node is of type attribute access
+/// @brief whether or not a value node is of type attribute access that
+/// refers to a variable reference
 ////////////////////////////////////////////////////////////////////////////////
-  
-        bool isAttributeAccess () const {
-          return (type == NODE_TYPE_ATTRIBUTE_ACCESS);
+
+        AstNode const* getAttributeAccessForVariable () const {
+          if (type != NODE_TYPE_ATTRIBUTE_ACCESS &&
+              type != NODE_TYPE_EXPANSION) {
+            return nullptr;
+          }
+
+          auto node = this;
+      
+          while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+                 node->type == NODE_TYPE_EXPANSION) {
+            if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+              node = node->getMember(0);
+            }
+            else {
+              // expansion
+              TRI_ASSERT(node->type == NODE_TYPE_EXPANSION);
+
+              if (node->getMember(1)->getMember(1)->getAttributeAccessForVariable() == nullptr) {
+                return nullptr;
+              }
+              
+              TRI_ASSERT(node->getMember(0)->type == NODE_TYPE_ITERATOR);
+
+              node = node->getMember(0)->getMember(1);
+            }
+          }
+
+          if (node->type == NODE_TYPE_REFERENCE) {
+            return node;
+          }
+
+          return nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -480,15 +511,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isAttributeAccessForVariable () const {
-          if (! isAttributeAccess()) {
-            return false;
-          }
-
-          auto node = this;
-          while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-            node = node->getMember(0);
-          }
-          return (node->type == NODE_TYPE_REFERENCE);
+          return (getAttributeAccessForVariable() != nullptr);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -497,17 +520,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isAttributeAccessForVariable (Variable const* variable) const {
-          if (! isAttributeAccess()) {
+          auto node = getAttributeAccessForVariable();
+
+          if (node == nullptr) {
             return false;
           }
 
-          auto node = this;
-          while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-            node = node->getMember(0);
-          }
-          if (node->type != NODE_TYPE_REFERENCE) {
-            return false;
-          }
           return (static_cast<Variable const*>(node->getData()) == variable);
         }
 
@@ -516,26 +534,7 @@ namespace triagens {
 /// refers to the specified variable reference
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isAttributeAccessForVariable (std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>& result) const {
-          if (! isAttributeAccess()) {
-            return false;
-          }
-
-          result.first = nullptr;
-
-          auto node = this;
-          while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-            result.second.emplace_back(triagens::basics::AttributeName(std::string(node->getStringValue(), node->getStringLength()), false));
-            node = node->getMember(0);
-          }
-          if (node->type != NODE_TYPE_REFERENCE) {
-            result.second.clear();
-            return false;
-          }
-
-          result.first = static_cast<Variable const*>(node->getData());
-          return true;
-        }
+        bool isAttributeAccessForVariable (std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is simple enough to be used in a simple

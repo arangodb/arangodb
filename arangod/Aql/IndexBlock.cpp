@@ -354,6 +354,7 @@ int IndexBlock::initialize () {
     auto andCond = _condition->getMember(i);
     for (size_t j = 0; j < andCond->numMembers(); ++j) {
       auto leaf = andCond->getMember(i);
+
       // We only support binary conditions
       TRI_ASSERT(leaf->numMembers() == 2);
       auto lhs = leaf->getMember(0);

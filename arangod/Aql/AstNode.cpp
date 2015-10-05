@@ -1201,6 +1201,54 @@ bool AstNode::isFalse () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of type attribute access that
+/// refers to the specified variable reference
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::isAttributeAccessForVariable (std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>& result) const {
+  if (type != NODE_TYPE_ATTRIBUTE_ACCESS &&
+      type != NODE_TYPE_EXPANSION) {
+    return nullptr;
+  }
+
+  bool expandNext = false;
+  result.first = nullptr;
+  auto node = this;
+
+  while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+         node->type == NODE_TYPE_EXPANSION) {
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      result.second.insert(result.second.begin(), triagens::basics::AttributeName(std::string(node->getStringValue(), node->getStringLength()), expandNext));
+      node = node->getMember(0);
+      expandNext = false;
+    }
+    else {
+      // expansion
+      TRI_ASSERT(node->type == NODE_TYPE_EXPANSION);
+      TRI_ASSERT(node->numMembers() >= 2);
+
+      if (! node->getMember(1)->isAttributeAccessForVariable(result)) { 
+        result.second.clear();
+        return false;
+      }
+      expandNext = true;
+      
+      TRI_ASSERT(node->getMember(0)->type == NODE_TYPE_ITERATOR);
+
+      node = node->getMember(0)->getMember(1);
+    }
+  }
+
+  if (node->type != NODE_TYPE_REFERENCE) {
+    result.second.clear();
+    return false;
+  }
+
+  result.first = static_cast<Variable const*>(node->getData());
+  return true;
+}                                              
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is simple enough to be used in a simple
 /// expression
 ////////////////////////////////////////////////////////////////////////////////

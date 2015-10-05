@@ -512,21 +512,38 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
                                  triagens::aql::AstNode const* other,
                                  triagens::aql::AstNode const* op,
                                  triagens::aql::Variable const* reference) const {
+
   if (_sparse) {
-    if (! other->isConstant()) {
-      return false;
-    }
-
-    if (other->isNullValue()) {
-      return false;
-    }
-
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-        other->type == triagens::aql::NODE_TYPE_ARRAY) {
-      size_t const n = other->numMembers();
-      for (size_t i = 0; i < n; ++i) {
-        if (other->getMemberUnchecked(i)->isNullValue()) {
-          return false;
+        other->type == triagens::aql::NODE_TYPE_EXPANSION) {
+      // value IN a.b
+      if (! access->isConstant()) {
+        return false;
+      }
+
+      if (access->isNullValue()) {
+        return false;
+      }
+    }
+    else if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // a.b == value  OR  a.b IN values
+      if (! other->isConstant()) {
+        return false;
+      }
+
+      if (other->isNullValue()) {
+        return false;
+      }
+
+      TRI_ASSERT_EXPENSIVE(other->isConstant());
+
+      if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+          other->type == triagens::aql::NODE_TYPE_ARRAY) {
+        size_t const n = other->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          if (other->getMemberUnchecked(i)->isNullValue()) {
+            return false;
+          }
         }
       }
     }
@@ -534,7 +551,15 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
 
   // test if the reference variable is contained on both side of the expression
   std::unordered_set<aql::Variable const*> variables;
-  triagens::aql::Ast::getReferencedVariables(other, variables);
+  if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+      other->type == triagens::aql::NODE_TYPE_EXPANSION) {
+    // value IN a.b
+    triagens::aql::Ast::getReferencedVariables(access, variables);
+  }
+  else {
+    // a.b == value  OR  a.b IN values
+    triagens::aql::Ast::getReferencedVariables(other, variables);
+  }
   if (variables.find(reference) != variables.end()) {
     // yes. then we cannot use an index here
     return false;

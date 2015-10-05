@@ -384,6 +384,7 @@ void Condition::optimize (ExecutionPlan* plan) {
       
   auto storeAttributeAccess = [] (VariableUsageType& variableUsage, AstNode const* node, size_t position, AttributeSideType side) {
     std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
+            
     if (! node->isAttributeAccessForVariable(result)) {
       return;
     }
@@ -397,14 +398,8 @@ void Condition::optimize (ExecutionPlan* plan) {
         it = variableUsage.emplace(variable, AttributeUsageType()).first;
       }
 
-      // TODO: fix this      
       std::string attributeName;
-      for (size_t i = 0; i < result.second.size(); ++i) {
-        if (i > 0) {
-          attributeName.push_back('.');
-        }
-        attributeName.append(result.second[i].name);
-      }
+      TRI_AttributeNamesToString(result.second, attributeName, false);
 
       auto it2 = (*it).second.find(attributeName);
           
@@ -463,7 +458,7 @@ void Condition::optimize (ExecutionPlan* plan) {
     });
 
     if (andNumMembers > 1) {
-      // optimization is only necessary if an AND node has members
+      // optimization is only necessary if an AND node has multiple members
       VariableUsageType variableUsage;
  
       for (size_t j = 0; j < andNumMembers; ++j) {

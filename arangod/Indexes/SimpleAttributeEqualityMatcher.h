@@ -284,9 +284,18 @@ namespace triagens {
             return false;
           }
 
+          triagens::aql::AstNode const* what;
+          if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+              other->type == triagens::aql::NODE_TYPE_EXPANSION) {
+            what = other;
+          }
+          else {
+            what = access;
+          }
+
           std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> attributeData;
 
-          if (! access->isAttributeAccessForVariable(attributeData) ||
+          if (! what->isAttributeAccessForVariable(attributeData) ||
               attributeData.first != reference) {
             // this access is not referencing this collection
             return false;
@@ -302,8 +311,7 @@ namespace triagens {
 
             bool match = true;
             for (size_t j = 0; j < _attributes[i].size(); ++j) {
-              if (_attributes[i][j].shouldExpand ||
-                  _attributes[i][j] != fieldNames[j]) {
+              if (_attributes[i][j] != fieldNames[j]) {
                 match = false;
                 break;
               }

@@ -1,5 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Parser for Attibute Names. Tokenizes the attribute by dots and handles [*] expansion.
+/// @brief Parser for attibute names.
+/// Tokenizes the attribute by dots and handles [*] expansion.
 ///
 /// @file
 ///
