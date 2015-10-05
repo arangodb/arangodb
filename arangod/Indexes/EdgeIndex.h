@@ -48,6 +48,44 @@ namespace triagens {
 
   namespace arango {
 
+    class EdgeIndexIterator : public IndexIterator {
+
+      public:
+
+        typedef triagens::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t, uint32_t, true> TRI_EdgeIndexHash_t;
+
+        TRI_doc_mptr_copy_t* next () override;
+
+        void initCursor () override;
+
+        EdgeIndexIterator (
+          TRI_EdgeIndexHash_t const* index,
+          TRI_edge_header_t searchValue
+        ) :
+          _index(index),
+          _searchValue(searchValue),
+          _last(nullptr),
+          _buffer(nullptr),
+          _posInBuffer(0),
+          _batchSize(50) // This might be adjusted
+        { };
+
+        ~EdgeIndexIterator () {
+          // Free the vector space, not the content
+          delete _buffer;
+        };
+
+      private:
+
+        TRI_EdgeIndexHash_t const*         _index;
+        TRI_edge_header_t                  _searchValue;
+        TRI_doc_mptr_t*                    _last;
+        std::vector<TRI_doc_mptr_t*>*      _buffer;
+        size_t                             _posInBuffer;
+        size_t                             _batchSize;
+
+    };
+
     class EdgeIndex : public Index {
 
 // -----------------------------------------------------------------------------
@@ -73,7 +111,7 @@ namespace triagens {
 /// @brief typedef for hash tables
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef triagens::basics::AssocMulti<void, void, uint32_t, true> TRI_EdgeIndexHash_t;
+        typedef triagens::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t, uint32_t, true> TRI_EdgeIndexHash_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -118,7 +156,7 @@ namespace triagens {
       
         void lookup (TRI_edge_index_iterator_t const*,
                      std::vector<TRI_doc_mptr_copy_t>&,
-                     void*&,
+                     TRI_doc_mptr_copy_t*&,
                      size_t);
 
         int sizeHint (size_t) override final;
@@ -139,6 +177,9 @@ namespace triagens {
                                       triagens::aql::Variable const*,
                                       double&) const override;
 
+        IndexIterator* iteratorForCondition (triagens::aql::Ast*,
+                                             triagens::aql::AstNode const*,
+                                             triagens::aql::Variable const*) const override;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------

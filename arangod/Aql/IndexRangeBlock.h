@@ -312,7 +312,7 @@ namespace triagens {
 /// @brief reentrant edge index iterator state
 ////////////////////////////////////////////////////////////////////////////////
         
-        void* _edgeNextElement;
+        TRI_doc_mptr_copy_t* _edgeNextElement;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _condition: holds the IndexAndCondition for the current incoming block,

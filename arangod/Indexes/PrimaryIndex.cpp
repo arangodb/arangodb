@@ -79,7 +79,7 @@ static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 TRI_doc_mptr_copy_t* PrimaryIndexIterator::next () {
@@ -305,6 +305,10 @@ bool PrimaryIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
   return matcher.matchOne(this, node, reference, estimatedCost);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an IndexIterator for the given Condition
+////////////////////////////////////////////////////////////////////////////////
+
 IndexIterator* PrimaryIndex::iteratorForCondition (triagens::aql::Ast* ast,
                                                    triagens::aql::AstNode const* node,
                                                    triagens::aql::Variable const* reference) const {
@@ -314,7 +318,6 @@ IndexIterator* PrimaryIndex::iteratorForCondition (triagens::aql::Ast* ast,
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_KEY, false) } 
   });
   triagens::aql::AstNode* allVals = matcher.getOne(ast, this, node, reference);
-  TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
   TRI_ASSERT(allVals->numMembers() == 1);
   auto comp = allVals->getMember(0);
   TRI_ASSERT(comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
