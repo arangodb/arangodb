@@ -141,7 +141,8 @@ var optionsDefaults = { "cluster": false,
                         "valgrindargs": [],
                         "valgrindXmlFileBase" : "",
                         "extraargs": [],
-                        "coreDirectory": "/var/tmp"
+                        "coreDirectory": "/var/tmp",
+                        "writeXmlReport": true
 
 };
 var allTests =
@@ -866,7 +867,7 @@ function runThere (options, instanceInfo, file) {
     var t;
     if (file.indexOf("-spec") === -1) {
       t = 'var runTest = require("jsunity").runTest; '+
-          'return runTest(' + JSON.stringify(file) + ');';
+          'return runTest(' + JSON.stringify(file) + ', true);';
     }
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
@@ -911,7 +912,7 @@ function runHere (options, instanceInfo, file) {
   try {
     if (file.indexOf("-spec") === -1) {
       var runTest = require("jsunity").runTest; 
-      result = runTest(file);
+      result = runTest(file, true);
     }
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
@@ -1109,6 +1110,7 @@ function single_usage (testsuite, list) {
 
 testFuncs.single_server = function (options) {
   var result = { };
+  options.writeXmlReport = false;
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_server");
     if (instanceInfo === false) {
@@ -1146,6 +1148,7 @@ testFuncs.single_server = function (options) {
 
 testFuncs.single_localserver = function (options) {
   var result = { };
+  options.writeXmlReport = false;
   if (options.test !== undefined) {
     var instanceInfo;
     var te = options.test;
@@ -1165,6 +1168,7 @@ testFuncs.single_localserver = function (options) {
 
 testFuncs.single_client = function (options) {
   var result = { };
+  options.writeXmlReport = false;
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_client");
     if (instanceInfo === false) {
@@ -2080,7 +2084,19 @@ testFuncs.authentication_parameters = function (options) {
   return results;
 };
 
-var internalMembers = ["code", "error", "status", "duration", "failed", "total", "crashed", "all_ok", "ok", "message"];
+var internalMembers = [
+  "code",
+  "error",
+  "status",
+  "duration",
+  "failed",
+  "total",
+  "crashed",
+  "all_ok",
+  "ok",
+  "message",
+  "suiteName"
+];
 
 function unitTestPrettyPrintResults(r) {
   var testrun;

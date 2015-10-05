@@ -14,13 +14,13 @@ function runJSUnityTests(tests) {
   var allResults = [];
   var res;
 
+  // find out whether we're on server or client...
+  var runenvironment = "arangod";
+  if (typeof(require('internal').arango) === 'object') {
+    runenvironment = "arangosh";
+  }
+  
   _.each(tests, function (file) {
-    // find out whether we're on server or client...
-    var runenvironment = "arangod";
-    if (typeof(require('internal').arango) === 'object') {
-      runenvironment = "arangosh";
-    }
-
     if (result) {
       print("\n" + Date() + " " + runenvironment + ": Running JSUnity test from file '" + file + "'");
     } else {
@@ -29,7 +29,7 @@ function runJSUnityTests(tests) {
     }
 
     try {
-      res = runTest(file);
+      res = runTest(file, true);
       allResults.push(res);
       result = result && res.status;
     } catch (err) {
@@ -69,7 +69,7 @@ function runCommandLineTests(opts) {
     options = opts || {},
     jasmineReportFormat = options.jasmineReportFormat || 'progress',
     unitTests = internal.unitTests(),
-    isSpecRegEx = /.+spec\.js/,
+    isSpecRegEx = /.+-spec.*\.js/,
     isSpec = function (unitTest) {
       return isSpecRegEx.test(unitTest);
     },
