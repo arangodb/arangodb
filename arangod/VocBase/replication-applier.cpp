@@ -225,11 +225,14 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   }
 
   std::unique_ptr<TRI_json_t> json(TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (! TRI_IsObjectJson(json.get())) {
+    LOG_ERROR("unable to read replication applier configuration from file '%s'", filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
   }
+  
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (config->_endpoint != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, config->_endpoint);
