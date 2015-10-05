@@ -919,7 +919,7 @@ ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone (ExecutionPlan* 
   return other.release();
 }
 
-void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
+void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
   switch (en->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
       depth++;

@@ -66,12 +66,7 @@ void IndexNode::toJsonHelper (triagens::basics::Json& nodes,
  
   json("indexes", indexes); 
 
-  if (_condition != nullptr) {
-    json("condition", _condition->toJson(TRI_UNKNOWN_MEM_ZONE)); 
-  }
-  else {
-    json("condition", triagens::basics::Json(triagens::basics::Json::Object));
-  }
+  json("condition", _condition->toJson(TRI_UNKNOWN_MEM_ZONE)); 
 
   // And add it:
   nodes(json);
@@ -124,6 +119,16 @@ IndexNode::IndexNode (ExecutionPlan* plan,
 
     _indexes.emplace_back(index);
   }
+
+  // TODO: rebuild _condition here!!
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the IndexNode
+////////////////////////////////////////////////////////////////////////////////
+
+IndexNode::~IndexNode () {
+  delete _condition;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,11 +165,9 @@ std::vector<Variable const*> IndexNode::getVariablesUsedHere () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexNode::getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const {
-  if (_condition != nullptr) {
-    Ast::getReferencedVariables(_condition->root(), vars);
+  Ast::getReferencedVariables(_condition->root(), vars);
 
-    vars.erase(_outVariable);
-  }
+  vars.erase(_outVariable);
 }
 
 // Local Variables:

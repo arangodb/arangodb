@@ -40,8 +40,6 @@ bool ConditionFinder::before (ExecutionNode* en) {
     // something that can throw is not safe to optimize
     _filters.clear();
     _sorts.clear();
-    delete _condition;
-    _condition = nullptr;
     return true;
   }
 
@@ -100,41 +98,51 @@ bool ConditionFinder::before (ExecutionNode* en) {
       TRI_ASSERT(outvars.size() == 1);
 
       _variableDefinitions.emplace(outvars[0]->id, static_cast<CalculationNode const*>(en)->expression()->node());
-      
-      if (_filters.find(outvars[0]->id) != _filters.end()) {
-        // a variable used in a FILTER
-        auto expressionNode = static_cast<CalculationNode const*>(en)->expression()->node();
-        
-        if (_condition == nullptr) {
-          // did not have any expression before. now save what we found
-          _condition = new Condition(_plan->getAst());
-        }
-
-        TRI_ASSERT(_condition != nullptr);
-        _condition->andCombine(expressionNode);
-      }
       break;
     }
 
     case EN::ENUMERATE_COLLECTION: {
-      if (_condition == nullptr) {
-        // No one used a filter up to now. Leave this node
-        break;
-      }
-
       auto node = static_cast<EnumerateCollectionNode const*>(en);
       if (_changes->find(node->id()) != _changes->end()) {
         std::cout << "Already optimized " << node->id() << std::endl;
         break;
       }
 
-      TRI_ASSERT(_condition != nullptr);
-      _condition->normalize(_plan);
+      auto const& varsValid = node->getVarsValid();
+      std::unordered_set<Variable const*> varsUsed;
+
+      std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
+
+      for (auto& it : _variableDefinitions) {
+        if (_filters.find(it.first) != _filters.end()) {
+          // a variable used in a FILTER
+
+          // now check if all variables from the FILTER condition are still valid here
+          Ast::getReferencedVariables(it.second, varsUsed);
+          bool valid = true;
+          for (auto& it2 : varsUsed) {
+            if (varsValid.find(it2) == varsValid.end()) {
+              valid = false;
+            }
+          }
+
+          if (valid) {
+            condition->andCombine(it.second);
+          }
+        }
+      }
+
+      condition->normalize(_plan);
+      
+      if (condition->isEmpty()) {
+        // no filter conditions left
+        break;
+      }
 
       std::vector<Index const*> usedIndexes;
       SortCondition sortCondition(_sorts, _variableDefinitions);
 
-      if (_condition->findIndexes(node, usedIndexes, sortCondition)) {
+      if (condition->findIndexes(node, usedIndexes, sortCondition)) {
         TRI_ASSERT(! usedIndexes.empty());
         std::cout << node->id() << " Number of indexes used: " << usedIndexes.size() << std::endl;
           // We either can find indexes for everything or findIndexes will clear out usedIndexes
@@ -145,11 +153,9 @@ bool ConditionFinder::before (ExecutionNode* en) {
           node->collection(), 
           node->outVariable(), 
           usedIndexes, 
-          _condition->clone()
+          condition.get()
         ));
-
-        // We handed over the condition to the created IndexNode
-        _shouldFreeCondition = false; // TODO: check if we can get rid of this variable 
+        condition.release();
 
         // We keep this nodes change
         _changes->emplace(node->id(), newNode.get());

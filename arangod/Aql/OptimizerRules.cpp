@@ -844,7 +844,7 @@ int triagens::aql::removeSortRandRule (Optimizer* opt,
         case EN::FILTER: 
         case EN::SUBQUERY:
         case EN::ENUMERATE_LIST:
-        case EN::INDEX: // TODO FIXME
+        case EN::INDEX: 
         case EN::INDEX_RANGE: {
           // if we found another SortNode, an AggregateNode, FilterNode, a SubqueryNode, 
           // an EnumerateListNode or an IndexRangeNode
@@ -2065,11 +2065,11 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
       newPlan->registerNode(newNode);
       newPlan->replaceNode(newPlan->getNodeById(it.first), newNode);
 
-      // prevent double deletion by cleanupChanges below
+      // prevent double deletion by cleanupChanges()
       it.second = nullptr;
     }
-    opt->addPlan(newPlan.release(), rule, true);
     changes.clear();
+    opt->addPlan(newPlan.release(), rule, true);
   }
   else {
     opt->addPlan(plan, rule, false);
@@ -3453,11 +3453,6 @@ static bool NextPermutationTuple (std::vector<size_t>& data,
 int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
                                                         ExecutionPlan* plan,
                                                         Optimizer::Rule const* rule) {
-  // TODO FIXME: rule currently disabled because it breaks the IndexNode stuff
-  opt->addPlan(plan, rule, false);
-  return TRI_ERROR_NO_ERROR;
-
-
   std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(EN::ENUMERATE_COLLECTION, true);
 
   std::unordered_set<ExecutionNode*> nodesSet;

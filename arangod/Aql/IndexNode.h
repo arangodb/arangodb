@@ -78,8 +78,7 @@ namespace triagens {
 
         IndexNode (ExecutionPlan*, triagens::basics::Json const& base);
 
-        ~IndexNode () {
-        }
+        ~IndexNode ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node

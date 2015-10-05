@@ -98,10 +98,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       inline bool needsRegister () const {
-        char const cf = name[0];
-        char const cb = name.back();
         // variables starting with a number are not user-defined
-        return (cf < '0' || cf > '9') || cb != '_';
+        return isUserDefined() || name.back() != '_';
       }
 
 ////////////////////////////////////////////////////////////////////////////////
