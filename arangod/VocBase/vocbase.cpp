@@ -1486,8 +1486,9 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   vocbase->_replicationApplier = TRI_CreateReplicationApplier(server, vocbase);
 
   if (vocbase->_replicationApplier == nullptr) {
-    // TODO
-    LOG_FATAL_AND_EXIT("initializing replication applier for database '%s' failed", vocbase->_name);
+    LOG_FATAL_AND_EXIT("initializing replication applier for database '%s' failed: %s", 
+                       vocbase->_name, 
+                       TRI_last_error());
   }
 
 
