@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine */
+/*global Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine, JSONEditor */
 /*global document, _ */
 
 (function() {
@@ -26,7 +26,19 @@
       "click #deleteDocumentButton" : "deleteDocumentModal",
       "click #confirmDeleteDocument" : "deleteDocument",
       "click #document-from" : "navigateToDocument",
-      "click #document-to" : "navigateToDocument"
+      "click #document-to" : "navigateToDocument",
+      "keydown .ace_editor" : "keyPress"
+    },
+
+    keyPress: function(e) {
+      if (e.ctrlKey && e.keyCode === 13) {
+        e.preventDefault();
+        this.saveDocument();
+      }
+      else if (e.metaKey && e.keyCode === 13) {
+        e.preventDefault();
+        this.saveDocument();
+      }
     },
 
     editor: 0,
@@ -149,9 +161,10 @@
         change: function(){self.jsonContentChanged();},
         search: true,
         mode: 'tree',
-        modes: ['tree', 'code']
+        modes: ['tree', 'code'],
+        iconlib: "fontawesome4"
       };
-      this.editor = new window.jsoneditor.JSONEditor(container, options);
+      this.editor = new JSONEditor(container, options);
 
       return this;
     },
@@ -163,35 +176,38 @@
     saveDocument: function () {
       var model, result;
 
-      try {
-        model = this.editor.get();
-      }
-      catch (e) {
-        this.errorConfirmation();
-        this.disableSaveButton();
-        return;
-      }
+      if ($('#saveDocumentButton').attr('disabled') === undefined) {
 
-      model = JSON.stringify(model);
-
-      if (this.type === 'document') {
-        result = this.collection.saveDocument(this.colid, this.docid, model);
-        if (result === false) {
-          arangoHelper.arangoError('Document error:','Could not save');
+        try {
+          model = this.editor.get();
+        }
+        catch (e) {
+          this.errorConfirmation();
+          this.disableSaveButton();
           return;
         }
-      }
-      else if (this.type === 'edge') {
-        result = this.collection.saveEdge(this.colid, this.docid, model);
-        if (result === false) {
-          arangoHelper.arangoError('Edge error:', 'Could not save');
-          return;
-        }
-      }
 
-      if (result === true) {
-        this.successConfirmation();
-        this.disableSaveButton();
+        model = JSON.stringify(model);
+
+        if (this.type === 'document') {
+          result = this.collection.saveDocument(this.colid, this.docid, model);
+          if (result === false) {
+            arangoHelper.arangoError('Document error:','Could not save');
+            return;
+          }
+        }
+        else if (this.type === 'edge') {
+          result = this.collection.saveEdge(this.colid, this.docid, model);
+          if (result === false) {
+            arangoHelper.arangoError('Edge error:', 'Could not save');
+            return;
+          }
+        }
+
+        if (result === true) {
+          this.successConfirmation();
+          this.disableSaveButton();
+        }
       }
     },
 
@@ -228,9 +244,9 @@
       $('#transparentHeader').append(
         '<div class="breadcrumb">'+
         '<a href="#collections" class="activeBread">Collections</a>'+
-        '<span class="disabledBread">&gt</span>'+
+        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
         '<a class="activeBread" href="#collection/' + name[1] + '/documents/1">' + name[1] + '</a>'+
-        '<span class="disabledBread">&gt</span>'+
+        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
         '<a class="disabledBread">' + name[2] + '</a>'+
         '</div>'
       );
