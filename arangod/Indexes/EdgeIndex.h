@@ -177,7 +177,8 @@ namespace triagens {
                                       triagens::aql::Variable const*,
                                       double&) const override;
 
-        IndexIterator* iteratorForCondition (triagens::aql::Ast*,
+        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+                                             triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*) const override;
 // -----------------------------------------------------------------------------

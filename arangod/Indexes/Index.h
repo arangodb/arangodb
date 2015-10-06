@@ -150,9 +150,17 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class IndexIterator
 // -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Baseclass to iterate over all indexes. An iterator is requested at
-///        the index itself.
+/// @brief context for an index iterator
+////////////////////////////////////////////////////////////////////////////////
+
+    struct IndexIteratorContext {
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a base class to iterate over the index. An iterator is requested 
+/// at the index itself
 ////////////////////////////////////////////////////////////////////////////////
 
     class IndexIterator {
@@ -366,7 +374,8 @@ namespace triagens {
                                             triagens::aql::Variable const*,
                                             double&) const;
 
-        virtual IndexIterator* iteratorForCondition (triagens::aql::Ast*,
+        virtual IndexIterator* iteratorForCondition (IndexIteratorContext*,
+                                                     triagens::aql::Ast*,
                                                      triagens::aql::AstNode const*,
                                                      triagens::aql::Variable const*) const;
 

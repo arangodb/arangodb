@@ -176,15 +176,14 @@ namespace triagens {
         return getInternals()->supportsSortCondition(sortCondition, reference, estimatedCost);
       }
 
-      arango::IndexIterator* getIterator (
-          triagens::aql::Ast* ast,
-          triagens::aql::AstNode const* condition,
-          triagens::aql::Variable const* reference
-      ) const {
+      arango::IndexIterator* getIterator (arango::IndexIteratorContext* context, 
+                                          triagens::aql::Ast* ast,
+                                          triagens::aql::AstNode const* condition,
+                                          triagens::aql::Variable const* reference) const {
         auto internals = getInternals();
         // TODO: Convention: condition is fully evaluated and contains only
         // constant values
-        return internals->iteratorForCondition(ast, condition, reference);
+        return internals->iteratorForCondition(context, ast, condition, reference);
       }
 
 // -----------------------------------------------------------------------------

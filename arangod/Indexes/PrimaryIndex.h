@@ -54,16 +54,14 @@ namespace triagens {
  
       public:
 
-        PrimaryIndexIterator (
-          PrimaryIndex const* index,
-          char const* key
-        ) : 
-          _index(index),
+        PrimaryIndexIterator (PrimaryIndex const* index,
+                              char const* key) 
+        : _index(index),
           _key(key),
           _hasReturned(false) {
-        };
+        }
 
-        ~PrimaryIndexIterator () {};
+        ~PrimaryIndexIterator () {}
 
         TRI_doc_mptr_t* next () override;
 
@@ -202,7 +200,8 @@ namespace triagens {
                                       triagens::aql::Variable const*,
                                       double&) const override;
         
-        IndexIterator* iteratorForCondition (triagens::aql::Ast*,
+        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+                                             triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*) const override;
 

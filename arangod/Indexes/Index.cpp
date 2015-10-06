@@ -455,13 +455,16 @@ bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondi
   return false;
 }
 
-IndexIterator* Index::iteratorForCondition (
-    triagens::aql::Ast* ast,
-    triagens::aql::AstNode const* node,
-    triagens::aql::Variable const* reference
-  ) const {
-  // The super class index cannot iterate.
-  // Specialisation has to manage this.
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default iterator factory method. does not create an iterator
+////////////////////////////////////////////////////////////////////////////////
+
+IndexIterator* Index::iteratorForCondition (IndexIteratorContext*,
+                                            triagens::aql::Ast*,
+                                            triagens::aql::AstNode const*,
+                                            triagens::aql::Variable const*) const {
+  // the super class index cannot create an iterator
+  // the derived index classes have to manage this.
   return nullptr;
 }
 

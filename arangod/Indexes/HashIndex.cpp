@@ -735,7 +735,8 @@ bool HashIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
 /// @brief creates an IndexIterator for the given Condition
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* HashIndex::iteratorForCondition (triagens::aql::Ast* ast,
+IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
+                                                triagens::aql::Ast* ast,
                                                 triagens::aql::AstNode const* node,
                                                 triagens::aql::Variable const* reference) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);

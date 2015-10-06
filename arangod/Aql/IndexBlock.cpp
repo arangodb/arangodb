@@ -105,6 +105,7 @@ void IndexBlock::buildExpressions () {
     auto jsonified = a.toJson(_trx, myCollection, true);
     a.destroy();
     AstNode* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);
+    // TODO: if we use the IN operator, we must make the resulting array unique
     _condition->getMember(toReplace.orMember)
               ->getMember(toReplace.andMember)
               ->changeMember(toReplace.operatorMember, evaluatedNode);
@@ -458,12 +459,12 @@ bool IndexBlock::initIndexes () {
   _currentIndex = 0;
   auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
   auto ast = static_cast<IndexNode const*>(getPlanNode())->_plan->getAst();
-  _iterator = _indexes[_currentIndex]->getIterator(ast, _condition->getMember(_currentIndex), outVariable);
+  _iterator = _indexes[_currentIndex]->getIterator(nullptr, ast, _condition->getMember(_currentIndex), outVariable);
 
   while (_iterator == nullptr) {
     ++_currentIndex;
     if (_currentIndex < _indexes.size()) {
-      _iterator = _indexes[_currentIndex]->getIterator(ast, _condition->getMember(_currentIndex), outVariable);
+      _iterator = _indexes[_currentIndex]->getIterator(nullptr, ast, _condition->getMember(_currentIndex), outVariable);
     }
     else {
       // We were not able to initialize any index with this condition
@@ -488,7 +489,7 @@ void IndexBlock::startNextIterator () {
   if (_currentIndex < _indexes.size()) {
     auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
     auto ast = static_cast<IndexNode const*>(getPlanNode())->_plan->getAst();
-    _iterator = _indexes[_currentIndex]->getIterator(ast, _condition->getMember(_currentIndex), outVariable);
+    _iterator = _indexes[_currentIndex]->getIterator(nullptr, ast, _condition->getMember(_currentIndex), outVariable);
   }
   else {
     // If all indexes have been exhausted we set _iterator to nullptr;

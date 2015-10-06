@@ -599,7 +599,8 @@ bool EdgeIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
 /// @brief creates an IndexIterator for the given Condition
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* EdgeIndex::iteratorForCondition (triagens::aql::Ast* ast,
+IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
+                                                triagens::aql::Ast* ast,
                                                 triagens::aql::AstNode const* node,
                                                 triagens::aql::Variable const* reference) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
