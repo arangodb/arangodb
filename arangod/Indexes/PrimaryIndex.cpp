@@ -313,38 +313,67 @@ IndexIterator* PrimaryIndex::iteratorForCondition (triagens::aql::Ast* ast,
                                                    triagens::aql::AstNode const* node,
                                                    triagens::aql::Variable const* reference) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+
   SimpleAttributeEqualityMatcher matcher({ 
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_ID, false) },
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_KEY, false) } 
   });
+
   triagens::aql::AstNode* allVals = matcher.getOne(ast, this, node, reference);
   TRI_ASSERT(allVals->numMembers() == 1);
+
   auto comp = allVals->getMember(0);
+  // TODO: handle IN here
   TRI_ASSERT(comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+
+  // assume a.b == value
   auto attrNode = comp->getMember(0);
-  auto valNode = comp->getMember(1);
+  auto valNode  = comp->getMember(1);
+
   if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value == a.b  ->  flip the two sides
     attrNode = comp->getMember(1);
-    valNode = comp->getMember(0);
+    valNode  = comp->getMember(0);
   }
   TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS); 
+    
+  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    // all index entries in the primary index are strings
+    // if the comparison value is no string, then we don't need to run
+    // the index query at all
+    if (! valNode->isStringValue()) {
+      // TODO: handle IN here
+      return nullptr;
+    }
+  }
+
+  // TODO: handle IN here
+
   if (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_KEY) == 0) {
+    // _key
     return new PrimaryIndexIterator(this, valNode->getStringValue());
   }
-  else {
-    TRI_ASSERT(strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_ID) == 0);
-    CollectionNameResolver resolver(_collection->_vocbase);
-    char const* key = strchr(valNode->getStringValue(), '/');
+   
+  // _id 
+  TRI_ASSERT(strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_ID) == 0);
+
+  // TODO: fix cluster collection naming resolving
+  CollectionNameResolver resolver(_collection->_vocbase);
+
+  char const* key = strchr(valNode->getStringValue(), '/');
+
+  if (key != nullptr) {
     std::string collectionPart(valNode->getStringValue(), key);
     TRI_voc_cid_t cid = resolver.getCollectionId(collectionPart);
+
     if (cid == _collection->_info._cid) {
       ++key; // Ignore the /
       return new PrimaryIndexIterator(this, key);
     }
   }
+
   return nullptr;
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
