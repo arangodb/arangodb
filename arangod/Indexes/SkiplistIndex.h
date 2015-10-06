@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Basics/SkipList.h"
+#include "Indexes/IndexIterator.h"
 #include "Indexes/PathBasedIndex.h"
 #include "IndexOperators/index-operator.h"
 #include "VocBase/shaped-json.h"
@@ -172,6 +173,35 @@ namespace triagens {
         bool findHelperIntervalValid (SkiplistIteratorInterval const& interval);
     };
 
+    class SkiplistIndexIterator : public IndexIterator {
+
+      public:
+        
+        SkiplistIndexIterator (SkiplistIndex const* index,
+                               TRI_index_operator_t* op)
+        : _index(index),
+          _operator(op),
+          _reverse(false) {
+        }
+
+        ~SkiplistIndexIterator () {
+          delete _operator;
+          delete _iterator;
+        }
+
+        TRI_doc_mptr_t* next () override;
+
+        void reset () override;
+
+
+      private:
+
+        SkiplistIndex const*          _index;
+        TRI_index_operator_t*         _operator;
+        bool                          _reverse;
+        SkiplistIterator*             _iterator;
+
+    };
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class SkiplistIndex
 // -----------------------------------------------------------------------------
@@ -271,6 +301,12 @@ namespace triagens {
         bool supportsSortCondition (triagens::aql::SortCondition const*,
                                     triagens::aql::Variable const*,
                                     double&) const override;
+
+        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+                                             triagens::aql::Ast*,
+                                             triagens::aql::AstNode const*,
+                                             triagens::aql::Variable const*) const override;
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

@@ -309,6 +309,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
             goto MEM_ERROR;
           }
 
+          std::cout << "JSON: " << *clonedParams << std::endl;
           lastOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, 
                                                  nullptr,
                                                  nullptr, 
@@ -320,6 +321,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
 
         TRI_index_operator_t* current;
 
+        std::cout << "Current: " << *cloned << std::endl;
         // create the operator for the current condition
         current = TRI_CreateIndexOperator(opType,
                                           nullptr,

@@ -623,6 +623,27 @@ TRI_index_element_t* SkiplistIterator::nextIteration () {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+TRI_doc_mptr_t* SkiplistIndexIterator::next () {
+  if (_iterator == nullptr) {
+    // We restart the lookup
+    _iterator = _index->lookup(_operator, _reverse);
+  }
+  return _iterator.next();
+}
+
+void SkiplistIndexIterator::reset () {
+  delete _iterator;
+  _iterator = nullptr;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class SkiplistIndex
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -1047,6 +1068,185 @@ bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* s
   estimatedCost = 1.0;
   return false;
 }        
+
+
+IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext*,
+                                                    triagens::aql::Ast*,
+                                                    triagens::aql::AstNode const*,
+                                                    triagens::aql::Variable const*) const {
+  // IN can only be supported on first attribute
+  // Create the skiplistOperator for the IndexLookup
+  // TODO Does not work here
+  SimpleAttributeEqualityMatcher matcher(fields());
+  size_t const n = fields().size();
+  triagens::aql::AstNode* allVals = matcher.getAll(ast, this, node, reference);
+  size_t const numVals = allVals.numMembers();
+
+  std::vector<TRI_json_t*> equalityValues;
+  bool includeLower = false;
+  bool includeUpper = false;
+  TRI_json_t* lower = nullptr;
+  TRI_json_t* upper = nullptr;
+  
+  // allVals contains all attributes that are relevant for this node.
+  // It might be less than fields().
+  for (size_t i = 0; i < n; ++i) {
+    auto f = fields()[j];
+
+    for (size_t j = 0; j < numVals; ++j) {
+      auto comp = allVals->getMember(j);
+      TRI_ASSERT(comp->numMembers() == 2);
+      auto access = comp->getMember(0);
+      auto value = comp->getMember(1);
+      bool isReverseOrder = false;
+      std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> paramPair;
+      if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
+        access = comp->getMember(1);
+        value = comp->getMember(0);
+        isReverseOrder = true;
+        if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
+          // Both side do not have a correct AttributeAccess, this should not happen and indicates
+          // an error in the optimizer
+          TRI_ASSERT(false);
+          return nullptr;
+        }
+      }
+      if (f == paramPair.second) {
+        // We found an access for this field
+        if (comp->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+          // This is an equalityCheck, we can continue with the next field
+          equalityValues.emplace_back(value->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+          break;
+        }
+        auto setBorder = [&] (bool isLower, bool includeBound) -> void {
+          if ( isLower == isReverseOrder ) {
+            // We set an upper bound
+            TRI_ASSERT(upper == nullptr);
+            upper = value->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+            includeUpper = includeBound;
+          }
+          else {
+            // We set an lower bound
+            TRI_ASSERT(upper == nullptr);
+            upper = value->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+            includeUpper = includeBound;
+          }
+        };
+        // This is not an equalityCheck, set lower or upper
+        switch (comp->type) {
+          case NODE_TYPE_OPERATOR_BINARY_LT:
+            setBorder(true, false);
+            break;
+          case NODE_TYPE_OPERATOR_BINARY_LE:
+            setBorder(true, true);
+            break;
+          case NODE_TYPE_OPERATOR_BINARY_GT:
+            setBorder(false, false);
+            break;
+          case NODE_TYPE_OPERATOR_BINARY_GT:
+            setBorder(false, true);
+            break;
+          default:
+            // unsupported right now. Should have been rejected by supportsFilterCondition
+            TRI_ASSERT(false);
+            return nullptr;
+        }
+        // We have to continue to search for another condition matching this path.
+        // We may have sth. like: a < 5 and a > 2
+      }
+    }
+    if (lower != nullptr || upper != nullptr) {
+      // We are done, the last field was not checked by equality.
+      break;
+    }
+  }
+
+  std::unique_ptr<TRI_index_operator_t> op(nullptr);
+  if (lower != nullptr) {
+    TRI_index_operator_type_e type;
+    if (includeLower) {
+      type = TRI_LE_INDEX_OPERATOR;
+    }
+    else {
+      type = TRI_LT_INDEX_OPERATOR;
+    }
+
+    TRI_json_t* parameter = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1);
+    if (parameter == nullptr) {
+      return nullptr;
+    }
+    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter, lower);
+    op.reset(TRI_CreateIndexOperator(type
+                                     nullptr,
+                                     nullptr, 
+                                     parameter, 
+                                     shaper, 
+                                     1));
+  }
+
+  if (upper != nullptr) {
+    TRI_index_operator_type_e type;
+    if (includeUpper) {
+      type = TRI_GE_INDEX_OPERATOR;
+    }
+    else {
+      type = TRI_GT_INDEX_OPERATOR;
+    }
+
+    TRI_json_t* parameter = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1);
+    if (parameter == nullptr) {
+      return nullptr;
+    }
+    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter, upper);
+    std::unique_ptr<TRI_index_operator_t> tmpOp(TRI_CreateIndexOperator(type
+                                                nullptr,
+                                                nullptr, 
+                                                parameter, 
+                                                shaper, 
+                                                1)); 
+    if (! op()) {
+      op.reset(tmpOp.release());
+    }
+    else {
+      op.reset(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
+                                       op.release(),
+                                       tmpOp.release(),
+                                       parameter,
+                                       shaper,
+                                       2));
+    }
+  }
+
+  if (! equalityValues.empty() ) {
+    size_t size = equalityValues.size();
+    TRI_json_t* parameter = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, size);
+    if (parameter == nullptr) {
+      return nullptr;
+    }
+    for (size_t i = 0; i < size; ++i) {
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter, equalityValues[i]);
+    }
+    std::unique_ptr<TRI_index_operator_t> tmpOp(TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, 
+                                                                        nullptr,
+                                                                        nullptr, 
+                                                                        clonedParams, 
+                                                                        shaper, 
+                                                                        size)); 
+    if (! op()) {
+      op.reset(tmpOp.release());
+    }
+    else {
+      op.reset(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
+                                       op.release(),
+                                       tmpOp.release(),
+                                       parameter,
+                                       shaper,
+                                       2));
+    }
+  }
+
+  return new SkiplistIndexIterator(this, op.release());
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

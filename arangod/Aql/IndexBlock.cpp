@@ -524,6 +524,7 @@ bool IndexBlock::readIndex (size_t atMost) {
     return false;
   }
 
+  size_t lastIndexNr = _indexes.size();
   try {
     size_t nrSent = 0;
     while (nrSent < atMost && _iterator != nullptr) {
@@ -535,8 +536,11 @@ bool IndexBlock::readIndex (size_t atMost) {
         TRI_IF_FAILURE("IndexBlock::readIndex") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        if (_alreadyReturned.find(indexElement) == _alreadyReturned.end()) {
-          _alreadyReturned.emplace(indexElement);
+        if (_currentIndex == 0 ||
+          _alreadyReturned.find(indexElement) == _alreadyReturned.end()) {
+          if (_currentIndex < lastIndexNr) {
+            _alreadyReturned.emplace(indexElement);
+          }
 
           _documents.emplace_back(*indexElement);
           ++nrSent;
