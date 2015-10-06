@@ -1,3 +1,9 @@
+v2.6.10 (XXXX-XX-XX)
+--------------------
+
+* issue #1521: Can't dump/restore with user and password
+
+
 v2.6.9 (2015-09-29)
 -------------------
 
