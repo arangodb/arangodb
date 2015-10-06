@@ -379,27 +379,29 @@ namespace triagens {
       return stream;
     }
 
+
+
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the JSON contents to an output stream
 ////////////////////////////////////////////////////////////////////////////////
      
-    std::ostream& operator<< (std::ostream& stream,
-                              TRI_json_t const* json) {
-      stream << JsonHelper::toString(json);
-      return stream;
-    }
+std::ostream& operator<< (std::ostream& stream,
+                          TRI_json_t const* json) {
+  stream << JsonHelper::toString(json);
+  return stream;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the JSON contents to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::ostream& operator<< (std::ostream& stream,
-                              TRI_json_t const& json) {
-      stream << JsonHelper::toString(&json);
-      return stream;
-    }
-
-  }
+std::ostream& operator<< (std::ostream& stream,
+                          TRI_json_t const& json) {
+  stream << JsonHelper::toString(&json);
+  return stream;
 }
 
 // -----------------------------------------------------------------------------
