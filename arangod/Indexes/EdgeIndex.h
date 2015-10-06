@@ -60,9 +60,10 @@ namespace triagens {
         void reset () override;
 
         EdgeIndexIterator (TRI_EdgeIndexHash_t const* index,
-                           TRI_edge_header_t searchValue) 
+                           std::vector<TRI_edge_header_t>& searchValues) 
         : _index(index),
-          _searchValue(searchValue),
+          _keys(std::move(searchValues)),
+          _position(0),
           _last(nullptr),
           _buffer(nullptr),
           _posInBuffer(0),
@@ -77,7 +78,8 @@ namespace triagens {
       private:
 
         TRI_EdgeIndexHash_t const*         _index;
-        TRI_edge_header_t                  _searchValue;
+        std::vector<TRI_edge_header_t>     _keys;
+        size_t                             _position;
         TRI_doc_mptr_t*                    _last;
         std::vector<TRI_doc_mptr_t*>*      _buffer;
         size_t                             _posInBuffer;
@@ -180,6 +182,21 @@ namespace triagens {
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*) const override;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the iterator
+////////////////////////////////////////////////////////////////////////////////
+    
+        IndexIterator* createIterator (IndexIteratorContext*,
+                                       triagens::aql::AstNode const*,
+                                       std::vector<triagens::aql::AstNode const*> const&) const;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------

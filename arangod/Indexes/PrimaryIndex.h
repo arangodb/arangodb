@@ -207,7 +207,15 @@ namespace triagens {
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*) const override;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the iterator
+////////////////////////////////////////////////////////////////////////////////
 
         IndexIterator* createIterator (IndexIteratorContext*,
                                        triagens::aql::AstNode const*,

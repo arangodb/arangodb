@@ -83,10 +83,21 @@ static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
 // -----------------------------------------------------------------------------
 
 TRI_doc_mptr_t* PrimaryIndexIterator::next () {
-  if (_position >= _keys.size()) {
-    return nullptr;
+  while (true) {
+    if (_position >= _keys.size()) {
+      // we're at the end of the lookup values
+      return nullptr;
+    }
+
+    auto result = _index->lookupKey(_keys[_position++]);
+
+    if (result != nullptr) {
+      // found a result
+      return result;
+    }
+
+    // found no result. now go to next lookup value in _keys
   }
-  return _index->lookupKey(_keys[_position++]);
 }
 
 void PrimaryIndexIterator::reset () {
@@ -337,12 +348,11 @@ IndexIterator* PrimaryIndex::iteratorForCondition (IndexIteratorContext* context
   TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS); 
     
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-    // all index entries in the primary index are strings
-    // if the comparison value is no string, then we don't need to run
-    // the index query at all
+    // a.b == value
     return createIterator(context, attrNode, std::vector<triagens::aql::AstNode const*>({ valNode }));
   }
   else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    // a.b IN values
     if (! valNode->isArray()) {
       return nullptr;
     }
@@ -369,6 +379,7 @@ IndexIterator* PrimaryIndex::createIterator (IndexIteratorContext* context,
                                              triagens::aql::AstNode const* attrNode,
                                              std::vector<triagens::aql::AstNode const*> const& valNodes) const {
 
+  // _key or _id?
   bool const isId = (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_ID) == 0);
 
   // only leave the valid elements in the vector
@@ -397,6 +408,9 @@ IndexIterator* PrimaryIndex::createIterator (IndexIteratorContext* context,
         continue;
       }
 
+      TRI_ASSERT(cid != 0);
+      TRI_ASSERT(key != nullptr);
+
       if (! context->isCluster() && cid != _collection->_info._cid) {
         // only continue lookup if the id value is syntactically correct and
         // refers to "our" collection, using local collection id
@@ -415,6 +429,11 @@ IndexIterator* PrimaryIndex::createIterator (IndexIteratorContext* context,
     else {
       keys.push_back(valNode->getStringValue());
     }
+  }
+
+  if (keys.empty()) {
+    // nothing to do
+    return nullptr;
   }
 
   return new PrimaryIndexIterator(this, keys);
