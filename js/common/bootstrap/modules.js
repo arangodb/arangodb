@@ -610,22 +610,6 @@ Module._extensions['.coffee'] = function(module, filename) {
 };
 
 // backwards compatibility
-Module._oldAppPath = function () {
-  if (internal.appPath === undefined) {
-    return undefined;
-  }
-  return fs.join(internal.appPath, 'databases', internal.db._name());
-};
-
-// backwards compatibility
-Module._devAppPath = function () {
-  if (internal.devAppPath === undefined) {
-    return undefined;
-  }
-  return fs.join(internal.devAppPath, 'databases', internal.db._name());
-};
-
-// backwards compatibility
 Module.Module = Module;
 
 global.require = function (request) {
