@@ -64,6 +64,7 @@ const internal = NATIVE_MODULES.internal;
 const console = NATIVE_MODULES.console;
 delete global.SCAFFOLDING_MODULES;
 delete global.DEFINE_MODULE;
+const LOADING = [];
 
 const GLOBAL_PATHS = [];
 global.MODULES_PATH.forEach(function (p) {
@@ -435,6 +436,7 @@ Module._load = function(request, parent, isMain) {
   }
 
   Module._cache[filename] = module;
+  LOADING.push(filename);
 
   var hadException = true;
 
@@ -449,9 +451,20 @@ Module._load = function(request, parent, isMain) {
     if (hadException) {
       delete Module._cache[filename];
     }
+    var i = LOADING.indexOf(filename);
+    if (i !== -1) {
+      LOADING.splice(i, 1);
+    }
   }
 
   return module.exports;
+};
+
+Module._cleanupCancelation = function () {
+  while (LOADING.length) {
+    var filename = LOADING.pop();
+    delete Module._cache[filename];
+  }
 };
 
 Module._resolveFilename = function(request, parent) {
