@@ -1,5 +1,5 @@
-v2.7.0 (XXXX-XX-XX)
--------------------
+v2.7.0-rc3 (2015-10-05)
+-----------------------
 
 * fixed replication with a 2.6 replication configuration and issues with a 2.6 master
 
@@ -12,6 +12,10 @@ v2.7.0 (XXXX-XX-XX)
   The *allowImplicit* attributes allows making transactions fail should they
   read-access a collection that was not explicitly declared in the *collections* 
   array of the transaction.
+
+* added "special" password ARANGODB_DEFAULT_ROOT_PASSWORD. If you pass
+  ARANGODB_DEFAULT_ROOT_PASSWORD as password, it will read the password
+  from the environment variable ARANGODB_DEFAULT_ROOT_PASSWORD
 
 
 v2.7.0-rc2 (2015-09-22)
@@ -469,7 +473,13 @@ v2.7.0-rc1 (2015-09-17)
   The "Applications" tab in the web interfaces has been renamed to "Services".
 
 
-v2.6.9 (XXXX-XX-XX)
+v2.6.10 (XXXX-XX-XX)
+--------------------
+
+* issue #1521: Can't dump/restore with user and password
+
+
+v2.6.9 (2015-09-29)
 -------------------
 
 * added "special" password ARANGODB_DEFAULT_ROOT_PASSWORD. If you pass
