@@ -41,6 +41,15 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index query parameter
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_index_search_value_t {
+  size_t _length;
+  struct TRI_shaped_json_s* _values;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class HashIndex
 // -----------------------------------------------------------------------------

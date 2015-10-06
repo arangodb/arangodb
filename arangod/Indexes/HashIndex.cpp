@@ -124,13 +124,16 @@ static bool IsEqualKeyElementHash (TRI_index_search_value_t const* left,
 TRI_doc_mptr_t* HashIndexIterator::next () {
   if (_buffer.empty()) {
     _index->lookup(&_searchValue, _buffer);
+
     if (_buffer.empty()) {
       return nullptr;
     }
   }
+
   if (_posInBuffer < _buffer.size()) {
     return _buffer[_posInBuffer++];
   }
+
   return nullptr;
 }
 
@@ -138,6 +141,7 @@ void HashIndexIterator::reset () {
   _buffer.clear();
   _posInBuffer = 0;
 }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      class HashIndex::UniqueArray
 // -----------------------------------------------------------------------------
