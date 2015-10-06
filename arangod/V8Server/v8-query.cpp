@@ -447,28 +447,13 @@ static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys the example object for a hash index
-////////////////////////////////////////////////////////////////////////////////
-
-static void DestroySearchValue (TRI_memory_zone_t* zone,
-                                TRI_index_search_value_t& value) {
-  size_t n = value._length;
-
-  for (size_t i = 0;  i < n;  ++i) {
-    TRI_DestroyShapedJson(zone, &value._values[i]);
-  }
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, value._values);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the example object for a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
 static int SetupSearchValue (std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths,
                              v8::Handle<v8::Object> example,
                              VocShaper* shaper,
-                             TRI_index_search_value_t& result,
+                             TRI_hash_index_search_value_t& result,
                              std::string& errorMessage,
                              const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -477,12 +462,7 @@ static int SetupSearchValue (std::vector<std::vector<std::pair<TRI_shape_pid_t, 
   size_t const n = paths.size();
 
   // setup storage
-  result._length = n;
-  result._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t), true));
-
-  if (result._values == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  result.reserve(n);
 
   // convert
   for (size_t i = 0;  i < n;  ++i) {
@@ -492,7 +472,6 @@ static int SetupSearchValue (std::vector<std::vector<std::pair<TRI_shape_pid_t, 
     char const* name = shaper->attributeNameShapePid(pid);
 
     if (name == nullptr) {
-      DestroySearchValue(shaper->memoryZone(), result);
       errorMessage = "shaper failed";
       return TRI_ERROR_BAD_PARAMETER;
     }
@@ -510,8 +489,6 @@ static int SetupSearchValue (std::vector<std::vector<std::pair<TRI_shape_pid_t, 
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
-      DestroySearchValue(shaper->memoryZone(), result);
-
       if (res != TRI_RESULT_ELEMENT_NOT_FOUND) {
         errorMessage = "cannot convert value to JSON";
       }
@@ -1224,7 +1201,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   auto hashIndex = static_cast<triagens::arango::HashIndex*>(idx);
 
   // convert the example (index is locked by lockRead)
-  TRI_index_search_value_t searchValue;
+  TRI_hash_index_search_value_t searchValue;
 
   TRI_document_collection_t* document = trx.documentCollection();
   auto shaper = document->getShaper();  // PROTECTED by trx from above
@@ -1246,7 +1223,6 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   // find the matches
   std::vector<TRI_doc_mptr_t*> list;
   static_cast<triagens::arango::HashIndex*>(idx)->lookup(&searchValue, list);
-  DestroySearchValue(shaper->memoryZone(), searchValue);
 
   // convert result
   size_t total = list.size();

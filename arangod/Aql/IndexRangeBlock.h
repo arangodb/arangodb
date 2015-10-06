@@ -301,7 +301,7 @@ namespace triagens {
 /// @brief current search value for hash index lookup
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_index_search_value_t _hashIndexSearchValue;
+        TRI_hash_index_search_value_t _hashIndexSearchValue;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reentrant hash index iterator state

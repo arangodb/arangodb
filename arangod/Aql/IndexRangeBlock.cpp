@@ -65,7 +65,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _anyBoundVariable(false),
     _skiplistIterator(nullptr),
     _edgeIndexIterator(nullptr),
-    _hashIndexSearchValue({ 0, nullptr }),
+    _hashIndexSearchValue(),
     _hashNextElement(nullptr),
     _condition(new IndexOrCondition()),
     _posInRanges(0),
@@ -1196,16 +1196,7 @@ void IndexRangeBlock::readEdgeIndex (size_t atMost) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexRangeBlock::destroyHashIndexSearchValues () {
-  if (_hashIndexSearchValue._values != nullptr) {
-    auto shaper = _collection->documentCollection()->getShaper(); 
-
-    for (size_t i = 0; i < _hashIndexSearchValue._length; ++i) {
-      TRI_DestroyShapedJson(shaper->memoryZone(), &_hashIndexSearchValue._values[i]);
-    }
-
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _hashIndexSearchValue._values);
-    _hashIndexSearchValue._values = nullptr;
-  }
+  _hashIndexSearchValue.destroy();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1224,18 +1215,7 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
 
   size_t const n = paths.size();
 
-  TRI_ASSERT(_hashIndexSearchValue._values == nullptr); // to prevent leak
-  _hashIndexSearchValue._length = 0;
-    // initialize the whole range of shapes with zeros
-  _hashIndexSearchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 
-      n * sizeof(TRI_shaped_json_t), true));
-
-  if (_hashIndexSearchValue._values == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-    
-  _hashIndexSearchValue._length = n;
-
+  _hashIndexSearchValue.reserve(n);
 
   for (size_t i = 0; i < n; ++i) {
     TRI_shape_pid_t pid = paths[i][0].first;
