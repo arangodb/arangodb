@@ -312,6 +312,7 @@ int IndexBlock::initialize () {
   }
 
   _nonConstExpressions.clear();
+  _alreadyReturned.clear();
 
   // instantiate expressions:
   auto instantiateExpression = [&] (size_t i, size_t j, size_t k, AstNode const* a) -> void {
@@ -353,7 +354,7 @@ int IndexBlock::initialize () {
   for (size_t i = 0; i < _condition->numMembers(); ++i) {
     auto andCond = _condition->getMember(i);
     for (size_t j = 0; j < andCond->numMembers(); ++j) {
-      auto leaf = andCond->getMember(i);
+      auto leaf = andCond->getMember(j);
 
       // We only support binary conditions
       TRI_ASSERT(leaf->numMembers() == 2);
@@ -404,6 +405,9 @@ bool IndexBlock::initIndexes () {
   ENTER_BLOCK
   _flag = true; 
 
+
+  // We start with a different context. Return documents found in the previous context again.
+  _alreadyReturned.clear();
   // Find out about the actual values for the bounds in the variable bound case:
 
   if (! _nonConstExpressions.empty()) {
@@ -522,7 +526,7 @@ bool IndexBlock::readIndex (size_t atMost) {
   try {
     size_t nrSent = 0;
     while (nrSent < atMost && _iterator != nullptr) {
-      TRI_doc_mptr_copy_t* indexElement = _iterator->next();
+      TRI_doc_mptr_t* indexElement = _iterator->next();
       if (indexElement == nullptr) {
         startNextIterator();
       }
@@ -530,9 +534,12 @@ bool IndexBlock::readIndex (size_t atMost) {
         TRI_IF_FAILURE("IndexBlock::readIndex") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
+        if (_alreadyReturned.find(indexElement) == _alreadyReturned.end()) {
+          _alreadyReturned.emplace(indexElement);
 
-        _documents.emplace_back(*indexElement);
-        ++nrSent;
+          _documents.emplace_back(*indexElement);
+          ++nrSent;
+        }
         ++_engine->_stats.scannedIndex;
       }
     }

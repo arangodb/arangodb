@@ -1244,7 +1244,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   }
 
   // find the matches
-  std::vector<TRI_doc_mptr_copy_t> list;
+  std::vector<TRI_doc_mptr_t*> list;
   static_cast<triagens::arango::HashIndex*>(idx)->lookup(&searchValue, list);
   DestroySearchValue(shaper->memoryZone(), searchValue);
 
@@ -1261,7 +1261,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
       for (uint64_t i = s;  i < e;  ++i) {
         v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx,
                                                      collection->_cid,
-                                                     list[i].getDataPtr());
+                                                     list[i]->getDataPtr());
 
         if (doc.IsEmpty()) {
           error = true;

@@ -82,12 +82,12 @@ static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-TRI_doc_mptr_copy_t* PrimaryIndexIterator::next () {
+TRI_doc_mptr_t* PrimaryIndexIterator::next () {
   if (_hasReturned) {
     return nullptr;
   }
   _hasReturned = true;
-  return static_cast<TRI_doc_mptr_copy_t*>(_index->lookupKey(_key));
+  return _index->lookupKey(_key);
 }
 
 void PrimaryIndexIterator::initCursor () {

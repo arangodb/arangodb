@@ -121,7 +121,7 @@ static bool IsEqualKeyElementHash (TRI_index_search_value_t const* left,
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-TRI_doc_mptr_copy_t* HashIndexIterator::next () {
+TRI_doc_mptr_t* HashIndexIterator::next () {
   if (_buffer.empty()) {
     _index->lookup(&_searchValue, _buffer);
     if (_buffer.empty()) {
@@ -129,8 +129,7 @@ TRI_doc_mptr_copy_t* HashIndexIterator::next () {
     }
   }
   if (_posInBuffer < _buffer.size()) {
-    _posInBuffer++;
-    return &(_buffer[_posInBuffer - 1]);
+    return _buffer[_posInBuffer++];
   }
   return nullptr;
 }
@@ -400,14 +399,14 @@ int HashIndex::sizeHint (size_t size) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int HashIndex::lookup (TRI_index_search_value_t* searchValue,
-                       std::vector<TRI_doc_mptr_copy_t>& documents) const {
+                       std::vector<TRI_doc_mptr_t*>& documents) const {
 
   if (_unique) {
     TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(searchValue);
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
-      documents.emplace_back(*(found->document()));
+      documents.emplace_back(found->document());
     }
     return TRI_ERROR_NO_ERROR;
   }
@@ -422,7 +421,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
   if (results != nullptr) {
     try {
       for (size_t i = 0; i < results->size(); i++) {
-        documents.emplace_back(*((*results)[i]->document()));
+        documents.emplace_back((*results)[i]->document());
       }
       delete results;
     }

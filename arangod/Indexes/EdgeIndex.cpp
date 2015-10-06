@@ -341,7 +341,7 @@ static bool IsEqualElementEdgeToByKey (void const* left,
 // -----------------------------------------------------------------------------
 
 
-TRI_doc_mptr_copy_t* EdgeIndexIterator::next () {
+TRI_doc_mptr_t* EdgeIndexIterator::next () {
   if (_buffer == nullptr) {
     // We start a new lookup
     _buffer = _index->lookupByKey(&_searchValue, _batchSize);
@@ -358,9 +358,7 @@ TRI_doc_mptr_copy_t* EdgeIndexIterator::next () {
   if (_buffer->empty()) {
     return nullptr;
   }
-  TRI_doc_mptr_copy_t* res = static_cast<TRI_doc_mptr_copy_t*>(_buffer->at(_posInBuffer));
-  _posInBuffer++;
-  return res;
+  return _buffer->at(_posInBuffer++);
 }
 
 void EdgeIndexIterator::initCursor () {
