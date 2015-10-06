@@ -65,7 +65,7 @@ namespace triagens {
 
         ~PrimaryIndexIterator () {};
 
-        TRI_doc_mptr_copy_t* next () override;
+        TRI_doc_mptr_t* next () override;
 
         void initCursor () override;
 

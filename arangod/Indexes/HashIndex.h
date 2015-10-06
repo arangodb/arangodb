@@ -65,7 +65,7 @@ namespace triagens {
 
         ~HashIndexIterator() {};
 
-        TRI_doc_mptr_copy_t* next () override;
+        TRI_doc_mptr_t* next () override;
 
         void initCursor () override;
 
@@ -73,7 +73,7 @@ namespace triagens {
 
         HashIndex const*                  _index;
         TRI_index_search_value_t          _searchValue;
-        std::vector<TRI_doc_mptr_copy_t>  _buffer;
+        std::vector<TRI_doc_mptr_t*>      _buffer;
         size_t                            _posInBuffer;
 
     };
@@ -143,7 +143,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int lookup (TRI_index_search_value_t*,
-                    std::vector<TRI_doc_mptr_copy_t>&) const;
+                    std::vector<TRI_doc_mptr_t*>&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects

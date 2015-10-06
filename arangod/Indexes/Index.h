@@ -165,11 +165,7 @@ namespace triagens {
         
         virtual ~IndexIterator ();
 
-        virtual size_t size () const;
-
-        virtual bool hasNext () const;
-
-        virtual TRI_doc_mptr_copy_t* next ();
+        virtual TRI_doc_mptr_t* next ();
 
         virtual void initCursor ();
     };

@@ -54,7 +54,7 @@ namespace triagens {
 
         typedef triagens::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t, uint32_t, true> TRI_EdgeIndexHash_t;
 
-        TRI_doc_mptr_copy_t* next () override;
+        TRI_doc_mptr_t* next () override;
 
         void initCursor () override;
 
