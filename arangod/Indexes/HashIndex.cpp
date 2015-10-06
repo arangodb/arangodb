@@ -823,7 +823,8 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
       auto f = flds[j];
       if (f == paramPair.second) {
         filled = true;
-        auto shaped = TRI_ShapedJsonJson(shaper, value->toJsonValue(TRI_UNKNOWN_MEM_ZONE), false); 
+        auto shaped = TRI_ShapedJsonJson(shaper, value->toJsonValue(TRI_UNKNOWN_MEM_ZONE), false);
+         
         if (shaped == nullptr) {
           TRI_ASSERT(false);
           return nullptr;
@@ -842,7 +843,6 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
   }
   // We have successfully build a searchValue by now.
   // Create the iterator
-
   auto result = new HashIndexIterator(this, searchValue.get());
   searchValue.release();
   return result;
