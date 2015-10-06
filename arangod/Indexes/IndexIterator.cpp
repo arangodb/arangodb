@@ -28,6 +28,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IndexIterator.h"
+#include "Basics/StringUtils.h"
+#include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 
 using namespace triagens::arango;
@@ -44,8 +46,12 @@ IndexIteratorContext::IndexIteratorContext (TRI_vocbase_t* vocbase,
                                             CollectionNameResolver* resolver)
   : vocbase(vocbase),
     resolver(resolver),
-    ownsResolver(resolver == nullptr),
-    isRunningInCluster(false) {
+    ownsResolver(resolver == nullptr) {
+
+}
+
+IndexIteratorContext::IndexIteratorContext (TRI_vocbase_t* vocbase)
+  : IndexIteratorContext(vocbase, nullptr) {
 
 }
 
@@ -55,12 +61,42 @@ IndexIteratorContext::~IndexIteratorContext () {
   }
 }
 
-CollectionNameResolver const* IndexIteratorContext::getResolver () {
+CollectionNameResolver const* IndexIteratorContext::getResolver () const {
   if (resolver == nullptr) {
     TRI_ASSERT(ownsResolver);
     resolver = new CollectionNameResolver(vocbase);
   }
   return resolver;
+}
+
+bool IndexIteratorContext::isCluster () const {
+  return triagens::arango::ServerState::instance()->isRunningInCluster();
+}
+
+int IndexIteratorContext::resolveId (char const* handle, 
+                                     TRI_voc_cid_t& cid, 
+                                      char const*& key) const {
+  char const* p = strchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
+
+  if (p == nullptr || *p == '\0') {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+  
+  if (*handle >= '0' && *handle <= '9') {
+    cid = triagens::basics::StringUtils::uint64(handle, p - handle);
+  }
+  else {
+    std::string const name(handle, p - handle);
+    cid = getResolver()->getCollectionIdCluster(name);
+  }
+                              
+  if (cid == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  key = p + 1;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 // -----------------------------------------------------------------------------

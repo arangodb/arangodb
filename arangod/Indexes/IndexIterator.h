@@ -49,14 +49,21 @@ namespace triagens {
     struct IndexIteratorContext {
       IndexIteratorContext (TRI_vocbase_t*, CollectionNameResolver*);
       
+      explicit IndexIteratorContext (TRI_vocbase_t*);
+      
       ~IndexIteratorContext ();
 
-      CollectionNameResolver const* getResolver ();
+      CollectionNameResolver const* getResolver () const;
+
+      bool isCluster () const;
+
+      int resolveId (char const*,
+                     TRI_voc_cid_t&, 
+                     char const*&) const;
 
       TRI_vocbase_t* vocbase;
-      CollectionNameResolver const* resolver;
+      mutable CollectionNameResolver const* resolver;
       bool ownsResolver;
-      bool isRunningInCluster;
     };
 
 ////////////////////////////////////////////////////////////////////////////////

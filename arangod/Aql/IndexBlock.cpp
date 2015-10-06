@@ -33,11 +33,8 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
-#include "Indexes/EdgeIndex.h"
-#include "Indexes/HashIndex.h"
-#include "Indexes/SkiplistIndex.h"
+#include "Indexes/IndexIterator.h"
 #include "V8/v8-globals.h"
-#include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace std;
@@ -65,25 +62,24 @@ IndexBlock::IndexBlock (ExecutionEngine* engine,
     _collection(en->collection()),
     _posInDocs(0),
     _indexes(en->getIndexes()),
+    _context(nullptr),
     _iterator(nullptr),
     _condition(en->_condition->root()),
     _freeCondition(false),
     _hasV8Expression(false) {
+
+  _context = new IndexIteratorContext(en->_vocbase);
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
 
   if (trxCollection != nullptr) {
     _trx->orderDitch(trxCollection);
   }
-
-  TRI_ASSERT(! en->getIndexes().empty());
-
-  std::vector<Index const*> indexes = en->getIndexes();
-
 }
 
 IndexBlock::~IndexBlock () {
   delete _iterator;
+  delete _context;
 
   if (_freeCondition && _condition != nullptr) {
     delete _condition;
@@ -459,12 +455,12 @@ bool IndexBlock::initIndexes () {
   _currentIndex = 0;
   auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
   auto ast = static_cast<IndexNode const*>(getPlanNode())->_plan->getAst();
-  _iterator = _indexes[_currentIndex]->getIterator(nullptr, ast, _condition->getMember(_currentIndex), outVariable);
+  _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable);
 
   while (_iterator == nullptr) {
     ++_currentIndex;
     if (_currentIndex < _indexes.size()) {
-      _iterator = _indexes[_currentIndex]->getIterator(nullptr, ast, _condition->getMember(_currentIndex), outVariable);
+      _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable);
     }
     else {
       // We were not able to initialize any index with this condition
@@ -489,7 +485,7 @@ void IndexBlock::startNextIterator () {
   if (_currentIndex < _indexes.size()) {
     auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
     auto ast = static_cast<IndexNode const*>(getPlanNode())->_plan->getAst();
-    _iterator = _indexes[_currentIndex]->getIterator(nullptr, ast, _condition->getMember(_currentIndex), outVariable);
+    _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable);
   }
   else {
     // If all indexes have been exhausted we set _iterator to nullptr;

@@ -41,6 +41,10 @@ struct TRI_edge_index_iterator_t;
 struct TRI_hash_index_element_multi_s;
 
 namespace triagens {
+  namespace arango {
+    struct IndexIteratorContext;
+  }
+
   namespace aql {
 
     class AqlItemBlock;
@@ -216,6 +220,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         std::vector<std::vector<RegisterId>> _inRegs;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief context for index iteration
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::arango::IndexIteratorContext* _context;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _iterator: holds the index iterator found using

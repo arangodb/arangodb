@@ -56,13 +56,14 @@ namespace triagens {
       public:
 
         PrimaryIndexIterator (PrimaryIndex const* index,
-                              char const* key) 
+                              std::vector<char const*>& keys) 
           : _index(index),
-            _key(key),
-            _hasReturned(false) {
+            _keys(std::move(keys)),
+            _position(0) {
         }
 
-        ~PrimaryIndexIterator () {}
+        ~PrimaryIndexIterator () {
+        }
 
         TRI_doc_mptr_t* next () override;
 
@@ -70,9 +71,9 @@ namespace triagens {
 
       private:
 
-        PrimaryIndex const*      _index;
-        char const*              _key;
-        bool                     _hasReturned;
+        PrimaryIndex const*       _index;
+        std::vector<char const*>  _keys;
+        size_t                    _position;
 
     };
 
@@ -205,6 +206,12 @@ namespace triagens {
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*) const override;
+
+      private:
+
+        IndexIterator* createIterator (IndexIteratorContext*,
+                                       triagens::aql::AstNode const*,
+                                       std::vector<triagens::aql::AstNode const*> const&) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

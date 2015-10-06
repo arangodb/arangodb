@@ -83,15 +83,14 @@ static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
 // -----------------------------------------------------------------------------
 
 TRI_doc_mptr_t* PrimaryIndexIterator::next () {
-  if (_hasReturned) {
+  if (_position >= _keys.size()) {
     return nullptr;
   }
-  _hasReturned = true;
-  return _index->lookupKey(_key);
+  return _index->lookupKey(_keys[_position++]);
 }
 
 void PrimaryIndexIterator::reset () {
-  _hasReturned = false;
+  _position = 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -302,6 +301,7 @@ bool PrimaryIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_ID, false) },
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_KEY, false) } 
   });
+
   return matcher.matchOne(this, node, reference, estimatedCost);
 }
 
@@ -324,8 +324,6 @@ IndexIterator* PrimaryIndex::iteratorForCondition (IndexIteratorContext* context
   TRI_ASSERT(allVals->numMembers() == 1);
 
   auto comp = allVals->getMember(0);
-  // TODO: handle IN here
-  TRI_ASSERT(comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
 
   // assume a.b == value
   auto attrNode = comp->getMember(0);
@@ -342,38 +340,84 @@ IndexIterator* PrimaryIndex::iteratorForCondition (IndexIteratorContext* context
     // all index entries in the primary index are strings
     // if the comparison value is no string, then we don't need to run
     // the index query at all
-    if (! valNode->isStringValue()) {
-      // TODO: handle IN here
+    return createIterator(context, attrNode, std::vector<triagens::aql::AstNode const*>({ valNode }));
+  }
+  else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    if (! valNode->isArray()) {
       return nullptr;
     }
+
+    std::vector<triagens::aql::AstNode const*> valNodes;
+    size_t const n = valNode->numMembers();
+    valNodes.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      valNodes.emplace_back(valNode->getMemberUnchecked(i));
+    }
+
+    return createIterator(context, attrNode, valNodes);
   }
 
-  // TODO: handle IN here
+  // operator type unsupported
+  return nullptr;
+}
 
-  if (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_KEY) == 0) {
-    // _key
-    return new PrimaryIndexIterator(this, valNode->getStringValue());
-  }
-   
-  // _id 
-  TRI_ASSERT(strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_ID) == 0);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the iterator
+////////////////////////////////////////////////////////////////////////////////
+    
+IndexIterator* PrimaryIndex::createIterator (IndexIteratorContext* context,
+                                             triagens::aql::AstNode const* attrNode,
+                                             std::vector<triagens::aql::AstNode const*> const& valNodes) const {
 
-  // TODO: fix cluster collection naming resolving
-  CollectionNameResolver resolver(_collection->_vocbase);
+  bool const isId = (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_ID) == 0);
 
-  char const* key = strchr(valNode->getStringValue(), '/');
+  // only leave the valid elements in the vector
+  size_t const n = valNodes.size();
+  std::vector<char const*> keys;
+  keys.reserve(n);
 
-  if (key != nullptr) {
-    std::string collectionPart(valNode->getStringValue(), key);
-    TRI_voc_cid_t cid = resolver.getCollectionId(collectionPart);
+  for (size_t i = 0; i < n; ++i) {
+    auto valNode = valNodes[i];
 
-    if (cid == _collection->_info._cid) {
-      ++key; // Ignore the /
-      return new PrimaryIndexIterator(this, key);
+    if (! valNode->isStringValue()) {
+      continue;
+    }
+    if (valNode->getStringLength() == 0) {
+      continue;
+    }
+
+    if (isId) {
+      // lookup by _id. now validate if the lookup is performed for the 
+      // correct collection (i.e. _collection)
+      TRI_voc_cid_t cid;
+      char const* key;
+      int res = context->resolveId(valNode->getStringValue(), cid, key);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        continue;
+      }
+
+      if (! context->isCluster() && cid != _collection->_info._cid) {
+        // only continue lookup if the id value is syntactically correct and
+        // refers to "our" collection, using local collection id
+        continue;
+      }
+
+      if (context->isCluster() && cid != _collection->_info._planId) {
+        // only continue lookup if the id value is syntactically correct and
+        // refers to "our" collection, using cluster collection id
+        continue;
+      }
+
+      // use _key value from _id
+      keys.push_back(key);
+    }
+    else {
+      keys.push_back(valNode->getStringValue());
     }
   }
 
-  return nullptr;
+  return new PrimaryIndexIterator(this, keys);
 }
 
 // -----------------------------------------------------------------------------
