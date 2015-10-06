@@ -603,33 +603,64 @@ IndexIterator* EdgeIndex::iteratorForCondition (triagens::aql::Ast* ast,
                                                 triagens::aql::AstNode const* node,
                                                 triagens::aql::Variable const* reference) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+
   SimpleAttributeEqualityMatcher matcher({ 
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false) }, 
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false) } 
   });
+
   triagens::aql::AstNode* allVals = matcher.getOne(ast, this, node, reference);
   TRI_ASSERT(allVals->numMembers() == 1);
   auto comp = allVals->getMember(0);
-  TRI_ASSERT(comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-  auto attrNode = comp->getMember(0);
-  auto valNode = comp->getMember(1);
-  if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    attrNode = comp->getMember(1);
-    valNode = comp->getMember(0);
-  }
-  CollectionNameResolver resolver(_collection->_vocbase);
-  char const* key = strchr(valNode->getStringValue(), '/');
-  std::string collectionPart(valNode->getStringValue(), key);
-  TRI_voc_cid_t cid = resolver.getCollectionId(collectionPart);
-  ++key; // Ignore the /
 
-  TRI_edge_header_t search(cid, const_cast<char*>(key));
-  TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS); 
-  if (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0) {
-    return new EdgeIndexIterator(_edgesFrom, search);
+  // TODO: handle IN
+  TRI_ASSERT(comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+
+  // assume a.b == value
+  auto attrNode = comp->getMember(0);
+  auto valNode  = comp->getMember(1);
+
+  if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // got value == a.b  -> flip sides
+    attrNode = comp->getMember(1);
+    valNode  = comp->getMember(0);
   }
-  TRI_ASSERT(strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_TO) == 0);
-  return new EdgeIndexIterator(_edgesTo, search);
+
+  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    // all index entries in the primary index are strings
+    // if the comparison value is no string, then we don't need to run
+    // the index query at all
+    if (! valNode->isStringValue()) {
+      // TODO: handle IN here
+      return nullptr;
+    }
+  }
+  
+  // TODO: handle IN here
+
+  char const* key = strchr(valNode->getStringValue(), '/');
+
+  if (key != nullptr) {
+    // TODO: fix cluster collection name resolving
+    CollectionNameResolver resolver(_collection->_vocbase);
+
+    std::string collectionPart(valNode->getStringValue(), key);
+    TRI_voc_cid_t cid = resolver.getCollectionId(collectionPart);
+    ++key; // Ignore the /
+
+    TRI_edge_header_t search(cid, const_cast<char*>(key));
+
+    TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS); 
+
+    if (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0) {
+      return new EdgeIndexIterator(_edgesFrom, search);
+    }
+
+    TRI_ASSERT(strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_TO) == 0);
+    return new EdgeIndexIterator(_edgesTo, search);
+  }
+
+  return nullptr;
 }
 
 // -----------------------------------------------------------------------------
