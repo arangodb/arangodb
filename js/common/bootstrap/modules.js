@@ -396,7 +396,7 @@ Module._load = function(request, parent, isMain) {
   var filename = request;
   var dbModule = false;
   var match = request.match(/^\/?db:(\/(\/_modules)?)?(\/.+)/);
-  
+
   if (match) {
     dbModule = Module._resolveDbModule(match[3]);
     if (!dbModule) {
@@ -462,7 +462,6 @@ Module._resolveFilename = function(request, parent) {
   var resolvedModule = Module._resolveLookupPaths(request, parent);
   var id = resolvedModule[0];
   var paths = resolvedModule[1];
-	
 
   // look up the filename first, since that's the cache key.
   var filename = Module._findPath(request, paths);
@@ -600,7 +599,7 @@ Module._extensions['.json'] = function(module, filename) {
 
 Module._extensions['.coffee'] = function(module, filename) {
   require('org/arangodb/deprecated')(
-    '2.8',
+    '2.9',
     'CoffeeScript support is deprecated,'
     + ' please pre-compile CoffeeScript modules to JavaScript using external build tools.'
   );
