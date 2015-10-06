@@ -1639,13 +1639,7 @@ exports.printf = function () {
 /// @brief print
 ////////////////////////////////////////////////////////////////////////////////
 
-if (typeof exports.printBrowser === 'function') {
-  exports.printShell = printShell;
-  exports.print = exports.printBrowser;
-}
-else {
-  exports.print = printShell;
-}
+exports.print = exports.printShell = printShell;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief printObject
