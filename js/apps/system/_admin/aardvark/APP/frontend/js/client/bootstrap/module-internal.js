@@ -42,7 +42,8 @@ var exports = require("internal");
 
 if (global.ArangoConnection) {
   exports.ArangoConnection = global.ArangoConnection;
-  delete global.ArangoConnection;
+  // must not delete this property. otherwise the web front end will fail
+  // delete global.ArangoConnection;
 }
 
 if (global.SYS_ARANGO) {

@@ -106,12 +106,12 @@
             "frontend/js/modules/org/arangodb/tutorial.js",
             "frontend/js/modules/org/arangodb-common.js",
             "frontend/js/modules/org/arangodb.js",*/
-            "frontend/js/bootstrap/errors.js",
-            "frontend/js/bootstrap/monkeypatches.js",
-            "frontend/js/bootstrap/module-internal.js",
-            "frontend/js/client/bootstrap/module-internal.js",
-            "frontend/js/client/client.js",
-            "frontend/js/bootstrap/module-console.js"
+            //"frontend/js/bootstrap/errors.js",
+            //"frontend/js/bootstrap/monkeypatches.js",
+            //"frontend/js/bootstrap/module-internal.js",
+            //"frontend/js/client/bootstrap/module-internal.js",
+            //"frontend/js/client/client.js",
+            //"frontend/js/bootstrap/module-console.js"
           ],
           js: [
             "frontend/js/models/*",
@@ -358,7 +358,7 @@
           }
         },
         sharedLibs: {
-          src: [
+          src: [
             "frontend/js/lib/jquery-2.1.0.min.js",
             "frontend/js/lib/underscore.js",
             "frontend/js/lib/backbone.js",
@@ -375,8 +375,14 @@
           }
         },
         sharedES: {
-          src: [
+          src: [
             "frontend/js/modules/**/*.js",
+            "frontend/js/bootstrap/module-internal.js", 
+            "frontend/js/bootstrap/errors.js",
+            "frontend/js/bootstrap/module-console.js",
+            "frontend/js/client/bootstrap/module-internal.js", 
+            "frontend/js/bootstrap/monkeypatches.js", 
+            "frontend/js/client/client.js"
           ],
           dest: 'frontend/build/arangoes6.js',
           options: {
@@ -389,7 +395,7 @@
           }
         },
         jsCluster: {
-          src: [
+          src: [
             "frontend/js/lib/dygraph-combined.js",
             "frontend/js/config/dygraphConfig.js",
             "frontend/js/lib/d3.v3.min.js",
@@ -414,7 +420,7 @@
           dest: 'clusterFrontend/build/cluster.js'
         },
         htmlCluster: {
-          src: [ 
+          src: [  
             "frontend/html/start.html.part",
             "clusterFrontend/html/head.html.part",
             "frontend/js/templates/dashboardView.ejs",
@@ -438,7 +444,7 @@
             "frontend/build/scripts.html.part",
             "frontend/html/end.html.part"
           ],
-          dest: 'frontend/build/standalone.html' 
+          dest: 'frontend/build/standalone.html'  
         },
         coverage: {
           files: {
