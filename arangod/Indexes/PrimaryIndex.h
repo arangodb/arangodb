@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/AssocUnique.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -56,16 +57,16 @@ namespace triagens {
 
         PrimaryIndexIterator (PrimaryIndex const* index,
                               char const* key) 
-        : _index(index),
-          _key(key),
-          _hasReturned(false) {
+          : _index(index),
+            _key(key),
+            _hasReturned(false) {
         }
 
         ~PrimaryIndexIterator () {}
 
         TRI_doc_mptr_t* next () override;
 
-        void initCursor () override;
+        void reset () override;
 
       private:
 

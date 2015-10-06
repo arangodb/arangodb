@@ -116,6 +116,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Indexes/GeoIndex2.cpp \
 	arangod/Indexes/HashIndex.cpp \
 	arangod/Indexes/Index.cpp \
+	arangod/Indexes/IndexIterator.cpp \
 	arangod/Indexes/PathBasedIndex.cpp \
 	arangod/Indexes/PrimaryIndex.cpp \
 	arangod/Indexes/SkiplistIndex.cpp \

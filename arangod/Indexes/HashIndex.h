@@ -34,6 +34,7 @@
 #include "Basics/AssocMulti.h"
 #include "Basics/AssocUnique.h"
 #include "Indexes/PathBasedIndex.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -54,20 +55,19 @@ namespace triagens {
 
       public:
 
-        HashIndexIterator (
-            HashIndex const* index,
-            TRI_index_search_value_t searchValue
-        ) :
-          _index(index),
+        HashIndexIterator (HashIndex const* index,
+                           TRI_index_search_value_t searchValue) 
+        : _index(index),
           _searchValue(searchValue),
           _posInBuffer(0) {
         }
 
-        ~HashIndexIterator() {};
+        ~HashIndexIterator() {
+        }
 
         TRI_doc_mptr_t* next () override;
 
-        void initCursor () override;
+        void reset () override;
 
       private:
 

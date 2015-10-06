@@ -146,37 +146,8 @@ struct TRI_index_element_t {
 
 namespace triagens {
   namespace arango {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class IndexIterator
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief context for an index iterator
-////////////////////////////////////////////////////////////////////////////////
-
-    struct IndexIteratorContext {
-    };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a base class to iterate over the index. An iterator is requested 
-/// at the index itself
-////////////////////////////////////////////////////////////////////////////////
-
-    class IndexIterator {
-
-      public:
-
-        IndexIterator () {}
-        IndexIterator (IndexIterator const&) = delete;
-        IndexIterator& operator= (IndexIterator const&) = delete;
-        
-        virtual ~IndexIterator ();
-
-        virtual TRI_doc_mptr_t* next ();
-
-        virtual void initCursor ();
-    };
+    class IndexIterator;
+    struct IndexIteratorContext;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Index
@@ -404,8 +375,6 @@ namespace triagens {
         bool const                                                             _sparse;
                
     };
-
-
 
   }
 }

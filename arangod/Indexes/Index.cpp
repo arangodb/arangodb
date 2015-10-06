@@ -30,7 +30,6 @@
 #include "Index.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
@@ -447,8 +446,8 @@ bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
 /// @brief default implementation for supportsSortCondition
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondition,
-                                   triagens::aql::Variable const* reference,
+bool Index::supportsSortCondition (triagens::aql::SortCondition const*,
+                                   triagens::aql::Variable const*,
                                    double& estimatedCost) const { 
   // by default, no sort conditions are supported
   estimatedCost = 0.0;
@@ -466,28 +465,6 @@ IndexIterator* Index::iteratorForCondition (IndexIteratorContext*,
   // the super class index cannot create an iterator
   // the derived index classes have to manage this.
   return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default destructor. Does not free anything
-////////////////////////////////////////////////////////////////////////////////
-
-IndexIterator::~IndexIterator () {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default implementation for next
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_doc_mptr_t* IndexIterator::next () {
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default implementation for initCursor
-////////////////////////////////////////////////////////////////////////////////
-
-void IndexIterator::initCursor () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

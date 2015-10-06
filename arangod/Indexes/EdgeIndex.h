@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/AssocMulti.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -56,24 +57,22 @@ namespace triagens {
 
         TRI_doc_mptr_t* next () override;
 
-        void initCursor () override;
+        void reset () override;
 
-        EdgeIndexIterator (
-          TRI_EdgeIndexHash_t const* index,
-          TRI_edge_header_t searchValue
-        ) :
-          _index(index),
+        EdgeIndexIterator (TRI_EdgeIndexHash_t const* index,
+                           TRI_edge_header_t searchValue) 
+        : _index(index),
           _searchValue(searchValue),
           _last(nullptr),
           _buffer(nullptr),
           _posInBuffer(0),
-          _batchSize(50) // This might be adjusted
-        { };
+          _batchSize(50) { // This might be adjusted
+        }
 
         ~EdgeIndexIterator () {
           // Free the vector space, not the content
           delete _buffer;
-        };
+        }
 
       private:
 

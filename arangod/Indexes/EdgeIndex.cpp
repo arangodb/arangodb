@@ -361,7 +361,7 @@ TRI_doc_mptr_t* EdgeIndexIterator::next () {
   return _buffer->at(_posInBuffer++);
 }
 
-void EdgeIndexIterator::initCursor () {
+void EdgeIndexIterator::reset () {
   // Do not delete _last
   _last = nullptr;
   // Free the vector space, not the content
@@ -369,9 +369,6 @@ void EdgeIndexIterator::initCursor () {
   _buffer = nullptr;
   _posInBuffer = 0;
 }
-
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

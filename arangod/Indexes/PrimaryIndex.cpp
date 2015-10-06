@@ -90,7 +90,7 @@ TRI_doc_mptr_t* PrimaryIndexIterator::next () {
   return _index->lookupKey(_key);
 }
 
-void PrimaryIndexIterator::initCursor () {
+void PrimaryIndexIterator::reset () {
   _hasReturned = false;
 }
 
