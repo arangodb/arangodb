@@ -1,5 +1,5 @@
 v2.7.0-rc3 (2015-10-05)
--------------------
+-----------------------
 
 * fixed replication with a 2.6 replication configuration and issues with a 2.6 master
 
@@ -460,7 +460,13 @@ v2.7.0-rc1 (2015-09-17)
   The "Applications" tab in the web interfaces has been renamed to "Services".
 
 
-v2.6.9 (XXXX-XX-XX)
+v2.6.10 (XXXX-XX-XX)
+--------------------
+
+* issue #1521: Can't dump/restore with user and password
+
+
+v2.6.9 (2015-09-29)
 -------------------
 
 * added "special" password ARANGODB_DEFAULT_ROOT_PASSWORD. If you pass
