@@ -1180,6 +1180,14 @@ AstNode* Ast::createNodeNop () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the AST nop node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::getNodeNop () {
+  return const_cast<AstNode*>(&NopNode);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST n-ary operator node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1655,6 +1663,11 @@ TopLevelAttributes Ast::getReferencedAttributes (AstNode const* node,
 
 AstNode* Ast::clone (AstNode const* node) {
   auto type = node->type;
+  if (type == NODE_TYPE_NOP) {
+    // nop node is a singleton
+    return const_cast<AstNode*>(node);
+  }
+
   auto copy = createNode(type);
 
   // special handling for certain node types

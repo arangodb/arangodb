@@ -40,10 +40,15 @@ using namespace triagens::aql;
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the sort condition
+////////////////////////////////////////////////////////////////////////////////
+
 SortCondition::SortCondition (std::vector<std::pair<AstNode const*, bool>> const& expressions) 
   : _expressions(expressions),
     _unidirectional(true),
-    _onlyAttributeAccess(true) {
+    _onlyAttributeAccess(true),
+    _ascending(true) {
 
   size_t const n = _expressions.size();
 
@@ -80,17 +85,25 @@ SortCondition::SortCondition (std::vector<std::pair<AstNode const*, bool>> const
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the sort condition
+////////////////////////////////////////////////////////////////////////////////
+
 SortCondition::SortCondition (std::vector<std::pair<VariableId, bool>> const& sorts, 
                               std::unordered_map<VariableId, AstNode const*> const& variableDefinitions) 
   : _expressions(),
     _unidirectional(true),
-    _onlyAttributeAccess(true) {
+    _onlyAttributeAccess(true),
+    _ascending(true) {
  
   size_t const n = sorts.size();
 
   for (size_t i = 0; i < n; ++i) {
     if (_unidirectional && i > 0 && sorts[i].second != sorts[i - 1].second) {
       _unidirectional = false;
+    }
+    if (i == 0) {
+      _ascending = sorts[i].second;
     }
 
     bool handled = false;
@@ -126,6 +139,13 @@ SortCondition::SortCondition (std::vector<std::pair<VariableId, bool>> const& so
   if (n == 0) {
     _onlyAttributeAccess = false;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the sort condition
+////////////////////////////////////////////////////////////////////////////////
+
+SortCondition::~SortCondition () {
 }
 
 // -----------------------------------------------------------------------------

@@ -33,7 +33,6 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexNode.h"
-#include "Aql/RangeInfo.h"
 #include "Utils/AqlTransaction.h"
 #include "VocBase/shaped-json.h"
 
@@ -87,7 +86,7 @@ namespace triagens {
       public:
 
         IndexBlock (ExecutionEngine* engine,
-                         IndexNode const* ep);
+                    IndexNode const* ep);
 
         ~IndexBlock ();
 
@@ -160,47 +159,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void sortConditions ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief andCombineRangeInfoVecs: combine the arguments into a single vector,
-/// by intersecting every pair of range infos and inserting them in the returned
-/// value if the intersection is valid. 
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<RangeInfo> andCombineRangeInfoVecs (std::vector<RangeInfo> const&, 
-                                                        std::vector<RangeInfo> const&) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cartesian: form the cartesian product of the inner vectors. This is
-/// required in case a dynamic bound evaluates to a list, then we have an 
-/// "and" condition containing an "or" condition, which we must then distribute. 
-////////////////////////////////////////////////////////////////////////////////
-
-        IndexOrCondition* cartesian (std::vector<std::vector<RangeInfo>> const&) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief: subclass for comparing IndexAndConditions in _condition. Similar to
-/// OurLessThan in the SortBlock
-////////////////////////////////////////////////////////////////////////////////
-
-        class SortFunc {
-          public:
-            SortFunc (std::vector<std::vector<size_t>> const& prefix, 
-                      IndexOrCondition* condition,
-                      bool reverse)
-              : _prefix(prefix),
-                _condition(condition), 
-                _reverse(reverse) {
-            }
-
-            bool operator() (size_t const&,
-                             size_t const&) const;
-
-          private:
-            std::vector<std::vector<size_t>> const& _prefix;
-            IndexOrCondition* _condition;
-            bool const _reverse;
-        };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

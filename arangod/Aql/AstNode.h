@@ -507,7 +507,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a value node is of type attribute access that
-/// refers to a variable reference
+/// refers to any variable reference
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isAttributeAccessForVariable () const {
@@ -530,8 +530,10 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a value node is of type attribute access that
-/// refers to the specified variable reference
+/// @brief whether or not a value node is of type attribute access that 
+/// refers to any variable reference
+/// returns true if yes, and then also returns variable reference and array
+/// of attribute names in the parameter passed by reference
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isAttributeAccessForVariable (std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>&) const;

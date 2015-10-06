@@ -67,6 +67,8 @@ void IndexNode::toJsonHelper (triagens::basics::Json& nodes,
   json("indexes", indexes); 
 
   json("condition", _condition->toJson(TRI_UNKNOWN_MEM_ZONE)); 
+  
+  json("reverse", triagens::basics::Json(_reverse));
 
   // And add it:
   nodes(json);
@@ -83,7 +85,7 @@ ExecutionNode* IndexNode::clone (ExecutionPlan* plan,
 
   // TODO: check if we need to clone _condition or if we can reuse it here
   auto c = new IndexNode(plan, _id, _vocbase, _collection, 
-                         outVariable, _indexes, _condition);
+                         outVariable, _indexes, _condition, _reverse);
 
   cloneHelper(c, plan, withDependencies, withProperties);
 
@@ -101,7 +103,8 @@ IndexNode::IndexNode (ExecutionPlan* plan,
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), "collection"))),
     _outVariable(varFromJson(plan->getAst(), json, "outVariable")),
     _indexes(),
-    _condition(nullptr) { 
+    _condition(nullptr),
+    _reverse(JsonHelper::checkAndGetBooleanValue(json.json(), "reverse")) { 
 
   auto indexes = JsonHelper::checkAndGetObjectValue(json.json(), "indexes");
 

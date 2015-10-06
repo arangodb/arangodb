@@ -1201,8 +1201,10 @@ bool AstNode::isFalse () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a value node is of type attribute access that
-/// refers to the specified variable reference
+/// @brief whether or not a value node is of type attribute access that 
+/// refers to any variable reference
+/// returns true if yes, and then also returns variable reference and array
+/// of attribute names in the parameter passed by reference
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::isAttributeAccessForVariable (std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>& result) const {
@@ -1223,9 +1225,16 @@ bool AstNode::isAttributeAccessForVariable (std::pair<Variable const*, std::vect
       expandNext = false;
     }
     else {
-      // expansion
+      // expansion, i.e. [*]
       TRI_ASSERT(node->type == NODE_TYPE_EXPANSION);
       TRI_ASSERT(node->numMembers() >= 2);
+
+      // check if the expansion uses a projection. if yes, we cannot use an index for it
+      if (node->getMember(4) != Ast::getNodeNop()) {
+        // [* RETURN projection]
+        result.second.clear();
+        return false;
+      }
 
       if (! node->getMember(1)->isAttributeAccessForVariable(result)) { 
         result.second.clear();

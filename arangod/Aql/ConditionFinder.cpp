@@ -143,6 +143,11 @@ bool ConditionFinder::before (ExecutionNode* en) {
       SortCondition sortCondition(_sorts, _variableDefinitions);
 
       if (condition->findIndexes(node, usedIndexes, sortCondition)) {
+        bool reverse = false;
+        if (sortCondition.isUnidirectional()) {
+          reverse = sortCondition.isDescending();
+        }
+
         TRI_ASSERT(! usedIndexes.empty());
         std::cout << node->id() << " Number of indexes used: " << usedIndexes.size() << std::endl;
           // We either can find indexes for everything or findIndexes will clear out usedIndexes
@@ -153,7 +158,8 @@ bool ConditionFinder::before (ExecutionNode* en) {
           node->collection(), 
           node->outVariable(), 
           usedIndexes, 
-          condition.get()
+          condition.get(),
+          reverse
         ));
         condition.release();
 

@@ -62,13 +62,15 @@ namespace triagens {
                    Collection const* collection,
                    Variable const* outVariable,
                    std::vector<Index const*> indexes,
-                   Condition const* condition)
+                   Condition const* condition,
+                   bool reverse)
           : ExecutionNode(plan, id), 
             _vocbase(vocbase), 
             _collection(collection),
             _outVariable(outVariable),
             _indexes(indexes),
-            _condition(condition) {
+            _condition(condition),
+            _reverse(reverse) {
           
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);
@@ -197,6 +199,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
                    
         Condition const* _condition;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the index sort order - this is the same order for all indexes
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _reverse;
 
     };
 
