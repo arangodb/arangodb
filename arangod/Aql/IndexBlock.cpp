@@ -65,7 +65,6 @@ IndexBlock::IndexBlock (ExecutionEngine* engine,
     _context(nullptr),
     _iterator(nullptr),
     _condition(en->_condition->root()),
-    _freeCondition(false),
     _hasV8Expression(false) {
 
   _context = new IndexIteratorContext(en->_vocbase);
@@ -80,10 +79,6 @@ IndexBlock::IndexBlock (ExecutionEngine* engine,
 IndexBlock::~IndexBlock () {
   delete _iterator;
   delete _context;
-
-  if (_freeCondition && _condition != nullptr) {
-    delete _condition;
-  }
 }
 
 void IndexBlock::buildExpressions () {
@@ -106,208 +101,20 @@ void IndexBlock::buildExpressions () {
               ->getMember(toReplace.andMember)
               ->changeMember(toReplace.operatorMember, evaluatedNode);
   }
-
-  /*
-  bool const useHighBounds = this->useHighBounds(); 
-  // TODO
-  std::unique_ptr<IndexOrCondition> newCondition;
-
-  for (size_t i = 0; i < en->_ranges.size(); i++) {
-    size_t const n = en->_ranges[i].size(); 
-    // prefill with n default-constructed vectors
-    std::vector<std::vector<RangeInfo>> collector(n);   
-
-    // collect the evaluated bounds here
-    for (size_t k = 0; k < n; k++) {
-      auto const& r = en->_ranges[i][k];
-
-      {
-        // First create a new RangeInfo containing only the constant 
-        // low and high bound of r:
-        RangeInfo riConst(r._var, r._attr, r._lowConst, r._highConst, r.is1ValueRangeInfo());
-        collector[k].emplace_back(std::move(riConst));
-      }
-
-      // Now work the actual values of the variable lows and highs into 
-      // this constant range:
-      for (auto const& l : r._lows) {
-        Expression* e = _allVariableBoundExpressions[posInExpressions];
-        TRI_ASSERT(e != nullptr);
-        AqlValue a = e->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
-        posInExpressions++;
-
-        Json bound;
-        if (a._type == AqlValue::JSON) {
-          bound = *(a._json);
-          a.destroy();  // the TRI_json_t* of a._json has been stolen
-        } 
-        else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
-          bound = a.toJson(_trx, myCollection, true);
-          a.destroy();  // the TRI_json_t* of a._json has been stolen
-        } 
-        else {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-              "AQL: computed a variable bound and got non-JSON");
-        }
-
-        if (! bound.isArray()) {
-          if (useHighBounds) {
-            auto b(bound.copy());
-
-            RangeInfo ri(r._var, 
-                         r._attr, 
-                         RangeInfoBound(l.inclusive(), true, b), // will steal b's JSON
-                         RangeInfoBound(), 
-                         false);
-
-            for (size_t j = 0; j < collector[k].size(); j++) {
-              collector[k][j].fuse(ri);
-            }
-          }
-          else {
-            auto b1(bound.copy()); // first instance of bound
-            auto b2(bound.copy()); // second instance of same bound
-
-            RangeInfo ri(r._var, 
-                         r._attr, 
-                         RangeInfoBound(l.inclusive(), true, b1), // will steal b1's JSON
-                         RangeInfoBound(l.inclusive(), true, b2), // will steal b2's JSON
-                         false);
-
-            for (size_t j = 0; j < collector[k].size(); j++) {
-              collector[k][j].fuse(ri);
-            }
-          }
-        } 
-        else {
-          std::vector<RangeInfo> riv; 
-          riv.reserve(bound.size());
-
-          for (size_t j = 0; j < bound.size(); j++) {
-            auto b1(bound.at(static_cast<int>(j)).copy()); // first instance of bound
-            auto b2(bound.at(static_cast<int>(j)).copy()); // second instance of same bound
-
-            riv.emplace_back(RangeInfo(r._var, 
-                                       r._attr, 
-                                       RangeInfoBound(l.inclusive(), true, b1), // will steal b1's JSON
-                                       RangeInfoBound(l.inclusive(), true, b2), // will steal b2's JSON
-                                       true));
-          }
-
-          collector[k] = std::move(andCombineRangeInfoVecs(collector[k], riv));
-        } 
-      }
-
-      if (useHighBounds) {
-        for (auto const& h : r._highs) {
-          Expression* e = _allVariableBoundExpressions[posInExpressions];
-          TRI_ASSERT(e != nullptr);
-          TRI_document_collection_t const* myCollection = nullptr; 
-          AqlValue a = e->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
-          posInExpressions++;
-
-          Json bound;
-          if (a._type == AqlValue::JSON) {
-            bound = *(a._json);
-            a.destroy();  // the TRI_json_t* of a._json has been stolen
-          } 
-          else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
-            bound = a.toJson(_trx, myCollection, true);
-            a.destroy();  // the TRI_json_t* of a._json has been stolen
-          } 
-          else {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-                "AQL: computed a variable bound and got non-JSON");
-          }
-          if (! bound.isArray()) {
-            auto b(bound.copy());
-            RangeInfo ri(r._var, 
-                          r._attr, 
-                          RangeInfoBound(), 
-                          RangeInfoBound(h.inclusive(), true, b), // will steal b's JSON
-                          false);
-
-            for (size_t j = 0; j < collector[k].size(); j++) {
-              collector[k][j].fuse(ri);
-            }
-          } 
-          else {
-            std::vector<RangeInfo> riv; 
-            riv.reserve(bound.size());
-
-            for (size_t j = 0; j < bound.size(); j++) {
-              auto b1(bound.at(static_cast<int>(j)).copy()); // first instance of bound
-              auto b2(bound.at(static_cast<int>(j)).copy()); // second instance of same bound
-
-              riv.emplace_back(RangeInfo(r._var, 
-                                          r._attr, 
-                                          RangeInfoBound(h.inclusive(), true, b1), // will steal b1's JSON
-                                          RangeInfoBound(h.inclusive(), true, b2), // will steal b2's JSON
-                                          true));
-            } 
-
-            collector[k] = std::move(andCombineRangeInfoVecs(collector[k], riv));
-          } 
-        }
-      }
-    }
-
-
-    bool isEmpty = false;
-
-    for (auto const& x : collector) {
-      if (x.empty()) { 
-        isEmpty = true;
-        break;
-      }
-    }
-
-    if (! isEmpty) { 
-      // otherwise the condition is impossible to fulfill
-      // the elements of the direct product of the collector are and
-      // conditions which should be added to newCondition 
-
-      // create cartesian product
-      std::unique_ptr<IndexOrCondition> indexAnds(cartesian(collector));
-
-      if (newCondition == nullptr) {
-        newCondition.reset(indexAnds.release());
-      }
-      else {
-        for (auto const& indexAnd : *indexAnds) {
-          newCondition->emplace_back(std::move(indexAnd));
-        }
-      } 
-    }
-
-  }
-    
-  freeCondition(); 
-    
-  if (newCondition != nullptr) {
-    _condition = newCondition.release();
-    _freeCondition = true;
- 
-    // remove duplicates . . .
-    removeOverlapsIndexOr(*_condition);
-  }
-  else {
-    _condition = new IndexOrCondition;
-    _freeCondition = true;
-  }
-  */
 }
 
 int IndexBlock::initialize () {
   ENTER_BLOCK
   int res = ExecutionBlock::initialize();
 
+/*
+  // why is this called again here? it has already been called in the constructor...!?
   if (res == TRI_ERROR_NO_ERROR) {
     if (_trx->orderDitch(_trx->trxCollection(_collection->cid())) == nullptr) {
       res = TRI_ERROR_OUT_OF_MEMORY;
     }
   }
-
+*/
   _nonConstExpressions.clear();
   _alreadyReturned.clear();
 
@@ -349,9 +156,9 @@ int IndexBlock::initialize () {
   auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
 
   for (size_t i = 0; i < _condition->numMembers(); ++i) {
-    auto andCond = _condition->getMember(i);
+    auto andCond = _condition->getMemberUnchecked(i);
     for (size_t j = 0; j < andCond->numMembers(); ++j) {
-      auto leaf = andCond->getMember(j);
+      auto leaf = andCond->getMemberUnchecked(j);
 
       // We only support binary conditions
       TRI_ASSERT(leaf->numMembers() == 2);
@@ -366,7 +173,8 @@ int IndexBlock::initialize () {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
         }
-      } else {
+      } 
+      else {
         // Index is responsible for the right side, check if left side has to be evaluated
         if (! lhs->isConstant()) {
           instantiateExpression(i, j, 0, lhs);
@@ -400,8 +208,6 @@ int IndexBlock::initialize () {
 
 bool IndexBlock::initIndexes () {
   ENTER_BLOCK
-  _flag = true; 
-
 
   // We start with a different context. Return documents found in the previous context again.
   _alreadyReturned.clear();
@@ -451,7 +257,7 @@ bool IndexBlock::initIndexes () {
       }
     }
   }
-  
+
   _currentIndex = 0;
   auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
   auto ast = static_cast<IndexNode const*>(getPlanNode())->_plan->getAst();
@@ -470,14 +276,6 @@ bool IndexBlock::initIndexes () {
   _posInRanges = 0;
   return true;
   LEAVE_BLOCK;
-}
-
-void IndexBlock::freeCondition () {
-  if (_condition != nullptr && _freeCondition) {
-    delete _condition;
-    _condition = nullptr;
-    _freeCondition = false;
-  }
 }
 
 void IndexBlock::startNextIterator () {
