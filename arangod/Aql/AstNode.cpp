@@ -1210,7 +1210,7 @@ bool AstNode::isFalse () const {
 bool AstNode::isAttributeAccessForVariable (std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>& result) const {
   if (type != NODE_TYPE_ATTRIBUTE_ACCESS &&
       type != NODE_TYPE_EXPANSION) {
-    return nullptr;
+    return false;
   }
 
   // initialize
