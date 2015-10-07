@@ -676,7 +676,7 @@ var mountController = function (service, routes, mount, filename) {
       createMiddlewareMatchers(ri.middleware, routes, mount, ri.urlPrefix);
     }
     if (ri.hasOwnProperty('routes')) {
-      transformRoutes(ri.routes, routes, mount, ri.urlPrefix, service._isDevelopment);
+      transformRoutes(ri.routes, routes, mount, ri.urlPrefix, service.isDevelopment);
     }
   }
 };
