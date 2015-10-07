@@ -524,19 +524,6 @@ void ArangoServer::buildApplicationServer () {
     ("temp-path", &_tempPath, "temporary path")
     ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
-  string languageName;
-
-  if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
-    char const* ICU_env = getenv("ICU_DATA");
-    LOG_FATAL_AND_EXIT("failed to initialize ICU; ICU_DATA='%s'", (ICU_env) ? ICU_env : "");
-  }
-
-  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
-    languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-  }
-  else {
-    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-  }
 
   // other options
   additional["Hidden Options"]
@@ -681,6 +668,24 @@ void ArangoServer::buildApplicationServer () {
 
   IGNORE_DATAFILE_ERRORS = _ignoreDatafileErrors;
   
+  // .............................................................................
+  // set language name
+  // .............................................................................
+
+  string languageName;
+
+  if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
+    char const* ICU_env = getenv("ICU_DATA");
+    LOG_FATAL_AND_EXIT("failed to initialize ICU; ICU_DATA='%s'", (ICU_env) ? ICU_env : "");
+  }
+
+  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
+    languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+  }
+  else {
+    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+  }
+
   // .............................................................................
   // init nonces
   // .............................................................................
