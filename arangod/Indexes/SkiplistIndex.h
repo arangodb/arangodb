@@ -178,15 +178,18 @@ namespace triagens {
       public:
         
         SkiplistIndexIterator (SkiplistIndex const* index,
-                               TRI_index_operator_t* op)
+                               std::vector<TRI_index_operator_t*> op)
         : _index(index),
-          _operator(op),
+          _operators(op),
           _reverse(false),
+          _currentOperator(0),
           _iterator(nullptr) {
         }
 
         ~SkiplistIndexIterator () {
-          delete _operator;
+          for (auto& op : _operators) {
+            delete op;
+          }
           delete _iterator;
         }
 
@@ -197,10 +200,11 @@ namespace triagens {
 
       private:
 
-        SkiplistIndex const*          _index;
-        TRI_index_operator_t*         _operator;
-        bool                          _reverse;
-        SkiplistIterator*             _iterator;
+        SkiplistIndex const*                 _index;
+        std::vector<TRI_index_operator_t*>   _operators;
+        bool                                 _reverse;
+        size_t                               _currentOperator;
+        SkiplistIterator*                    _iterator;
 
     };
 // -----------------------------------------------------------------------------
