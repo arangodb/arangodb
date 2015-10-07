@@ -1730,6 +1730,9 @@ static Json VertexIdToJson (triagens::arango::AqlTransaction* trx,
                                            trx->nestingLevel(),
                                            true,
                                            true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
     TRI_EnsureCollectionsTransaction(trx->getInternals());
     collection = trx->trxCollection(id.cid);
     if (collection == nullptr) {
