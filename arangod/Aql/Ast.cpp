@@ -1600,8 +1600,9 @@ AstNode* Ast::clone (AstNode const* node) {
            type == NODE_TYPE_FCALL) {
     copy->setData(node->getData());
   }
-  else if (type == NODE_TYPE_UPSERT) {
-    copy->setIntValue(node->getIntValue());
+  else if (type == NODE_TYPE_UPSERT ||
+           type == NODE_TYPE_EXPANSION) {
+    copy->setIntValue(node->getIntValue(true));
   }
   else if (type == NODE_TYPE_VALUE) {
     switch (node->value.type) {
