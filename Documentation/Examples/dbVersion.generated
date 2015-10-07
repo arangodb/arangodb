@@ -1,2 +1,2 @@
 arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).db._version();
-<span class="hljs-number">2.7</span>.0-rc3
+<span class="hljs-number">2.7</span>.0

@@ -1,6 +1,6 @@
 arangosh&gt; db.examples.ensureCapConstraint(<span class="hljs-number">10</span>);
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"examples/1059884161"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"examples/1059851290"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"cap"</span>, 
   <span class="hljs-string">"size"</span> : <span class="hljs-number">10</span>, 
   <span class="hljs-string">"byteSize"</span> : <span class="hljs-number">0</span>, 
