@@ -801,36 +801,6 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
   triagens::aql::AstNode* allVals = matcher.getAll(ast, this, node, reference);
   TRI_ASSERT(allVals->numMembers() == n);
  
-  struct PermutationState {
-    PermutationState (triagens::aql::AstNodeType type, triagens::aql::AstNode const* value, size_t attributePosition, size_t current, size_t n)
-      : type(type),
-        value(value),
-        attributePosition(attributePosition),
-        current(current),
-        n(n) {
-    }
-      
-    triagens::aql::AstNode const* getValue () const {
-      if (type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-        TRI_ASSERT(current == 0);
-        return value;
-      }
-      else if (type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-        TRI_ASSERT(current < n);
-        return value->getMember(current);
-      }
-
-      TRI_ASSERT(false);
-      return nullptr;
-    }
-
-    triagens::aql::AstNodeType    type;
-    triagens::aql::AstNode const* value;
-    size_t const                  attributePosition;
-    size_t                        current;
-    size_t const                  n;
-  };
-
   // initialize permutations
   std::vector<PermutationState> permutationStates;
   permutationStates.reserve(n);

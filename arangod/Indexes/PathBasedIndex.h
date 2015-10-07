@@ -39,14 +39,43 @@
 
 class VocShaper;
 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class PathBasedIndex
 // -----------------------------------------------------------------------------
 
 namespace triagens {
+  namespace aql {
+    enum AstNodeType : uint32_t;
+  }
+
   namespace arango {
 
     class PathBasedIndex : public Index {
+
+      protected:
+
+        struct PermutationState {
+          PermutationState (triagens::aql::AstNodeType type, triagens::aql::AstNode const* value, size_t attributePosition, size_t current, size_t n)
+            : type(type),
+              value(value),
+              attributePosition(attributePosition),
+              current(current),
+              n(n) {
+          }
+            
+          triagens::aql::AstNode const* getValue () const; 
+
+          triagens::aql::AstNodeType    type;
+          triagens::aql::AstNode const* value;
+          size_t const                  attributePosition;
+          size_t                        current;
+          size_t const                  n;
+        };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          shared Permuation struct
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors

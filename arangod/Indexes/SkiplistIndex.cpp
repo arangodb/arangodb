@@ -1140,10 +1140,10 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     // We found an access for this field
     if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       // This is an equalityCheck, we can continue with the next field
-      permutationStates.emplace_back(PermutationState(comp, value, 0, 1));
+      permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, 0, 1));
     }
     else if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      permutationStates.emplace_back(PermutationState(comp, value, 0, value->numMembers()));
+      permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, 0, value->numMembers()));
     }
     else {
       // This is a one-sided range
@@ -1261,7 +1261,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       rangeOperator.reset(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
                                                   rangeOperator.release(),
                                                   tmpOp.release(),
-                                                  parameter,
+                                                  nullptr,
                                                   _shaper,
                                                   2));
     }
@@ -1293,7 +1293,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
         std::unique_ptr<TRI_index_operator_t> tmpOp(TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, 
                                                                             nullptr,
                                                                             nullptr, 
-                                                                            parameter, 
+                                                                            parameter.get(), 
                                                                             _shaper, 
                                                                             usedFields)); 
         if (rangeOperator != nullptr) {
@@ -1301,7 +1301,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
           std::unique_ptr<TRI_index_operator_t> combinedOp(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
                                                                                    rangeOperator.get(),
                                                                                    tmpOp.get(),
-                                                                                   parameter,
+                                                                                   nullptr,
                                                                                    _shaper,
                                                                                    2));
           tmpOp.release();
@@ -1314,6 +1314,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
         }
       }
 
+      size_t current = 0;
       // now permute
       while (true) {
         if (++permutationStates[current].current < permutationStates[current].n) {
@@ -1324,7 +1325,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
 
         permutationStates[current].current = 0;
 
-        if (++current >= n) {
+        if (++current >= usedFields) {
           done = true;
           break;
         }

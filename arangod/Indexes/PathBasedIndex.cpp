@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathBasedIndex.h"
+#include "Aql/AstNode.h"
 #include "Basics/logging.h"
 
 using namespace triagens::arango;
@@ -35,6 +36,25 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class PathBasedIndex
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           struct PermutationState
+// -----------------------------------------------------------------------------
+
+triagens::aql::AstNode const* PathBasedIndex::PermutationState::getValue () const {
+  if (type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    TRI_ASSERT(current == 0);
+    return value;
+  }
+  else if (type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    TRI_ASSERT(current < n);
+    return value->getMember(current);
+  }
+
+  TRI_ASSERT(false);
+  return nullptr;
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
