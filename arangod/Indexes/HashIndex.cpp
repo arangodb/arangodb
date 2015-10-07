@@ -122,23 +122,37 @@ static bool IsEqualKeyElementHash (TRI_hash_index_search_value_t const* left,
 // -----------------------------------------------------------------------------
 
 TRI_doc_mptr_t* HashIndexIterator::next () {
-  if (_buffer.empty()) {
-    _index->lookup(_searchValue, _buffer);
-
-    if (_buffer.empty()) {
+  while (true) {
+    if (_position >= _keys.size()) {
+      // we're at the end of the lookup values
       return nullptr;
     }
-  }
 
-  if (_posInBuffer < _buffer.size()) {
-    return _buffer[_posInBuffer++];
-  }
+    if (_posInBuffer >= _buffer.size()) {
+      // We have to refill the buffer
+      _buffer.clear();
 
-  return nullptr;
+      _posInBuffer = 0;
+      int res = _index->lookup(_keys[_position++], _buffer);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+  
+    if (! _buffer.empty()) {
+      // found something
+      return _buffer.at(_posInBuffer++);
+    }
+
+    // found no result. now go to next lookup value in _keys
+//    ++_position;
+  }
 }
 
 void HashIndexIterator::reset () {
   _buffer.clear();
+  _position = 0;
   _posInBuffer = 0;
 }
 
@@ -784,68 +798,130 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
                                                 triagens::aql::AstNode const* node,
                                                 triagens::aql::Variable const* reference) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+
   SimpleAttributeEqualityMatcher matcher(fields());
   size_t const n = fields().size();
   triagens::aql::AstNode* allVals = matcher.getAll(ast, this, node, reference);
   TRI_ASSERT(allVals->numMembers() == n);
-
-  // setup storage
-  std::unique_ptr<TRI_hash_index_search_value_t> searchValue(new TRI_hash_index_search_value_t);
-  searchValue->reserve(n);
-
-  if (searchValue->_values == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  auto flds = fields();
-  auto shaper = _collection->getShaper(); 
-
-  // Convert AstNode -> TRI_hash_index_search_value_t
-  for (size_t i = 0; i < n; ++i) {
-    auto comp = allVals->getMember(i);
-    TRI_ASSERT(comp->numMembers() == 2);
-    std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> paramPair;
-    auto access = comp->getMember(0);
-    auto value = comp->getMember(1);
-    if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
-      access = comp->getMember(1);
-      value  = comp->getMember(0);
-      if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
-        // Both side do not have a correct AttributeAccess, this should not happen and indicates
-        // an error in the optimizer
-        TRI_ASSERT(false);
-        return nullptr;
-      }
+ 
+  struct PermutationState {
+    PermutationState (triagens::aql::AstNode const* op, triagens::aql::AstNode const* value, size_t current, size_t n)
+      : op(op),
+        value(value),
+        current(current),
+        n(n) {
     }
-    bool filled = false;
-    // value is the value node-side and paramPair.second contains this attributes access.
-    // Now iterator through the paths and fill searchValue
-    for (size_t j = 0; j < n; ++j) {
-      auto f = flds[j];
-      if (f == paramPair.second) {
-        filled = true;
-        auto shaped = TRI_ShapedJsonJson(shaper, value->toJsonValue(TRI_UNKNOWN_MEM_ZONE), false);
-         
-        if (shaped == nullptr) {
-          TRI_ASSERT(false);
-          return nullptr;
-        }
-        searchValue->_values[j] = *shaped;
-        TRI_Free(shaper->memoryZone(), shaped);
-        break;
+      
+    triagens::aql::AstNode const* getValue () const {
+      if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+        TRI_ASSERT(current == 0);
+        return value;
       }
-    }
-    if (! filled) {
-      // We have an attribute access this index does not cover, should not happen
+      else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+        TRI_ASSERT(current < n);
+        return value->getMember(current);
+      }
+
       TRI_ASSERT(false);
       return nullptr;
     }
 
+    triagens::aql::AstNode const* op;
+    triagens::aql::AstNode const* value;
+    size_t                        current;
+    size_t const                  n;
+  };
+
+  // initialize permutations
+  std::vector<PermutationState> permutationStates;
+  permutationStates.reserve(n);
+  size_t maxPermutations = 1;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto comp     = allVals->getMemberUnchecked(i);
+    auto attrNode = comp->getMember(0);
+    auto valNode  = comp->getMember(1);
+
+    if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // value == a.b  ->  flip the two sides
+      attrNode = comp->getMember(1);
+      valNode  = comp->getMember(0);
+    }
+    TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS); 
+
+    if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      permutationStates.emplace_back(PermutationState(comp, valNode, 0, 1));
+    }
+    else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      permutationStates.emplace_back(PermutationState(comp, valNode, 0, valNode->numMembers()));
+    }
+    else {
+      return nullptr;
+    }
+
+    maxPermutations *= permutationStates.back().n;
   }
-  // We have successfully build a searchValue by now.
+
+  std::vector<TRI_hash_index_search_value_t*> searchValues;
+  searchValues.reserve(maxPermutations);
+
+  // create all permutations
+  auto shaper = _collection->getShaper(); 
+  size_t current = 0;
+  bool done = false;
+  while (! done) {
+    std::unique_ptr<TRI_hash_index_search_value_t> searchValue(new TRI_hash_index_search_value_t);
+    searchValue->reserve(n);
+
+    bool valid = true;
+    for (size_t i = 0; i < n; ++i) {
+      auto state = permutationStates[i];
+      std::unique_ptr<TRI_json_t> json(state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+
+      if (json == nullptr) {
+        valid = false;
+        break;
+      }
+
+      auto shaped = TRI_ShapedJsonJson(shaper, json.get(), false);
+         
+      if (shaped == nullptr) {
+        // no such shape exists. this means we won't find this value and can go on with the next permutation
+        valid = false;
+        break;
+      }
+      
+      searchValue->_values[i] = *shaped;
+      TRI_Free(shaper->memoryZone(), shaped);
+    }
+
+    if (valid) {
+      searchValues.push_back(searchValue.get());
+      searchValue.release();
+    }
+
+    // now permute
+    while (true) {
+      if (++permutationStates[current].current < permutationStates[current].n) {
+        current = 0;
+        // abort inner iteration
+        break;
+      }
+
+      permutationStates[current].current = 0;
+
+      if (++current >= n) {
+        done = true;
+        break;
+      }
+      // next inner iteration
+    }
+  }
+
+  TRI_ASSERT(searchValues.size() <= maxPermutations);
+    
   // Create the iterator
-  auto result = new HashIndexIterator(this, searchValue.get());
-  searchValue.release();
-  return result;
+  return new HashIndexIterator(this, searchValues);
 }
 
 // -----------------------------------------------------------------------------

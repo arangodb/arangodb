@@ -481,16 +481,23 @@ void IndexBlock::freeCondition () {
 }
 
 void IndexBlock::startNextIterator () {
+  delete _iterator;
+  _iterator = nullptr;
+
   ++_currentIndex;
   if (_currentIndex < _indexes.size()) {
     auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
     auto ast = static_cast<IndexNode const*>(getPlanNode())->_plan->getAst();
+
     _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable);
   }
+  /*
   else {
     // If all indexes have been exhausted we set _iterator to nullptr;
+    delete _iterator;
     _iterator = nullptr;
   }
+  */
 }
 
 // this is called every time everything in _documents has been passed on

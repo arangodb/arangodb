@@ -74,14 +74,18 @@ namespace triagens {
       public:
 
         HashIndexIterator (HashIndex const* index,
-                           TRI_hash_index_search_value_t* searchValue) 
+                           std::vector<TRI_hash_index_search_value_t*>& keys)
         : _index(index),
-          _searchValue(searchValue),
+          _keys(keys),
+          _position(0),
+          _buffer(),
           _posInBuffer(0) {
         }
 
         ~HashIndexIterator() {
-          delete _searchValue;
+          for (auto& it : _keys) {
+            delete it;
+          }
         }
 
         TRI_doc_mptr_t* next () override;
@@ -90,10 +94,11 @@ namespace triagens {
 
       private:
 
-        HashIndex const*                  _index;
-        TRI_hash_index_search_value_t*    _searchValue;
-        std::vector<TRI_doc_mptr_t*>      _buffer;
-        size_t                            _posInBuffer;
+        HashIndex const*                             _index;
+        std::vector<TRI_hash_index_search_value_t*>  _keys;
+        size_t                                       _position;
+        std::vector<TRI_doc_mptr_t*>                 _buffer;
+        size_t                                       _posInBuffer;
 
     };
 

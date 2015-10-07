@@ -2057,19 +2057,15 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
   std::cout << "Candidates to replace " << changes.size() << std::endl;
   
   if (! changes.empty()) {
-    // clone the original plan
-    std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
-
     for (auto& it : changes) {
-      ExecutionNode* newNode = it.second->clone(newPlan.get(), true, false);
-      newPlan->registerNode(newNode);
-      newPlan->replaceNode(newPlan->getNodeById(it.first), newNode);
+      plan->registerNode(it.second); 
+      plan->replaceNode(plan->getNodeById(it.first), it.second);
 
       // prevent double deletion by cleanupChanges()
       it.second = nullptr;
     }
-    changes.clear();
-    opt->addPlan(newPlan.release(), rule, true);
+    opt->addPlan(plan, rule, true);
+    plan->findVarUsage();
   }
   else {
     opt->addPlan(plan, rule, false);
