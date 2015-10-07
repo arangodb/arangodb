@@ -1,0 +1,2118 @@
+\documentclass[a4paper,11pt,oneside]{scrbook}
+%
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[pdftex]{color,graphicx}
+\usepackage{fancyvrb}
+\usepackage{geometry}
+\usepackage{lastpage}
+\usepackage{makeidx}
+%
+\geometry{a4paper,left=30mm,right=20mm,top=2.5cm,bottom=3cm}
+\setlength{\headheight}{3.5em}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1ex plus 0.5ex minus 0.2ex}
+%
+\title{Programming Style Guidelines\\ ArangoDB Edition}
+\author{Dr. Frank Celler}
+\date{Version 1.2.0}
+%
+\DefineVerbatimEnvironment%
+  {code}{Verbatim}{commandchars=}
+\DefineVerbatimEnvironment%
+  {example}{Verbatim}{}
+%
+\newcommand{\guideline}[1]{{\subsection{#1}}}
+\newcommand{\motivation}[1]{{\normalfont \itshape #1}}
+\newcommand{\trfile}[1]{"#1"}
+\newcommand{\trclass}[1]{\emph{#1}}
+\newcommand{\trmethod}[1]{\emph{#1}}
+\newcommand{\trtable}[1]{\emph{#1}}
+\newcommand{\troption}[1]{\emph{#1}}
+\newcommand{\trcode}[1]{{\normalfont \ttfamily #1}}
+%
+\begin{document}
+\maketitle
+\tableofcontents
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Introduction}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+This document lists coding recommendations for the projects ArangoDB.  They are
+based on C++ coding recommendations common in the C++ development community, on
+established standards collected from a number of sources, individual experience,
+local requirements/needs, as well as suggestions given in \ref{bib:1} -
+\ref{bib:5} of chapter \ref{cha:references}.
+
+There are several reasons for introducing a new guideline rather than just
+referring to the ones above. The main reason is that these guides are far too
+general in their scope and that more specific rules (especially naming rules)
+need to be established. Also, the present guide has an annotated form that makes
+it far easier to use during project code reviews than most other existing
+guidelines. In addition, programming recommendations generally tend to mix style
+issues with language technical issues in a somewhat confusing manner. The
+present document does not contain any C++ technical recommendations at all, but
+focuses mainly on programming style.
+
+While a given development environment (IDE) can improve the readability of code
+by access visibility, color coding, automatic formatting and so on, the
+programmer should never rely on such features. Source code should always be
+considered larger than the IDE it is developed within and should be written in a
+way that maximize its readability independent of any IDE.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Layout of the Recommendations}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The recommendations are grouped by topic and each recommendation is numbered to
+make it easier to refer to during reviews. Layout of the recommendations is as
+follows:
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Guideline short description}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Guideline longer description
+
+\begin{code}
+  Example if applicable
+\end{code}
+   
+\motivation{
+  Motivation, background and additional information.
+}
+
+The motivation section is important. Coding standards and guidelines
+tend to start "religious wars", and it is important to state the
+background for the recommendation.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Recommendation Importance}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+In the guideline sections the terms \emph{must}, \emph{should} and \emph{can}
+have special meaning. A \emph{must} requirement must be followed, a
+\emph{should} is a strong recommendation, and a \emph{can} is a general
+guideline.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{General Recommendations}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\emph{Any} violation to the guide is allowed if it enhances readability.  The
+main goal of the recommendation is to \emph{improve} readability and thereby the
+understanding and the maintainability and general quality of the code. It is
+impossible to cover all the specific cases in a general guide and the programmer
+should be flexible.
+
+However, as readability is subject to personal taste, any violation should be
+discussed with the team. If a violation makes sense within a given context, a
+corresponding recomemendation should be added to this document.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{General Naming Conventions}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\label{sec:general-naming-conventions}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Names must be chosen by forming an english description}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Names must be chosen by forming an english description with "of", "in", "to",
+"from" left out.
+
+\begin{code}
+  TypeLanguage  // NOT TypeOfLanguage or LanguageType
+\end{code}
+
+\motivation{
+  Words like "of" are automatically added when reading.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Names representing types must be in upper camel case}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Names representing types (Classes, Interfaces) must be in upper camel case
+starting with upper case.
+
+\begin{code}
+  Line
+  SavingsAccount
+\end{code}
+
+\motivation{
+  Common practice in the C++ development community. 
+}
+
+Standard names are allowed to violated the above rule. Names used for instance
+in the C++ STL do not always follow the above rule. In this case the established
+names should be used. Examples are \trcode{size}, \trcode{length}, \trcode{at},
+\trcode{c\_str}.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Variable names must be in lower camel case}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Variable names must be in lower camel case starting with lower case.  Private
+and protected member variables must start with a "\_".
+
+\begin{code}
+  line
+  savingsAccount
+\end{code}
+
+\motivation{ 
+  Common practice in the C++ development community. Makes variables easy to
+  distinguish from types, and effectively resolves potential naming collision as
+  in the declaration Line line.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Named constants must be all uppercase}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Named constants (including enumeration values) must be all uppercase
+using underscore to separate words.
+
+\begin{code}
+  MAX_ITERATIONS
+  COLOR_RED
+  PI 
+\end{code}
+
+\motivation{
+  Common practice in the C++ development community. 
+}
+
+In general, the use of such constants should be minimized. In many cases
+implementing the value as a method is a better choice:
+
+\begin{code}
+  int maxIterations () const {
+    return 25;
+  } 
+\end{code}
+
+This form is both easier to read, and it ensures a unified interface towards
+class values.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Names representing methods or functions must be in lower camel case}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Names representing methods or functions, which \emph{do some work}, must be
+verbs and written in lower camel case starting with lower case. Names
+representing methods or functions, which \emph{return something}, must be
+substantives and written in lower camel case starting with lower case.
+
+\begin{code}
+  w = totalWidth();
+  validateInput();
+\end{code}
+
+\motivation{ 
+  Common practice in the C++ development community. This is identical to
+  variable names, but functions in C++ are already distinguishable from
+  variables by their specific form.
+
+  Functions (methods returning something) should be named after what they return
+  and procedures (void methods) after what they do.  This increases
+  readability. Makes it clear what the unit should do and especially all the
+  things it is not supposed to do. This again makes it easier to keep the code
+  clean of side effects.
+}
+
+One exception to these rules are getter and setter - see below.
+  
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Names representing namespaces must be all lowercase}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Names representing namespaces must be all lowercase using underscore to separate
+words.
+
+\begin{code}
+  analyzer
+  io_manager
+\end{code}
+
+\motivation{
+  Common practice in the C++ development community.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Abbreviations and acronyms must not be uppercase when used as name}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  exportHtmlSource();   // NOT: exportHTMLSource();
+  openDvdPlayer();      // NOT: openDVDPlayer(); 
+\end{code}
+
+\motivation{ 
+  Using all uppercase for the base name will give conflicts with the naming
+  conventions given above. A variable of this type whould have to be named dVD,
+  hTML etc. which obviously is not very readable. Another problem is illustrated
+  in the examples above; When the name is connected to another, the readbility
+  is seriously reduced; the word following the abbreviation does not stand out
+  as it should.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Generic variables must have the same name as their type}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  void setTopic (Topic *topic)  // NOT: void setTopic (Topic *value)
+                                // NOT: void setTopic (Topic *aTopic) 
+                                // NOT: void setTopic (Topic *x) 
+
+  void connect (Database *database)  // NOT: void connect (Database *db)
+                                     // NOT: void connect (Database *oracleDB) 
+\end{code}
+
+\motivation{ 
+  Reduce complexity by reducing the number of terms and names used. Also makes
+  it easy to deduce the type given a variable name only. If for some reason this
+  convention doesn't seem to fit it is a strong indication that the type name is
+  badly chosen.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Non-generic variables should have a role}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Non-generic variables have a role. These variables can often be named by
+combining role and type.
+
+\begin{code}
+  Point startingPoint, centerPoint;
+  Name loginName;
+\end{code}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{All names should be written in English}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  FileName;     // NOT: filNavn 
+\end{code}
+
+\motivation{
+  English is the prefered language for international development.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{The length of a name should corresponde to the scope}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Variables with a large scope should have long names, variables with a small
+scope can have short names.
+
+\motivation{ 
+  Scratch variables used for temporary storage or indices are best kept short. A
+  programmer reading such variables should be able to assume that its value is
+  not used outside a few lines of code. Common scratch variables for integers
+  are i, j, k, m, n and for characters c and d.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{The maximal length of a name must be 40}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\motivation{ 
+  Very long names make the program harder to read because more line breaks are
+  required. If the very long name is required to describe a method or variable
+  it could be an indication that this method or variable is to complex and that
+  the code should be refactored.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{The name of the object should be avoided in a method name}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The name of the object is implicit, and should be avoided in a method name. 
+
+\begin{code}
+  line.getLength();  // NOT: line.getLineLength(); 
+\end{code}
+
+\motivation{ 
+  The latter seems natural in the class declaration, but proves superfluous in
+  use, as shown in the example.
+}
+  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Specific Naming Conventions}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Getters and setters}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The terms \trcode{get}/\trcode{set} must be used where an attribute is accessed
+directly
+
+\begin{code}
+  employee.getName();
+  matrix.getElement(2, 4);
+  employee.setName(name);
+  matrix.setElement(2, 4, value); 
+\end{code}
+
+\motivation{
+  In Java this convention has become more or less standard.
+}
+
+Note that this is only used when accessing a member variable directly. If any
+computation is involved the above rule does not apply and section
+\ref{sec:general-naming-conventions} should be followed. A getter or setter must
+only consists of a few line of code.
+
+The terms \trcode{is}/\trcode{set} must be used where a boolean attribute is
+accessed directly.
+
+\begin{code}
+  matrix.isDense();
+\end{code}
+
+\motivation{ 
+  In Java this convention has become more or less standard. There are exceptions
+  to this rule in C++. The STL for example defines \trcode{empty} instead
+  \trcode{isEmpty}.
+}
+
+If definition a setter \trcode{setSomething} use \trcode{newSomething} as
+variable name for the new value.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Should use \trcode{compute} for methods which compute and store}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The term \trcode{compute} should be used in methods where something is computed
+and stored within the object.
+
+\begin{code}
+  valueSet->computeAverage();
+  matrix->computeInverse(); 
+\end{code}
+
+\motivation{ 
+  Give the reader the immediate clue that this is a potential time consuming
+  operation, and if used repeatedly, he might consider caching the
+  result. Consistent use of the term enhances readability.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Should use \trcode{find} and \trcode{lookup} for look ups}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The terms \trcode{find} and \trcode{lookup} should be used in methods where
+something is looked up.
+
+\begin{code}
+  vertex.findNearestVertex();
+  matrix.findMinElement();
+  vertex.lookupVertex(vertexId);
+\end{code}
+
+\motivation{
+  Give the reader the immediate clue that this is a simple look up method with a
+  minimum of computations involved. \trcode{lookup} should be used when no
+  computation or minimal computation is done and no error is raised when the
+  element is not found. \trcode{find} should be used when computations are
+  required; it is allowed to create missing elements or to raise an
+  error. Consistent use of the terms enhances readability.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Should use \trcode{initialize} for initialisation}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The term \trcode{initialize} should be used where an object or a concept is
+established.
+
+\begin{code}
+  printer.initializeFontSet(); 
+\end{code}
+
+\motivation{
+  The american initialize should be preferred over the british initialise.  The
+  abbreviation \trcode{init} should be avoided.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Should use GUI component type name as suffix}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Variables representing GUI components should be suffixed by the component type
+name.
+
+\begin{code}
+  mainWindow, propertiesDialog, widthScale, loginText, leftScrollbar,
+  mainForm, fileMenu, minLabel, exitButton, yesToggle
+\end{code}
+
+\motivation{ 
+  Enhances readability since the name gives the user an immediate clue of the
+  type of the variable and thereby the objects resources.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Can use \trcode{List} suffix for lists}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The suffix \trcode{List} can be used on names representing a list of objects. 
+
+\begin{code}
+  vertex (one vertex)
+  vertexList (a list of vertices) 
+\end{code}
+
+\motivation{ 
+  Enhances readability since the name gives the user an immediate clue of the
+  type of the variable and the operations that can be performed on the
+  object. Simply using the plural form of the base class name for a list
+  (matrixElement (one matrix element), matrixElements (list of matrix elements))
+  shoul be avoided since the two only differ in a single character and are
+  thereby difficult to distinguish.
+}
+
+A list in this context is the compound data type that can be traversed
+backwards, forwards, etc. (typically an STL vector). A plain array is
+simpler. The suffix \trcode{Array} can be used to denote an array of objects.
+  
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Should use prefix \trcode{n} or \trcode{number}}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The prefix \trcode{n} or \trcode{number} should be used for variables
+representing a number of objects.
+
+\begin{code}
+  nPoints, numberLines 
+\end{code}
+
+\motivation{ 
+  The notation is taken from mathematics where it is an established convention
+  for indicating a number of objects.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Should use suffix \trcode{Id} for identifier}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The suffix \trcode{Id} should be used for variables representing an entity
+  number.
+
+\begin{code}
+  tableId, employeeId 
+\end{code}
+
+\motivation{ 
+  The notation is taken from mathematics where it is an established convention
+  for indicating an entity number.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Should use mathematical iterators names}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Iterator variables should be called \trcode{i}, \trcode{j}, \trcode{k} etc
+or \trcode{iter}. 
+
+\begin{code}
+  for (int i = 0; i < nTables); i++) {
+    ...
+  }
+
+  vector<MyClass>::iterator iter;
+
+  for (iter = list.begin();  iter != list.end();  ++iter) { 
+    Element element = *iter;
+    ... 
+  } 
+\end{code}
+
+\motivation{ 
+  The notation is taken from mathematics where it is an established convention
+  for indicating iterators. \trcode{iter} should be used for STL iterators.
+}
+
+An elegant alternative is to prefix such variables with an i or iter: iTable,
+iterEmployee. This effectively makes them named iterators.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{The prefix \trcode{is} should be used for boolean variables and methods}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  isSet, isVisible, isFinished, isFound, isOpen 
+\end{code}
+
+\motivation{
+  Common practice in the C++ development community and partially enforced in Java. 
+}
+
+Using the is prefix solves a common problem of choosing bad boolean names like
+status or flag. isStatus or isFlag simply doesn't fit, and the programmer is
+forced to choose more meaningful names. There are a few alternatives to the
+\trcode{is} prefix that fits better in some situations. These are the
+\trcode{has}, \trcode{can} and \trcode{should} prefixes:
+
+\begin{code}
+  bool hasLicense(); 
+  bool canEvaluate(); 
+  bool shouldSort(); 
+\end{code}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Complement names must be used for complement operations}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  get/set
+  add/remove
+  create/destroy
+  start/stop
+  insert/delete
+  increment/decrement
+  old/new
+  begin/end
+  first/last
+  up/down
+  min/max
+  next/previous
+  open/close
+  show/hide
+  suspend/resume
+\end{code}
+
+\motivation{
+  Reduce complexity by symmetry.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Abbreviations in names must be avoided}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  computeAverage();     // NOT: compAvg(); 
+\end{code}
+
+There are two types of words to consider. First are the common words listed in a
+language dictionary. These must never be abbreviated. Never write:
+
+\begin{itemize}
+  \item
+    cmd instead of command
+
+  \item
+    cp instead of copy
+
+  \item
+    pt instead of point
+
+  \item
+    comp instead of compute
+
+  \item
+    init instead of initialize
+\end{itemize}
+
+Then there are domain specific phrases that are more naturally known through
+their abbreviations/acronym. These phrases must be kept abbreviated. Never
+write:
+
+\begin{itemize}
+  \item
+    HypertextMarkupLanguage instead of html
+
+  \item
+    CentralProcessingUnit instead of cpu
+
+  \item
+    PriceEarningRatio instead of pe
+\end{itemize}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Naming pointers specifically should be avoided}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  Line * line;  // NOT: Line * pLine; or Line * linePtr; etc. 
+\end{code}
+
+Many variables in a C/C++ environment are pointers, so a convention like this is
+almost impossible to follow. Also objects in C++ are often oblique types where
+the specific implementation should be ignored by the programmer. Only when the
+actual type of an object is of special significance, the name should empahsize
+the type.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Negated boolean variable names must be avoided}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  bool isError; // NOT: isNoError
+  bool isFound; // NOT: isNotFound 
+\end{code}
+
+The problem arises when such a name is used in conjunction with the logical
+negation operator as this results in a double negative. It is not immediately
+apparent what \trcode{!isNotFound} means.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Enumeration constants can be prefixed by a common type name}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  enum color_e {
+    COLOR_RED,
+    COLOR_GREEN,
+    COLOR_BLUE
+  }; 
+\end{code}
+
+\motivation{
+  This gives additional information of where the declaration can be found, which
+  constants belongs together, and what concept the constants represent. An
+  alternative approach is to always refer to the constants through their common
+  type: \trcode{Color::RED}, \trcode{Airline::AIR\_FRANCE}, etc.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{C++ Naming Conventions}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Within a given module, class names must be unique}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\label{subsec:unique-class-name}
+
+\motivation{
+  If class names are unique it is much easier to understand the code because
+  mix-ups are avoided.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Exception classes should be suffixed with \trcode{Exception} or \trcode{Error}}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  class AccessException {
+    ...
+  }
+\end{code}
+
+\motivation{ 
+  Exception classes are really not part of the main design of the program, and
+  naming them like this makes them stand out relative to the other classes.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Enumerations should be lowercase follwed by \trcode{\_e}}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  enum color_e {
+    ..
+  };
+\end{code}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Template names should are short and must be uppercase}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Names representing template types must be uppercase.
+
+Names representing generic template types should be a single uppercase
+letter. Two uppercase letters at most. Names representing specific template
+types should be named after that type.
+
+\begin{code}
+  template<typename T> ... 
+  template<typename C, typename D> ... 
+  template<typename C, class VERTEX> ...
+\end{code}
+
+\motivation{ 
+  Common practice in the C++ development community. This makes template names
+  stand out relative to all other names used.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Global variables should always be referred to using the \trcode{::} operator}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  ::mainWindow.open()
+  ::applicationContext.getName() 
+\end{code}
+
+\motivation{ 
+  In general, the use of global variables should be avoided. Consider using
+  singleton objects instead.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Files}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Source Files}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Must use \trfile{.h} and \trfile{.cpp} extensions}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+C++ header files must have the extension \trfile{.h}. Source files must the
+extension \trfile{.cpp}. The extensions \trfile{.C}, \trfile{.cc} or
+\trfile{.c++} are not allowed.
+
+\begin{code}
+  MyClass.cpp, MyClass.h 
+\end{code}
+
+\motivation{
+  These are all accepted C++ standards for file extension.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Must use two files per class for public classes}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\label{subsec:two-files-per-class}
+
+A class must be declared in a header file and implemented in a source file where
+the name of the files match the name of the class. Classes which are local to
+computation and have a file context, can be defined in the source file in an
+anonymous namespace.
+
+The files must have the same name as the class including case. A class
+\trcode{MyHthml} must be declared in \trfile{MyHtml.h"} and implemented in
+\trfile{MyHtml.cpp}.
+
+\begin{code}
+  MyClass.h, MyClass.cpp 
+\end{code}
+
+\motivation{ 
+  Makes it easy to find the associated files of a given class. This convention
+  is enforced in Java and has become very successful as such.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{All computations must reside in source files}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  class MyClass { 
+    public: 
+      int getValue () {return value;} // YES
+      int computeSomething () {...computation...} // NO! 
+
+    private: 
+      int value; 
+  } 
+\end{code}
+
+\motivation{ 
+  The header files must declare an interface of a class, the source file must
+  implement it. When looking for an implementation, the programmer should always
+  know that it is found in the source file. The obvious exception to this rule
+  are of course inline functions and templates that must be defined in the
+  header file. Trivial getter and setter are another exception.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{File content should be kept within 80 columns}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+80 columns is a common dimension for editors, terminal emulators, printers and
+debuggers, and files that are shared between several people should keep within
+these constraints. It improves readability when unintentional line breaks are
+avoided when passing a file between programmers.  Special characters like TAB
+and page break must be avoided.
+
+These characters are bound to cause problem for editors, printers, terminal
+emulators or debuggers when used in a multi-programmer, multi-platform
+environment.  The incompleteness of split lines must be made obvious.
+
+\begin{code}
+  totalSum = a + b + c
+           + d + e;
+
+  function (param1, param2,
+           param3);
+
+  setText ("Long line split"
+           "into two parts.");
+
+  for (tableNo = 0; tableNo < nTables;
+       tableNo += tableStep) 
+\end{code}
+
+Split lines occurs when a statement exceed the 80 column limit given above. It
+is difficult to give rigid rules for how lines should be split, but the examples
+above should give a general hint. In general:
+
+\begin{itemize}
+  \item
+    Break after a comma.
+
+  \item
+    Break after an operator. 
+
+  \item
+    Align the new line with the beginning of the expression on the previous line. 
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Include Files and Include Statements}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Must use include guards}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\label{guideline:define-guard}
+
+Header files must include a construction that prevents multiple inclusion. The
+convention is an all uppercase construction of the module/directory name, the
+file name and the \trcode{h} suffix.
+
+Obeying \ref{subsec:two-files-per-class} and \ref{subsec:unique-class-name}
+guarantees that the input guards is unique.
+
+\begin{code}
+  #ifndef MODULE_FILENAME_H
+  #define MODULE_FILENAME_H
+  ...
+  #endif 
+\end{code}
+
+\motivation{
+  The construction is to avoid compilation errors. The name convention is common
+  practice. The construction should appear in the top of the file (before the
+  file header) so file parsing is aborted immediately and compilation time is
+  reduced.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Include statements should be sorted and grouped}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Sorted by their hierarchical position in the system with low level files
+included first. Leave an empty line between groups of include statements.
+
+\begin{code}
+  #include <fstream>
+  #include <iomanip>
+
+  #include <Xm/Xm.h>
+  #include <Xm/ToggleB.h>
+
+  #include "ui/PropertiesDialog.h"
+  #include "ui/MainWindow.h" 
+\end{code}
+
+\motivation{
+  In addition to show the reader the individual include files, it also give an
+  immediate clue about the modules that are involved. Include file paths must
+  never be absolute. Compiler directives should instead be used to indicate root
+  directories for includes.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Include statements must be located at the top of a file only}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\motivation{ 
+  Common practice. Avoid unwanted compilation side effects
+  by "hidden" include statements deep into a source file.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{File Structure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Header file structure}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The parts of a class must be sorted public, protected and private. All
+sections must be identified explicitly. Not applicable sections should
+be left out.  The ordering is "most public first" so people who only
+wish to use the class can stop reading when they reach the
+protected/private sections.
+
+Use the following ordering within a header file.
+
+\begin{enumerate}
+  \item
+    header including copyright, author, and date
+
+  \item
+    define-guard, see \ref{guideline:define-guard}
+
+  \item
+    include \trfile{Common.h} or header-file of base classes
+
+  \item
+    include system C headers
+
+  \item
+    include system C++ headers
+
+  \item
+    include project C++ headers, use forward declarations where possible
+
+  \item
+    forward declararions for C++ classes and structs
+
+  \item
+    class declararion
+
+    \begin{enumerate}
+      \item
+        local classes and enumerations
+
+      \item
+        static constant variables
+
+      \item
+        static functions
+
+      \item
+        static variables
+
+      \item
+        constructors and destructors
+
+      \item
+        public methods
+
+      \item
+        public variables
+
+      \item
+        protected methods
+
+      \item
+        protected variables
+
+      \item
+        private methods
+
+      \item
+        private variables
+    \end{enumerate}
+\end{enumerate}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Source file structure}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The parts of a class must be sorted public, protected and private. All
+sections must be identified explicitly. Not applicable sections should
+be left out.  The ordering is "most public first" so people who only
+wish to use the class can stop reading when they reach the
+protected/private sections.
+
+Use the following ordering within a source file.
+
+\begin{enumerate}
+  \item
+    header including copyright, author, and date
+
+  \item
+    corresponding header file
+
+  \item
+    include system C headers
+
+  \item
+    include system C++ headers
+
+  \item
+    include project C++ headers
+
+  \item
+    class implementation
+
+    \begin{enumerate}
+      \item
+        auxillary function hidden in an anonymous namespace
+
+      \item
+        static constant variables
+
+      \item
+        static functions
+
+      \item
+        constructors and destructors
+
+      \item
+        public methods
+
+      \item
+        protected methods
+
+      \item
+        private methods
+    \end{enumerate}
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{C++ Statements}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Namespaces}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Namespaces must not be included globally in the header}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A namespace must be included by \trcode{using} either within the source file
+or within another namespace. It must not be included globally in a header file.
+
+\motivation{
+  Avoids conflicts with other libraries.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Types}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Types that are local to one file only can be declared inside that file}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Classes which are local to computation and have a file context, can
+be defined in the source file in an anonymous namespace.
+
+\motivation{
+  Enforces information hiding. 
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Type conversions must always be done explicitly}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Type conversions must always be done explicitly. Never rely on
+implicit type conversion.
+
+\begin{code}
+  floatValue = static_cast<float> (intValue);   // YES! 
+  floatValue = intValue;                        // NO! 
+\end{code}
+
+\motivation{
+  By this, the programmer indicates that he is aware of the different
+  types involved and that the mix is intentional.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Variables}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Variables should be initialized where they are declared}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This ensures that variables are valid at any time. Sometimes it is
+impossible to initialize a variable to a valid value where it is
+declared:
+
+\begin{code}
+  int x, y, z; 
+  getCenter (&x, &y, &z); 
+\end{code}
+
+In these cases it should be left uninitialized rather than initialized to some phony value.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Variables must never have dual meaning}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\motivation{
+  Enhance readability by ensuring all concepts are represented
+  uniquely. Reduce chance of error by side effects.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Use of global variables should be minimized}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\motivation{
+  In C++ there is no reason global variables need to be used at all. The
+  same is true for global functions or file scope (static) variables.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Non-constant class variables must never be declared public}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\motivation{
+  The concept of C++ information hiding and encapsulation is violated by
+  public variables. Use private variables and access functions
+  instead. One exception to this rule is when the class is essentially a
+  data structure, with no behavior (equivalent to a C struct). In this
+  case it is appropriate to make the class' instance variables public.
+}
+
+Note that structs are kept in C++ for compatibility with C only, and
+avoiding them increases the readability of the code by reducing the
+number of constructs used. You should use a class instead.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Related variables of the same type can be declared in a common statement}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Related variables of the same type can be declared in a common statement.
+Unrelated variables should not be declared in the same statement. 
+
+\begin{code}
+  float x, y, z;
+  float revenueJanuary, revenueFebruary, revenueMarch; 
+\end{code}
+
+The common requirement of having declarations on separate lines is not
+useful in the situations like the ones above. It enhances readability
+to group variables like this. Howevery, in the case the type must not be
+a pointer.
+
+Pointers and classes however must be declared on separate lines.
+
+C++ pointers and references should have their reference symbol next to
+the type name rather than to the variable name.
+
+\begin{code}
+  float* x;    // NOT: float *x;
+  int&   y;    // NOT: int &y;
+\end{code}
+
+It is debatable whether a pointer is a variable of a pointer type
+(float* x) or a pointer to a given type (float *x). It is impossible
+to declare more than one pointer in a given statement using the first
+approach. I.e. float* x, y, z; is equivalent with float *x; float y;
+float z; The same goes for references.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{\trcode{const} must go after the type}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  string const& ref = ...;      // NOT: const string& ref
+\end{code}
+
+\motivation{
+  The type declarations are read from right to left. The type should be the last.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Constant must be on the left hand side of a comparison}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If a constant is on the left hand side then forgetting a \trcode{=} sign
+results in an error message.
+
+\begin{code}
+  if (a = 0)        // compiles, but always false
+  if (0 = a)        // compiler error
+  if (0 == a)       // correct
+\end{code}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{You must not use implicit 0 tests}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Implicit test for 0 should not be used other than for boolean
+variables and pointers.
+
+\begin{code}
+  if (0 != nLines)        // NOT: if (nLines)
+  if (0.0 != value)       // NOT: if (value) 
+\end{code}
+
+\motivation{
+  It is not necessarily defined by the compiler that ints and floats 0
+  are implemented as binary 0. Also, by using explicit test the
+  statement give immediate clue of the type being tested.
+}
+
+It is common also to suggest that pointers shouldn't test implicit for
+0 either, i.e. if (line == 0) instead of if (line). The latter is
+regarded as such a common practice in C/C++ however that it can be
+used.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Variables should be declared in the smallest scope possible. }
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\motivation{ 
+  Keeping the operations on a variable within a small
+  scope, it is easier to control the effects and side effects of the
+  variable.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Loops}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Only loop control statements must be included in the \trcode{for} construction}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  sum = 0;
+
+  for (i = 0; i < 100; i++) {
+    sum += value[i];
+  }
+
+  // NOT: for (i = 0, sum = 0; i < 100; i++) {
+  //        sum += value[i];
+  //      }
+\end{code}
+
+\motivation{
+  Increase maintainability and readability. Make it crystal clear what
+  controls the loop and what the loop contains.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Should initialise loop variables before the loop}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Loop variables should be initialized immediately before the loop.
+
+\begin{code}
+  bool isDone = false;
+
+  while (!isDone) {
+    ...
+  }
+
+  // NOT: bool isDone = false;
+  //      ...
+  //      some more code
+  ///     ...
+  //      while (!isDone) {
+  //        ...
+  //      } 
+\end{code}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{\trcode{do-while} loops can be avoided}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+do-while loops are less readable than ordinary while loops and for
+loops since the conditional is at the bottom of the loop. The reader
+must scan the entire loop in order to understand the scope of the
+loop.  In addition, \trcode{do-while} loops are not needed. Any
+\trcode{do-while} loop can easily be rewritten into a \trcode{while}
+loop or a \trcode{for} loop. Reducing the number of constructs used
+enhance readbility.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{The use of \trcode{break} and \trcode{continue} in loops should be minimized}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+These constructs can be compared to \trcode{goto} and they should only
+be used if they prove to have higher readability than their structured
+counterpart.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{The form \trcode{while (true)} should be used for infinite loops}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  while (true) {
+    ... 
+  }
+
+  for (;;) { // NO!
+    ...
+  }
+
+  while (1) { // NO!
+    ...
+  }
+\end{code}
+
+Testing against 1 is neither necessary nor meaningful. The form for
+(;;) is not very readable, and it is not apparent that this actually
+is an infinite loop.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conditionals}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Complex conditional expressions must be avoided}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Complex conditional expressions must be avoided. Introduce temporary
+boolean variables instead.
+
+\begin{code}
+ if ((elementNo < 0) || (elementNo > maxElement)||
+      elementNo == lastElement) {
+    ...
+  } 
+\end{code}
+
+should be replaced by assuming that short-cutting is not required: 
+
+\begin{code}
+  isFinished      = (elementNo < 0) || (elementNo > maxElement);
+  isRepeatedEntry = elementNo == lastElement;
+
+  if (isFinished || isRepeatedEntry) {
+    ...
+  } 
+\end{code}
+
+\motivation{
+  By assigning boolean variables to expressions, the program gets
+  automatic documentation. The construction will be easier to read and
+  to debug.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Should put the exceptional case in the \trcode{else}-part}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The nominal case should be put in the \trcode{if}-part and the exception in the
+\trcode{else}-part of an \trcode{if} statement.
+
+\begin{code}
+  isError = readFile (fileName);
+
+  if (!isError) {
+    ...
+  }
+  else {
+    ...
+  } 
+\end{code}
+
+\motivation{
+  Makes sure that the exceptions don't obscure the normal path of
+  execution. This is important for both the readability and performance.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{The conditional should be put on a separate line}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  if (isDone) {            // NOT: if (isDone) { doCleanup(); }
+    doCleanup();
+  } 
+\end{code}
+
+\motivation{
+  This is for debugging purposes. When writing on a single line, it is
+  not apparent whether the test is really true or not.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Executable statements in conditionals must be avoided}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  // Bad!
+  if (!(fileHandle = open (fileName, "w"))) { 
+    ... 
+  } 
+
+  // Better!
+  fileHandle = open (fileName, "w");
+
+  if (!fileHandle) {
+    ...
+  }
+\end{code}
+
+\motivation{ 
+  Conditionals with executable statements are just very
+  difficult to read. This is especially true for programmers new to
+  C/C++.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Miscellaneous}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{\trcode{goto} should not be used}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\motivation{ \trcode{goto} statements violates the idea of structured
+  code. Only in some very few cases (for instance breaking out of
+  deeply nested structures or for special needs when dealing with an
+  error) should \trcode{goto} be considered, and only if the
+  alternative structured counterpart (for example, exceptions) is
+  proven to be less readable.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Functions must always have the return value explicitly listed}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+ int getValue() { // NOT: getValue()
+   ...
+ }
+\end{code}
+
+\motivation{
+  If not exlicitly listed, C++ implies int return value for functions. A
+  programmer must never rely on this feature, since this might be
+  confusing for programmers not aware of this artifact.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{\trcode{0} should be used instead of \trcode{NULL} in C++}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\motivation{
+  NULL is part of the standard C library, but is made obsolete in C++. 
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Miscellaneous}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Miscellaneous}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{The use of magic numbers in the code must be avoided}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Numbers other than 0 and 1 must be declared as named constants instead.
+
+\motivation{
+  If the number does not have an obvious meaning by itself, the
+  readability is enhanced by introducing a named constant instead. A
+  different approach is to introduce a method from which the constant
+  can be accessed.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{The use of magic strings in the code should be avoided}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Strings of length 3 or greater should be considered declared as named
+constants instead.
+
+\motivation{
+  Using a constant reduces the errors due to typing mistakes. Strings used in
+  text messages should only be declared as constants if used more than once.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Use a decimal point for floating point constants}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Floating point constants should always be written with decimal point
+and at least one decimal.
+
+\begin{code}
+  double total = 0.0;     // NOT: double total = 0; 
+  double speed = 3.0e8;   // NOT: double speed = 3e8;
+  double sum;
+  ...
+  sum = (a + b) * 10.0; 
+\end{code}
+
+\motivation{
+  This empasize the different nature of integer and floating point
+  numbers even if their values might happen to be the same in a specific
+  case.
+}
+
+Also, as in the last example above, it emphasize the type of the
+assigned variable (sum) at a point in the code where this might not be
+evident.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Floating point constants should always be written with a digit before the decimal point}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  double total = 0.5;             // NOT: double total = .5; 
+\end{code}
+
+\motivation{
+  The number and expression system in C++ is borrowed from mathematics
+  and one should adhere to mathematical conventions for syntax wherever
+  possible. Also, 0.5 is a lot more readable than .5; There is no way it
+  can be mixed with the integer 5.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Floating point comparison should be avoid}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Floating point comparison is dangerous due to rounding errors. It should therefore
+be handled with care.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Layout and Comments}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Layout}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Tabs must be eight characters wide}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\motivation{
+  Since the beginnig of time.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Basic indentation should be 2}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  for (i = 0; i < nElements; i++) {
+    a[i] = 0; 
+  }
+\end{code}
+
+\motivation{ 
+  Indentation of 1 is to small to emphasize the logical
+  layout of the code. Indentation larger than 4 makes deeply nested
+  code difficult to read and increase the chance that the lines must
+  be split. Choosing between indentation of 2, 3 and 4, 2 and 4 are
+  the more common, and 2 chosen to reduce the chance of splitting code
+  lines.
+}
+
+Block layout should be as illustrated in example 1 below (recommended)
+or example 2, and must not be as shown in example 3. Function and
+class blocks must use the block layout of example 1.
+
+\begin{code}
+  // example 1
+  while (!done) {
+    doSomething();
+    done = moreToDo();
+  }
+
+  // example 2
+  while (!done)
+  {
+    doSomething();
+    done = moreToDo();
+  }
+
+  // example 3
+  while (!done)
+    {
+      doSomething();
+      done = moreToDo();
+    }
+\end{code}
+
+Example 3 introduce an extra indentation level which doesn't emphasize
+the logical structure of the code as clearly as example 1 and 2.
+
+The class declarations should have the following form: 
+
+\begin{code}
+  class SomeClass : public BaseClass {
+    public: 
+      void doSomething ();
+
+    protected: 
+      ... 
+
+    private: 
+      ... 
+  }
+\end{code}
+
+This follows partly from the general block rule above.
+
+The function declarations should have the following form: 
+
+\begin{code}
+  void someMethod () {
+    ...
+  }
+\end{code}
+
+This follows from the general block rule above. Note that there is an
+extra space before the \trcode{()}. When calling a function there
+should be no space.
+
+The \trcode{if-else} statements should have the following form: 
+
+\begin{code}
+  if (condition) {
+    statements;
+  }
+
+  if (condition) {
+    statements;
+  }
+  else {
+    statements;
+  }
+
+  if (condition) {
+    statements;
+  }
+  else if (condition) {
+    statements;
+  }
+  else {
+    statements;
+  }
+\end{code}
+
+This follows partly from the general block rule above. An else clause should not
+be on the same line as the closing bracket of the previous if or else clause:
+
+\begin{code}
+  if (condition) {
+    statements;
+  } else {        // NO
+    statements;
+  }
+\end{code}
+
+\motivation{
+  This is equivalent to the Sun recommendation. The chosen approach is
+  considered better in the way that each part of the \trcode{if-else} statement
+  is written on separate lines of the file. This should make it easier
+  to manipulate the statement, for instance when moving else clauses
+  around.
+}
+
+A for statement should have the following form: 
+
+\begin{code}
+  for (initialization; condition; update) {
+    statements;
+  }
+\end{code}
+
+This follows from the general block rule above.
+
+An empty for  statement should have the following form: 
+
+\begin{code}
+  for (initialization; condition; update) {
+  }
+\end{code}
+
+\motivation{
+  This emphasize the fact that the for statement is empty and it makes
+  it obvious for the reader that this is intentional. Empty loops should
+  be avoided however.
+}
+
+A while  statement should have the following form: 
+
+\begin{code}
+  while (condition) {
+    statements;
+  }
+\end{code}
+
+This follows from the general block rule above.  
+
+A do-while  statement should have the following form: 
+
+\begin{code}
+  do {
+    statements;
+  } while (condition);
+\end{code}
+
+This follows from the general block rule above.
+
+A switch  statement should have the following form: 
+
+\begin{code}
+  switch (condition) {
+    case ABC: 
+      statements;
+      // Fallthrough
+
+    case DEF: 
+      statements;
+      break;
+
+    case XYZ1: 
+    case XYZ2: 
+      statements;
+      break;
+
+    default: 
+      statements;
+      break;
+  }
+\end{code}
+
+Note that each \trcode{case} keyword is indented relative to the switch
+statement as a whole. Note also that no extra space before the : character
+exits. The explicit \trcode{// Fallthrough} comment must be included whenever
+there is a case statement without a \trcode{break} statement. Leaving the
+\trcode{break} out is a common error, and it must be made clear that it is
+intentional when it is not there.
+
+A \trcode{try-catch} statement should have the following form: 
+
+\begin{code}
+  try {
+    statements;
+  }
+  catch (Exception &exception) {
+    statements;
+  }
+\end{code}
+
+This follows partly from the general block rule above. The discussion about
+closing brackets for \trcode{if-else} statements apply to the \trcode{try-catch}
+statments.
+
+The function return type must be put in the immediately before the function
+name.
+
+\begin{code}
+  void MyClass::myMethod (void) {
+    ...
+  } 
+\end{code}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Fallthrough comment must be used}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+See the example above.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Empty blocks or on-line blocks must use brackets}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Even if a block contains only a single statement, it must be enclosed in
+brackets.
+
+\begin{code}
+  if (0 == a) {
+    doIt();
+  }
+
+  if (1 == a) {
+    // do nothing because ...
+  }
+\end{code}
+
+\motivation{
+   If a if-clause starts out is one-line and is later extended it is easy to forget
+   the brackets.
+
+  It is a common recommendation (Sun Java recommendation included) that
+  brackets should always be used in all these cases.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{White Space}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Conventional operators should be surrounded by a space character}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+C++ reserved words should be followed by a white space.  Commas should be
+followed by a white space.  Colons should be surrounded by white space.  Colons
+in \trcode{case} statements should not be surrounded by white space.  Semicolons
+in \trcode{for} statments should be followed by one or two (recommended) space
+characters.
+
+\begin{code}
+  a = (b + c) * d;           // NOT: a=(b+c)*d
+
+  while (true) {             // NOT: while(true) ...
+
+  doSomething(a, b, c, d);   // NOT: doSomething(a,b,c,d);
+
+  case 100:                  // NOT: case 100 :
+
+  for (i = 0;  i < 10;  i++) { // NOT: for (i=0;i<10;i++){ 
+\end{code}
+
+\motivation{ 
+  Makes the individual components of the statements stand
+  out. Enhances readability. It is difficult to give a complete list
+  of the suggested use of whitespace in C++ code. The examples above
+  however should give a general idea of the intentions.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{The method name should be followed by a space}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Method or function names should be followed by a white space in the declaration
+or implementation, but not when calling.
+
+\begin{code}
+  void doSomething (FILE *currentFile) {
+  }
+
+  doSomething(currentFile); 
+\end{code}
+
+\motivation{ 
+  Allows to search for \trcode{doSomething (} to find the
+  declaration or implementation.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Logical units within a block should be separated by one blank line}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A blank line should be inserted before and after a \trcode{if} or \trcode{while}
+block.
+
+\begin{code}
+  int f = 1;
+
+  if (f > e) {
+    if (g > h) {
+      int a = f + e + g + h;
+
+      if (a == 1) {
+        ...
+      }
+    }
+
+    int x = f + 1;
+
+    ...
+  }
+\end{code}
+
+\motivation{
+  Enhance readability by introducing white space between logical units of a block.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Methods should be separated by blank lines}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+They should be separated with three blank lines in larger files.
+
+\motivation{
+  The methods will stand out within the file.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Variables in declarations can be left aligned}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  AsciiFile *  file;
+  int          nPoints;
+  float        x, y;
+\end{code}
+
+\motivation{
+  Enhance readability. The variables are easier to spot from the types by alignment.
+  Use alignment wherever it enhances readability. 
+}
+
+\begin{code}
+  if      (a == lowValue)    compueSomething();
+  else if (a == mediumValue) computeSomethingElse();
+  else if (a == highValue)   computeSomethingElseYet();
+
+  value = (potential        * oilDensity)   / constant1 +
+          (depth            * waterDensity) / constant2 +
+          (zCoordinateValue * gasDensity)   / constant3;
+
+  minPosition     = computeDistance (min,     x, y, z);
+  averagePosition = computeDistance (average, x, y, z);
+
+  switch (value) {
+    case PHASE_OIL:   strcpy (string, "Oil");   break;
+    case PHASE_WATER: strcpy (string, "Water"); break;
+    case PHASE_GAS:   strcpy (string, "Gas");   break;
+  } 
+\end{code}
+
+\motivation{
+  There are a number of places in the code where white space can be
+  included to enhance readability even if this violates common
+  guidelines. Many of these cases have to do with code
+  alignment. General guidelines on code alignment are difficult to give,
+  but the examples above should give a general clue.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Comments}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Tricky code should not be commented but rewritten}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\motivation{
+  In general, the use of comments should be minimized by making the code
+  self-documenting by appropriate name choices and an explicit logical
+  structure.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{All comments should be written in english}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\motivation{
+  In an international environment english is the preferred language.
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Use \trcode{//} for all comments, including multi-line comments}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\begin{code}
+  // Comment spanning
+  // more than one line. 
+\end{code}
+
+\motivation{
+  Since multilevel C-commenting is not supported, using \trcode{//} comments
+  ensure that it is always possible to comment out entire sections of a
+  file using \trcode{/* */} for debugging purposes etc.
+}
+
+There should be a space between the \trcode{//} and the actual comment.
+Comments should be included relative to their position in the code.
+
+\begin{code}
+  while (true) {          // NOT:    while (true) {
+    // Do something       //         // Do something
+    something();          //           something();
+  }                       //         } 
+\end{code}
+
+\motivation{
+  This is to avoid that the comments break the logical structure of the program.  
+}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Must use development comments only during development}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The comments \trcode{FIXME} and \trcode{TODO} must be used to flag code blocks
+which must be refactored. The release code must be free of such comments and
+code blocks.
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{You must use doxygen conventions for C++}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Class and method header comments must follow the Doxygen conventions.
+ 
+\begin{code}
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the maximum of two numbers
+  ////////////////////////////////////////////////////////////////////////////////
+\end{code}
+
+\motivation{
+  Regarding standardized class and method documentation the Java development
+  community is far more mature than the C++. This is of course becuase Java
+  includes a tool for extracting such comments and produce high quality
+  hypertext documentation from it.  There have never been a common convention
+  for writing this kind of documentation in C++, so when choosing between
+  inventing your own convention, and using an existing one, the latter option
+  seem natural. Also, there are JavaDoc tools for C++ available. See for
+  instance Doc++ or Doxygen.
+}
+
+For inherited methods use
+
+\begin{code}
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
+\end{code}
+
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+\guideline{Sectionise large files}
+%~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use section descriptions to split large files into sections.
+
+\begin{code}
+  // /////////////////////////////////////////////////////////////////////////////
+  // constructors and destructors
+  // /////////////////////////////////////////////////////////////////////////////
+
+  ...
+
+  // /////////////////////////////////////////////////////////////////////////////
+  // public methods
+  // /////////////////////////////////////////////////////////////////////////////
+
+  ...
+\end{code}
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{References}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\label{cha:references}
+
+\begin{enumerate}
+  \item
+    Code Complete, \\
+    Steve McConnel - Microsoft Press
+    \label{bib:1}
+
+  \item
+    Programming in C++, Rules and Recommendations, \\
+    M Henricson, e. Nyquist, Ellemtel (Swedish telecom), \\
+    http://www.doc.ic.ac.uk/lab/cplus/c%2b%2b.rules/
+    \label{bib:2}
+
+  \item
+    Wildfire C++ Programming Style, \\
+    Keith Gabryelski, Wildfire Communications Inc., \\
+    http://www.wildfire.com/~ag/Engineering/Development/C++Style/
+    \label{bib:3}
+
+  \item
+    C++ Coding Standard, \\
+    Todd Hoff, \\
+    http://www.possibility.com/Cpp/CppCodingStandard.htm 
+    \label{bib:4}
+
+  \item
+    Doxygen documentation system, \\
+    http://www.stack.nl/~dimitri/doxygen/index.html
+    \label{bib:5}
+\end{enumerate}
+%
+\end{document}
+%
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 
