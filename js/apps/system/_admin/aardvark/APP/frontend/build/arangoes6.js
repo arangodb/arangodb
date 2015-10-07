@@ -1,3 +1,3104 @@
+/*eslint camelcase:0 */
+/*jshint esnext:true, -W051:true */
+/*eslint-disable */
+global.DEFINE_MODULE('internal', (function () {
+'use strict';
+/*eslint-enable */
+
+const exports = {};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief module "internal"
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 Module "internal"
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ArangoError
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.ArangoError) {
+  exports.ArangoError = global.ArangoError;
+  delete global.ArangoError;
+}
+else {
+  exports.ArangoError = function (error) {
+    if (error !== undefined) {
+      this.error = error.error;
+      this.code = error.code;
+      this.errorNum = error.errorNum;
+      this.errorMessage = error.errorMessage;
+    }
+
+    this.message = this.toString();
+  };
+
+  exports.ArangoError.prototype = new Error();
+}
+
+exports.ArangoError.prototype._PRINT = function (context) {
+  context.output += this.toString();
+};
+
+exports.ArangoError.prototype.toString = function() {
+  var errorNum = this.errorNum;
+  var errorMessage = this.errorMessage || this.message;
+
+  return '[ArangoError ' + errorNum + ': ' + errorMessage + ']';
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief SleepAndRequeue
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SleepAndRequeue) {
+  exports.SleepAndRequeue = global.SleepAndRequeue;
+  delete global.SleepAndRequeue;
+
+  exports.SleepAndRequeue.prototype._PRINT = function (context) {
+    context.output += this.toString();
+  };
+
+  exports.SleepAndRequeue.prototype.toString = function() {
+    return '[SleepAndRequeue sleep: ' + this.sleep + ']';
+};
+
+}
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public constants
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief threadNumber
+////////////////////////////////////////////////////////////////////////////////
+
+exports.threadNumber = 0;
+
+if (global.THREAD_NUMBER) {
+  exports.threadNumber = global.THREAD_NUMBER;
+  delete global.THREAD_NUMBER;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief developmentMode. this is only here for backwards compatibility
+////////////////////////////////////////////////////////////////////////////////
+
+exports.developmentMode = false;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logfilePath
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.LOGFILE_PATH) {
+  exports.logfilePath = global.LOGFILE_PATH;
+  delete global.LOGFILE_PATH;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief quiet
+////////////////////////////////////////////////////////////////////////////////
+
+exports.quiet = false;
+
+if (global.ARANGO_QUIET) {
+  exports.quiet = global.ARANGO_QUIET;
+  delete global.ARANGO_QUIET;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief valgrind
+////////////////////////////////////////////////////////////////////////////////
+
+exports.valgrind = false;
+
+if (global.VALGRIND) {
+  exports.valgrind = global.VALGRIND;
+  delete global.VALGRIND;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief valgrind
+////////////////////////////////////////////////////////////////////////////////
+
+exports.coverage = false;
+
+if (global.COVERAGE) {
+  exports.coverage = global.COVERAGE;
+  delete global.COVERAGE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief version
+////////////////////////////////////////////////////////////////////////////////
+
+exports.version = 'unknown';
+
+if (global.VERSION) {
+  exports.version = global.VERSION;
+  delete global.VERSION;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief platform
+////////////////////////////////////////////////////////////////////////////////
+
+exports.platform = 'unknown';
+
+if (global.SYS_PLATFORM) {
+  exports.platform = global.SYS_PLATFORM;
+  delete global.SYS_PLATFORM;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bytesSentDistribution
+////////////////////////////////////////////////////////////////////////////////
+
+exports.bytesSentDistribution = [];
+
+if (global.BYTES_SENT_DISTRIBUTION) {
+  exports.bytesSentDistribution = global.BYTES_SENT_DISTRIBUTION;
+  delete global.BYTES_SENT_DISTRIBUTION;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bytesReceivedDistribution
+////////////////////////////////////////////////////////////////////////////////
+
+exports.bytesReceivedDistribution = [];
+
+if (global.BYTES_RECEIVED_DISTRIBUTION) {
+  exports.bytesReceivedDistribution = global.BYTES_RECEIVED_DISTRIBUTION;
+  delete global.BYTES_RECEIVED_DISTRIBUTION;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief connectionTimeDistribution
+////////////////////////////////////////////////////////////////////////////////
+
+exports.connectionTimeDistribution = [];
+
+if (global.CONNECTION_TIME_DISTRIBUTION) {
+  exports.connectionTimeDistribution = global.CONNECTION_TIME_DISTRIBUTION;
+  delete global.CONNECTION_TIME_DISTRIBUTION;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief requestTimeDistribution
+////////////////////////////////////////////////////////////////////////////////
+
+exports.requestTimeDistribution = [];
+
+if (global.REQUEST_TIME_DISTRIBUTION) {
+  exports.requestTimeDistribution = global.REQUEST_TIME_DISTRIBUTION;
+  delete global.REQUEST_TIME_DISTRIBUTION;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startupPath
+////////////////////////////////////////////////////////////////////////////////
+
+exports.startupPath = '';
+
+if (global.STARTUP_PATH) {
+  exports.startupPath = global.STARTUP_PATH;
+  delete global.STARTUP_PATH;
+}
+
+if (exports.startupPath === '') {
+  exports.startupPath = '.';
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configureEndpoint
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.CONFIGURE_ENDPOINT) {
+  exports.configureEndpoint = global.CONFIGURE_ENDPOINT;
+  delete global.CONFIGURE_ENDPOINT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removeEndpoint
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.REMOVE_ENDPOINT) {
+  exports.removeEndpoint = global.REMOVE_ENDPOINT;
+  delete global.REMOVE_ENDPOINT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief listEndpoints
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.LIST_ENDPOINTS) {
+  exports.listEndpoints = global.LIST_ENDPOINTS;
+  delete global.LIST_ENDPOINTS;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief base64Decode
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_BASE64DECODE) {
+  exports.base64Decode = global.SYS_BASE64DECODE;
+  delete global.SYS_BASE64DECODE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief base64Encode
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_BASE64ENCODE) {
+  exports.base64Encode = global.SYS_BASE64ENCODE;
+  delete global.SYS_BASE64ENCODE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debugSegfault
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_DEBUG_SEGFAULT) {
+  exports.debugSegfault = global.SYS_DEBUG_SEGFAULT;
+  delete global.SYS_DEBUG_SEGFAULT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debugSetFailAt
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_DEBUG_SET_FAILAT) {
+  exports.debugSetFailAt = global.SYS_DEBUG_SET_FAILAT;
+  delete global.SYS_DEBUG_SET_FAILAT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debugRemoveFailAt
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_DEBUG_REMOVE_FAILAT) {
+  exports.debugRemoveFailAt = global.SYS_DEBUG_REMOVE_FAILAT;
+  delete global.SYS_DEBUG_REMOVE_FAILAT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debugClearFailAt
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_DEBUG_CLEAR_FAILAT) {
+  exports.debugClearFailAt = global.SYS_DEBUG_CLEAR_FAILAT;
+  delete global.SYS_DEBUG_CLEAR_FAILAT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debugCanUseFailAt
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_DEBUG_CAN_USE_FAILAT) {
+  exports.debugCanUseFailAt = global.SYS_DEBUG_CAN_USE_FAILAT;
+  delete global.SYS_DEBUG_CAN_USE_FAILAT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief download
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_DOWNLOAD) {
+  exports.download = global.SYS_DOWNLOAD;
+  delete global.SYS_DOWNLOAD;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executeScript
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_EXECUTE) {
+  exports.executeScript = global.SYS_EXECUTE;
+  delete global.SYS_EXECUTE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getCurrentRequest
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_GET_CURRENT_REQUEST) {
+  exports.getCurrentRequest = global.SYS_GET_CURRENT_REQUEST;
+  delete global.SYS_GET_CURRENT_REQUEST;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getCurrentResponse
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_GET_CURRENT_RESPONSE) {
+  exports.getCurrentResponse = global.SYS_GET_CURRENT_RESPONSE;
+  delete global.SYS_GET_CURRENT_RESPONSE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extend
+////////////////////////////////////////////////////////////////////////////////
+
+exports.extend = function (target, source) {
+
+  Object.getOwnPropertyNames(source)
+  .forEach(function(propName) {
+    Object.defineProperty(
+      target,
+      propName,
+      Object.getOwnPropertyDescriptor(source, propName)
+    );
+  });
+
+  return target;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief load
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_LOAD) {
+  exports.load = global.SYS_LOAD;
+  delete global.SYS_LOAD;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logLevel
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_LOG_LEVEL) {
+  exports.logLevel = global.SYS_LOG_LEVEL;
+  delete global.SYS_LOG_LEVEL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief md5
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_MD5) {
+  exports.md5 = global.SYS_MD5;
+  delete global.SYS_MD5;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief genRandomNumbers
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_GEN_RANDOM_NUMBERS) {
+  exports.genRandomNumbers = global.SYS_GEN_RANDOM_NUMBERS;
+  delete global.SYS_GEN_RANDOM_NUMBERS;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief genRandomAlphaNumbers
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_GEN_RANDOM_ALPHA_NUMBERS) {
+  exports.genRandomAlphaNumbers = global.SYS_GEN_RANDOM_ALPHA_NUMBERS;
+  delete global.SYS_GEN_RANDOM_ALPHA_NUMBERS;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief genRandomSalt
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_GEN_RANDOM_SALT) {
+  exports.genRandomSalt = global.SYS_GEN_RANDOM_SALT;
+  delete global.SYS_GEN_RANDOM_SALT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hmac
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_HMAC) {
+  exports.hmac = global.SYS_HMAC;
+  delete global.SYS_HMAC;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pbkdf2-hmac
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_PBKDF2) {
+  exports.pbkdf2 = global.SYS_PBKDF2;
+  delete global.SYS_PBKDF2;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createNonce
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_CREATE_NONCE) {
+  exports.createNonce = global.SYS_CREATE_NONCE;
+  delete global.SYS_CREATE_NONCE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checkAndMarkNonce
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_CHECK_AND_MARK_NONCE) {
+  exports.checkAndMarkNonce = global.SYS_CHECK_AND_MARK_NONCE;
+  delete global.SYS_CHECK_AND_MARK_NONCE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_OUTPUT) {
+  exports.stdOutput = global.SYS_OUTPUT;
+  exports.output = exports.stdOutput;
+  delete global.SYS_OUTPUT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_PARSE) {
+  exports.parse = global.SYS_PARSE;
+  delete global.SYS_PARSE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parseFile
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_PARSE_FILE) {
+  exports.parseFile = global.SYS_PARSE_FILE;
+  delete global.SYS_PARSE_FILE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief processStatistics
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_PROCESS_STATISTICS) {
+  exports.processStatistics = global.SYS_PROCESS_STATISTICS;
+  delete global.SYS_PROCESS_STATISTICS;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rand
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_RAND) {
+  exports.rand = global.SYS_RAND;
+  delete global.SYS_RAND;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha512
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_SHA512) {
+  exports.sha512 = global.SYS_SHA512;
+  delete global.SYS_SHA512;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha384
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_SHA384) {
+  exports.sha384 = global.SYS_SHA384;
+  delete global.SYS_SHA384;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha256
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_SHA256) {
+  exports.sha256 = global.SYS_SHA256;
+  delete global.SYS_SHA256;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha224
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_SHA224) {
+  exports.sha224 = global.SYS_SHA224;
+  delete global.SYS_SHA224;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha1
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_SHA1) {
+  exports.sha1 = global.SYS_SHA1;
+  delete global.SYS_SHA1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief serverStatistics
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_SERVER_STATISTICS) {
+  exports.serverStatistics = global.SYS_SERVER_STATISTICS;
+  delete global.SYS_SERVER_STATISTICS;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sleep
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_SLEEP) {
+  exports.sleep = global.SYS_SLEEP;
+  delete global.SYS_SLEEP;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief time
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_TIME) {
+  exports.time = global.SYS_TIME;
+  delete global.SYS_TIME;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_WAIT) {
+  exports.wait = global.SYS_WAIT;
+  delete global.SYS_WAIT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief importCsvFile
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_IMPORT_CSV_FILE) {
+  exports.importCsvFile = global.SYS_IMPORT_CSV_FILE;
+  delete global.SYS_IMPORT_CSV_FILE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief importJsonFile
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_IMPORT_JSON_FILE) {
+  exports.importJsonFile = global.SYS_IMPORT_JSON_FILE;
+  delete global.SYS_IMPORT_JSON_FILE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief processCsvFile
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_PROCESS_CSV_FILE) {
+  exports.processCsvFile = global.SYS_PROCESS_CSV_FILE;
+  delete global.SYS_PROCESS_CSV_FILE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief processJsonFile
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_PROCESS_JSON_FILE) {
+  exports.processJsonFile = global.SYS_PROCESS_JSON_FILE;
+  delete global.SYS_PROCESS_JSON_FILE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clientStatistics
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_CLIENT_STATISTICS) {
+  exports.clientStatistics = global.SYS_CLIENT_STATISTICS;
+  delete global.SYS_CLIENT_STATISTICS;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief httpStatistics
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_HTTP_STATISTICS) {
+  exports.httpStatistics = global.SYS_HTTP_STATISTICS;
+  delete global.SYS_HTTP_STATISTICS;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executeExternal
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_EXECUTE_EXTERNAL) {
+  exports.executeExternal = global.SYS_EXECUTE_EXTERNAL;
+  delete global.SYS_EXECUTE_EXTERNAL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executeExternalAndWait - instantly waits for the exit, returns
+/// joint result.
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_EXECUTE_EXTERNAL_AND_WAIT) {
+  exports.executeExternalAndWait = global.SYS_EXECUTE_EXTERNAL_AND_WAIT;
+  delete global.SYS_EXECUTE_EXTERNAL_AND_WAIT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief killExternal
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_KILL_EXTERNAL) {
+  exports.killExternal = global.SYS_KILL_EXTERNAL;
+  delete global.SYS_KILL_EXTERNAL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief statusExternal
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_STATUS_EXTERNAL) {
+  exports.statusExternal = global.SYS_STATUS_EXTERNAL;
+  delete global.SYS_STATUS_EXTERNAL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registerTask
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_REGISTER_TASK) {
+  exports.registerTask = global.SYS_REGISTER_TASK;
+  delete global.SYS_REGISTER_TASK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregisterTask
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_UNREGISTER_TASK) {
+  exports.unregisterTask = global.SYS_UNREGISTER_TASK;
+  delete global.SYS_UNREGISTER_TASK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getTasks
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_GET_TASK) {
+  exports.getTask = global.SYS_GET_TASK;
+  delete global.SYS_GET_TASK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief testPort
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_TEST_PORT) {
+  exports.testPort = global.SYS_TEST_PORT;
+  delete global.SYS_TEST_PORT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isIP
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_IS_IP) {
+  exports.isIP = global.SYS_IS_IP;
+  delete global.SYS_IS_IP;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unitTests
+////////////////////////////////////////////////////////////////////////////////
+
+exports.unitTests = function () {
+  return global.SYS_UNIT_TESTS;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setUnitTestsResult
+////////////////////////////////////////////////////////////////////////////////
+
+exports.setUnitTestsResult = function (value) {
+  global.SYS_UNIT_TESTS_RESULT = value;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                     Commandline argument handling
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief structured to flat commandline arguments
+/// @param longOptsEqual whether long-options are in the type --opt=value
+///                      or --opt value
+////////////////////////////////////////////////////////////////////////////////
+
+exports.toArgv = function (structure, longOptsEqual) {
+  if (typeof longOptsEqual === 'undefined') {
+    longOptsEqual = false;
+  }
+  var vec = [];
+  for (let key in structure) {
+    if (structure.hasOwnProperty(key)) {
+      if (key === 'commandSwitches') {
+        let multivec = '';
+        for (let i = 0; i < structure[key].length; i++) {
+          if (structure[key][i].length > 1) {
+            vec.push(structure[key][i]);
+          }
+          else {
+            multivec += structure[key][i];
+          }
+        }
+        if (multivec.length > 0) {
+          vec.push(multivec);
+        }
+      }
+      else if (key === 'flatCommands') {
+        vec = vec.concat(structure[key]);
+      }
+      else {
+        if (longOptsEqual) {
+          vec.push('--' + key + '=' + structure[key]);
+        }
+        else {
+          vec.push('--' + key);
+          if (structure[key] !== false) {
+            if (structure[key] !== true) {
+              vec.push(structure[key]);
+            }
+            else {
+              vec.push('true');
+            }
+          }
+          else {
+            vec.push('false');
+          }
+        }
+      }
+    }
+  }
+  return vec;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief argv to structured
+////////////////////////////////////////////////////////////////////////////////
+
+exports.parseArgv = function (argv, startOffset) {
+  var i;
+  function setOption(ret, option, value) {
+    if (option.indexOf(':') > 0) {
+      var n = option.indexOf(':');
+      var topOption = option.slice(0, n);
+      if (!ret.hasOwnProperty(topOption)) {
+        ret[topOption] = {};
+      }
+      setOption(ret[topOption], option.slice(n + 1, option.length), value);
+    }
+    else if (argv[i + 1] === 'true') {
+      ret[option] = true;
+    }
+    else if (argv[i + 1] === 'false') {
+      ret[option] = false;
+    }
+    else if (!isNaN(argv[i + 1])) {
+      ret[option] = parseInt(argv[i + 1]);
+    }
+    else {
+      ret[option] = argv[i + 1];
+    }
+  }
+  function setSwitch(ret, option) {
+    if (!ret.hasOwnProperty('commandSwitches')) {
+      ret.commandSwitches = [];
+    }
+    ret.commandSwitches.push(option);
+  }
+
+  function setSwitchVec(ret, option) {
+    for (var i = 0; i < option.length; i++) {
+      setSwitch(ret, option[i]);
+    }
+  }
+
+  function setFlatCommand(ret, thisString) {
+    if (!ret.hasOwnProperty('flatCommands')) {
+      ret.flatCommands = [];
+    }
+    ret.flatCommands.push(thisString);
+  }
+
+  var inFlat = false;
+  var ret = {};
+  for (i = startOffset; i < argv.length; i++) {
+    let thisString = argv[i];
+    if (!inFlat) {
+      if ((thisString.length > 2) &&
+          (thisString.slice(0, 2) === '--')) {
+        let option = thisString.slice(2, thisString.length);
+        if ((argv.length > i) &&
+            (argv[i + 1].slice(0, 1) !== '-')) {
+          setOption(ret, option, argv[i + 1]);
+          i++;
+        }
+        else {
+          setSwitch(ret, option);
+        }
+      }
+      else if (thisString === '--') {
+        inFlat = true;
+      }
+      else if ((thisString.length > 1) &&
+              (thisString.slice(0, 1) === '-')) {
+        setSwitchVec(ret, thisString.slice(1, thisString.length));
+      }
+      else {
+        setFlatCommand(ret, thisString);
+      }
+    }
+    else {
+      setFlatCommand(ret, thisString);
+    }
+  }
+  return ret;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                          PRINTING
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         public printing variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief COLORS
+////////////////////////////////////////////////////////////////////////////////
+
+exports.COLORS = {};
+
+if (global.COLORS) {
+  exports.COLORS = global.COLORS;
+  delete global.COLORS;
+}
+else {
+  [ 'COLOR_RED', 'COLOR_BOLD_RED', 'COLOR_GREEN', 'COLOR_BOLD_GREEN',
+    'COLOR_BLUE', 'COLOR_BOLD_BLUE', 'COLOR_YELLOW', 'COLOR_BOLD_YELLOW',
+    'COLOR_WHITE', 'COLOR_BOLD_WHITE', 'COLOR_CYAN', 'COLOR_BOLD_CYAN',
+    'COLOR_MAGENTA', 'COLOR_BOLD_MAGENTA', 'COLOR_BLACK', 'COLOR_BOLD_BLACK',
+    'COLOR_BLINK', 'COLOR_BRIGHT', 'COLOR_RESET' ].forEach(function(color) {
+      exports.COLORS[color] = '';
+    });
+}
+
+exports.COLORS.COLOR_PUNCTUATION = exports.COLORS.COLOR_RESET;
+exports.COLORS.COLOR_STRING = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_NUMBER = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_INDEX = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_TRUE = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_FALSE = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_NULL = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_UNDEFINED = exports.COLORS.COLOR_BRIGHT;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        private printing variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief quote cache
+////////////////////////////////////////////////////////////////////////////////
+
+var characterQuoteCache = {
+  '\b': '\\b', // ASCII 8, Backspace
+  '\t': '\\t', // ASCII 9, Tab
+  '\n': '\\n', // ASCII 10, Newline
+  '\f': '\\f', // ASCII 12, Formfeed
+  '\r': '\\r', // ASCII 13, Carriage Return
+  '\"': '\\"',
+  '\\': '\\\\'
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief colors
+////////////////////////////////////////////////////////////////////////////////
+
+var colors = exports.COLORS;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief useColor
+////////////////////////////////////////////////////////////////////////////////
+
+var useColor = false;
+
+if (global.COLOR_OUTPUT) {
+  useColor = global.COLOR_OUTPUT;
+  delete global.COLOR_OUTPUT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief usePrettyPrint
+////////////////////////////////////////////////////////////////////////////////
+
+var usePrettyPrint = false;
+
+if (global.PRETTY_PRINT) {
+  usePrettyPrint = global.PRETTY_PRINT;
+  delete global.PRETTY_PRINT;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        private printing functions
+// -----------------------------------------------------------------------------
+
+var printRecursive;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief quotes a single character
+////////////////////////////////////////////////////////////////////////////////
+
+function quoteSingleJsonCharacter (c) {
+
+  if (characterQuoteCache.hasOwnProperty(c)) {
+    return characterQuoteCache[c];
+  }
+
+  var charCode = c.charCodeAt(0);
+  var result;
+
+  if (charCode < 16) {
+    result = '\\u000';
+  }
+  else if (charCode < 256) {
+    result = '\\u00';
+  }
+  else if (charCode < 4096) {
+    result = '\\u0';
+  }
+  else {
+    result = '\\u';
+  }
+
+  result += charCode.toString(16);
+  characterQuoteCache[c] = result;
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief quotes a string character
+////////////////////////////////////////////////////////////////////////////////
+
+var quotable = /[\\\"\x00-\x1f]/g;
+
+function quoteJsonString (str) {
+
+  return '"' + str.replace(quotable, quoteSingleJsonCharacter) + '"';
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints the ident for pretty printing
+////////////////////////////////////////////////////////////////////////////////
+
+function printIndent (context) {
+
+  var j;
+  var indent = '';
+
+  if (context.prettyPrint) {
+    indent += '\n';
+
+    for (j = 0; j < context.level; ++j) {
+      indent += '  ';
+    }
+  }
+
+  context.output += indent;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints the JSON representation of an array
+////////////////////////////////////////////////////////////////////////////////
+
+function printArray (object, context) {
+
+  var useColor = context.useColor;
+
+  if (object.length === 0) {
+    if (useColor) {
+      context.output += colors.COLOR_PUNCTUATION;
+    }
+
+    context.output += '[ ]';
+
+    if (useColor) {
+      context.output += colors.COLOR_RESET;
+    }
+  }
+  else {
+    if (useColor) {
+      context.output += colors.COLOR_PUNCTUATION;
+    }
+
+    context.output += '[';
+
+    if (useColor) {
+      context.output += colors.COLOR_RESET;
+    }
+
+    var newLevel = context.level + 1;
+    var sep = ' ';
+
+    context.level = newLevel;
+
+    for (let i = 0; i < object.length; i++) {
+      if (useColor) {
+        context.output += colors.COLOR_PUNCTUATION;
+      }
+
+      context.output += sep;
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+
+      printIndent(context);
+
+      var path = context.path;
+      context.path += '[' + i + ']';
+
+      printRecursive(object[i], context);
+
+      if (context.emit && context.output.length >= context.emit) {
+        exports.output(context.output);
+        context.output = '';
+      }
+
+      context.path = path;
+      sep = ', ';
+    }
+
+    context.level = newLevel - 1;
+    context.output += ' ';
+
+    printIndent(context);
+
+    if (useColor) {
+      context.output += colors.COLOR_PUNCTUATION;
+    }
+
+    context.output += ']';
+
+    if (useColor) {
+      context.output += colors.COLOR_RESET;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints an object
+////////////////////////////////////////////////////////////////////////////////
+
+function printObject (object, context) {
+
+  var useColor = context.useColor;
+  var sep = ' ';
+
+  if (useColor) {
+    context.output += colors.COLOR_PUNCTUATION;
+  }
+
+  context.output += '{';
+
+  if (useColor) {
+    context.output += colors.COLOR_RESET;
+  }
+
+  var newLevel = context.level + 1;
+
+  context.level = newLevel;
+
+  var keys;
+  try {
+    keys = Object.keys(object);
+  }
+  catch (err) {
+    // ES6 proxy objects don't support key enumeration
+    keys = [];
+  }
+
+  for (let i = 0, n = keys.length; i < n; ++i) {
+    var k = keys[i];
+    var val = object[k];
+
+    if (useColor) {
+      context.output += colors.COLOR_PUNCTUATION;
+    }
+
+    context.output += sep;
+
+    if (useColor) {
+      context.output += colors.COLOR_RESET;
+    }
+
+    printIndent(context);
+
+    if (useColor) {
+      context.output += colors.COLOR_INDEX;
+    }
+
+    context.output += quoteJsonString(k);
+
+    if (useColor) {
+      context.output += colors.COLOR_RESET;
+    }
+
+    context.output += ' : ';
+
+    var path = context.path;
+    context.path += '[' + k + ']';
+
+    printRecursive(val, context);
+
+    context.path = path;
+    sep = ', ';
+
+    if (context.emit && context.output.length >= context.emit) {
+      exports.output(context.output);
+      context.output = '';
+    }
+  }
+
+  context.level = newLevel - 1;
+  context.output += ' ';
+
+  printIndent(context);
+
+  if (useColor) {
+    context.output += colors.COLOR_PUNCTUATION;
+  }
+
+  context.output += '}';
+
+  if (useColor) {
+    context.output += colors.COLOR_RESET;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints objects to standard output without a new-line
+////////////////////////////////////////////////////////////////////////////////
+
+var funcRE = /function ([^\(]*)?\(\) \{ \[native code\] \}/;
+var func2RE = /function ([^\(]*)?\((.*)\) \{/;
+
+exports.printRecursive = printRecursive = function (value, context) {
+
+  var useColor = context.useColor;
+  var customInspect = context.customInspect;
+  var useToString = context.useToString;
+  var limitString = context.limitString;
+  var showFunction = context.showFunction;
+
+  if (typeof context.seen === 'undefined') {
+    context.seen = [];
+    context.names = [];
+  }
+
+  var p = context.seen.indexOf(value);
+
+  if (p >= 0) {
+    context.output += context.names[p];
+  }
+  else {
+    if (value && (value instanceof Object || (typeof value === 'object' && Object.getPrototypeOf(value) === null))) {
+      context.seen.push(value);
+      context.names.push(context.path);
+      if (customInspect && typeof value._PRINT === 'function') {
+        value._PRINT(context);
+
+        if (context.emit && context.output.length >= context.emit) {
+          exports.output(context.output);
+          context.output = '';
+        }
+      }
+      else if (value instanceof Array) {
+        printArray(value, context);
+      }
+      else if (
+        value.toString === Object.prototype.toString
+        || (typeof value === 'object' && Object.getPrototypeOf(value) === null)
+      ) {
+        var handled = false;
+        try {
+          if (value instanceof Set ||
+              value instanceof Map ||
+              value instanceof WeakSet ||
+              value instanceof WeakMap ||
+              typeof value[Symbol.iterator] === 'function') {
+            // ES6 iterators
+            context.output += value.toString();
+            handled = true;
+          }
+        }
+        catch (err) {
+          // ignore any errors thrown above, and simply fall back to normal printing
+        }
+
+        if (!handled) {
+          // all other objects
+          printObject(value, context);
+        }
+
+        if (context.emit && context.output.length >= context.emit) {
+          exports.output(context.output);
+          context.output = '';
+        }
+      }
+      else if (typeof value === 'function') {
+        // it's possible that toString() throws, and this looks quite ugly
+        try {
+          var s = value.toString();
+
+          if (context.level > 0 && !showFunction) {
+            var a = s.split('\n');
+            var f = a[0];
+
+            var m = funcRE.exec(f);
+
+            if (m !== null) {
+              if (m[1] === undefined) {
+                context.output += 'function { [native code] }';
+              }
+              else {
+                context.output += 'function ' + m[1] + ' { [native code] }';
+              }
+            }
+            else {
+              m = func2RE.exec(f);
+
+              if (m !== null) {
+                if (m[1] === undefined) {
+                  context.output += 'function ' + '(' + m[2] + ') { ... }';
+                }
+                else {
+                  context.output += 'function ' + m[1] + ' (' + m[2] + ') { ... }';
+                }
+              }
+              else {
+                f = f.substr(8, f.length - 10).trim();
+                context.output += '[Function "' + f + '" ...]';
+              }
+            }
+          }
+          else {
+            context.output += s;
+          }
+        }
+        catch (e1) {
+          exports.stdOutput(String(e1));
+          context.output += '[Function]';
+        }
+      }
+      else if (useToString && typeof value.toString === 'function') {
+        try {
+          context.output += value.toString();
+        }
+        catch (e2) {
+          context.output += '[Object ';
+          printObject(value, context);
+          context.output += ']';
+        }
+      }
+      else {
+        context.output += '[Object ';
+        printObject(value, context);
+        context.output += ']';
+      }
+    }
+    else if (value === undefined) {
+      if (useColor) {
+        context.output += colors.COLOR_UNDEFINED;
+      }
+
+      context.output += 'undefined';
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    else if (typeof value === 'string') {
+      if (useColor) {
+        context.output += colors.COLOR_STRING;
+      }
+
+      if (limitString) {
+        if (limitString < value.length) {
+          value = value.substr(0, limitString) + '...';
+        }
+      }
+
+      context.output += quoteJsonString(value);
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    else if (typeof value === 'boolean') {
+      if (useColor) {
+        context.output += value ? colors.COLOR_TRUE : colors.COLOR_FALSE;
+      }
+
+      context.output += String(value);
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    else if (typeof value === 'number') {
+      if (useColor) {
+        context.output += colors.COLOR_NUMBER;
+      }
+
+      context.output += String(value);
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    else if (value === null) {
+      if (useColor) {
+        context.output += colors.COLOR_NULL;
+      }
+
+      context.output += String(value);
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    /* jshint notypeof: true */
+    else if (typeof value === 'symbol') {
+    /* jshint notypeof: false */
+      // handle ES6 symbols
+      if (useColor) {
+        context.output += colors.COLOR_NULL;
+      }
+
+      context.output += value.toString();
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    else {
+      context.output += String(value);
+    }
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief buffers output instead of printing it
+////////////////////////////////////////////////////////////////////////////////
+
+function bufferOutput () {
+
+  for (let i = 0; i < arguments.length; ++i) {
+    var value = arguments[i];
+    var text;
+
+    if (value === null) {
+      text = 'null';
+    }
+    else if (value === undefined) {
+      text = 'undefined';
+    }
+    else if (typeof value === 'object') {
+      try {
+        text = JSON.stringify(value);
+      }
+      catch (err) {
+        text = String(value);
+      }
+    }
+    else {
+      text = String(value);
+    }
+
+    exports.outputBuffer += text;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints all arguments
+///
+/// @FUN{exports.printShell(@FA{arg1}, @FA{arg2}, @FA{arg3}, ...)}
+///
+/// Only available in shell mode.
+///
+/// Prints the arguments. If an argument is an object having a function
+/// @FN{_PRINT}, then this function is called. A final newline is printed.
+////////////////////////////////////////////////////////////////////////////////
+
+function printShell () {
+
+  var output = exports.output;
+
+  for (let i = 0; i < arguments.length; ++i) {
+    if (i > 0) {
+      output(' ');
+    }
+
+    if (typeof arguments[i] === 'string') {
+      output(arguments[i]);
+    }
+    else {
+      var context = {
+        customInspect: true,
+        emit: 16384,
+        level: 0,
+        limitString: 80,
+        names: [],
+        output: '',
+        path: '~',
+        prettyPrint: usePrettyPrint,
+        seen: [],
+        showFunction: false,
+        useColor: useColor,
+        useToString: true
+      };
+
+      printRecursive(arguments[i], context);
+
+      output(context.output);
+    }
+  }
+
+  output('\n');
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         public printing functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flatten
+////////////////////////////////////////////////////////////////////////////////
+
+var hasOwnProperty = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
+
+exports.flatten = function (obj, seen) {
+
+  if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) {
+    return obj;
+  }
+
+  if (obj instanceof Date) {
+    return obj.toJSON();
+  }
+
+  if (!seen) {
+    seen = [];
+  }
+
+  var result = Object.create(null),
+    src = obj,
+    keys,
+    key,
+    val;
+
+  if (typeof obj === 'function') {
+    result.__exec = String(obj);
+  }
+
+  while (src) {
+    if (
+      seen.indexOf(src) !== -1
+        || (obj.constructor && src === obj.constructor.prototype)
+    ) {
+      break;
+    }
+    seen.push(src);
+    keys = Object.getOwnPropertyNames(src);
+    for (let i = 0; i < keys.length; i++) {
+      key = keys[i];
+      if (typeof src !== 'function' || (
+        key !== 'arguments' && key !== 'caller' && key !== 'callee'
+      )) {
+        if (key.charAt(0) !== '_' && !hasOwnProperty(result, key)) {
+          val = obj[key];
+          if (seen.indexOf(val) !== -1 && (
+            typeof val === 'object' || typeof val === 'function'
+          )) {
+            result[key] = '[Circular]';
+          } else {
+            result[key] = exports.flatten(val, seen);
+          }
+        }
+      }
+    }
+    src = Object.getPrototypeOf(src);
+  }
+
+  if (obj.constructor && obj.constructor.name) {
+    if (obj instanceof Error && obj.name === Error.name) {
+      result.name = obj.constructor.name;
+    } else if (!hasOwnProperty(result, 'constructor')) {
+      result.constructor = {name: obj.constructor.name};
+    }
+  }
+
+  return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inspect
+////////////////////////////////////////////////////////////////////////////////
+
+exports.inspect = function (object, options) {
+
+  var context = {
+    customInspect: options && options.customInspect,
+    emit: false,
+    level: 0,
+    limitString: false,
+    names: [],
+    output: '',
+    prettyPrint: true,
+    path: '~',
+    seen: [],
+    showFunction: true,
+    useColor: false,
+    useToString: false
+  };
+
+  if (options && options.hasOwnProperty('prettyPrint')) {
+    context.prettyPrint = options.prettyPrint;
+  }
+
+  printRecursive(object, context);
+
+  return context.output;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sprintf
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_SPRINTF) {
+  exports.sprintf = global.SYS_SPRINTF;
+  delete global.SYS_SPRINTF;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief printf
+////////////////////////////////////////////////////////////////////////////////
+
+var sprintf = exports.sprintf;
+
+exports.printf = function () {
+  exports.output(sprintf.apply(sprintf, arguments));
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print
+////////////////////////////////////////////////////////////////////////////////
+
+exports.print = exports.printShell = printShell;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief printObject
+////////////////////////////////////////////////////////////////////////////////
+
+exports.printObject = printObject;
+
+exports.isCaptureMode = function() {
+  return exports.output === bufferOutput;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startCaptureMode
+////////////////////////////////////////////////////////////////////////////////
+
+exports.startCaptureMode = function () {
+  var old = exports.output;
+
+  exports.outputBuffer = '';
+  exports.output = bufferOutput;
+
+  return old;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stopCaptureMode
+////////////////////////////////////////////////////////////////////////////////
+
+exports.stopCaptureMode = function (old) {
+  var buffer = exports.outputBuffer;
+
+  exports.outputBuffer = '';
+  if (old !== undefined) {
+    exports.output = old;
+  }
+  else {
+    exports.output = exports.stdOutput;
+  }
+
+  return buffer;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startPager
+////////////////////////////////////////////////////////////////////////////////
+
+exports.startPager = function () {};
+
+if (global.SYS_START_PAGER) {
+  exports.startPager = global.SYS_START_PAGER;
+  delete global.SYS_START_PAGER;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stopPager
+////////////////////////////////////////////////////////////////////////////////
+
+exports.stopPager = function () {};
+
+if (global.SYS_STOP_PAGER) {
+  exports.stopPager = global.SYS_STOP_PAGER;
+  delete global.SYS_STOP_PAGER;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startPrettyPrint
+////////////////////////////////////////////////////////////////////////////////
+
+exports.startPrettyPrint = function (silent) {
+  if (!usePrettyPrint && !silent) {
+    exports.print('using pretty printing');
+  }
+
+  usePrettyPrint = true;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stopPrettyPrint
+////////////////////////////////////////////////////////////////////////////////
+
+exports.stopPrettyPrint = function (silent) {
+  if (usePrettyPrint && !silent) {
+    exports.print('disabled pretty printing');
+  }
+
+  usePrettyPrint = false;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startColorPrint
+////////////////////////////////////////////////////////////////////////////////
+
+exports.startColorPrint = function (color, silent) {
+  var schemes = {
+    arangodb: {
+      COLOR_PUNCTUATION: exports.COLORS.COLOR_RESET,
+      COLOR_STRING: exports.COLORS.COLOR_BOLD_MAGENTA,
+      COLOR_NUMBER: exports.COLORS.COLOR_BOLD_GREEN,
+      COLOR_INDEX: exports.COLORS.COLOR_BOLD_CYAN,
+      COLOR_TRUE: exports.COLORS.COLOR_BOLD_MAGENTA,
+      COLOR_FALSE: exports.COLORS.COLOR_BOLD_MAGENTA,
+      COLOR_NULL: exports.COLORS.COLOR_BOLD_YELLOW,
+      COLOR_UNDEFINED: exports.COLORS.COLOR_BOLD_YELLOW
+    }
+  };
+
+  if (!useColor && !silent) {
+    exports.print('starting color printing');
+  }
+
+  if (color === undefined || color === null) {
+    color = null;
+  }
+  else if (typeof color === 'string') {
+    color = color.toLowerCase();
+    var c;
+
+    if (schemes.hasOwnProperty(color)) {
+      colors = schemes[color];
+
+      for (c in exports.COLORS) {
+        if (exports.COLORS.hasOwnProperty(c) && !colors.hasOwnProperty(c)) {
+          colors[c] = exports.COLORS[c];
+        }
+      }
+    }
+    else {
+      colors = exports.COLORS;
+
+      var setColor = function (key) {
+        [ 'COLOR_STRING', 'COLOR_NUMBER', 'COLOR_INDEX', 'COLOR_TRUE',
+          'COLOR_FALSE', 'COLOR_NULL', 'COLOR_UNDEFINED' ].forEach(function (what) {
+          colors[what] = exports.COLORS[key];
+        });
+      };
+
+      for (c in exports.COLORS) {
+        if (exports.COLORS.hasOwnProperty(c) &&
+            c.replace(/^COLOR_/, '').toLowerCase() === color) {
+          setColor(c);
+          break;
+        }
+      }
+    }
+  }
+
+  useColor = true;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stopColorPrint
+////////////////////////////////////////////////////////////////////////////////
+
+exports.stopColorPrint = function (silent) {
+  if (useColor && !silent) {
+    exports.print('disabled color printing');
+  }
+
+  useColor = false;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          public utility functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief env
+////////////////////////////////////////////////////////////////////////////////
+
+if (typeof ENV !== 'undefined') {
+  exports.env = new global.ENV();
+  delete global.ENV;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief options
+////////////////////////////////////////////////////////////////////////////////
+
+if (typeof SYS_OPTIONS !== 'undefined') {
+  exports.options = global.SYS_OPTIONS;
+  delete global.SYS_OPTIONS;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         global printing functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print
+////////////////////////////////////////////////////////////////////////////////
+
+global.print = function print () {
+  var internal = require('internal');
+  internal.print.apply(internal.print, arguments);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief printf
+////////////////////////////////////////////////////////////////////////////////
+
+global.printf = function printf () {
+  var internal = require('internal');
+  internal.printf.apply(internal.printf, arguments);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief print_plain
+////////////////////////////////////////////////////////////////////////////////
+
+global.print_plain = function print_plain() {
+  var output = require('internal').output;
+  var printRecursive = require('internal').printRecursive;
+
+  for (let i = 0; i < arguments.length; ++i) {
+    if (i > 0) {
+      output(' ');
+    }
+
+    if (typeof arguments[i] === 'string') {
+      output(arguments[i]);
+    }
+    else {
+      var context = {
+        names: [],
+        seen: [],
+        path: '~',
+        level: 0,
+        output: '',
+        prettyPrint: false,
+        useColor: false,
+        customInspect: true
+      };
+
+      printRecursive(arguments[i], context);
+
+      output(context.output);
+    }
+  }
+
+  output('\n');
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start_pretty_print
+////////////////////////////////////////////////////////////////////////////////
+
+global.start_pretty_print = function start_pretty_print () {
+  require('internal').startPrettyPrint();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop_pretty_print
+////////////////////////////////////////////////////////////////////////////////
+
+global.stop_pretty_print = function stop_pretty_print () {
+  require('internal').stopPrettyPrint();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start_color_print
+////////////////////////////////////////////////////////////////////////////////
+
+global.start_color_print = function start_color_print (color) {
+  require('internal').startColorPrint(color, false);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop_color_print
+////////////////////////////////////////////////////////////////////////////////
+
+global.stop_color_print = function stop_color_print () {
+  require('internal').stopColorPrint();
+};
+
+
+if (global.EXPORTS_SLOW_BUFFER) {
+  Object.keys(global.EXPORTS_SLOW_BUFFER).forEach(function (key) {
+    exports[key] = global.EXPORTS_SLOW_BUFFER[key];
+  });
+  delete global.EXPORTS_SLOW_BUFFER;
+}
+
+if (global.APP_PATH) {
+  exports.appPath = global.APP_PATH;
+  delete global.APP_PATH;
+}
+
+if (global.DEV_APP_PATH) {
+  exports.devAppPath = global.APP_PATH;
+  delete global.DEV_APP_PATH;
+}
+
+return exports;
+
+}()));
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
+// End:
+
+/*jshint maxlen: 240 */
+/*global require */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief auto-generated file generated from errors.dat
+////////////////////////////////////////////////////////////////////////////////
+
+(function () {
+  "use strict";
+  var internal = require("internal");
+
+  internal.errors = {
+    "ERROR_NO_ERROR"               : { "code" : 0, "message" : "no error" },
+    "ERROR_FAILED"                 : { "code" : 1, "message" : "failed" },
+    "ERROR_SYS_ERROR"              : { "code" : 2, "message" : "system error" },
+    "ERROR_OUT_OF_MEMORY"          : { "code" : 3, "message" : "out of memory" },
+    "ERROR_INTERNAL"               : { "code" : 4, "message" : "internal error" },
+    "ERROR_ILLEGAL_NUMBER"         : { "code" : 5, "message" : "illegal number" },
+    "ERROR_NUMERIC_OVERFLOW"       : { "code" : 6, "message" : "numeric overflow" },
+    "ERROR_ILLEGAL_OPTION"         : { "code" : 7, "message" : "illegal option" },
+    "ERROR_DEAD_PID"               : { "code" : 8, "message" : "dead process identifier" },
+    "ERROR_NOT_IMPLEMENTED"        : { "code" : 9, "message" : "not implemented" },
+    "ERROR_BAD_PARAMETER"          : { "code" : 10, "message" : "bad parameter" },
+    "ERROR_FORBIDDEN"              : { "code" : 11, "message" : "forbidden" },
+    "ERROR_OUT_OF_MEMORY_MMAP"     : { "code" : 12, "message" : "out of memory in mmap" },
+    "ERROR_CORRUPTED_CSV"          : { "code" : 13, "message" : "csv is corrupt" },
+    "ERROR_FILE_NOT_FOUND"         : { "code" : 14, "message" : "file not found" },
+    "ERROR_CANNOT_WRITE_FILE"      : { "code" : 15, "message" : "cannot write file" },
+    "ERROR_CANNOT_OVERWRITE_FILE"  : { "code" : 16, "message" : "cannot overwrite file" },
+    "ERROR_TYPE_ERROR"             : { "code" : 17, "message" : "type error" },
+    "ERROR_LOCK_TIMEOUT"           : { "code" : 18, "message" : "lock timeout" },
+    "ERROR_CANNOT_CREATE_DIRECTORY" : { "code" : 19, "message" : "cannot create directory" },
+    "ERROR_CANNOT_CREATE_TEMP_FILE" : { "code" : 20, "message" : "cannot create temporary file" },
+    "ERROR_REQUEST_CANCELED"       : { "code" : 21, "message" : "canceled request" },
+    "ERROR_DEBUG"                  : { "code" : 22, "message" : "intentional debug error" },
+    "ERROR_AID_NOT_FOUND"          : { "code" : 23, "message" : "internal error with attribute ID in shaper" },
+    "ERROR_LEGEND_INCOMPLETE"      : { "code" : 24, "message" : "internal error if a legend could not be created" },
+    "ERROR_IP_ADDRESS_INVALID"     : { "code" : 25, "message" : "IP address is invalid" },
+    "ERROR_LEGEND_NOT_IN_WAL_FILE" : { "code" : 26, "message" : "internal error if a legend for a marker does not yet exist in the same WAL file" },
+    "ERROR_FILE_EXISTS"            : { "code" : 27, "message" : "file exists" },
+    "ERROR_LOCKED"                 : { "code" : 28, "message" : "locked" },
+    "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" },
+    "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" },
+    "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" },
+    "ERROR_HTTP_NOT_FOUND"         : { "code" : 404, "message" : "not found" },
+    "ERROR_HTTP_METHOD_NOT_ALLOWED" : { "code" : 405, "message" : "method not supported" },
+    "ERROR_HTTP_PRECONDITION_FAILED" : { "code" : 412, "message" : "precondition failed" },
+    "ERROR_HTTP_SERVER_ERROR"      : { "code" : 500, "message" : "internal server error" },
+    "ERROR_HTTP_CORRUPTED_JSON"    : { "code" : 600, "message" : "invalid JSON object" },
+    "ERROR_HTTP_SUPERFLUOUS_SUFFICES" : { "code" : 601, "message" : "superfluous URL suffices" },
+    "ERROR_ARANGO_ILLEGAL_STATE"   : { "code" : 1000, "message" : "illegal state" },
+    "ERROR_ARANGO_SHAPER_FAILED"   : { "code" : 1001, "message" : "could not shape document" },
+    "ERROR_ARANGO_DATAFILE_SEALED" : { "code" : 1002, "message" : "datafile sealed" },
+    "ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE" : { "code" : 1003, "message" : "unknown type" },
+    "ERROR_ARANGO_READ_ONLY"       : { "code" : 1004, "message" : "read only" },
+    "ERROR_ARANGO_DUPLICATE_IDENTIFIER" : { "code" : 1005, "message" : "duplicate identifier" },
+    "ERROR_ARANGO_DATAFILE_UNREADABLE" : { "code" : 1006, "message" : "datafile unreadable" },
+    "ERROR_ARANGO_DATAFILE_EMPTY"  : { "code" : 1007, "message" : "datafile empty" },
+    "ERROR_ARANGO_RECOVERY"        : { "code" : 1008, "message" : "logfile recovery error" },
+    "ERROR_ARANGO_CORRUPTED_DATAFILE" : { "code" : 1100, "message" : "corrupted datafile" },
+    "ERROR_ARANGO_ILLEGAL_PARAMETER_FILE" : { "code" : 1101, "message" : "illegal or unreadable parameter file" },
+    "ERROR_ARANGO_CORRUPTED_COLLECTION" : { "code" : 1102, "message" : "corrupted collection" },
+    "ERROR_ARANGO_MMAP_FAILED"     : { "code" : 1103, "message" : "mmap failed" },
+    "ERROR_ARANGO_FILESYSTEM_FULL" : { "code" : 1104, "message" : "filesystem full" },
+    "ERROR_ARANGO_NO_JOURNAL"      : { "code" : 1105, "message" : "no journal" },
+    "ERROR_ARANGO_DATAFILE_ALREADY_EXISTS" : { "code" : 1106, "message" : "cannot create/rename datafile because it already exists" },
+    "ERROR_ARANGO_DATADIR_LOCKED"  : { "code" : 1107, "message" : "database directory is locked" },
+    "ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS" : { "code" : 1108, "message" : "cannot create/rename collection because directory already exists" },
+    "ERROR_ARANGO_MSYNC_FAILED"    : { "code" : 1109, "message" : "msync failed" },
+    "ERROR_ARANGO_DATADIR_UNLOCKABLE" : { "code" : 1110, "message" : "cannot lock database directory" },
+    "ERROR_ARANGO_SYNC_TIMEOUT"    : { "code" : 1111, "message" : "sync timeout" },
+    "ERROR_ARANGO_CONFLICT"        : { "code" : 1200, "message" : "conflict" },
+    "ERROR_ARANGO_DATADIR_INVALID" : { "code" : 1201, "message" : "invalid database directory" },
+    "ERROR_ARANGO_DOCUMENT_NOT_FOUND" : { "code" : 1202, "message" : "document not found" },
+    "ERROR_ARANGO_COLLECTION_NOT_FOUND" : { "code" : 1203, "message" : "collection not found" },
+    "ERROR_ARANGO_COLLECTION_PARAMETER_MISSING" : { "code" : 1204, "message" : "parameter 'collection' not found" },
+    "ERROR_ARANGO_DOCUMENT_HANDLE_BAD" : { "code" : 1205, "message" : "illegal document handle" },
+    "ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL" : { "code" : 1206, "message" : "maximal size of journal too small" },
+    "ERROR_ARANGO_DUPLICATE_NAME"  : { "code" : 1207, "message" : "duplicate name" },
+    "ERROR_ARANGO_ILLEGAL_NAME"    : { "code" : 1208, "message" : "illegal name" },
+    "ERROR_ARANGO_NO_INDEX"        : { "code" : 1209, "message" : "no suitable index known" },
+    "ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED" : { "code" : 1210, "message" : "unique constraint violated" },
+    "ERROR_ARANGO_INDEX_NOT_FOUND" : { "code" : 1212, "message" : "index not found" },
+    "ERROR_ARANGO_CROSS_COLLECTION_REQUEST" : { "code" : 1213, "message" : "cross collection request not allowed" },
+    "ERROR_ARANGO_INDEX_HANDLE_BAD" : { "code" : 1214, "message" : "illegal index handle" },
+    "ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED" : { "code" : 1215, "message" : "cap constraint already defined" },
+    "ERROR_ARANGO_DOCUMENT_TOO_LARGE" : { "code" : 1216, "message" : "document too large" },
+    "ERROR_ARANGO_COLLECTION_NOT_UNLOADED" : { "code" : 1217, "message" : "collection must be unloaded" },
+    "ERROR_ARANGO_COLLECTION_TYPE_INVALID" : { "code" : 1218, "message" : "collection type invalid" },
+    "ERROR_ARANGO_VALIDATION_FAILED" : { "code" : 1219, "message" : "validator failed" },
+    "ERROR_ARANGO_PARSER_FAILED"   : { "code" : 1220, "message" : "parser failed" },
+    "ERROR_ARANGO_DOCUMENT_KEY_BAD" : { "code" : 1221, "message" : "illegal document key" },
+    "ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED" : { "code" : 1222, "message" : "unexpected document key" },
+    "ERROR_ARANGO_DATADIR_NOT_WRITABLE" : { "code" : 1224, "message" : "server database directory not writable" },
+    "ERROR_ARANGO_OUT_OF_KEYS"     : { "code" : 1225, "message" : "out of keys" },
+    "ERROR_ARANGO_DOCUMENT_KEY_MISSING" : { "code" : 1226, "message" : "missing document key" },
+    "ERROR_ARANGO_DOCUMENT_TYPE_INVALID" : { "code" : 1227, "message" : "invalid document type" },
+    "ERROR_ARANGO_DATABASE_NOT_FOUND" : { "code" : 1228, "message" : "database not found" },
+    "ERROR_ARANGO_DATABASE_NAME_INVALID" : { "code" : 1229, "message" : "database name invalid" },
+    "ERROR_ARANGO_USE_SYSTEM_DATABASE" : { "code" : 1230, "message" : "operation only allowed in system database" },
+    "ERROR_ARANGO_ENDPOINT_NOT_FOUND" : { "code" : 1231, "message" : "endpoint not found" },
+    "ERROR_ARANGO_INVALID_KEY_GENERATOR" : { "code" : 1232, "message" : "invalid key generator" },
+    "ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE" : { "code" : 1233, "message" : "edge attribute missing" },
+    "ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING" : { "code" : 1234, "message" : "index insertion warning - attribute missing in document" },
+    "ERROR_ARANGO_INDEX_CREATION_FAILED" : { "code" : 1235, "message" : "index creation failed" },
+    "ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT" : { "code" : 1236, "message" : "write-throttling timeout" },
+    "ERROR_ARANGO_COLLECTION_TYPE_MISMATCH" : { "code" : 1237, "message" : "collection type mismatch" },
+    "ERROR_ARANGO_COLLECTION_NOT_LOADED" : { "code" : 1238, "message" : "collection not loaded" },
+    "ERROR_ARANGO_DATAFILE_FULL"   : { "code" : 1300, "message" : "datafile full" },
+    "ERROR_ARANGO_EMPTY_DATADIR"   : { "code" : 1301, "message" : "server database directory is empty" },
+    "ERROR_REPLICATION_NO_RESPONSE" : { "code" : 1400, "message" : "no response" },
+    "ERROR_REPLICATION_INVALID_RESPONSE" : { "code" : 1401, "message" : "invalid response" },
+    "ERROR_REPLICATION_MASTER_ERROR" : { "code" : 1402, "message" : "master error" },
+    "ERROR_REPLICATION_MASTER_INCOMPATIBLE" : { "code" : 1403, "message" : "master incompatible" },
+    "ERROR_REPLICATION_MASTER_CHANGE" : { "code" : 1404, "message" : "master change" },
+    "ERROR_REPLICATION_LOOP"       : { "code" : 1405, "message" : "loop detected" },
+    "ERROR_REPLICATION_UNEXPECTED_MARKER" : { "code" : 1406, "message" : "unexpected marker" },
+    "ERROR_REPLICATION_INVALID_APPLIER_STATE" : { "code" : 1407, "message" : "invalid applier state" },
+    "ERROR_REPLICATION_UNEXPECTED_TRANSACTION" : { "code" : 1408, "message" : "invalid transaction" },
+    "ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION" : { "code" : 1410, "message" : "invalid replication applier configuration" },
+    "ERROR_REPLICATION_RUNNING"    : { "code" : 1411, "message" : "cannot perform operation while applier is running" },
+    "ERROR_REPLICATION_APPLIER_STOPPED" : { "code" : 1412, "message" : "replication stopped" },
+    "ERROR_REPLICATION_NO_START_TICK" : { "code" : 1413, "message" : "no start tick" },
+    "ERROR_REPLICATION_START_TICK_NOT_PRESENT" : { "code" : 1414, "message" : "start tick not present" },
+    "ERROR_CLUSTER_NO_AGENCY"      : { "code" : 1450, "message" : "could not connect to agency" },
+    "ERROR_CLUSTER_NO_COORDINATOR_HEADER" : { "code" : 1451, "message" : "missing coordinator header" },
+    "ERROR_CLUSTER_COULD_NOT_LOCK_PLAN" : { "code" : 1452, "message" : "could not lock plan in agency" },
+    "ERROR_CLUSTER_COLLECTION_ID_EXISTS" : { "code" : 1453, "message" : "collection ID already exists" },
+    "ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN" : { "code" : 1454, "message" : "could not create collection in plan" },
+    "ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION" : { "code" : 1455, "message" : "could not read version in current in agency" },
+    "ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION" : { "code" : 1456, "message" : "could not create collection" },
+    "ERROR_CLUSTER_TIMEOUT"        : { "code" : 1457, "message" : "timeout in cluster operation" },
+    "ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN" : { "code" : 1458, "message" : "could not remove collection from plan" },
+    "ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT" : { "code" : 1459, "message" : "could not remove collection from current" },
+    "ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN" : { "code" : 1460, "message" : "could not create database in plan" },
+    "ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE" : { "code" : 1461, "message" : "could not create database" },
+    "ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN" : { "code" : 1462, "message" : "could not remove database from plan" },
+    "ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT" : { "code" : 1463, "message" : "could not remove database from current" },
+    "ERROR_CLUSTER_SHARD_GONE"     : { "code" : 1464, "message" : "no responsible shard found" },
+    "ERROR_CLUSTER_CONNECTION_LOST" : { "code" : 1465, "message" : "cluster internal HTTP connection broken" },
+    "ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY" : { "code" : 1466, "message" : "must not specify _key for this collection" },
+    "ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS" : { "code" : 1467, "message" : "got contradicting answers from different shards" },
+    "ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN" : { "code" : 1468, "message" : "not all sharding attributes given" },
+    "ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES" : { "code" : 1469, "message" : "must not change the value of a shard key attribute" },
+    "ERROR_CLUSTER_UNSUPPORTED"    : { "code" : 1470, "message" : "unsupported operation or parameter" },
+    "ERROR_CLUSTER_ONLY_ON_COORDINATOR" : { "code" : 1471, "message" : "this operation is only valid on a coordinator in a cluster" },
+    "ERROR_CLUSTER_READING_PLAN_AGENCY" : { "code" : 1472, "message" : "error reading Plan in agency" },
+    "ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION" : { "code" : 1473, "message" : "could not truncate collection" },
+    "ERROR_CLUSTER_AQL_COMMUNICATION" : { "code" : 1474, "message" : "error in cluster internal communication for AQL" },
+    "ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED" : { "code" : 1475, "message" : "document not found or sharding attributes changed" },
+    "ERROR_CLUSTER_COULD_NOT_DETERMINE_ID" : { "code" : 1476, "message" : "could not determine my ID from my local info" },
+    "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
+    "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
+    "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },
+    "ERROR_QUERY_SCRIPT"           : { "code" : 1503, "message" : "runtime error '%s'" },
+    "ERROR_QUERY_NUMBER_OUT_OF_RANGE" : { "code" : 1504, "message" : "number out of range" },
+    "ERROR_QUERY_VARIABLE_NAME_INVALID" : { "code" : 1510, "message" : "variable name '%s' has an invalid format" },
+    "ERROR_QUERY_VARIABLE_REDECLARED" : { "code" : 1511, "message" : "variable '%s' is assigned multiple times" },
+    "ERROR_QUERY_VARIABLE_NAME_UNKNOWN" : { "code" : 1512, "message" : "unknown variable '%s'" },
+    "ERROR_QUERY_COLLECTION_LOCK_FAILED" : { "code" : 1521, "message" : "unable to read-lock collection %s" },
+    "ERROR_QUERY_TOO_MANY_COLLECTIONS" : { "code" : 1522, "message" : "too many collections" },
+    "ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED" : { "code" : 1530, "message" : "document attribute '%s' is assigned multiple times" },
+    "ERROR_QUERY_FUNCTION_NAME_UNKNOWN" : { "code" : 1540, "message" : "usage of unknown function '%s()'" },
+    "ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH" : { "code" : 1541, "message" : "invalid number of arguments for function '%s()', expected number of arguments: minimum: %d, maximum: %d" },
+    "ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH" : { "code" : 1542, "message" : "invalid argument type in call to function '%s()'" },
+    "ERROR_QUERY_INVALID_REGEX"    : { "code" : 1543, "message" : "invalid regex value" },
+    "ERROR_QUERY_BIND_PARAMETERS_INVALID" : { "code" : 1550, "message" : "invalid structure of bind parameters" },
+    "ERROR_QUERY_BIND_PARAMETER_MISSING" : { "code" : 1551, "message" : "no value specified for declared bind parameter '%s'" },
+    "ERROR_QUERY_BIND_PARAMETER_UNDECLARED" : { "code" : 1552, "message" : "bind parameter '%s' was not declared in the query" },
+    "ERROR_QUERY_BIND_PARAMETER_TYPE" : { "code" : 1553, "message" : "bind parameter '%s' has an invalid value or type" },
+    "ERROR_QUERY_INVALID_LOGICAL_VALUE" : { "code" : 1560, "message" : "invalid logical value" },
+    "ERROR_QUERY_INVALID_ARITHMETIC_VALUE" : { "code" : 1561, "message" : "invalid arithmetic value" },
+    "ERROR_QUERY_DIVISION_BY_ZERO" : { "code" : 1562, "message" : "division by zero" },
+    "ERROR_QUERY_ARRAY_EXPECTED"   : { "code" : 1563, "message" : "array expected" },
+    "ERROR_QUERY_FAIL_CALLED"      : { "code" : 1569, "message" : "FAIL(%s) called" },
+    "ERROR_QUERY_GEO_INDEX_MISSING" : { "code" : 1570, "message" : "no suitable geo index found for geo restriction on '%s'" },
+    "ERROR_QUERY_FULLTEXT_INDEX_MISSING" : { "code" : 1571, "message" : "no suitable fulltext index found for fulltext query on '%s'" },
+    "ERROR_QUERY_INVALID_DATE_VALUE" : { "code" : 1572, "message" : "invalid date value" },
+    "ERROR_QUERY_MULTI_MODIFY"     : { "code" : 1573, "message" : "multi-modify query" },
+    "ERROR_QUERY_MODIFY_IN_SUBQUERY" : { "code" : 1574, "message" : "modify operation in subquery" },
+    "ERROR_QUERY_COMPILE_TIME_OPTIONS" : { "code" : 1575, "message" : "query options must be readable at query compile time" },
+    "ERROR_QUERY_EXCEPTION_OPTIONS" : { "code" : 1576, "message" : "query options expected" },
+    "ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION" : { "code" : 1577, "message" : "collection '%s' used as expression operand" },
+    "ERROR_QUERY_DISALLOWED_DYNAMIC_CALL" : { "code" : 1578, "message" : "disallowed dynamic call to '%s'" },
+    "ERROR_QUERY_ACCESS_AFTER_MODIFICATION" : { "code" : 1579, "message" : "access after data-modification" },
+    "ERROR_QUERY_FUNCTION_INVALID_NAME" : { "code" : 1580, "message" : "invalid user function name" },
+    "ERROR_QUERY_FUNCTION_INVALID_CODE" : { "code" : 1581, "message" : "invalid user function code" },
+    "ERROR_QUERY_FUNCTION_NOT_FOUND" : { "code" : 1582, "message" : "user function '%s()' not found" },
+    "ERROR_QUERY_FUNCTION_RUNTIME_ERROR" : { "code" : 1583, "message" : "user function runtime error: %s" },
+    "ERROR_QUERY_BAD_JSON_PLAN"    : { "code" : 1590, "message" : "bad execution plan JSON" },
+    "ERROR_QUERY_NOT_FOUND"        : { "code" : 1591, "message" : "query ID not found" },
+    "ERROR_QUERY_IN_USE"           : { "code" : 1592, "message" : "query with this ID is in use" },
+    "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" },
+    "ERROR_CURSOR_BUSY"            : { "code" : 1601, "message" : "cursor is busy" },
+    "ERROR_TRANSACTION_INTERNAL"   : { "code" : 1650, "message" : "internal transaction error" },
+    "ERROR_TRANSACTION_NESTED"     : { "code" : 1651, "message" : "nested transactions detected" },
+    "ERROR_TRANSACTION_UNREGISTERED_COLLECTION" : { "code" : 1652, "message" : "unregistered collection used in transaction" },
+    "ERROR_TRANSACTION_DISALLOWED_OPERATION" : { "code" : 1653, "message" : "disallowed operation inside transaction" },
+    "ERROR_TRANSACTION_ABORTED"    : { "code" : 1654, "message" : "transaction aborted" },
+    "ERROR_USER_INVALID_NAME"      : { "code" : 1700, "message" : "invalid user name" },
+    "ERROR_USER_INVALID_PASSWORD"  : { "code" : 1701, "message" : "invalid password" },
+    "ERROR_USER_DUPLICATE"         : { "code" : 1702, "message" : "duplicate user" },
+    "ERROR_USER_NOT_FOUND"         : { "code" : 1703, "message" : "user not found" },
+    "ERROR_USER_CHANGE_PASSWORD"   : { "code" : 1704, "message" : "user must change his password" },
+    "ERROR_APPLICATION_INVALID_NAME" : { "code" : 1750, "message" : "invalid application name" },
+    "ERROR_APPLICATION_INVALID_MOUNT" : { "code" : 1751, "message" : "invalid mount" },
+    "ERROR_APPLICATION_DOWNLOAD_FAILED" : { "code" : 1752, "message" : "application download failed" },
+    "ERROR_APPLICATION_UPLOAD_FAILED" : { "code" : 1753, "message" : "application upload failed" },
+    "ERROR_KEYVALUE_INVALID_KEY"   : { "code" : 1800, "message" : "invalid key declaration" },
+    "ERROR_KEYVALUE_KEY_EXISTS"    : { "code" : 1801, "message" : "key already exists" },
+    "ERROR_KEYVALUE_KEY_NOT_FOUND" : { "code" : 1802, "message" : "key not found" },
+    "ERROR_KEYVALUE_KEY_NOT_UNIQUE" : { "code" : 1803, "message" : "key is not unique" },
+    "ERROR_KEYVALUE_KEY_NOT_CHANGED" : { "code" : 1804, "message" : "key value not changed" },
+    "ERROR_KEYVALUE_KEY_NOT_REMOVED" : { "code" : 1805, "message" : "key value not removed" },
+    "ERROR_KEYVALUE_NO_VALUE"      : { "code" : 1806, "message" : "missing value" },
+    "ERROR_TASK_INVALID_ID"        : { "code" : 1850, "message" : "invalid task id" },
+    "ERROR_TASK_DUPLICATE_ID"      : { "code" : 1851, "message" : "duplicate task id" },
+    "ERROR_TASK_NOT_FOUND"         : { "code" : 1852, "message" : "task not found" },
+    "ERROR_GRAPH_INVALID_GRAPH"    : { "code" : 1901, "message" : "invalid graph" },
+    "ERROR_GRAPH_COULD_NOT_CREATE_GRAPH" : { "code" : 1902, "message" : "could not create graph" },
+    "ERROR_GRAPH_INVALID_VERTEX"   : { "code" : 1903, "message" : "invalid vertex" },
+    "ERROR_GRAPH_COULD_NOT_CREATE_VERTEX" : { "code" : 1904, "message" : "could not create vertex" },
+    "ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX" : { "code" : 1905, "message" : "could not change vertex" },
+    "ERROR_GRAPH_INVALID_EDGE"     : { "code" : 1906, "message" : "invalid edge" },
+    "ERROR_GRAPH_COULD_NOT_CREATE_EDGE" : { "code" : 1907, "message" : "could not create edge" },
+    "ERROR_GRAPH_COULD_NOT_CHANGE_EDGE" : { "code" : 1908, "message" : "could not change edge" },
+    "ERROR_GRAPH_TOO_MANY_ITERATIONS" : { "code" : 1909, "message" : "too many iterations - try increasing the value of 'maxIterations'" },
+    "ERROR_GRAPH_INVALID_FILTER_RESULT" : { "code" : 1910, "message" : "invalid filter result" },
+    "ERROR_GRAPH_COLLECTION_MULTI_USE" : { "code" : 1920, "message" : "multi use of edge collection in edge def" },
+    "ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS" : { "code" : 1921, "message" : "edge collection already used in edge def" },
+    "ERROR_GRAPH_CREATE_MISSING_NAME" : { "code" : 1922, "message" : "missing graph name" },
+    "ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION" : { "code" : 1923, "message" : "malformed edge definition" },
+    "ERROR_GRAPH_NOT_FOUND"        : { "code" : 1924, "message" : "graph not found" },
+    "ERROR_GRAPH_DUPLICATE"        : { "code" : 1925, "message" : "graph already exists" },
+    "ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST" : { "code" : 1926, "message" : "vertex collection does not exist or is not part of the graph" },
+    "ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX" : { "code" : 1927, "message" : "not a vertex collection" },
+    "ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION" : { "code" : 1928, "message" : "not in orphan collection" },
+    "ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF" : { "code" : 1929, "message" : "collection already used in edge def" },
+    "ERROR_GRAPH_EDGE_COLLECTION_NOT_USED" : { "code" : 1930, "message" : "edge collection not used in graph" },
+    "ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION" : { "code" : 1931, "message" : " is not an ArangoCollection" },
+    "ERROR_GRAPH_NO_GRAPH_COLLECTION" : { "code" : 1932, "message" : "collection _graphs does not exist" },
+    "ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING" : { "code" : 1933, "message" : "Invalid example type. Has to be String, Array or Object" },
+    "ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT" : { "code" : 1934, "message" : "Invalid example type. Has to be Array or Object" },
+    "ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS" : { "code" : 1935, "message" : "Invalid number of arguments. Expected: " },
+    "ERROR_GRAPH_INVALID_PARAMETER" : { "code" : 1936, "message" : "Invalid parameter type." },
+    "ERROR_GRAPH_INVALID_ID"       : { "code" : 1937, "message" : "Invalid id" },
+    "ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS" : { "code" : 1938, "message" : "collection used in orphans" },
+    "ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST" : { "code" : 1939, "message" : "edge collection does not exist or is not part of the graph" },
+    "ERROR_SESSION_UNKNOWN"        : { "code" : 1950, "message" : "unknown session" },
+    "ERROR_SESSION_EXPIRED"        : { "code" : 1951, "message" : "session expired" },
+    "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" },
+    "SIMPLE_CLIENT_COULD_NOT_CONNECT" : { "code" : 2001, "message" : "could not connect to server" },
+    "SIMPLE_CLIENT_COULD_NOT_WRITE" : { "code" : 2002, "message" : "could not write to server" },
+    "SIMPLE_CLIENT_COULD_NOT_READ" : { "code" : 2003, "message" : "could not read from server" },
+    "ERROR_MALFORMED_MANIFEST_FILE" : { "code" : 3000, "message" : "malformed manifest file" },
+    "ERROR_INVALID_APPLICATION_MANIFEST" : { "code" : 3001, "message" : "manifest file is invalid" },
+    "ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING" : { "code" : 3002, "message" : "missing manifest attribute" },
+    "ERROR_CANNOT_EXTRACT_APPLICATION_ROOT" : { "code" : 3003, "message" : "unable to extract app root path" },
+    "ERROR_INVALID_FOXX_OPTIONS"   : { "code" : 3004, "message" : "invalid foxx options" },
+    "ERROR_FAILED_TO_EXECUTE_SCRIPT" : { "code" : 3005, "message" : "failed to execute script" },
+    "ERROR_SYNTAX_ERROR_IN_SCRIPT" : { "code" : 3006, "message" : "syntax error in script" },
+    "ERROR_INVALID_MOUNTPOINT"     : { "code" : 3007, "message" : "mountpoint is invalid" },
+    "ERROR_NO_FOXX_FOUND"          : { "code" : 3008, "message" : "No foxx found at this location" },
+    "ERROR_APP_NOT_FOUND"          : { "code" : 3009, "message" : "App not found" },
+    "ERROR_APP_NEEDS_CONFIGURATION" : { "code" : 3010, "message" : "App not configured" },
+    "ERROR_MODULE_NOT_FOUND"       : { "code" : 3100, "message" : "cannot locate module" },
+    "ERROR_MODULE_SYNTAX_ERROR"    : { "code" : 3101, "message" : "syntax error in module" },
+    "ERROR_MODULE_BAD_WRAPPER"     : { "code" : 3102, "message" : "failed to wrap module" },
+    "ERROR_MODULE_FAILURE"         : { "code" : 3103, "message" : "failed to invoke module" },
+    "ERROR_MODULE_UNKNOWN_FILE_TYPE" : { "code" : 3110, "message" : "unknown file type" },
+    "ERROR_MODULE_PATH_MUST_BE_ABSOLUTE" : { "code" : 3111, "message" : "path must be absolute" },
+    "ERROR_MODULE_CAN_NOT_ESCAPE"  : { "code" : 3112, "message" : "cannot use '..' to escape top-level-directory" },
+    "ERROR_MODULE_DRIVE_LETTER"    : { "code" : 3113, "message" : "drive local path is not supported" },
+    "ERROR_MODULE_BAD_MODULE_ORIGIN" : { "code" : 3120, "message" : "corrupted module origin" },
+    "ERROR_MODULE_BAD_PACKAGE_ORIGIN" : { "code" : 3121, "message" : "corrupted package origin" },
+    "ERROR_MODULE_DOCUMENT_IS_EMPTY" : { "code" : 3125, "message" : "no content" },
+    "ERROR_MODULE_MAIN_NOT_READABLE" : { "code" : 3130, "message" : "cannot read main file" },
+    "ERROR_MODULE_MAIN_NOT_JS"     : { "code" : 3131, "message" : "main file is not of type 'js'" },
+    "RESULT_ELEMENT_EXISTS"        : { "code" : 10000, "message" : "element not inserted into structure, because it already exists" },
+    "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10001, "message" : "element not found in structure" },
+    "ERROR_APP_ALREADY_EXISTS"     : { "code" : 20000, "message" : "newest version of app already installed" },
+    "ERROR_QUEUE_ALREADY_EXISTS"   : { "code" : 21000, "message" : "named queue already exists" },
+    "ERROR_DISPATCHER_IS_STOPPING" : { "code" : 21001, "message" : "dispatcher stopped" },
+    "ERROR_QUEUE_UNKNOWN"          : { "code" : 21002, "message" : "named queue does not exist" },
+    "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" }
+  };
+}());
+
+
+/*jshint -W051:true */
+/*global jqconsole, Symbol */
+/*eslint-disable */
+global.DEFINE_MODULE('console', (function () {
+'use strict';
+/*eslint-enable */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief module "console"
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  Module "console"
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+var exports = {};
+var internal = require('internal');
+var sprintf = internal.sprintf;
+var inspect = internal.inspect;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief group level
+////////////////////////////////////////////////////////////////////////////////
+
+var groupLevel = '';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief timers
+////////////////////////////////////////////////////////////////////////////////
+
+var timers;
+try {
+  timers = Object.create(null);
+}
+catch (e) {
+  timers = {};
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal logging
+////////////////////////////////////////////////////////////////////////////////
+
+var log;
+
+if (global.SYS_LOG) {
+  // this will work when we are in arangod but not in the browser / web interface
+  log = global.SYS_LOG;
+  delete global.SYS_LOG;
+}
+else {
+  // this will work in the web interface
+  log = function (level, message) {
+    if (typeof jqconsole !== 'undefined') {
+      jqconsole.Write(message + '\n', 'jssuccess');
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal logging with group level
+////////////////////////////////////////////////////////////////////////////////
+
+function logGroup (level, msg) {
+  log(level, groupLevel + msg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief try to prettify
+////////////////////////////////////////////////////////////////////////////////
+
+function prepareArgs (args) {
+  var ShapedJson = require('internal').ShapedJson;
+  var result = [];
+
+  if (args.length > 0 && typeof args[0] !== 'string') {
+    result.push('%s');
+  }
+
+  for (let i = 0; i < args.length; ++i) {
+    let arg = args[i];
+
+    if (typeof arg === 'object') {
+      if (ShapedJson !== undefined && arg instanceof ShapedJson) {
+        arg = inspect(arg, {prettyPrint: false});
+      }
+      else if (arg === null) {
+        arg = 'null';
+      }
+      else if (arg instanceof Date || arg instanceof RegExp) {
+        arg = String(arg);
+      }
+      else if (Object.prototype.isPrototypeOf(arg) || Array.isArray(arg)) {
+        arg = inspect(arg, {prettyPrint: false});
+      }
+    }
+
+    result.push(arg);
+  }
+
+  return result;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assert
+////////////////////////////////////////////////////////////////////////////////
+
+exports.assert = function (condition) {
+  if (condition) {
+    return;
+  }
+
+  var args = Array.prototype.slice.call(arguments, 1);
+  var msg;
+
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(args));
+  }
+  catch (e) {
+    msg = msg = `${e}: ${args}`;
+  }
+
+  logGroup('error', msg);
+
+  require('assert').ok(condition, msg);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debug
+////////////////////////////////////////////////////////////////////////////////
+
+exports.debug = function () {
+  var msg;
+
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = `${e}: ${arguments}`;
+  }
+
+  logGroup('debug', msg);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief debugLines
+////////////////////////////////////////////////////////////////////////////////
+
+exports.debugLines = function () {
+  var msg;
+
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = `${e}: ${arguments}`;
+  }
+
+  var a = msg.split('\n');
+
+  for (let i = 0; i < a.length; ++i) {
+    logGroup('debug', a[i]);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dir
+////////////////////////////////////////////////////////////////////////////////
+
+exports.dir = function (object) {
+  logGroup('info', inspect(object));
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief error
+////////////////////////////////////////////////////////////////////////////////
+
+exports.error = function () {
+  var msg;
+
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = `${e}: ${arguments}`;
+  }
+
+  logGroup('error', msg);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief errorLines
+////////////////////////////////////////////////////////////////////////////////
+
+exports.errorLines = function () {
+  var msg;
+
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = `${e}: ${arguments}`;
+  }
+
+  var a = msg.split('\n');
+  for (let i = 0; i < a.length; ++i) {
+    logGroup('error', a[i]);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getline
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.SYS_GETLINE) {
+  exports.getline = global.SYS_GETLINE;
+  delete global.SYS_GETLINE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief group
+////////////////////////////////////////////////////////////////////////////////
+
+exports.group = function () {
+  var msg;
+
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = `${e}: ${arguments}`;
+  }
+
+  groupLevel = groupLevel + '  ';
+  logGroup('info', msg);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief groupCollapsed
+////////////////////////////////////////////////////////////////////////////////
+
+exports.groupCollapsed = function () {
+  var msg;
+
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = `${e}: ${arguments}`;
+  }
+
+  logGroup('info', msg);
+  groupLevel = groupLevel + '  ';
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief groupEnd
+////////////////////////////////////////////////////////////////////////////////
+
+exports.groupEnd = function () {
+  groupLevel = groupLevel.substr(2);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief info
+////////////////////////////////////////////////////////////////////////////////
+
+exports.info = function () {
+  var msg;
+
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = `${e}: ${arguments}`;
+  }
+  logGroup('info', msg);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief infoLines
+////////////////////////////////////////////////////////////////////////////////
+
+exports.infoLines = function () {
+  var msg;
+
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = `${e}: ${arguments}`;
+  }
+
+  var a = msg.split('\n');
+
+  for (let i = 0; i < a.length; ++i) {
+    logGroup('info', a[i]);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log
+////////////////////////////////////////////////////////////////////////////////
+
+exports.log = exports.info;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logLines
+////////////////////////////////////////////////////////////////////////////////
+
+exports.logLines = exports.infoLines;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief time
+////////////////////////////////////////////////////////////////////////////////
+
+exports.time = function (label) {
+  if (typeof label !== 'string') {
+    throw new Error('label must be a string');
+  }
+
+  var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
+
+  timers[symbol] = Date.now();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief timeEnd
+////////////////////////////////////////////////////////////////////////////////
+
+exports.timeEnd = function(label) {
+  var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
+  var time = timers[symbol];
+
+  if (!time) {
+    throw new Error('No such label: ' + label);
+  }
+
+  var duration = Date.now() - time;
+
+  delete timers[symbol];
+
+  logGroup('info', sprintf('%s: %dms', label, duration));
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief trace
+////////////////////////////////////////////////////////////////////////////////
+
+exports.trace = function () {
+  var err = new Error();
+  err.name = 'Trace';
+  err.message = sprintf.apply(sprintf, prepareArgs(arguments));
+  Error.captureStackTrace(err, exports.trace);
+  var a = err.stack.split('\n');
+  while (!a[a.length - 1]) {
+    a.pop();
+  }
+  for (let i = 0; i < a.length; ++i) {
+    logGroup('info', a[i]);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief warn
+////////////////////////////////////////////////////////////////////////////////
+
+exports.warn = function () {
+  var msg;
+
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = `${e}: ${arguments}`;
+  }
+
+  logGroup('warning', msg);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief warnLines
+////////////////////////////////////////////////////////////////////////////////
+
+exports.warnLines = function () {
+  var msg;
+
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = `${e}: ${arguments}`;
+  }
+
+  var a = msg.split('\n');
+  var i;
+
+  for (i = 0; i < a.length; ++i) {
+    logGroup('warning', a[i]);
+  }
+};
+
+return exports;
+}()));
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
+// End:
+
+/*jshint -W051:true */
+/*eslint-disable */
+(function () {
+'use strict';
+/*eslint-enable */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief module "internal"
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 Module "internal"
+// -----------------------------------------------------------------------------
+
+var exports = require('internal');
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hide global variables
+////////////////////////////////////////////////////////////////////////////////
+
+if (global.ArangoConnection) {
+  exports.ArangoConnection = global.ArangoConnection;
+}
+
+if (global.SYS_ARANGO) {
+  exports.arango = global.SYS_ARANGO;
+  delete global.SYS_ARANGO;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write-ahead log functionality
+////////////////////////////////////////////////////////////////////////////////
+
+exports.wal = {
+  flush: function (waitForSync, waitForCollector) {
+    if (exports.arango) {
+      var wfs = waitForSync ? 'true' : 'false';
+      var wfc = waitForCollector ? 'true' : 'false';
+      exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, '');
+      return;
+    }
+
+    throw 'not connected';
+  },
+
+  properties: function (value) {
+    if (exports.arango) {
+      if (value !== undefined) {
+        return exports.arango.PUT('/_admin/wal/properties', JSON.stringify(value));
+      }
+
+      return exports.arango.GET('/_admin/wal/properties', '');
+    }
+
+    throw 'not connected';
+  },
+
+  transactions: function () {
+    if (exports.arango) {
+      return exports.arango.GET('/_admin/wal/transactions', '');
+    }
+
+    throw 'not connected';
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reloads the AQL user functions
+////////////////////////////////////////////////////////////////////////////////
+
+exports.reloadAqlFunctions = function () {
+  if (exports.arango) {
+    exports.arango.POST('/_admin/aql/reload', '');
+    return;
+  }
+
+  throw 'not connected';
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rebuilds the routing cache
+////////////////////////////////////////////////////////////////////////////////
+
+exports.reloadRouting = function () {
+  if (exports.arango) {
+    exports.arango.POST('/_admin/routing/reload', '');
+    return;
+  }
+
+  throw 'not connected';
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rebuilds the routing cache
+////////////////////////////////////////////////////////////////////////////////
+
+exports.routingCache = function () {
+  if (exports.arango) {
+    return exports.arango.GET('/_admin/routing/routes', '');
+
+  }
+
+  throw 'not connected';
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rebuilds the authentication cache
+////////////////////////////////////////////////////////////////////////////////
+
+exports.reloadAuth = function () {
+  if (exports.arango) {
+    exports.arango.POST('/_admin/auth/reload', '');
+    return;
+  }
+
+  throw 'not connected';
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute javascript file on the server
+////////////////////////////////////////////////////////////////////////////////
+
+exports.executeServer = function (body) {
+  if (exports.arango) {
+    return exports.arango.POST('/_admin/execute', body);
+  }
+
+  throw 'not connected';
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a request in curl format
+////////////////////////////////////////////////////////////////////////////////
+
+exports.appendCurlRequest = function (shellAppender,jsonAppender, rawAppender) {
+  return function (method, url, body, headers) {
+    var response;
+    var curl;
+    var i;
+    var jsonBody = false;
+
+    if ((typeof body !== 'string') && (body !== undefined)) {
+      jsonBody = true;
+      body = exports.inspect(body);
+    }
+
+    curl = 'shell> curl ';
+
+    if (method === 'POST') {
+      response = exports.arango.POST_RAW(url, body, headers);
+      curl += '-X ' + method + ' ';
+    }
+    else if (method === 'PUT') {
+      response = exports.arango.PUT_RAW(url, body, headers);
+      curl += '-X ' + method + ' ';
+    }
+    else if (method === 'GET') {
+      response = exports.arango.GET_RAW(url, headers);
+    }
+    else if (method === 'DELETE') {
+      response = exports.arango.DELETE_RAW(url, headers);
+      curl += '-X ' + method + ' ';
+    }
+    else if (method === 'PATCH') {
+      response = exports.arango.PATCH_RAW(url, body, headers);
+      curl += '-X ' + method + ' ';
+    }
+    else if (method === 'HEAD') {
+      response = exports.arango.HEAD_RAW(url, headers);
+      curl += '-X ' + method + ' ';
+    }
+    else if (method === 'OPTION') {
+      response = exports.arango.OPTION_RAW(url, body, headers);
+      curl += '-X ' + method + ' ';
+    }
+    if (headers !== undefined && headers !== '') {
+      for (i in headers) {
+        if (headers.hasOwnProperty(i)) {
+          curl += '--header \'' + i + ': ' + headers[i] + '\' ';
+        }
+      }
+    }
+
+    if (body !== undefined && body !== '') {
+      curl += '--data-binary @- ';
+    }
+
+    curl += '--dump - http://localhost:8529' + url;
+
+    shellAppender(curl);
+
+    if (body !== undefined && body !== '' && body) {
+      rawAppender(' &lt;&lt;EOF\n');
+      if (jsonBody) {
+        jsonAppender(body);
+      }
+      else {
+        rawAppender(body);
+      }
+      rawAppender('\nEOF');
+    }
+    rawAppender('\n\n');
+    return response;
+  };
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a raw response
+////////////////////////////////////////////////////////////////////////////////
+
+exports.appendRawResponse = function (appender, syntaxAppender) {
+  return function (response) {
+    var key;
+    var headers = response.headers;
+
+    // generate header
+    appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
+
+    for (key in headers) {
+      if (headers.hasOwnProperty(key)) {
+        if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
+            && key !== 'content-length') {
+          appender(key + ': ' + headers[key] + '\n');
+        }
+      }
+    }
+
+    appender('\n');
+
+    // append body
+    if (response.body !== undefined) {
+      syntaxAppender(exports.inspect(response.body));
+      appender('\n');
+    }
+  };
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a response in JSON
+////////////////////////////////////////////////////////////////////////////////
+
+exports.appendJsonResponse = function (appender, syntaxAppender) {
+  return function (response) {
+    var syntaxAppend = exports.appendRawResponse(syntaxAppender, syntaxAppender);
+
+    // copy original body (this is necessary because 'response' is passed by reference)
+    var copy = response.body;
+    // overwrite body with parsed JSON && append
+    response.body = JSON.parse(response.body);
+    syntaxAppend(response);
+    // restore original body
+    response.body = copy;
+  };
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log function
+////////////////////////////////////////////////////////////////////////////////
+
+exports.log = function (level, msg) {
+  exports.output(level, ': ', msg, '\n');
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sprintf wrapper
+////////////////////////////////////////////////////////////////////////////////
+
+try {
+  if (typeof window !== 'undefined') {
+    exports.sprintf = function (format) {
+      var n = arguments.length;
+      if (n === 0) {
+        return '';
+      }
+      if (n <= 1) {
+        return String(format);
+      }
+
+      var i;
+      var args = [ ];
+      for (i = 1; i < arguments.length; ++i) {
+        args.push(arguments[i]);
+      }
+      i = 0;
+
+      return format.replace(/%[dfs]/, function () {
+        return String(args[i++]);
+      });
+    };
+  }
+}
+catch (e) {
+  // noop
+}
+
+}());
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
+// End:
+
+/*eslint no-extend-native:0 */
+/*eslint-disable */
+(function () {
+'use strict';
+/*eslint-enable */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief monkey-patches to built-in prototypes
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Lucas Dohmen
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    monkey-patches
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shallow copies properties
+////////////////////////////////////////////////////////////////////////////////
+
+Object.defineProperty(Object.prototype, '_shallowCopy', {
+  get() {
+    var self = this;
+    return this.propertyKeys.reduce(function (previous, key) {
+      previous[key] = self[key];
+      return previous;
+    }, {});
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the property keys
+////////////////////////////////////////////////////////////////////////////////
+
+Object.defineProperty(Object.prototype, 'propertyKeys', {
+  get() {
+    return Object.keys(this).filter(function (key) {
+      return (key.charAt(0) !== '_' && key.charAt(0) !== '$');
+    });
+  }
+});
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+}());
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
+// End:
+
 module.define("org/arangodb-common", function(exports, module) {
 'use strict';
 
@@ -18430,3113 +21531,6 @@ module.define("underscore", function(exports, module) {
   }
 }.call(this));
 });
-
-/*eslint camelcase:0 */
-/*jshint esnext:true, -W051:true */
-/*eslint-disable */
-global.DEFINE_MODULE('internal', (function () {
-'use strict';
-/*eslint-enable */
-
-const exports = {};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief module "internal"
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 Module "internal"
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoError
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.ArangoError) {
-  exports.ArangoError = global.ArangoError;
-  delete global.ArangoError;
-}
-else {
-  exports.ArangoError = function (error) {
-    if (error !== undefined) {
-      this.error = error.error;
-      this.code = error.code;
-      this.errorNum = error.errorNum;
-      this.errorMessage = error.errorMessage;
-    }
-
-    this.message = this.toString();
-  };
-
-  exports.ArangoError.prototype = new Error();
-}
-
-exports.ArangoError.prototype._PRINT = function (context) {
-  context.output += this.toString();
-};
-
-exports.ArangoError.prototype.toString = function() {
-  var errorNum = this.errorNum;
-  var errorMessage = this.errorMessage || this.message;
-
-  return '[ArangoError ' + errorNum + ': ' + errorMessage + ']';
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief SleepAndRequeue
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SleepAndRequeue) {
-  exports.SleepAndRequeue = global.SleepAndRequeue;
-  delete global.SleepAndRequeue;
-
-  exports.SleepAndRequeue.prototype._PRINT = function (context) {
-    context.output += this.toString();
-  };
-
-  exports.SleepAndRequeue.prototype.toString = function() {
-    return '[SleepAndRequeue sleep: ' + this.sleep + ']';
-};
-
-}
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief threadNumber
-////////////////////////////////////////////////////////////////////////////////
-
-exports.threadNumber = 0;
-
-if (global.THREAD_NUMBER) {
-  exports.threadNumber = global.THREAD_NUMBER;
-  delete global.THREAD_NUMBER;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief developmentMode. this is only here for backwards compatibility
-////////////////////////////////////////////////////////////////////////////////
-
-exports.developmentMode = false;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logfilePath
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.LOGFILE_PATH) {
-  exports.logfilePath = global.LOGFILE_PATH;
-  delete global.LOGFILE_PATH;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief quiet
-////////////////////////////////////////////////////////////////////////////////
-
-exports.quiet = false;
-
-if (global.ARANGO_QUIET) {
-  exports.quiet = global.ARANGO_QUIET;
-  delete global.ARANGO_QUIET;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief valgrind
-////////////////////////////////////////////////////////////////////////////////
-
-exports.valgrind = false;
-
-if (global.VALGRIND) {
-  exports.valgrind = global.VALGRIND;
-  delete global.VALGRIND;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief valgrind
-////////////////////////////////////////////////////////////////////////////////
-
-exports.coverage = false;
-
-if (global.COVERAGE) {
-  exports.coverage = global.COVERAGE;
-  delete global.COVERAGE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief version
-////////////////////////////////////////////////////////////////////////////////
-
-exports.version = 'unknown';
-
-if (global.VERSION) {
-  exports.version = global.VERSION;
-  delete global.VERSION;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief platform
-////////////////////////////////////////////////////////////////////////////////
-
-exports.platform = 'unknown';
-
-if (global.SYS_PLATFORM) {
-  exports.platform = global.SYS_PLATFORM;
-  delete global.SYS_PLATFORM;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bytesSentDistribution
-////////////////////////////////////////////////////////////////////////////////
-
-exports.bytesSentDistribution = [];
-
-if (global.BYTES_SENT_DISTRIBUTION) {
-  exports.bytesSentDistribution = global.BYTES_SENT_DISTRIBUTION;
-  delete global.BYTES_SENT_DISTRIBUTION;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bytesReceivedDistribution
-////////////////////////////////////////////////////////////////////////////////
-
-exports.bytesReceivedDistribution = [];
-
-if (global.BYTES_RECEIVED_DISTRIBUTION) {
-  exports.bytesReceivedDistribution = global.BYTES_RECEIVED_DISTRIBUTION;
-  delete global.BYTES_RECEIVED_DISTRIBUTION;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connectionTimeDistribution
-////////////////////////////////////////////////////////////////////////////////
-
-exports.connectionTimeDistribution = [];
-
-if (global.CONNECTION_TIME_DISTRIBUTION) {
-  exports.connectionTimeDistribution = global.CONNECTION_TIME_DISTRIBUTION;
-  delete global.CONNECTION_TIME_DISTRIBUTION;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief requestTimeDistribution
-////////////////////////////////////////////////////////////////////////////////
-
-exports.requestTimeDistribution = [];
-
-if (global.REQUEST_TIME_DISTRIBUTION) {
-  exports.requestTimeDistribution = global.REQUEST_TIME_DISTRIBUTION;
-  delete global.REQUEST_TIME_DISTRIBUTION;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief startupPath
-////////////////////////////////////////////////////////////////////////////////
-
-exports.startupPath = '';
-
-if (global.STARTUP_PATH) {
-  exports.startupPath = global.STARTUP_PATH;
-  delete global.STARTUP_PATH;
-}
-
-if (exports.startupPath === '') {
-  exports.startupPath = '.';
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief configureEndpoint
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.CONFIGURE_ENDPOINT) {
-  exports.configureEndpoint = global.CONFIGURE_ENDPOINT;
-  delete global.CONFIGURE_ENDPOINT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removeEndpoint
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.REMOVE_ENDPOINT) {
-  exports.removeEndpoint = global.REMOVE_ENDPOINT;
-  delete global.REMOVE_ENDPOINT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief listEndpoints
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.LIST_ENDPOINTS) {
-  exports.listEndpoints = global.LIST_ENDPOINTS;
-  delete global.LIST_ENDPOINTS;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief base64Decode
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_BASE64DECODE) {
-  exports.base64Decode = global.SYS_BASE64DECODE;
-  delete global.SYS_BASE64DECODE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief base64Encode
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_BASE64ENCODE) {
-  exports.base64Encode = global.SYS_BASE64ENCODE;
-  delete global.SYS_BASE64ENCODE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief debugSegfault
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_DEBUG_SEGFAULT) {
-  exports.debugSegfault = global.SYS_DEBUG_SEGFAULT;
-  delete global.SYS_DEBUG_SEGFAULT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief debugSetFailAt
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_DEBUG_SET_FAILAT) {
-  exports.debugSetFailAt = global.SYS_DEBUG_SET_FAILAT;
-  delete global.SYS_DEBUG_SET_FAILAT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief debugRemoveFailAt
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_DEBUG_REMOVE_FAILAT) {
-  exports.debugRemoveFailAt = global.SYS_DEBUG_REMOVE_FAILAT;
-  delete global.SYS_DEBUG_REMOVE_FAILAT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief debugClearFailAt
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_DEBUG_CLEAR_FAILAT) {
-  exports.debugClearFailAt = global.SYS_DEBUG_CLEAR_FAILAT;
-  delete global.SYS_DEBUG_CLEAR_FAILAT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief debugCanUseFailAt
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_DEBUG_CAN_USE_FAILAT) {
-  exports.debugCanUseFailAt = global.SYS_DEBUG_CAN_USE_FAILAT;
-  delete global.SYS_DEBUG_CAN_USE_FAILAT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief download
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_DOWNLOAD) {
-  exports.download = global.SYS_DOWNLOAD;
-  delete global.SYS_DOWNLOAD;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executeScript
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_EXECUTE) {
-  exports.executeScript = global.SYS_EXECUTE;
-  delete global.SYS_EXECUTE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getCurrentRequest
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_GET_CURRENT_REQUEST) {
-  exports.getCurrentRequest = global.SYS_GET_CURRENT_REQUEST;
-  delete global.SYS_GET_CURRENT_REQUEST;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getCurrentResponse
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_GET_CURRENT_RESPONSE) {
-  exports.getCurrentResponse = global.SYS_GET_CURRENT_RESPONSE;
-  delete global.SYS_GET_CURRENT_RESPONSE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extend
-////////////////////////////////////////////////////////////////////////////////
-
-exports.extend = function (target, source) {
-
-  Object.getOwnPropertyNames(source)
-  .forEach(function(propName) {
-    Object.defineProperty(
-      target,
-      propName,
-      Object.getOwnPropertyDescriptor(source, propName)
-    );
-  });
-
-  return target;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief load
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_LOAD) {
-  exports.load = global.SYS_LOAD;
-  delete global.SYS_LOAD;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logLevel
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_LOG_LEVEL) {
-  exports.logLevel = global.SYS_LOG_LEVEL;
-  delete global.SYS_LOG_LEVEL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief md5
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_MD5) {
-  exports.md5 = global.SYS_MD5;
-  delete global.SYS_MD5;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief genRandomNumbers
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_GEN_RANDOM_NUMBERS) {
-  exports.genRandomNumbers = global.SYS_GEN_RANDOM_NUMBERS;
-  delete global.SYS_GEN_RANDOM_NUMBERS;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief genRandomAlphaNumbers
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_GEN_RANDOM_ALPHA_NUMBERS) {
-  exports.genRandomAlphaNumbers = global.SYS_GEN_RANDOM_ALPHA_NUMBERS;
-  delete global.SYS_GEN_RANDOM_ALPHA_NUMBERS;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief genRandomSalt
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_GEN_RANDOM_SALT) {
-  exports.genRandomSalt = global.SYS_GEN_RANDOM_SALT;
-  delete global.SYS_GEN_RANDOM_SALT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hmac
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_HMAC) {
-  exports.hmac = global.SYS_HMAC;
-  delete global.SYS_HMAC;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pbkdf2-hmac
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_PBKDF2) {
-  exports.pbkdf2 = global.SYS_PBKDF2;
-  delete global.SYS_PBKDF2;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief createNonce
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_CREATE_NONCE) {
-  exports.createNonce = global.SYS_CREATE_NONCE;
-  delete global.SYS_CREATE_NONCE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checkAndMarkNonce
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_CHECK_AND_MARK_NONCE) {
-  exports.checkAndMarkNonce = global.SYS_CHECK_AND_MARK_NONCE;
-  delete global.SYS_CHECK_AND_MARK_NONCE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief output
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_OUTPUT) {
-  exports.stdOutput = global.SYS_OUTPUT;
-  exports.output = exports.stdOutput;
-  delete global.SYS_OUTPUT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_PARSE) {
-  exports.parse = global.SYS_PARSE;
-  delete global.SYS_PARSE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parseFile
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_PARSE_FILE) {
-  exports.parseFile = global.SYS_PARSE_FILE;
-  delete global.SYS_PARSE_FILE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief processStatistics
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_PROCESS_STATISTICS) {
-  exports.processStatistics = global.SYS_PROCESS_STATISTICS;
-  delete global.SYS_PROCESS_STATISTICS;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rand
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_RAND) {
-  exports.rand = global.SYS_RAND;
-  delete global.SYS_RAND;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sha512
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_SHA512) {
-  exports.sha512 = global.SYS_SHA512;
-  delete global.SYS_SHA512;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sha384
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_SHA384) {
-  exports.sha384 = global.SYS_SHA384;
-  delete global.SYS_SHA384;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sha256
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_SHA256) {
-  exports.sha256 = global.SYS_SHA256;
-  delete global.SYS_SHA256;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sha224
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_SHA224) {
-  exports.sha224 = global.SYS_SHA224;
-  delete global.SYS_SHA224;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sha1
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_SHA1) {
-  exports.sha1 = global.SYS_SHA1;
-  delete global.SYS_SHA1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief serverStatistics
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_SERVER_STATISTICS) {
-  exports.serverStatistics = global.SYS_SERVER_STATISTICS;
-  delete global.SYS_SERVER_STATISTICS;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sleep
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_SLEEP) {
-  exports.sleep = global.SYS_SLEEP;
-  delete global.SYS_SLEEP;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief time
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_TIME) {
-  exports.time = global.SYS_TIME;
-  delete global.SYS_TIME;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_WAIT) {
-  exports.wait = global.SYS_WAIT;
-  delete global.SYS_WAIT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief importCsvFile
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_IMPORT_CSV_FILE) {
-  exports.importCsvFile = global.SYS_IMPORT_CSV_FILE;
-  delete global.SYS_IMPORT_CSV_FILE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief importJsonFile
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_IMPORT_JSON_FILE) {
-  exports.importJsonFile = global.SYS_IMPORT_JSON_FILE;
-  delete global.SYS_IMPORT_JSON_FILE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief processCsvFile
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_PROCESS_CSV_FILE) {
-  exports.processCsvFile = global.SYS_PROCESS_CSV_FILE;
-  delete global.SYS_PROCESS_CSV_FILE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief processJsonFile
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_PROCESS_JSON_FILE) {
-  exports.processJsonFile = global.SYS_PROCESS_JSON_FILE;
-  delete global.SYS_PROCESS_JSON_FILE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clientStatistics
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_CLIENT_STATISTICS) {
-  exports.clientStatistics = global.SYS_CLIENT_STATISTICS;
-  delete global.SYS_CLIENT_STATISTICS;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief httpStatistics
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_HTTP_STATISTICS) {
-  exports.httpStatistics = global.SYS_HTTP_STATISTICS;
-  delete global.SYS_HTTP_STATISTICS;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executeExternal
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_EXECUTE_EXTERNAL) {
-  exports.executeExternal = global.SYS_EXECUTE_EXTERNAL;
-  delete global.SYS_EXECUTE_EXTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executeExternalAndWait - instantly waits for the exit, returns
-/// joint result.
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_EXECUTE_EXTERNAL_AND_WAIT) {
-  exports.executeExternalAndWait = global.SYS_EXECUTE_EXTERNAL_AND_WAIT;
-  delete global.SYS_EXECUTE_EXTERNAL_AND_WAIT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief killExternal
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_KILL_EXTERNAL) {
-  exports.killExternal = global.SYS_KILL_EXTERNAL;
-  delete global.SYS_KILL_EXTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief statusExternal
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_STATUS_EXTERNAL) {
-  exports.statusExternal = global.SYS_STATUS_EXTERNAL;
-  delete global.SYS_STATUS_EXTERNAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registerTask
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_REGISTER_TASK) {
-  exports.registerTask = global.SYS_REGISTER_TASK;
-  delete global.SYS_REGISTER_TASK;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregisterTask
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_UNREGISTER_TASK) {
-  exports.unregisterTask = global.SYS_UNREGISTER_TASK;
-  delete global.SYS_UNREGISTER_TASK;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getTasks
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_GET_TASK) {
-  exports.getTask = global.SYS_GET_TASK;
-  delete global.SYS_GET_TASK;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief testPort
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_TEST_PORT) {
-  exports.testPort = global.SYS_TEST_PORT;
-  delete global.SYS_TEST_PORT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief isIP
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_IS_IP) {
-  exports.isIP = global.SYS_IS_IP;
-  delete global.SYS_IS_IP;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unitTests
-////////////////////////////////////////////////////////////////////////////////
-
-exports.unitTests = function () {
-  return global.SYS_UNIT_TESTS;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setUnitTestsResult
-////////////////////////////////////////////////////////////////////////////////
-
-exports.setUnitTestsResult = function (value) {
-  global.SYS_UNIT_TESTS_RESULT = value;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                     Commandline argument handling
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief structured to flat commandline arguments
-/// @param longOptsEqual whether long-options are in the type --opt=value
-///                      or --opt value
-////////////////////////////////////////////////////////////////////////////////
-
-exports.toArgv = function (structure, longOptsEqual) {
-  if (typeof longOptsEqual === 'undefined') {
-    longOptsEqual = false;
-  }
-  var vec = [];
-  for (let key in structure) {
-    if (structure.hasOwnProperty(key)) {
-      if (key === 'commandSwitches') {
-        let multivec = '';
-        for (let i = 0; i < structure[key].length; i++) {
-          if (structure[key][i].length > 1) {
-            vec.push(structure[key][i]);
-          }
-          else {
-            multivec += structure[key][i];
-          }
-        }
-        if (multivec.length > 0) {
-          vec.push(multivec);
-        }
-      }
-      else if (key === 'flatCommands') {
-        vec = vec.concat(structure[key]);
-      }
-      else {
-        if (longOptsEqual) {
-          vec.push('--' + key + '=' + structure[key]);
-        }
-        else {
-          vec.push('--' + key);
-          if (structure[key] !== false) {
-            if (structure[key] !== true) {
-              vec.push(structure[key]);
-            }
-            else {
-              vec.push('true');
-            }
-          }
-          else {
-            vec.push('false');
-          }
-        }
-      }
-    }
-  }
-  return vec;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief argv to structured
-////////////////////////////////////////////////////////////////////////////////
-
-exports.parseArgv = function (argv, startOffset) {
-  var i;
-  function setOption(ret, option, value) {
-    if (option.indexOf(':') > 0) {
-      var n = option.indexOf(':');
-      var topOption = option.slice(0, n);
-      if (!ret.hasOwnProperty(topOption)) {
-        ret[topOption] = {};
-      }
-      setOption(ret[topOption], option.slice(n + 1, option.length), value);
-    }
-    else if (argv[i + 1] === 'true') {
-      ret[option] = true;
-    }
-    else if (argv[i + 1] === 'false') {
-      ret[option] = false;
-    }
-    else if (!isNaN(argv[i + 1])) {
-      ret[option] = parseInt(argv[i + 1]);
-    }
-    else {
-      ret[option] = argv[i + 1];
-    }
-  }
-  function setSwitch(ret, option) {
-    if (!ret.hasOwnProperty('commandSwitches')) {
-      ret.commandSwitches = [];
-    }
-    ret.commandSwitches.push(option);
-  }
-
-  function setSwitchVec(ret, option) {
-    for (var i = 0; i < option.length; i++) {
-      setSwitch(ret, option[i]);
-    }
-  }
-
-  function setFlatCommand(ret, thisString) {
-    if (!ret.hasOwnProperty('flatCommands')) {
-      ret.flatCommands = [];
-    }
-    ret.flatCommands.push(thisString);
-  }
-
-  var inFlat = false;
-  var ret = {};
-  for (i = startOffset; i < argv.length; i++) {
-    let thisString = argv[i];
-    if (!inFlat) {
-      if ((thisString.length > 2) &&
-          (thisString.slice(0, 2) === '--')) {
-        let option = thisString.slice(2, thisString.length);
-        if ((argv.length > i) &&
-            (argv[i + 1].slice(0, 1) !== '-')) {
-          setOption(ret, option, argv[i + 1]);
-          i++;
-        }
-        else {
-          setSwitch(ret, option);
-        }
-      }
-      else if (thisString === '--') {
-        inFlat = true;
-      }
-      else if ((thisString.length > 1) &&
-              (thisString.slice(0, 1) === '-')) {
-        setSwitchVec(ret, thisString.slice(1, thisString.length));
-      }
-      else {
-        setFlatCommand(ret, thisString);
-      }
-    }
-    else {
-      setFlatCommand(ret, thisString);
-    }
-  }
-  return ret;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          PRINTING
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         public printing variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief COLORS
-////////////////////////////////////////////////////////////////////////////////
-
-exports.COLORS = {};
-
-if (global.COLORS) {
-  exports.COLORS = global.COLORS;
-  delete global.COLORS;
-}
-else {
-  [ 'COLOR_RED', 'COLOR_BOLD_RED', 'COLOR_GREEN', 'COLOR_BOLD_GREEN',
-    'COLOR_BLUE', 'COLOR_BOLD_BLUE', 'COLOR_YELLOW', 'COLOR_BOLD_YELLOW',
-    'COLOR_WHITE', 'COLOR_BOLD_WHITE', 'COLOR_CYAN', 'COLOR_BOLD_CYAN',
-    'COLOR_MAGENTA', 'COLOR_BOLD_MAGENTA', 'COLOR_BLACK', 'COLOR_BOLD_BLACK',
-    'COLOR_BLINK', 'COLOR_BRIGHT', 'COLOR_RESET' ].forEach(function(color) {
-      exports.COLORS[color] = '';
-    });
-}
-
-exports.COLORS.COLOR_PUNCTUATION = exports.COLORS.COLOR_RESET;
-exports.COLORS.COLOR_STRING = exports.COLORS.COLOR_BRIGHT;
-exports.COLORS.COLOR_NUMBER = exports.COLORS.COLOR_BRIGHT;
-exports.COLORS.COLOR_INDEX = exports.COLORS.COLOR_BRIGHT;
-exports.COLORS.COLOR_TRUE = exports.COLORS.COLOR_BRIGHT;
-exports.COLORS.COLOR_FALSE = exports.COLORS.COLOR_BRIGHT;
-exports.COLORS.COLOR_NULL = exports.COLORS.COLOR_BRIGHT;
-exports.COLORS.COLOR_UNDEFINED = exports.COLORS.COLOR_BRIGHT;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        private printing variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief quote cache
-////////////////////////////////////////////////////////////////////////////////
-
-var characterQuoteCache = {
-  '\b': '\\b', // ASCII 8, Backspace
-  '\t': '\\t', // ASCII 9, Tab
-  '\n': '\\n', // ASCII 10, Newline
-  '\f': '\\f', // ASCII 12, Formfeed
-  '\r': '\\r', // ASCII 13, Carriage Return
-  '\"': '\\"',
-  '\\': '\\\\'
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief colors
-////////////////////////////////////////////////////////////////////////////////
-
-var colors = exports.COLORS;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief useColor
-////////////////////////////////////////////////////////////////////////////////
-
-var useColor = false;
-
-if (global.COLOR_OUTPUT) {
-  useColor = global.COLOR_OUTPUT;
-  delete global.COLOR_OUTPUT;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief usePrettyPrint
-////////////////////////////////////////////////////////////////////////////////
-
-var usePrettyPrint = false;
-
-if (global.PRETTY_PRINT) {
-  usePrettyPrint = global.PRETTY_PRINT;
-  delete global.PRETTY_PRINT;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        private printing functions
-// -----------------------------------------------------------------------------
-
-var printRecursive;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief quotes a single character
-////////////////////////////////////////////////////////////////////////////////
-
-function quoteSingleJsonCharacter (c) {
-
-  if (characterQuoteCache.hasOwnProperty(c)) {
-    return characterQuoteCache[c];
-  }
-
-  var charCode = c.charCodeAt(0);
-  var result;
-
-  if (charCode < 16) {
-    result = '\\u000';
-  }
-  else if (charCode < 256) {
-    result = '\\u00';
-  }
-  else if (charCode < 4096) {
-    result = '\\u0';
-  }
-  else {
-    result = '\\u';
-  }
-
-  result += charCode.toString(16);
-  characterQuoteCache[c] = result;
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief quotes a string character
-////////////////////////////////////////////////////////////////////////////////
-
-var quotable = /[\\\"\x00-\x1f]/g;
-
-function quoteJsonString (str) {
-
-  return '"' + str.replace(quotable, quoteSingleJsonCharacter) + '"';
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints the ident for pretty printing
-////////////////////////////////////////////////////////////////////////////////
-
-function printIndent (context) {
-
-  var j;
-  var indent = '';
-
-  if (context.prettyPrint) {
-    indent += '\n';
-
-    for (j = 0; j < context.level; ++j) {
-      indent += '  ';
-    }
-  }
-
-  context.output += indent;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints the JSON representation of an array
-////////////////////////////////////////////////////////////////////////////////
-
-function printArray (object, context) {
-
-  var useColor = context.useColor;
-
-  if (object.length === 0) {
-    if (useColor) {
-      context.output += colors.COLOR_PUNCTUATION;
-    }
-
-    context.output += '[ ]';
-
-    if (useColor) {
-      context.output += colors.COLOR_RESET;
-    }
-  }
-  else {
-    if (useColor) {
-      context.output += colors.COLOR_PUNCTUATION;
-    }
-
-    context.output += '[';
-
-    if (useColor) {
-      context.output += colors.COLOR_RESET;
-    }
-
-    var newLevel = context.level + 1;
-    var sep = ' ';
-
-    context.level = newLevel;
-
-    for (let i = 0; i < object.length; i++) {
-      if (useColor) {
-        context.output += colors.COLOR_PUNCTUATION;
-      }
-
-      context.output += sep;
-
-      if (useColor) {
-        context.output += colors.COLOR_RESET;
-      }
-
-      printIndent(context);
-
-      var path = context.path;
-      context.path += '[' + i + ']';
-
-      printRecursive(object[i], context);
-
-      if (context.emit && context.output.length >= context.emit) {
-        exports.output(context.output);
-        context.output = '';
-      }
-
-      context.path = path;
-      sep = ', ';
-    }
-
-    context.level = newLevel - 1;
-    context.output += ' ';
-
-    printIndent(context);
-
-    if (useColor) {
-      context.output += colors.COLOR_PUNCTUATION;
-    }
-
-    context.output += ']';
-
-    if (useColor) {
-      context.output += colors.COLOR_RESET;
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints an object
-////////////////////////////////////////////////////////////////////////////////
-
-function printObject (object, context) {
-
-  var useColor = context.useColor;
-  var sep = ' ';
-
-  if (useColor) {
-    context.output += colors.COLOR_PUNCTUATION;
-  }
-
-  context.output += '{';
-
-  if (useColor) {
-    context.output += colors.COLOR_RESET;
-  }
-
-  var newLevel = context.level + 1;
-
-  context.level = newLevel;
-
-  var keys;
-  try {
-    keys = Object.keys(object);
-  }
-  catch (err) {
-    // ES6 proxy objects don't support key enumeration
-    keys = [];
-  }
-
-  for (let i = 0, n = keys.length; i < n; ++i) {
-    var k = keys[i];
-    var val = object[k];
-
-    if (useColor) {
-      context.output += colors.COLOR_PUNCTUATION;
-    }
-
-    context.output += sep;
-
-    if (useColor) {
-      context.output += colors.COLOR_RESET;
-    }
-
-    printIndent(context);
-
-    if (useColor) {
-      context.output += colors.COLOR_INDEX;
-    }
-
-    context.output += quoteJsonString(k);
-
-    if (useColor) {
-      context.output += colors.COLOR_RESET;
-    }
-
-    context.output += ' : ';
-
-    var path = context.path;
-    context.path += '[' + k + ']';
-
-    printRecursive(val, context);
-
-    context.path = path;
-    sep = ', ';
-
-    if (context.emit && context.output.length >= context.emit) {
-      exports.output(context.output);
-      context.output = '';
-    }
-  }
-
-  context.level = newLevel - 1;
-  context.output += ' ';
-
-  printIndent(context);
-
-  if (useColor) {
-    context.output += colors.COLOR_PUNCTUATION;
-  }
-
-  context.output += '}';
-
-  if (useColor) {
-    context.output += colors.COLOR_RESET;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints objects to standard output without a new-line
-////////////////////////////////////////////////////////////////////////////////
-
-var funcRE = /function ([^\(]*)?\(\) \{ \[native code\] \}/;
-var func2RE = /function ([^\(]*)?\((.*)\) \{/;
-
-exports.printRecursive = printRecursive = function (value, context) {
-
-  var useColor = context.useColor;
-  var customInspect = context.customInspect;
-  var useToString = context.useToString;
-  var limitString = context.limitString;
-  var showFunction = context.showFunction;
-
-  if (typeof context.seen === 'undefined') {
-    context.seen = [];
-    context.names = [];
-  }
-
-  var p = context.seen.indexOf(value);
-
-  if (p >= 0) {
-    context.output += context.names[p];
-  }
-  else {
-    if (value && (value instanceof Object || (typeof value === 'object' && Object.getPrototypeOf(value) === null))) {
-      context.seen.push(value);
-      context.names.push(context.path);
-      if (customInspect && typeof value._PRINT === 'function') {
-        value._PRINT(context);
-
-        if (context.emit && context.output.length >= context.emit) {
-          exports.output(context.output);
-          context.output = '';
-        }
-      }
-      else if (value instanceof Array) {
-        printArray(value, context);
-      }
-      else if (
-        value.toString === Object.prototype.toString
-        || (typeof value === 'object' && Object.getPrototypeOf(value) === null)
-      ) {
-        var handled = false;
-        try {
-          if (value instanceof Set ||
-              value instanceof Map ||
-              value instanceof WeakSet ||
-              value instanceof WeakMap ||
-              typeof value[Symbol.iterator] === 'function') {
-            // ES6 iterators
-            context.output += value.toString();
-            handled = true;
-          }
-        }
-        catch (err) {
-          // ignore any errors thrown above, and simply fall back to normal printing
-        }
-
-        if (!handled) {
-          // all other objects
-          printObject(value, context);
-        }
-
-        if (context.emit && context.output.length >= context.emit) {
-          exports.output(context.output);
-          context.output = '';
-        }
-      }
-      else if (typeof value === 'function') {
-        // it's possible that toString() throws, and this looks quite ugly
-        try {
-          var s = value.toString();
-
-          if (context.level > 0 && !showFunction) {
-            var a = s.split('\n');
-            var f = a[0];
-
-            var m = funcRE.exec(f);
-
-            if (m !== null) {
-              if (m[1] === undefined) {
-                context.output += 'function { [native code] }';
-              }
-              else {
-                context.output += 'function ' + m[1] + ' { [native code] }';
-              }
-            }
-            else {
-              m = func2RE.exec(f);
-
-              if (m !== null) {
-                if (m[1] === undefined) {
-                  context.output += 'function ' + '(' + m[2] + ') { ... }';
-                }
-                else {
-                  context.output += 'function ' + m[1] + ' (' + m[2] + ') { ... }';
-                }
-              }
-              else {
-                f = f.substr(8, f.length - 10).trim();
-                context.output += '[Function "' + f + '" ...]';
-              }
-            }
-          }
-          else {
-            context.output += s;
-          }
-        }
-        catch (e1) {
-          exports.stdOutput(String(e1));
-          context.output += '[Function]';
-        }
-      }
-      else if (useToString && typeof value.toString === 'function') {
-        try {
-          context.output += value.toString();
-        }
-        catch (e2) {
-          context.output += '[Object ';
-          printObject(value, context);
-          context.output += ']';
-        }
-      }
-      else {
-        context.output += '[Object ';
-        printObject(value, context);
-        context.output += ']';
-      }
-    }
-    else if (value === undefined) {
-      if (useColor) {
-        context.output += colors.COLOR_UNDEFINED;
-      }
-
-      context.output += 'undefined';
-
-      if (useColor) {
-        context.output += colors.COLOR_RESET;
-      }
-    }
-    else if (typeof value === 'string') {
-      if (useColor) {
-        context.output += colors.COLOR_STRING;
-      }
-
-      if (limitString) {
-        if (limitString < value.length) {
-          value = value.substr(0, limitString) + '...';
-        }
-      }
-
-      context.output += quoteJsonString(value);
-
-      if (useColor) {
-        context.output += colors.COLOR_RESET;
-      }
-    }
-    else if (typeof value === 'boolean') {
-      if (useColor) {
-        context.output += value ? colors.COLOR_TRUE : colors.COLOR_FALSE;
-      }
-
-      context.output += String(value);
-
-      if (useColor) {
-        context.output += colors.COLOR_RESET;
-      }
-    }
-    else if (typeof value === 'number') {
-      if (useColor) {
-        context.output += colors.COLOR_NUMBER;
-      }
-
-      context.output += String(value);
-
-      if (useColor) {
-        context.output += colors.COLOR_RESET;
-      }
-    }
-    else if (value === null) {
-      if (useColor) {
-        context.output += colors.COLOR_NULL;
-      }
-
-      context.output += String(value);
-
-      if (useColor) {
-        context.output += colors.COLOR_RESET;
-      }
-    }
-    /* jshint notypeof: true */
-    else if (typeof value === 'symbol') {
-    /* jshint notypeof: false */
-      // handle ES6 symbols
-      if (useColor) {
-        context.output += colors.COLOR_NULL;
-      }
-
-      context.output += value.toString();
-
-      if (useColor) {
-        context.output += colors.COLOR_RESET;
-      }
-    }
-    else {
-      context.output += String(value);
-    }
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief buffers output instead of printing it
-////////////////////////////////////////////////////////////////////////////////
-
-function bufferOutput () {
-
-  for (let i = 0; i < arguments.length; ++i) {
-    var value = arguments[i];
-    var text;
-
-    if (value === null) {
-      text = 'null';
-    }
-    else if (value === undefined) {
-      text = 'undefined';
-    }
-    else if (typeof value === 'object') {
-      try {
-        text = JSON.stringify(value);
-      }
-      catch (err) {
-        text = String(value);
-      }
-    }
-    else {
-      text = String(value);
-    }
-
-    exports.outputBuffer += text;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints all arguments
-///
-/// @FUN{exports.printShell(@FA{arg1}, @FA{arg2}, @FA{arg3}, ...)}
-///
-/// Only available in shell mode.
-///
-/// Prints the arguments. If an argument is an object having a function
-/// @FN{_PRINT}, then this function is called. A final newline is printed.
-////////////////////////////////////////////////////////////////////////////////
-
-function printShell () {
-
-  var output = exports.output;
-
-  for (let i = 0; i < arguments.length; ++i) {
-    if (i > 0) {
-      output(' ');
-    }
-
-    if (typeof arguments[i] === 'string') {
-      output(arguments[i]);
-    }
-    else {
-      var context = {
-        customInspect: true,
-        emit: 16384,
-        level: 0,
-        limitString: 80,
-        names: [],
-        output: '',
-        path: '~',
-        prettyPrint: usePrettyPrint,
-        seen: [],
-        showFunction: false,
-        useColor: useColor,
-        useToString: true
-      };
-
-      printRecursive(arguments[i], context);
-
-      output(context.output);
-    }
-  }
-
-  output('\n');
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         public printing functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief flatten
-////////////////////////////////////////////////////////////////////////////////
-
-var hasOwnProperty = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
-
-exports.flatten = function (obj, seen) {
-
-  if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) {
-    return obj;
-  }
-
-  if (obj instanceof Date) {
-    return obj.toJSON();
-  }
-
-  if (!seen) {
-    seen = [];
-  }
-
-  var result = Object.create(null),
-    src = obj,
-    keys,
-    key,
-    val;
-
-  if (typeof obj === 'function') {
-    result.__exec = String(obj);
-  }
-
-  while (src) {
-    if (
-      seen.indexOf(src) !== -1
-        || (obj.constructor && src === obj.constructor.prototype)
-    ) {
-      break;
-    }
-    seen.push(src);
-    keys = Object.getOwnPropertyNames(src);
-    for (let i = 0; i < keys.length; i++) {
-      key = keys[i];
-      if (typeof src !== 'function' || (
-        key !== 'arguments' && key !== 'caller' && key !== 'callee'
-      )) {
-        if (key.charAt(0) !== '_' && !hasOwnProperty(result, key)) {
-          val = obj[key];
-          if (seen.indexOf(val) !== -1 && (
-            typeof val === 'object' || typeof val === 'function'
-          )) {
-            result[key] = '[Circular]';
-          } else {
-            result[key] = exports.flatten(val, seen);
-          }
-        }
-      }
-    }
-    src = Object.getPrototypeOf(src);
-  }
-
-  if (obj.constructor && obj.constructor.name) {
-    if (obj instanceof Error && obj.name === Error.name) {
-      result.name = obj.constructor.name;
-    } else if (!hasOwnProperty(result, 'constructor')) {
-      result.constructor = {name: obj.constructor.name};
-    }
-  }
-
-  return result;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inspect
-////////////////////////////////////////////////////////////////////////////////
-
-exports.inspect = function (object, options) {
-
-  var context = {
-    customInspect: options && options.customInspect,
-    emit: false,
-    level: 0,
-    limitString: false,
-    names: [],
-    output: '',
-    prettyPrint: true,
-    path: '~',
-    seen: [],
-    showFunction: true,
-    useColor: false,
-    useToString: false
-  };
-
-  if (options && options.hasOwnProperty('prettyPrint')) {
-    context.prettyPrint = options.prettyPrint;
-  }
-
-  printRecursive(object, context);
-
-  return context.output;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sprintf
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_SPRINTF) {
-  exports.sprintf = global.SYS_SPRINTF;
-  delete global.SYS_SPRINTF;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief printf
-////////////////////////////////////////////////////////////////////////////////
-
-var sprintf = exports.sprintf;
-
-exports.printf = function () {
-  exports.output(sprintf.apply(sprintf, arguments));
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print
-////////////////////////////////////////////////////////////////////////////////
-
-if (typeof exports.printBrowser === 'function') {
-  exports.printShell = printShell;
-  exports.print = exports.printBrowser;
-}
-else {
-  exports.print = printShell;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief printObject
-////////////////////////////////////////////////////////////////////////////////
-
-exports.printObject = printObject;
-
-exports.isCaptureMode = function() {
-  return exports.output === bufferOutput;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief startCaptureMode
-////////////////////////////////////////////////////////////////////////////////
-
-exports.startCaptureMode = function () {
-  var old = exports.output;
-
-  exports.outputBuffer = '';
-  exports.output = bufferOutput;
-
-  return old;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stopCaptureMode
-////////////////////////////////////////////////////////////////////////////////
-
-exports.stopCaptureMode = function (old) {
-  var buffer = exports.outputBuffer;
-
-  exports.outputBuffer = '';
-  if (old !== undefined) {
-    exports.output = old;
-  }
-  else {
-    exports.output = exports.stdOutput;
-  }
-
-  return buffer;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief startPager
-////////////////////////////////////////////////////////////////////////////////
-
-exports.startPager = function () {};
-
-if (global.SYS_START_PAGER) {
-  exports.startPager = global.SYS_START_PAGER;
-  delete global.SYS_START_PAGER;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stopPager
-////////////////////////////////////////////////////////////////////////////////
-
-exports.stopPager = function () {};
-
-if (global.SYS_STOP_PAGER) {
-  exports.stopPager = global.SYS_STOP_PAGER;
-  delete global.SYS_STOP_PAGER;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief startPrettyPrint
-////////////////////////////////////////////////////////////////////////////////
-
-exports.startPrettyPrint = function (silent) {
-  if (!usePrettyPrint && !silent) {
-    exports.print('using pretty printing');
-  }
-
-  usePrettyPrint = true;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stopPrettyPrint
-////////////////////////////////////////////////////////////////////////////////
-
-exports.stopPrettyPrint = function (silent) {
-  if (usePrettyPrint && !silent) {
-    exports.print('disabled pretty printing');
-  }
-
-  usePrettyPrint = false;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief startColorPrint
-////////////////////////////////////////////////////////////////////////////////
-
-exports.startColorPrint = function (color, silent) {
-  var schemes = {
-    arangodb: {
-      COLOR_PUNCTUATION: exports.COLORS.COLOR_RESET,
-      COLOR_STRING: exports.COLORS.COLOR_BOLD_MAGENTA,
-      COLOR_NUMBER: exports.COLORS.COLOR_BOLD_GREEN,
-      COLOR_INDEX: exports.COLORS.COLOR_BOLD_CYAN,
-      COLOR_TRUE: exports.COLORS.COLOR_BOLD_MAGENTA,
-      COLOR_FALSE: exports.COLORS.COLOR_BOLD_MAGENTA,
-      COLOR_NULL: exports.COLORS.COLOR_BOLD_YELLOW,
-      COLOR_UNDEFINED: exports.COLORS.COLOR_BOLD_YELLOW
-    }
-  };
-
-  if (!useColor && !silent) {
-    exports.print('starting color printing');
-  }
-
-  if (color === undefined || color === null) {
-    color = null;
-  }
-  else if (typeof color === 'string') {
-    color = color.toLowerCase();
-    var c;
-
-    if (schemes.hasOwnProperty(color)) {
-      colors = schemes[color];
-
-      for (c in exports.COLORS) {
-        if (exports.COLORS.hasOwnProperty(c) && !colors.hasOwnProperty(c)) {
-          colors[c] = exports.COLORS[c];
-        }
-      }
-    }
-    else {
-      colors = exports.COLORS;
-
-      var setColor = function (key) {
-        [ 'COLOR_STRING', 'COLOR_NUMBER', 'COLOR_INDEX', 'COLOR_TRUE',
-          'COLOR_FALSE', 'COLOR_NULL', 'COLOR_UNDEFINED' ].forEach(function (what) {
-          colors[what] = exports.COLORS[key];
-        });
-      };
-
-      for (c in exports.COLORS) {
-        if (exports.COLORS.hasOwnProperty(c) &&
-            c.replace(/^COLOR_/, '').toLowerCase() === color) {
-          setColor(c);
-          break;
-        }
-      }
-    }
-  }
-
-  useColor = true;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stopColorPrint
-////////////////////////////////////////////////////////////////////////////////
-
-exports.stopColorPrint = function (silent) {
-  if (useColor && !silent) {
-    exports.print('disabled color printing');
-  }
-
-  useColor = false;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          public utility functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief env
-////////////////////////////////////////////////////////////////////////////////
-
-if (typeof ENV !== 'undefined') {
-  exports.env = new global.ENV();
-  delete global.ENV;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief options
-////////////////////////////////////////////////////////////////////////////////
-
-if (typeof SYS_OPTIONS !== 'undefined') {
-  exports.options = global.SYS_OPTIONS;
-  delete global.SYS_OPTIONS;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         global printing functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print
-////////////////////////////////////////////////////////////////////////////////
-
-global.print = function print () {
-  var internal = require('internal');
-  internal.print.apply(internal.print, arguments);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief printf
-////////////////////////////////////////////////////////////////////////////////
-
-global.printf = function printf () {
-  var internal = require('internal');
-  internal.printf.apply(internal.printf, arguments);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print_plain
-////////////////////////////////////////////////////////////////////////////////
-
-global.print_plain = function print_plain() {
-  var output = require('internal').output;
-  var printRecursive = require('internal').printRecursive;
-
-  for (let i = 0; i < arguments.length; ++i) {
-    if (i > 0) {
-      output(' ');
-    }
-
-    if (typeof arguments[i] === 'string') {
-      output(arguments[i]);
-    }
-    else {
-      var context = {
-        names: [],
-        seen: [],
-        path: '~',
-        level: 0,
-        output: '',
-        prettyPrint: false,
-        useColor: false,
-        customInspect: true
-      };
-
-      printRecursive(arguments[i], context);
-
-      output(context.output);
-    }
-  }
-
-  output('\n');
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start_pretty_print
-////////////////////////////////////////////////////////////////////////////////
-
-global.start_pretty_print = function start_pretty_print () {
-  require('internal').startPrettyPrint();
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop_pretty_print
-////////////////////////////////////////////////////////////////////////////////
-
-global.stop_pretty_print = function stop_pretty_print () {
-  require('internal').stopPrettyPrint();
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start_color_print
-////////////////////////////////////////////////////////////////////////////////
-
-global.start_color_print = function start_color_print (color) {
-  require('internal').startColorPrint(color, false);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop_color_print
-////////////////////////////////////////////////////////////////////////////////
-
-global.stop_color_print = function stop_color_print () {
-  require('internal').stopColorPrint();
-};
-
-
-if (global.EXPORTS_SLOW_BUFFER) {
-  Object.keys(global.EXPORTS_SLOW_BUFFER).forEach(function (key) {
-    exports[key] = global.EXPORTS_SLOW_BUFFER[key];
-  });
-  delete global.EXPORTS_SLOW_BUFFER;
-}
-
-if (global.APP_PATH) {
-  exports.appPath = global.APP_PATH;
-  delete global.APP_PATH;
-}
-
-if (global.DEV_APP_PATH) {
-  exports.devAppPath = global.APP_PATH;
-  delete global.DEV_APP_PATH;
-}
-
-return exports;
-
-}()));
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:
-
-/*jshint maxlen: 240 */
-/*global require */
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auto-generated file generated from errors.dat
-////////////////////////////////////////////////////////////////////////////////
-
-(function () {
-  "use strict";
-  var internal = require("internal");
-
-  internal.errors = {
-    "ERROR_NO_ERROR"               : { "code" : 0, "message" : "no error" },
-    "ERROR_FAILED"                 : { "code" : 1, "message" : "failed" },
-    "ERROR_SYS_ERROR"              : { "code" : 2, "message" : "system error" },
-    "ERROR_OUT_OF_MEMORY"          : { "code" : 3, "message" : "out of memory" },
-    "ERROR_INTERNAL"               : { "code" : 4, "message" : "internal error" },
-    "ERROR_ILLEGAL_NUMBER"         : { "code" : 5, "message" : "illegal number" },
-    "ERROR_NUMERIC_OVERFLOW"       : { "code" : 6, "message" : "numeric overflow" },
-    "ERROR_ILLEGAL_OPTION"         : { "code" : 7, "message" : "illegal option" },
-    "ERROR_DEAD_PID"               : { "code" : 8, "message" : "dead process identifier" },
-    "ERROR_NOT_IMPLEMENTED"        : { "code" : 9, "message" : "not implemented" },
-    "ERROR_BAD_PARAMETER"          : { "code" : 10, "message" : "bad parameter" },
-    "ERROR_FORBIDDEN"              : { "code" : 11, "message" : "forbidden" },
-    "ERROR_OUT_OF_MEMORY_MMAP"     : { "code" : 12, "message" : "out of memory in mmap" },
-    "ERROR_CORRUPTED_CSV"          : { "code" : 13, "message" : "csv is corrupt" },
-    "ERROR_FILE_NOT_FOUND"         : { "code" : 14, "message" : "file not found" },
-    "ERROR_CANNOT_WRITE_FILE"      : { "code" : 15, "message" : "cannot write file" },
-    "ERROR_CANNOT_OVERWRITE_FILE"  : { "code" : 16, "message" : "cannot overwrite file" },
-    "ERROR_TYPE_ERROR"             : { "code" : 17, "message" : "type error" },
-    "ERROR_LOCK_TIMEOUT"           : { "code" : 18, "message" : "lock timeout" },
-    "ERROR_CANNOT_CREATE_DIRECTORY" : { "code" : 19, "message" : "cannot create directory" },
-    "ERROR_CANNOT_CREATE_TEMP_FILE" : { "code" : 20, "message" : "cannot create temporary file" },
-    "ERROR_REQUEST_CANCELED"       : { "code" : 21, "message" : "canceled request" },
-    "ERROR_DEBUG"                  : { "code" : 22, "message" : "intentional debug error" },
-    "ERROR_AID_NOT_FOUND"          : { "code" : 23, "message" : "internal error with attribute ID in shaper" },
-    "ERROR_LEGEND_INCOMPLETE"      : { "code" : 24, "message" : "internal error if a legend could not be created" },
-    "ERROR_IP_ADDRESS_INVALID"     : { "code" : 25, "message" : "IP address is invalid" },
-    "ERROR_LEGEND_NOT_IN_WAL_FILE" : { "code" : 26, "message" : "internal error if a legend for a marker does not yet exist in the same WAL file" },
-    "ERROR_FILE_EXISTS"            : { "code" : 27, "message" : "file exists" },
-    "ERROR_LOCKED"                 : { "code" : 28, "message" : "locked" },
-    "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" },
-    "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" },
-    "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" },
-    "ERROR_HTTP_NOT_FOUND"         : { "code" : 404, "message" : "not found" },
-    "ERROR_HTTP_METHOD_NOT_ALLOWED" : { "code" : 405, "message" : "method not supported" },
-    "ERROR_HTTP_PRECONDITION_FAILED" : { "code" : 412, "message" : "precondition failed" },
-    "ERROR_HTTP_SERVER_ERROR"      : { "code" : 500, "message" : "internal server error" },
-    "ERROR_HTTP_CORRUPTED_JSON"    : { "code" : 600, "message" : "invalid JSON object" },
-    "ERROR_HTTP_SUPERFLUOUS_SUFFICES" : { "code" : 601, "message" : "superfluous URL suffices" },
-    "ERROR_ARANGO_ILLEGAL_STATE"   : { "code" : 1000, "message" : "illegal state" },
-    "ERROR_ARANGO_SHAPER_FAILED"   : { "code" : 1001, "message" : "could not shape document" },
-    "ERROR_ARANGO_DATAFILE_SEALED" : { "code" : 1002, "message" : "datafile sealed" },
-    "ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE" : { "code" : 1003, "message" : "unknown type" },
-    "ERROR_ARANGO_READ_ONLY"       : { "code" : 1004, "message" : "read only" },
-    "ERROR_ARANGO_DUPLICATE_IDENTIFIER" : { "code" : 1005, "message" : "duplicate identifier" },
-    "ERROR_ARANGO_DATAFILE_UNREADABLE" : { "code" : 1006, "message" : "datafile unreadable" },
-    "ERROR_ARANGO_DATAFILE_EMPTY"  : { "code" : 1007, "message" : "datafile empty" },
-    "ERROR_ARANGO_RECOVERY"        : { "code" : 1008, "message" : "logfile recovery error" },
-    "ERROR_ARANGO_CORRUPTED_DATAFILE" : { "code" : 1100, "message" : "corrupted datafile" },
-    "ERROR_ARANGO_ILLEGAL_PARAMETER_FILE" : { "code" : 1101, "message" : "illegal or unreadable parameter file" },
-    "ERROR_ARANGO_CORRUPTED_COLLECTION" : { "code" : 1102, "message" : "corrupted collection" },
-    "ERROR_ARANGO_MMAP_FAILED"     : { "code" : 1103, "message" : "mmap failed" },
-    "ERROR_ARANGO_FILESYSTEM_FULL" : { "code" : 1104, "message" : "filesystem full" },
-    "ERROR_ARANGO_NO_JOURNAL"      : { "code" : 1105, "message" : "no journal" },
-    "ERROR_ARANGO_DATAFILE_ALREADY_EXISTS" : { "code" : 1106, "message" : "cannot create/rename datafile because it already exists" },
-    "ERROR_ARANGO_DATADIR_LOCKED"  : { "code" : 1107, "message" : "database directory is locked" },
-    "ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS" : { "code" : 1108, "message" : "cannot create/rename collection because directory already exists" },
-    "ERROR_ARANGO_MSYNC_FAILED"    : { "code" : 1109, "message" : "msync failed" },
-    "ERROR_ARANGO_DATADIR_UNLOCKABLE" : { "code" : 1110, "message" : "cannot lock database directory" },
-    "ERROR_ARANGO_SYNC_TIMEOUT"    : { "code" : 1111, "message" : "sync timeout" },
-    "ERROR_ARANGO_CONFLICT"        : { "code" : 1200, "message" : "conflict" },
-    "ERROR_ARANGO_DATADIR_INVALID" : { "code" : 1201, "message" : "invalid database directory" },
-    "ERROR_ARANGO_DOCUMENT_NOT_FOUND" : { "code" : 1202, "message" : "document not found" },
-    "ERROR_ARANGO_COLLECTION_NOT_FOUND" : { "code" : 1203, "message" : "collection not found" },
-    "ERROR_ARANGO_COLLECTION_PARAMETER_MISSING" : { "code" : 1204, "message" : "parameter 'collection' not found" },
-    "ERROR_ARANGO_DOCUMENT_HANDLE_BAD" : { "code" : 1205, "message" : "illegal document handle" },
-    "ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL" : { "code" : 1206, "message" : "maximal size of journal too small" },
-    "ERROR_ARANGO_DUPLICATE_NAME"  : { "code" : 1207, "message" : "duplicate name" },
-    "ERROR_ARANGO_ILLEGAL_NAME"    : { "code" : 1208, "message" : "illegal name" },
-    "ERROR_ARANGO_NO_INDEX"        : { "code" : 1209, "message" : "no suitable index known" },
-    "ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED" : { "code" : 1210, "message" : "unique constraint violated" },
-    "ERROR_ARANGO_INDEX_NOT_FOUND" : { "code" : 1212, "message" : "index not found" },
-    "ERROR_ARANGO_CROSS_COLLECTION_REQUEST" : { "code" : 1213, "message" : "cross collection request not allowed" },
-    "ERROR_ARANGO_INDEX_HANDLE_BAD" : { "code" : 1214, "message" : "illegal index handle" },
-    "ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED" : { "code" : 1215, "message" : "cap constraint already defined" },
-    "ERROR_ARANGO_DOCUMENT_TOO_LARGE" : { "code" : 1216, "message" : "document too large" },
-    "ERROR_ARANGO_COLLECTION_NOT_UNLOADED" : { "code" : 1217, "message" : "collection must be unloaded" },
-    "ERROR_ARANGO_COLLECTION_TYPE_INVALID" : { "code" : 1218, "message" : "collection type invalid" },
-    "ERROR_ARANGO_VALIDATION_FAILED" : { "code" : 1219, "message" : "validator failed" },
-    "ERROR_ARANGO_PARSER_FAILED"   : { "code" : 1220, "message" : "parser failed" },
-    "ERROR_ARANGO_DOCUMENT_KEY_BAD" : { "code" : 1221, "message" : "illegal document key" },
-    "ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED" : { "code" : 1222, "message" : "unexpected document key" },
-    "ERROR_ARANGO_DATADIR_NOT_WRITABLE" : { "code" : 1224, "message" : "server database directory not writable" },
-    "ERROR_ARANGO_OUT_OF_KEYS"     : { "code" : 1225, "message" : "out of keys" },
-    "ERROR_ARANGO_DOCUMENT_KEY_MISSING" : { "code" : 1226, "message" : "missing document key" },
-    "ERROR_ARANGO_DOCUMENT_TYPE_INVALID" : { "code" : 1227, "message" : "invalid document type" },
-    "ERROR_ARANGO_DATABASE_NOT_FOUND" : { "code" : 1228, "message" : "database not found" },
-    "ERROR_ARANGO_DATABASE_NAME_INVALID" : { "code" : 1229, "message" : "database name invalid" },
-    "ERROR_ARANGO_USE_SYSTEM_DATABASE" : { "code" : 1230, "message" : "operation only allowed in system database" },
-    "ERROR_ARANGO_ENDPOINT_NOT_FOUND" : { "code" : 1231, "message" : "endpoint not found" },
-    "ERROR_ARANGO_INVALID_KEY_GENERATOR" : { "code" : 1232, "message" : "invalid key generator" },
-    "ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE" : { "code" : 1233, "message" : "edge attribute missing" },
-    "ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING" : { "code" : 1234, "message" : "index insertion warning - attribute missing in document" },
-    "ERROR_ARANGO_INDEX_CREATION_FAILED" : { "code" : 1235, "message" : "index creation failed" },
-    "ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT" : { "code" : 1236, "message" : "write-throttling timeout" },
-    "ERROR_ARANGO_COLLECTION_TYPE_MISMATCH" : { "code" : 1237, "message" : "collection type mismatch" },
-    "ERROR_ARANGO_COLLECTION_NOT_LOADED" : { "code" : 1238, "message" : "collection not loaded" },
-    "ERROR_ARANGO_DATAFILE_FULL"   : { "code" : 1300, "message" : "datafile full" },
-    "ERROR_ARANGO_EMPTY_DATADIR"   : { "code" : 1301, "message" : "server database directory is empty" },
-    "ERROR_REPLICATION_NO_RESPONSE" : { "code" : 1400, "message" : "no response" },
-    "ERROR_REPLICATION_INVALID_RESPONSE" : { "code" : 1401, "message" : "invalid response" },
-    "ERROR_REPLICATION_MASTER_ERROR" : { "code" : 1402, "message" : "master error" },
-    "ERROR_REPLICATION_MASTER_INCOMPATIBLE" : { "code" : 1403, "message" : "master incompatible" },
-    "ERROR_REPLICATION_MASTER_CHANGE" : { "code" : 1404, "message" : "master change" },
-    "ERROR_REPLICATION_LOOP"       : { "code" : 1405, "message" : "loop detected" },
-    "ERROR_REPLICATION_UNEXPECTED_MARKER" : { "code" : 1406, "message" : "unexpected marker" },
-    "ERROR_REPLICATION_INVALID_APPLIER_STATE" : { "code" : 1407, "message" : "invalid applier state" },
-    "ERROR_REPLICATION_UNEXPECTED_TRANSACTION" : { "code" : 1408, "message" : "invalid transaction" },
-    "ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION" : { "code" : 1410, "message" : "invalid replication applier configuration" },
-    "ERROR_REPLICATION_RUNNING"    : { "code" : 1411, "message" : "cannot perform operation while applier is running" },
-    "ERROR_REPLICATION_APPLIER_STOPPED" : { "code" : 1412, "message" : "replication stopped" },
-    "ERROR_REPLICATION_NO_START_TICK" : { "code" : 1413, "message" : "no start tick" },
-    "ERROR_REPLICATION_START_TICK_NOT_PRESENT" : { "code" : 1414, "message" : "start tick not present" },
-    "ERROR_CLUSTER_NO_AGENCY"      : { "code" : 1450, "message" : "could not connect to agency" },
-    "ERROR_CLUSTER_NO_COORDINATOR_HEADER" : { "code" : 1451, "message" : "missing coordinator header" },
-    "ERROR_CLUSTER_COULD_NOT_LOCK_PLAN" : { "code" : 1452, "message" : "could not lock plan in agency" },
-    "ERROR_CLUSTER_COLLECTION_ID_EXISTS" : { "code" : 1453, "message" : "collection ID already exists" },
-    "ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN" : { "code" : 1454, "message" : "could not create collection in plan" },
-    "ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION" : { "code" : 1455, "message" : "could not read version in current in agency" },
-    "ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION" : { "code" : 1456, "message" : "could not create collection" },
-    "ERROR_CLUSTER_TIMEOUT"        : { "code" : 1457, "message" : "timeout in cluster operation" },
-    "ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN" : { "code" : 1458, "message" : "could not remove collection from plan" },
-    "ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT" : { "code" : 1459, "message" : "could not remove collection from current" },
-    "ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN" : { "code" : 1460, "message" : "could not create database in plan" },
-    "ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE" : { "code" : 1461, "message" : "could not create database" },
-    "ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN" : { "code" : 1462, "message" : "could not remove database from plan" },
-    "ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT" : { "code" : 1463, "message" : "could not remove database from current" },
-    "ERROR_CLUSTER_SHARD_GONE"     : { "code" : 1464, "message" : "no responsible shard found" },
-    "ERROR_CLUSTER_CONNECTION_LOST" : { "code" : 1465, "message" : "cluster internal HTTP connection broken" },
-    "ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY" : { "code" : 1466, "message" : "must not specify _key for this collection" },
-    "ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS" : { "code" : 1467, "message" : "got contradicting answers from different shards" },
-    "ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN" : { "code" : 1468, "message" : "not all sharding attributes given" },
-    "ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES" : { "code" : 1469, "message" : "must not change the value of a shard key attribute" },
-    "ERROR_CLUSTER_UNSUPPORTED"    : { "code" : 1470, "message" : "unsupported operation or parameter" },
-    "ERROR_CLUSTER_ONLY_ON_COORDINATOR" : { "code" : 1471, "message" : "this operation is only valid on a coordinator in a cluster" },
-    "ERROR_CLUSTER_READING_PLAN_AGENCY" : { "code" : 1472, "message" : "error reading Plan in agency" },
-    "ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION" : { "code" : 1473, "message" : "could not truncate collection" },
-    "ERROR_CLUSTER_AQL_COMMUNICATION" : { "code" : 1474, "message" : "error in cluster internal communication for AQL" },
-    "ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED" : { "code" : 1475, "message" : "document not found or sharding attributes changed" },
-    "ERROR_CLUSTER_COULD_NOT_DETERMINE_ID" : { "code" : 1476, "message" : "could not determine my ID from my local info" },
-    "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
-    "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
-    "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },
-    "ERROR_QUERY_SCRIPT"           : { "code" : 1503, "message" : "runtime error '%s'" },
-    "ERROR_QUERY_NUMBER_OUT_OF_RANGE" : { "code" : 1504, "message" : "number out of range" },
-    "ERROR_QUERY_VARIABLE_NAME_INVALID" : { "code" : 1510, "message" : "variable name '%s' has an invalid format" },
-    "ERROR_QUERY_VARIABLE_REDECLARED" : { "code" : 1511, "message" : "variable '%s' is assigned multiple times" },
-    "ERROR_QUERY_VARIABLE_NAME_UNKNOWN" : { "code" : 1512, "message" : "unknown variable '%s'" },
-    "ERROR_QUERY_COLLECTION_LOCK_FAILED" : { "code" : 1521, "message" : "unable to read-lock collection %s" },
-    "ERROR_QUERY_TOO_MANY_COLLECTIONS" : { "code" : 1522, "message" : "too many collections" },
-    "ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED" : { "code" : 1530, "message" : "document attribute '%s' is assigned multiple times" },
-    "ERROR_QUERY_FUNCTION_NAME_UNKNOWN" : { "code" : 1540, "message" : "usage of unknown function '%s()'" },
-    "ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH" : { "code" : 1541, "message" : "invalid number of arguments for function '%s()', expected number of arguments: minimum: %d, maximum: %d" },
-    "ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH" : { "code" : 1542, "message" : "invalid argument type in call to function '%s()'" },
-    "ERROR_QUERY_INVALID_REGEX"    : { "code" : 1543, "message" : "invalid regex value" },
-    "ERROR_QUERY_BIND_PARAMETERS_INVALID" : { "code" : 1550, "message" : "invalid structure of bind parameters" },
-    "ERROR_QUERY_BIND_PARAMETER_MISSING" : { "code" : 1551, "message" : "no value specified for declared bind parameter '%s'" },
-    "ERROR_QUERY_BIND_PARAMETER_UNDECLARED" : { "code" : 1552, "message" : "bind parameter '%s' was not declared in the query" },
-    "ERROR_QUERY_BIND_PARAMETER_TYPE" : { "code" : 1553, "message" : "bind parameter '%s' has an invalid value or type" },
-    "ERROR_QUERY_INVALID_LOGICAL_VALUE" : { "code" : 1560, "message" : "invalid logical value" },
-    "ERROR_QUERY_INVALID_ARITHMETIC_VALUE" : { "code" : 1561, "message" : "invalid arithmetic value" },
-    "ERROR_QUERY_DIVISION_BY_ZERO" : { "code" : 1562, "message" : "division by zero" },
-    "ERROR_QUERY_ARRAY_EXPECTED"   : { "code" : 1563, "message" : "array expected" },
-    "ERROR_QUERY_FAIL_CALLED"      : { "code" : 1569, "message" : "FAIL(%s) called" },
-    "ERROR_QUERY_GEO_INDEX_MISSING" : { "code" : 1570, "message" : "no suitable geo index found for geo restriction on '%s'" },
-    "ERROR_QUERY_FULLTEXT_INDEX_MISSING" : { "code" : 1571, "message" : "no suitable fulltext index found for fulltext query on '%s'" },
-    "ERROR_QUERY_INVALID_DATE_VALUE" : { "code" : 1572, "message" : "invalid date value" },
-    "ERROR_QUERY_MULTI_MODIFY"     : { "code" : 1573, "message" : "multi-modify query" },
-    "ERROR_QUERY_MODIFY_IN_SUBQUERY" : { "code" : 1574, "message" : "modify operation in subquery" },
-    "ERROR_QUERY_COMPILE_TIME_OPTIONS" : { "code" : 1575, "message" : "query options must be readable at query compile time" },
-    "ERROR_QUERY_EXCEPTION_OPTIONS" : { "code" : 1576, "message" : "query options expected" },
-    "ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION" : { "code" : 1577, "message" : "collection '%s' used as expression operand" },
-    "ERROR_QUERY_DISALLOWED_DYNAMIC_CALL" : { "code" : 1578, "message" : "disallowed dynamic call to '%s'" },
-    "ERROR_QUERY_ACCESS_AFTER_MODIFICATION" : { "code" : 1579, "message" : "access after data-modification" },
-    "ERROR_QUERY_FUNCTION_INVALID_NAME" : { "code" : 1580, "message" : "invalid user function name" },
-    "ERROR_QUERY_FUNCTION_INVALID_CODE" : { "code" : 1581, "message" : "invalid user function code" },
-    "ERROR_QUERY_FUNCTION_NOT_FOUND" : { "code" : 1582, "message" : "user function '%s()' not found" },
-    "ERROR_QUERY_FUNCTION_RUNTIME_ERROR" : { "code" : 1583, "message" : "user function runtime error: %s" },
-    "ERROR_QUERY_BAD_JSON_PLAN"    : { "code" : 1590, "message" : "bad execution plan JSON" },
-    "ERROR_QUERY_NOT_FOUND"        : { "code" : 1591, "message" : "query ID not found" },
-    "ERROR_QUERY_IN_USE"           : { "code" : 1592, "message" : "query with this ID is in use" },
-    "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" },
-    "ERROR_CURSOR_BUSY"            : { "code" : 1601, "message" : "cursor is busy" },
-    "ERROR_TRANSACTION_INTERNAL"   : { "code" : 1650, "message" : "internal transaction error" },
-    "ERROR_TRANSACTION_NESTED"     : { "code" : 1651, "message" : "nested transactions detected" },
-    "ERROR_TRANSACTION_UNREGISTERED_COLLECTION" : { "code" : 1652, "message" : "unregistered collection used in transaction" },
-    "ERROR_TRANSACTION_DISALLOWED_OPERATION" : { "code" : 1653, "message" : "disallowed operation inside transaction" },
-    "ERROR_TRANSACTION_ABORTED"    : { "code" : 1654, "message" : "transaction aborted" },
-    "ERROR_USER_INVALID_NAME"      : { "code" : 1700, "message" : "invalid user name" },
-    "ERROR_USER_INVALID_PASSWORD"  : { "code" : 1701, "message" : "invalid password" },
-    "ERROR_USER_DUPLICATE"         : { "code" : 1702, "message" : "duplicate user" },
-    "ERROR_USER_NOT_FOUND"         : { "code" : 1703, "message" : "user not found" },
-    "ERROR_USER_CHANGE_PASSWORD"   : { "code" : 1704, "message" : "user must change his password" },
-    "ERROR_APPLICATION_INVALID_NAME" : { "code" : 1750, "message" : "invalid application name" },
-    "ERROR_APPLICATION_INVALID_MOUNT" : { "code" : 1751, "message" : "invalid mount" },
-    "ERROR_APPLICATION_DOWNLOAD_FAILED" : { "code" : 1752, "message" : "application download failed" },
-    "ERROR_APPLICATION_UPLOAD_FAILED" : { "code" : 1753, "message" : "application upload failed" },
-    "ERROR_KEYVALUE_INVALID_KEY"   : { "code" : 1800, "message" : "invalid key declaration" },
-    "ERROR_KEYVALUE_KEY_EXISTS"    : { "code" : 1801, "message" : "key already exists" },
-    "ERROR_KEYVALUE_KEY_NOT_FOUND" : { "code" : 1802, "message" : "key not found" },
-    "ERROR_KEYVALUE_KEY_NOT_UNIQUE" : { "code" : 1803, "message" : "key is not unique" },
-    "ERROR_KEYVALUE_KEY_NOT_CHANGED" : { "code" : 1804, "message" : "key value not changed" },
-    "ERROR_KEYVALUE_KEY_NOT_REMOVED" : { "code" : 1805, "message" : "key value not removed" },
-    "ERROR_KEYVALUE_NO_VALUE"      : { "code" : 1806, "message" : "missing value" },
-    "ERROR_TASK_INVALID_ID"        : { "code" : 1850, "message" : "invalid task id" },
-    "ERROR_TASK_DUPLICATE_ID"      : { "code" : 1851, "message" : "duplicate task id" },
-    "ERROR_TASK_NOT_FOUND"         : { "code" : 1852, "message" : "task not found" },
-    "ERROR_GRAPH_INVALID_GRAPH"    : { "code" : 1901, "message" : "invalid graph" },
-    "ERROR_GRAPH_COULD_NOT_CREATE_GRAPH" : { "code" : 1902, "message" : "could not create graph" },
-    "ERROR_GRAPH_INVALID_VERTEX"   : { "code" : 1903, "message" : "invalid vertex" },
-    "ERROR_GRAPH_COULD_NOT_CREATE_VERTEX" : { "code" : 1904, "message" : "could not create vertex" },
-    "ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX" : { "code" : 1905, "message" : "could not change vertex" },
-    "ERROR_GRAPH_INVALID_EDGE"     : { "code" : 1906, "message" : "invalid edge" },
-    "ERROR_GRAPH_COULD_NOT_CREATE_EDGE" : { "code" : 1907, "message" : "could not create edge" },
-    "ERROR_GRAPH_COULD_NOT_CHANGE_EDGE" : { "code" : 1908, "message" : "could not change edge" },
-    "ERROR_GRAPH_TOO_MANY_ITERATIONS" : { "code" : 1909, "message" : "too many iterations - try increasing the value of 'maxIterations'" },
-    "ERROR_GRAPH_INVALID_FILTER_RESULT" : { "code" : 1910, "message" : "invalid filter result" },
-    "ERROR_GRAPH_COLLECTION_MULTI_USE" : { "code" : 1920, "message" : "multi use of edge collection in edge def" },
-    "ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS" : { "code" : 1921, "message" : "edge collection already used in edge def" },
-    "ERROR_GRAPH_CREATE_MISSING_NAME" : { "code" : 1922, "message" : "missing graph name" },
-    "ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION" : { "code" : 1923, "message" : "malformed edge definition" },
-    "ERROR_GRAPH_NOT_FOUND"        : { "code" : 1924, "message" : "graph not found" },
-    "ERROR_GRAPH_DUPLICATE"        : { "code" : 1925, "message" : "graph already exists" },
-    "ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST" : { "code" : 1926, "message" : "vertex collection does not exist or is not part of the graph" },
-    "ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX" : { "code" : 1927, "message" : "not a vertex collection" },
-    "ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION" : { "code" : 1928, "message" : "not in orphan collection" },
-    "ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF" : { "code" : 1929, "message" : "collection already used in edge def" },
-    "ERROR_GRAPH_EDGE_COLLECTION_NOT_USED" : { "code" : 1930, "message" : "edge collection not used in graph" },
-    "ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION" : { "code" : 1931, "message" : " is not an ArangoCollection" },
-    "ERROR_GRAPH_NO_GRAPH_COLLECTION" : { "code" : 1932, "message" : "collection _graphs does not exist" },
-    "ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING" : { "code" : 1933, "message" : "Invalid example type. Has to be String, Array or Object" },
-    "ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT" : { "code" : 1934, "message" : "Invalid example type. Has to be Array or Object" },
-    "ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS" : { "code" : 1935, "message" : "Invalid number of arguments. Expected: " },
-    "ERROR_GRAPH_INVALID_PARAMETER" : { "code" : 1936, "message" : "Invalid parameter type." },
-    "ERROR_GRAPH_INVALID_ID"       : { "code" : 1937, "message" : "Invalid id" },
-    "ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS" : { "code" : 1938, "message" : "collection used in orphans" },
-    "ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST" : { "code" : 1939, "message" : "edge collection does not exist or is not part of the graph" },
-    "ERROR_SESSION_UNKNOWN"        : { "code" : 1950, "message" : "unknown session" },
-    "ERROR_SESSION_EXPIRED"        : { "code" : 1951, "message" : "session expired" },
-    "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" },
-    "SIMPLE_CLIENT_COULD_NOT_CONNECT" : { "code" : 2001, "message" : "could not connect to server" },
-    "SIMPLE_CLIENT_COULD_NOT_WRITE" : { "code" : 2002, "message" : "could not write to server" },
-    "SIMPLE_CLIENT_COULD_NOT_READ" : { "code" : 2003, "message" : "could not read from server" },
-    "ERROR_MALFORMED_MANIFEST_FILE" : { "code" : 3000, "message" : "malformed manifest file" },
-    "ERROR_INVALID_APPLICATION_MANIFEST" : { "code" : 3001, "message" : "manifest file is invalid" },
-    "ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING" : { "code" : 3002, "message" : "missing manifest attribute" },
-    "ERROR_CANNOT_EXTRACT_APPLICATION_ROOT" : { "code" : 3003, "message" : "unable to extract app root path" },
-    "ERROR_INVALID_FOXX_OPTIONS"   : { "code" : 3004, "message" : "invalid foxx options" },
-    "ERROR_FAILED_TO_EXECUTE_SCRIPT" : { "code" : 3005, "message" : "failed to execute script" },
-    "ERROR_SYNTAX_ERROR_IN_SCRIPT" : { "code" : 3006, "message" : "syntax error in script" },
-    "ERROR_INVALID_MOUNTPOINT"     : { "code" : 3007, "message" : "mountpoint is invalid" },
-    "ERROR_NO_FOXX_FOUND"          : { "code" : 3008, "message" : "No foxx found at this location" },
-    "ERROR_APP_NOT_FOUND"          : { "code" : 3009, "message" : "App not found" },
-    "ERROR_APP_NEEDS_CONFIGURATION" : { "code" : 3010, "message" : "App not configured" },
-    "ERROR_MODULE_NOT_FOUND"       : { "code" : 3100, "message" : "cannot locate module" },
-    "ERROR_MODULE_SYNTAX_ERROR"    : { "code" : 3101, "message" : "syntax error in module" },
-    "ERROR_MODULE_BAD_WRAPPER"     : { "code" : 3102, "message" : "failed to wrap module" },
-    "ERROR_MODULE_FAILURE"         : { "code" : 3103, "message" : "failed to invoke module" },
-    "ERROR_MODULE_UNKNOWN_FILE_TYPE" : { "code" : 3110, "message" : "unknown file type" },
-    "ERROR_MODULE_PATH_MUST_BE_ABSOLUTE" : { "code" : 3111, "message" : "path must be absolute" },
-    "ERROR_MODULE_CAN_NOT_ESCAPE"  : { "code" : 3112, "message" : "cannot use '..' to escape top-level-directory" },
-    "ERROR_MODULE_DRIVE_LETTER"    : { "code" : 3113, "message" : "drive local path is not supported" },
-    "ERROR_MODULE_BAD_MODULE_ORIGIN" : { "code" : 3120, "message" : "corrupted module origin" },
-    "ERROR_MODULE_BAD_PACKAGE_ORIGIN" : { "code" : 3121, "message" : "corrupted package origin" },
-    "ERROR_MODULE_DOCUMENT_IS_EMPTY" : { "code" : 3125, "message" : "no content" },
-    "ERROR_MODULE_MAIN_NOT_READABLE" : { "code" : 3130, "message" : "cannot read main file" },
-    "ERROR_MODULE_MAIN_NOT_JS"     : { "code" : 3131, "message" : "main file is not of type 'js'" },
-    "RESULT_ELEMENT_EXISTS"        : { "code" : 10000, "message" : "element not inserted into structure, because it already exists" },
-    "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10001, "message" : "element not found in structure" },
-    "ERROR_APP_ALREADY_EXISTS"     : { "code" : 20000, "message" : "newest version of app already installed" },
-    "ERROR_QUEUE_ALREADY_EXISTS"   : { "code" : 21000, "message" : "named queue already exists" },
-    "ERROR_DISPATCHER_IS_STOPPING" : { "code" : 21001, "message" : "dispatcher stopped" },
-    "ERROR_QUEUE_UNKNOWN"          : { "code" : 21002, "message" : "named queue does not exist" },
-    "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" }
-  };
-}());
-
-
-/*jshint -W051:true */
-/*global jqconsole, Symbol */
-/*eslint-disable */
-global.DEFINE_MODULE('console', (function () {
-'use strict';
-/*eslint-enable */
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief module "console"
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  Module "console"
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-var exports = {};
-var internal = require('internal');
-var sprintf = internal.sprintf;
-var inspect = internal.inspect;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief group level
-////////////////////////////////////////////////////////////////////////////////
-
-var groupLevel = '';
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief timers
-////////////////////////////////////////////////////////////////////////////////
-
-var timers;
-try {
-  timers = Object.create(null);
-}
-catch (e) {
-  timers = {};
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal logging
-////////////////////////////////////////////////////////////////////////////////
-
-var log;
-
-if (global.SYS_LOG) {
-  // this will work when we are in arangod but not in the browser / web interface
-  log = global.SYS_LOG;
-  delete global.SYS_LOG;
-}
-else {
-  // this will work in the web interface
-  log = function (level, message) {
-    if (typeof jqconsole !== 'undefined') {
-      jqconsole.Write(message + '\n', 'jssuccess');
-    }
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal logging with group level
-////////////////////////////////////////////////////////////////////////////////
-
-function logGroup (level, msg) {
-  log(level, groupLevel + msg);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief try to prettify
-////////////////////////////////////////////////////////////////////////////////
-
-function prepareArgs (args) {
-  var ShapedJson = require('internal').ShapedJson;
-  var result = [];
-
-  if (args.length > 0 && typeof args[0] !== 'string') {
-    result.push('%s');
-  }
-
-  for (let i = 0; i < args.length; ++i) {
-    let arg = args[i];
-
-    if (typeof arg === 'object') {
-      if (ShapedJson !== undefined && arg instanceof ShapedJson) {
-        arg = inspect(arg, {prettyPrint: false});
-      }
-      else if (arg === null) {
-        arg = 'null';
-      }
-      else if (arg instanceof Date || arg instanceof RegExp) {
-        arg = String(arg);
-      }
-      else if (Object.prototype.isPrototypeOf(arg) || Array.isArray(arg)) {
-        arg = inspect(arg, {prettyPrint: false});
-      }
-    }
-
-    result.push(arg);
-  }
-
-  return result;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert
-////////////////////////////////////////////////////////////////////////////////
-
-exports.assert = function (condition) {
-  if (condition) {
-    return;
-  }
-
-  var args = Array.prototype.slice.call(arguments, 1);
-  var msg;
-
-  try {
-    msg = sprintf.apply(sprintf, prepareArgs(args));
-  }
-  catch (e) {
-    msg = msg = `${e}: ${args}`;
-  }
-
-  logGroup('error', msg);
-
-  require('assert').ok(condition, msg);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief debug
-////////////////////////////////////////////////////////////////////////////////
-
-exports.debug = function () {
-  var msg;
-
-  try {
-    msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
-    msg = `${e}: ${arguments}`;
-  }
-
-  logGroup('debug', msg);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief debugLines
-////////////////////////////////////////////////////////////////////////////////
-
-exports.debugLines = function () {
-  var msg;
-
-  try {
-    msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
-    msg = `${e}: ${arguments}`;
-  }
-
-  var a = msg.split('\n');
-
-  for (let i = 0; i < a.length; ++i) {
-    logGroup('debug', a[i]);
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dir
-////////////////////////////////////////////////////////////////////////////////
-
-exports.dir = function (object) {
-  logGroup('info', inspect(object));
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief error
-////////////////////////////////////////////////////////////////////////////////
-
-exports.error = function () {
-  var msg;
-
-  try {
-    msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
-    msg = `${e}: ${arguments}`;
-  }
-
-  logGroup('error', msg);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief errorLines
-////////////////////////////////////////////////////////////////////////////////
-
-exports.errorLines = function () {
-  var msg;
-
-  try {
-    msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
-    msg = `${e}: ${arguments}`;
-  }
-
-  var a = msg.split('\n');
-  for (let i = 0; i < a.length; ++i) {
-    logGroup('error', a[i]);
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getline
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SYS_GETLINE) {
-  exports.getline = global.SYS_GETLINE;
-  delete global.SYS_GETLINE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief group
-////////////////////////////////////////////////////////////////////////////////
-
-exports.group = function () {
-  var msg;
-
-  try {
-    msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
-    msg = `${e}: ${arguments}`;
-  }
-
-  groupLevel = groupLevel + '  ';
-  logGroup('info', msg);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief groupCollapsed
-////////////////////////////////////////////////////////////////////////////////
-
-exports.groupCollapsed = function () {
-  var msg;
-
-  try {
-    msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
-    msg = `${e}: ${arguments}`;
-  }
-
-  logGroup('info', msg);
-  groupLevel = groupLevel + '  ';
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief groupEnd
-////////////////////////////////////////////////////////////////////////////////
-
-exports.groupEnd = function () {
-  groupLevel = groupLevel.substr(2);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief info
-////////////////////////////////////////////////////////////////////////////////
-
-exports.info = function () {
-  var msg;
-
-  try {
-    msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
-    msg = `${e}: ${arguments}`;
-  }
-  logGroup('info', msg);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief infoLines
-////////////////////////////////////////////////////////////////////////////////
-
-exports.infoLines = function () {
-  var msg;
-
-  try {
-    msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
-    msg = `${e}: ${arguments}`;
-  }
-
-  var a = msg.split('\n');
-
-  for (let i = 0; i < a.length; ++i) {
-    logGroup('info', a[i]);
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log
-////////////////////////////////////////////////////////////////////////////////
-
-exports.log = exports.info;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logLines
-////////////////////////////////////////////////////////////////////////////////
-
-exports.logLines = exports.infoLines;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief time
-////////////////////////////////////////////////////////////////////////////////
-
-exports.time = function (label) {
-  if (typeof label !== 'string') {
-    throw new Error('label must be a string');
-  }
-
-  var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
-
-  timers[symbol] = Date.now();
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief timeEnd
-////////////////////////////////////////////////////////////////////////////////
-
-exports.timeEnd = function(label) {
-  var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
-  var time = timers[symbol];
-
-  if (!time) {
-    throw new Error('No such label: ' + label);
-  }
-
-  var duration = Date.now() - time;
-
-  delete timers[symbol];
-
-  logGroup('info', sprintf('%s: %dms', label, duration));
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief trace
-////////////////////////////////////////////////////////////////////////////////
-
-exports.trace = function () {
-  var err = new Error();
-  err.name = 'Trace';
-  err.message = sprintf.apply(sprintf, prepareArgs(arguments));
-  Error.captureStackTrace(err, exports.trace);
-  var a = err.stack.split('\n');
-  while (!a[a.length - 1]) {
-    a.pop();
-  }
-  for (let i = 0; i < a.length; ++i) {
-    logGroup('info', a[i]);
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief warn
-////////////////////////////////////////////////////////////////////////////////
-
-exports.warn = function () {
-  var msg;
-
-  try {
-    msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
-    msg = `${e}: ${arguments}`;
-  }
-
-  logGroup('warning', msg);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief warnLines
-////////////////////////////////////////////////////////////////////////////////
-
-exports.warnLines = function () {
-  var msg;
-
-  try {
-    msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
-    msg = `${e}: ${arguments}`;
-  }
-
-  var a = msg.split('\n');
-  var i;
-
-  for (i = 0; i < a.length; ++i) {
-    logGroup('warning', a[i]);
-  }
-};
-
-return exports;
-}()));
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:
-
-/*jshint -W051:true */
-/*eslint-disable */
-(function () {
-'use strict';
-/*eslint-enable */
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief module "internal"
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 Module "internal"
-// -----------------------------------------------------------------------------
-
-var exports = require('internal');
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hide global variables
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.ArangoConnection) {
-  exports.ArangoConnection = global.ArangoConnection;
-}
-
-if (global.SYS_ARANGO) {
-  exports.arango = global.SYS_ARANGO;
-  delete global.SYS_ARANGO;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write-ahead log functionality
-////////////////////////////////////////////////////////////////////////////////
-
-exports.wal = {
-  flush: function (waitForSync, waitForCollector) {
-    if (exports.arango) {
-      var wfs = waitForSync ? 'true' : 'false';
-      var wfc = waitForCollector ? 'true' : 'false';
-      exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, '');
-      return;
-    }
-
-    throw 'not connected';
-  },
-
-  properties: function (value) {
-    if (exports.arango) {
-      if (value !== undefined) {
-        return exports.arango.PUT('/_admin/wal/properties', JSON.stringify(value));
-      }
-
-      return exports.arango.GET('/_admin/wal/properties', '');
-    }
-
-    throw 'not connected';
-  },
-
-  transactions: function () {
-    if (exports.arango) {
-      return exports.arango.GET('/_admin/wal/transactions', '');
-    }
-
-    throw 'not connected';
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reloads the AQL user functions
-////////////////////////////////////////////////////////////////////////////////
-
-exports.reloadAqlFunctions = function () {
-  if (exports.arango) {
-    exports.arango.POST('/_admin/aql/reload', '');
-    return;
-  }
-
-  throw 'not connected';
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rebuilds the routing cache
-////////////////////////////////////////////////////////////////////////////////
-
-exports.reloadRouting = function () {
-  if (exports.arango) {
-    exports.arango.POST('/_admin/routing/reload', '');
-    return;
-  }
-
-  throw 'not connected';
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rebuilds the routing cache
-////////////////////////////////////////////////////////////////////////////////
-
-exports.routingCache = function () {
-  if (exports.arango) {
-    return exports.arango.GET('/_admin/routing/routes', '');
-
-  }
-
-  throw 'not connected';
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rebuilds the authentication cache
-////////////////////////////////////////////////////////////////////////////////
-
-exports.reloadAuth = function () {
-  if (exports.arango) {
-    exports.arango.POST('/_admin/auth/reload', '');
-    return;
-  }
-
-  throw 'not connected';
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute javascript file on the server
-////////////////////////////////////////////////////////////////////////////////
-
-exports.executeServer = function (body) {
-  if (exports.arango) {
-    return exports.arango.POST('/_admin/execute', body);
-  }
-
-  throw 'not connected';
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a request in curl format
-////////////////////////////////////////////////////////////////////////////////
-
-exports.appendCurlRequest = function (shellAppender,jsonAppender, rawAppender) {
-  return function (method, url, body, headers) {
-    var response;
-    var curl;
-    var i;
-    var jsonBody = false;
-
-    if ((typeof body !== 'string') && (body !== undefined)) {
-      jsonBody = true;
-      body = exports.inspect(body);
-    }
-
-    curl = 'shell> curl ';
-
-    if (method === 'POST') {
-      response = exports.arango.POST_RAW(url, body, headers);
-      curl += '-X ' + method + ' ';
-    }
-    else if (method === 'PUT') {
-      response = exports.arango.PUT_RAW(url, body, headers);
-      curl += '-X ' + method + ' ';
-    }
-    else if (method === 'GET') {
-      response = exports.arango.GET_RAW(url, headers);
-    }
-    else if (method === 'DELETE') {
-      response = exports.arango.DELETE_RAW(url, headers);
-      curl += '-X ' + method + ' ';
-    }
-    else if (method === 'PATCH') {
-      response = exports.arango.PATCH_RAW(url, body, headers);
-      curl += '-X ' + method + ' ';
-    }
-    else if (method === 'HEAD') {
-      response = exports.arango.HEAD_RAW(url, headers);
-      curl += '-X ' + method + ' ';
-    }
-    else if (method === 'OPTION') {
-      response = exports.arango.OPTION_RAW(url, body, headers);
-      curl += '-X ' + method + ' ';
-    }
-    if (headers !== undefined && headers !== '') {
-      for (i in headers) {
-        if (headers.hasOwnProperty(i)) {
-          curl += '--header \'' + i + ': ' + headers[i] + '\' ';
-        }
-      }
-    }
-
-    if (body !== undefined && body !== '') {
-      curl += '--data-binary @- ';
-    }
-
-    curl += '--dump - http://localhost:8529' + url;
-
-    shellAppender(curl);
-
-    if (body !== undefined && body !== '' && body) {
-      rawAppender(' &lt;&lt;EOF\n');
-      if (jsonBody) {
-        jsonAppender(body);
-      }
-      else {
-        rawAppender(body);
-      }
-      rawAppender('\nEOF');
-    }
-    rawAppender('\n\n');
-    return response;
-  };
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a raw response
-////////////////////////////////////////////////////////////////////////////////
-
-exports.appendRawResponse = function (appender, syntaxAppender) {
-  return function (response) {
-    var key;
-    var headers = response.headers;
-
-    // generate header
-    appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
-
-    for (key in headers) {
-      if (headers.hasOwnProperty(key)) {
-        if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
-            && key !== 'content-length') {
-          appender(key + ': ' + headers[key] + '\n');
-        }
-      }
-    }
-
-    appender('\n');
-
-    // append body
-    if (response.body !== undefined) {
-      syntaxAppender(exports.inspect(response.body));
-      appender('\n');
-    }
-  };
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a response in JSON
-////////////////////////////////////////////////////////////////////////////////
-
-exports.appendJsonResponse = function (appender, syntaxAppender) {
-  return function (response) {
-    var syntaxAppend = exports.appendRawResponse(syntaxAppender, syntaxAppender);
-
-    // copy original body (this is necessary because 'response' is passed by reference)
-    var copy = response.body;
-    // overwrite body with parsed JSON && append
-    response.body = JSON.parse(response.body);
-    syntaxAppend(response);
-    // restore original body
-    response.body = copy;
-  };
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log function
-////////////////////////////////////////////////////////////////////////////////
-
-exports.log = function (level, msg) {
-  exports.output(level, ': ', msg, '\n');
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sprintf wrapper
-////////////////////////////////////////////////////////////////////////////////
-
-try {
-  if (typeof window !== 'undefined') {
-    exports.sprintf = function (format) {
-      var n = arguments.length;
-      if (n === 0) {
-        return '';
-      }
-      if (n <= 1) {
-        return String(format);
-      }
-
-      var i;
-      var args = [ ];
-      for (i = 1; i < arguments.length; ++i) {
-        args.push(arguments[i]);
-      }
-      i = 0;
-
-      return format.replace(/%[dfs]/, function () {
-        return String(args[i++]);
-      });
-    };
-  }
-}
-catch (e) {
-  // noop
-}
-
-}());
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:
-
-/*eslint no-extend-native:0 */
-/*eslint-disable */
-(function () {
-'use strict';
-/*eslint-enable */
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief monkey-patches to built-in prototypes
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Lucas Dohmen
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    monkey-patches
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shallow copies properties
-////////////////////////////////////////////////////////////////////////////////
-
-Object.defineProperty(Object.prototype, '_shallowCopy', {
-  get() {
-    var self = this;
-    return this.propertyKeys.reduce(function (previous, key) {
-      previous[key] = self[key];
-      return previous;
-    }, {});
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the property keys
-////////////////////////////////////////////////////////////////////////////////
-
-Object.defineProperty(Object.prototype, 'propertyKeys', {
-  get() {
-    return Object.keys(this).filter(function (key) {
-      return (key.charAt(0) !== '_' && key.charAt(0) !== '$');
-    });
-  }
-});
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-}());
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:
 
 /*jshint -W051:true */
 /*global global:true, window, require */

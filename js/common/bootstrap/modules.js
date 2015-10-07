@@ -64,6 +64,7 @@ const internal = NATIVE_MODULES.internal;
 const console = NATIVE_MODULES.console;
 delete global.SCAFFOLDING_MODULES;
 delete global.DEFINE_MODULE;
+const LOADING = [];
 
 const GLOBAL_PATHS = [];
 global.MODULES_PATH.forEach(function (p) {
@@ -396,7 +397,7 @@ Module._load = function(request, parent, isMain) {
   var filename = request;
   var dbModule = false;
   var match = request.match(/^\/?db:(\/(\/_modules)?)?(\/.+)/);
-  
+
   if (match) {
     dbModule = Module._resolveDbModule(match[3]);
     if (!dbModule) {
@@ -435,6 +436,7 @@ Module._load = function(request, parent, isMain) {
   }
 
   Module._cache[filename] = module;
+  LOADING.push(filename);
 
   var hadException = true;
 
@@ -449,9 +451,20 @@ Module._load = function(request, parent, isMain) {
     if (hadException) {
       delete Module._cache[filename];
     }
+    var i = LOADING.indexOf(filename);
+    if (i !== -1) {
+      LOADING.splice(i, 1);
+    }
   }
 
   return module.exports;
+};
+
+Module._cleanupCancelation = function () {
+  while (LOADING.length) {
+    var filename = LOADING.pop();
+    delete Module._cache[filename];
+  }
 };
 
 Module._resolveFilename = function(request, parent) {
@@ -462,7 +475,6 @@ Module._resolveFilename = function(request, parent) {
   var resolvedModule = Module._resolveLookupPaths(request, parent);
   var id = resolvedModule[0];
   var paths = resolvedModule[1];
-	
 
   // look up the filename first, since that's the cache key.
   var filename = Module._findPath(request, paths);
@@ -600,29 +612,13 @@ Module._extensions['.json'] = function(module, filename) {
 
 Module._extensions['.coffee'] = function(module, filename) {
   require('org/arangodb/deprecated')(
-    '2.8',
+    '2.9',
     'CoffeeScript support is deprecated,'
     + ' please pre-compile CoffeeScript modules to JavaScript using external build tools.'
   );
   var content = fs.readFileSync(filename, 'utf8');
   var cs = require('coffee-script');
   module._compile(cs.compile(stripBOM(content), {bare: true}), filename);
-};
-
-// backwards compatibility
-Module._oldAppPath = function () {
-  if (internal.appPath === undefined) {
-    return undefined;
-  }
-  return fs.join(internal.appPath, 'databases', internal.db._name());
-};
-
-// backwards compatibility
-Module._devAppPath = function () {
-  if (internal.devAppPath === undefined) {
-    return undefined;
-  }
-  return fs.join(internal.devAppPath, 'databases', internal.db._name());
 };
 
 // backwards compatibility
