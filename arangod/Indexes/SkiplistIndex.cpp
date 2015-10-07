@@ -629,7 +629,11 @@ TRI_doc_mptr_t* SkiplistIndexIterator::next () {
     // We restart the lookup
     _iterator = _index->lookup(_operator, _reverse);
   }
-  return _iterator.next();
+  TRI_index_element_t* res = _iterator->next();
+  if (res != nullptr) {
+    return res->document();
+  }
+  return nullptr;
 }
 
 void SkiplistIndexIterator::reset () {
@@ -780,7 +784,7 @@ int SkiplistIndex::remove (TRI_doc_mptr_t const* doc,
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
-                                         bool reverse) {
+                                         bool reverse) const {
   if (slOperator == nullptr) {
     return nullptr;
   }
@@ -905,7 +909,7 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
                                      triagens::aql::AstNode const* other,
                                      triagens::aql::AstNode const* op,
                                      triagens::aql::Variable const* reference,
-                                     std::unordered_map<size_t, std::vector<triagens::aql::AstNodeType>>& found) const {
+                                     std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>& found) const {
   if (! this->canUseConditionPart(access, other, op, reference)) {
     return false;
   }
@@ -920,11 +924,6 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
           
   std::vector<triagens::basics::AttributeName> const& fieldNames = attributeData.second;
 
-  triagens::aql::AstNodeType opType = op->type;
-  if (opType == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    opType = triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ;
-  }
-          
   for (size_t i = 0; i < _fields.size(); ++i) {
     if (_fields[i].size() != fieldNames.size()) {
       // attribute path length differs
@@ -944,10 +943,10 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
       auto it = found.find(i);
 
       if (it == found.end()) {
-        found.emplace(i, std::vector<triagens::aql::AstNodeType>{ opType });
+        found.emplace(i, std::vector<triagens::aql::AstNode const*>{ op });
       }
       else {
-        (*it).second.emplace_back(opType);
+        (*it).second.emplace_back(op);
       }
 
       return true;
@@ -957,12 +956,10 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
   return false;
 }
 
-bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
-                                             triagens::aql::Variable const* reference,
-                                             double& estimatedCost) const {
-  std::unordered_map<size_t, std::vector<triagens::aql::AstNodeType>> found;
-  size_t values = 0;
-  
+void SkiplistIndex::matchAttributes (triagens::aql::AstNode const* node,
+                                     triagens::aql::Variable const* reference,
+                                     std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>& found,
+                                     size_t& values) const {
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
 
@@ -987,7 +984,15 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
         break;
     }
   }
+}
 
+bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
+                                             triagens::aql::Variable const* reference,
+                                             double& estimatedCost) const {
+  std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
+  size_t values = 0;
+  matchAttributes(node, reference, found, values);
+  
   bool lastContainsEquality = true;
   size_t attributesCovered = 0;
   size_t attributesCoveredByEquality = 0;
@@ -1002,10 +1007,11 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
     }
 
     // check if the current condition contains an equality condition
-    auto const& types = (*it).second;
+    auto const& nodes = (*it).second;
     bool containsEquality = false;
-    for (size_t j = 0; j < types.size(); ++j) {
-      if (types[j] == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    for (size_t j = 0; j < nodes.size(); ++j) {
+      if (nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+          nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN ) {
         containsEquality = true;
         break;
       }
@@ -1025,7 +1031,7 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
       estimatedCost /= 10.0;
     }
     else {
-      estimatedCost /= 2.0 * static_cast<double>(types.size());
+      estimatedCost /= 2.0 * static_cast<double>(nodes.size());
     }
 
     lastContainsEquality = containsEquality;
@@ -1068,54 +1074,85 @@ bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* s
 }        
 
 
-IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext*,
-                                                    triagens::aql::Ast*,
-                                                    triagens::aql::AstNode const*,
-                                                    triagens::aql::Variable const*) const {
-  // IN can only be supported on first attribute
+IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* context,
+                                                    triagens::aql::Ast* ast,
+                                                    triagens::aql::AstNode const*node,
+                                                    triagens::aql::Variable const* reference) const {
   // Create the skiplistOperator for the IndexLookup
-  // TODO Does not work here
-  SimpleAttributeEqualityMatcher matcher(fields());
-  size_t const n = fields().size();
-  triagens::aql::AstNode* allVals = matcher.getAll(ast, this, node, reference);
-  size_t const numVals = allVals.numMembers();
+  std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
+  size_t unused = 0;
+  matchAttributes(node, reference, found, unused);
 
   std::vector<TRI_json_t*> equalityValues;
+  
+  // found contains all attributes that are relevant for this node.
+  // It might be less than fields().
+  //
+  // Handle the first attributes. They can only be == or IN and only
+  // one node per attribute
+  
+  auto getValueAccess = [&] (triagens::aql::AstNode const* comp, triagens::aql::AstNode const*& access, triagens::aql::AstNode const*& value) -> bool {
+    access = comp->getMember(0);
+    value = comp->getMember(1);
+    std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> paramPair;
+    if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
+      access = comp->getMember(1);
+      value = comp->getMember(0);
+      if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
+        // Both side do not have a correct AttributeAccess, this should not happen and indicates
+        // an error in the optimizer
+        TRI_ASSERT(false);
+      }
+      return true;
+    }
+    return false;
+  };
+
+  size_t i = 0;
+  for (; i < _fields.size(); ++i) {
+    // We are in the equality range, we only allow one == or IN node per attribute
+    auto it = found.find(i);
+    if (it == found.end() ||
+        it->second.size() != 1) {
+      // We are either done,
+      // or this is a range.
+      // Continue with more complicated loop
+      break;
+    }
+    auto comp = found.find(i)->second[0];
+    TRI_ASSERT(comp->numMembers() == 2);
+    triagens::aql::AstNode const* access = nullptr;
+    triagens::aql::AstNode const* value = nullptr;
+    getValueAccess(comp, access, value);
+    // We found an access for this field
+    if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      // This is an equalityCheck, we can continue with the next field
+      equalityValues.emplace_back(value->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+    }
+    // TODO support IN
+    else {
+      // This is a one-sided range
+      break;
+    }
+  }
+
+  // Now handle the next element, which might be a range
   bool includeLower = false;
   bool includeUpper = false;
   TRI_json_t* lower = nullptr;
   TRI_json_t* upper = nullptr;
-  
-  // allVals contains all attributes that are relevant for this node.
-  // It might be less than fields().
-  for (size_t i = 0; i < n; ++i) {
-    auto f = fields()[j];
+  if (i < _fields.size()) {
+    auto it = found.find(i); 
+    if (it != found.end()) {
+      auto rangeConditions = it->second;
+      TRI_ASSERT(rangeConditions.size() <= 2);
 
-    for (size_t j = 0; j < numVals; ++j) {
-      auto comp = allVals->getMember(j);
-      TRI_ASSERT(comp->numMembers() == 2);
-      auto access = comp->getMember(0);
-      auto value = comp->getMember(1);
-      bool isReverseOrder = false;
-      std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> paramPair;
-      if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
-        access = comp->getMember(1);
-        value = comp->getMember(0);
-        isReverseOrder = true;
-        if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
-          // Both side do not have a correct AttributeAccess, this should not happen and indicates
-          // an error in the optimizer
-          TRI_ASSERT(false);
-          return nullptr;
-        }
-      }
-      if (f == paramPair.second) {
-        // We found an access for this field
-        if (comp->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-          // This is an equalityCheck, we can continue with the next field
-          equalityValues.emplace_back(value->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
-          break;
-        }
+      for (auto& comp : rangeConditions) {
+        TRI_ASSERT(comp->numMembers() == 2);
+        triagens::aql::AstNode const* access = nullptr;
+        triagens::aql::AstNode const* value = nullptr;
+        bool isReverseOrder = getValueAccess(comp, access, value);
+
         auto setBorder = [&] (bool isLower, bool includeBound) -> void {
           if ( isLower == isReverseOrder ) {
             // We set an upper bound
@@ -1132,16 +1169,21 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext*,
         };
         // This is not an equalityCheck, set lower or upper
         switch (comp->type) {
-          case NODE_TYPE_OPERATOR_BINARY_LT:
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+            // TODO
+            TRI_ASSERT(false);
+            break;
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
             setBorder(true, false);
             break;
-          case NODE_TYPE_OPERATOR_BINARY_LE:
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
             setBorder(true, true);
             break;
-          case NODE_TYPE_OPERATOR_BINARY_GT:
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
             setBorder(false, false);
             break;
-          case NODE_TYPE_OPERATOR_BINARY_GT:
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
             setBorder(false, true);
             break;
           default:
@@ -1149,13 +1191,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext*,
             TRI_ASSERT(false);
             return nullptr;
         }
-        // We have to continue to search for another condition matching this path.
-        // We may have sth. like: a < 5 and a > 2
       }
-    }
-    if (lower != nullptr || upper != nullptr) {
-      // We are done, the last field was not checked by equality.
-      break;
     }
   }
 
@@ -1174,11 +1210,11 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext*,
       return nullptr;
     }
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter, lower);
-    op.reset(TRI_CreateIndexOperator(type
+    op.reset(TRI_CreateIndexOperator(type,
                                      nullptr,
                                      nullptr, 
                                      parameter, 
-                                     shaper, 
+                                     _shaper, 
                                      1));
   }
 
@@ -1196,13 +1232,13 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext*,
       return nullptr;
     }
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter, upper);
-    std::unique_ptr<TRI_index_operator_t> tmpOp(TRI_CreateIndexOperator(type
-                                                nullptr,
-                                                nullptr, 
-                                                parameter, 
-                                                shaper, 
-                                                1)); 
-    if (! op()) {
+    std::unique_ptr<TRI_index_operator_t> tmpOp(TRI_CreateIndexOperator(type,
+                                                                        nullptr,
+                                                                        nullptr, 
+                                                                        parameter, 
+                                                                        _shaper, 
+                                                                        1)); 
+    if (op != nullptr) {
       op.reset(tmpOp.release());
     }
     else {
@@ -1210,7 +1246,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext*,
                                        op.release(),
                                        tmpOp.release(),
                                        parameter,
-                                       shaper,
+                                       _shaper,
                                        2));
     }
   }
@@ -1227,10 +1263,10 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext*,
     std::unique_ptr<TRI_index_operator_t> tmpOp(TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, 
                                                                         nullptr,
                                                                         nullptr, 
-                                                                        clonedParams, 
-                                                                        shaper, 
+                                                                        parameter, 
+                                                                        _shaper, 
                                                                         size)); 
-    if (! op()) {
+    if (op != nullptr) {
       op.reset(tmpOp.release());
     }
     else {
@@ -1238,7 +1274,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext*,
                                        op.release(),
                                        tmpOp.release(),
                                        parameter,
-                                       shaper,
+                                       _shaper,
                                        2));
     }
   }

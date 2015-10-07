@@ -181,7 +181,8 @@ namespace triagens {
                                TRI_index_operator_t* op)
         : _index(index),
           _operator(op),
-          _reverse(false) {
+          _reverse(false),
+          _iterator(nullptr) {
         }
 
         ~SkiplistIndexIterator () {
@@ -292,7 +293,7 @@ namespace triagens {
 /// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkiplistIterator* lookup (TRI_index_operator_t*, bool);
+        SkiplistIterator* lookup (TRI_index_operator_t*, bool) const;
 
         bool supportsFilterCondition (triagens::aql::AstNode const*,
                                       triagens::aql::Variable const*,
@@ -325,7 +326,12 @@ namespace triagens {
                               triagens::aql::AstNode const*,
                               triagens::aql::AstNode const*,
                               triagens::aql::Variable const*,
-                              std::unordered_map<size_t, std::vector<triagens::aql::AstNodeType>>&) const;
+                              std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&) const;
+
+        void matchAttributes (triagens::aql::AstNode const*,
+                              triagens::aql::Variable const*,
+                              std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
+                              size_t&) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
