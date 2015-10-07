@@ -31,6 +31,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/IndexRangeNode.h"
+#include "Indexes/HashIndex.h"
 #include "Indexes/SkiplistIndex.h"
 #include "Utils/AqlTransaction.h"
 #include "VocBase/shaped-json.h"
@@ -300,7 +301,7 @@ namespace triagens {
 /// @brief current search value for hash index lookup
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_index_search_value_t _hashIndexSearchValue;
+        TRI_hash_index_search_value_t _hashIndexSearchValue;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reentrant hash index iterator state

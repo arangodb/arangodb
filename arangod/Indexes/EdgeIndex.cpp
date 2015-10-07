@@ -331,7 +331,6 @@ static bool IsEqualElementEdgeToByKey (void const* left,
   return ((lCid == rCid) && (strcmp(lKey, rKey) == 0));
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class EdgeIndexIterator
 // -----------------------------------------------------------------------------
@@ -340,34 +339,53 @@ static bool IsEqualElementEdgeToByKey (void const* left,
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-
 TRI_doc_mptr_t* EdgeIndexIterator::next () {
-  if (_buffer == nullptr) {
-    // We start a new lookup
-    _buffer = _index->lookupByKey(&_searchValue, _batchSize);
-    _posInBuffer = 0;
-    if (_buffer->empty()) {
+  while (true) {
+    if (_position >= _keys.size()) {
+      // we're at the end of the lookup values
       return nullptr;
     }
-    _last = _buffer->back();
+
+    if (_buffer == nullptr) {
+      // We start a new lookup
+      TRI_ASSERT(_position == 0);
+      _posInBuffer = 0;
+      _last = nullptr;
+      _buffer = _index->lookupByKey(&_keys[_position], _batchSize);
+      // fallthrough intentional
+    }
+    else if (_posInBuffer >= _buffer->size()) {
+      // We have to refill the buffer
+      delete _buffer;
+      _buffer = nullptr;
+
+      _posInBuffer = 0;
+      if (_last != nullptr) {
+        _buffer = _index->lookupByKeyContinue(_last, _batchSize);
+      }
+      else {
+        _buffer = _index->lookupByKey(&_keys[_position], _batchSize);
+      }
+    }
+
+    if (! _buffer->empty()) {
+      // found something
+      _last = _buffer->back();
+      return _buffer->at(_posInBuffer++);
+    }
+
+    // found no result. now go to next lookup value in _keys
+    ++_position;
   }
-  else if (_posInBuffer >= _buffer->size()) {
-    // We have to refill the buffer
-    _buffer = _index->lookupByKeyContinue(_last, _batchSize);
-  }
-  if (_buffer->empty()) {
-    return nullptr;
-  }
-  return _buffer->at(_posInBuffer++);
 }
 
 void EdgeIndexIterator::reset () {
-  // Do not delete _last
   _last = nullptr;
+  _position = 0;
+  _posInBuffer = 0;
   // Free the vector space, not the content
   delete _buffer;
   _buffer = nullptr;
-  _posInBuffer = 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -591,7 +609,6 @@ bool EdgeIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
   return matcher.matchOne(this, node, reference, estimatedCost);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IndexIterator for the given Condition
 ////////////////////////////////////////////////////////////////////////////////
@@ -609,10 +626,8 @@ IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
 
   triagens::aql::AstNode* allVals = matcher.getOne(ast, this, node, reference);
   TRI_ASSERT(allVals->numMembers() == 1);
-  auto comp = allVals->getMember(0);
 
-  // TODO: handle IN
-  TRI_ASSERT(comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+  auto comp = allVals->getMember(0);
 
   // assume a.b == value
   auto attrNode = comp->getMember(0);
@@ -623,42 +638,78 @@ IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
     attrNode = comp->getMember(1);
     valNode  = comp->getMember(0);
   }
+  TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS); 
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-    // all index entries in the primary index are strings
-    // if the comparison value is no string, then we don't need to run
-    // the index query at all
-    if (! valNode->isStringValue()) {
-      // TODO: handle IN here
+    // a.b == value
+    return createIterator(context, attrNode, std::vector<triagens::aql::AstNode const*>({ valNode }));
+  }
+  else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    // a.b IN values
+    if (! valNode->isArray()) {
       return nullptr;
     }
-  }
-  
-  // TODO: handle IN here
 
-  char const* key = strchr(valNode->getStringValue(), '/');
-
-  if (key != nullptr) {
-    // TODO: fix cluster collection name resolving
-    CollectionNameResolver resolver(_collection->_vocbase);
-
-    std::string collectionPart(valNode->getStringValue(), key);
-    TRI_voc_cid_t cid = resolver.getCollectionId(collectionPart);
-    ++key; // Ignore the /
-
-    TRI_edge_header_t search(cid, const_cast<char*>(key));
-
-    TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS); 
-
-    if (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0) {
-      return new EdgeIndexIterator(_edgesFrom, search);
+    std::vector<triagens::aql::AstNode const*> valNodes;
+    size_t const n = valNode->numMembers();
+    valNodes.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      valNodes.emplace_back(valNode->getMemberUnchecked(i));
     }
 
-    TRI_ASSERT(strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_TO) == 0);
-    return new EdgeIndexIterator(_edgesTo, search);
+    return createIterator(context, attrNode, valNodes);
   }
 
+  // operator type unsupported
   return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the iterator
+////////////////////////////////////////////////////////////////////////////////
+    
+IndexIterator* EdgeIndex::createIterator (IndexIteratorContext* context,
+                                          triagens::aql::AstNode const* attrNode,
+                                          std::vector<triagens::aql::AstNode const*> const& valNodes) const {
+
+  // only leave the valid elements in the vector
+  size_t const n = valNodes.size();
+  std::vector<TRI_edge_header_t> keys;
+  keys.reserve(n);
+
+  for (size_t i = 0; i < n; ++i) {
+    auto valNode = valNodes[i];
+
+    if (! valNode->isStringValue()) {
+      continue;
+    }
+    if (valNode->getStringLength() == 0) {
+      continue;
+    }
+
+    TRI_voc_cid_t cid;
+    char const* key;
+    int res = context->resolveId(valNode->getStringValue(), cid, key);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      continue;
+    }
+
+    TRI_ASSERT(key != nullptr);
+    TRI_ASSERT(cid != 0);
+
+    keys.emplace_back(TRI_edge_header_t(cid, const_cast<char*>(key)));
+  }
+
+  if (keys.empty()) {
+    // nothing to do
+    return nullptr;
+  }
+
+  // _from or _to?
+  bool const isFrom = (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0);
+
+  return new EdgeIndexIterator(isFrom ? _edgesFrom : _edgesTo, keys);
 }
 
 // -----------------------------------------------------------------------------

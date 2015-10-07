@@ -41,6 +41,24 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hash index query parameter
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_hash_index_search_value_t {
+  TRI_hash_index_search_value_t ();
+  ~TRI_hash_index_search_value_t ();
+
+  TRI_hash_index_search_value_t (TRI_hash_index_search_value_t const&) = delete;
+  TRI_hash_index_search_value_t& operator= (TRI_hash_index_search_value_t const&) = delete;
+
+  void reserve (size_t);
+  void destroy ();
+
+  size_t _length;
+  struct TRI_shaped_json_s* _values;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class HashIndex
 // -----------------------------------------------------------------------------
@@ -56,13 +74,14 @@ namespace triagens {
       public:
 
         HashIndexIterator (HashIndex const* index,
-                           TRI_index_search_value_t searchValue) 
+                           TRI_hash_index_search_value_t* searchValue) 
         : _index(index),
           _searchValue(searchValue),
           _posInBuffer(0) {
         }
 
         ~HashIndexIterator() {
+          delete _searchValue;
         }
 
         TRI_doc_mptr_t* next () override;
@@ -72,7 +91,7 @@ namespace triagens {
       private:
 
         HashIndex const*                  _index;
-        TRI_index_search_value_t          _searchValue;
+        TRI_hash_index_search_value_t*    _searchValue;
         std::vector<TRI_doc_mptr_t*>      _buffer;
         size_t                            _posInBuffer;
 
@@ -142,14 +161,14 @@ namespace triagens {
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lookup (TRI_index_search_value_t*,
+        int lookup (TRI_hash_index_search_value_t*,
                     std::vector<TRI_doc_mptr_t*>&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lookup (TRI_index_search_value_t*,
+        int lookup (TRI_hash_index_search_value_t*,
                     std::vector<TRI_doc_mptr_copy_t>&,
                     TRI_index_element_t*&,
                     size_t batchSize) const;
@@ -177,11 +196,11 @@ namespace triagens {
 
         int batchInsertMulti (std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
-        int removeUniqueElement(TRI_index_element_t*, bool);
+        int removeUniqueElement (TRI_index_element_t*, bool);
 
         int removeUnique (struct TRI_doc_mptr_t const*, bool);
 
-        int removeMultiElement(TRI_index_element_t*, bool);
+        int removeMultiElement (TRI_index_element_t*, bool);
 
         int removeMulti (struct TRI_doc_mptr_t const*, bool);
 
@@ -299,7 +318,7 @@ namespace triagens {
 /// @brief the actual hash index (unique type)
 ////////////////////////////////////////////////////////////////////////////////
   
-        typedef triagens::basics::AssocUnique<TRI_index_search_value_t,
+        typedef triagens::basics::AssocUnique<TRI_hash_index_search_value_t,
                                               TRI_index_element_t>
                 TRI_HashArray_t;
           
@@ -318,7 +337,7 @@ namespace triagens {
 /// @brief the actual hash index (multi type)
 ////////////////////////////////////////////////////////////////////////////////
         
-        typedef triagens::basics::AssocMulti<TRI_index_search_value_t,
+        typedef triagens::basics::AssocMulti<TRI_hash_index_search_value_t,
                                              TRI_index_element_t,
                                              uint32_t, true>
                 TRI_HashArrayMulti_t;

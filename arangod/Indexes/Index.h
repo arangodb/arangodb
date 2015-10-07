@@ -47,16 +47,6 @@ struct TRI_document_collection_t;
 struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index query parameter
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_index_search_value_s {
-  size_t _length;
-  struct TRI_shaped_json_s* _values;
-}
-TRI_index_search_value_t;
-
 namespace triagens {
   namespace aql {
     class Ast;

@@ -359,10 +359,8 @@ bool SkiplistIterator::findHelperIntervalIntersectionValid (
   return findHelperIntervalValid(interval);
 }
 
-void SkiplistIterator::findHelper (
-    TRI_index_operator_t const* indexOperator,
-    std::vector<SkiplistIteratorInterval>& intervals
-  ) {
+void SkiplistIterator::findHelper (TRI_index_operator_t const* indexOperator,
+                                   std::vector<SkiplistIteratorInterval>& intervals) {
   TRI_skiplist_index_key_t               values;
   std::vector<SkiplistIteratorInterval>  leftResult;
   std::vector<SkiplistIteratorInterval>  rightResult;
@@ -782,7 +780,7 @@ int SkiplistIndex::remove (TRI_doc_mptr_t const* doc,
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
-                                          bool reverse) {
+                                         bool reverse) {
   if (slOperator == nullptr) {
     return nullptr;
   }

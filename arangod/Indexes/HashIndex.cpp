@@ -62,7 +62,7 @@ static bool IsEqualElementElement (TRI_index_element_t const* left,
 /// @brief given a key generates a hash integer
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKey (TRI_index_search_value_t const* key) {
+static uint64_t HashKey (TRI_hash_index_search_value_t const* key) {
   uint64_t hash = 0x0123456789abcdef;
 
   for (size_t j = 0;  j < key->_length;  ++j) {
@@ -77,7 +77,7 @@ static uint64_t HashKey (TRI_index_search_value_t const* key) {
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyElement (TRI_index_search_value_t const* left,
+static bool IsEqualKeyElement (TRI_hash_index_search_value_t const* left,
                                TRI_index_element_t const* right) {
   TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
 
@@ -107,7 +107,7 @@ static bool IsEqualKeyElement (TRI_index_search_value_t const* left,
   return true;
 }
 
-static bool IsEqualKeyElementHash (TRI_index_search_value_t const* left,
+static bool IsEqualKeyElementHash (TRI_hash_index_search_value_t const* left,
                                    uint64_t const hash, // Has been computed but is not used here
                                    TRI_index_element_t const* right) {
   return IsEqualKeyElement(left, right);
@@ -123,14 +123,17 @@ static bool IsEqualKeyElementHash (TRI_index_search_value_t const* left,
 
 TRI_doc_mptr_t* HashIndexIterator::next () {
   if (_buffer.empty()) {
-    _index->lookup(&_searchValue, _buffer);
+    _index->lookup(_searchValue, _buffer);
+
     if (_buffer.empty()) {
       return nullptr;
     }
   }
+
   if (_posInBuffer < _buffer.size()) {
     return _buffer[_posInBuffer++];
   }
+
   return nullptr;
 }
 
@@ -138,6 +141,7 @@ void HashIndexIterator::reset () {
   _buffer.clear();
   _posInBuffer = 0;
 }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      class HashIndex::UniqueArray
 // -----------------------------------------------------------------------------
@@ -204,6 +208,46 @@ HashIndex::MultiArray::~MultiArray () {
   delete _hashArray;
   delete _hashElement;
   delete _isEqualElElByKey;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                              struct TRI_hash_index_search_value_t
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index search value
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_hash_index_search_value_t::TRI_hash_index_search_value_t ()
+  : _length(0),
+    _values(nullptr) {
+
+}
+
+TRI_hash_index_search_value_t::~TRI_hash_index_search_value_t () {
+  destroy();
+}
+  
+void TRI_hash_index_search_value_t::reserve (size_t n) {
+  TRI_ASSERT(_values == nullptr);
+  _values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t), true));
+
+  if (_values == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  _length = n;
+}
+
+void TRI_hash_index_search_value_t::destroy () {
+  if (_values != nullptr) {
+    for (size_t i = 0;  i < _length;  ++i) {
+      TRI_DestroyShapedJson(TRI_UNKNOWN_MEM_ZONE, &_values[i]);
+    }
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _values);
+    _values = nullptr;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -398,7 +442,7 @@ int HashIndex::sizeHint (size_t size) {
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::lookup (TRI_index_search_value_t* searchValue,
+int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_t*>& documents) const {
 
   if (_unique) {
@@ -437,7 +481,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::lookup (TRI_index_search_value_t* searchValue,
+int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_copy_t>& documents,
                        TRI_index_element_t*& next,
                        size_t batchSize) const {
@@ -745,19 +789,17 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
   triagens::aql::AstNode* allVals = matcher.getAll(ast, this, node, reference);
   TRI_ASSERT(allVals->numMembers() == n);
 
-  TRI_index_search_value_t searchValue;
-
   // setup storage
-  searchValue._length = n;
-  searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t), true));
+  std::unique_ptr<TRI_hash_index_search_value_t> searchValue(new TRI_hash_index_search_value_t);
+  searchValue->reserve(n);
 
-  if (searchValue._values == nullptr) {
+  if (searchValue->_values == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   auto flds = fields();
   auto shaper = _collection->getShaper(); 
 
-  // Convert AstNode -> TRI_index_search_value_t
+  // Convert AstNode -> TRI_hash_index_search_value_t
   for (size_t i = 0; i < n; ++i) {
     auto comp = allVals->getMember(i);
     TRI_ASSERT(comp->numMembers() == 2);
@@ -766,7 +808,7 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
     auto value = comp->getMember(1);
     if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
       access = comp->getMember(1);
-      value = comp->getMember(0);
+      value  = comp->getMember(0);
       if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
         // Both side do not have a correct AttributeAccess, this should not happen and indicates
         // an error in the optimizer
@@ -781,12 +823,13 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
       auto f = flds[j];
       if (f == paramPair.second) {
         filled = true;
-        auto shaped = TRI_ShapedJsonJson(shaper, value->toJsonValue(TRI_UNKNOWN_MEM_ZONE), false); 
+        auto shaped = TRI_ShapedJsonJson(shaper, value->toJsonValue(TRI_UNKNOWN_MEM_ZONE), false);
+         
         if (shaped == nullptr) {
           TRI_ASSERT(false);
           return nullptr;
         }
-        searchValue._values[j] = *shaped;
+        searchValue->_values[j] = *shaped;
         TRI_Free(shaper->memoryZone(), shaped);
         break;
       }
@@ -800,8 +843,9 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
   }
   // We have successfully build a searchValue by now.
   // Create the iterator
-
-  return new HashIndexIterator(this, searchValue);
+  auto result = new HashIndexIterator(this, searchValue.get());
+  searchValue.release();
+  return result;
 }
 
 // -----------------------------------------------------------------------------
