@@ -317,7 +317,7 @@ static int TryCreateDatabase (std::string const& name) {
 
   triagens::basics::Json user(triagens::basics::Json::Object);
   user("username", triagens::basics::Json(BaseClient.username()));
-  user("passwrd", triagens::basics::Json(BaseClient.password()));
+  user("passwd", triagens::basics::Json(BaseClient.password()));
 
   triagens::basics::Json users(triagens::basics::Json::Array);
   users.add(user);

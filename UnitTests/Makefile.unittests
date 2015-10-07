@@ -38,6 +38,7 @@ unittests-brief: \
 	unittests-ssl-server \
 	unittests-shell-client \
 	unittests-dump \
+	unittests-dump-authentication \
 	unittests-arangob \
 	unittests-import \
 	unittests-upgrade \
@@ -743,7 +744,8 @@ SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
 	       @top_srcdir@/js/client/tests/shell-client.js \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
-	       @top_srcdir@/js/client/tests/shell-request.js 
+	       @top_srcdir@/js/client/tests/shell-request.js \
+	       @top_srcdir@/js/client/tests/shell-require-canceled.js 
 
 SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 
@@ -1052,6 +1054,32 @@ unittests-dump:
 	$(VALGRIND) @builddir@/bin/arangorestore --configuration none --create-database true --server.database "UnitTestsDumpDst" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --input-directory "$(VOCDIR)/dump" || test "x$(FORCE)" == "x1" 
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.database "UnitTestsDumpDst" --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump.js || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump-teardown.js || test "x$(FORCE)" == "x1"
+
+	kill `cat $(PIDFILE)`
+
+	while test -f $(PIDFILE); do sleep 1; done
+	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+
+.PHONY: unittests-dump-authentication
+
+unittests-dump-authentication:
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication false" PROTO=http
+
+	@echo
+	@echo "================================================================================"
+	@echo "<< ARANGODUMP TESTS                                                           >>"
+	@echo "================================================================================"
+	@echo
+
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump-authentication-setup.js || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangodump --configuration none --server.database "UnitTestsDumpSrc" --server.username "foobaruser" --server.password "foobarpasswd" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --output-directory "$(VOCDIR)/dump" || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.execute-string 'var db = require("internal").db; db._dropDatabase("UnitTestsDumpSrc");' || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangorestore --configuration none --create-database true --server.database "UnitTestsDumpSrc" --server.username "foobaruser" --server.password "foobarpasswd" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --input-directory "$(VOCDIR)/dump" || test "x$(FORCE)" == "x1" 
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.database "UnitTestsDumpSrc" --server.username "foobaruser" --server.password "foobarpasswd" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-tests @top_srcdir@/js/server/tests/dump-authentication.js || test "x$(FORCE)" == "x1"
 
 	kill `cat $(PIDFILE)`
 
