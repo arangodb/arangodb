@@ -1013,8 +1013,8 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
 /// @brief make sure all declared collections are used & locked
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_EnsureCollectionsTransaction (TRI_transaction_t* trx) {
-  return UseCollections(trx, 0);
+int TRI_EnsureCollectionsTransaction (TRI_transaction_t* trx, int nestingLevel) {
+  return UseCollections(trx, nestingLevel);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
