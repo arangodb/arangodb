@@ -144,9 +144,6 @@ TRI_doc_mptr_t* HashIndexIterator::next () {
       // found something
       return _buffer.at(_posInBuffer++);
     }
-
-    // found no result. now go to next lookup value in _keys
-//    ++_position;
   }
 }
 
@@ -800,14 +797,15 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   SimpleAttributeEqualityMatcher matcher(fields());
-  size_t const n = fields().size();
+  size_t const n = _fields.size();
   triagens::aql::AstNode* allVals = matcher.getAll(ast, this, node, reference);
   TRI_ASSERT(allVals->numMembers() == n);
  
   struct PermutationState {
-    PermutationState (triagens::aql::AstNode const* op, triagens::aql::AstNode const* value, size_t current, size_t n)
+    PermutationState (triagens::aql::AstNode const* op, triagens::aql::AstNode const* value, size_t attributePosition, size_t current, size_t n)
       : op(op),
         value(value),
+        attributePosition(attributePosition),
         current(current),
         n(n) {
     }
@@ -828,6 +826,7 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
 
     triagens::aql::AstNode const* op;
     triagens::aql::AstNode const* value;
+    size_t const                  attributePosition;
     size_t                        current;
     size_t const                  n;
   };
@@ -838,22 +837,47 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
   size_t maxPermutations = 1;
 
   for (size_t i = 0; i < n; ++i) {
-    auto comp     = allVals->getMemberUnchecked(i);
-    auto attrNode = comp->getMember(0);
-    auto valNode  = comp->getMember(1);
-
+    auto comp = allVals->getMemberUnchecked(i);
+//    auto attrNode = comp->getMember(0);
+//    auto valNode  = comp->getMember(1);
+/*
     if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       // value == a.b  ->  flip the two sides
       attrNode = comp->getMember(1);
       valNode  = comp->getMember(0);
     }
     TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS); 
+*/
+    std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> paramPair;
+    auto attrNode = comp->getMember(0);
+    auto valNode  = comp->getMember(1);
+    if (! attrNode->isAttributeAccessForVariable(paramPair) || paramPair.first != reference) {
+      attrNode = comp->getMember(1);
+      valNode  = comp->getMember(0);
+
+      if (! attrNode->isAttributeAccessForVariable(paramPair) || paramPair.first != reference) {
+        return nullptr;
+      }
+    }
+
+    size_t attributePosition = SIZE_MAX;
+    for (size_t j = 0; j < _fields.size(); ++j) {
+      if (_fields[j] == paramPair.second) {
+        attributePosition = j;
+        break;
+      }
+    }
+
+    if (attributePosition == SIZE_MAX) {
+      // index attribute not found in condition. this is a severe error
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
 
     if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-      permutationStates.emplace_back(PermutationState(comp, valNode, 0, 1));
+      permutationStates.emplace_back(PermutationState(comp, valNode, attributePosition, 0, 1));
     }
     else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      permutationStates.emplace_back(PermutationState(comp, valNode, 0, valNode->numMembers()));
+      permutationStates.emplace_back(PermutationState(comp, valNode, attributePosition, 0, valNode->numMembers()));
     }
     else {
       return nullptr;
@@ -891,7 +915,7 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
         break;
       }
       
-      searchValue->_values[i] = *shaped;
+      searchValue->_values[state.attributePosition] = *shaped;
       TRI_Free(shaper->memoryZone(), shaped);
     }
 

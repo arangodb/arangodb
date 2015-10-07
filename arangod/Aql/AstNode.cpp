@@ -1213,8 +1213,12 @@ bool AstNode::isAttributeAccessForVariable (std::pair<Variable const*, std::vect
     return nullptr;
   }
 
+  // initialize
   bool expandNext = false;
   result.first = nullptr;
+  if (! result.second.empty()) {
+    result.second.clear();
+  }
   auto node = this;
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
