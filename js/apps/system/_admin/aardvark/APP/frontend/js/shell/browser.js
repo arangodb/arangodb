@@ -198,7 +198,7 @@ Module.prototype.require = function (path) {
 
     definition = module.definition;
     module.definition = null;
-    definition(module.exports, module);
+    definition.call(window, module.exports, module);
   }
 
   return module.exports;

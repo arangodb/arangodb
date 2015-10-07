@@ -371,8 +371,28 @@ bool ApplicationServer::parse (int argc,
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
 
-  TRI_SetLogLevelLogging(_logLevel.c_str());
+  // check for help
+  set<string> help = _options.needHelp("help");
 
+  if (! help.empty()) {
+    // output help, but do not yet exit (we'll exit a little later so we can also
+    // check the specified configuration for errors)
+    cout << argv[0] << " " << _title << "\n\n" << _description.usage(help) << endl;
+  }
+  
+  
+  TRI_SetLogLevelLogging(_logLevel.c_str());
+  
+  // .............................................................................
+  // check configuration file
+  // .............................................................................
+
+  ok = readConfigurationFile();
+
+  if (! ok) {
+    return false;
+  }
+  
   // .............................................................................
   // parse phase 1
   // .............................................................................
@@ -383,25 +403,6 @@ bool ApplicationServer::parse (int argc,
     if (! ok) {
       return false;
     }
-  }
-
-  // .............................................................................
-  // check configuration file
-  // .............................................................................
-
-  ok = readConfigurationFile();
-
-  // check for help
-  set<string> help = _options.needHelp("help");
-
-  if (! help.empty()) {
-    // output help, but do not yet exit (we'll exit a little later so we can also
-    // check the specified configuration for errors)
-    cout << argv[0] << " " << _title << "\n\n" << _description.usage(help) << endl;
-  }
-
-  if (! ok) {
-    return false;
   }
 
   // exit here if --help was specified.

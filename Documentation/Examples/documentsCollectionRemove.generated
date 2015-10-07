@@ -1,8 +1,8 @@
 arangosh&gt; a1 = db.example.insert({ a : <span class="hljs-number">1</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1092652161"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1092652161"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1092652161"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1092619290"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1092619290"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1092619290"</span> 
 }
 arangosh&gt; db._remove(a1);
 <span class="hljs-literal">true</span>

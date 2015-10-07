@@ -10,61 +10,61 @@ arangosh&gt; db.example.documents(keys);
     { 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/test0"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1071025281"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1070992410"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test0"</span> 
     }, 
     { 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/test1"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1071221889"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1071189018"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test1"</span> 
     }, 
     { 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">2</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/test2"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1071418497"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1071385626"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test2"</span> 
     }, 
     { 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/test3"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1071615105"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1071582234"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test3"</span> 
     }, 
     { 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">4</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/test4"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1071811713"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1071778842"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test4"</span> 
     }, 
     { 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">5</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/test5"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1072008321"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1071975450"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test5"</span> 
     }, 
     { 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">6</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/test6"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1072204929"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1072172058"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test6"</span> 
     }, 
     { 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">7</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/test7"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1072401537"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1072368666"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test7"</span> 
     }, 
     { 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">8</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/test8"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1072598145"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1072565274"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test8"</span> 
     }, 
     { 
       <span class="hljs-string">"value"</span> : <span class="hljs-number">9</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/test9"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1072794753"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1072761882"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"test9"</span> 
     } 
   ] 

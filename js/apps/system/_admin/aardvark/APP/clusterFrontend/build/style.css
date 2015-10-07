@@ -2091,12 +2091,14 @@ textarea,
 
 .button-danger {
   background-color: #da4f49; }
-  .button-danger:hover, .button-danger:focus {
+  .button-danger:hover,
+  .button-danger:focus {
     background-color: #be342e; }
 
 .deleteButton, a.danger.coordinator, a.danger.dbserver {
   color: #da4f49; }
-  .deleteButton:hover, a.danger.coordinator:hover, a.danger.dbserver:hover, .deleteButton:focus, a.danger.coordinator:focus, a.danger.dbserver:focus {
+  .deleteButton:hover,
+  a.danger.coordinator:hover, a.danger.dbserver:hover, .deleteButton:focus, a.danger.coordinator:focus, a.danger.dbserver:focus {
     color: #be342e; }
 
 a.danger.coordinator, a.danger.dbserver {
@@ -2106,12 +2108,14 @@ a.danger.coordinator, a.danger.dbserver {
 
 .button-success {
   background-color: #8aa051; }
-  .button-success:hover, .button-success:focus {
+  .button-success:hover,
+  .button-success:focus {
     background-color: #788f3d; }
 
 .addButton, a.success.coordinator, a.success.dbserver {
   color: #8aa051; }
-  .addButton:hover, a.success.coordinator:hover, a.success.dbserver:hover, .addButton:focus, a.success.coordinator:focus, a.success.dbserver:focus {
+  .addButton:hover,
+  a.success.coordinator:hover, a.success.dbserver:hover, .addButton:focus, a.success.coordinator:focus, a.success.dbserver:focus {
     color: #788f3d; }
 
 a.success.coordinator, a.success.dbserver {
@@ -2121,7 +2125,8 @@ a.success.coordinator, a.success.dbserver {
 
 .button-warning {
   background-color: #faa732; }
-  .button-warning:hover, .button-warning:focus {
+  .button-warning:hover,
+  .button-warning:focus {
     background-color: #f89406; }
 
 a.warning.coordinator, a.warning.dbserver {
@@ -2136,44 +2141,56 @@ a.warning.coordinator, a.warning.dbserver {
 
 .button-neutral, .button-close {
   background-color: #8f8d8c; }
-  .button-neutral:hover, .button-close:hover, .button-neutral:focus, .button-close:focus {
+  .button-neutral:hover,
+  .button-close:hover,
+  .button-neutral:focus, .button-close:focus {
     background-color: #736b68; }
 
 .dashboard-sub-bar-menu {
   color: #8f8d8c; }
-  .dashboard-sub-bar-menu:hover, .dashboard-sub-bar-menu:focus {
+  .dashboard-sub-bar-menu:hover,
+  .dashboard-sub-bar-menu:focus {
     color: #736b68; }
 
 .button-primary {
   background-color: #564e4a; }
-  .button-primary:hover, .button-primary:focus {
+  .button-primary:hover,
+  .button-primary:focus {
     background-color: #3a322e; }
 
 .button-header, a.headerButton, a.button-gui {
   background-color: #fff;
   border: 1px solid #fff;
   color: #555; }
-  .button-header:hover, a.headerButton:hover, a.button-gui:hover, .button-header:focus, a.headerButton:focus, a.button-gui:focus {
+  .button-header:hover,
+  a.headerButton:hover, a.button-gui:hover, .button-header:focus, a.headerButton:focus, a.button-gui:focus {
     background-color: #8aa051;
     border: 1px solid #8aa051;
     color: #fff; }
 
 .button-notification {
   background-color: #faa020; }
-  .button-notification:hover, .button-notification:focus {
+  .button-notification:hover,
+  .button-notification:focus {
     background-color: #f87c0f; }
 
 [class^='button-']:disabled,
-button.disabled, .button-inactive {
+button.disabled,
+[class*=' button-']:disabled, .button-inactive {
   background-color: #d3d3d3; }
   [class^='button-']:hover:disabled,
-  button.disabled:hover, .button-inactive:hover, [class^='button-']:focus:disabled,
-  button.disabled:focus, .button-inactive:focus {
+  button.disabled:hover,
+  [class*=' button-']:hover:disabled,
+  .button-inactive:hover,
+  [class^='button-']:focus:disabled,
+  button.disabled:focus,
+  [class*=' button-']:focus:disabled, .button-inactive:focus {
     background-color: #d3d3d3; }
 
 a.headerButton.disabled, a.inactive.coordinator, a.inactive.dbserver {
   color: #d3d3d3; }
-  a.headerButton.disabled:hover, a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.headerButton.disabled:focus, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
+  a.headerButton.disabled:hover,
+  a.inactive.coordinator:hover, a.inactive.dbserver:hover, a.headerButton.disabled:focus, a.inactive.coordinator:focus, a.inactive.dbserver:focus {
     color: #d3d3d3; }
 
 a.inactive.coordinator, a.inactive.dbserver {
@@ -2316,7 +2333,8 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
       border-top: 1px solid rgba(0, 0, 0, 0.2); }
       .navlist li.dropdown:hover a {
         border-bottom: 2px solid #fff; }
-    .navlist li.navbar-spacer, .navlist li.divider {
+    .navlist li.navbar-spacer,
+    .navlist li.divider {
       border: 0; }
     .navlist li.divider {
       background-color: rgba(0, 0, 0, 0.2); }
@@ -3246,7 +3264,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 14px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 10px;
     font-weight: 400; }
   .dashboard-legend {
@@ -3421,7 +3440,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 14px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 10px;
     font-weight: 400; }
   .dashboard-legend {
@@ -3596,7 +3616,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 14px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 10px;
     font-weight: 400; }
   .dashboard-legend {
@@ -3768,7 +3789,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 16px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 11px;
     font-weight: 400; }
   .dashboard-legend {
@@ -3938,7 +3960,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 20px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 13px;
     font-weight: 400; }
   .dashboard-legend {
@@ -4108,7 +4131,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 24px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 13px;
     font-weight: 400; }
   .dashboard-legend {
@@ -4278,7 +4302,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 28px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 14px;
     font-weight: 400; }
   .dashboard-legend {
@@ -4448,7 +4473,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 32px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 14px;
     font-weight: 400; }
   .dashboard-legend {
@@ -4618,7 +4644,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 34px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
     font-weight: 400; }
   .dashboard-legend {
@@ -4788,7 +4815,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 34px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
     font-weight: 400; }
   .dashboard-legend {
@@ -4958,7 +4986,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 34px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
     font-weight: 400; }
   .dashboard-legend {
@@ -5003,7 +5032,8 @@ div.centralContent {
     padding-top: 10px; }
   .contentDiv:after {
     clear: both; }
-  .contentDiv:after, .contentDiv:before {
+  .contentDiv:after,
+  .contentDiv:before {
     content: '';
     display: table;
     line-height: 0; }
@@ -5101,7 +5131,9 @@ div.dropdownInner {
       div.dropdownInner ul li .fa.fa-square-o {
         margin-left: 1px;
         margin-right: 6px; }
-      div.dropdownInner ul li .fa.fa-check-circle-o, div.dropdownInner ul li .fa.fa-check-square-o, div.dropdownInner ul li .fa.fa-dot-circle-o {
+      div.dropdownInner ul li .fa.fa-check-circle-o,
+      div.dropdownInner ul li .fa.fa-check-square-o,
+      div.dropdownInner ul li .fa.fa-dot-circle-o {
         color: #8aa051; }
 
 div.queryline {
@@ -6103,7 +6135,8 @@ div .bigtile {
   margin-left: 0;
   margin-right: 0; }
 
-.dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+.dygraph-axis-label.dygraph-axis-label-y,
+.dygraph-axis-label.dygraph-axis-label-x {
   color: #666; }
 
 .resizecontainer {
@@ -6284,7 +6317,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 14px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 10px;
     font-weight: 400; }
   .dashboard-legend {
@@ -6459,7 +6493,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 14px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 10px;
     font-weight: 400; }
   .dashboard-legend {
@@ -6634,7 +6669,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 14px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 10px;
     font-weight: 400; }
   .dashboard-legend {
@@ -6806,7 +6842,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 16px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 11px;
     font-weight: 400; }
   .dashboard-legend {
@@ -6976,7 +7013,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 20px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 13px;
     font-weight: 400; }
   .dashboard-legend {
@@ -7146,7 +7184,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 24px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 13px;
     font-weight: 400; }
   .dashboard-legend {
@@ -7316,7 +7355,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 28px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 14px;
     font-weight: 400; }
   .dashboard-legend {
@@ -7486,7 +7526,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 32px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 14px;
     font-weight: 400; }
   .dashboard-legend {
@@ -7656,7 +7697,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 34px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
     font-weight: 400; }
   .dashboard-legend {
@@ -7826,7 +7868,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 34px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
     font-weight: 400; }
   .dashboard-legend {
@@ -7996,7 +8039,8 @@ div .bigtile {
   .dashboard-figurePer {
     font-size: 34px;
     font-weight: 300; }
-  .dygraph-axis-label.dygraph-axis-label-y, .dygraph-axis-label.dygraph-axis-label-x {
+  .dygraph-axis-label.dygraph-axis-label-y,
+  .dygraph-axis-label.dygraph-axis-label-x {
     font-size: 15px;
     font-weight: 400; }
   .dashboard-legend {
@@ -8041,7 +8085,8 @@ div.centralContent {
     padding-top: 10px; }
   .contentDiv:after {
     clear: both; }
-  .contentDiv:after, .contentDiv:before {
+  .contentDiv:after,
+  .contentDiv:before {
     content: '';
     display: table;
     line-height: 0; }

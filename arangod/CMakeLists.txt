@@ -34,6 +34,7 @@ if (MSVC)
   SET(ARANGO_MSVC
     RestServer/WindowsServiceUtils.cpp
     )
+
   ################################################################################
   ### @brief give the binary a version information
   ################################################################################
@@ -49,7 +50,6 @@ if (MSVC)
     VERSION_REVISION ${BUILD_ID}
     )
 endif ()
-
 
 add_executable(
     ${BIN_ARANGOD}
@@ -313,6 +313,10 @@ install(
 ### @brief install log directory
 ################################################################################
 
+if (MSVC)
+  file(WRITE ${PROJECT_BINARY_DIR}/var/log/arangodb/.keepme "")
+endif ()
+
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/log/arangodb
   DESTINATION ${VARDIR_INSTALL}/log)
@@ -321,6 +325,10 @@ install(
 ### @brief install database directory
 ################################################################################
 
+if (MSVC)
+  file(WRITE ${PROJECT_BINARY_DIR}/var/lib/arangodb/.keepme "")
+endif ()
+
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb
   DESTINATION ${VARDIR_INSTALL}/lib)
@@ -328,6 +336,10 @@ install(
 ################################################################################
 ### @brief install apps directory
 ################################################################################
+
+if (MSVC)
+  file(WRITE ${PROJECT_BINARY_DIR}/var/lib/arangodb-apps/.keepme "")
+endif ()
 
 install(
   DIRECTORY ${PROJECT_BINARY_DIR}/var/lib/arangodb-apps

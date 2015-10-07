@@ -2,7 +2,7 @@ shell> curl -X DELETE --dump - http://localhost:8529/_api/gharial/social/edge/re
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json
-etag: <span class="hljs-number">538086529</span>
+etag: <span class="hljs-number">538053658</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -15,6 +15,6 @@ etag: <span class="hljs-number">538086529</span>
       <span class="hljs-string">"male"</span> 
     ], 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"538086529"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"538053658"</span> 
   } 
 }
