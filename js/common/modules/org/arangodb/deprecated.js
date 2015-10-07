@@ -1,6 +1,5 @@
 'use strict';
 const semver = require('semver');
-const db = require('org/arangodb').db;
 
 function deprecated(version, graceReleases, message) {
   if (typeof version === 'number') {
@@ -13,7 +12,7 @@ function deprecated(version, graceReleases, message) {
       version += '.0';
     }
   }
-  const arangoVersion = db._version();
+  const arangoVersion = require('internal').version;
   const arangoMajor = semver.major(arangoVersion);
   const arangoMinor = semver.minor(arangoVersion);
   const deprecateMajor = semver.major(version);

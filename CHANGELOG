@@ -2,28 +2,31 @@ v2.8.0 (XXXX-XX-XX)
 -------------------
 
 * Added array indexes
-  We added a new feature to hash- and skiplist indexes to allow them to index
-  array attributes in documents.
-  To define an index on an array we use the following syntax:
-  
-  Say we have the following document:
-  {
-    tags: ["AQL","ArangoDB","Index"]
-  }
 
-  We can now set a hashIndex (or skiplistindex) in the following way:
+  Hash indexes and skiplist indexes can now optionally be defined for array values 
+  so they index individual array members.
   
-  arangosh> db.colName.ensureHashIndex("tags[*]");
+  To define an index for array values, the attribute name is extended with the
+  expansion operator `[*]` in the index definition:
   
-  Now we can use AQL to find all documents having "ArangoDB" in their
-  tags array:
+      arangosh> db.colName.ensureHashIndex("tags[*]");
   
-  FOR x IN colName FILTER "ArangoDB" IN x.tags RETURN x
+  When given the following document
+  
+      { tags: [ "AQL", "ArangoDB", "Index" ] }
+
+  the index will now contain the individual values `"AQL"`, `"ArangoDB"` and `"Index"`.
+  
+  Now the index will be for finding all documents having `"ArangoDB"` somewhere in their
+  tags array using the following AQL query:
+    
+      FOR doc IN colName 
+        FILTER "ArangoDB" IN doc.tags 
+        RETURN doc
 
 
-
-v2.7.0 (XXXX-XX-XX)
--------------------
+v2.7.0-rc3 (2015-10-05)
+-----------------------
 
 * fixed replication with a 2.6 replication configuration and issues with a 2.6 master
 
@@ -36,6 +39,10 @@ v2.7.0 (XXXX-XX-XX)
   The *allowImplicit* attributes allows making transactions fail should they
   read-access a collection that was not explicitly declared in the *collections* 
   array of the transaction.
+
+* added "special" password ARANGODB_DEFAULT_ROOT_PASSWORD. If you pass
+  ARANGODB_DEFAULT_ROOT_PASSWORD as password, it will read the password
+  from the environment variable ARANGODB_DEFAULT_ROOT_PASSWORD
 
 
 v2.7.0-rc2 (2015-09-22)
@@ -493,7 +500,13 @@ v2.7.0-rc1 (2015-09-17)
   The "Applications" tab in the web interfaces has been renamed to "Services".
 
 
-v2.6.9 (XXXX-XX-XX)
+v2.6.10 (XXXX-XX-XX)
+--------------------
+
+* issue #1521: Can't dump/restore with user and password
+
+
+v2.6.9 (2015-09-29)
 -------------------
 
 * added "special" password ARANGODB_DEFAULT_ROOT_PASSWORD. If you pass

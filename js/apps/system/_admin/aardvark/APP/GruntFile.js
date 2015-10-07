@@ -222,7 +222,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.min.js', 'frontend/build/arangoes5.min.js'],
+            src: ['frontend/build/app.min.js'],
             dest: '.',
             ext: '.min.js.gz'
           }]
@@ -233,7 +233,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.js', 'frontend/build/arangoes5.js'],
+            src: ['frontend/build/app.js'],
             dest: '.',
             ext: '.js.gz'
           }]
@@ -349,6 +349,7 @@
               '<%=project.standalone.lib %>',
               '<%=project.standalone.graphViewer %>',
               '<%=project.standalone.modules %>',
+              'frontend/build/arangoes5.js',
               '<%=project.standalone.js %>'
             ]
           },
@@ -380,12 +381,12 @@
         },
         sharedES: {
           src: [
-            "frontend/js/modules/**/*.js",
             "frontend/js/bootstrap/modules/internal.js", 
             "frontend/js/bootstrap/errors.js",
             "frontend/js/bootstrap/modules/console.js",
             "frontend/js/client/bootstrap/modules/internal.js", 
             "frontend/js/bootstrap/monkeypatches.js", 
+            "frontend/js/modules/**/*.js",
             "frontend/js/client/client.js"
           ],
           dest: 'frontend/build/arangoes6.js',
@@ -455,6 +456,7 @@
             'frontend/build/lib.test.js': [
               '<%=project.shared.lib %>',
               '<%=project.standalone.lib %>',
+              'frontend/build/arangoes5.js',
               '<%=project.standalone.modules %>'
             ],
             'frontend/build/app.test.js': [
@@ -511,8 +513,7 @@
             'frontend/build/app.min.js': 'frontend/build/app.js',
             'clusterFrontend/build/cluster.min.js': 'clusterFrontend/build/cluster.js',
             'frontend/src/ace.min.js': 'frontend/src/ace.js',
-            'build/sharedLibs.min.js': 'build/sharedLibs.js',
-            'frontend/build/arangoes5.min.js': 'frontend/build/arangoes5.js'
+            'build/sharedLibs.min.js': 'build/sharedLibs.js'
           }
         }
       },
@@ -586,12 +587,12 @@
       'imagemin',
       'concat',
       'concat_in_order:sharedES',
+      'babel',
       'concat_in_order:sharedLibs',
       'concat_in_order:default',
       'concat_in_order:jsCluster',
       'concat_in_order:htmlCluster',
       'concat_in_order:htmlStandalone',
-      'babel',
       'cssmin',
       'uglify',
       'htmlmin',

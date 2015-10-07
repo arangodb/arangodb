@@ -260,7 +260,7 @@ void ApplicationV8::V8Context::handleCancelationCleanup () {
 
   TRI_ExecuteJavaScriptString(isolate,
                               isolate->GetCurrentContext(),
-                              TRI_V8_ASCII_STRING("require('internal').cleanupCancelation();"),
+                              TRI_V8_ASCII_STRING("require('module')._cleanupCancelation();"),
                               TRI_V8_ASCII_STRING("context cleanup method"),
                               false);
 }

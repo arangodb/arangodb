@@ -200,7 +200,6 @@ Module.prototype.require = function (path) {
     module.definition = null;
     definition(module.exports, module);
   }
-
   return module.exports;
 };
 
@@ -214,7 +213,6 @@ function require (path) {
 
 function print () {
   var internal = require("internal");
-
   internal.print.apply(internal.print, arguments);
 }
 
@@ -546,7 +544,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
         text = String(value);
       }
 
-      internal.browserOutputBuffer += text;
+      require('internal').browserOutputBuffer += text;
     }
   };
 
@@ -554,11 +552,11 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
 /// @brief outputs text to browser window
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.printBrowser = function () {
-    internal.printShell.apply(internal.printShell, arguments);
+  internal.print = internal.printBrowser = function () {
+    require('internal').printShell.apply(require('internal').printShell, arguments);
 
-    jqconsole.Write('==> ' + internal.browserOutputBuffer, 'jssuccess');
-    internal.browserOutputBuffer = "";
+    jqconsole.Write('==> ' + require('internal').browserOutputBuffer, 'jssuccess');
+    require('internal').browserOutputBuffer = "";
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -566,7 +564,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
 ////////////////////////////////////////////////////////////////////////////////
 
   $(global.document).ajaxSend(function(event, jqxhr, settings) {
-    settings.url = internal.arango.databasePrefix(settings.url);
+    settings.url = require('internal').arango.databasePrefix(settings.url);
   });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -574,7 +572,17 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
 ////////////////////////////////////////////////////////////////////////////////
 
   global.DEFINE_MODULE = function (name, exports) {
-    $.extend(require(name), exports);
+    var path = Module.prototype.normalise(name);
+    var module = Module.prototype.moduleCache[path];
+    if (module) {
+      Object.keys(module.exports).forEach(function (key) {
+        exports[key] = module.exports[key];
+      });
+    } else {
+      module = new Module(path);
+      Module.prototype.moduleCache[path] = module;
+    }
+    module.exports = exports;
   };
 
 }());
