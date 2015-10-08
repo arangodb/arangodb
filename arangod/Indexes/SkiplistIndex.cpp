@@ -1075,6 +1075,8 @@ void SkiplistIndex::matchAttributes (triagens::aql::AstNode const* node,
         if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference, found)) {
           values += op->getMember(1)->numMembers();
         }
+        else if (accessFitsIndex(op->getMember(1), op->getMember(0), op, reference, found)) {
+        }
         break;
 
       default:
@@ -1143,7 +1145,8 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
     if (values == 0) {
       values = 1;
     }
-    return estimatedCost * static_cast<double>(values);
+    estimatedCost *= static_cast<double>(values);
+    return true;
   }
 
   return false;
