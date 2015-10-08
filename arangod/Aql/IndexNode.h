@@ -62,7 +62,7 @@ namespace triagens {
                    Collection const* collection,
                    Variable const* outVariable,
                    std::vector<Index const*> indexes,
-                   Condition const* condition,
+                   Condition* condition,
                    bool reverse)
           : ExecutionNode(plan, id), 
             _vocbase(vocbase), 
@@ -198,7 +198,7 @@ namespace triagens {
 /// @brief the index(es) condition
 ////////////////////////////////////////////////////////////////////////////////
                    
-        Condition const* _condition;
+        Condition* _condition;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the index sort order - this is the same order for all indexes

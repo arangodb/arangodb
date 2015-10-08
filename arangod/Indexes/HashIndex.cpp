@@ -123,16 +123,16 @@ static bool IsEqualKeyElementHash (TRI_hash_index_search_value_t const* left,
 
 TRI_doc_mptr_t* HashIndexIterator::next () {
   while (true) {
-    if (_position >= _keys.size()) {
-      // we're at the end of the lookup values
-      return nullptr;
-    }
-
     if (_posInBuffer >= _buffer.size()) {
+      if (_position >= _keys.size()) {
+        // we're at the end of the lookup values
+        return nullptr;
+      }
+
       // We have to refill the buffer
       _buffer.clear();
-
       _posInBuffer = 0;
+
       int res = _index->lookup(_keys[_position++], _buffer);
 
       if (res != TRI_ERROR_NO_ERROR) {

@@ -120,29 +120,25 @@ int IndexBlock::initialize () {
 
   // instantiate expressions:
   auto instantiateExpression = [&] (size_t i, size_t j, size_t k, AstNode const* a) -> void {
-    Expression* expression = nullptr;
- 
-    {
-      // all new AstNodes are registered with the Ast in the Query
-      std::unique_ptr<Expression> e(new Expression(_engine->getQuery()->ast(), a));
+    // all new AstNodes are registered with the Ast in the Query
+    std::unique_ptr<Expression> e(new Expression(_engine->getQuery()->ast(), a));
 
-      TRI_IF_FAILURE("IndexBlock::initialize") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      _hasV8Expression |= e->isV8();
-      _nonConstExpressions.emplace_back(i, j, k, e.get());
-      expression = e.release();
+    TRI_IF_FAILURE("IndexBlock::initialize") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+
+    _hasV8Expression |= e->isV8();
+    _nonConstExpressions.emplace_back(i, j, k, e.get());
+    
+    std::unordered_set<Variable const*> inVars;
+    e->variables(inVars);
+    e.release();
 
     // Prepare _inVars and _inRegs:
     _inVars.emplace_back();
     std::vector<Variable const*>& inVarsCur = _inVars.back();
     _inRegs.emplace_back();
     std::vector<RegisterId>& inRegsCur = _inRegs.back();
-
-    std::unordered_set<Variable const*> inVars;
-    expression->variables(inVars);
 
     for (auto const& v : inVars) {
       inVarsCur.emplace_back(v);
