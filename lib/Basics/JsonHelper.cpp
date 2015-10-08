@@ -213,6 +213,9 @@ TRI_json_t* JsonHelper::fromString (char const* data,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string JsonHelper::toString (TRI_json_t const* json) {
+  if (json == nullptr) {
+    return "";
+  }
   TRI_string_buffer_t buffer;
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
