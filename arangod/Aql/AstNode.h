@@ -478,17 +478,18 @@ namespace triagens {
           }
 
           auto node = this;
-      
+     
           while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
                  node->type == NODE_TYPE_EXPANSION) {
             if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
               node = node->getMember(0);
             }
             else {
-              // expansion
+              // expansion, i.e. [*]
               TRI_ASSERT(node->type == NODE_TYPE_EXPANSION);
+              TRI_ASSERT(node->numMembers() >= 2);
 
-              if (node->getMember(1)->getMember(1)->getAttributeAccessForVariable() == nullptr) {
+              if (node->getMember(1)->getAttributeAccessForVariable() == nullptr) {
                 return nullptr;
               }
               

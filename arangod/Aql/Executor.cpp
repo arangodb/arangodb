@@ -583,11 +583,11 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
     }
     
     // we can't figure out what kind of error occurred and throw a generic error
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown error in scripting");
   }
   
   if (result.IsEmpty()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown error in scripting");
   }
 
   // if we get here, no exception has been raised

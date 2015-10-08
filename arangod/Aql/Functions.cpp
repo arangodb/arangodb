@@ -1723,6 +1723,22 @@ static Json VertexIdToJson (triagens::arango::AqlTransaction* trx,
                             VertexId const& id) {
   TRI_doc_mptr_copy_t mptr;
   auto collection = trx->trxCollection(id.cid);
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), 
+                                           id.cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(),
+                                           true,
+                                           true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(id.cid);
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection is a nullptr");
+    }
+  }
   int res = trx->readSingle(collection, &mptr, id.key); 
 
   if (res != TRI_ERROR_NO_ERROR) {

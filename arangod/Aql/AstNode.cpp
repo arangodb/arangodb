@@ -1210,7 +1210,7 @@ bool AstNode::isFalse () const {
 bool AstNode::isAttributeAccessForVariable (std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>& result) const {
   if (type != NODE_TYPE_ATTRIBUTE_ACCESS &&
       type != NODE_TYPE_EXPANSION) {
-    return nullptr;
+    return false;
   }
 
   // initialize
@@ -1224,7 +1224,10 @@ bool AstNode::isAttributeAccessForVariable (std::pair<Variable const*, std::vect
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
          node->type == NODE_TYPE_EXPANSION) {
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      result.second.insert(result.second.begin(), triagens::basics::AttributeName(std::string(node->getStringValue(), node->getStringLength()), expandNext));
+      result.second.insert(
+        result.second.begin(), 
+        triagens::basics::AttributeName(std::string(node->getStringValue(), node->getStringLength()), expandNext)
+      );
       node = node->getMember(0);
       expandNext = false;
     }

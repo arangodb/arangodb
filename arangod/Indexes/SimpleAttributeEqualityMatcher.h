@@ -262,11 +262,20 @@ namespace triagens {
           else if (index->hasSelectivityEstimate()) {
             // use index selectivity estimate
             estimatedCost = 1.0 - index->selectivityEstimate(); 
+          
+            // the more attributes are covered by an index, the more accurate it
+            // is considered to be
+            estimatedCost /= index->fields().size();
           }
           else {
             // set to highest possible cost by default
             estimatedCost = 1.0; 
+            
+            // the more attributes are covered by an index, the more accurate it
+            // is considered to be
+            estimatedCost /= index->fields().size();
           }
+
           // can use this index
           return true;
         }

@@ -263,7 +263,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t*,
 /// @brief make sure all declared collections are used & locked
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_EnsureCollectionsTransaction (TRI_transaction_t*);
+int TRI_EnsureCollectionsTransaction (TRI_transaction_t*, int = 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request a lock for a collection

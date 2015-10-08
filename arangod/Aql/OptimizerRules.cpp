@@ -2054,8 +2054,6 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
     n->walk(&finder);
   }
 
-  std::cout << "Candidates to replace " << changes.size() << std::endl;
-  
   if (! changes.empty()) {
     for (auto& it : changes) {
       plan->registerNode(it.second); 

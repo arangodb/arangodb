@@ -102,8 +102,7 @@ void Dispatcher::addStandardQueue (size_t nrThreads, size_t maxSize) {
 /// @brief adds the AQL queue (used for the cluster)
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addAQLQueue (size_t nrThreads,
-                             size_t maxSize) {
+void Dispatcher::addAQLQueue (size_t nrThreads, size_t maxSize) {
   TRI_ASSERT(_queues[AQL_QUEUE] == nullptr);
 
   _queues[AQL_QUEUE] = new DispatcherQueue(
@@ -278,8 +277,3 @@ void Dispatcher::setProcessorAffinity (size_t id, std::vector<size_t> const& cor
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

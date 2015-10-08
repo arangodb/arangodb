@@ -104,7 +104,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
     case EN::ENUMERATE_COLLECTION: {
       auto node = static_cast<EnumerateCollectionNode const*>(en);
       if (_changes->find(node->id()) != _changes->end()) {
-        std::cout << "Already optimized " << node->id() << std::endl;
+        // already optimized this node
         break;
       }
 

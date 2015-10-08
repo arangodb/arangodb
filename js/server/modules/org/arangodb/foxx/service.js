@@ -179,9 +179,12 @@ class FoxxService {
       try {
         this.thumbnail = fs.read64(thumb);
       } catch (e) {
+        this.thumbnail = null;
+        /*
         console.warnLines(
           `Cannot read thumbnail "${thumb}" for app "${data.mount}": ${e.stack}`
         );
+        */
       }
     } else {
       this.thumbnail = null;

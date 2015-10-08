@@ -72,9 +72,11 @@ ConditionPart::~ConditionPart () {
 
 }
 
+#if 0
 void ConditionPart::dump () const {
   std::cout << "VARIABLE NAME: " << variable->name << "." << attributeName << " " << triagens::basics::JsonHelper::toString(valueNode->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
 }
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class Condition
@@ -84,6 +86,7 @@ void ConditionPart::dump () const {
 // --SECTION--                                            static helper function
 // -----------------------------------------------------------------------------
 
+#if 0
 static void dumpNode (AstNode const* node, int indent) {
   if (node == nullptr) {
     return;
@@ -111,6 +114,7 @@ static void dumpNode (AstNode const* node, int indent) {
     dumpNode(node->getMember(i), indent + 1);
   }
 }
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -139,6 +143,24 @@ Condition::~Condition () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a condition from JSON
+////////////////////////////////////////////////////////////////////////////////
+        
+Condition* Condition::fromJson (ExecutionPlan* plan,
+                                triagens::basics::Json const& json) {
+  std::unique_ptr<Condition> condition(new Condition(plan->getAst()));
+
+  std::unique_ptr<AstNode> node(new AstNode(plan->getAst(), json)); 
+  condition->andCombine(node.get());
+  node.release();
+
+  condition->_isNormalized = true;
+  //condition->normalize(plan);
+
+  return condition.release();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone the condition
@@ -303,10 +325,12 @@ void Condition::normalize (ExecutionPlan* plan) {
 
   optimize(plan);
 
+#if 0
   std::cout << "\n";
   dump();
   std::cout << "\n";
   _isNormalized = true;
+#endif  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -675,9 +699,11 @@ AstNode* Condition::mergeInOperations (AstNode const* lhs,
 /// @brief dump the condition for debug purposes
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 void Condition::dump () const {
   dumpNode(_root, 0);
 }
+#endif
 
 AstNode* Condition::transformNode (AstNode* node) {
   if (node == nullptr) {
@@ -693,10 +719,12 @@ AstNode* Condition::transformNode (AstNode* node) {
   }
 
   TRI_ASSERT(node->type != NODE_TYPE_OPERATOR_BINARY_AND &&
-      node->type != NODE_TYPE_OPERATOR_BINARY_OR);
+             node->type != NODE_TYPE_OPERATOR_BINARY_OR);
 
   if (node->type == NODE_TYPE_OPERATOR_NARY_AND) {
     // first recurse into subnodes
+
+    // TODO: this will not work in the general case with an NARY_AND node having 0..n children
     node->changeMember(0, transformNode(node->getMember(0)));
     node->changeMember(1, transformNode(node->getMember(1)));
 
@@ -730,8 +758,10 @@ AstNode* Condition::transformNode (AstNode* node) {
   }
   else if (node->type == NODE_TYPE_OPERATOR_NARY_OR) {
     // recurse into subnodes
-    node->changeMember(0, transformNode(node->getMember(0)));
-    node->changeMember(1, transformNode(node->getMember(1)));
+    size_t const n = node->numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      node->changeMember(i, transformNode(node->getMemberUnchecked(i)));
+    }
   }
   else if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
     // push down logical negations
