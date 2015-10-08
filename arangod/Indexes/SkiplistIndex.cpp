@@ -1180,7 +1180,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
             // We set an lower bound
             TRI_ASSERT(lower == nullptr);
             lower = value->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
-            includeUpper = includeBound;
+            includeLower = includeBound;
           }
         };
         // This is not an equalityCheck, set lower or upper
@@ -1210,71 +1210,91 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
   searchValues.reserve(maxPermutations);
 
 
-  std::unique_ptr<TRI_index_operator_t> rangeOperator(nullptr);
+  auto buildRangeOperator = [] (TRI_json_t* lowerBound,
+                                bool lowerBoundInclusive,
+                                TRI_json_t* upperBound,
+                                bool upperBoundInclusive,
+                                TRI_json_t* parameters,
+                                VocShaper* shaper) -> TRI_index_operator_t* {
+    std::unique_ptr<TRI_index_operator_t> rangeOperator;
 
-  if (lower != nullptr) {
-    TRI_index_operator_type_e type;
-    if (includeLower) {
-      type = TRI_LE_INDEX_OPERATOR;
-    }
-    else {
-      type = TRI_LT_INDEX_OPERATOR;
-    }
+    if (lowerBound != nullptr) {
+      TRI_index_operator_type_e type;
+      if (lowerBoundInclusive) {
+        type = TRI_GE_INDEX_OPERATOR;
+      }
+      else {
+        type = TRI_GT_INDEX_OPERATOR;
+      }
 
-    std::unique_ptr<TRI_json_t> parameter(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1));
-    if (parameter == nullptr) {
-      return nullptr;
-    }
-    TRI_PushBack2ArrayJson(parameter.get(), TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, lower));
-    std::cout << parameter.get() << std::endl;
-    rangeOperator.reset(TRI_CreateIndexOperator(type,
-                                                nullptr,
-                                                nullptr, 
-                                                parameter.get(), 
-                                                _shaper, 
-                                                1));
-    parameter.release();
-  }
+      std::unique_ptr<TRI_json_t> paramCopy;
+      if (parameters == nullptr) {
+        paramCopy.reset(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1));
+      }
+      else {
+        paramCopy.reset(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters));
+      }
+      if (paramCopy == nullptr) {
+        return nullptr;
+      }
 
-  if (upper != nullptr) {
-    TRI_index_operator_type_e type;
-    if (includeUpper) {
-      type = TRI_GE_INDEX_OPERATOR;
-    }
-    else {
-      type = TRI_GT_INDEX_OPERATOR;
-    }
-
-    std::unique_ptr<TRI_json_t> parameter(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1));
-    if (parameter == nullptr) {
-      return nullptr;
-    }
-    TRI_PushBack2ArrayJson(parameter.get(), TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, upper));
-    std::unique_ptr<TRI_index_operator_t> tmpOp(TRI_CreateIndexOperator(type,
-                                                                        nullptr,
-                                                                        nullptr, 
-                                                                        parameter.get(),
-                                                                        _shaper, 
-                                                                        1)); 
-    parameter.release();
-    if (rangeOperator == nullptr) {
-      rangeOperator.reset(tmpOp.release());
-    }
-    else {
-      rangeOperator.reset(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
-                                                  rangeOperator.release(),
-                                                  tmpOp.get(),
+      TRI_PushBack2ArrayJson(paramCopy.get(), TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, lowerBound));
+      rangeOperator.reset(TRI_CreateIndexOperator(type,
                                                   nullptr,
-                                                  _shaper,
-                                                  2));
-      tmpOp.release();
+                                                  nullptr, 
+                                                  paramCopy.get(), 
+                                                  shaper, 
+                                                  1));
+      paramCopy.release();
     }
-  }
+
+    if (upperBound != nullptr) {
+      TRI_index_operator_type_e type;
+      if (upperBoundInclusive) {
+        type = TRI_LE_INDEX_OPERATOR;
+      }
+      else {
+        type = TRI_LT_INDEX_OPERATOR;
+      }
+
+      std::unique_ptr<TRI_json_t> paramCopy;
+      if (parameters == nullptr) {
+        paramCopy.reset(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1));
+      }
+      else {
+        paramCopy.reset(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters));
+      }
+      if (paramCopy == nullptr) {
+        return nullptr;
+      }
+
+      TRI_PushBack2ArrayJson(paramCopy.get(), TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, upperBound));
+      std::unique_ptr<TRI_index_operator_t> tmpOp(TRI_CreateIndexOperator(type,
+                                                                          nullptr,
+                                                                          nullptr, 
+                                                                          paramCopy.get(),
+                                                                          shaper, 
+                                                                          1)); 
+      paramCopy.release();
+      if (rangeOperator == nullptr) {
+        rangeOperator.reset(tmpOp.release());
+      }
+      else {
+        rangeOperator.reset(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
+                                                    rangeOperator.release(),
+                                                    tmpOp.get(),
+                                                    nullptr,
+                                                    shaper,
+                                                    2));
+        tmpOp.release();
+      }
+    }
+    return rangeOperator.release();
+  };
 
   if (usedFields == 0) {
     // We have a range query based on the first _field
-    searchValues.emplace_back(rangeOperator.get());
-    rangeOperator.release();
+    searchValues.emplace_back(buildRangeOperator(lower, includeLower, upper, includeUpper, nullptr, _shaper));
   }
   else {
     bool done = false;
@@ -1301,15 +1321,18 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
                                                                             parameter.get(), 
                                                                             _shaper, 
                                                                             usedFields)); 
+        // Note we create a new RangeOperator always.
+        std::unique_ptr<TRI_index_operator_t> rangeOperator(buildRangeOperator(lower, includeLower, upper, includeUpper, parameter.get(), _shaper));
         parameter.release();
+
         if (rangeOperator != nullptr) {
-          // NOTE: We might have to clone the rangeOperator here!
           std::unique_ptr<TRI_index_operator_t> combinedOp(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
-                                                                                   rangeOperator.get(),
                                                                                    tmpOp.get(),
+                                                                                   rangeOperator.get(),
                                                                                    nullptr,
                                                                                    _shaper,
                                                                                    2));
+          rangeOperator.release();
           tmpOp.release();
           searchValues.emplace_back(combinedOp.get());
           combinedOp.release();
