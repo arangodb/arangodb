@@ -730,21 +730,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
         if (nodeType == ExecutionNode::GATHER) {
           // we found a gather node
-          TRI_ASSERT(remoteNode != nullptr);
+          if (remoteNode == nullptr) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "expecting a remoteNode");
+          }
 
           // now we'll create a remote node for each shard and add it to the gather node
-          Collection const* collection = nullptr;
-          if (nodeType == ExecutionNode::GATHER) {
-            collection = static_cast<GatherNode const*>((*en))->collection();
-          }
-          else {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-          }
+          Collection const* collection = static_cast<GatherNode const*>((*en))->collection();
 
-          if (remoteNode == nullptr) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-          }
-          
           auto&& shardIds = collection->shardIds();
 
           for (auto const& shardId : shardIds) {

@@ -103,11 +103,13 @@ namespace triagens {
         }
       }
 
+#if 0
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the condition for debug purposes
 ////////////////////////////////////////////////////////////////////////////////
 
       void dump () const;
+#endif      
       
       Variable const*             variable;
       std::string const           attributeName;
@@ -175,13 +177,19 @@ namespace triagens {
 /// @brief return the condition as a Json object
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json toJson (TRI_memory_zone_t* zone) const {
+        triagens::basics::Json toJson (TRI_memory_zone_t* zone, bool verbose) const {
           if (_root == nullptr) {
             return triagens::basics::Json(triagens::basics::Json::Object);
           }
 
-          return triagens::basics::Json(zone, _root->toJson(zone, false));
+          return triagens::basics::Json(zone, _root->toJson(zone, verbose));
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a condition from JSON
+////////////////////////////////////////////////////////////////////////////////
+        
+        static Condition* fromJson (ExecutionPlan*, triagens::basics::Json const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone the condition
@@ -221,7 +229,9 @@ namespace triagens {
 /// @brief dump the condition
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
         void dump () const;
+#endif        
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

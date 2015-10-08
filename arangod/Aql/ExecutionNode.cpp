@@ -131,7 +131,7 @@ void ExecutionNode::getSortElements (SortElementVector& elements,
     triagens::basics::Json oneJsonElement = jsonElements.at(static_cast<int>(i));
     bool ascending = JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
     Variable *v = varFromJson(plan->getAst(), oneJsonElement, "inVariable");
-    elements.emplace_back(std::make_pair(v, ascending));
+    elements.emplace_back(v, ascending);
   }
 }
 
@@ -143,6 +143,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
   validateType(nodeTypeID);
 
   NodeType nodeType = (NodeType) nodeTypeID;
+
   switch (nodeType) {
     case SINGLETON:
       return new SingletonNode(plan, oneNode);

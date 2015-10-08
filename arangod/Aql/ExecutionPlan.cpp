@@ -1773,8 +1773,7 @@ void ExecutionPlan::insertDependency (ExecutionNode* oldNode,
 ExecutionNode* ExecutionPlan::fromJson (triagens::basics::Json const& json) {
   ExecutionNode* ret = nullptr;
   triagens::basics::Json nodes = json.get("nodes");
-  //std::cout << nodes.toString() << "\n";
-
+  
   if (! nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nodes is not an array");
   }
@@ -1789,8 +1788,8 @@ ExecutionNode* ExecutionPlan::fromJson (triagens::basics::Json const& json) {
     if (! oneJsonNode.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an object");
     }
-    ret = ExecutionNode::fromJsonFactory(this, oneJsonNode);
 
+    ret = ExecutionNode::fromJsonFactory(this, oneJsonNode);
     registerNode(ret);
 
     TRI_ASSERT(ret != nullptr);

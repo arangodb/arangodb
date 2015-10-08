@@ -403,7 +403,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
 
   // first fetch the unmodified version
   if (debug) {
-    require("internal").print("Analysing Query unoptimized: " + query);
+    require("internal").print("Analyzing Query unoptimized: " + query);
   }
   plans[0] = AQL_EXPLAIN(query, bindVars, paramNone);
   // then all of the ones permuted by by the optimizer.
