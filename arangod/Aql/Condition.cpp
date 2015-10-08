@@ -800,8 +800,6 @@ AstNode* Condition::transformNode (AstNode* node) {
       size_t const numPermutations = permutationStates.size();
 
       while (! done) {
-        bool valid = true;
-           
         auto andOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_AND);
 
         for (size_t i = 0; i < numPermutations; ++i) {
