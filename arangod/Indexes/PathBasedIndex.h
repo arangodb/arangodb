@@ -56,11 +56,11 @@ namespace triagens {
       protected:
 
         struct PermutationState {
-          PermutationState (triagens::aql::AstNodeType type, triagens::aql::AstNode const* value, size_t attributePosition, size_t current, size_t n)
+          PermutationState (triagens::aql::AstNodeType type, triagens::aql::AstNode const* value, size_t attributePosition, size_t n)
             : type(type),
               value(value),
               attributePosition(attributePosition),
-              current(current),
+              current(0),
               n(n) {
           }
             

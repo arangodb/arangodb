@@ -837,15 +837,15 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
     triagens::aql::AstNodeType type = comp->type;
 
     if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-      permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 0, 1));
+      permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 1));
     }
     else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       if (isAttributeExpanded(attributePosition)) {
         type = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
-        permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 0, 1));
+        permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 1));
       }
       else {
-        permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 0, valNode->numMembers()));
+        permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, valNode->numMembers()));
       }
     }
     else {
