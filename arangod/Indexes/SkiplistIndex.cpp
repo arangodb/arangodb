@@ -1164,7 +1164,6 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       TRI_ASSERT(rangeConditions.size() <= 2);
 
       for (auto& comp : rangeConditions) {
-        std::cout << "Range Condition" << std::endl;
         TRI_ASSERT(comp->numMembers() == 2);
         triagens::aql::AstNode const* access = nullptr;
         triagens::aql::AstNode const* value = nullptr;
@@ -1219,7 +1218,6 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
                                 VocShaper* shaper) -> TRI_index_operator_t* {
     std::unique_ptr<TRI_index_operator_t> rangeOperator;
 
-    std::cout << lowerBound << ".." << lowerBoundInclusive << " < " << upperBound << ".." << upperBoundInclusive << std::endl;
     if (lowerBound != nullptr) {
       TRI_index_operator_type_e type;
       if (lowerBoundInclusive) {
