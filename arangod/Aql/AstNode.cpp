@@ -681,6 +681,16 @@ std::string const& AstNode::getValueTypeString () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify the AstNode
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AstNode::toString (AstNode const* node) {
+  std::unique_ptr<TRI_json_t> json(node->toJson(TRI_UNKNOWN_MEM_ZONE, false));
+
+  return triagens::basics::JsonHelper::toString(json.get());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether we know a type of this kind; throws exception if not.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2032,6 +2042,31 @@ void AstNode::appendValue (triagens::basics::StringBuffer* buffer) const {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                       public non-member functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the AstNode to an output stream
+////////////////////////////////////////////////////////////////////////////////
+     
+std::ostream& operator<< (std::ostream& stream,
+                          triagens::aql::AstNode const* node) {
+  stream << triagens::aql::AstNode::toString(node);
+  return stream;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the AstNode to an output stream
+////////////////////////////////////////////////////////////////////////////////
+
+std::ostream& operator<< (std::ostream& stream,
+                          triagens::aql::AstNode const& node) {
+  stream << triagens::aql::AstNode::toString(&node);
+  return stream;
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

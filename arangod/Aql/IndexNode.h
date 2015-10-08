@@ -76,6 +76,8 @@ namespace triagens {
           TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
           TRI_ASSERT(_condition != nullptr);
+
+          specializeConditions();
         }
 
         IndexNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -163,6 +165,18 @@ namespace triagens {
         std::vector<Index const*> getIndexes () const {
           return _indexes;
         }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specialize condition for the indexes picked
+////////////////////////////////////////////////////////////////////////////////
+
+        void specializeConditions ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

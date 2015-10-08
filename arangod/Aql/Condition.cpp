@@ -268,7 +268,7 @@ bool Condition::findIndexForAndNode (AstNode const* node,
 
   // This code is never responsible for the content of this pointer.
   Index const* bestIndex = nullptr;
-  double bestCost        = MaxFilterCost + MaxSortCost + std::numeric_limits<double>::epsilon(); 
+  double bestCost = MaxFilterCost + MaxSortCost + std::numeric_limits<double>::epsilon(); 
 
   std::vector<Index const*> indexes = colNode->collection()->getIndexes();
 
