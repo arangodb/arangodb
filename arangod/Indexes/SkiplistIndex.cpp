@@ -1075,6 +1075,8 @@ void SkiplistIndex::matchAttributes (triagens::aql::AstNode const* node,
         if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference, found)) {
           values += op->getMember(1)->numMembers();
         }
+        else if (accessFitsIndex(op->getMember(1), op->getMember(0), op, reference, found)) {
+        }
         break;
 
       default:
@@ -1143,7 +1145,8 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
     if (values == 0) {
       values = 1;
     }
-    return estimatedCost * static_cast<double>(values);
+    estimatedCost *= static_cast<double>(values);
+    return true;
   }
 
   return false;
@@ -1232,7 +1235,12 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, 1));
     }
     else if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, value->numMembers()));
+      if (isAttributeExpanded(usedFields)) {
+        permutationStates.emplace_back(PermutationState(aql::NODE_TYPE_OPERATOR_BINARY_EQ, value, usedFields, 1));
+      }
+      else {
+        permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, value->numMembers()));
+      }
     }
     else {
       // This is a one-sided range
