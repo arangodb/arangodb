@@ -65,11 +65,10 @@ namespace triagens {
       size_t const operatorMember;
       Expression* expression;
 
-      NonConstExpression (
-          size_t const orM,
-          size_t const andM,
-          size_t const opM,
-          Expression* exp)
+      NonConstExpression (size_t orM,
+                          size_t andM,
+                          size_t opM,
+                          Expression* exp)
       : orMember(orM),
         andMember(andM),
         operatorMember(opM),
