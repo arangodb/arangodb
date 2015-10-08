@@ -307,7 +307,7 @@ namespace triagens {
 #endif
 #endif
         }
-        char const* what () const throw() {
+        char const* what () const noexcept {
           return _msg.c_str();
         }
     };
@@ -729,7 +729,7 @@ namespace triagens {
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~Json () throw() {
+        ~Json () noexcept {
           if (_json != nullptr && _autofree == AUTOFREE) {
             TRI_FreeJson(TRI_MemoryZone(_zone), _json);
           }
@@ -744,7 +744,7 @@ namespace triagens {
 /// of the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_json_t* json () const throw() {
+        TRI_json_t* json () const noexcept {
           return _json;
         }
 
@@ -754,7 +754,7 @@ namespace triagens {
 /// constructor and in the cast operator to TRI_json_t*.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_json_t* steal () throw() {
+        TRI_json_t* steal () noexcept {
           TRI_json_t* res = _json;
           if (_autofree == AUTOFREE) {
             _json = nullptr;
@@ -1036,7 +1036,7 @@ namespace triagens {
 /// @brief checks whether *this is a Json that is equal to null.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isNull () const throw() {
+        bool isNull () const noexcept {
           return _json != nullptr && _json->_type == TRI_JSON_NULL;
         }
 
@@ -1044,7 +1044,7 @@ namespace triagens {
 /// @brief checks whether *this is a boolean Json.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isBoolean () const throw() {
+        bool isBoolean () const noexcept {
           return TRI_IsBooleanJson(_json);
         }
 
@@ -1052,7 +1052,7 @@ namespace triagens {
 /// @brief checks whether *this is a number Json.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isNumber () const throw() {
+        bool isNumber () const noexcept {
           return TRI_IsNumberJson(_json);
         }
 
@@ -1060,7 +1060,7 @@ namespace triagens {
 /// @brief checks whether *this is a string Json.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isString () const throw() {
+        bool isString () const noexcept {
           return TRI_IsStringJson(_json);
         }
 
@@ -1068,7 +1068,7 @@ namespace triagens {
 /// @brief checks whether *this is an object Json.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isObject () const throw() {
+        bool isObject () const noexcept {
           return TRI_IsObjectJson(_json);
         }
 
@@ -1076,7 +1076,7 @@ namespace triagens {
 /// @brief checks whether *this is an array Json.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isArray () const throw() {
+        bool isArray () const noexcept {
           return TRI_IsArrayJson(_json);
         }
 
@@ -1106,7 +1106,7 @@ namespace triagens {
 /// @brief checks whether *this is an empty Json (not even null).
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isEmpty () const throw() {
+        bool isEmpty () const noexcept {
           return _json == nullptr;
         }
 

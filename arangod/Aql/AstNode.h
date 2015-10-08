@@ -603,7 +603,7 @@ namespace triagens {
 /// @brief return the number of members
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline size_t numMembers () const throw() {
+        inline size_t numMembers () const noexcept {
           return members.size();
         }
 
@@ -666,7 +666,7 @@ namespace triagens {
 /// @brief return a member of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline AstNode* getMemberUnchecked (size_t i) const throw() {
+        inline AstNode* getMemberUnchecked (size_t i) const noexcept {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
           TRI_ASSERT(i < members.size());
 #endif          

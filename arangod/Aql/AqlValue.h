@@ -119,7 +119,7 @@ namespace triagens {
 /// @brief return the value type
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline AqlValueType type () const throw() {
+      inline AqlValueType type () const noexcept {
         return _type;
       }
 
@@ -128,7 +128,7 @@ namespace triagens {
 /// called for a value
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool requiresDestruction () const throw() {
+      inline bool requiresDestruction () const noexcept {
         return (_type != EMPTY && _type != SHAPED);
       }
 
@@ -136,7 +136,7 @@ namespace triagens {
 /// @brief a quick method to decide whether a value is empty
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool isEmpty () const throw() {
+      inline bool isEmpty () const noexcept {
         return _type == EMPTY;
       }
 
@@ -144,7 +144,7 @@ namespace triagens {
 /// @brief whether or not the AqlValue is a shape
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool isShaped () const throw() {
+      inline bool isShaped () const noexcept {
         return _type == SHAPED;
       }
 
@@ -152,7 +152,7 @@ namespace triagens {
 /// @brief whether or not the AqlValue is a JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool isJson () const throw() {
+      inline bool isJson () const noexcept {
         return _type == JSON;
       }
 
@@ -160,7 +160,7 @@ namespace triagens {
 /// @brief whether or not the AqlValue is a RANGE
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool isRange () const throw() {
+      inline bool isRange () const noexcept {
         return _type == RANGE;
       }
       
@@ -194,7 +194,7 @@ namespace triagens {
 /// is used when the AqlValue is stolen and stored in another object
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline void erase () throw() {
+      inline void erase () noexcept {
         _type = EMPTY;
         _json = nullptr;
       }
