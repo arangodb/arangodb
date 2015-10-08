@@ -1324,7 +1324,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
                                                                             _shaper, 
                                                                             usedFields)); 
         // Note we create a new RangeOperator always.
-        std::unique_ptr<TRI_index_operator_t> rangeOperator(buildRangeOperator(lower, includeLower, upper, includeUpper, parameter.get(), _shaper));
+        std::unique_ptr<TRI_index_operator_t> rangeOperator(buildRangeOperator(lower.get(), includeLower, upper.get(), includeUpper, parameter.get(), _shaper));
         parameter.release();
 
         if (rangeOperator != nullptr) {
