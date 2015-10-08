@@ -637,6 +637,8 @@ TRI_doc_mptr_t* SkiplistIndexIterator::next () {
       // We are done
       return nullptr;
     }
+    // Free the former iterator and get the next one
+    delete _iterator;
     _iterator = _index->lookup(_operators[_currentOperator], _reverse);
     res = _iterator->next();
   }
@@ -1155,8 +1157,8 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
   // Now handle the next element, which might be a range
   bool includeLower = false;
   bool includeUpper = false;
-  TRI_json_t* lower = nullptr;
-  TRI_json_t* upper = nullptr;
+  std::unique_ptr<TRI_json_t> lower;
+  std::unique_ptr<TRI_json_t> upper;
   if (usedFields < _fields.size()) {
     auto it = found.find(usedFields); 
     if (it != found.end()) {
@@ -1173,13 +1175,13 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
           if ( isLower == isReverseOrder ) {
             // We set an upper bound
             TRI_ASSERT(upper == nullptr);
-            upper = value->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+            upper.reset(value->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
             includeUpper = includeBound;
           }
           else {
             // We set an lower bound
             TRI_ASSERT(lower == nullptr);
-            lower = value->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+            lower.reset(value->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
             includeLower = includeBound;
           }
         };
@@ -1294,7 +1296,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
 
   if (usedFields == 0) {
     // We have a range query based on the first _field
-    searchValues.emplace_back(buildRangeOperator(lower, includeLower, upper, includeUpper, nullptr, _shaper));
+    searchValues.emplace_back(buildRangeOperator(lower.get(), includeLower, upper.get(), includeUpper, nullptr, _shaper));
   }
   else {
     bool done = false;
