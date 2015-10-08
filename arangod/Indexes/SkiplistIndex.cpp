@@ -1178,24 +1178,24 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
           }
           else {
             // We set an lower bound
-            TRI_ASSERT(upper == nullptr);
-            upper = value->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+            TRI_ASSERT(lower == nullptr);
+            lower = value->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
             includeUpper = includeBound;
           }
         };
         // This is not an equalityCheck, set lower or upper
         switch (comp->type) {
           case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-            setBorder(true, false);
-            break;
-          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-            setBorder(true, true);
-            break;
-          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
             setBorder(false, false);
             break;
-          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
             setBorder(false, true);
+            break;
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+            setBorder(true, false);
+            break;
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+            setBorder(true, true);
             break;
           default:
             // unsupported right now. Should have been rejected by supportsFilterCondition
@@ -1221,17 +1221,19 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       type = TRI_LT_INDEX_OPERATOR;
     }
 
-    TRI_json_t* parameter = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1);
+    std::unique_ptr<TRI_json_t> parameter(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1));
     if (parameter == nullptr) {
       return nullptr;
     }
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter, lower);
+    TRI_PushBack2ArrayJson(parameter.get(), TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, lower));
+    std::cout << parameter.get() << std::endl;
     rangeOperator.reset(TRI_CreateIndexOperator(type,
                                                 nullptr,
                                                 nullptr, 
-                                                parameter, 
+                                                parameter.get(), 
                                                 _shaper, 
                                                 1));
+    parameter.release();
   }
 
   if (upper != nullptr) {
@@ -1243,17 +1245,18 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       type = TRI_GT_INDEX_OPERATOR;
     }
 
-    TRI_json_t* parameter = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1);
+    std::unique_ptr<TRI_json_t> parameter(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1));
     if (parameter == nullptr) {
       return nullptr;
     }
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter, upper);
+    TRI_PushBack2ArrayJson(parameter.get(), TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, upper));
     std::unique_ptr<TRI_index_operator_t> tmpOp(TRI_CreateIndexOperator(type,
                                                                         nullptr,
                                                                         nullptr, 
-                                                                        parameter, 
+                                                                        parameter.get(),
                                                                         _shaper, 
                                                                         1)); 
+    parameter.release();
     if (rangeOperator == nullptr) {
       rangeOperator.reset(tmpOp.release());
     }
@@ -1288,7 +1291,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
           valid = false;
           break;
         }
-        TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter.get(), json.get());
+        TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter.get(), json.release());
       }
 
       if (valid) {
@@ -1298,6 +1301,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
                                                                             parameter.get(), 
                                                                             _shaper, 
                                                                             usedFields)); 
+        parameter.release();
         if (rangeOperator != nullptr) {
           // NOTE: We might have to clone the rangeOperator here!
           std::unique_ptr<TRI_index_operator_t> combinedOp(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
@@ -1307,11 +1311,11 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
                                                                                    _shaper,
                                                                                    2));
           tmpOp.release();
-          searchValues.push_back(combinedOp.get());
+          searchValues.emplace_back(combinedOp.get());
           combinedOp.release();
         }
         else {
-          searchValues.push_back(tmpOp.get());
+          searchValues.emplace_back(tmpOp.get());
           tmpOp.release();
         }
       }
