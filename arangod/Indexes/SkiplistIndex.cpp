@@ -1235,7 +1235,12 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, 0, 1));
     }
     else if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, 0, value->numMembers()));
+      if (isAttributeExpanded(usedFields)) {
+        permutationStates.emplace_back(PermutationState(aql::NODE_TYPE_OPERATOR_BINARY_EQ, value, usedFields, 0, 1));
+      }
+      else {
+        permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, 0, value->numMembers()));
+      }
     }
     else {
       // This is a one-sided range
