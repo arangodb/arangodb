@@ -190,7 +190,7 @@ function printIndexes (indexes) {
     stringBuilder.appendLine(" " + value("none"));
   }
   else {
-    var maxIdLen = String("Id").length;
+    var maxIdLen = String("By").length;
     var maxCollectionLen = String("Collection").length;
     var maxUniqueLen = String("Unique").length;
     var maxSparseLen = String("Sparse").length;
@@ -215,7 +215,7 @@ function printIndexes (indexes) {
         maxCollectionLen = l;
       }
     });
-    var line = " " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " +
+    var line = " " + pad(1 + maxIdLen - String("By").length) + header("By") + "   " +
                header("Type") + pad(1 + maxTypeLen - "Type".length) + "   " +
                header("Collection") + pad(1 + maxCollectionLen - "Collection".length) + "   " +
                header("Unique") + pad(1 + maxUniqueLen - "Unique".length) + "   " +
@@ -231,7 +231,13 @@ function printIndexes (indexes) {
       var sparsity = (indexes[i].hasOwnProperty("sparse") ? (indexes[i].sparse ? "true" : "false") : "n/a");
       var fields = indexes[i].fields.map(attribute).join(", ");
       var fieldsLen = indexes[i].fields.map(attributeUncolored).join(", ").length;
-      var ranges = "[ " + indexes[i].ranges + " ]";
+      var ranges;
+      if (indexes[i].hasOwnProperty("condition")) {
+        ranges = indexes[i].condition;
+      }
+      else {
+        ranges = "[ " + indexes[i].ranges + " ]";
+      }
       var selectivity = (indexes[i].hasOwnProperty("selectivityEstimate") ?
         (indexes[i].selectivityEstimate * 100).toFixed(2) + " %" :
         "n/a"
@@ -377,8 +383,6 @@ function processQuery (query, explain) {
           references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];
         }
         return buildExpression(node.subNodes[1]);
-      case "verticalizer":
-        return buildExpression(node.subNodes[0]);
       case "user function call":
         return func(node.name) + "(" + ((node.subNodes && node.subNodes[0].subNodes) || [ ]).map(buildExpression).join(", ") + ")" + "   " + annotation("/* user-defined function */");
       case "function call":
@@ -415,6 +419,10 @@ function processQuery (query, explain) {
         return buildExpression(node.subNodes[0]) + " && " + buildExpression(node.subNodes[1]);
       case "ternary":
         return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);
+      case "n-ary or":
+        return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" || ");
+      case "n-ary and":
+        return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" && ");
       default: 
         return "unhandled node type (" + node.type + ")";
     }
@@ -485,11 +493,16 @@ function processQuery (query, explain) {
       case "IndexNode":
         collectionVariables[node.outVariable.id] = node.collection;
         var types = [ ];
-        node.indexes.forEach(function (idx) {
+        node.indexes.forEach(function (idx, i) {
           types.push((idx.reverse ? "reverse " : "") + idx.type + " index scan");
           idx.collection = node.collection;
           idx.node = node.id;
-          idx.ranges = [ ];
+          if (node.condition.type === 'n-ary or') {
+            idx.condition = buildExpression(node.condition.subNodes[i]);
+          }
+          else {
+            idx.conditionn = "";
+          } 
           indexes.push(idx);
         });
         return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");

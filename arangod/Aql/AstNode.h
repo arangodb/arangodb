@@ -667,7 +667,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline AstNode* getMemberUnchecked (size_t i) const throw() {
-          return members.at(i);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          TRI_ASSERT(i < members.size());
+#endif          
+          return members[i];
         }
 
 ////////////////////////////////////////////////////////////////////////////////

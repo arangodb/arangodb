@@ -126,6 +126,16 @@ namespace triagens {
     class Condition {
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  private typedefs
+// -----------------------------------------------------------------------------
+
+      private:
+
+        typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
+        typedef std::unordered_map<std::string, UsagePositionType> AttributeUsageType;
+        typedef std::unordered_map<Variable const*, AttributeUsageType> VariableUsageType;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -210,6 +220,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void normalize (ExecutionPlan* plan);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers an attribute access for a particular (collection) variable
+////////////////////////////////////////////////////////////////////////////////
+
+        void storeAttributeAccess (VariableUsageType&,
+                                   AstNode const*, 
+                                   size_t, 
+                                   AttributeSideType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimize the condition expression tree
