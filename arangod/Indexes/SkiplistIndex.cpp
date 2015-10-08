@@ -1260,16 +1260,18 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     else {
       rangeOperator.reset(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
                                                   rangeOperator.release(),
-                                                  tmpOp.release(),
+                                                  tmpOp.get(),
                                                   nullptr,
                                                   _shaper,
                                                   2));
+      tmpOp.release();
     }
   }
 
   if (usedFields == 0) {
     // We have a range query based on the first _field
-    searchValues.emplace_back(rangeOperator.release());
+    searchValues.emplace_back(rangeOperator.get());
+    rangeOperator.release();
   }
   else {
     bool done = false;
