@@ -498,9 +498,11 @@ function processQuery (query, explain) {
           types.push((idx.reverse ? "reverse " : "") + idx.type + " index scan");
           idx.collection = node.collection;
           idx.node = node.id;
-          var condition = "";
           if (node.condition.type === 'n-ary or') {
             idx.condition = buildExpression(node.condition.subNodes[i]);
+          }
+          else {
+            idx.conditionn = "";
           } 
           indexes.push(idx);
         });

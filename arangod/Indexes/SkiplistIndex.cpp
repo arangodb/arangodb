@@ -1232,14 +1232,14 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     // We found an access for this field
     if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       // This is an equalityCheck, we can continue with the next field
-      permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, 0, 1));
+      permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, 1));
     }
     else if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       if (isAttributeExpanded(usedFields)) {
-        permutationStates.emplace_back(PermutationState(aql::NODE_TYPE_OPERATOR_BINARY_EQ, value, usedFields, 0, 1));
+        permutationStates.emplace_back(PermutationState(aql::NODE_TYPE_OPERATOR_BINARY_EQ, value, usedFields, 1));
       }
       else {
-        permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, 0, value->numMembers()));
+        permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, value->numMembers()));
       }
     }
     else {

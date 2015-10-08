@@ -608,8 +608,6 @@ AstNode::AstNode (Ast* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode::~AstNode () {
-  members.clear();
-  
   if (computedJson != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, computedJson);
     computedJson = nullptr;
