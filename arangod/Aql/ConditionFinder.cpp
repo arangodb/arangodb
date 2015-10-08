@@ -149,7 +149,6 @@ bool ConditionFinder::before (ExecutionNode* en) {
         }
 
         TRI_ASSERT(! usedIndexes.empty());
-        std::cout << node->id() << " Number of indexes used: " << usedIndexes.size() << std::endl;
           // We either can find indexes for everything or findIndexes will clear out usedIndexes
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
           _plan, 

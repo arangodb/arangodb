@@ -487,12 +487,11 @@ function processQuery (query, explain) {
         var types = [ ];
         node.indexes.forEach(function (idx) {
           types.push((idx.reverse ? "reverse " : "") + idx.type + " index scan");
+          idx.collection = node.collection;
+          idx.node = node.id;
+          idx.ranges = [ ];
+          indexes.push(idx);
         });
-        // TODO
-        //index.ranges = [ ];
-        //index.collection = node.collection;
-        //index.node = node.id;
-        //indexes.push(index);
         return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");
       case "IndexRangeNode":
         collectionVariables[node.outVariable.id] = node.collection;

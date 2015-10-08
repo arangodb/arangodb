@@ -55,7 +55,6 @@ triagens::aql::AstNode const* PathBasedIndex::PermutationState::getValue () cons
   return nullptr;
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------

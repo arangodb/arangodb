@@ -40,6 +40,31 @@
 
 using namespace triagens::aql;
 using CompareResult = ConditionPart::ConditionPartCompareResult;
+        
+struct PermutationState {
+  PermutationState (triagens::aql::AstNode const* value, size_t n)
+    : value(value),
+      current(0),
+      n(n) {
+  }
+    
+  triagens::aql::AstNode const* getValue () const {
+    if (value->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_AND || 
+        value->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_OR || 
+        value->type == triagens::aql::NODE_TYPE_OPERATOR_NARY_AND || 
+        value->type == triagens::aql::NODE_TYPE_OPERATOR_NARY_OR) { 
+      TRI_ASSERT(current < n);
+      return value->getMember(current);
+    }
+
+    TRI_ASSERT(current == 0);
+    return value;
+  }
+
+  triagens::aql::AstNode const* value;
+  size_t                        current;
+  size_t const                  n;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              struct ConditionPart
@@ -713,9 +738,13 @@ AstNode* Condition::transformNode (AstNode* node) {
   if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
       node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
     // convert binary AND/OR into n-ary AND/OR
-    auto lhs = node->getMember(0);
-    auto rhs = node->getMember(1);
-    node = _ast->createNodeBinaryOperator(Ast::NaryOperatorType(node->type), lhs, rhs);
+    TRI_ASSERT(node->numMembers() == 2);
+    auto old = node;
+
+    // create a new n-ary node 
+    node = _ast->createNode(Ast::NaryOperatorType(old->type));
+    node->addMember(old->getMember(0));
+    node->addMember(old->getMember(1));
   }
 
   TRI_ASSERT(node->type != NODE_TYPE_OPERATOR_BINARY_AND &&
@@ -723,75 +752,106 @@ AstNode* Condition::transformNode (AstNode* node) {
 
   if (node->type == NODE_TYPE_OPERATOR_NARY_AND) {
     // first recurse into subnodes
+    bool processChildren = false;
+    size_t const n = node->numMembers();
 
-    // TODO: this will not work in the general case with an NARY_AND node having 0..n children
-    node->changeMember(0, transformNode(node->getMember(0)));
-    node->changeMember(1, transformNode(node->getMember(1)));
+    for (size_t i = 0; i < n; ++i) {
+      node->changeMember(i, transformNode(node->getMemberUnchecked(i)));
 
-    auto lhs = node->getMember(0);
-    auto rhs = node->getMember(1);
-
-    if (lhs->type == NODE_TYPE_OPERATOR_NARY_OR &&
-        rhs->type == NODE_TYPE_OPERATOR_NARY_OR) {
-      auto and1 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs->getMember(0), rhs->getMember(0)));
-      auto and2 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs->getMember(0), rhs->getMember(1)));
-      auto or1  = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, and1, and2);
-
-      auto and3 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs->getMember(1), rhs->getMember(0)));
-      auto and4 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs->getMember(1), rhs->getMember(1)));
-      auto or2  = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, and3, and4);
-
-      return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, or1, or2);
+      if (node->type == NODE_TYPE_OPERATOR_NARY_OR ||
+          node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+        processChildren = true;
+      }
     }
-    else if (lhs->type == NODE_TYPE_OPERATOR_NARY_OR) {
-      auto and1 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, rhs, lhs->getMember(0)));
-      auto and2 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, rhs, lhs->getMember(1)));
+      
+    if (processChildren) {
+      auto newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
 
-      return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, and1, and2);
-    }
-    else if (rhs->type == NODE_TYPE_OPERATOR_NARY_OR) {
-      auto and1 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs, rhs->getMember(0)));
-      auto and2 = transformNode(_ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, lhs, rhs->getMember(1)));
+      std::vector<PermutationState> permutationStates;
+      for (size_t i = 0; i < n; ++i) {
+        permutationStates.emplace_back(PermutationState(node->getMemberUnchecked(i), node->numMembers()));
+      }
+  
+      size_t current = 0;
+      bool done = false;
+      size_t const numPermutations = permutationStates.size();
 
-      return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, and1, and2);
+      while (! done) {
+        bool valid = true;
+           
+        auto andOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_AND);
+
+        for (size_t i = 0; i < numPermutations; ++i) {
+          auto state = permutationStates[i];
+          andOperator->addMember(state.getValue());
+        }
+
+        newOperator->addMember(andOperator);
+
+        // now permute
+        while (true) {
+          if (++permutationStates[current].current < permutationStates[current].n) {
+            current = 0;
+            // abort inner iteration
+            break;
+          }
+
+          permutationStates[current].current = 0;
+
+          if (++current >= n) {
+            done = true;
+            break;
+          }
+          // next inner iteration
+        }
+      }
+
+      return newOperator;
     }
+    // fallthrough intentional
   }
   else if (node->type == NODE_TYPE_OPERATOR_NARY_OR) {
     // recurse into subnodes
     size_t const n = node->numMembers();
+
     for (size_t i = 0; i < n; ++i) {
       node->changeMember(i, transformNode(node->getMemberUnchecked(i)));
     }
+    // fallthrough intentional
   }
   else if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
     // push down logical negations
     auto sub = node->getMemberUnchecked(0);
 
     if (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
-        sub->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      // ! (a && b)  =>  (! a) || (! b)
-      auto neg1 = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMember(0)));
-      auto neg2 = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMember(1)));
-
-      neg1 = _ast->optimizeNotExpression(neg1);
-      neg2 = _ast->optimizeNotExpression(neg2);
-
-      return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_OR, neg1, neg2);
-    }
-    else if (sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
+        sub->type == NODE_TYPE_OPERATOR_BINARY_AND ||
+        sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
         sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      // ! (a || b)  =>  (! a) && (! b)
-      auto neg1 = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMember(0)));
-      auto neg2 = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMember(1)));
+      size_t const n = sub->numMembers();
+    
+      AstNode* newOperator = nullptr;
+      if (sub->type == NODE_TYPE_OPERATOR_NARY_AND ||
+          sub->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+        // ! (a && b)  =>  (! a) || (! b)
+        newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
+      }
+      else {
+        // ! (a || b)  =>  (! a) && (! b)
+        newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_AND);
+      }
 
-      neg1 = _ast->optimizeNotExpression(neg1);
-      neg2 = _ast->optimizeNotExpression(neg2);
+      for (size_t i = 0; i < n; ++i) {
+        auto negated = transformNode(_ast->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, sub->getMemberUnchecked(i)));
+        auto optimized = _ast->optimizeNotExpression(negated);
 
-      return _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_NARY_AND, neg1, neg2);
+        newOperator->addMember(optimized);
+      }
+
+      return newOperator;
     }
 
     node->changeMember(0, transformNode(sub));
-    return node;
+    // fallthrough intentional
   }
 
   return node;
