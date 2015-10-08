@@ -114,6 +114,7 @@ pack-dmg-cmake:
 		-D "READLINE_VERSION=${READLINE_VERSION}" \
 		-D "READLINE_INCLUDE=${READLINE_INCLUDE}" \
 		-D "READLINE_LIB_PATH=${READLINE_LIB_PATH}" \
+                -D "READLINE_LIBS=/usr/local/opt/readline/lib/libreadline.a;/usr/local/opt/readline/lib/libhistory.a;ncurses" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		..
@@ -165,6 +166,7 @@ pack-macosxcode-cmake:
 		-D "READLINE_VERSION=${READLINE_VERSION}" \
 		-D "READLINE_INCLUDE=${READLINE_INCLUDE}" \
 		-D "READLINE_LIB_PATH=${READLINE_LIB_PATH}" \
+                -D "READLINE_LIBS=/usr/local/opt/readline/lib/libreadline.a;/usr/local/opt/readline/lib/libhistory.a;ncurses" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		-G Xcode \
@@ -202,6 +204,7 @@ pack-macosx-cmake:
 		-D "READLINE_VERSION=${READLINE_VERSION}" \
 		-D "READLINE_INCLUDE=${READLINE_INCLUDE}" \
 		-D "READLINE_LIB_PATH=${READLINE_LIB_PATH}" \
+                -D "READLINE_LIBS=/usr/local/opt/readline/lib/libreadline.a;/usr/local/opt/readline/lib/libhistory.a;ncurses" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		$(MOREOPTS) \
