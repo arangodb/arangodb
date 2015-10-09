@@ -1,5 +1,13 @@
-v2.7.0-rc3 (2015-10-05)
------------------------
+v2.7.0 (2015-10-09)
+-------------------
+
+* fixed request statistics aggregation
+  When arangod was started in supervisor mode, the request statistics always showed
+  0 requests, as the statistics aggregation thread did not run then.
+
+* read server configuration files before dropping privileges. this ensures that
+  the SSL keyfile specified in the configuration can be read with the server's start
+  privileges (i.e. root when using a standard ArangoDB package).
 
 * fixed replication with a 2.6 replication configuration and issues with a 2.6 master
 
