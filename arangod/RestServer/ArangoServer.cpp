@@ -34,7 +34,6 @@
 
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
-#include "Admin/ApplicationAdminServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/RestAqlHandler.h"
@@ -353,7 +352,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationScheduler(nullptr),
     _applicationDispatcher(nullptr),
     _applicationEndpointServer(nullptr),
-    _applicationAdminServer(nullptr),
     _applicationCluster(nullptr),
     _jobManager(nullptr),
     _applicationV8(nullptr),
@@ -496,14 +494,6 @@ void ArangoServer::buildApplicationServer () {
     ("database.force-sync-shapes", &ignoreOpt, "force syncing of shape data to disk, will use waitForSync value of collection when turned off (deprecated)")
     ("database.remove-on-drop", &ignoreOpt, "wipe a collection from disk after dropping")
   ;
-
-  // .............................................................................
-  // and start a simple admin server
-  // .............................................................................
-
-  _applicationAdminServer = new ApplicationAdminServer();
-
-  _applicationServer->addFeature(_applicationAdminServer);
 
   // .............................................................................
   // define server options

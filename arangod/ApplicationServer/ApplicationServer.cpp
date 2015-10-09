@@ -368,28 +368,8 @@ bool ApplicationServer::parse (int argc,
   // check for version request
   if (_options.has("version")) {
     cout << _version << endl;
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
   }
-
-  TRI_SetLogLevelLogging(_logLevel.c_str());
-
-  // .............................................................................
-  // parse phase 1
-  // .............................................................................
-
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
-    ok = (*i)->parsePhase1(_options);
-
-    if (! ok) {
-      return false;
-    }
-  }
-
-  // .............................................................................
-  // check configuration file
-  // .............................................................................
-
-  ok = readConfigurationFile();
 
   // check for help
   set<string> help = _options.needHelp("help");
@@ -399,9 +379,30 @@ bool ApplicationServer::parse (int argc,
     // check the specified configuration for errors)
     cout << argv[0] << " " << _title << "\n\n" << _description.usage(help) << endl;
   }
+  
+  
+  TRI_SetLogLevelLogging(_logLevel.c_str());
+  
+  // .............................................................................
+  // check configuration file
+  // .............................................................................
+
+  ok = readConfigurationFile();
 
   if (! ok) {
     return false;
+  }
+  
+  // .............................................................................
+  // parse phase 1
+  // .............................................................................
+
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+    ok = (*i)->afterOptionParsing(_options);
+
+    if (! ok) {
+      return false;
+    }
   }
 
   // exit here if --help was specified.
@@ -409,7 +410,7 @@ bool ApplicationServer::parse (int argc,
   // report errors to the user
 
   if (! help.empty()) {
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
   }
 
   // .............................................................................
@@ -458,18 +459,6 @@ bool ApplicationServer::parse (int argc,
   }
   catch (...) {
     LOG_FATAL_AND_EXIT("cannot select random generator, giving up");
-  }
-
-  // .............................................................................
-  // parse phase 2
-  // .............................................................................
-
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
-    ok = (*i)->parsePhase2(_options);
-
-    if (! ok) {
-      return false;
-    }
   }
 
   return true;
@@ -914,7 +903,7 @@ bool ApplicationServer::readConfigurationFile () {
 
     // .........................................................................
     // Under windows there is no 'HOME' directory as such so getenv("HOME")
-    // may return NULL -- which it does under windows
+    // may return nullptr -- which it does under windows
     // A safer approach below
     // .........................................................................
 

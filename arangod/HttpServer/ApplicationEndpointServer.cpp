@@ -234,7 +234,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
+bool ApplicationEndpointServer::afterOptionParsing (ProgramOptions& options) {
   // create the ssl context (if possible)
   bool ok = createSslContext();
 

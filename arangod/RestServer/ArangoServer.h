@@ -64,12 +64,7 @@ namespace triagens {
     class HttpsServer;
   }
 
-  namespace admin {
-    class ApplicationAdminServer;
-  }
-
   namespace arango {
-    class ApplicationMR;
     class ApplicationV8;
     class ApplicationCluster;
 
@@ -227,12 +222,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         rest::ApplicationEndpointServer* _applicationEndpointServer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructed admin server application
-////////////////////////////////////////////////////////////////////////////////
-
-        admin::ApplicationAdminServer* _applicationAdminServer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster application feature
