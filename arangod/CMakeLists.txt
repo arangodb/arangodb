@@ -57,7 +57,6 @@ add_executable(
     ${ProductVersionFiles}
     Actions/actions.cpp
     Actions/RestActionHandler.cpp
-    Admin/ApplicationAdminServer.cpp
     ApplicationServer/ApplicationFeature.cpp
     ApplicationServer/ApplicationServer.cpp
     Aql/AggregateBlock.cpp

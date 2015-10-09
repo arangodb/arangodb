@@ -83,39 +83,8 @@
             "frontend/js/arango/arango.js",
             "frontend/js/arango/templateEngine.js",
             "frontend/js/shell/browser.js",
-            "frontend/js/config/dygraphConfig.js" 
-            /*
-            "frontend/js/modules/underscore.js",
-            "frontend/js/modules/org/arangodb/aql/explainer.js",
-            "frontend/js/modules/org/arangodb/aql/functions.js",
-            "frontend/js/modules/org/arangodb/aql/queries.js",
-            "frontend/js/modules/org/arangodb/graph/traversal.js",
-            "frontend/js/modules/org/arangodb/arango-collection-common.js",
-            "frontend/js/modules/org/arangodb/arango-collection.js",
-            "frontend/js/modules/org/arangodb/arango-database.js",
-            "frontend/js/modules/org/arangodb/arango-query-cursor.js",
-            "frontend/js/modules/org/arangodb/arango-statement-common.js",
-            "frontend/js/modules/org/arangodb/arango-statement.js",
-            "frontend/js/modules/org/arangodb/arangosh.js",
-            "frontend/js/modules/org/arangodb/general-graph.js",
-            "frontend/js/modules/org/arangodb/graph-blueprint.js",
-            "frontend/js/modules/org/arangodb/graph-common.js",
-            "frontend/js/modules/org/arangodb/graph.js",
-            "frontend/js/modules/org/arangodb/is.js",
-            "frontend/js/modules/org/arangodb/mimetypes.js",
-            "frontend/js/modules/org/arangodb/replication.js",
-            "frontend/js/modules/org/arangodb/simple-query-common.js",
-            "frontend/js/modules/org/arangodb/simple-query.js",
-            "frontend/js/modules/org/arangodb/tutorial.js",
-            "frontend/js/modules/org/arangodb-common.js",
-            "frontend/js/modules/org/arangodb.js",
-            "frontend/js/bootstrap/modules/internal.js", // deps: -
-            "frontend/js/bootstrap/errors.js", // deps: internal
-            "frontend/js/bootstrap/modules/console.js", // deps: internal
-            "frontend/js/bootstrap/monkeypatches.js", 
-            "frontend/js/client/bootstrap/modules/internal.js", // deps: internal
-            "frontend/js/client/client.js"
-            */
+            "frontend/js/config/dygraphConfig.js",
+            "frontend/js/modules/underscore.js"
           ],
           js: [
             "frontend/js/models/*",

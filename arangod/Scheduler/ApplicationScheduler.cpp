@@ -476,22 +476,13 @@ void ApplicationScheduler::setupOptions (std::map<std::string, ProgramOptionsDes
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationScheduler::parsePhase1 (triagens::basics::ProgramOptions& options) {
-
+bool ApplicationScheduler::afterOptionParsing (triagens::basics::ProgramOptions& options) {
   // show io backends
   if (options.has("show-io-backends")) {
     cout << "available io backends are: " << SchedulerLibev::availableBackends() << endl;
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
   }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationScheduler::parsePhase2 (triagens::basics::ProgramOptions& options) {
+  
   // adjust file descriptors
   adjustFileDescriptors();
 

@@ -9392,22 +9392,11 @@ exports.HELP = exports.createHelpHeadline("Help") +
   'Predefined objects:                                                ' + "\n" +
   '  arango:                               ArangoConnection           ' + "\n" +
   '  db:                                   ArangoDatabase             ' + "\n" +
-  '  fm:                                   FoxxManager                ' + "\n" +
+  (internal.printBrowser ?  '' :
+  '  fm:                                   FoxxManager                ' + "\n") +
   'Examples:                                                          ' + "\n" +
   ' > db._collections()                    list all collections       ' + "\n" +
-  ' > db._create(<name>)                   create a new collection    ' + "\n" +
-  ' > db._drop(<name>)                     drop a collection          ' + "\n" +
-  ' > db.<name>.toArray()                  list all documents         ' + "\n" +
-  ' > id = db.<name>.save({ ... })         save a document            ' + "\n" +
-  ' > db.<name>.remove(<_id>)              delete a document          ' + "\n" +
-  ' > db.<name>.document(<_id>)            retrieve a document        ' + "\n" +
-  ' > db.<name>.replace(<_id>, {...})      overwrite a document       ' + "\n" +
-  ' > db.<name>.update(<_id>, {...})       partially update a document' + "\n" +
-  ' > db.<name>.exists(<_id>)              check if document exists   ' + "\n" +
   ' > db._query(<query>).toArray()         execute an AQL query       ' + "\n" +
-  ' > db._useDatabase(<name>)              switch database            ' + "\n" +
-  ' > db._createDatabase(<name>)           create a new database      ' + "\n" +
-  ' > db._listDatabases()                  list existing databases    ' + "\n" +
   ' > help                                 show help pages            ' + "\n" +
   ' > exit                                                            ' + "\n" +
   'Note: collection names and statuses may be cached in arangosh.     ' + "\n" +

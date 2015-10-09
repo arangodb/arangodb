@@ -15,7 +15,6 @@ arangod_libarangod_a_CPPFLAGS = \
 arangod_libarangod_a_SOURCES = \
 	arangod/Actions/actions.cpp \
 	arangod/Actions/RestActionHandler.cpp \
-	arangod/Admin/ApplicationAdminServer.cpp \
 	arangod/ApplicationServer/ApplicationFeature.cpp \
 	arangod/ApplicationServer/ApplicationServer.cpp \
 	arangod/Aql/AggregateBlock.cpp \
