@@ -483,6 +483,9 @@ bool ApplicationScheduler::parsePhase1 (triagens::basics::ProgramOptions& option
     cout << "available io backends are: " << SchedulerLibev::availableBackends() << endl;
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
   }
+  
+  // adjust file descriptors
+  adjustFileDescriptors();
 
   return true;
 }
@@ -492,9 +495,6 @@ bool ApplicationScheduler::parsePhase1 (triagens::basics::ProgramOptions& option
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationScheduler::parsePhase2 (triagens::basics::ProgramOptions& options) {
-  // adjust file descriptors
-  adjustFileDescriptors();
-
   return true;
 }
 
