@@ -27,7 +27,14 @@
       "click #confirmDeleteDocument" : "deleteDocument",
       "click #document-from" : "navigateToDocument",
       "click #document-to" : "navigateToDocument",
-      "keydown .ace_editor" : "keyPress"
+      "keydown .ace_editor" : "keyPress",
+      "keyup .jsoneditor .search input" : "checkSearchBox"
+    },
+
+    checkSearchBox: function(e) {
+      if ($(e.currentTarget).val() === '') {
+        this.editor.expandAll();
+      }
     },
 
     keyPress: function(e) {
