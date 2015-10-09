@@ -823,6 +823,8 @@ void ArangoServer::buildApplicationServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::startupServer () {
+  TRI_InitializeStatistics();
+
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
   bool startServer = true;
 
@@ -861,7 +863,6 @@ int ArangoServer::startupServer () {
     // unable to initialize & start WAL logfile manager
     LOG_FATAL_AND_EXIT("unable to start WAL logfile manager");
   }
-
 
   // .............................................................................
   // prepare the various parts of the Arango server
@@ -1204,6 +1205,8 @@ int ArangoServer::startupServer () {
   if (mode == OperationMode::MODE_CONSOLE) {
     cout << endl << TRI_BYE_MESSAGE << endl;
   }
+
+  TRI_ShutdownStatistics();
 
   return res;
 }
@@ -1580,8 +1583,3 @@ void ArangoServer::closeDatabases () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
