@@ -353,6 +353,9 @@ namespace triagens {
                                                      triagens::aql::Ast*,
                                                      triagens::aql::AstNode const*,
                                                      triagens::aql::Variable const*) const;
+        
+        virtual triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode const*,
+                                                             triagens::aql::Variable const*) const;
 
         bool canUseConditionPart (triagens::aql::AstNode const* access,
                                   triagens::aql::AstNode const* other,

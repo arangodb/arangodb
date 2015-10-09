@@ -295,7 +295,7 @@ namespace triagens {
 /// @brief finds the best index that can match this single node
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool findIndexForAndNode (AstNode const*, 
+        bool findIndexForAndNode (size_t,
                                   Variable const*, 
                                   EnumerateCollectionNode const*, 
                                   std::vector<Index const*>&,

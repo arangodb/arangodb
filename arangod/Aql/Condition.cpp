@@ -240,7 +240,7 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
   Variable const* reference = node->outVariable();
 
   for (size_t i = 0; i < _root->numMembers(); ++i) {
-    if (! findIndexForAndNode(_root->getMember(i), reference, node, usedIndexes, sortCondition)) {
+    if (! findIndexForAndNode(i, reference, node, usedIndexes, sortCondition)) {
       // We are not able to find an index for this AND block. Sorry we have to abort here
       return false;
     }
@@ -255,12 +255,13 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
 /// @brief finds the best index that can match this single node
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Condition::findIndexForAndNode (AstNode const* node, 
+bool Condition::findIndexForAndNode (size_t position,
                                      Variable const* reference, 
                                      EnumerateCollectionNode const* colNode, 
                                      std::vector<Index const*>& usedIndexes,
                                      SortCondition const& sortCondition) {
   // We can only iterate through a proper DNF
+  auto node = _root->getMember(position);
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
   
   static double const MaxFilterCost = 2.0;
@@ -272,7 +273,7 @@ bool Condition::findIndexForAndNode (AstNode const* node,
 
   std::vector<Index const*> indexes = colNode->collection()->getIndexes();
 
-  for (auto& idx : indexes) {
+  for (auto const& idx : indexes) {
     double filterCost = 0.0;
     double sortCost   = 0.0;
 
@@ -327,6 +328,8 @@ bool Condition::findIndexForAndNode (AstNode const* node,
   if (bestIndex == nullptr) {
     return false;
   }
+
+  _root->changeMember(position, bestIndex->specializeCondition(node, reference)); 
 
   usedIndexes.emplace_back(bestIndex);
 

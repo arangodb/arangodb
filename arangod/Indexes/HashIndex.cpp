@@ -917,6 +917,15 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
   return new HashIndexIterator(this, searchValues);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specializes the condition for use with the index
+////////////////////////////////////////////////////////////////////////////////
+        
+triagens::aql::AstNode* HashIndex::specializeCondition (triagens::aql::AstNode const* node,
+                                                        triagens::aql::Variable const* reference) const {
+  return const_cast<triagens::aql::AstNode*>(node);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

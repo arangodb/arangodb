@@ -126,8 +126,6 @@ IndexNode::IndexNode (ExecutionPlan* plan,
   _condition = Condition::fromJson(plan, conditionJson);
 
   TRI_ASSERT(_condition != nullptr);
-
-  specializeConditions();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,26 +173,6 @@ void IndexNode::getVariablesUsedHere (std::unordered_set<Variable const*>& vars)
   Ast::getReferencedVariables(_condition->root(), vars);
 
   vars.erase(_outVariable);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief specialize condition for the indexes picked
-////////////////////////////////////////////////////////////////////////////////
-
-void IndexNode::specializeConditions () {
-  auto root = _condition->root();
-  TRI_ASSERT(root->type == NODE_TYPE_OPERATOR_NARY_OR);
-
-  size_t const n = root->numMembers();
-  TRI_ASSERT(n == _indexes.size());
-  
-  for (size_t i = 0; i < n; ++i) {
-    auto andNode = root->getMemberUnchecked(i);
-
-    TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-    // std::cout << "ORIGINAL CONDITION:\n" << andNode << "\n";
-    // std::cout << "SPECIALIZED CONDITION: " << _indexes[i]->simplifyCondition(andNode) << "\n";
-  }
 }
 
 // Local Variables:
