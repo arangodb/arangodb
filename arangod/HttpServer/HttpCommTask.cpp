@@ -307,7 +307,6 @@ bool HttpCommTask::processRead () {
     // starting a new request
     if (_newRequest) {
       RequestStatisticsAgent::acquire();
-      RequestStatisticsAgentSetReadStart(this);
 
       _newRequest      = false;
       _startPosition   = _readPosition;
@@ -326,6 +325,11 @@ bool HttpCommTask::processRead () {
     if (ptr >= end) {
       // read buffer contents are way to small. we can exit here directly
       return false;
+    }
+    
+    if (this->RequestStatisticsAgent::_statistics != nullptr &&  
+        this->RequestStatisticsAgent::_statistics->_readStart == 0.0) {
+      RequestStatisticsAgentSetReadStart(this);
     }
 
     for (;  ptr < end;  ptr++) {
@@ -808,8 +812,10 @@ void HttpCommTask::addResponse (HttpResponse* response) {
   // clear body
   response->body().clear();
           
-  _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
+      
   double const totalTime = RequestStatisticsAgent::elapsedSinceReadStart();
+      
+  _writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
 
   // disable the following statement to prevent excessive logging of incoming requests
   LOG_USAGE(",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
