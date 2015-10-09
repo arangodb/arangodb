@@ -81,7 +81,8 @@
             "frontend/js/arango/arango.js",
             "frontend/js/arango/templateEngine.js",
             "frontend/js/shell/browser.js",
-            "frontend/js/config/dygraphConfig.js"
+            "frontend/js/config/dygraphConfig.js",
+            "frontend/js/modules/underscore.js"
           ],
           js: [
             "frontend/js/models/*",
