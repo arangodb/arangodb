@@ -42,7 +42,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
   var cn = "UnitTestsAhuacatlOptimizerLimit";
   
   var explain = function (query, params) {
-    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
+    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes" ] } })).map(function(node) { return node.type; });
   };
 
   return {

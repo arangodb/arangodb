@@ -42,17 +42,17 @@ function ahuacatlQueryOptimizerInTestSuite () {
   var cn = "UnitTestsAhuacatlOptimizerIn";
   
   var explain = function (query, params) {
-    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
+    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes" ] } })).map(function(node) { return node.type; });
   };
   
   var ruleIsUsed = function (query) {
-   var result = AQL_EXPLAIN(query, {}, { optimizer: { rules: [ "-all", "+use-index-range" ] } });
-   assertTrue(result.plan.rules.indexOf("use-index-range") !== -1, query);
+   var result = AQL_EXPLAIN(query, {}, { optimizer: { rules: [ "-all", "+use-indexes" ] } });
+   assertTrue(result.plan.rules.indexOf("use-indexes") !== -1, query);
   };
   
   var ruleIsNotUsed = function (query) {
-   var result = AQL_EXPLAIN(query, {}, { optimizer: { rules: [ "-all", "+use-index-range" ] } });
-   assertTrue(result.plan.rules.indexOf("use-index-range") === -1, query);
+   var result = AQL_EXPLAIN(query, {}, { optimizer: { rules: [ "-all", "+use-indexes" ] } });
+   assertTrue(result.plan.rules.indexOf("use-indexes") === -1, query);
   };
 
   return {
@@ -1143,7 +1143,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
         for (var j = 1; j <= 10; j++) {
           for (var k = 1; k <= 10; k++) {
             c.save({value1 : i, value2: j, value3: k, 
-              value4: 'somethings' + 2*j });
+              value4: 'somethings' + j * 2 });
           }
         }
       }
@@ -1213,7 +1213,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
       ruleIsUsed(query);
-    },
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

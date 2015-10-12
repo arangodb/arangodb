@@ -42,7 +42,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
   var cn = "UnitTestsAhuacatlOptimizerSort";
   
   var explain = function (query, params) {
-    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-for-sort", "+use-index-range", "+remove-redundant-sorts" ] } })).map(function(node) { return node.type; });
+    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-for-sort", "+use-indexes", "+remove-redundant-sorts" ] } })).map(function(node) { return node.type; });
   };
 
   return {
