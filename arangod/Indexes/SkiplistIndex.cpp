@@ -109,7 +109,7 @@ static TRI_index_operator_t* buildRangeOperator (TRI_json_t const* lowerBound,
                                                  TRI_json_t const* parameters,
                                                  VocShaper* shaper) {
   std::unique_ptr<TRI_index_operator_t> lowerOperator(buildBoundOperator(lowerBound, lowerBoundInclusive, false, parameters, shaper));
-  std::unique_ptr<TRI_index_operator_t> upperOperator(buildBoundOperator(upperBound, upperBoundInclusive, false, parameters, shaper));
+  std::unique_ptr<TRI_index_operator_t> upperOperator(buildBoundOperator(upperBound, upperBoundInclusive, true, parameters, shaper));
 
   if (lowerOperator == nullptr) {
     return upperOperator.release();
