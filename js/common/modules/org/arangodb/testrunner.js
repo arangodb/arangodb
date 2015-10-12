@@ -12,6 +12,7 @@ var runTest = require('jsunity').runTest,
 function runJSUnityTests(tests) {
   var result = true;
   var allResults = [];
+  var failed = [];
   var res;
 
   // find out whether we're on server or client...
@@ -23,7 +24,8 @@ function runJSUnityTests(tests) {
   _.each(tests, function (file) {
     if (result) {
       print("\n" + Date() + " " + runenvironment + ": Running JSUnity test from file '" + file + "'");
-    } else {
+    } 
+    else {
       print("\n" + Date() + " " + runenvironment +
             ": Skipping JSUnity test from file '" + file + "' due to previous errors");
     }
@@ -32,7 +34,11 @@ function runJSUnityTests(tests) {
       res = runTest(file, true);
       allResults.push(res);
       result = result && res.status;
-    } catch (err) {
+      if (! res.status) {
+        failed.push(file);
+      }
+    } 
+    catch (err) {
       print(runenvironment + ": cannot run test file '" + file + "': " + err);
       print(err.stack);
       print(err.message);
@@ -42,6 +48,10 @@ function runJSUnityTests(tests) {
     internal.wait(0); // force GC
   });
   require("fs").write("testresult.json", JSON.stringify(allResults));
+
+  if (failed.length > 1) {
+    print("The following test files produced errors: ", failed.join(", "));
+  }
   return result;
 }
 
