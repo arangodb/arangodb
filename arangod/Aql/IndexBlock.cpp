@@ -61,6 +61,7 @@ IndexBlock::IndexBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, en),
     _collection(en->collection()),
     _posInDocs(0),
+    _currentIndex(0),
     _indexes(en->getIndexes()),
     _context(nullptr),
     _iterator(nullptr),
@@ -313,7 +314,6 @@ bool IndexBlock::initIndexes () {
       return false;
     }
   }
-  _posInRanges = 0;
   return true;
   LEAVE_BLOCK;
 }

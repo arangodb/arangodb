@@ -1244,8 +1244,6 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
   size_t unused = 0;
   matchAttributes(node, reference, found, unused);
 
-  std::vector<TRI_json_t*> equalityValues;
-  
   // found contains all attributes that are relevant for this node.
   // It might be less than fields().
   //
