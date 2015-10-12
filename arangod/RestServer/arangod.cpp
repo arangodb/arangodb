@@ -27,8 +27,6 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-
 #include "Basics/Common.h"
 #include "Basics/files.h"
 #include "Basics/logging.h"
@@ -37,6 +35,10 @@
 #include "RestServer/ArangoServer.h"
 #include "Statistics/statistics.h"
 #include <signal.h>
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#include <iostream>
+#endif
 
 using namespace triagens;
 using namespace triagens::rest;

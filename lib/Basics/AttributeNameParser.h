@@ -32,7 +32,6 @@
 #define ARANGODB_BASICS_ATTRIBUTENAMEPARSER_H 1
 
 #include "Common.h"
-#include <iostream>
 
 namespace triagens {
   namespace basics {
@@ -42,7 +41,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Struct that nows the name of the attribute, used to identify it's pid
+/// @brief Struct that knows the name of the attribute used to identify its pid
 ///        but also knows if the attribute was followed by [*] which means
 ///        it should be expanded. Only works on arrays.
 ////////////////////////////////////////////////////////////////////////////////

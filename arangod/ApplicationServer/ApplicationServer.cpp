@@ -367,7 +367,7 @@ bool ApplicationServer::parse (int argc,
 
   // check for version request
   if (_options.has("version")) {
-    cout << _version << endl;
+    std::cout << _version << std::endl;
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
   }
 
@@ -377,7 +377,7 @@ bool ApplicationServer::parse (int argc,
   if (! help.empty()) {
     // output help, but do not yet exit (we'll exit a little later so we can also
     // check the specified configuration for errors)
-    cout << argv[0] << " " << _title << "\n\n" << _description.usage(help) << endl;
+    std::cout << argv[0] << " " << _title << std::endl << std::endl << _description.usage(help) << std::endl;
   }
   
   

@@ -479,7 +479,7 @@ void ApplicationScheduler::setupOptions (std::map<std::string, ProgramOptionsDes
 bool ApplicationScheduler::afterOptionParsing (triagens::basics::ProgramOptions& options) {
   // show io backends
   if (options.has("show-io-backends")) {
-    cout << "available io backends are: " << SchedulerLibev::availableBackends() << endl;
+    std::cout << "available io backends are: " << SchedulerLibev::availableBackends() << endl;
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
   }
   

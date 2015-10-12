@@ -38,7 +38,6 @@
 
 #include <random>
 #include <chrono>
-#include <iostream>
 
 using namespace std;
 using namespace triagens::basics;
