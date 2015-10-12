@@ -253,7 +253,9 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
           bestIndex = idx;
         }
       }
-      usedIndexes.emplace_back(bestIndex);
+      if (bestIndex != nullptr) {
+        usedIndexes.emplace_back(bestIndex);
+      }
     }
     else {
       // No Index and no sort condition that
