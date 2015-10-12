@@ -349,6 +349,7 @@ namespace triagens {
         
         virtual bool supportsSortCondition (triagens::aql::SortCondition const*,
                                             triagens::aql::Variable const*,
+                                            size_t,
                                             double&) const;
 
         virtual IndexIterator* iteratorForCondition (IndexIteratorContext*,

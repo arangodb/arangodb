@@ -196,7 +196,7 @@ function printIndexes (indexes) {
     var maxUniqueLen = String("Unique").length;
     var maxSparseLen = String("Sparse").length;
     var maxTypeLen = String("Type").length;
-    var maxSelectivityLen = String("Selectivity Est.").length;
+    var maxSelectivityLen = String("Selectivity").length;
     var maxFieldsLen = String("Fields").length;
     indexes.forEach(function(index) {
       var l = String(index.node).length;
@@ -207,7 +207,7 @@ function printIndexes (indexes) {
       if (l > maxTypeLen) {
         maxTypeLen = l;
       }
-      l = index.fields.map(attributeUncolored).join(", ").length;
+      l = index.fields.map(attributeUncolored).join(", ").length + "[  ]".length;
       if (l > maxFieldsLen) {
         maxFieldsLen = l;
       }
@@ -221,7 +221,7 @@ function printIndexes (indexes) {
                header("Collection") + pad(1 + maxCollectionLen - "Collection".length) + "   " +
                header("Unique") + pad(1 + maxUniqueLen - "Unique".length) + "   " +
                header("Sparse") + pad(1 + maxSparseLen - "Sparse".length) + "   " +
-               header("Selectivity Est.") + "   " +
+               header("Selectivity") + "   " +
                header("Fields") + pad(1 + maxFieldsLen - "Fields".length) + "   " +
                header("Ranges");
 
@@ -230,8 +230,8 @@ function printIndexes (indexes) {
     for (var i = 0; i < indexes.length; ++i) {
       var uniqueness = (indexes[i].unique ? "true" : "false");
       var sparsity = (indexes[i].hasOwnProperty("sparse") ? (indexes[i].sparse ? "true" : "false") : "n/a");
-      var fields = indexes[i].fields.map(attribute).join(", ");
-      var fieldsLen = indexes[i].fields.map(attributeUncolored).join(", ").length;
+      var fields = "[ " + indexes[i].fields.map(attribute).join(", ") + " ]";
+      var fieldsLen = indexes[i].fields.map(attributeUncolored).join(", ").length + "[  ]".length;
       var ranges;
       if (indexes[i].hasOwnProperty("condition")) {
         ranges = indexes[i].condition;
@@ -502,11 +502,11 @@ function processQuery (query, explain) {
           types.push((idx.reverse ? "reverse " : "") + idx.type + " index scan");
           idx.collection = node.collection;
           idx.node = node.id;
-          if (node.condition.type === 'n-ary or') {
+          if (node.condition.type && node.condition.type === 'n-ary or') {
             idx.condition = buildExpression(node.condition.subNodes[i]);
           }
           else {
-            idx.conditionn = "";
+            idx.condition = "*"; // empty condition. this is likely an index used for sorting only
           } 
           indexes.push(idx);
         });

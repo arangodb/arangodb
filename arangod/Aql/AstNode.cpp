@@ -1251,9 +1251,11 @@ bool AstNode::isAttributeAccessForVariable (std::pair<Variable const*, std::vect
         return false;
       }
 
-      if (! node->getMember(1)->isAttributeAccessForVariable(result)) { 
-        result.second.clear();
-        return false;
+      if (node->getMember(1)->type != NODE_TYPE_REFERENCE) {
+        if (! node->getMember(1)->isAttributeAccessForVariable(result)) { 
+          result.second.clear();
+          return false;
+        }
       }
       expandNext = true;
       
@@ -2068,7 +2070,6 @@ std::ostream& operator<< (std::ostream& stream,
   stream << triagens::aql::AstNode::toString(&node);
   return stream;
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

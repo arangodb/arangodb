@@ -160,6 +160,7 @@ add_executable(
     Indexes/IndexIterator.cpp
     Indexes/PathBasedIndex.cpp
     Indexes/PrimaryIndex.cpp
+    Indexes/SimpleAttributeEqualityMatcher.cpp
     Indexes/SkiplistIndex.cpp
     IndexOperators/index-operator.cpp
     Replication/ContinuousSyncer.cpp

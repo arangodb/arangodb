@@ -298,6 +298,7 @@ namespace triagens {
         bool indexSupportsSort (Index const*,
                                 Variable const*,
                                 SortCondition const&,
+                                size_t,
                                 double&);
 
 ////////////////////////////////////////////////////////////////////////////////

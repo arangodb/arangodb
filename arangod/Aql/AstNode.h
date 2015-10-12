@@ -495,8 +495,10 @@ namespace triagens {
               TRI_ASSERT(node->type == NODE_TYPE_EXPANSION);
               TRI_ASSERT(node->numMembers() >= 2);
 
-              if (node->getMember(1)->getAttributeAccessForVariable() == nullptr) {
-                return nullptr;
+              if (node->getMember(1)->type != NODE_TYPE_REFERENCE) {
+                if (node->getMember(1)->getAttributeAccessForVariable() == nullptr) {
+                  return nullptr;
+                }
               }
               
               TRI_ASSERT(node->getMember(0)->type == NODE_TYPE_ITERATOR);

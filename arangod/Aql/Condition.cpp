@@ -41,8 +41,6 @@
 using namespace triagens::aql;
 using CompareResult = ConditionPart::ConditionPartCompareResult;
         
-static double const MaxSortCost   = 2.0;
-
 struct PermutationState {
   PermutationState (triagens::aql::AstNode const* value, size_t n)
     : value(value),
@@ -237,22 +235,28 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
                              SortCondition const& sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
+
   if (_root == nullptr) {
     // We do not have a condition. But we have a sort
     if (! sortCondition.isEmpty() &&
         sortCondition.isOnlyAttributeAccess() &&
         sortCondition.isUnidirectional()) {
-      double bestCost = MaxSortCost;
+      size_t const itemsInIndex = node->collection()->count(); 
+      double bestCost = 0.0;
       Index const* bestIndex = nullptr;
+
       std::vector<Index const*> indexes = node->collection()->getIndexes();
+
       for (auto const& idx : indexes) {
         double sortCost = 0.0;
-        if (indexSupportsSort(idx, reference, sortCondition, sortCost) &&
-            sortCost < bestCost) {
-          bestCost = sortCost;
-          bestIndex = idx;
+        if (indexSupportsSort(idx, reference, sortCondition, itemsInIndex, sortCost)) {
+          if (bestIndex == nullptr || sortCost < bestCost) {
+            bestCost = sortCost;
+            bestIndex = idx;
+          }
         }
       }
+
       if (bestIndex != nullptr) {
         usedIndexes.emplace_back(bestIndex);
       }
@@ -267,7 +271,6 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
   else {
     // We can only start after DNF transformation
     TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
-
 
     for (size_t i = 0; i < _root->numMembers(); ++i) {
       if (! findIndexForAndNode(i, reference, node, usedIndexes, sortCondition)) {
@@ -285,15 +288,20 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
 bool Condition::indexSupportsSort (Index const* idx,
                                    Variable const* reference,
                                    SortCondition const& sortCondition,
+                                   size_t itemsInIndex,
                                    double& estimatedCost) {
   if (idx->isSorted() &&
-      idx->supportsSortCondition(&sortCondition, reference, estimatedCost)) {
+      idx->supportsSortCondition(&sortCondition, reference, itemsInIndex, estimatedCost)) {
     // index supports the sort condition
     return true;
   }
+    
+  // index does not support the sort condition
+  if (itemsInIndex > 0) {
+    estimatedCost = itemsInIndex * std::log2(static_cast<double>(itemsInIndex));
+  }
   else {
-    // index does not support the sort condition
-    estimatedCost = MaxSortCost;
+    estimatedCost = 0.0;
   }
   return false;
 }
@@ -310,13 +318,12 @@ bool Condition::findIndexForAndNode (size_t position,
   // We can only iterate through a proper DNF
   auto node = _root->getMember(position);
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
-  
-  static size_t const ItemsInIndex  = 1000;
-  static double const MaxFilterCost = ItemsInIndex * 2.0;
+ 
+  size_t const itemsInIndex = colNode->collection()->count(); 
 
   // This code is never responsible for the content of this pointer.
+  double bestCost = 0.0;
   Index const* bestIndex = nullptr;
-  double bestCost = MaxFilterCost + MaxSortCost + std::numeric_limits<double>::epsilon(); 
 
   std::vector<Index const*> indexes = colNode->collection()->getIndexes();
 
@@ -330,14 +337,14 @@ bool Condition::findIndexForAndNode (size_t position,
     // check if the index supports the filter expression
     double estimatedCost;
     size_t estimatedItems;
-    if (idx->supportsFilterCondition(node, reference, ItemsInIndex, estimatedItems, estimatedCost)) {
+    if (idx->supportsFilterCondition(node, reference, itemsInIndex, estimatedItems, estimatedCost)) {
       // index supports the filter condition
       filterCost = estimatedCost;
       supportsFilter = true;
     }
     else {
       // index does not support the filter condition
-      filterCost = MaxFilterCost;
+      filterCost = itemsInIndex * 1.5;
     }
 
     if (! sortCondition.isEmpty() &&
@@ -347,7 +354,7 @@ bool Condition::findIndexForAndNode (size_t position,
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
       // must be sorted in the direction
-      if (indexSupportsSort(idx, reference, sortCondition, sortCost)) {
+      if (indexSupportsSort(idx, reference, sortCondition, itemsInIndex, sortCost)) {
         supportsSort = true;
       }
     }
@@ -356,10 +363,16 @@ bool Condition::findIndexForAndNode (size_t position,
       continue;
     }
 
-    // std::cout << "INDEX: " << triagens::basics::JsonHelper::toString(idx->getInternals()->toJson(TRI_UNKNOWN_MEM_ZONE, false).json()) << ", FILTER COST: " << filterCost << ", SORT COST: " << sortCost << "\n";
     double const totalCost = filterCost + sortCost;
 
-    if (totalCost < bestCost) {
+    std::cout << "INDEX: " << idx << 
+                 ", ESTIMATED ITEMS: " << estimatedItems << 
+                 ", ESTIMATED COST: " << estimatedCost << 
+                 ", FILTER COST: " << filterCost << 
+                 ", SORT COST: " << sortCost << 
+                 ", TOTAL COST: " << totalCost << "\n";
+
+    if (bestIndex == nullptr || totalCost < bestCost) {
       bestIndex = idx;
       bestCost = totalCost;
     }

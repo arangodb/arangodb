@@ -461,9 +461,15 @@ bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
 
 bool Index::supportsSortCondition (triagens::aql::SortCondition const*,
                                    triagens::aql::Variable const*,
+                                   size_t itemsInIndex,
                                    double& estimatedCost) const { 
   // by default, no sort conditions are supported
-  estimatedCost = 0.0;
+  if (itemsInIndex > 0) {
+    estimatedCost = itemsInIndex * std::log2(itemsInIndex);
+  }
+  else {
+    estimatedCost = 0.0;
+  }
   return false;
 }
 

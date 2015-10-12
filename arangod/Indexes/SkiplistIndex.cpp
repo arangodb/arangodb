@@ -1088,9 +1088,14 @@ void SkiplistIndex::matchAttributes (triagens::aql::AstNode const* node,
 
       case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
         if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference, found)) {
-          values += op->getMember(1)->numMembers();
+          auto m = op->getMember(1);
+          if (m->type != triagens::aql::NODE_TYPE_EXPANSION && m->numMembers() > 1) {
+            // attr IN [ a, b, c ]  =>  this will produce multiple items, so count them!
+            values += m->numMembers() - 1;
+          }
         }
-        else if (accessFitsIndex(op->getMember(1), op->getMember(0), op, reference, found)) {
+        else {
+          accessFitsIndex(op->getMember(1), op->getMember(0), op, reference, found);
         }
         break;
 
@@ -1108,11 +1113,12 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
   std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
   size_t values = 0;
   matchAttributes(node, reference, found, values);
-  
+
   bool lastContainsEquality = true;
   size_t attributesCovered = 0;
   size_t attributesCoveredByEquality = 0;
-  estimatedCost = 1.0;
+  double equalityReductionFactor = 20.0;
+  estimatedCost = static_cast<double>(itemsInIndex);
 
   for (size_t i = 0; i < _fields.size(); ++i) {
     auto it = found.find(i);
@@ -1141,31 +1147,49 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
     ++attributesCovered;
     if (containsEquality) {
       ++attributesCoveredByEquality;
-    }
+      estimatedCost /= equalityReductionFactor;
 
-    if (containsEquality) {
-      estimatedCost /= 10.0;
+      // decrease the effect of the equality reduction factor
+      equalityReductionFactor *= 0.25; 
+      if (equalityReductionFactor < 2.0) {
+        // equalityReductionFactor shouldn't get too low
+        equalityReductionFactor = 2.0; 
+      }
     }
     else {
-      estimatedCost /= 2.0 * static_cast<double>(nodes.size());
+      // quick estimate for the potential reductions caused by the conditions
+      if (nodes.size() >= 2) {
+        // at least two (non-equality) conditions. probably a range with lower
+        // and upper bound defined
+        estimatedCost /= 7.5;
+      }
+      else {
+        // one (non-equality). this is either a lower or a higher bound
+        estimatedCost /= 2.0;
+      }
     }
 
     lastContainsEquality = containsEquality;
   }
+  
+  if (values == 0) {
+    values = 1;
+  }
 
   if (attributesCoveredByEquality == _fields.size() && unique()) {
     // index is unique and condition covers all attributes by equality
-    estimatedCost = std::numeric_limits<double>::epsilon();
+    estimatedItems = itemsInIndex * values;
+    estimatedCost  = static_cast<double>(estimatedItems);
+    return true;
   }
 
   if (attributesCovered > 0) {
-    if (values == 0) {
-      values = 1;
-    }
+    estimatedItems = static_cast<size_t>((std::max)(static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
     estimatedCost *= static_cast<double>(values);
     return true;
   }
 
+  // no condition
   estimatedItems = itemsInIndex;
   estimatedCost  = static_cast<double>(estimatedItems);
   return false;
@@ -1173,6 +1197,7 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
 
 bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* sortCondition,
                                            triagens::aql::Variable const* reference,
+                                           size_t itemsInIndex,
                                            double& estimatedCost) const {
   TRI_ASSERT(sortCondition != nullptr);
 
@@ -1183,12 +1208,19 @@ bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* s
     size_t const coveredAttributes = sortCondition->isCoveredBy(reference, _fields);
 
     if (coveredAttributes >= sortCondition->numAttributes()) {
+      // sort is fully covered by index. no additional sort costs!
       estimatedCost = 0.0;
       return true;
     }
   }
 
-  estimatedCost = 1.0;
+  // by default no sort conditions are supported
+  if (itemsInIndex > 0) {
+    estimatedCost = itemsInIndex * std::log2(static_cast<double>(itemsInIndex));
+  }
+  else {
+    estimatedCost = 0.0;
+  }
   return false;
 }        
 

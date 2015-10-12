@@ -174,8 +174,9 @@ namespace triagens {
       
       bool supportsSortCondition (triagens::aql::SortCondition const* sortCondition,
                                   triagens::aql::Variable const* reference,
+                                  size_t itemsInIndex,
                                   double& estimatedCost) const {
-        return getInternals()->supportsSortCondition(sortCondition, reference, estimatedCost);
+        return getInternals()->supportsSortCondition(sortCondition, reference, itemsInIndex, estimatedCost);
       }
 
       arango::IndexIterator* getIterator (arango::IndexIteratorContext* context, 
