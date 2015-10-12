@@ -321,6 +321,9 @@ namespace triagens {
 
       private:
 
+        bool isDuplicateOperator (triagens::aql::AstNode const*,
+                                  std::unordered_set<int> const&) const;
+
         int _CmpElmElm (TRI_index_element_t const* leftElement,
                        TRI_index_element_t const* rightElement,
                        triagens::basics::SkipListCmpType cmptype);

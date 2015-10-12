@@ -1407,7 +1407,7 @@ triagens::aql::AstNode* SkiplistIndex::specializeCondition (triagens::aql::AstNo
     bool containsEquality = false;
     for (size_t j = 0; j < nodes.size(); ++j) {
       if (nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-          nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN ) {
+          nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
         containsEquality = true;
         break;
       }
@@ -1424,7 +1424,13 @@ triagens::aql::AstNode* SkiplistIndex::specializeCondition (triagens::aql::AstNo
     }
 
     lastContainsEquality = containsEquality;
+    std::unordered_set<int> operatorsFound;
     for (auto& it : nodes) {
+      // do not less duplicate or related operators pass
+      if (isDuplicateOperator(it, operatorsFound)) {
+        continue;
+      }
+      operatorsFound.emplace(static_cast<int>(it->type));
       children.emplace_back(it);
     }
   }
@@ -1442,6 +1448,42 @@ triagens::aql::AstNode* SkiplistIndex::specializeCondition (triagens::aql::AstNo
 
   TRI_ASSERT(false);
   return node;
+}
+
+bool SkiplistIndex::isDuplicateOperator (triagens::aql::AstNode const* node,
+                                         std::unordered_set<int> const& operatorsFound) const {
+  auto type = node->type;
+  if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
+    // duplicate operator
+    return true;
+  }
+
+  bool duplicate = false;
+  switch (type) {
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      duplicate = operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE)) != operatorsFound.end();
+      break;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      duplicate = operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT)) != operatorsFound.end();
+      break;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      duplicate = operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE)) != operatorsFound.end();
+      break;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+      duplicate = operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT)) != operatorsFound.end();
+      break;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      duplicate = operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN)) != operatorsFound.end();
+      break;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+      duplicate = operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) != operatorsFound.end();
+      break;
+    default: {
+      // ignore
+    }
+  }
+
+  return duplicate;
 }
 
 // -----------------------------------------------------------------------------
