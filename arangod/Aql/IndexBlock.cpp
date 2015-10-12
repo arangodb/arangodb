@@ -81,6 +81,25 @@ IndexBlock::~IndexBlock () {
   delete _context;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a SORT to a dynamic IN condition
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::aql::AstNode* IndexBlock::addSort (triagens::aql::AstNode* node) const {
+  if (node->type != triagens::aql::NODE_TYPE_ARRAY ||
+      (node->type == triagens::aql::NODE_TYPE_ARRAY && node->numMembers() >= 2)) {
+    // an non-array or an array with more than 1 member
+    auto en = static_cast<IndexNode const*>(getPlanNode());
+    auto ast = en->_plan->getAst();
+    auto array = ast->createNodeArray();
+    array->addMember(node);
+    return ast->createNodeFunctionCall("SORTED_UNIQUE", array); 
+  }
+
+  // presumably an array with no or a single member
+  return node;
+}
+
 void IndexBlock::executeExpressions () {
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
@@ -109,11 +128,13 @@ int IndexBlock::initialize () {
 
   _nonConstExpressions.clear();
   _alreadyReturned.clear();
+  auto en = static_cast<IndexNode const*>(getPlanNode());
+  auto ast = en->_plan->getAst();
 
   // instantiate expressions:
   auto instantiateExpression = [&] (size_t i, size_t j, size_t k, AstNode const* a) -> void {
     // all new AstNodes are registered with the Ast in the Query
-    std::unique_ptr<Expression> e(new Expression(_engine->getQuery()->ast(), a));
+    std::unique_ptr<Expression> e(new Expression(ast, a));
 
     TRI_IF_FAILURE("IndexBlock::initialize") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -124,7 +145,6 @@ int IndexBlock::initialize () {
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);
     
-
     std::unique_ptr<NonConstExpression> nce(new NonConstExpression(i, j, k, e.get()));
     e.release();
     _nonConstExpressions.push_back(nce.get());
@@ -160,6 +180,9 @@ int IndexBlock::initialize () {
       if (lhs->isAttributeAccessForVariable(outVariable)) {
         // Index is responsible for the left side, check if right side has to be evaluated
         if (! rhs->isConstant()) {
+          if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+            rhs = addSort(rhs);
+          }
           instantiateExpression(i, j, 1, rhs);
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -169,6 +192,10 @@ int IndexBlock::initialize () {
       else {
         // Index is responsible for the right side, check if left side has to be evaluated
         if (! lhs->isConstant()) {
+          if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+            // IN: now make IN result unique
+            lhs = addSort(lhs);
+          }
           instantiateExpression(i, j, 0, lhs);
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

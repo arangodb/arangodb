@@ -2948,7 +2948,7 @@ function AQL_RANGE (from, to, step) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a list of unique elements from the list
+/// @brief return a list of unique elements from the array
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNIQUE (values) {
@@ -2975,6 +2975,23 @@ function AQL_UNIQUE (values) {
   });
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a list of unique elements from the array
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_SORTED_UNIQUE (values) {
+  'use strict';
+
+  var unique = AQL_UNIQUE(values);
+
+  if (TYPEWEIGHT(unique) !== TYPEWEIGHT_ARRAY) {
+    return null;
+  }
+
+  unique.sort(RELATIONAL_CMP);
+  return unique;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -9079,6 +9096,7 @@ exports.AQL_NTH = AQL_NTH;
 exports.AQL_REVERSE = AQL_REVERSE;
 exports.AQL_RANGE = AQL_RANGE;
 exports.AQL_UNIQUE = AQL_UNIQUE;
+exports.AQL_SORTED_UNIQUE = AQL_SORTED_UNIQUE;
 exports.AQL_UNION = AQL_UNION;
 exports.AQL_UNION_DISTINCT = AQL_UNION_DISTINCT;
 exports.AQL_CALL = AQL_CALL;

@@ -141,6 +141,19 @@ namespace triagens {
       }
     };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief less comparator for JSON values
+////////////////////////////////////////////////////////////////////////////////
+
+    template<bool useUtf8>
+    struct JsonLess {    
+      inline bool operator() (TRI_json_t const* lhs,
+                              TRI_json_t const* rhs) const {
+
+        return TRI_CompareValuesJson(lhs, rhs, useUtf8) < 0;
+      }
+    };
+
   }
 }
 

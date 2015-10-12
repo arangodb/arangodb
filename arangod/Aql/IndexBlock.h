@@ -48,7 +48,7 @@ namespace triagens {
   namespace aql {
 
     class AqlItemBlock;
-
+    struct AstNode;
     class ExecutionEngine;
 
 // -----------------------------------------------------------------------------
@@ -120,6 +120,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
       
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a SORT to a dynamic IN condition
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::aql::AstNode* addSort (triagens::aql::AstNode*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Forwards _iterator to the next available index

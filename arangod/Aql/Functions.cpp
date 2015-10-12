@@ -1410,6 +1410,57 @@ AqlValue Functions::Unique (triagens::aql::Query* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief function SORTED_UNIQUE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::SortedUnique (triagens::aql::Query* query,
+                                  triagens::arango::AqlTransaction* trx,
+                                  FunctionParameters const& parameters) {
+  if (parameters.size() != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "SORTED_UNIQUE", (int) 1, (int) 1);
+  }
+
+  auto const value = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! value.isArray()) {
+    // not an array
+    RegisterWarning(query, "SORTED_UNIQUE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+  
+  std::set<TRI_json_t const*, triagens::basics::JsonLess<true>> values;
+
+  TRI_json_t const* valueJson = value.json();
+  size_t const n = TRI_LengthArrayJson(valueJson);
+
+  for (size_t i = 0; i < n; ++i) {
+    auto value = static_cast<TRI_json_t const*>(TRI_AddressVector(&valueJson->_value._objects, i));
+
+    if (value == nullptr) {
+      continue;
+    }
+
+    values.insert(value); 
+  } 
+
+  std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, values.size()));
+ 
+  for (auto const& it : values) {
+    auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it);
+
+    if (copy == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+ 
+    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), copy); 
+  }
+      
+  auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
+  result.release();
+  return AqlValue(jr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief function UNION
 ////////////////////////////////////////////////////////////////////////////////
 
