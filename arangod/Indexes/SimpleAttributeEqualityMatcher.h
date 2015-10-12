@@ -264,7 +264,12 @@ namespace triagens {
                   accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference)) {
                 // we can use the index
                 // now return only the child node we need
-                return op;
+                while (node->numMembers() > 0) {
+                  node->removeMemberUnchecked(0);
+                }
+                node->addMember(op);
+
+                return node;
               }
             }
             else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -272,7 +277,12 @@ namespace triagens {
               if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference)) {
                 // we can use the index
                 // now return only the child node we need
-                return op;
+                while (node->numMembers() > 0) {
+                  node->removeMemberUnchecked(0);
+                }
+                node->addMember(op);
+
+                return node;
               }
             }
           }

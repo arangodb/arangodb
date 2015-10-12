@@ -2053,7 +2053,9 @@ void AstNode::appendValue (triagens::basics::StringBuffer* buffer) const {
      
 std::ostream& operator<< (std::ostream& stream,
                           triagens::aql::AstNode const* node) {
-  stream << triagens::aql::AstNode::toString(node);
+  if (node != nullptr) {
+    stream << triagens::aql::AstNode::toString(node);
+  }
   return stream;
 }
 

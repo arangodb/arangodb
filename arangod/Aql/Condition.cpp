@@ -357,8 +357,6 @@ bool Condition::findIndexForAndNode (size_t position,
     // std::cout << "INDEX: " << triagens::basics::JsonHelper::toString(idx->getInternals()->toJson(TRI_UNKNOWN_MEM_ZONE, false).json()) << ", FILTER COST: " << filterCost << ", SORT COST: " << sortCost << "\n";
     double const totalCost = filterCost + sortCost;
 
-std::cout << "INDEX: " << idx << ". FILTER COST: " << filterCost << ", SORT COST: " << sortCost << "\n";                
-
     if (totalCost < bestCost) {
       bestIndex = idx;
       bestCost = totalCost;
