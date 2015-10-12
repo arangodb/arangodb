@@ -428,6 +428,10 @@ namespace triagens {
 
         triagens::basics::StringBuffer _buffer;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief variables only temporarily valid during execution
+////////////////////////////////////////////////////////////////////////////////
+
         std::unordered_map<Variable const*, TRI_json_t const*> _variables;
 
 // -----------------------------------------------------------------------------

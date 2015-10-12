@@ -81,7 +81,7 @@ IndexBlock::~IndexBlock () {
   delete _context;
 }
 
-void IndexBlock::buildExpressions () {
+void IndexBlock::executeExpressions () {
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
 
@@ -89,17 +89,17 @@ void IndexBlock::buildExpressions () {
   auto en = static_cast<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
   for (size_t posInExpressions = 0; posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
-    auto toReplace = _nonConstExpressions[posInExpressions];
-    auto exp = toReplace.expression;
+    auto& toReplace = _nonConstExpressions[posInExpressions];
+    auto exp = toReplace->expression;
     TRI_document_collection_t const* myCollection = nullptr; 
     AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
     auto jsonified = a.toJson(_trx, myCollection, true);
     a.destroy();
     AstNode* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);
     // TODO: if we use the IN operator, we must make the resulting array unique
-    _condition->getMember(toReplace.orMember)
-              ->getMember(toReplace.andMember)
-              ->changeMember(toReplace.operatorMember, evaluatedNode);
+    _condition->getMember(toReplace->orMember)
+              ->getMember(toReplace->andMember)
+              ->changeMember(toReplace->operatorMember, evaluatedNode);
   }
 }
 
@@ -107,14 +107,6 @@ int IndexBlock::initialize () {
   ENTER_BLOCK
   int res = ExecutionBlock::initialize();
 
-/*
-  // why is this called again here? it has already been called in the constructor...!?
-  if (res == TRI_ERROR_NO_ERROR) {
-    if (_trx->orderDitch(_trx->trxCollection(_collection->cid())) == nullptr) {
-      res = TRI_ERROR_OUT_OF_MEMORY;
-    }
-  }
-*/
   _nonConstExpressions.clear();
   _alreadyReturned.clear();
 
@@ -128,11 +120,15 @@ int IndexBlock::initialize () {
     }
 
     _hasV8Expression |= e->isV8();
-    _nonConstExpressions.emplace_back(i, j, k, e.get());
     
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);
+    
+
+    std::unique_ptr<NonConstExpression> nce(new NonConstExpression(i, j, k, e.get()));
     e.release();
+    _nonConstExpressions.push_back(nce.get());
+    nce.release();
 
     // Prepare _inVars and _inRegs:
     _inVars.emplace_back();
@@ -229,7 +225,7 @@ bool IndexBlock::initIndexes () {
             // different threads
             if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
               for (auto const& e : _nonConstExpressions) {
-                e.expression->invalidate();
+                e->expression->invalidate();
               }
             }
           
@@ -241,14 +237,14 @@ bool IndexBlock::initIndexes () {
       ISOLATE;
       v8::HandleScope scope(isolate); // do not delete this!
     
-      buildExpressions();
+      executeExpressions();
     }
     else {
       // no V8 context required!
 
       Functions::InitializeThreadContext();
       try {
-        buildExpressions();
+        executeExpressions();
         Functions::DestroyThreadContext();
       }
       catch (...) {
