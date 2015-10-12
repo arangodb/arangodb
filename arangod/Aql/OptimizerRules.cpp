@@ -3132,6 +3132,9 @@ class SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 int triagens::aql::useIndexForSortRule (Optimizer* opt, 
                                         ExecutionPlan* plan,
                                         Optimizer::Rule const* rule) {
+  opt->addPlan(plan, rule, false, 0);
+  return TRI_ERROR_NO_ERROR;
+
   bool modified = false;
   std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(EN::SORT, true);
 

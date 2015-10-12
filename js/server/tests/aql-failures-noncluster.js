@@ -414,6 +414,7 @@ function ahuacatlFailureSuite () {
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value2 == 9 COLLECT key = i._key RETURN key");
     },
 
+    /*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
@@ -506,6 +507,7 @@ function ahuacatlFailureSuite () {
       internal.debugSetFailAt("IndexRangeBlock::readSkiplistIndex");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 25 && i.value2 == 5 RETURN i");
     }
+    */
 
   };
 }

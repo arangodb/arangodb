@@ -577,12 +577,6 @@ void Optimizer::setupRules () {
                useIndexesRule_pass6,
                true);
 
-  // try to find a filter after an enumerate collection and find an index . . . 
-  registerRule("use-index-range",
-               useIndexRangeRule,
-               useIndexRangeRule_pass6,
-               true);
-
   // try to remove filters which are covered by index ranges  
   registerRule("remove-filter-covered-by-index",
                removeFiltersCoveredByIndexRule,

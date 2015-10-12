@@ -43,7 +43,7 @@ var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 
 function optimizerRuleTestSuite() {
   var ruleName = "use-index-for-sort";
-  var secondRuleName = "use-index-range";
+  var secondRuleName = "use-indexes";
   var removeCalculationNodes = "remove-unnecessary-calculations-2";
   var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
   var colNameOther = colName + "_XX";
