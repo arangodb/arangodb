@@ -77,6 +77,7 @@ namespace triagens {
             _index(index),
             _ranges(ranges),
             _reverse(reverse) {
+          TRI_ASSERT(false);
 
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);

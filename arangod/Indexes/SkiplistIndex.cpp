@@ -31,6 +31,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/debugging.h"
 #include "Basics/json-utilities.h"
 #include "Basics/logging.h"
 #include "VocBase/document-collection.h"
@@ -43,6 +44,25 @@ using Json = triagens::basics::Json;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+static size_t sortWeight (triagens::aql::AstNode const* node) {
+  switch (node->type) {
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      return 1;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+      return 2;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      return 3;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      return 4;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      return 5;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+      return 6;
+    default:
+      return 42;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Create an index operator for the given bound.
@@ -717,6 +737,7 @@ TRI_doc_mptr_t* SkiplistIndexIterator::next () {
   if (_iterator == nullptr) {
     // We restart the lookup
     _iterator = _index->lookup(_operators[_currentOperator], _reverse);
+    TRI_ASSERT(_iterator != nullptr);
   }
   TRI_index_element_t* res = _iterator->next();
   while (res == nullptr) {
@@ -884,9 +905,7 @@ int SkiplistIndex::remove (TRI_doc_mptr_t const* doc,
 
 SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
                                          bool reverse) const {
-  if (slOperator == nullptr) {
-    return nullptr;
-  }
+  TRI_ASSERT(slOperator != nullptr);
 
   // .........................................................................
   // fill the relation operators which may be embedded in the slOperator with
@@ -898,15 +917,9 @@ SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-
-    return nullptr;
+    THROW_ARANGO_EXCEPTION(res);
   }
   std::unique_ptr<SkiplistIterator> results(new SkiplistIterator(this, reverse));
-
-  if (! results) {
-    // Check if we could not get an iterator.
-    return nullptr; // calling procedure needs to care when the iterator is null
-  }
 
   results->findHelper(slOperator, results->_intervals);
 
@@ -1236,7 +1249,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       // Continue with more complicated loop
       break;
     }
-    auto comp = found.find(usedFields)->second[0];
+    auto comp = it->second[0];
     TRI_ASSERT(comp->numMembers() == 2);
     triagens::aql::AstNode const* access = nullptr;
     triagens::aql::AstNode const* value = nullptr;
@@ -1320,7 +1333,10 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
 
   if (usedFields == 0) {
     // We have a range query based on the first _field
-    searchValues.emplace_back(buildRangeOperator(lower.get(), includeLower, upper.get(), includeUpper, nullptr, _shaper));
+    auto op = buildRangeOperator(lower.get(), includeLower, upper.get(), includeUpper, nullptr, _shaper);
+    if (op != nullptr) {
+      searchValues.emplace_back(op);
+    }
   }
   else {
     bool done = false;
@@ -1364,8 +1380,10 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
           combinedOp.release();
         }
         else {
-          searchValues.emplace_back(tmpOp.get());
-          tmpOp.release();
+          if (tmpOp != nullptr) {
+            searchValues.emplace_back(tmpOp.get());
+            tmpOp.release();
+          }
         }
       }
 
@@ -1388,6 +1406,9 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       }
     }
   }
+  if (searchValues.empty()) {
+    return nullptr;
+  }
 
   return new SkiplistIndexIterator(this, searchValues, reverse);
 }
@@ -1404,8 +1425,6 @@ triagens::aql::AstNode* SkiplistIndex::specializeCondition (triagens::aql::AstNo
 
   std::vector<triagens::aql::AstNode const*> children;  
   bool lastContainsEquality = true;
-  size_t attributesCovered = 0;
-  size_t attributesCoveredByEquality = 0;
 
   for (size_t i = 0; i < _fields.size(); ++i) {
     auto it = found.find(i);
@@ -1416,7 +1435,7 @@ triagens::aql::AstNode* SkiplistIndex::specializeCondition (triagens::aql::AstNo
     }
 
     // check if the current condition contains an equality condition
-    auto const& nodes = (*it).second;
+    auto& nodes = (*it).second;
     bool containsEquality = false;
     for (size_t j = 0; j < nodes.size(); ++j) {
       if (nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
@@ -1431,10 +1450,10 @@ triagens::aql::AstNode* SkiplistIndex::specializeCondition (triagens::aql::AstNo
       break;
     }
 
-    ++attributesCovered;
-    if (containsEquality) {
-      ++attributesCoveredByEquality;
-    }
+    std::sort(nodes.begin(), nodes.end(), [](triagens::aql::AstNode const* lhs,
+                                             triagens::aql::AstNode const* rhs) -> bool {
+      return sortWeight(lhs) < sortWeight(rhs);
+    });
 
     lastContainsEquality = containsEquality;
     std::unordered_set<int> operatorsFound;
@@ -1448,18 +1467,13 @@ triagens::aql::AstNode* SkiplistIndex::specializeCondition (triagens::aql::AstNo
     }
   }
 
-  if (attributesCovered > 0) {
-    while (node->numMembers() > 0) {
-      node->removeMemberUnchecked(0);
-    }
-
-    for (auto& it : children) {
-      node->addMember(it);
-    }
-    return node;
+  while (node->numMembers() > 0) {
+    node->removeMemberUnchecked(0);
   }
 
-  TRI_ASSERT(false);
+  for (auto& it : children) {
+    node->addMember(it);
+  }
   return node;
 }
 
@@ -1468,6 +1482,11 @@ bool SkiplistIndex::isDuplicateOperator (triagens::aql::AstNode const* node,
   auto type = node->type;
   if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
     // duplicate operator
+    return true;
+  }
+
+  if (operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) != operatorsFound.end() ||
+      operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN)) != operatorsFound.end()) {
     return true;
   }
 
