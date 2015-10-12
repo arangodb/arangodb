@@ -355,16 +355,13 @@ namespace triagens {
                                                      triagens::aql::Variable const*,
                                                      bool const) const;
         
-        virtual triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode const*,
+        virtual triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
                                                              triagens::aql::Variable const*) const;
 
         bool canUseConditionPart (triagens::aql::AstNode const* access,
                                   triagens::aql::AstNode const* other,
                                   triagens::aql::AstNode const* op,
                                   triagens::aql::Variable const* reference) const;
-
-        friend std::ostream& operator<< (std::ostream&, Index const*);
-        friend std::ostream& operator<< (std::ostream&, Index const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -383,9 +380,13 @@ namespace triagens {
         bool const                                                             _sparse;
                
     };
+        
 
   }
 }
+      
+std::ostream& operator<< (std::ostream&, triagens::arango::Index const*);
+std::ostream& operator<< (std::ostream&, triagens::arango::Index const&);
 
 #endif
 

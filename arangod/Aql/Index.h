@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Aql, Index
 ///
-/// @file arangod/Aql/Index.h
+/// @file 
 ///
 /// DISCLAIMER
 ///
@@ -184,7 +184,7 @@ namespace triagens {
         return getInternals()->iteratorForCondition(context, ast, condition, reference, reverse);
       }
       
-      triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode const* node,
+      triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode* node,
                                                    triagens::aql::Variable const* reference) const {
         return getInternals()->specializeCondition(node, reference);
       }
@@ -209,6 +209,9 @@ namespace triagens {
 
   }
 }
+
+std::ostream& operator<< (std::ostream&, triagens::aql::Index const*);
+std::ostream& operator<< (std::ostream&, triagens::aql::Index const&);
 
 #endif
 

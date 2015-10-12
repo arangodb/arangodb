@@ -33,32 +33,6 @@
 
 using AttributeName = triagens::basics::AttributeName;
 
-namespace triagens {
-  namespace basics {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief append the index description to an output stream
-////////////////////////////////////////////////////////////////////////////////
-     
-    std::ostream& operator<< (std::ostream& stream,
-                              AttributeName const* name) {
-      stream << name->name << " (" << (name->shouldExpand ? "true" : "false") << ")";
-      return stream;
-    }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief append the index description to an output stream
-////////////////////////////////////////////////////////////////////////////////
-
-    std::ostream& operator<< (std::ostream& stream,
-                              AttributeName const& name) {
-      stream << name.name << " (" << (name.shouldExpand ? "true" : "false") << ")";
-      return stream;
-    }
-
-  } // namespace basics
-} // namespace triagens
-
 void triagens::basics::TRI_ParseAttributeString (std::string const& input,
                                                  std::vector<AttributeName>& result) {
   size_t parsedUntil = 0;
@@ -111,3 +85,62 @@ bool triagens::basics::TRI_AttributeNamesHaveExpansion (std::vector<AttributeNam
   }
   return false;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the attribute name to an output stream
+////////////////////////////////////////////////////////////////////////////////
+     
+std::ostream& operator<< (std::ostream& stream,
+                          triagens::basics::AttributeName const* name) {
+  stream << name->name;
+  if (name->shouldExpand) {
+    stream << "[*]";
+  }
+  return stream;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the attribute name to an output stream
+////////////////////////////////////////////////////////////////////////////////
+
+std::ostream& operator<< (std::ostream& stream,
+                          triagens::basics::AttributeName const& name) {
+  stream << name.name;
+  if (name.shouldExpand) {
+    stream << "[*]";
+  }
+  return stream;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the attribute names to an output stream
+////////////////////////////////////////////////////////////////////////////////
+     
+std::ostream& operator<< (std::ostream& stream,
+                          std::vector<triagens::basics::AttributeName> const* attributes) {
+  size_t const n = attributes->size();
+  for (size_t i = 0; i < n; ++i) {
+    if (i > 0) {
+      stream << ".";
+    }
+    stream << attributes[i];
+  }
+  return stream;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the attribute names to an output stream
+////////////////////////////////////////////////////////////////////////////////
+
+std::ostream& operator<< (std::ostream& stream,
+                          std::vector<triagens::basics::AttributeName> const& attributes) {
+  size_t const n = attributes.size();
+  for (size_t i = 0; i < n; ++i) {
+    if (i > 0) {
+      stream << ".";
+    }
+    stream << attributes[i];
+  }
+  return stream;
+}
+

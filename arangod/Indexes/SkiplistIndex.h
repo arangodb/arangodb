@@ -314,6 +314,8 @@ namespace triagens {
                                              triagens::aql::Variable const*,
                                              bool const) const override;
 
+        triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
+                                                     triagens::aql::Variable const*) const override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

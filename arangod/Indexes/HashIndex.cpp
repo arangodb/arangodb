@@ -922,9 +922,10 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
 /// @brief specializes the condition for use with the index
 ////////////////////////////////////////////////////////////////////////////////
         
-triagens::aql::AstNode* HashIndex::specializeCondition (triagens::aql::AstNode const* node,
+triagens::aql::AstNode* HashIndex::specializeCondition (triagens::aql::AstNode* node,
                                                         triagens::aql::Variable const* reference) const {
-  return const_cast<triagens::aql::AstNode*>(node);
+  SimpleAttributeEqualityMatcher matcher(fields());
+  return matcher.specializeAll(this, node, reference);
 }
 
 // -----------------------------------------------------------------------------

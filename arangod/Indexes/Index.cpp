@@ -31,6 +31,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
 #include "VocBase/server.h"
@@ -327,7 +328,16 @@ std::string Index::context () const {
   result << "index { id: " << id() 
          << ", type: " << typeName() 
          << ", collection: " << _collection->_vocbase->_name 
-         << "/" <<  _collection->_info._name << " }";
+         << "/" <<  _collection->_info._name
+         << ", fields: ";
+  result << "[";
+  for (size_t i = 0; i < _fields.size(); ++i) {
+    if (i > 0) {
+      result << ", ";
+    }
+    result << _fields[i];
+  }
+  result << "] }";
 
   return result.str();
 }
@@ -472,9 +482,9 @@ IndexIterator* Index::iteratorForCondition (IndexIteratorContext*,
 /// @brief specializes the condition for use with the index
 ////////////////////////////////////////////////////////////////////////////////
         
-triagens::aql::AstNode* Index::specializeCondition (triagens::aql::AstNode const* node,
+triagens::aql::AstNode* Index::specializeCondition (triagens::aql::AstNode* node,
                                                     triagens::aql::Variable const*) const {
-  return const_cast<triagens::aql::AstNode*>(node);
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -541,30 +551,24 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
   return true;
 }
 
-namespace triagens {
-  namespace arango {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the index description to an output stream
 ////////////////////////////////////////////////////////////////////////////////
      
-    std::ostream& operator<< (std::ostream& stream,
-                              Index const* index) {
-      stream << index->context();
-      return stream;
-    }
+std::ostream& operator<< (std::ostream& stream,
+                          triagens::arango::Index const* index) {
+  stream << index->context();
+  return stream;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the index description to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::ostream& operator<< (std::ostream& stream,
-                              Index const& index) {
-      stream << index.context();
-      return stream;
-    }
-
-  }
+std::ostream& operator<< (std::ostream& stream,
+                          triagens::arango::Index const& index) {
+  stream << index.context();
+  return stream;
 }
 
 // -----------------------------------------------------------------------------

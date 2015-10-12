@@ -88,6 +88,7 @@ add_executable(
     Aql/Function.cpp
     Aql/Functions.cpp
     Aql/grammar.cpp
+    Aql/Index.cpp
     Aql/IndexBlock.cpp
     Aql/IndexNode.cpp
     Aql/IndexRangeBlock.cpp
