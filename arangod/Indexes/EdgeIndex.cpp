@@ -616,7 +616,8 @@ bool EdgeIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
 IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
                                                 triagens::aql::Ast* ast,
                                                 triagens::aql::AstNode const* node,
-                                                triagens::aql::Variable const* reference) const {
+                                                triagens::aql::Variable const* reference,
+                                                bool const reverse) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   SimpleAttributeEqualityMatcher matcher({ 

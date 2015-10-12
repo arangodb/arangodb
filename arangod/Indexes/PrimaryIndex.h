@@ -205,7 +205,8 @@ namespace triagens {
         IndexIterator* iteratorForCondition (IndexIteratorContext*,
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
-                                             triagens::aql::Variable const*) const override;
+                                             triagens::aql::Variable const*,
+                                             bool const) const override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

@@ -31,12 +31,14 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/json-utilities.h"
 #include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
 using namespace triagens::arango;
+using Json = triagens::basics::Json;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -1176,9 +1178,20 @@ bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* s
 
 IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* context,
                                                     triagens::aql::Ast* ast,
-                                                    triagens::aql::AstNode const*node,
-                                                    triagens::aql::Variable const* reference) const {
+                                                    triagens::aql::AstNode const* node,
+                                                    triagens::aql::Variable const* reference,
+                                                    bool const reverse) const {
   // Create the skiplistOperator for the IndexLookup
+  if (node == nullptr) {
+    // We have no condition, we just use sort
+    Json nullArray(Json::Array);
+    nullArray.add(Json(Json::Null));
+    std::unique_ptr<TRI_index_operator_t> unboundOperator(TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr,
+                                                          nullptr, nullArray.steal(), _shaper, 1));
+    std::vector<TRI_index_operator_t*> searchValues({unboundOperator.get()});
+    unboundOperator.release();
+    return new SkiplistIndexIterator(this, searchValues, reverse);
+  }
   std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
   size_t unused = 0;
   matchAttributes(node, reference, found, unused);
@@ -1378,7 +1391,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     }
   }
 
-  return new SkiplistIndexIterator(this, searchValues);
+  return new SkiplistIndexIterator(this, searchValues, reverse);
 }
 
 // -----------------------------------------------------------------------------

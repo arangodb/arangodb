@@ -150,6 +150,10 @@ int IndexBlock::initialize () {
   };
 
   auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
+  if (_condition == nullptr) {
+    // This Node has no condition. Iterate over the complete index. 
+    return TRI_ERROR_NO_ERROR;
+  }
 
   for (size_t i = 0; i < _condition->numMembers(); ++i) {
     auto andCond = _condition->getMemberUnchecked(i);
@@ -255,14 +259,25 @@ bool IndexBlock::initIndexes () {
   }
 
   _currentIndex = 0;
-  auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
-  auto ast = static_cast<IndexNode const*>(getPlanNode())->_plan->getAst();
-  _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable);
+  IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
+  auto outVariable = node->outVariable();
+  auto ast = node->_plan->getAst();
+  if (_condition == nullptr) {
+    _iterator = _indexes[_currentIndex]->getIterator(_context, ast, nullptr, outVariable, node->_reverse);
+  }
+  else {
+    _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable, node->_reverse);
+  }
 
   while (_iterator == nullptr) {
     ++_currentIndex;
     if (_currentIndex < _indexes.size()) {
-      _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable);
+      if (_condition == nullptr) {
+        _iterator = _indexes[_currentIndex]->getIterator(_context, ast, nullptr, outVariable, node->_reverse);
+      }
+      else {
+        _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable, node->_reverse);
+      }
     }
     else {
       // We were not able to initialize any index with this condition
@@ -280,10 +295,11 @@ void IndexBlock::startNextIterator () {
 
   ++_currentIndex;
   if (_currentIndex < _indexes.size()) {
-    auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
-    auto ast = static_cast<IndexNode const*>(getPlanNode())->_plan->getAst();
+    IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
+    auto outVariable = node->outVariable();
+    auto ast = node->_plan->getAst();
 
-    _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable);
+    _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable, node->_reverse);
   }
   /*
   else {

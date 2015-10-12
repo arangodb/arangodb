@@ -179,8 +179,9 @@ namespace triagens {
       arango::IndexIterator* getIterator (arango::IndexIteratorContext* context, 
                                           triagens::aql::Ast* ast,
                                           triagens::aql::AstNode const* condition,
-                                          triagens::aql::Variable const* reference) const {
-        return getInternals()->iteratorForCondition(context, ast, condition, reference);
+                                          triagens::aql::Variable const* reference,
+                                          bool const reverse) const {
+        return getInternals()->iteratorForCondition(context, ast, condition, reference, reverse);
       }
       
       triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode const* node,

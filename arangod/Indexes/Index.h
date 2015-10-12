@@ -352,7 +352,8 @@ namespace triagens {
         virtual IndexIterator* iteratorForCondition (IndexIteratorContext*,
                                                      triagens::aql::Ast*,
                                                      triagens::aql::AstNode const*,
-                                                     triagens::aql::Variable const*) const;
+                                                     triagens::aql::Variable const*,
+                                                     bool const) const;
         
         virtual triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode const*,
                                                              triagens::aql::Variable const*) const;
