@@ -393,27 +393,6 @@ bool ApplicationEndpointServer::prepare () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::prepare2 () {
-  if (_disabled) {
-    return true;
-  }
-
-  // scheduler might be created after prepare(), so we need to use prepare2()!!
-  Scheduler* scheduler = _applicationScheduler->scheduler();
-
-  if (scheduler == nullptr) {
-    LOG_FATAL_AND_EXIT("no scheduler is known, cannot create server");
-
-    return false;
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
 bool ApplicationEndpointServer::open () {
   if (_disabled) {
     return true;
