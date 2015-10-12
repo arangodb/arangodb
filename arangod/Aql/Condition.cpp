@@ -364,14 +364,14 @@ bool Condition::findIndexForAndNode (size_t position,
     }
 
     double const totalCost = filterCost + sortCost;
-
+/*
     std::cout << "INDEX: " << idx << 
                  ", ESTIMATED ITEMS: " << estimatedItems << 
                  ", ESTIMATED COST: " << estimatedCost << 
                  ", FILTER COST: " << filterCost << 
                  ", SORT COST: " << sortCost << 
                  ", TOTAL COST: " << totalCost << "\n";
-
+*/
     if (bestIndex == nullptr || totalCost < bestCost) {
       bestIndex = idx;
       bestCost = totalCost;

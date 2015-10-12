@@ -140,179 +140,41 @@ IndexNode::~IndexNode () {
 /// @brief the cost of an index node is a multiple of the cost of
 /// its unique dependency
 ////////////////////////////////////////////////////////////////////////////////
- 
-double IndexNode::estimateCost (size_t& nrItems) const {
-  nrItems = 1;
-  return 1.0;
-  /* 
-  static double const EqualityReductionFactor = 100.0;
 
+double IndexNode::estimateCost (size_t& nrItems) const {
   size_t incoming = 0;
   double const dependencyCost = _dependencies.at(0)->getCost(incoming);
-  size_t docCount = _collection->count();
+  size_t const itemsInCollection = _collection->count();
+  size_t totalItems = 0;
+  double totalCost = 0.0;
 
-  auto estimateItemsWithIndexSelectivity = [] (triagens::aql::Index const* index,
-                                               size_t incoming,
-                                               size_t& nrItems) const {
-    // check if the index can provide a selectivity estimate
-    if (! index->hasSelectivityEstimate()) {
-      return false; 
+  auto root = _condition->root();
+
+  for (size_t i = 0; i < _indexes.size(); ++i) {
+    double estimatedCost  = 0.0;
+    size_t estimatedItems = 0;
+
+    triagens::aql::AstNode const* condition;
+    if (root == nullptr || root->numMembers() <= i) {
+      condition = nullptr;
+    }
+    else {
+      condition = root->getMember(i);
     }
 
-    // use index selectivity estimate
-    double estimate = index->selectivityEstimate();
-
-    if (estimate <= 0.0) {
-      // avoid DIV0
-      return false;
+    if (condition != nullptr &&
+        _indexes[i]->supportsFilterCondition(condition, _outVariable, itemsInCollection, estimatedItems, estimatedCost)) {
+      totalItems += estimatedItems;
+      totalCost  += estimatedCost;
     }
-
-    nrItems = static_cast<size_t>(incoming * _ranges.size() * (1.0 / estimate));
-    return true;
-  };
-
-  auto estimateIndexCost = [&] (triagens::aql::Index const* idx) -> double {
-    if (idx->type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-      // always an equality lookup
-
-      // selectivity of primary index is always 1
-      nrItems = incoming * _ranges.size();
-      return dependencyCost + nrItems;
+    else {
+      totalItems += itemsInCollection;
+      totalCost  += static_cast<double>(itemsInCollection);
     }
-  
-    if (idx->type == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-      // always an equality lookup
-    
-      // check if the index can provide a selectivity estimate
-      if (! estimateItemsWithIndexSelectivity(idx, incoming, nrItems)) {
-        // use hard-coded heuristic
-        nrItems = incoming * _ranges.size() * docCount / static_cast<size_t>(EqualityReductionFactor);
-      }
-        
-      nrItems = (std::max)(nrItems, static_cast<size_t>(1));
+  }
 
-      return dependencyCost + nrItems;
-    }
-
-    if (idx->type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
-      // always an equality lookup
-
-      // check if the index can provide a selectivity estimate
-      if (! estimateItemsWithIndexSelectivity(idx, incoming, nrItems)) {
-        // use hard-coded heuristic
-        if (idx->unique) {
-          nrItems = incoming * _ranges.size();
-        }
-        else {
-          double cost = static_cast<double>(docCount) * incoming * _ranges.size();
-          // the more attributes are contained in the index, the more specific the lookup will be
-          for (size_t i = 0; i < _ranges.at(0).size(); ++i) { 
-            cost /= EqualityReductionFactor; 
-          }
-      
-          nrItems = static_cast<size_t>(cost);
-        }
-      }
-          
-      nrItems = (std::max)(nrItems, static_cast<size_t>(1));
-      // the more attributes an index matches, the better it is
-      double matchLengthFactor = _ranges.at(0).size() * 0.01;
-
-      // this is to prefer the hash index over skiplists if everything else is equal
-      return dependencyCost + ((static_cast<double>(nrItems) - matchLengthFactor) * 0.9999995);
-    }
-
-    if (idx->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-      auto const count = _ranges.at(0).size();
-      
-      if (count == 0) {
-        // no ranges? so this is unlimited -> has to be more expensive
-        nrItems = incoming * docCount;
-        return dependencyCost + nrItems;
-      }
-
-      if (idx->unique) {
-        bool allEquality = true;
-        for (auto const& x : _ranges) {
-          // check if we are using all indexed attributes in the query
-          if (x.size() != idx->fields().size()) {
-            allEquality = false;
-            break;
-          }
-
-          // check if this is an equality comparison
-          if (x.empty() || ! x.back().is1ValueRangeInfo()) {
-            allEquality = false;
-            break;
-          }
-        }
-
-        if (allEquality) {
-          // unique index, all attributes compared using eq (==) operator
-          nrItems = incoming * _ranges.size();
-          return dependencyCost + nrItems;
-        }
-      }
-
-      // build a total cost for the index usage by peeking into all ranges
-      double totalCost = 0.0;
-
-      for (auto const& x : _ranges) {
-        double cost = static_cast<double>(docCount) * incoming;
-
-        for (auto const& y : x) { //only doing the 1-d case so far
-          if (y.is1ValueRangeInfo()) {
-            // equality lookup
-            cost /= EqualityReductionFactor;
-            continue;
-          }
-
-          bool hasLowerBound = false;
-          bool hasUpperBound = false;
-
-          if (y._lowConst.isDefined() || y._lows.size() > 0) {
-            hasLowerBound = true;
-          }
-          if (y._highConst.isDefined() || y._highs.size() > 0) {
-            hasUpperBound = true;
-          }
-
-          if (hasLowerBound && hasUpperBound) {
-            // both lower and upper bounds defined
-            cost /= 10.0;
-          }
-          else if (hasLowerBound || hasUpperBound) {
-            // either only low or high bound defined
-            cost /= 2.0;
-          }
-
-          // each bound (const and dynamic) counts!
-          size_t const numBounds = y._lows.size() + 
-                                  y._highs.size() + 
-                                  (y._lowConst.isDefined() ? 1 : 0) + 
-                                  (y._highConst.isDefined() ? 1 : 0);
-
-          for (size_t j = 0; j < numBounds; ++j) {
-            // each dynamic bound again reduces the cost
-            cost *= 0.95;
-          }
-        }
-
-        totalCost += cost;
-      }
-
-      totalCost = static_cast<double>((std::max)(static_cast<size_t>(totalCost), static_cast<size_t>(1))); 
-
-      nrItems = static_cast<size_t>(totalCost);
-
-      return dependencyCost + totalCost;
-    }
-
-    // no index
-    nrItems = incoming * docCount;
-    return dependencyCost + nrItems;
-  };
-  */
+  nrItems = incoming * totalItems;
+  return dependencyCost + incoming * totalCost;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
