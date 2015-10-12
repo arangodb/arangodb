@@ -75,9 +75,6 @@ namespace triagens {
 
     };
 
-    std::ostream& operator<< (std::ostream&, AttributeName const*);
-    std::ostream& operator<< (std::ostream&, AttributeName const&);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -105,6 +102,11 @@ namespace triagens {
 
   }
 }
+    
+std::ostream& operator<< (std::ostream&, triagens::basics::AttributeName const*);
+std::ostream& operator<< (std::ostream&, triagens::basics::AttributeName const&);
+std::ostream& operator<< (std::ostream&, std::vector<triagens::basics::AttributeName> const*);
+std::ostream& operator<< (std::ostream&, std::vector<triagens::basics::AttributeName> const&);
 
 #endif
 

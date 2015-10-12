@@ -241,6 +241,104 @@ namespace triagens {
           return nullptr;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specialize the condition for the index
+/// this is used for the primary index and the edge index
+/// requires that a previous matchOne() returned true
+////////////////////////////////////////////////////////////////////////////////
+        
+        triagens::aql::AstNode* specializeOne (triagens::arango::Index const* index,
+                                               triagens::aql::AstNode* node,
+                                               triagens::aql::Variable const* reference) {
+          _found.clear();
+
+          size_t const n = node->numMembers();
+
+          for (size_t i = 0; i < n; ++i) {
+            auto op = node->getMember(i);
+
+            if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+              TRI_ASSERT(op->numMembers() == 2);
+              // EQ is symmetric
+              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference) ||
+                  accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference)) {
+                // we can use the index
+                // now return only the child node we need
+                return op;
+              }
+            }
+            else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+              TRI_ASSERT(op->numMembers() == 2);
+              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference)) {
+                // we can use the index
+                // now return only the child node we need
+                return op;
+              }
+            }
+          }
+
+          TRI_ASSERT(false);
+          return node;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specialize the condition for the index
+/// this is used for the hash index
+/// requires that a previous matchAll() returned true
+////////////////////////////////////////////////////////////////////////////////
+        
+        triagens::aql::AstNode* specializeAll (triagens::arango::Index const* index,
+                                               triagens::aql::AstNode* node,
+                                               triagens::aql::Variable const* reference) {
+          std::vector<triagens::aql::AstNode const*> children;
+          _found.clear();
+          
+          size_t const n = node->numMembers();
+
+          for (size_t i = 0; i < n; ++i) {
+            auto op = node->getMember(i);
+
+            if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+              TRI_ASSERT(op->numMembers() == 2);
+              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference) ||
+                  accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference)) {
+                children.emplace_back(op);
+                if (_found.size() == _attributes.size()) {
+                  // got enough attributes
+                  break;
+                }
+              }
+            }
+            else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+              TRI_ASSERT(op->numMembers() == 2);
+              if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference)) {
+                children.emplace_back(op);
+                if (_found.size() == _attributes.size()) {
+                  // got enough attributes
+                  break;
+                }
+              }
+            }
+          }
+
+          if (_found.size() == _attributes.size()) {
+            // remove node's existing members
+            while (node->numMembers() > 0) {
+              node->removeMemberUnchecked(0);
+            }
+
+            // now re-add only those members we found in this method
+            for (auto& it : children) {
+              node->addMember(it);
+            }
+
+            return node;
+          }
+
+          TRI_ASSERT(false);
+          return node;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -261,7 +359,11 @@ namespace triagens {
           }
           else if (index->hasSelectivityEstimate()) {
             // use index selectivity estimate
-            estimatedCost = 1.0 - index->selectivityEstimate(); 
+            estimatedCost = 1.0 - index->selectivityEstimate();
+            if (estimatedCost < 0.1) {
+              // keep some arbitrary lower bound
+              estimatedCost = 0.05;
+            } 
           
             // the more attributes are covered by an index, the more accurate it
             // is considered to be

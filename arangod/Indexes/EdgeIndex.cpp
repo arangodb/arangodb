@@ -665,6 +665,24 @@ IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief specializes the condition for use with the index
+////////////////////////////////////////////////////////////////////////////////
+        
+triagens::aql::AstNode* EdgeIndex::specializeCondition (triagens::aql::AstNode* node,
+                                                        triagens::aql::Variable const* reference) const {
+  SimpleAttributeEqualityMatcher matcher({ 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false) }, 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false) } 
+  });
+
+  return matcher.specializeOne(this, node, reference);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create the iterator
 ////////////////////////////////////////////////////////////////////////////////
     
