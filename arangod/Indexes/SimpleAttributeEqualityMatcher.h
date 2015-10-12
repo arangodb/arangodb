@@ -73,6 +73,8 @@ namespace triagens {
         bool matchOne (triagens::arango::Index const* index,
                        triagens::aql::AstNode const* node,
                        triagens::aql::Variable const* reference,
+                       size_t itemsInIndex,
+                       size_t& estimatedItems,
                        double& estimatedCost) {
           _found.clear();
                     
@@ -85,7 +87,8 @@ namespace triagens {
               if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference) ||
                   accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference)) {
                 // we can use the index
-                return indexCosts(index, estimatedCost);
+                calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
+                return true;
               }
             }
             else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -93,12 +96,17 @@ namespace triagens {
               if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference)) {
                 // we can use the index
                 // use slightly different cost calculation for IN that for EQ
-                return indexCosts(index, estimatedCost) * op->getMember(1)->numMembers();
+                calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
+                estimatedItems *= op->getMember(1)->numMembers();
+                estimatedCost  *= op->getMember(1)->numMembers();
+                return true;
               }
             }
           }
 
-          estimatedCost = 1.0; // set to highest possible cost by default
+          // set to defaults
+          estimatedItems = itemsInIndex;
+          estimatedCost  = static_cast<double>(estimatedItems);
           return false;
         }
 
@@ -110,6 +118,8 @@ namespace triagens {
         bool matchAll (triagens::arango::Index const* index,
                        triagens::aql::AstNode const* node,
                        triagens::aql::Variable const* reference,
+                       size_t itemsInIndex,
+                       size_t& estimatedItems,
                        double& estimatedCost) {
           _found.clear();
           size_t values = 0;
@@ -144,10 +154,15 @@ namespace triagens {
             if (values == 0) {
               values = 1;
             }
-            return indexCosts(index, estimatedCost) / static_cast<double>(index->fields().size()) * static_cast<double>(values);
+            calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
+            estimatedItems *= static_cast<double>(values);
+            estimatedCost  *= static_cast<double>(values);
+            return true;
           }
 
-          estimatedCost = 1.0; // set to highest possible cost by default
+          // set to defaults
+          estimatedItems = itemsInIndex;
+          estimatedCost  = static_cast<double>(estimatedItems);
           return false;
         }
 
@@ -360,36 +375,42 @@ namespace triagens {
 /// costs returned are scaled from 0.0 to 1.0, with 0.0 being the lowest cost
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool indexCosts (triagens::arango::Index const* index,
-                         double& estimatedCost) const {
+        void calculateIndexCosts (triagens::arango::Index const* index,
+                                  size_t itemsInIndex,
+                                  size_t& estimatedItems,
+                                  double& estimatedCost) const {
+          static double const EqualityReductionFactor = 100.0;
+
           if (index->unique()) {
             // index is unique, and the condition covers all attributes
             // now use a low value for the costs
-            estimatedCost = std::numeric_limits<double>::epsilon();
+            estimatedItems = 1;
+            estimatedCost = 1.0;
           }
           else if (index->hasSelectivityEstimate()) {
             // use index selectivity estimate
-            estimatedCost = 1.0 - index->selectivityEstimate();
-            if (estimatedCost < 0.1) {
-              // keep some arbitrary lower bound
-              estimatedCost = 0.05;
-            } 
-          
+            double estimate = index->selectivityEstimate();
+            if (estimate <= 0.0) {
+              // prevent division by zero
+              estimatedItems = itemsInIndex;
+              // the more attributes are contained in the index, the more specific the lookup will be
+              for (size_t i = 0; i < index->fields().size(); ++i) {
+                estimatedItems /= static_cast<size_t>(EqualityReductionFactor);
+              }
+            }
+            else {
+              estimatedItems = static_cast<size_t>(itemsInIndex * (1.0 / estimate));
+            }
+
+            estimatedItems = (std::max)(estimatedItems, static_cast<size_t>(1));
             // the more attributes are covered by an index, the more accurate it
             // is considered to be
-            estimatedCost /= index->fields().size();
+            estimatedCost = static_cast<double>(estimatedItems) - index->fields().size() * 0.01;
           }
           else {
-            // set to highest possible cost by default
-            estimatedCost = 1.0; 
-            
-            // the more attributes are covered by an index, the more accurate it
-            // is considered to be
-            estimatedCost /= index->fields().size();
+            // no such index should exist
+            TRI_ASSERT(false);
           }
-
-          // can use this index
-          return true;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

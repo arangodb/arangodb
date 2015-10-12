@@ -446,9 +446,12 @@ bool Index::hasBatchInsert () const {
 
 bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
                                      triagens::aql::Variable const* reference,
+                                     size_t itemsInIndex,
+                                     size_t& estimatedItems,
                                      double& estimatedCost) const {
   // by default, no filter conditions are supported
-  estimatedCost = 0.0;
+  estimatedItems = itemsInIndex;
+  estimatedCost  = static_cast<double>(estimatedItems);
   return false;
 }
 

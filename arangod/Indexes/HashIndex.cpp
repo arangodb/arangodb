@@ -781,9 +781,11 @@ int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
 
 bool HashIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
                                          triagens::aql::Variable const* reference,
+                                         size_t itemsInIndex,
+                                         size_t& estimatedItems,
                                          double& estimatedCost) const {
   SimpleAttributeEqualityMatcher matcher(fields());
-  return matcher.matchAll(this, node, reference, estimatedCost);
+  return matcher.matchAll(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

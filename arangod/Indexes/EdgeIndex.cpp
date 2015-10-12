@@ -601,12 +601,14 @@ int EdgeIndex::sizeHint (size_t size) {
 
 bool EdgeIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
                                          triagens::aql::Variable const* reference,
+                                         size_t itemsInIndex,
+                                         size_t& estimatedItems,
                                          double& estimatedCost) const {
   SimpleAttributeEqualityMatcher matcher({ 
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false) }, 
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false) } 
   });
-  return matcher.matchOne(this, node, reference, estimatedCost);
+  return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

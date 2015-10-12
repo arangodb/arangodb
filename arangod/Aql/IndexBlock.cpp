@@ -82,10 +82,10 @@ IndexBlock::~IndexBlock () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a SORT to a dynamic IN condition
+/// @brief adds a UNIQUE() to a dynamic IN condition
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::AstNode* IndexBlock::addSort (triagens::aql::AstNode* node) const {
+triagens::aql::AstNode* IndexBlock::makeUnique (triagens::aql::AstNode* node) const {
   if (node->type != triagens::aql::NODE_TYPE_ARRAY ||
       (node->type == triagens::aql::NODE_TYPE_ARRAY && node->numMembers() >= 2)) {
     // an non-array or an array with more than 1 member
@@ -93,7 +93,13 @@ triagens::aql::AstNode* IndexBlock::addSort (triagens::aql::AstNode* node) const
     auto ast = en->_plan->getAst();
     auto array = ast->createNodeArray();
     array->addMember(node);
-    return ast->createNodeFunctionCall("SORTED_UNIQUE", array); 
+    if (_indexes[_currentIndex]->isSorted()) {
+      // the index is sorted. we need to use SORTED_UNIQUE to get the
+      // result back in index order
+      return ast->createNodeFunctionCall("SORTED_UNIQUE", array); 
+    }
+    // a regular UNIQUE will do
+    return ast->createNodeFunctionCall("UNIQUE", array); 
   }
 
   // presumably an array with no or a single member
@@ -185,7 +191,7 @@ int IndexBlock::initialize () {
         // Index is responsible for the left side, check if right side has to be evaluated
         if (! rhs->isConstant()) {
           if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
-            rhs = addSort(rhs);
+            rhs = makeUnique(rhs);
           }
           instantiateExpression(i, j, 1, rhs);
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
@@ -198,7 +204,7 @@ int IndexBlock::initialize () {
         if (! lhs->isConstant()) {
           if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
             // IN: now make IN result unique
-            lhs = addSort(lhs);
+            lhs = makeUnique(lhs);
           }
           instantiateExpression(i, j, 0, lhs);
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {

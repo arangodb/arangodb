@@ -1102,6 +1102,8 @@ void SkiplistIndex::matchAttributes (triagens::aql::AstNode const* node,
 
 bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
                                              triagens::aql::Variable const* reference,
+                                             size_t itemsInIndex,
+                                             size_t& estimatedItems,
                                              double& estimatedCost) const {
   std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
   size_t values = 0;
@@ -1164,6 +1166,8 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
     return true;
   }
 
+  estimatedItems = itemsInIndex;
+  estimatedCost  = static_cast<double>(estimatedItems);
   return false;
 }
 
@@ -1450,8 +1454,8 @@ triagens::aql::AstNode* SkiplistIndex::specializeCondition (triagens::aql::AstNo
       break;
     }
 
-    std::sort(nodes.begin(), nodes.end(), [](triagens::aql::AstNode const* lhs,
-                                             triagens::aql::AstNode const* rhs) -> bool {
+    std::sort(nodes.begin(), nodes.end(), [] (triagens::aql::AstNode const* lhs,
+                                              triagens::aql::AstNode const* rhs) -> bool {
       return sortWeight(lhs) < sortWeight(rhs);
     });
 

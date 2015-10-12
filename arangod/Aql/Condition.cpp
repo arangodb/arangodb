@@ -311,7 +311,8 @@ bool Condition::findIndexForAndNode (size_t position,
   auto node = _root->getMember(position);
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
   
-  static double const MaxFilterCost = 2.0;
+  static size_t const ItemsInIndex  = 1000;
+  static double const MaxFilterCost = ItemsInIndex * 2.0;
 
   // This code is never responsible for the content of this pointer.
   Index const* bestIndex = nullptr;
@@ -328,7 +329,8 @@ bool Condition::findIndexForAndNode (size_t position,
     
     // check if the index supports the filter expression
     double estimatedCost;
-    if (idx->supportsFilterCondition(node, reference, estimatedCost)) {
+    size_t estimatedItems;
+    if (idx->supportsFilterCondition(node, reference, ItemsInIndex, estimatedItems, estimatedCost)) {
       // index supports the filter condition
       filterCost = estimatedCost;
       supportsFilter = true;

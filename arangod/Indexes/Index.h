@@ -343,6 +343,8 @@ namespace triagens {
 
         virtual bool supportsFilterCondition (triagens::aql::AstNode const*,
                                               triagens::aql::Variable const*,
+                                              size_t,
+                                              size_t&,
                                               double&) const;
         
         virtual bool supportsSortCondition (triagens::aql::SortCondition const*,

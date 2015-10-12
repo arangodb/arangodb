@@ -302,6 +302,8 @@ namespace triagens {
 
         bool supportsFilterCondition (triagens::aql::AstNode const*,
                                       triagens::aql::Variable const*,
+                                      size_t,
+                                      size_t&,
                                       double&) const override;
         
         bool supportsSortCondition (triagens::aql::SortCondition const*,

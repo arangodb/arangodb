@@ -166,8 +166,10 @@ namespace triagens {
 
       bool supportsFilterCondition (triagens::aql::AstNode const* node,
                                     triagens::aql::Variable const* reference,
+                                    size_t itemsInIndex,
+                                    size_t& estimatedItems,
                                     double& estimatedCost) const {
-        return getInternals()->supportsFilterCondition(node, reference, estimatedCost);
+        return getInternals()->supportsFilterCondition(node, reference, itemsInIndex, estimatedItems, estimatedCost);
       }
       
       bool supportsSortCondition (triagens::aql::SortCondition const* sortCondition,

@@ -125,7 +125,7 @@ namespace triagens {
 /// @brief adds a SORT to a dynamic IN condition
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::aql::AstNode* addSort (triagens::aql::AstNode*) const;
+        triagens::aql::AstNode* makeUnique (triagens::aql::AstNode*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Forwards _iterator to the next available index

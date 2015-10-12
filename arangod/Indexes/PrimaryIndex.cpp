@@ -307,13 +307,15 @@ void PrimaryIndex::invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)> wor
 
 bool PrimaryIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
                                             triagens::aql::Variable const* reference,
+                                            size_t itemsInIndex,
+                                            size_t& estimatedItems,
                                             double& estimatedCost) const {
   SimpleAttributeEqualityMatcher matcher({ 
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_ID, false) },
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_KEY, false) } 
   });
 
-  return matcher.matchOne(this, node, reference, estimatedCost);
+  return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
