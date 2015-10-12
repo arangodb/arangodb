@@ -178,10 +178,11 @@ namespace triagens {
       public:
         
         SkiplistIndexIterator (SkiplistIndex const* index,
-                               std::vector<TRI_index_operator_t*> op)
+                               std::vector<TRI_index_operator_t*> op,
+                               bool reverse)
         : _index(index),
           _operators(op),
-          _reverse(false),
+          _reverse(reverse),
           _currentOperator(0),
           _iterator(nullptr) {
         }
@@ -310,7 +311,8 @@ namespace triagens {
         IndexIterator* iteratorForCondition (IndexIteratorContext*,
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
-                                             triagens::aql::Variable const*) const override;
+                                             triagens::aql::Variable const*,
+                                             bool const) const override;
 
         triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
                                                      triagens::aql::Variable const*) const override;

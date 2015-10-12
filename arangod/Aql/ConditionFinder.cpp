@@ -134,13 +134,13 @@ bool ConditionFinder::before (ExecutionNode* en) {
 
       condition->normalize(_plan);
       
-      if (condition->isEmpty()) {
+      std::vector<Index const*> usedIndexes;
+      SortCondition sortCondition(_sorts, _variableDefinitions);
+
+      if (condition->isEmpty() && sortCondition.isEmpty()) {
         // no filter conditions left
         break;
       }
-
-      std::vector<Index const*> usedIndexes;
-      SortCondition sortCondition(_sorts, _variableDefinitions);
 
       if (condition->findIndexes(node, usedIndexes, sortCondition)) {
         bool reverse = false;

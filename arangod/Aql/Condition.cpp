@@ -41,6 +41,8 @@
 using namespace triagens::aql;
 using CompareResult = ConditionPart::ConditionPartCompareResult;
         
+static double const MaxSortCost   = 2.0;
+
 struct PermutationState {
   PermutationState (triagens::aql::AstNode const* value, size_t n)
     : value(value),
@@ -234,21 +236,66 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
                              std::vector<Index const*>& usedIndexes,
                              SortCondition const& sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
-  // We can only start after DNF transformation
-  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
-
   Variable const* reference = node->outVariable();
-
-  for (size_t i = 0; i < _root->numMembers(); ++i) {
-    if (! findIndexForAndNode(i, reference, node, usedIndexes, sortCondition)) {
-      // We are not able to find an index for this AND block. Sorry we have to abort here
+  if (_root == nullptr) {
+    // We do not have a condition. But we have a sort
+    if (! sortCondition.isEmpty() &&
+        sortCondition.isOnlyAttributeAccess() &&
+        sortCondition.isUnidirectional()) {
+      double bestCost = MaxSortCost;
+      Index const* bestIndex = nullptr;
+      std::vector<Index const*> indexes = node->collection()->getIndexes();
+      for (auto const& idx : indexes) {
+        double sortCost = 0.0;
+        if (indexSupportsSort(idx, reference, sortCondition, sortCost) &&
+            sortCost < bestCost) {
+          bestCost = sortCost;
+          bestIndex = idx;
+        }
+      }
+      if (bestIndex != nullptr) {
+        usedIndexes.emplace_back(bestIndex);
+      }
+    }
+    else {
+      // No Index and no sort condition that
+      // can be supported by an index.
+      // Nothing to do here.
       return false;
+    }
+  }
+  else {
+    // We can only start after DNF transformation
+    TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
+
+
+    for (size_t i = 0; i < _root->numMembers(); ++i) {
+      if (! findIndexForAndNode(i, reference, node, usedIndexes, sortCondition)) {
+        // We are not able to find an index for this AND block. Sorry we have to abort here
+        return false;
+      }
     }
   }
 
   // should always be true here. maybe not in the future in case a collection
   // has absolutely no indexes
   return ! usedIndexes.empty();
+}
+
+bool Condition::indexSupportsSort (Index const* idx,
+                                   Variable const* reference,
+                                   SortCondition const& sortCondition,
+                                   double& estimatedCost) {
+  if (idx->isSorted() &&
+      idx->supportsSortCondition(&sortCondition, reference, estimatedCost)) {
+    // index supports the sort condition
+    return true;
+  }
+  else {
+    // index does not support the sort condition
+    estimatedCost = MaxSortCost;
+  }
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -265,7 +312,6 @@ bool Condition::findIndexForAndNode (size_t position,
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
   
   static double const MaxFilterCost = 2.0;
-  static double const MaxSortCost   = 2.0;
 
   // This code is never responsible for the content of this pointer.
   Index const* bestIndex = nullptr;
@@ -299,16 +345,8 @@ bool Condition::findIndexForAndNode (size_t position,
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
       // must be sorted in the direction
-      double estimatedCost;
-      if (idx->isSorted() &&
-          idx->supportsSortCondition(&sortCondition, reference, estimatedCost)) {
-        // index supports the sort condition
-        sortCost = estimatedCost;
+      if (indexSupportsSort(idx, reference, sortCondition, sortCost)) {
         supportsSort = true;
-      }
-      else {
-        // index does not support the sort condition
-        sortCost = MaxSortCost;
       }
     }
 

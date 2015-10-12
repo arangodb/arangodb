@@ -31,6 +31,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
 #include "VocBase/server.h"
@@ -328,7 +329,15 @@ std::string Index::context () const {
          << ", type: " << typeName() 
          << ", collection: " << _collection->_vocbase->_name 
          << "/" <<  _collection->_info._name
-         << ", fields: " << _fields << " }";
+         << ", fields: ";
+  result << "[";
+  for (size_t i = 0; i < _fields.size(); ++i) {
+    if (i > 0) {
+      result << ", ";
+    }
+    result << _fields[i];
+  }
+  result << "] }";
 
   return result.str();
 }
@@ -462,7 +471,8 @@ bool Index::supportsSortCondition (triagens::aql::SortCondition const*,
 IndexIterator* Index::iteratorForCondition (IndexIteratorContext*,
                                             triagens::aql::Ast*,
                                             triagens::aql::AstNode const*,
-                                            triagens::aql::Variable const*) const {
+                                            triagens::aql::Variable const*,
+                                            bool const) const {
   // the super class index cannot create an iterator
   // the derived index classes have to manage this.
   return nullptr;
