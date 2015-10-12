@@ -1116,7 +1116,7 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
       }
     }
 
-    if (! containsEquality && ! lastContainsEquality) {
+    if (! lastContainsEquality) {
       // unsupported condition. must abort
       break;
     }
@@ -1172,7 +1172,6 @@ bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* s
   estimatedCost = 1.0;
   return false;
 }        
-
 
 IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* context,
                                                     triagens::aql::Ast* ast,
@@ -1306,7 +1305,6 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
   std::vector<TRI_index_operator_t*> searchValues;
   searchValues.reserve(maxPermutations);
 
-
   if (usedFields == 0) {
     // We have a range query based on the first _field
     searchValues.emplace_back(buildRangeOperator(lower.get(), includeLower, upper.get(), includeUpper, nullptr, _shaper));
@@ -1379,6 +1377,71 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
   }
 
   return new SkiplistIndexIterator(this, searchValues);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specializes the condition for use with the index
+////////////////////////////////////////////////////////////////////////////////
+        
+triagens::aql::AstNode* SkiplistIndex::specializeCondition (triagens::aql::AstNode* node,
+                                                            triagens::aql::Variable const* reference) const {
+  std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
+  size_t values = 0;
+  matchAttributes(node, reference, found, values);
+
+  std::vector<triagens::aql::AstNode const*> children;  
+  bool lastContainsEquality = true;
+  size_t attributesCovered = 0;
+  size_t attributesCoveredByEquality = 0;
+
+  for (size_t i = 0; i < _fields.size(); ++i) {
+    auto it = found.find(i);
+
+    if (it == found.end()) {
+      // index attribute not covered by condition
+      break;
+    }
+
+    // check if the current condition contains an equality condition
+    auto const& nodes = (*it).second;
+    bool containsEquality = false;
+    for (size_t j = 0; j < nodes.size(); ++j) {
+      if (nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+          nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN ) {
+        containsEquality = true;
+        break;
+      }
+    }
+
+    if (! lastContainsEquality) {
+      // unsupported condition. must abort
+      break;
+    }
+
+    ++attributesCovered;
+    if (containsEquality) {
+      ++attributesCoveredByEquality;
+    }
+
+    lastContainsEquality = containsEquality;
+    for (auto& it : nodes) {
+      children.emplace_back(it);
+    }
+  }
+
+  if (attributesCovered > 0) {
+    while (node->numMembers() > 0) {
+      node->removeMemberUnchecked(0);
+    }
+
+    for (auto& it : children) {
+      node->addMember(it);
+    }
+    return node;
+  }
+
+  TRI_ASSERT(false);
+  return node;
 }
 
 // -----------------------------------------------------------------------------
