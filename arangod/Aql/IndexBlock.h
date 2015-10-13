@@ -29,7 +29,6 @@
 #ifndef ARANGODB_AQL_INDEX_BLOCK_H
 #define ARANGODB_AQL_INDEX_BLOCK_H 1
 
-#include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexNode.h"
@@ -49,6 +48,7 @@ namespace triagens {
 
     class AqlItemBlock;
     struct AstNode;
+    struct Collection;
     class ExecutionEngine;
 
 // -----------------------------------------------------------------------------

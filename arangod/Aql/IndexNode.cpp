@@ -25,12 +25,13 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/IndexNode.h"
+#include "IndexNode.h"
+#include "Aql/Ast.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Ast.h"
+#include "Aql/Index.h"
 
 using namespace std;
 using namespace triagens::basics;

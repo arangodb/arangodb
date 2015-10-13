@@ -29,7 +29,6 @@
 #define ARANGODB_AQL_MODIFICATION_BLOCKS_H 1
 
 #include "Basics/Common.h"
-#include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ModificationNodes.h"
@@ -42,6 +41,7 @@ struct TRI_json_t;
 
 namespace triagens {
   namespace aql {
+    struct Collection;
 
     class ExecutionEngine;
 

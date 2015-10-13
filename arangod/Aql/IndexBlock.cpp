@@ -27,9 +27,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IndexBlock.h"
+#include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
+#include "Aql/Index.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"

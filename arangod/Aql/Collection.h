@@ -31,13 +31,13 @@
 #define ARANGODB_AQL_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "Aql/Index.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace aql {
+    struct Index;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 struct Collection

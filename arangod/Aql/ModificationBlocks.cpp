@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ModificationBlocks.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
