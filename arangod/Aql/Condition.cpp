@@ -36,8 +36,6 @@
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 
-#include <iostream>
-
 using namespace triagens::aql;
 using CompareResult = ConditionPart::ConditionPartCompareResult;
         
@@ -97,12 +95,6 @@ ConditionPart::~ConditionPart () {
 
 }
 
-#if 0
-void ConditionPart::dump () const {
-  std::cout << "VARIABLE NAME: " << variable->name << "." << attributeName << " " << triagens::basics::JsonHelper::toString(valueNode->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
-}
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class Condition
 // -----------------------------------------------------------------------------
@@ -110,36 +102,6 @@ void ConditionPart::dump () const {
 // -----------------------------------------------------------------------------
 // --SECTION--                                            static helper function
 // -----------------------------------------------------------------------------
-
-#if 0
-static void dumpNode (AstNode const* node, int indent) {
-  if (node == nullptr) {
-    return;
-  }
-
-  for (int i = 0; i < indent * 2; ++i) {
-    std::cout << " ";
-  }
-
-  std::cout << node->getTypeString();
-  if (node->type == NODE_TYPE_VALUE) {
-    TRI_json_t* jsonVal =  node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
-    std::cout << "  (value " << triagens::basics::JsonHelper::toString(jsonVal) << ")";
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, jsonVal);
-  }
-  else if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    std::cout << "  (attribute " << node->getStringValue() << ")";
-  }
-  else if (node->type == NODE_TYPE_REFERENCE) {
-    std::cout << "  (variable name " << static_cast<Variable const*>(node->getData())->name << ")";
-  }
-
-  std::cout << "\n";
-  for (size_t i = 0; i < node->numMembers(); ++i) {
-    dumpNode(node->getMember(i), indent + 1);
-  }
-}
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -364,14 +326,6 @@ bool Condition::findIndexForAndNode (size_t position,
     }
 
     double const totalCost = filterCost + sortCost;
-/*
-    std::cout << "INDEX: " << idx << 
-                 ", ESTIMATED ITEMS: " << estimatedItems << 
-                 ", ESTIMATED COST: " << estimatedCost << 
-                 ", FILTER COST: " << filterCost << 
-                 ", SORT COST: " << sortCost << 
-                 ", TOTAL COST: " << totalCost << "\n";
-*/
     if (bestIndex == nullptr || totalCost < bestCost) {
       bestIndex = idx;
       bestCost = totalCost;
@@ -405,13 +359,6 @@ void Condition::normalize (ExecutionPlan* plan) {
   _root = fixRoot(_root, 0);
 
   optimize(plan);
-
-#if 0
-  std::cout << "\n";
-  dump();
-  std::cout << "\n";
-  _isNormalized = true;
-#endif  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -706,12 +653,10 @@ restartThisOrItem:
               goto fastForwardToNextOrItem;
             }
             case CompareResult::SELF_CONTAINED_IN_OTHER: {
-              std::cout << "SELF IS CONTAINED IN OTHER\n";
               andNode->removeMemberUnchecked(positions[0].first);
               goto restartThisOrItem;
             }
             case CompareResult::OTHER_CONTAINED_IN_SELF: { 
-              std::cout << "OTHER IS CONTAINED IN SELF\n";
               andNode->removeMemberUnchecked(positions[j].first);
               goto restartThisOrItem;
             }
@@ -724,14 +669,12 @@ restartThisOrItem:
               }
 
               andNode->changeMember(positions[0].first, newNode);
-              std::cout << "RESULT equals X/Y\n";
               break;
             }
             case CompareResult::DISJOINT: {
               break;
             }
             case CompareResult::UNKNOWN: {
-              std::cout << "UNKNOWN\n";
               break;
             }
           }
