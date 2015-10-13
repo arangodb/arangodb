@@ -847,7 +847,7 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
         type = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
         permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 1));
       }
-      else {
+      else if (valNode->numMembers() > 0) {
         permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, valNode->numMembers()));
       }
     }
@@ -855,7 +855,14 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
       return nullptr;
     }
 
-    maxPermutations *= permutationStates.back().n;
+    if (permutationStates.empty()) {
+      maxPermutations *= permutationStates.back().n;
+    }
+  }
+    
+  if (permutationStates.empty()) {
+    // can only be caused by empty IN lists
+    return nullptr;
   }
 
   std::vector<TRI_hash_index_search_value_t*> searchValues;

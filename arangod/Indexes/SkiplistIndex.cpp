@@ -1297,7 +1297,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       if (isAttributeExpanded(usedFields)) {
         permutationStates.emplace_back(PermutationState(aql::NODE_TYPE_OPERATOR_BINARY_EQ, value, usedFields, 1));
       }
-      else {
+      else if (value->numMembers() > 0) {
         permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, value->numMembers()));
       }
     }
@@ -1305,7 +1305,15 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       // This is a one-sided range
       break;
     }
-    maxPermutations *= permutationStates.back().n;
+
+    if (permutationStates.empty()) {
+      maxPermutations *= permutationStates.back().n;
+    }
+  }
+    
+  if (permutationStates.empty()) {
+    // can only be caused by empty IN lists
+    return nullptr;
   }
 
   // Now handle the next element, which might be a range

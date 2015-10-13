@@ -47,6 +47,7 @@ triagens::aql::AstNode const* PathBasedIndex::PermutationState::getValue () cons
     return value;
   }
   else if (type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    TRI_ASSERT(n > 0);
     TRI_ASSERT(current < n);
     return value->getMember(current);
   }

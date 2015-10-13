@@ -62,6 +62,7 @@ namespace triagens {
               attributePosition(attributePosition),
               current(0),
               n(n) {
+            TRI_ASSERT(n > 0);
           }
             
           triagens::aql::AstNode const* getValue () const; 
