@@ -615,8 +615,12 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-methods.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-costs.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-dynamic-bounds.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-edge-index.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-filters.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-index-ranges.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-indexes.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-indexes-in-or.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-indexes-sort.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-keep.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-plans.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-interchange-adjacent-enumerations-noncluster.js \
