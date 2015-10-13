@@ -34,8 +34,6 @@
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 
-#include <iostream>
-
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
@@ -49,14 +47,6 @@ using namespace triagens::arango;
 SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher (std::vector<std::vector<triagens::basics::AttributeName>> const& attributes)
   : _attributes(attributes),
     _found() {
-
-  std::cout << "SIMPLE ATT CTOR. ATTR SIZE: " << _attributes.size() << "\n";
-  for (auto& it : _attributes) {
-    std::cout << "OUTER ITER. INNER SIZE: " << it.size() << "\n";
-    for (auto& it2 : it) {
-      std::cout << "INNER: " << it2 << "\n";
-    }
-  }
 }
          
 // -----------------------------------------------------------------------------
@@ -433,14 +423,7 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex (triagens::arango::Index co
                                                       triagens::aql::AstNode const* other,
                                                       triagens::aql::AstNode const* op,
                                                       triagens::aql::Variable const* reference) {
-  std::cout << "CHECKING CONDITION\n";
-  std::cout << "INDEX: " << index << "\n";
-  std::cout << "ACCESS: " << access << "\n";
-  std::cout << "OTHER: " << other << "\n";
-  std::cout << "OP: " << op << "\n";
-
   if (! index->canUseConditionPart(access, other, op, reference)) {
-  std::cout << "CHECKING CONDITION - EXIT 1\n";
     return false;
   }
 
@@ -459,26 +442,20 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex (triagens::arango::Index co
   if (! what->isAttributeAccessForVariable(attributeData) ||
       attributeData.first != reference) {
     // this access is not referencing this collection
-  std::cout << "CHECKING CONDITION - EXIT 3\n";
     return false;
   }
 
   std::vector<triagens::basics::AttributeName> const& fieldNames = attributeData.second;
 
-  std::cout << "INDEX _ATTRIBUTES ARE: " << _attributes << "\n";
-  std::cout << "FIELDNAMES ARE:        " << fieldNames << "\n";
-
   for (size_t i = 0; i < _attributes.size(); ++i) {
     if (_attributes[i].size() != fieldNames.size()) {
       // attribute path length differs
-  std::cout << "DIFFERENT LENGTHS: " << _attributes[i].size() << ", " << fieldNames.size() << "\n";
       continue;
     }
 
     bool match = true;
     for (size_t j = 0; j < _attributes[i].size(); ++j) {
       if (_attributes[i][j] != fieldNames[j]) {
-  std::cout << "ATTRIBUTES DIFFER: " << _attributes[i][j] << " - " << fieldNames[j] << "\n";
         match = false;
         break;
       }
@@ -487,11 +464,9 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex (triagens::arango::Index co
     if (match) {
       // mark ith attribute as being covered
       _found.emplace(i);
-  std::cout << "IS A MATCH--------------------------\n";
       return true;
     }
   }
-  std::cout << "CHECKING CONDITION - EXIT 2\n";
 
   return false;
 }

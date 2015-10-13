@@ -91,8 +91,6 @@ add_executable(
     Aql/Index.cpp
     Aql/IndexBlock.cpp
     Aql/IndexNode.cpp
-    Aql/IndexRangeBlock.cpp
-    Aql/IndexRangeNode.cpp
     Aql/ModificationBlocks.cpp
     Aql/ModificationNodes.cpp
     Aql/NodeFinder.cpp

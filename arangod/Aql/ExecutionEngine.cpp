@@ -40,7 +40,6 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexBlock.h"
-#include "Aql/IndexRangeBlock.h"
 #include "Aql/ModificationBlocks.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortBlock.h"
@@ -65,9 +64,6 @@ static ExecutionBlock* CreateBlock (ExecutionEngine* engine,
   switch (en->getType()) {
     case ExecutionNode::SINGLETON: {
       return new SingletonBlock(engine, static_cast<SingletonNode const*>(en));
-    }
-    case ExecutionNode::INDEX_RANGE: {
-      return new IndexRangeBlock(engine, static_cast<IndexRangeNode const*>(en));
     }
     case ExecutionNode::INDEX: {
       return new IndexBlock(engine, static_cast<IndexNode const*>(en));
@@ -392,9 +388,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         // find the collection to be used 
         if ((*en)->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
           collection = const_cast<Collection*>(static_cast<EnumerateCollectionNode*>((*en))->collection());
-        }
-        else if ((*en)->getType() == ExecutionNode::INDEX_RANGE) {
-          collection = const_cast<Collection*>(static_cast<IndexRangeNode*>((*en))->collection());
         }
         else if ((*en)->getType() == ExecutionNode::INDEX) {
           collection = const_cast<Collection*>(static_cast<IndexNode*>((*en))->collection());

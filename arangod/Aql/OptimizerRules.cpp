@@ -34,11 +34,12 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
 #include "Aql/IndexNode.h"
-#include "Aql/IndexRangeNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/RangeInfo.h"
 #include "Aql/SortNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
+#include "Basics/json-utilities.h"
 
 #include <iostream>
 
@@ -846,8 +847,7 @@ int triagens::aql::removeSortRandRule (Optimizer* opt,
         case EN::FILTER: 
         case EN::SUBQUERY:
         case EN::ENUMERATE_LIST:
-        case EN::INDEX: 
-        case EN::INDEX_RANGE: {
+        case EN::INDEX: { 
           // if we found another SortNode, an AggregateNode, FilterNode, a SubqueryNode, 
           // an EnumerateListNode or an IndexNode
           // this means we cannot apply our optimization
@@ -1046,8 +1046,7 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
         // we found something interesting that justifies moving our node down
         shouldMove = true;
       } 
-      else if (currentType == EN::INDEX_RANGE ||
-               currentType == EN::INDEX ||
+      else if (currentType == EN::INDEX ||
                currentType == EN::ENUMERATE_COLLECTION ||
                currentType == EN::ENUMERATE_LIST ||
                currentType == EN::AGGREGATE ||
@@ -1914,7 +1913,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         case EN::ENUMERATE_LIST:
         case EN::SUBQUERY:
         case EN::FILTER:
-        case EN::INDEX_RANGE:
           return false;                           // skip. we don't care.
 
         case EN::CALCULATION: {
@@ -2165,6 +2163,9 @@ struct FilterCondition {
 int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
                                                     ExecutionPlan* plan,
                                                     Optimizer::Rule const* rule) {
+  opt->addPlan(plan, rule, false);
+  return TRI_ERROR_NO_ERROR;
+/*
   std::unordered_set<ExecutionNode*> toUnlink;
   std::vector<ExecutionNode*>&& nodes= plan->findNodesOfType(EN::FILTER, true); 
   
@@ -2233,6 +2234,7 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
   opt->addPlan(plan, rule, ! toUnlink.empty());
 
   return TRI_ERROR_NO_ERROR;
+  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2407,10 +2409,9 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
 
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // we are a coordinator. now look in the plan for nodes of type
-    // EnumerateCollectionNode and IndexRangeNode
+    // EnumerateCollectionNode and IndexNode
     std::vector<ExecutionNode::NodeType> const types = { 
       ExecutionNode::ENUMERATE_COLLECTION, 
-      ExecutionNode::INDEX_RANGE,
       ExecutionNode::INDEX,
       ExecutionNode::INSERT,
       ExecutionNode::UPDATE,
@@ -2443,10 +2444,6 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
       if (nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
         vocbase = static_cast<EnumerateCollectionNode*>(node)->vocbase();
         collection = static_cast<EnumerateCollectionNode*>(node)->collection();
-      }
-      else if (nodeType == ExecutionNode::INDEX_RANGE) {
-        vocbase = static_cast<IndexRangeNode*>(node)->vocbase();
-        collection = static_cast<IndexRangeNode*>(node)->collection();
       }
       else if (nodeType == ExecutionNode::INDEX) {
         vocbase = static_cast<IndexNode*>(node)->vocbase();
@@ -2777,7 +2774,6 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
         case EN::LIMIT:
         case EN::SORT:
         case EN::INDEX:
-        case EN::INDEX_RANGE:
         case EN::ENUMERATE_COLLECTION:
           //do break
           stopSearching = true;
@@ -2873,7 +2869,6 @@ int triagens::aql::distributeSortToClusterRule (Optimizer* opt,
         case EN::ILLEGAL:
         case EN::REMOTE:
         case EN::LIMIT:
-        case EN::INDEX_RANGE:
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
           // For all these, we do not want to pull a SortNode further down
@@ -3148,8 +3143,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         case EN::ILLEGAL:
         case EN::LIMIT:           
         case EN::SORT:
-        case EN::INDEX:
-        case EN::INDEX_RANGE: {
+        case EN::INDEX: {
           // if we meet any of the above, then we abort . . .
         }
     }
@@ -3691,7 +3685,6 @@ int triagens::aql::patchUpdateStatementsRule (Optimizer* opt,
 
       if (type == EN::ENUMERATE_LIST || 
           type == EN::INDEX ||
-          type == EN::INDEX_RANGE ||
           type == EN::SUBQUERY) {
         // not suitable
         modified = false;

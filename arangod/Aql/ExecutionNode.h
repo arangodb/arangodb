@@ -71,7 +71,7 @@ namespace triagens {
           ILLEGAL                 =  0,
           SINGLETON               =  1, 
           ENUMERATE_COLLECTION    =  2, 
-          INDEX_RANGE             =  3,
+          // INDEX_RANGE          =  3, // not used anymore
           ENUMERATE_LIST          =  4, 
           FILTER                  =  5, 
           LIMIT                   =  6, 

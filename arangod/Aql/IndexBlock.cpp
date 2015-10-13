@@ -53,7 +53,7 @@ using Json = triagens::basics::Json;
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             class IndexRangeBlock
+// --SECTION--                                                  class IndexBlock
 // -----------------------------------------------------------------------------
 
 IndexBlock::IndexBlock (ExecutionEngine* engine,
@@ -352,7 +352,7 @@ bool IndexBlock::readIndex (size_t atMost) {
   // entire index when we only want a small number of documents. 
   
   if (_documents.empty()) {
-    TRI_IF_FAILURE("IndexRangeBlock::readIndex") {
+    TRI_IF_FAILURE("IndexBlock::readIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     _documents.reserve(atMost);

@@ -32,7 +32,6 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexNode.h"
-#include "Aql/IndexRangeNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SortNode.h"
 #include "Aql/WalkerWorker.h"
@@ -65,7 +64,6 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
   { static_cast<int>(ENUMERATE_COLLECTION),         "EnumerateCollectionNode" },
   { static_cast<int>(ENUMERATE_LIST),               "EnumerateListNode" },
   { static_cast<int>(INDEX),                        "IndexNode" },
-  { static_cast<int>(INDEX_RANGE),                  "IndexRangeNode" },
   { static_cast<int>(LIMIT),                        "LimitNode" },
   { static_cast<int>(CALCULATION),                  "CalculationNode" },
   { static_cast<int>(SUBQUERY),                     "SubqueryNode" },
@@ -234,8 +232,6 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       return new ReturnNode(plan, oneNode);
     case NORESULTS:
       return new NoResultsNode(plan, oneNode);
-    case INDEX_RANGE:
-      return new IndexRangeNode(plan, oneNode);
     case INDEX:
       return new IndexNode(plan, oneNode);
     case REMOTE:
@@ -548,7 +544,6 @@ bool ExecutionNode::isInInnerLoop () const {
     auto type = node->getType();
 
     if (type == ENUMERATE_COLLECTION ||
-        type == INDEX_RANGE ||
         type == INDEX ||
         type == ENUMERATE_LIST) {
       // we are contained in an outer loop
@@ -836,21 +831,6 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       break;
     }
     
-    case ExecutionNode::INDEX_RANGE: {
-      depth++;
-      nrRegsHere.emplace_back(1);
-      // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back may invalidate all references
-      RegisterId registerId = 1 + nrRegs.back();
-      nrRegs.emplace_back(registerId);
-
-      auto ep = static_cast<IndexRangeNode const*>(en);
-      TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
-      totalNrRegs++;
-      break;
-    }
-
     case ExecutionNode::INDEX: {
       depth++;
       nrRegsHere.emplace_back(1);
@@ -1642,11 +1622,11 @@ double FilterNode::estimateCost (size_t& nrItems) const {
   // worst case the filter does not reduce the items at all. Furthermore,
   // no optimizer rule introduces FilterNodes, thus it is not important
   // that they appear to lower the costs. Note that contrary to this,
-  // an IndexRangeNode does lower the costs, it also has a better idea
+  // an IndexNode does lower the costs, it also has a better idea
   // to what extent the number of items is reduced. On the other hand it
   // is important that a FilterNode produces additional costs, otherwise
   // the rule throwing away a FilterNode that is already covered by an
-  // IndexRangeNode cannot reduce the costs.
+  // IndexNode cannot reduce the costs.
   return depCost + nrItems;
 }
 

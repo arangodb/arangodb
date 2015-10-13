@@ -52,7 +52,6 @@ bool ConditionFinder::before (ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:        
     case EN::INDEX:
-    case EN::INDEX_RANGE:
     case EN::INSERT:
     case EN::REMOVE:
     case EN::REPLACE:

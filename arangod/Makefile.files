@@ -50,8 +50,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Index.cpp \
 	arangod/Aql/IndexBlock.cpp \
 	arangod/Aql/IndexNode.cpp \
-	arangod/Aql/IndexRangeBlock.cpp \
-	arangod/Aql/IndexRangeNode.cpp \
 	arangod/Aql/ModificationBlocks.cpp \
 	arangod/Aql/ModificationNodes.cpp \
 	arangod/Aql/NodeFinder.cpp \

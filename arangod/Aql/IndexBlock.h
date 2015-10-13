@@ -81,7 +81,7 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   IndexRangeBlock
+// --SECTION--                                                        IndexBlock
 // -----------------------------------------------------------------------------
 
     class IndexBlock : public ExecutionBlock {

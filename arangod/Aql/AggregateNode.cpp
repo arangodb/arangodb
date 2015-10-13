@@ -193,7 +193,6 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
     }
     else if (en->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
              en->getType() == ExecutionNode::INDEX ||
-             en->getType() == ExecutionNode::INDEX_RANGE ||
              en->getType() == ExecutionNode::ENUMERATE_LIST ||
              en->getType() == ExecutionNode::AGGREGATE) {
       depth += 1;
