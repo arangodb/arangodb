@@ -35,13 +35,10 @@
 #include "Aql/Function.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
-#include "Aql/RangeInfo.h"
 #include "Aql/SortNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/json-utilities.h"
-
-#include <iostream>
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
@@ -1988,6 +1985,7 @@ int triagens::aql::useIndexForSortRule (Optimizer* opt,
 }
 
 // TODO: finish rule and test it
+/*
 struct FilterCondition {
   std::string variableName;
   std::string attributeName;
@@ -2155,6 +2153,7 @@ struct FilterCondition {
   }
 
 };
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to remove filters which are covered by indexes

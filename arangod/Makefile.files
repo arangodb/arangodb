@@ -60,7 +60,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/QueryCache.cpp \
 	arangod/Aql/QueryList.cpp \
 	arangod/Aql/QueryRegistry.cpp \
-	arangod/Aql/RangeInfo.cpp \
 	arangod/Aql/Range.cpp \
 	arangod/Aql/RestAqlHandler.cpp \
 	arangod/Aql/Scopes.cpp \

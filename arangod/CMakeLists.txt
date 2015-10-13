@@ -101,7 +101,6 @@ add_executable(
     Aql/QueryCache.cpp
     Aql/QueryList.cpp
     Aql/QueryRegistry.cpp
-    Aql/RangeInfo.cpp
     Aql/Range.cpp
     Aql/RestAqlHandler.cpp
     Aql/Scopes.cpp
