@@ -34,8 +34,6 @@
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 
-#include <iostream>
-
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
@@ -49,7 +47,6 @@ using namespace triagens::arango;
 SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher (std::vector<std::vector<triagens::basics::AttributeName>> const& attributes)
   : _attributes(attributes),
     _found() {
-
 }
          
 // -----------------------------------------------------------------------------

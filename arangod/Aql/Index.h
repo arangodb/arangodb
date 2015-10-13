@@ -202,11 +202,11 @@ namespace triagens {
         triagens::arango::Index::IndexType                               type;
         bool                                                             unique;
         bool                                                             sparse;
-        std::vector<std::vector<triagens::basics::AttributeName>>  fields;
+        std::vector<std::vector<triagens::basics::AttributeName>>        fields;
 
       private:
 
-        triagens::arango::Index*                      internals;
+        triagens::arango::Index*                                         internals;
 
     };
 

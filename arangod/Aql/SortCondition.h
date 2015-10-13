@@ -141,8 +141,8 @@ namespace triagens {
 /// by the specified index fields
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t isCoveredBy (Variable const*,
-                            std::vector<std::vector<triagens::basics::AttributeName>> const&) const;
+        size_t coveredAttributes (Variable const*,
+                                  std::vector<std::vector<triagens::basics::AttributeName>> const&) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

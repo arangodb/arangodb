@@ -183,11 +183,8 @@ namespace triagens {
         // remove redundant OR conditions
         removeRedundantOrRule_pass6                   = 820,
         
-        useIndexesRule_pass6                          = 825,
+        useIndexesRule_pass6                          = 830,
         
-        // try to find a filter after an enumerate collection and find an index . . . 
-        useIndexRangeRule_pass6                       = 830,
-
         // try to remove filters covered by index ranges
         removeFiltersCoveredByIndexRule_pass6         = 840,
   

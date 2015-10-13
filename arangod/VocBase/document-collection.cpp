@@ -63,6 +63,8 @@
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
 
+#include <iostream>
+
 using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3745,11 +3747,12 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
                                      std::vector<std::vector<triagens::basics::AttributeName>>& names,
                                      bool sorted,
                                      bool create) {
+
   pids.reserve(attributes.size());
   names.reserve(attributes.size());
   
   // .............................................................................
-  // sorted case
+  // sorted case (hash index)
   // .............................................................................
 
   if (sorted) {
@@ -3795,7 +3798,7 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
   }
 
   // .............................................................................
-  // unsorted case
+  // unsorted case (skiplist index)
   // .............................................................................
 
   else {

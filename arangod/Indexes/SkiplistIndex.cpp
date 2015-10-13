@@ -1210,7 +1210,7 @@ bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* s
       sortCondition->isUnidirectional() && 
       sortCondition->isOnlyAttributeAccess()) {
 
-    size_t const coveredAttributes = sortCondition->isCoveredBy(reference, _fields);
+    size_t const coveredAttributes = sortCondition->coveredAttributes(reference, _fields);
 
     if (coveredAttributes >= sortCondition->numAttributes()) {
       // sort is fully covered by index. no additional sort costs!
