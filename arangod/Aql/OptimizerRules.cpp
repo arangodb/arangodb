@@ -1827,6 +1827,9 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           auto numCovered = sortCondition.coveredAttributes(outVariable, index->fields);
 
           if (numCovered == sortCondition.numAttributes()) {
+            std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
+            condition->normalize(_plan);
+             
             std::unique_ptr<ExecutionNode> newNode(new IndexNode(
               _plan, 
               _plan->nextId(), 
@@ -1834,9 +1837,11 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
               enumerateCollectionNode->collection(), 
               outVariable, 
               std::vector<Index const*>({ index }),
-              nullptr,
+              condition.get(),
               sortCondition.isDescending()
             ));
+
+            condition.release();
 
             auto n = newNode.release();
 
