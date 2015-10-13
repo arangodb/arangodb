@@ -50,7 +50,7 @@ function runJSUnityTests(tests) {
   require("fs").write("testresult.json", JSON.stringify(allResults));
 
   if (failed.length > 1) {
-    print("The following test files produced errors: ", failed.join(", "));
+    print("The following " + failed.length + " test files produced errors: ", failed.join(", "));
   }
   return result;
 }

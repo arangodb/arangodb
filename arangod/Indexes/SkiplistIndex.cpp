@@ -1304,7 +1304,10 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       if (isAttributeExpanded(usedFields)) {
         permutationStates.emplace_back(PermutationState(aql::NODE_TYPE_OPERATOR_BINARY_EQ, value, usedFields, 1));
       }
-      else if (value->numMembers() > 0) {
+      else {
+        if (value->numMembers() == 0) {
+          return nullptr;
+        }
         permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, value->numMembers()));
         maxPermutations *= value->numMembers();
       }
@@ -1387,7 +1390,8 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
 
       bool valid = true;
       for (size_t i = 0; i < usedFields; ++i) {
-        auto state = permutationStates[i];
+        TRI_ASSERT(i < permutationStates.size());
+        auto& state = permutationStates[i];
         std::unique_ptr<TRI_json_t> json(state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
 
         if (json == nullptr) {

@@ -847,13 +847,13 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
         type = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
         permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 1));
       }
-      else if (valNode->numMembers() > 0) {
+      else {
+        if (valNode->numMembers() == 0) {
+          return nullptr;
+        }
         permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, valNode->numMembers()));
         maxPermutations *= valNode->numMembers();
       }
-    }
-    else {
-      return nullptr;
     }
   }
     
@@ -875,7 +875,7 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
 
     bool valid = true;
     for (size_t i = 0; i < n; ++i) {
-      auto state = permutationStates[i];
+      auto& state = permutationStates[i];
       std::unique_ptr<TRI_json_t> json(state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
 
       if (json == nullptr) {
