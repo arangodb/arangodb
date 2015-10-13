@@ -3761,8 +3761,11 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
     for (auto const& name : attributes) {
       std::vector<triagens::basics::AttributeName> attrNameList;
       TRI_ParseAttributeString(name, attrNameList);
-      TRI_ASSERT(attrNameList.size() > 0);
-      std::string pidPath = attrNameList.front().name;
+      TRI_ASSERT(! attrNameList.empty());
+      std::vector<std::string> joinedNames;
+      TRI_AttributeNamesJoinNested(attrNameList, joinedNames, true);
+      // We only need the first pid here
+      std::string pidPath = joinedNames[0];
 
       TRI_shape_pid_t pid;
 
@@ -3800,8 +3803,11 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
 
       std::vector<triagens::basics::AttributeName> attrNameList;
       TRI_ParseAttributeString(name, attrNameList);
-      TRI_ASSERT(attrNameList.size() > 0);
-      std::string pidPath = attrNameList.front().name;
+      TRI_ASSERT(! attrNameList.empty());
+      std::vector<std::string> joinedNames;
+      TRI_AttributeNamesJoinNested(attrNameList, joinedNames, true);
+      // We only need the first pid here
+      std::string pidPath = joinedNames[0];
 
       TRI_shape_pid_t pid;
     

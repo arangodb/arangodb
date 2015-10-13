@@ -202,7 +202,7 @@ void PathBasedIndex::buildIndexValue (TRI_shaped_json_t const* documentShape,
   size_t const n = _paths.size();
 
   for (size_t i = 0; i < n; ++i) {
-    TRI_ASSERT(_paths[i].size() == 1);
+    TRI_ASSERT(! _paths[i].empty());
 
     TRI_shaped_json_t shapedJson;
     TRI_shape_pid_t pid = _paths[i][0].first;
@@ -354,10 +354,12 @@ std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> PathBasedIndex::fillP
 
   for (auto const& list : _fields) {
     std::vector<std::pair<TRI_shape_pid_t, bool>> interior;
+    std::vector<std::string> joinedNames;
+    TRI_AttributeNamesJoinNested(list, joinedNames, false);
 
-    for (auto const& attr : list) {
-      auto pid = _shaper->findOrCreateAttributePathByName(attr.name.c_str());
-      interior.emplace_back(pid, attr.shouldExpand);
+    for (size_t i = 0; i < joinedNames.size(); ++i) {
+      auto pid = _shaper->findOrCreateAttributePathByName(joinedNames[i].c_str());
+      interior.emplace_back(pid, i < joinedNames.size() - 1);
     }
     result.emplace_back(interior);
   }

@@ -40,7 +40,6 @@ void triagens::basics::TRI_ParseAttributeString (std::string const& input,
 
   for (size_t pos = 0; pos < length; ++pos) {
     auto token = input[pos];
-
     if (token == '[') {
       // We only allow attr[*] and attr[*].attr2 as valid patterns
       if (   length - pos < 3
@@ -53,6 +52,12 @@ void triagens::basics::TRI_ParseAttributeString (std::string const& input,
       pos += 4;
       parsedUntil = pos; 
     }
+    else if (token == '.') {
+      result.emplace_back(input.substr(parsedUntil, pos - parsedUntil), false);
+      ++pos;
+      parsedUntil = pos;
+    }
+    
   }
   if (parsedUntil < length) {
     result.emplace_back(input.substr(parsedUntil), false);
@@ -75,6 +80,32 @@ void triagens::basics::TRI_AttributeNamesToString (std::vector<AttributeName> co
       result += "[*]";
     }
   }
+}
+
+void triagens::basics::TRI_AttributeNamesJoinNested (std::vector<AttributeName> const& input,
+                                                     std::vector<std::string>& result,
+                                                     bool onlyFirst) {
+  TRI_ASSERT(result.empty()); 
+  std::string tmp;
+  bool isFirst = true;
+
+  for (size_t i = 0; i < input.size(); ++i) {
+    if (! isFirst) {
+      tmp += ".";
+    }
+    isFirst = false;
+    tmp += input[i].name;
+    if (input[i].shouldExpand) {
+      if (onlyFirst) {
+        // If we only need the first pid we can stop here
+        break;
+      }
+      result.emplace_back(tmp);
+      tmp.clear();
+      isFirst = true;
+    }
+  }
+  result.emplace_back(tmp);
 }
 
 bool triagens::basics::TRI_AttributeNamesHaveExpansion (std::vector<AttributeName> const& input) {

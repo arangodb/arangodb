@@ -94,6 +94,15 @@ namespace triagens {
                                      bool excludeExpansion = false);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Transform a vector of AttributeNames into joined nested strings
+///        The onlyFirst parameter is used to define if we only have to join the first attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    void TRI_AttributeNamesJoinNested (std::vector<AttributeName> const& input,
+                                       std::vector<std::string>& result,
+                                       bool onlyFirst);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Tests if this AttributeName uses an expansion operator
 ////////////////////////////////////////////////////////////////////////////////
 
