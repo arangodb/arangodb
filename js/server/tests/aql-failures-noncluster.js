@@ -211,6 +211,7 @@ function ahuacatlFailureSuite () {
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 SORT key RETURN key");
     },
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,6 +230,7 @@ function ahuacatlFailureSuite () {
       c.ensureSkiplist("value");
       assertFailingQuery("FOR v IN " + c.name() + " FILTER v.value < 100 LIMIT 100 SORT v.value + 1 RETURN [v.value]");
     },
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
