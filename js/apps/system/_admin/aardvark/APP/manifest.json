@@ -79,13 +79,16 @@
       "path": "frontend/build/app.min.js",
       "gzip": true
     },
+    "/libs.js": {
+      "path": "frontend/build/libs.min.js",
+      "gzip": true
+    },
     "/favicon.ico": {
       "path": "favicon.ico",
       "gzip": false
     },
     "/fonts": "frontend/fonts",
     "/img": "frontend/compressed-img",
-    "/ammapLibs": "frontend/js/lib/ammap/plugins/export/libs",
     "/data": "frontend/data",
     "/js/arango/aqltemplates.json": "frontend/aqltemplates.json",
     "/worker-json.js": {

@@ -6183,7 +6183,7 @@ var sync=function sync(config){var db=internal.db;var body=JSON.stringify(config
 /// @brief performs a one-time synchronization with a remote endpoint, for
 /// a single collection
 ////////////////////////////////////////////////////////////////////////////////
-var syncCollection=function syncCollection(collection,config){var db=internal.db;config = config || {};config.restrictType = "include";config.restrictCollections = [collection];config.includeSystem = true;config.incremental = true;var body=JSON.stringify(config);var requestResult=db._connection.PUT("/_api/replication/sync",body);arangosh.checkRequestResult(requestResult);return requestResult;}; ////////////////////////////////////////////////////////////////////////////////
+var syncCollection=function syncCollection(collection,config){var db=internal.db;config = config || {};config.restrictType = "include";config.restrictCollections = [collection];config.includeSystem = true;var body=JSON.stringify(config);var requestResult=db._connection.PUT("/_api/replication/sync",body);arangosh.checkRequestResult(requestResult);return requestResult;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetches a server's id
 ////////////////////////////////////////////////////////////////////////////////
 var serverId=function serverId(){var db=internal.db;var requestResult=db._connection.GET("/_api/replication/server-id");arangosh.checkRequestResult(requestResult);return requestResult.serverId;}; // -----------------------------------------------------------------------------
