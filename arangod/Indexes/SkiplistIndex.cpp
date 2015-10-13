@@ -922,7 +922,7 @@ SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    THROW_ARANGO_EXCEPTION(res);
+    return nullptr;
   }
   std::unique_ptr<SkiplistIterator> results(new SkiplistIterator(this, reverse));
 
