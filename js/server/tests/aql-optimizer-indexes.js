@@ -80,7 +80,7 @@ function optimizerIndexesTestSuite () {
         var plan = AQL_EXPLAIN(query).plan;
         var indexNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "IndexRangeNode") {
+          if (node.type === "IndexNode") {
             ++indexNodes;
           }
         });
@@ -149,7 +149,7 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
       assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
@@ -169,7 +169,7 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var indexes = 0;
       plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           ++indexes;
         }
         return node.type;
@@ -192,7 +192,7 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var indexes = 0;
       plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           ++indexes;
         }
         return node.type;
@@ -215,7 +215,7 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var indexes = 0;
       plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           ++indexes;
         }
         return node.type;
@@ -246,7 +246,7 @@ function optimizerIndexesTestSuite () {
       var subNodeTypes = plan.nodes[1].subquery.nodes.map(function(node) {
         return node.type;
       });
-      assertNotEqual(-1, subNodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, subNodeTypes.indexOf("IndexNode"), query);
       assertEqual(-1, subNodeTypes.indexOf("SortNode"), query);
       assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
@@ -275,7 +275,7 @@ function optimizerIndexesTestSuite () {
       var subNodeTypes = plan.nodes[idx].subquery.nodes.map(function(node) {
         return node.type;
       });
-      assertNotEqual(-1, subNodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, subNodeTypes.indexOf("IndexNode"), query);
       assertEqual(-1, subNodeTypes.indexOf("SortNode"), query);
       assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
@@ -316,7 +316,7 @@ function optimizerIndexesTestSuite () {
 
       var indexNodes = 0, collectionNodes = 0;
       walker(plan.nodes, function (node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           ++indexNodes;
         }
         else if (node.type === "EnumerateCollectionNode") {
@@ -367,7 +367,7 @@ function optimizerIndexesTestSuite () {
 
       var indexNodes = 0, collectionNodes = 0;
       walker(plan.nodes, function (node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           ++indexNodes;
           if (indexNodes <= 5) {
             assertEqual("hash", node.index.type);
@@ -424,7 +424,7 @@ function optimizerIndexesTestSuite () {
 
       var indexNodes = 0, collectionNodes = 0;
       walker(plan.nodes, function (node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           ++indexNodes;
           assertEqual("hash", node.index.type);
         }
@@ -456,7 +456,7 @@ function optimizerIndexesTestSuite () {
 
       var collectionNodes = 0, indexNodes = 0;
       plan.nodes.forEach(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           ++indexNodes;
           if (indexNodes === 1) {
             // skiplist must be used for the first FOR
@@ -497,7 +497,7 @@ function optimizerIndexesTestSuite () {
 
       var collectionNodes = 0, indexNodes = 0;
       plan.nodes.forEach(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           ++indexNodes;
           // skiplist must be used for both FORs
           assertEqual("skiplist", node.index.type);
@@ -536,7 +536,7 @@ function optimizerIndexesTestSuite () {
 
       var collectionNodes = 0, indexNodes = 0;
       plan.nodes.forEach(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           ++indexNodes;
           if (indexNodes === 1) {
             assertEqual("hash", node.index.type);
@@ -599,7 +599,7 @@ function optimizerIndexesTestSuite () {
       var indexNodes = 0, collectionNodes = 0;
         
       walker(plan.nodes, function (node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           ++indexNodes;
           if (indexNodes < 5 || indexNodes === 6) {
             assertEqual("hash", node.index.type);
@@ -632,13 +632,13 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("primary", node.index.type);
         }
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 9 ], results.json.sort(), query);
@@ -673,7 +673,7 @@ function optimizerIndexesTestSuite () {
         });
 
         // ensure the index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         results.json.forEach(function(value) {
@@ -695,14 +695,14 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("hash", node.index.type);
           assertFalse(node.index.unique);
         }
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 9 ], results.json.sort(), query);
@@ -720,14 +720,14 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("hash", node.index.type);
           assertTrue(node.index.unique);
         }
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 9 ], results.json.sort(), query);
@@ -744,14 +744,14 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("skiplist", node.index.type);
           assertFalse(node.index.unique);
         }
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 9 ], results.json.sort(), query);
@@ -769,14 +769,14 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("skiplist", node.index.type);
           assertTrue(node.index.unique);
         }
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 9 ], results.json.sort(), query);
@@ -799,7 +799,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1 ], results.json, query);
@@ -822,7 +822,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(2000, results.json.length);
@@ -845,7 +845,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(2000, results.json.length);
@@ -868,7 +868,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(2000, results.json.length);
@@ -891,7 +891,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(2000, results.json.length);
@@ -914,7 +914,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(2000, results.json.length);
@@ -934,7 +934,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("hash", node.index.type);
           assertFalse(node.index.unique);
           assertEqual([ "value2", "value3" ], node.index.fields);
@@ -942,7 +942,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 2, 3 ], results.json.sort(), query);
@@ -962,7 +962,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("skiplist", node.index.type);
           assertFalse(node.index.unique);
           assertEqual([ "value2", "value3" ], node.index.fields);
@@ -970,7 +970,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 2, 3 ], results.json.sort(), query);
@@ -992,7 +992,7 @@ function optimizerIndexesTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         return node.type;
       });
-      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 2 ], results.json.sort(), query);
@@ -1014,7 +1014,7 @@ function optimizerIndexesTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         return node.type;
       });
-      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 2 ], results.json.sort(), query);
@@ -1035,14 +1035,14 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("skiplist", node.index.type);
           assertFalse(node.index.unique);
           assertEqual([ "value2", "value3" ], node.index.fields);
         }
         return node.type;
       });
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 2 ], results.json.sort(), query);
@@ -1065,7 +1065,7 @@ function optimizerIndexesTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         return node.type;
       });
-      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1, 2 ], results.json.sort(), query);
@@ -1088,7 +1088,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1 ], results.json, query);
@@ -1122,7 +1122,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(2, results.json.length); 
         assertTrue(results.stats.scannedFull > 0);
@@ -1160,7 +1160,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(1, results.json.length, query); 
         assertTrue(results.stats.scannedFull > 0);
@@ -1216,7 +1216,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(1, results.json.length); 
         assertTrue(results.stats.scannedIndex > 0);
@@ -1266,7 +1266,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(1, results.json.length); 
         assertTrue(results.stats.scannedIndex > 0);
@@ -1292,7 +1292,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(1, results.json.length); 
         assertTrue(results.stats.scannedIndex > 0);
@@ -1345,7 +1345,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(1, results.json.length); 
         assertTrue(results.stats.scannedIndex > 0);
@@ -1374,7 +1374,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(2, results.json.length, query); 
         assertTrue(results.stats.scannedIndex > 0);
@@ -1416,7 +1416,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(0, results.json.length); 
         assertTrue(results.stats.scannedIndex >= 0);
@@ -1455,7 +1455,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(2000, results.json.length); 
         assertEqual(0, results.stats.scannedIndex);
@@ -1491,7 +1491,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(2000, results.json.length); 
         assertEqual(0, results.stats.scannedIndex);
@@ -1515,7 +1515,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(2000, results.json.length); 
         assertEqual(0, results.stats.scannedIndex);
@@ -1547,7 +1547,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(2000, results.json.length); 
         assertEqual(0, results.stats.scannedIndex);
@@ -1580,7 +1580,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(1, results.json.length); 
         assertEqual(2, results.json[0].value);
@@ -1617,7 +1617,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(1, results.json.length); 
         assertEqual(2, results.json[0].value);
@@ -1654,7 +1654,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(1, results.json.length); 
         assertEqual(2, results.json[0].value);
@@ -1694,7 +1694,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(1, results.json.length); 
         assertEqual(2, results.json[0].value);
@@ -1731,7 +1731,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query);
         assertEqual(1, results.json.length); 
         assertEqual(2, results.json[0].value);
@@ -1760,7 +1760,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length); 
         assertTrue(results.stats.scannedFull > 0);
@@ -1794,7 +1794,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length); 
         assertTrue(results.stats.scannedIndex > 0);
@@ -1857,7 +1857,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1].length, results.json.length, query); 
         assertEqual(query[1].sort(), results.json.sort(), query);
@@ -1888,7 +1888,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
@@ -1910,7 +1910,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("hash", node.index.type);
           assertFalse(node.index.unique);
           assertTrue(node.index.sparse);
@@ -1918,7 +1918,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 2 ], results.json, query);
@@ -1938,7 +1938,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("hash", node.index.type);
           assertTrue(node.index.unique);
           assertTrue(node.index.sparse);
@@ -1946,7 +1946,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 2 ], results.json, query);
@@ -1966,7 +1966,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("hash", node.index.type);
           assertFalse(node.index.unique);
           assertTrue(node.index.sparse);
@@ -1974,7 +1974,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(20, results.json.length);
@@ -1994,7 +1994,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("hash", node.index.type);
           assertFalse(node.index.unique);
           assertTrue(node.index.sparse);
@@ -2002,7 +2002,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(40, results.json.length);
@@ -2031,7 +2031,7 @@ function optimizerIndexesTestSuite () {
         });
 
         // must not use an index
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query);
         assertEqual(1, results.json.length);
@@ -2056,7 +2056,7 @@ function optimizerIndexesTestSuite () {
       });
 
       // must not use an index
-      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
@@ -2077,7 +2077,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("hash", node.index.type);
           assertFalse(node.index.unique);
           assertFalse(node.index.sparse);
@@ -2085,7 +2085,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
@@ -2110,7 +2110,7 @@ function optimizerIndexesTestSuite () {
       queries.forEach(function(query) {
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
-          if (node.type === "IndexRangeNode") {
+          if (node.type === "IndexNode") {
             assertEqual("hash", node.index.type);
             assertFalse(node.index.unique);
             assertTrue(node.index.sparse);
@@ -2118,7 +2118,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query);
         assertEqual([ 2 ], results.json, query);
@@ -2147,7 +2147,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query);
         assertEqual([ 2 ], results.json, query);
@@ -2177,7 +2177,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query);
         assertEqual([ 0 ], results.json, query);
@@ -2200,7 +2200,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("hash", node.index.type);
           assertFalse(node.index.unique);
           assertFalse(node.index.sparse);
@@ -2208,7 +2208,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 0 ], results.json, query);
@@ -2228,7 +2228,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("skiplist", node.index.type);
           assertFalse(node.index.unique);
           assertTrue(node.index.sparse);
@@ -2236,7 +2236,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 2 ], results.json, query);
@@ -2256,7 +2256,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("skiplist", node.index.type);
           assertTrue(node.index.unique);
           assertTrue(node.index.sparse);
@@ -2264,7 +2264,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 2 ], results.json, query);
@@ -2284,7 +2284,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("skiplist", node.index.type);
           assertFalse(node.index.unique);
           assertTrue(node.index.sparse);
@@ -2292,7 +2292,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(20, results.json.length);
@@ -2312,7 +2312,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("skiplist", node.index.type);
           assertFalse(node.index.unique);
           assertTrue(node.index.sparse);
@@ -2320,7 +2320,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(40, results.json.length);
@@ -2349,7 +2349,7 @@ function optimizerIndexesTestSuite () {
         });
 
         // must not use an index
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query);
         assertEqual(1, results.json.length);
@@ -2374,7 +2374,7 @@ function optimizerIndexesTestSuite () {
       });
 
       // must not use an index
-      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
@@ -2395,7 +2395,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("skiplist", node.index.type);
           assertFalse(node.index.unique);
           assertFalse(node.index.sparse);
@@ -2403,7 +2403,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
@@ -2428,7 +2428,7 @@ function optimizerIndexesTestSuite () {
       queries.forEach(function(query) {
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
-          if (node.type === "IndexRangeNode") {
+          if (node.type === "IndexNode") {
             assertEqual("skiplist", node.index.type);
             assertFalse(node.index.unique);
             assertTrue(node.index.sparse);
@@ -2436,7 +2436,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query);
         assertEqual([ 2 ], results.json, query);
@@ -2465,7 +2465,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query);
         assertEqual([ 2 ], results.json, query);
@@ -2495,7 +2495,7 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query);
         assertEqual([ 0 ], results.json, query);
@@ -2518,7 +2518,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexRangeNode") {
+        if (node.type === "IndexNode") {
           assertEqual("skiplist", node.index.type);
           assertFalse(node.index.unique);
           assertFalse(node.index.sparse);
@@ -2526,7 +2526,7 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 0 ], results.json, query);
@@ -2723,7 +2723,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure no index is used
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         results.json.forEach(function(value) {
@@ -2762,7 +2762,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure no index is used
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query);
         results.json.forEach(function(value) {
@@ -2801,7 +2801,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure the index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         results.json.forEach(function(value) {
@@ -2843,7 +2843,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure the index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         results.json.forEach(function(value) {
@@ -2882,7 +2882,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure the index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         results.json.forEach(function(value) {
@@ -2917,7 +2917,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure no index is used
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length, query); 
@@ -2951,7 +2951,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure the index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length, query);
@@ -2987,7 +2987,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure the index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length, query);
@@ -3024,7 +3024,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure the index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         results.json.forEach(function(value) {
@@ -3065,7 +3065,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure the index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         results.json.forEach(function(value) {
@@ -3100,7 +3100,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure no index is used
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length); 
@@ -3132,7 +3132,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure no index is used
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length, query); 
@@ -3162,7 +3162,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure an index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length, query); 
@@ -3192,7 +3192,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure an index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length, query); 
@@ -3223,7 +3223,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure an index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         // we will need a sort...
         assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
 
@@ -3259,7 +3259,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure an index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         // we don't need a sort...
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
 
@@ -3298,7 +3298,7 @@ function optimizerIndexesInOrTestSuite () {
         });
 
         // ensure an index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
@@ -3367,7 +3367,7 @@ function optimizerIndexesRangesTestSuite () {
         });
 
         // ensure an index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1].length * 20, results.json.length, query);
@@ -3415,7 +3415,7 @@ function optimizerIndexesRangesTestSuite () {
         });
 
         // ensure an index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1].length * 20, results.json.length, query);
@@ -3453,7 +3453,7 @@ function optimizerIndexesRangesTestSuite () {
         });
 
         // ensure an index is used
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1].length * 20, results.json.length, query);
@@ -3514,7 +3514,7 @@ function optimizerIndexesSortTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
       assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
 
       var results = AQL_EXECUTE(query);
@@ -3546,7 +3546,7 @@ function optimizerIndexesSortTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
       assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
 
       var results = AQL_EXECUTE(query);
@@ -3579,7 +3579,7 @@ function optimizerIndexesSortTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
       assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
 
       var results = AQL_EXECUTE(query);
@@ -3611,7 +3611,7 @@ function optimizerIndexesSortTestSuite () {
         return node.type;
       });
 
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
       assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
 
       var results = AQL_EXECUTE(query);
@@ -3654,7 +3654,7 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -3682,7 +3682,7 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -3711,7 +3711,7 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -3732,7 +3732,7 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -3761,7 +3761,7 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -3787,7 +3787,7 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -3812,7 +3812,7 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -3871,7 +3871,7 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -3898,7 +3898,7 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -3925,7 +3925,7 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -3950,7 +3950,7 @@ function optimizerIndexesSortTestSuite () {
       queries.forEach(function(query) {
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
-          if (node.type === "IndexRangeNode") {
+          if (node.type === "IndexNode") {
             assertEqual(idx.id.replace(/^.+\//g, ''), node.index.id);
             assertEqual("skiplist", node.index.type);
             assertTrue(node.index.sparse);
@@ -3959,7 +3959,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         // index is used for sorting
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -3988,7 +3988,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         // no index is used for sorting
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -4014,7 +4014,7 @@ function optimizerIndexesSortTestSuite () {
       queries.forEach(function(query) {
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
-          if (node.type === "IndexRangeNode") {
+          if (node.type === "IndexNode") {
             assertNotEqual(idx1.id.replace(/^.+\//g, ''), node.index.id);
             assertEqual(idx2.id.replace(/^.+\//g, ''), node.index.id);
             assertEqual("skiplist", node.index.type);
@@ -4024,7 +4024,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         // index is used for sorting
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -4049,7 +4049,7 @@ function optimizerIndexesSortTestSuite () {
       queries.forEach(function(query) {
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
-          if (node.type === "IndexRangeNode") {
+          if (node.type === "IndexNode") {
             assertEqual(idx.id.replace(/^.+\//g, ''), node.index.id);
             assertEqual("skiplist", node.index.type);
             assertTrue(node.index.sparse);
@@ -4058,7 +4058,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         // index is used for sorting
-        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -4114,7 +4114,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         // no index is used for sorting
-        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     }
