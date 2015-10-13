@@ -270,16 +270,6 @@ namespace triagens {
         typedef std::vector<std::pair<std::string, bool>> IndexMatchVec;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inspect one index; only skiplist indexes which match attrs in sequence.
-/// @returns a qualification how good they match;
-///      match->index==nullptr means no match at all.
-////////////////////////////////////////////////////////////////////////////////
-
-        static IndexMatch CompareIndex (ExecutionNode const*,
-                                        Index const*,
-                                        IndexMatchVec const&);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief replace a dependency, returns true if the pointer was found and 
 /// replaced, please note that this does not delete oldNode!
 ////////////////////////////////////////////////////////////////////////////////
@@ -687,6 +677,12 @@ namespace triagens {
           return (_varsUsedLater.find(variable) != _varsUsedLater.end());
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node is in an inner loop
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isInInnerLoop () const;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
 // -----------------------------------------------------------------------------
@@ -969,30 +965,6 @@ namespace triagens {
         std::vector<Variable const*> getVariablesSetHere () const override final {
           return std::vector<Variable const*>{ _outVariable };
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of usable fields from the index (according to the
-/// attributes passed)
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t getUsableFieldsOfIndex (Index const* idx,
-                                       std::unordered_set<std::string> const&) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get vector of indices that has any match in its fields with <attrs> 
-////////////////////////////////////////////////////////////////////////////////
-
-        void getIndexesForIndexRangeNode (std::unordered_set<std::string> const& attrs, 
-                                          std::vector<Index const*>& idxs, 
-                                          std::vector<size_t>& prefixes) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get vector of skiplist indices which match attrs in sequence.
-/// @returns a list of indexes with a qualification how good they match 
-///    the specified indexes.
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<IndexMatch> getIndicesOrdered (IndexMatchVec const& attrs) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enable random iteration of documents in collection

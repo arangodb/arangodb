@@ -55,8 +55,6 @@ namespace triagens {
         ~ConditionFinder () {
         }
 
-        bool isInnerLoop (ExecutionNode const*) const;
-     
         bool before (ExecutionNode*) override final;
 
         bool enterSubquery (ExecutionNode*, ExecutionNode*) final;

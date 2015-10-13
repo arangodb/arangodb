@@ -34,32 +34,6 @@
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
     
-bool ConditionFinder::isInnerLoop (ExecutionNode const* node) const {
-  while (node != nullptr) {
-    if (! node->hasDependency()) {
-      return false;
-    }
-
-    node = node->getFirstDependency();
-    TRI_ASSERT(node != nullptr);
-
-    auto type = node->getType();
-
-    if (type == EN::ENUMERATE_COLLECTION ||
-        type == EN::INDEX_RANGE ||
-        type == EN::INDEX ||
-        type == EN::ENUMERATE_LIST) {
-      // we are contained in an outer loop
-      return true;
-
-      // future potential optimization: check if the outer loop has 0 or 1 
-      // iterations. in this case it is still possible to remove the sort
-    }
-  }
-
-  return false;
-}
-
 bool ConditionFinder::before (ExecutionNode* en) {
   if (! _variableDefinitions.empty() && en->canThrow()) {
     // we already found a FILTER and
@@ -113,7 +87,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
        // register which variables are used in a SORT
        if (_sorts.empty()) {
          for (auto& it : static_cast<SortNode const*>(en)->getElements()) {
-           _sorts.emplace_back(std::make_pair((it.first)->id, it.second));
+           _sorts.emplace_back((it.first)->id, it.second);
          }
        }
        break;
@@ -161,7 +135,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
       condition->normalize(_plan);
     
       std::unique_ptr<SortCondition> sortCondition; 
-      if (! isInnerLoop(en)) {
+      if (! en->isInInnerLoop()) {
         // we cannot optimize away a sort if we're in an inner loop ourselves
         sortCondition.reset(new SortCondition(_sorts, _variableDefinitions));
       } 

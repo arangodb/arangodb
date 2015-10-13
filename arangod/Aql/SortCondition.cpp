@@ -171,9 +171,9 @@ SortCondition::~SortCondition () {
 /// by the specified index fields
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t SortCondition::isCoveredBy (Variable const* reference,
-                                   std::vector<std::vector<triagens::basics::AttributeName>> const& indexAttributes) const {
-  size_t coveredAttributes = 0;
+size_t SortCondition::coveredAttributes (Variable const* reference,
+                                         std::vector<std::vector<triagens::basics::AttributeName>> const& indexAttributes) const {
+  size_t numAttributes = 0;
 
   for (size_t i = 0; i < indexAttributes.size(); ++i) {
     if (i >= _fields.size()) {
@@ -205,10 +205,10 @@ size_t SortCondition::isCoveredBy (Variable const* reference,
     }
 
     // same attribute
-    ++coveredAttributes;
+    ++numAttributes;
   }
 
-  return coveredAttributes;
+  return numAttributes;
 }
 
 // -----------------------------------------------------------------------------

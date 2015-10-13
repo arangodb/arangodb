@@ -487,138 +487,6 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inspect one index; only skiplist indexes which match attrs in sequence.
-/// returns a qualification how good they match;
-/// match->index == nullptr means no match at all.
-////////////////////////////////////////////////////////////////////////////////
-
-ExecutionNode::IndexMatch ExecutionNode::CompareIndex (ExecutionNode const* node,
-                                                       Index const* idx,
-                                                       ExecutionNode::IndexMatchVec const& attrs) {
-  IndexMatch match;
-
-  if (attrs.empty()) {
-    return match;
-  }
-  
-  // check 
-  std::unordered_set<std::string> equalityLookupAttributes;
-
-  if (node->getType() == INDEX_RANGE) {
-    // found an index range node...
-    // now check, regardless of the type of index, which attributes are only used in
-    // equality lookups 
-    auto ranges = static_cast<IndexRangeNode const*>(node)->ranges();
-
-    // check for OR
-    if (ranges.size() == 1) {
-      // no OR
-   
-      // check for equality-lookup ranges and note them for later
-      for (auto const& r : ranges[0]) {
-        if (r.is1ValueRangeInfo()) {
-          // found an equality lookup    
-          equalityLookupAttributes.emplace(r._attr);
-        }
-      }
-    }
-  }
-  
-  // check index type
-  if (idx->type != triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    // no skiplist... that means we might have found the primary index or a hash index
-    // with no guaranteed sort order.
-    // still we can optimize away the sort if (and only if) all index attributes are used
-    // in the sort criteria, and all index attributes are used for constant equality
-    // lookups (e.g. doc.value1 == 1 && doc.value2 == 2 SORT doc.value1, doc.value2)
- 
-    for (auto const& attr : attrs) {
-      if (equalityLookupAttributes.find(attr.first) == equalityLookupAttributes.end()) {
-        return match;
-      }
-    }
- 
-    // when we get here we will be able to optimize away the sort
-    match.doesMatch = true;
-    return match;
-  }
-
-
-  TRI_ASSERT(idx->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX);
-
-  size_t const idxFields = idx->fields.size();
-  size_t const n = attrs.size();
-  match.doesMatch = (idxFields >= n);
-
-  size_t interestingCount = 0;
-  size_t forwardCount = 0;
-  size_t backwardCount = 0;
-  size_t i = 0;
-  size_t j = 0;
-
-  for (; (i < idxFields && j < n); i++) {
-    std::string fieldString;
-    TRI_AttributeNamesToString(idx->fields[i], fieldString, true);
-    if (equalityLookupAttributes.find(fieldString) != equalityLookupAttributes.end()) {
-      // found an attribute in the sort criterion that is used in an equality lookup, too...
-      // (e.g. doc.value == 1 && SORT doc.value1)
-      // in this case, we can ignore the sorting for this particular attribute, as the index
-      // will only return constant values for it
-      match.matches.push_back(FORWARD_MATCH); // doesn't matter here if FORWARD or BACKWARD
-      ++interestingCount;
-      if (attrs[j].first == fieldString) {
-        ++j;
-      }
-      continue;
-    }
-
-    if (attrs[j].first == fieldString) {
-      if (attrs[j].second) {
-        // ascending
-        match.matches.push_back(FORWARD_MATCH);
-        ++forwardCount;
-        if (backwardCount > 0) {
-          match.doesMatch = false;
-        }
-      }
-      else {
-        // descending
-        match.matches.push_back(REVERSE_MATCH);
-        ++backwardCount;
-        if (forwardCount > 0) {
-          match.doesMatch = false;
-        }
-        match.reverse = true;
-      }
-      ++interestingCount;
-    }
-    else {
-      match.matches.push_back(NO_MATCH);
-      match.doesMatch = false;
-    }
-    ++j;
-  }
-
-  if (interestingCount > 0) {
-    match.index = idx;
-
-    if (i < idxFields) { // more index fields
-      for (; i < idxFields; i++) {
-        match.matches.push_back(NOT_COVERED_IDX);
-      }
-    }
-    else if (j < attrs.size()) { // more sorts
-      for (; j < attrs.size(); j++) {
-        match.matches.push_back(NOT_COVERED_ATTR);
-      }
-      match.doesMatch = false;
-    }
-  }
-
-  return match;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -659,6 +527,37 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   }
 
   worker->after(this);
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node is in an inner loop
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExecutionNode::isInInnerLoop () const {
+  auto node = this;
+  while (node != nullptr) {
+    if (! node->hasDependency()) {
+      return false;
+    }
+
+    node = node->getFirstDependency();
+    TRI_ASSERT(node != nullptr);
+
+    auto type = node->getType();
+
+    if (type == ENUMERATE_COLLECTION ||
+        type == INDEX_RANGE ||
+        type == INDEX ||
+        type == ENUMERATE_LIST) {
+      // we are contained in an outer loop
+      return true;
+
+      // future potential optimization: check if the outer loop has 0 or 1 
+      // iterations. in this case it is still possible to remove the sort
+    }
+  }
 
   return false;
 }
@@ -1277,127 +1176,6 @@ ExecutionNode* EnumerateCollectionNode::clone (ExecutionPlan* plan,
   cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of usable fields from the index (according to the
-/// attributes passed)
-////////////////////////////////////////////////////////////////////////////////
-
-size_t EnumerateCollectionNode::getUsableFieldsOfIndex (Index const* idx,
-                                                        std::unordered_set<std::string> const& attrs) const {
-  size_t count = 0;
-  for (size_t i = 0; i < idx->fields.size(); i++) {
-    std::string tmp;
-    TRI_AttributeNamesToString(idx->fields[i], tmp, true);
-    if (attrs.find(tmp) == attrs.end()) {
-      break;
-    }
-
-    ++count;
-  }
-  
-  return count;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get vector of indexes with fields <attrs> 
-////////////////////////////////////////////////////////////////////////////////
-
-// checks if a subset of <attrs> is a prefix of <idx->_fields> for every index
-// of the collection of this node, modifies its arguments <idxs>, and <prefixes>
-// so that . . . 
-
-void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<std::string> const& attrs, 
-                                                           std::vector<Index const*>& idxs, 
-                                                           std::vector<size_t>& prefixes) const {
-
-  auto const& indexes = _collection->getIndexes();
-
-  for (auto const& idx : indexes) {
-    TRI_ASSERT(idx != nullptr);
-
-    auto const idxType = idx->type;
-
-    if (idxType != triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-        idxType != triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX &&
-        idxType != triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX &&
-        idxType != triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-      // only these index types can be used
-      continue;
-    }
-
-    size_t prefix = 0;
-
-    if (idxType == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-      // primary index allows lookups on both "_id" and "_key" in isolation
-      if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_ID)) != attrs.end() ||
-          attrs.find(std::string(TRI_VOC_ATTRIBUTE_KEY)) != attrs.end()) {
-        // can use index
-        idxs.emplace_back(idx);
-        // <prefixes> not used for this type of index
-        prefixes.emplace_back(0);
-      }
-    }
-    
-    else if (idxType == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-      // edge index allows lookups on both "_from" and "_to" in isolation
-      if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_FROM)) != attrs.end() ||
-          attrs.find(std::string(TRI_VOC_ATTRIBUTE_TO)) != attrs.end()) {
-        // can use index
-        idxs.emplace_back(idx);
-        // <prefixes> not used for this type of index
-        prefixes.emplace_back(0);
-      }
-    }
-
-    else if (idxType == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
-      prefix = getUsableFieldsOfIndex(idx, attrs);
-
-      if (prefix == idx->fields.size()) {
-        // can use index
-        idxs.emplace_back(idx);
-        // <prefixes> not used for this type of index
-        prefixes.emplace_back(0);
-      } 
-    }
-
-    else if (idxType == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-      prefix = getUsableFieldsOfIndex(idx, attrs);
-
-      if (prefix > 0) {
-        // can use index
-        idxs.emplace_back(idx);
-        prefixes.emplace_back(prefix);
-      }
-    }
-    
-    else {
-      TRI_ASSERT(false);
-    }
-  }
-}
-
-std::vector<EnumerateCollectionNode::IndexMatch> 
-    EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec const& attrs) const {
-
-  std::vector<IndexMatch> out;
-  auto const& indexes = _collection->getIndexes();
-
-  for (auto const& idx : indexes) {
-    if (idx->sparse) {
-      // sparse indexes cannot be used for replacing an EnumerateCollection node
-      continue;
-    }
-
-    IndexMatch match = CompareIndex(this, idx, attrs);
-
-    if (match.index != nullptr) {
-      out.emplace_back(match);
-    }
-  }
-
-  return out;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
