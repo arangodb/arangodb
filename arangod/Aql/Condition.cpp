@@ -253,7 +253,7 @@ bool Condition::indexSupportsSort (Index const* idx,
                                    Variable const* reference,
                                    SortCondition const* sortCondition,
                                    size_t itemsInIndex,
-                                   double& estimatedCost) {
+                                   double& estimatedCost) const {
   if (idx->isSorted() &&
       idx->supportsSortCondition(sortCondition, reference, itemsInIndex, estimatedCost)) {
     // index supports the sort condition

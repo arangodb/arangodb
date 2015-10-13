@@ -299,7 +299,7 @@ namespace triagens {
                                 Variable const*,
                                 SortCondition const*,
                                 size_t,
-                                double&);
+                                double&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds the best index that can match this single node

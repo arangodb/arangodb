@@ -22,10 +22,11 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Jan Steemann
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/OptimizerRules.h"
+#include "OptimizerRules.h"
 #include "Aql/AggregateNode.h"
 #include "Aql/AggregationOptions.h"
 #include "Aql/ClusterNodes.h"
@@ -1990,177 +1991,6 @@ int triagens::aql::useIndexForSortRule (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
-// TODO: finish rule and test it
-/*
-struct FilterCondition {
-  std::string variableName;
-  std::string attributeName;
-  AstNode const* lowNode  = nullptr;
-  AstNode const* highNode = nullptr;
-  bool lowInclusive       = false;
-  bool highInclusive      = false;
-  
-  FilterCondition () {
-  }
-
-  bool isFullyCoveredBy (RangeInfo const& other) {
-    if (! other.isConstant()) {
-      return false;
-    }
-
-    if (other._var != variableName ||
-        other._attr != attributeName) {
-      return false;
-    }
-
-    bool const lowDefined = (lowNode != nullptr);
-    bool const highDefined = (highNode != nullptr);
-
-    // do the quickest checks first
-    if (lowDefined != other._lowConst.isDefined()) {
-      return false;
-    }
-
-    if (highDefined != other._highConst.isDefined()) {
-      return false;
-    }
-
-    if (lowDefined && other._lowConst.inclusive() != lowInclusive) {
-      return false;
-    }
-
-    if (highDefined && other._highConst.inclusive() != highInclusive) {
-      return false;
-    }
-
-    // now the expensive checks
-    if (lowDefined) {
-      Json json(TRI_UNKNOWN_MEM_ZONE, lowNode->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
-
-      if (! TRI_CheckSameValueJson(other._lowConst.bound().json(), json.json())) {
-        return false;
-      } 
-    }
-
-    if (highDefined) {
-      Json json(TRI_UNKNOWN_MEM_ZONE, highNode->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
-
-      if (! TRI_CheckSameValueJson(other._highConst.bound().json(), json.json())) {
-        return false;
-      } 
-    }
-
-    return true;
-  }
-
-  bool analyze (AstNode const* node) {
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_LT ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-      AstNodeType op = node->type;
-      bool found = false;
-
-      if (lhs->isConstant() && 
-         rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        found = (lhs->type == NODE_TYPE_VALUE);
-      }
-      else if (rhs->isConstant() &&
-               lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        // reverse the nodes
-        lhs = node->getMember(1);
-        rhs = node->getMember(0);
-
-        op = Ast::ReverseOperator(node->type);
-        found = (lhs->type == NODE_TYPE_VALUE);
-      }
-
-      if (found) {
-        TRI_ASSERT(lhs->type == NODE_TYPE_VALUE);
-        TRI_ASSERT(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS);
-
-        std::function<void(AstNode const*, std::string&, std::string&)> buildName;
-        buildName = [&] (AstNode const* node, std::string& variableName, std::string& attributeName) -> void {
-          if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-            buildName(node->getMember(0), variableName, attributeName);
-
-            if (! attributeName.empty()) {
-              attributeName.push_back('.');
-            } 
-
-            attributeName.append(node->getStringValue(), node->getStringLength()); 
-          }
-          else if (node->type == NODE_TYPE_REFERENCE) { 
-            auto variable = static_cast<Variable const*>(node->getData());
-            variableName = variable->name;
-          }
-        }; 
-
-        if (attributeName.empty()) {
-
-          buildName(rhs, variableName, attributeName);
-          if (op == NODE_TYPE_OPERATOR_BINARY_EQ ||
-              op == NODE_TYPE_OPERATOR_BINARY_NE) {
-            lowInclusive  = true;
-            lowNode       = lhs;
-            highInclusive = true;
-            highNode      = lhs;
-          }
-          else if (op == NODE_TYPE_OPERATOR_BINARY_LT) {
-            lowInclusive  = false;
-            lowNode       = lhs;
-          }
-          else if (op == NODE_TYPE_OPERATOR_BINARY_LE) {
-            lowInclusive  = true;
-            lowNode       = lhs;
-          } 
-          else if (op == NODE_TYPE_OPERATOR_BINARY_GT) {
-            highInclusive = false;
-            highNode      = lhs;
-          }
-          else if (op == NODE_TYPE_OPERATOR_BINARY_GE) {
-            highInclusive = true;
-            highNode      = lhs;
-          }
-
-          return true;
-        }
-        else {
-          // already have collected something, now check if the next condition
-          // is for the same variable / attribute
-          std::string compareVariableName;
-          std::string compareAttributeName;
-          buildName(rhs, compareVariableName, compareAttributeName);
-
-          if (variableName == compareVariableName && 
-              attributeName == compareAttributeName) {
-            // same attribute
-            // TODO
-          }
-        }
-
-        // fall-through 
-      }
-
-      return false;
-    }
-
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      return (analyze(lhs) && analyze(rhs));
-    } 
-
-    return false;
-  }
-
-};
-*/
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to remove filters which are covered by indexes
 ////////////////////////////////////////////////////////////////////////////////
@@ -2168,54 +1998,62 @@ struct FilterCondition {
 int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
                                                     ExecutionPlan* plan,
                                                     Optimizer::Rule const* rule) {
-  opt->addPlan(plan, rule, false);
-  return TRI_ERROR_NO_ERROR;
-/*
   std::unordered_set<ExecutionNode*> toUnlink;
   std::vector<ExecutionNode*>&& nodes= plan->findNodesOfType(EN::FILTER, true); 
   
-  for (auto const& n : nodes) {
-    auto fn = static_cast<FilterNode*>(n);
+  for (auto const& node : nodes) {
+    auto fn = static_cast<FilterNode const*>(node);
     // find the node with the filter expression
     auto inVar = fn->getVariablesUsedHere();
     TRI_ASSERT(inVar.size() == 1);
-    // auto outVar = cn->getVariablesSetHere();
           
     auto setter = plan->getVarSetBy(inVar[0]->id);
-    if (setter == nullptr) {
+
+    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+      continue;
+    }
+        
+    // build the filter condition 
+    std::unique_ptr<Condition> condition(new Condition(plan->getAst()));
+    condition->andCombine(static_cast<CalculationNode const*>(setter)->expression()->node());
+    condition->normalize(plan);
+
+    if (condition->root() == nullptr) {
       continue;
     }
 
-    if (setter->getType() != EN::CALCULATION) {
-      continue;
-    }
-   
-    // check the filter condition 
-    FilterCondition condition;
-    if (! condition.analyze(static_cast<CalculationNode const*>(setter)->expression()->node())) {
+    size_t const n = condition->root()->numMembers();
+
+    if (n != 1) {
+      // either no condition or multiple ORed conditions...
       continue;
     }
 
     bool handled = false;
-    auto current = n;
+    auto current = node;
     while (current != nullptr) {
-      if (current->getType() == EN::INDEX_RANGE) {
-        // found an index range, now check if the expression is covered by the index
-        auto const& ranges = static_cast<IndexRangeNode const*>(current)->ranges();
+      if (current->getType() == EN::INDEX) {
+        auto indexNode = static_cast<IndexNode const*>(current);
 
-        // TODO: this is not prepared for OR conditions
-        for (auto const& it : ranges) {
-          for (auto it2 : it) {
-            if (condition.isFullyCoveredBy(it2)) {
+        // found an index node, now check if the expression is covered by the index
+        auto indexCondition = indexNode->condition();
+
+        if (indexCondition != nullptr) {
+          auto const& indexesUsed = indexNode->getIndexes();
+
+          if (indexesUsed.size() == 1) {
+            // single index. this is something that we can handle
+
+            if (false) {
+              // TODO: check if filter condition contained in index condition
               toUnlink.emplace(setter);
-              toUnlink.emplace(n);
-              break;
+              toUnlink.emplace(node);
             }
-          } 
-
-          if (handled) {
-            break;
           }
+        }
+
+        if (handled) {
+          break;
         }
       }
 
@@ -2239,7 +2077,6 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
   opt->addPlan(plan, rule, ! toUnlink.empty());
 
   return TRI_ERROR_NO_ERROR;
-  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
