@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rules for the query optimizer
 ///
-/// @file arangod/Aql/OptimizerRules.cpp
+/// @file 
 ///
 /// DISCLAIMER
 ///
@@ -1847,7 +1847,7 @@ public:
 /// @brief checks the whether we only have simple calculation nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-  bool isAnalyzeable () {
+  bool isAnalyzeable () const {
     if (_sortNodeData.size() == 0) {
       return false;
     }

@@ -133,6 +133,11 @@ static TRI_index_operator_t* buildRangeOperator (TRI_json_t const* lowerBound,
   std::unique_ptr<TRI_index_operator_t> lowerOperator(buildBoundOperator(lowerBound, lowerBoundInclusive, false, parameters, shaper));
   std::unique_ptr<TRI_index_operator_t> upperOperator(buildBoundOperator(upperBound, upperBoundInclusive, true, parameters, shaper));
 
+  /*
+  std::cout << "LOWER BOUND: " << lowerBound << ", LOWER INCLUSIVE: " << lowerBoundInclusive << "\n";
+  std::cout << "UPPER BOUND: " << upperBound << ", UPPER INCLUSIVE: " << upperBoundInclusive << "\n";
+  */
+
   if (lowerOperator == nullptr) {
     return upperOperator.release();
   }
@@ -1229,6 +1234,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
                                                     triagens::aql::AstNode const* node,
                                                     triagens::aql::Variable const* reference,
                                                     bool const reverse) const {
+
   // Create the skiplistOperator for the IndexLookup
   if (node == nullptr) {
     // We have no condition, we just use sort
@@ -1238,6 +1244,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
                                                           nullptr, nullArray.steal(), _shaper, 1));
     std::vector<TRI_index_operator_t*> searchValues({unboundOperator.get()});
     unboundOperator.release();
+
     return new SkiplistIndexIterator(this, searchValues, reverse);
   }
   std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
@@ -1308,11 +1315,6 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     }
   }
     
-  if (permutationStates.empty()) {
-    // can only be caused by empty IN lists
-    return nullptr;
-  }
-
   // Now handle the next element, which might be a range
   bool includeLower = false;
   bool includeUpper = false;
