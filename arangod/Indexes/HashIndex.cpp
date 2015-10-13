@@ -849,14 +849,11 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
       }
       else if (valNode->numMembers() > 0) {
         permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, valNode->numMembers()));
+        maxPermutations *= valNode->numMembers();
       }
     }
     else {
       return nullptr;
-    }
-
-    if (permutationStates.empty()) {
-      maxPermutations *= permutationStates.back().n;
     }
   }
     

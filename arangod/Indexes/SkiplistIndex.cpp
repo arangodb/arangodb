@@ -1299,15 +1299,12 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       }
       else if (value->numMembers() > 0) {
         permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, value->numMembers()));
+        maxPermutations *= value->numMembers();
       }
     }
     else {
       // This is a one-sided range
       break;
-    }
-
-    if (permutationStates.empty()) {
-      maxPermutations *= permutationStates.back().n;
     }
   }
     
