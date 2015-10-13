@@ -97,7 +97,7 @@ function optimizerRuleTestSuite () {
         "FOR i IN " + c.name() + " SORT RAND(), i.value RETURN i", // more than one sort criterion
         "FOR i IN " + c.name() + " FOR j IN " + c.name() + " SORT RAND() RETURN i", // more than one collection
         "FOR i IN " + c.name() + " LET a = FAIL(1) SORT RAND() RETURN [ i, a ]", // may throw
-        "FOR i IN " + c.name() + " FILTER i.value > 10 SORT RAND() RETURN i", // uses an IndexRangeNode
+        "FOR i IN " + c.name() + " FILTER i.value > 10 SORT RAND() RETURN i", // uses an IndexNode
         "FOR i IN " + c.name() + " FILTER i.what == 2 SORT RAND() RETURN i", // contains FilterNode
         "FOR i IN " + c.name() + " COLLECT v = i.value SORT RAND() RETURN v", // contains CollectNode
         "FOR i IN " + c.name() + " LET x = (FOR j IN 1..1 RETURN i.value) SORT RAND() RETURN x" // contains SubqueryNode
@@ -123,7 +123,7 @@ function optimizerRuleTestSuite () {
         "FOR i IN " + c.name() + " SORT RAND() LIMIT 2 RETURN i", 
         "FOR i IN " + c.name() + " LIMIT 1 SORT RAND() RETURN i", 
         "FOR i IN " + c.name() + " LET x = i.value + 1 SORT RAND() RETURN x", 
-        "FOR i IN " + c.name() + " SORT RAND() FILTER i.value > 10 RETURN i", // does not use an IndexRangeNode
+        "FOR i IN " + c.name() + " SORT RAND() FILTER i.value > 10 RETURN i", // does not use an IndexNode
       ];
 
       queries.forEach(function(query) {

@@ -183,7 +183,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { att: "name", what: "age" }));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { att: "name", what: "age" }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

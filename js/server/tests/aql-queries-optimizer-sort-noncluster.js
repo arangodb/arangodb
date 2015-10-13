@@ -127,7 +127,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,7 +148,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(98, actual[83].value);
       assertEqual(99, actual[84].value);
      
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +169,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(16, actual[83].value);
       assertEqual(15, actual[84].value);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +191,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +213,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(1, actual[98].value);
       assertEqual(0, actual[99].value);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,7 +235,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -257,7 +257,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
      
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       query = "FOR c IN " + cn + " FILTER c.value == 0 && c.value2 >= 0 SORT c.value RETURN c";
 
@@ -265,7 +265,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(1, actual.length);
       assertEqual(0, actual[0].value);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,7 +287,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
      
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       query = "FOR c IN " + cn + " FILTER c.value == 0 && c.value2 <= 1 SORT c.value, c.value2 RETURN c";
 
@@ -295,7 +295,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(1, actual.length);
       assertEqual(0, actual[0].value);
 
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,7 +317,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -339,7 +339,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
      
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -383,7 +383,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,7 +405,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -427,7 +427,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     }
 
   };
