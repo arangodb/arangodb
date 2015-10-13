@@ -32,7 +32,6 @@
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
-#include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/JsonHelper.h"
 
@@ -43,6 +42,7 @@ namespace triagens {
     class EnumerateCollectionNode;
     class ExecutionPlan;
     struct Index;
+    class SortCondition;
     struct Variable;
 
 // -----------------------------------------------------------------------------
@@ -242,7 +242,7 @@ namespace triagens {
 
         bool findIndexes (EnumerateCollectionNode const*, 
                           std::vector<Index const*>&, 
-                          SortCondition const&);
+                          SortCondition const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the condition
@@ -297,7 +297,7 @@ namespace triagens {
 
         bool indexSupportsSort (Index const*,
                                 Variable const*,
-                                SortCondition const&,
+                                SortCondition const*,
                                 size_t,
                                 double&);
 
@@ -309,7 +309,7 @@ namespace triagens {
                                   Variable const*, 
                                   EnumerateCollectionNode const*, 
                                   std::vector<Index const*>&,
-                                  SortCondition const&);
+                                  SortCondition const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

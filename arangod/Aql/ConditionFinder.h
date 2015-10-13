@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Condition finder, used to build up the Condition object
 ///
-/// @file arangod/Aql/ConditionFinder.h
+/// @file 
 ///
 /// DISCLAIMER
 ///
@@ -55,11 +55,11 @@ namespace triagens {
         ~ConditionFinder () {
         }
 
-        std::vector<std::pair<AstNode const*, bool>> translateSorts () const;
+        bool isInnerLoop (ExecutionNode const*) const;
      
-        bool before (ExecutionNode* en) override final;
+        bool before (ExecutionNode*) override final;
 
-        bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) final;
+        bool enterSubquery (ExecutionNode*, ExecutionNode*) final;
 
       private:
 

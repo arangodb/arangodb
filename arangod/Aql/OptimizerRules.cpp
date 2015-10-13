@@ -1749,7 +1749,7 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
 
   std::unordered_map<size_t, ExecutionNode*> changes;
 
-  auto cleanupChanges = [&] () -> void {
+  auto cleanupChanges = [&changes] () -> void {
     for (auto& v : changes) {
       delete v.second;
     }
