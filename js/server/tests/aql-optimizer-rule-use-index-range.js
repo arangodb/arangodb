@@ -2,7 +2,7 @@
 /*global assertEqual, assertTrue, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rule use index-range
+/// @brief tests for optimizer rule use indexes
 ///
 /// @file
 ///
@@ -38,7 +38,7 @@ var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleUseIndexRangeTester () {
-  var ruleName = "use-index-range";
+  var ruleName = "use-indexes";
   var collBaseName = "UTUseIndexRange";
   var collNames = ["NoInd", "SkipInd", "HashInd", "BothInd"];
   var collNoInd;
