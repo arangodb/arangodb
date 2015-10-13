@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rules for the query optimizer
 ///
-/// @file arangod/Aql/OptimizerRules.cpp
+/// @file 
 ///
 /// DISCLAIMER
 ///
@@ -1749,7 +1749,7 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
 
   std::unordered_map<size_t, ExecutionNode*> changes;
 
-  auto cleanupChanges = [&] () -> void {
+  auto cleanupChanges = [&changes] () -> void {
     for (auto& v : changes) {
       delete v.second;
     }
@@ -1847,7 +1847,7 @@ public:
 /// @brief checks the whether we only have simple calculation nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-  bool isAnalyzeable () {
+  bool isAnalyzeable () const {
     if (_sortNodeData.size() == 0) {
       return false;
     }

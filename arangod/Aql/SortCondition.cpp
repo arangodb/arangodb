@@ -41,11 +41,25 @@ using namespace triagens::aql;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an empty condition
+////////////////////////////////////////////////////////////////////////////////
+
+SortCondition::SortCondition ()
+  : _expressions(),
+    _fields(),
+    _unidirectional(false),
+    _onlyAttributeAccess(false),
+    _ascending(true) {
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create the sort condition
 ////////////////////////////////////////////////////////////////////////////////
 
 SortCondition::SortCondition (std::vector<std::pair<AstNode const*, bool>> const& expressions) 
   : _expressions(expressions),
+    _fields(),
     _unidirectional(true),
     _onlyAttributeAccess(true),
     _ascending(true) {

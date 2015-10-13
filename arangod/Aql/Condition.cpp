@@ -31,6 +31,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
@@ -194,15 +195,15 @@ void Condition::andCombine (AstNode const* node) {
 
 bool Condition::findIndexes (EnumerateCollectionNode const* node, 
                              std::vector<Index const*>& usedIndexes,
-                             SortCondition const& sortCondition) {
+                             SortCondition const* sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
 
   if (_root == nullptr) {
     // We do not have a condition. But we have a sort
-    if (! sortCondition.isEmpty() &&
-        sortCondition.isOnlyAttributeAccess() &&
-        sortCondition.isUnidirectional()) {
+    if (! sortCondition->isEmpty() &&
+        sortCondition->isOnlyAttributeAccess() &&
+        sortCondition->isUnidirectional()) {
       size_t const itemsInIndex = node->collection()->count(); 
       double bestCost = 0.0;
       Index const* bestIndex = nullptr;
@@ -249,11 +250,11 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
 
 bool Condition::indexSupportsSort (Index const* idx,
                                    Variable const* reference,
-                                   SortCondition const& sortCondition,
+                                   SortCondition const* sortCondition,
                                    size_t itemsInIndex,
                                    double& estimatedCost) {
   if (idx->isSorted() &&
-      idx->supportsSortCondition(&sortCondition, reference, itemsInIndex, estimatedCost)) {
+      idx->supportsSortCondition(sortCondition, reference, itemsInIndex, estimatedCost)) {
     // index supports the sort condition
     return true;
   }
@@ -276,7 +277,7 @@ bool Condition::findIndexForAndNode (size_t position,
                                      Variable const* reference, 
                                      EnumerateCollectionNode const* colNode, 
                                      std::vector<Index const*>& usedIndexes,
-                                     SortCondition const& sortCondition) {
+                                     SortCondition const* sortCondition) {
   // We can only iterate through a proper DNF
   auto node = _root->getMember(position);
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
@@ -309,9 +310,9 @@ bool Condition::findIndexForAndNode (size_t position,
       filterCost = itemsInIndex * 1.5;
     }
 
-    if (! sortCondition.isEmpty() &&
-        sortCondition.isOnlyAttributeAccess() &&
-        sortCondition.isUnidirectional()) {
+    if (! sortCondition->isEmpty() &&
+        sortCondition->isOnlyAttributeAccess() &&
+        sortCondition->isUnidirectional()) {
       // only go in here if we actually have a sort condition and it can in
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes

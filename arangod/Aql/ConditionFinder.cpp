@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Condition finder, used to build up the Condition object
 ///
-/// @file arangod/Aql/ConditionFinder.h
+/// @file 
 ///
 /// DISCLAIMER
 ///
@@ -33,6 +33,32 @@
 
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
+    
+bool ConditionFinder::isInnerLoop (ExecutionNode const* node) const {
+  while (node != nullptr) {
+    if (! node->hasDependency()) {
+      return false;
+    }
+
+    node = node->getFirstDependency();
+    TRI_ASSERT(node != nullptr);
+
+    auto type = node->getType();
+
+    if (type == EN::ENUMERATE_COLLECTION ||
+        type == EN::INDEX_RANGE ||
+        type == EN::INDEX ||
+        type == EN::ENUMERATE_LIST) {
+      // we are contained in an outer loop
+      return true;
+
+      // future potential optimization: check if the outer loop has 0 or 1 
+      // iterations. in this case it is still possible to remove the sort
+    }
+  }
+
+  return false;
+}
 
 bool ConditionFinder::before (ExecutionNode* en) {
   if (! _variableDefinitions.empty() && en->canThrow()) {
@@ -133,19 +159,26 @@ bool ConditionFinder::before (ExecutionNode* en) {
       }
 
       condition->normalize(_plan);
-      
-      std::vector<Index const*> usedIndexes;
-      SortCondition sortCondition(_sorts, _variableDefinitions);
+    
+      std::unique_ptr<SortCondition> sortCondition; 
+      if (! isInnerLoop(en)) {
+        // we cannot optimize away a sort if we're in an inner loop ourselves
+        sortCondition.reset(new SortCondition(_sorts, _variableDefinitions));
+      } 
+      else {
+        sortCondition.reset(new SortCondition);
+      }
 
-      if (condition->isEmpty() && sortCondition.isEmpty()) {
+      if (condition->isEmpty() && sortCondition->isEmpty()) {
         // no filter conditions left
         break;
       }
 
-      if (condition->findIndexes(node, usedIndexes, sortCondition)) {
+      std::vector<Index const*> usedIndexes;
+      if (condition->findIndexes(node, usedIndexes, sortCondition.get())) {
         bool reverse = false;
-        if (sortCondition.isUnidirectional()) {
-          reverse = sortCondition.isDescending();
+        if (sortCondition->isUnidirectional()) {
+          reverse = sortCondition->isDescending();
         }
 
         TRI_ASSERT(! usedIndexes.empty());
@@ -173,7 +206,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
   return false;
 }
 
-bool ConditionFinder::enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+bool ConditionFinder::enterSubquery (ExecutionNode*, ExecutionNode*) {
   return false;
 }
 
