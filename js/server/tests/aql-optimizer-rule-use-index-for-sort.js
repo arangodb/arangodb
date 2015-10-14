@@ -88,36 +88,10 @@ function optimizerRuleTestSuite() {
                 countXPect,
                 "Has " + countXPect +  " CalculationNode");
   };
-  var hasIndexNode_WithRanges = function (plan, haveRanges) {
+  var hasIndexNode = function (plan) {
     var rn = findExecutionNodes(plan, "IndexNode");
     assertEqual(rn.length, 1, "Has IndexNode");
-    assertTrue(rn[0].ranges.length > 0, "whether the IndexNode ranges array is valid");
-    if (haveRanges) {
-      assertTrue(rn[0].ranges[0].length > 0, "Have IndexNode with ranges");
-    }
-    else {
-      assertEqual(rn[0].ranges[0].length, 0, "Have IndexNode with NO ranges");
-    }
-  };
-  var getRangeAttributes = function (plan) {
-    var rn = findExecutionNodes(plan, "IndexNode");
-    assertEqual(rn.length, 1, "Has IndexNode");
-    assertTrue(rn[0].ranges.length > 0, "Have IndexNode with ranges");
-    return rn[0].ranges;
-  };
-  var getRangeAttribute = function (rangeAttributes, varcmp, attrcmp, getNth) {
-    var ret = {};
-    rangeAttributes.forEach(function compare(oneRA) {
-      if ( (oneRA.variable  === varcmp) &&
-           (oneRA.attr === attrcmp)) {
-        getNth --;
-        if (getNth === 0) {
-          ret = oneRA;
-        }
-      }
-
-    });
-    return ret;
+    return;
   };
   var isNodeType = function(node, type) {
     assertEqual(node.type, type, "check whether this node is of type "+type);
@@ -200,6 +174,8 @@ function optimizerRuleTestSuite() {
         var result = AQL_EXPLAIN(query[0], { }, paramIndexFromSort);
         assertEqual([], removeAlwaysOnClusterRules(result.plan.rules), query);
         if (query[1]) {
+          require("internal").print(query[0]);
+          require("org/arangodb/aql/explainer").explain(query[0]);
           var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
           for (j = 1; j < allresults.results.length; j++) {
             assertTrue(isEqual(allresults.results[0],
@@ -275,8 +251,9 @@ function optimizerRuleTestSuite() {
       queries.forEach(function(query) {
         var j;
         var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
+        require("org/arangodb/aql/explainer").explain(query);
         assertEqual([ ruleName ], removeAlwaysOnClusterRules(result.plan.rules));
-        hasIndexNode_WithRanges(result, false);
+        hasIndexNode(result);
         hasSortNode(result);
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
         QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort ).json;
@@ -327,7 +304,7 @@ function optimizerRuleTestSuite() {
       // the dependencies of the sortnode weren't removed...
       hasCalculationNodes(XPresult, 2);
       // The IndexNode created by this rule is simple; it shouldn't have ranges.
-      hasIndexNode_WithRanges(XPresult, false);
+      hasIndexNode(XPresult);
 
       // -> combined use-index-for-sort and remove-unnecessary-calculations-2
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_RemoveCalculations);
@@ -339,7 +316,7 @@ function optimizerRuleTestSuite() {
       // now the dependencies of the sortnode should be gone:
       hasCalculationNodes(XPresult, 1);
       // The IndexNode created by this rule is simple; it shouldn't have ranges.
-      hasIndexNode_WithRanges(XPresult, false);
+      hasIndexNode(XPresult);
 
       for (i = 1; i < 3; i++) {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is equal?");
@@ -387,6 +364,7 @@ function optimizerRuleTestSuite() {
       QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
 
+      require("org/arangodb/aql/explainer").explain(query);
       // -> use-index-for-sort alone.
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
@@ -397,7 +375,7 @@ function optimizerRuleTestSuite() {
       hasSortNode(XPresult);
       hasCalculationNodes(XPresult, 4);
       // The IndexNode created by this rule is simple; it shouldn't have ranges.
-      hasIndexNode_WithRanges(XPresult, false);
+      hasIndexNode(XPresult);
 
       // -> combined use-index-for-sort and use-index-range
       //    use-index-range superseedes use-index-for-sort
@@ -409,7 +387,7 @@ function optimizerRuleTestSuite() {
       hasSortNode(XPresult);
       hasCalculationNodes(XPresult, 4);
       // The IndexNode created by this rule should be more clever, it knows the ranges.
-      hasIndexNode_WithRanges(XPresult, true);
+      hasIndexNode(XPresult);
 
       // -> use-index-range alone.
       QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
@@ -425,7 +403,7 @@ function optimizerRuleTestSuite() {
       assertEqual(sortProperty[0].type, "CalculationNode");
       assertEqual(sortProperty[1].type, "CalculationNode");
       // The IndexNode created by this rule should be more clever, it knows the ranges.
-      hasIndexNode_WithRanges(XPresult, true);
+      hasIndexNode(XPresult);
 
       for (i = 1; i < 4; i++) {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
@@ -469,7 +447,7 @@ function optimizerRuleTestSuite() {
 
 
       // The IndexNode created by this rule is simple; it shouldn't have ranges.
-      hasIndexNode_WithRanges(XPresult, false);
+      hasIndexNode(XPresult);
 
       // -> combined use-index-for-sort and use-index-range
       QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json.sort(sortArray);
@@ -479,7 +457,7 @@ function optimizerRuleTestSuite() {
       hasNoSortNode(XPresult);
       hasCalculationNodes(XPresult, 3);
       // The IndexNode created by this rule should be more clever, it knows the ranges.
-      hasIndexNode_WithRanges(XPresult, true);
+      hasIndexNode(XPresult);
 
       // -> use-index-range alone.
       QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json.sort(sortArray);
@@ -493,7 +471,7 @@ function optimizerRuleTestSuite() {
       assertEqual(sortProperty.length, 1);
       isNodeType(sortProperty[0], "CalculationNode");
       // The IndexNode created by this rule should be more clever, it knows the ranges.
-      hasIndexNode_WithRanges(XPresult, true);
+      hasIndexNode(XPresult);
 
       // -> combined use-index-for-sort, remove-unnecessary-calculations-2 and use-index-range
       QResults[4] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations).json.sort(sortArray);
@@ -504,7 +482,7 @@ function optimizerRuleTestSuite() {
       hasNoSortNode(XPresult);
       hasCalculationNodes(XPresult, 2);
       // The IndexNode created by this rule should be more clever, it knows the ranges.
-      hasIndexNode_WithRanges(XPresult, true);
+      hasIndexNode(XPresult);
 
       for (i = 1; i < 5; i++) {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is equal?");
@@ -546,7 +524,7 @@ function optimizerRuleTestSuite() {
       hasNoSortNode(XPresult);
       hasCalculationNodes(XPresult, 4);
       // The IndexNode created by this rule is simple; it shouldn't have ranges.
-      hasIndexNode_WithRanges(XPresult, false);
+      hasIndexNode(XPresult);
 
       // -> combined use-index-for-sort and use-index-range
       QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
@@ -559,7 +537,7 @@ function optimizerRuleTestSuite() {
 
       hasCalculationNodes(XPresult, 4);
       // The IndexNode created by this rule should be more clever, it knows the ranges.
-      hasIndexNode_WithRanges(XPresult, true);
+      hasIndexNode(XPresult);
 
       // -> use-index-range alone.
       QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
@@ -574,7 +552,7 @@ function optimizerRuleTestSuite() {
       assertEqual(sortProperty.length, 2);
       isNodeType(sortProperty[0], "CalculationNode");
       // The IndexNode created by this rule should be more clever, it knows the ranges.
-      hasIndexNode_WithRanges(XPresult, true);
+      hasIndexNode(XPresult);
 
       // -> combined use-index-for-sort, remove-unnecessary-calculations-2 and use-index-range
       QResults[4] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations).json;
@@ -585,7 +563,7 @@ function optimizerRuleTestSuite() {
       hasCalculationNodes(XPresult, 2);
 
       // The IndexNode created by this rule should be more clever, it knows the ranges.
-      hasIndexNode_WithRanges(XPresult, true);
+      hasIndexNode(XPresult);
 
       for (i = 1; i < 5; i++) {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
@@ -631,12 +609,6 @@ function optimizerRuleTestSuite() {
       hasCalculationNodes(XPresult, 2);
 
       // The IndexNode created by this rule should be more clever, it knows the ranges.
-      var RAs = getRangeAttributes(XPresult);
-      var first = getRangeAttribute(RAs[0], "v", "a", 1);
-      assertEqual(first.lows.length, 0, "no non-constant low bounds");
-      assertEqual(first.highs.length, 0, "no non-constant high bounds");
-      assertEqual(first.lowConst.bound, 1, "correctness of bound");
-      assertEqual(first.lowConst.bound, first.highConst.bound, "bounds equality");
 
       for (i = 1; i < 2; i++) {
         assertTrue(isEqual(QResults[0].sort(sortArray), QResults[i].sort(sortArray)), "Result " + i + " is Equal?");
@@ -676,14 +648,6 @@ function optimizerRuleTestSuite() {
       // the sortnode and its calculation node should be there.
       hasCalculationNodes(XPresult, 2);
 
-      // The IndexNode created by this rule should be more clever, it knows the ranges.
-      var RAs = getRangeAttributes(XPresult);
-      var first = getRangeAttribute(RAs[0], "v", "a", 1);
-      assertEqual(first.lowConst.bound, undefined, "no constant lower bound");
-      assertEqual(first.lows.length, 0, "no variable low bound");
-      assertEqual(first.highs.length, 0, "no variable high bound");
-      assertEqual(first.highConst.bound, 5, "proper value was set");
-
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are equal?");
 
       var allresults = getQueryMultiplePlansAndExecutions(query, {});
@@ -719,15 +683,6 @@ function optimizerRuleTestSuite() {
       assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // the sortnode and its calculation node should be there.
       hasCalculationNodes(XPresult, 2);
-
-      // The IndexNode created by this rule should be more clever, it knows the ranges.
-      var RAs = getRangeAttributes(XPresult);
-      var first = getRangeAttribute(RAs[0], "v", "a", 1);
-      
-      assertEqual(first.highConst.bound, undefined, "no constant upper bound");
-      assertEqual(first.highs.length, 0, "no variable high bound");
-      assertEqual(first.lows.length, 0, "no variable low bound");
-      assertEqual(first.lowConst.bound, 5, "proper value was set");
 
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
 
@@ -765,15 +720,6 @@ function optimizerRuleTestSuite() {
       // the sortnode and its calculation node should be there.
       hasCalculationNodes(XPresult, 2);
 
-      // The IndexNode created by this rule should be more clever, it knows the ranges.
-      var RAs = getRangeAttributes(XPresult);
-      var first = getRangeAttribute(RAs[0], "v", "a", 1);
-     
-      assertEqual(first.highs.length, 0, "no variable high bounds");
-      assertEqual(first.lows.length, 0, "no variable low bounds");
-      assertEqual(first.lowConst.bound, 4, "proper value was set");
-      assertEqual(first.highConst.bound, 10, "proper value was set");
-
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
 
       var allresults = getQueryMultiplePlansAndExecutions(query, {});
@@ -805,7 +751,7 @@ function optimizerRuleTestSuite() {
       // the result here to accomplish similarity.
       QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
-      // -> use-index-range alone.
+      // -> use-indexes alone.
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 
 
@@ -855,17 +801,6 @@ function optimizerRuleTestSuite() {
       // the sortnode and its calculation node should be there.
       assertEqual(1, findExecutionNodes(XPresult, "IndexNode").length);
 
-      // The IndexNode created by this rule should be more clever, it knows the ranges.
-      hasIndexNode_WithRanges(XPresult, true);
-      var RAs = getRangeAttributes(XPresult);
-      var first = getRangeAttribute(RAs[0], "v", "a", 1);
-      assertEqual(first.highConst.bound, 5, "proper value was set");
-      assertEqual(first.highConst.include, false, "proper include");
-
-      first = getRangeAttribute(RAs[1], "v", "a", 1);
-      assertEqual(first.lowConst.bound, 10, "proper value was set");
-      assertEqual(first.lowConst.include, false, "proper include");
-
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are equal?");
     },
 
@@ -888,7 +823,7 @@ function optimizerRuleTestSuite() {
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual(["use-index-range"], removeAlwaysOnClusterRules(XPresult.plan.rules));
+      assertEqual(["use-indexes"], removeAlwaysOnClusterRules(XPresult.plan.rules));
 
       // the sortnode and its calculation node should be there.
       assertEqual(1, findExecutionNodes(XPresult, "IndexNode").length);
