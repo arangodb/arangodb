@@ -201,7 +201,7 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
   Variable const* reference = node->outVariable();
 
   if (_root == nullptr) {
-    // We do not have a condition. But we have a sort
+    // We do not have a condition. But we have a sort!
     if (! sortCondition->isEmpty() &&
         sortCondition->isOnlyAttributeAccess() &&
         sortCondition->isUnidirectional()) {
@@ -212,6 +212,11 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
       std::vector<Index const*> indexes = node->collection()->getIndexes();
 
       for (auto const& idx : indexes) {
+        if (idx->sparse) {
+          // a sparse index may exclude some documents, so it can't be used to
+          // get a sorted view of the ENTIRE collection
+          continue;
+        }
         double sortCost = 0.0;
         if (indexSupportsSort(idx, reference, sortCondition, itemsInIndex, sortCost)) {
           if (bestIndex == nullptr || sortCost < bestCost) {
