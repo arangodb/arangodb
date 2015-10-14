@@ -189,7 +189,6 @@ var syncCollection = function (collection, config) {
   config.restrictType = "include";
   config.restrictCollections = [ collection ];
   config.includeSystem = true;
-  config.incremental = true;
   var body = JSON.stringify(config);
 
   var requestResult = db._connection.PUT("/_api/replication/sync", body);

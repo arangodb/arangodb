@@ -329,6 +329,7 @@ std::string Index::context () const {
          << ", type: " << typeName() 
          << ", collection: " << _collection->_vocbase->_name 
          << "/" <<  _collection->_info._name
+         << ", unique: " <<  (_unique ? "true" : "false")
          << ", fields: ";
   result << "[";
   for (size_t i = 0; i < _fields.size(); ++i) {

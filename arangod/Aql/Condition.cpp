@@ -201,7 +201,7 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
   Variable const* reference = node->outVariable();
 
   if (_root == nullptr) {
-    // We do not have a condition. But we have a sort
+    // We do not have a condition. But we have a sort!
     if (! sortCondition->isEmpty() &&
         sortCondition->isOnlyAttributeAccess() &&
         sortCondition->isUnidirectional()) {
@@ -212,6 +212,11 @@ bool Condition::findIndexes (EnumerateCollectionNode const* node,
       std::vector<Index const*> indexes = node->collection()->getIndexes();
 
       for (auto const& idx : indexes) {
+        if (idx->sparse) {
+          // a sparse index may exclude some documents, so it can't be used to
+          // get a sorted view of the ENTIRE collection
+          continue;
+        }
         double sortCost = 0.0;
         if (indexSupportsSort(idx, reference, sortCondition, itemsInIndex, sortCost)) {
           if (bestIndex == nullptr || sortCost < bestCost) {
@@ -322,6 +327,8 @@ bool Condition::findIndexForAndNode (size_t position,
         supportsSort = true;
       }
     }
+
+    // std::cout << "INDEX: " << idx << ", FILTER COST: " << filterCost << ", SORT COST: " << sortCost << "\n";
 
     if (! supportsFilter && ! supportsSort) {
       continue;
@@ -490,7 +497,7 @@ void Condition::optimize (ExecutionPlan* plan) {
   TRI_ASSERT(_root != nullptr);
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
-  // handle sub nodes or top-level OR node
+  // handle sub nodes of top-level OR node
   size_t n = _root->numMembers();
   size_t r = 0;
 
@@ -697,6 +704,61 @@ fastForwardToNextOrItem:
       ++r;
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove (now) invalid variables from the condition
+////////////////////////////////////////////////////////////////////////////////
+
+bool Condition::removeInvalidVariables (std::unordered_set<Variable const*> const& validVars) {
+  if (_root == nullptr) {
+    return false;
+  }
+
+  TRI_ASSERT(_root != nullptr);
+  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
+ 
+  bool isEmpty = false;
+
+  // handle sub nodes of top-level OR node
+  size_t const n = _root->numMembers();
+  std::unordered_set<Variable const*> varsUsed;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto andNode = _root->getMemberUnchecked(i);
+    TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+
+    size_t nAnd = andNode->numMembers();
+    for (size_t j = 0; j < nAnd; /* no hoisting */) {
+      // check which variables are used in each AND
+      varsUsed.clear();
+      Ast::getReferencedVariables(andNode, varsUsed);
+
+      bool invalid = false;
+      for (auto& it : varsUsed) {
+        if (validVars.find(it) == validVars.end()) {
+          // found an invalid variable here...
+          invalid = true;
+          break;
+        }
+      }
+
+      if (invalid) {
+        andNode->removeMemberUnchecked(j);
+        // repeat with some member index
+        TRI_ASSERT(nAnd > 0);
+        --nAnd;
+        if (nAnd == 0) {
+          isEmpty = true;
+        }
+      }
+      else {
+        ++j;
+      }
+    }
+  }
+
+  return isEmpty;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

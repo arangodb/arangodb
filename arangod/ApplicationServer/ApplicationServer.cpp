@@ -718,7 +718,7 @@ void ApplicationServer::dropPrivilegesPermanently () {
 #ifdef TRI_HAVE_SETGID
 
   if (! _gid.empty()) {
-    LOG_INFO("permanently changing the gid to %d", (int) _numericGid);
+    LOG_DEBUG("permanently changing the gid to %d", (int) _numericGid);
 
     int res = setgid(_numericGid);
 
@@ -733,7 +733,7 @@ void ApplicationServer::dropPrivilegesPermanently () {
 #ifdef TRI_HAVE_SETUID
 
   if (! _uid.empty()) {
-    LOG_INFO("permanently changing the uid to %d", (int) _numericUid);
+    LOG_DEBUG("permanently changing the uid to %d", (int) _numericUid);
 
     int res = setuid(_numericUid);
 

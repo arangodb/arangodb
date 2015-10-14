@@ -1183,8 +1183,15 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
 
   if (attributesCoveredByEquality == _fields.size() && unique()) {
     // index is unique and condition covers all attributes by equality
-    estimatedItems = itemsInIndex * values;
-    estimatedCost  = static_cast<double>(estimatedItems);
+    if (estimatedItems >= values) {
+      // reduce costs due to uniqueness
+      estimatedItems = values;
+      estimatedCost  = static_cast<double>(estimatedItems);
+    }
+    else {
+      // cost is already low... now slightly prioritize the unique index
+      estimatedCost *= 0.995;
+    }
     return true;
   }
 
