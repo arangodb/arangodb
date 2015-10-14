@@ -400,6 +400,7 @@ bool IndexBlock::readIndex (size_t atMost) {
       _iterator = nullptr;
     }
   }
+  _posInDocs = 0;
   return (! _documents.empty());
   LEAVE_BLOCK;
 }
@@ -449,15 +450,13 @@ AqlItemBlock* IndexBlock::getSome (size_t atLeast,
       // This is a new item, so let's read the index (it is already
       // initialized).
       readIndex(atMost);
-      _posInDocs = 0;     // position in _documents . . .
     } 
     else if (_posInDocs >= _documents.size()) {
       // we have exhausted our local documents buffer,
 
-      _posInDocs = 0;
-      AqlItemBlock* cur = _buffer.front();
 
       if (! readIndex(atMost)) { //no more output from this version of the index
+        AqlItemBlock* cur = _buffer.front();
         if (++_pos >= cur->size()) {
           _buffer.pop_front();  // does not throw
           delete cur;
@@ -555,11 +554,7 @@ size_t IndexBlock::skipSome (size_t atLeast,
       
       // This is a new item, so let's read the index if bounds are variable:
       readIndex(atMost); 
-      _posInDocs = 0;     // position in _documents . . .
     }
-
-    // If we get here, we do have _buffer.front() and _pos points into it
-    AqlItemBlock* cur = _buffer.front();
 
     size_t available = _documents.size() - _posInDocs;
     size_t toSkip = (std::min)(atMost - skipped, available);
@@ -570,22 +565,25 @@ size_t IndexBlock::skipSome (size_t atLeast,
     // Advance read position:
     if (_posInDocs >= _documents.size()) {
       // we have exhausted our local documents buffer,
+      if (!readIndex(atMost)) {
+        // If we get here, we do have _buffer.front() and _pos points into it
+        AqlItemBlock* cur = _buffer.front();
 
-      if (++_pos >= cur->size()) {
-        _buffer.pop_front();  // does not throw
-        delete cur;
-        _pos = 0;
-      }
-
-      // let's read the index if bounds are variable:
-      if (! _buffer.empty()) {
-        if (! initIndexes()) {
-          _done = true;
-          return skipped;
+        if (++_pos >= cur->size()) {
+          _buffer.pop_front();  // does not throw
+          delete cur;
+          _pos = 0;
         }
-        readIndex(atMost);
+
+        // let's read the index if bounds are variable:
+        if (! _buffer.empty()) {
+          if (! initIndexes()) {
+            _done = true;
+            return skipped;
+          }
+          readIndex(atMost);
+        }
       }
-      _posInDocs = 0;
       
       // If _buffer is empty, then we will fetch a new block in the next round
       // and then read the index.

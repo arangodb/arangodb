@@ -305,6 +305,7 @@ function optimizerIndexesInOrTestSuite () {
           return node.type;
         });
 
+        require("org/arangodb/aql/explainer").explain(query[0]);
         // ensure the index is used
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
@@ -341,6 +342,7 @@ function optimizerIndexesInOrTestSuite () {
           return node.type;
         });
 
+        require("org/arangodb/aql/explainer").explain(query[0]);
         // ensure the index is used
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
@@ -516,6 +518,7 @@ function optimizerIndexesInOrTestSuite () {
           return node.type;
         });
 
+        require("org/arangodb/aql/explainer").explain(query[0]);
         // ensure an index is used
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
@@ -546,6 +549,7 @@ function optimizerIndexesInOrTestSuite () {
           return node.type;
         });
 
+        require("org/arangodb/aql/explainer").explain(query[0]);
         // ensure an index is used
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
@@ -659,6 +663,7 @@ function optimizerIndexesInOrTestSuite () {
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1].length, results.json.length, query); 
         for (var i = 0; i < results.json.length; ++i) {
+          require("internal").print(query[1][i]);
           assertEqual(query[1][i], results.json[i], query);
         }
         assertTrue(results.stats.scannedIndex > 0);

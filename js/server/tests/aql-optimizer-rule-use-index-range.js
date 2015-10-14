@@ -213,9 +213,9 @@ function optimizerRuleUseIndexRangeTester () {
         "  RETURN {A:A, B:B, C:C, K:k}";
 
       var result = AQL_EXPLAIN(query, { }, paramEnabledAllPlans);
-      assertTrue(result.plans.length === 16, query);
+      assertTrue(result.plans.length === 1, query);
       result = AQL_EXPLAIN(query, { }, paramAllAllPlans);
-      assertTrue(result.plans.length === 16, query);
+      assertTrue(result.plans.length === 1, query);
     }
 
   };

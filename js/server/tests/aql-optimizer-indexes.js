@@ -369,12 +369,7 @@ function optimizerIndexesTestSuite () {
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
-          if (indexNodes <= 5) {
-            assertEqual("hash", node.index.type);
-          }
-          else {
-            assertEqual("skiplist", node.index.type);
-          }
+          assertEqual("hash", node.indexes[0].type);
         }
         else if (node.type === "EnumerateCollectionNode") {
           ++collectionNodes;
@@ -383,7 +378,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual(0, collectionNodes);
       assertEqual(10, indexNodes);
-      assertEqual(32, explain.stats.plansCreated);
+      assertEqual(1, explain.stats.plansCreated);
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
@@ -426,7 +421,7 @@ function optimizerIndexesTestSuite () {
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
-          assertEqual("hash", node.index.type);
+          assertEqual("hash", node.indexes[0].type);
         }
         else if (node.type === "EnumerateCollectionNode") {
           ++collectionNodes;
@@ -460,12 +455,12 @@ function optimizerIndexesTestSuite () {
           ++indexNodes;
           if (indexNodes === 1) {
             // skiplist must be used for the first FOR
-            assertEqual("skiplist", node.index.type);
+            assertEqual("skiplist", node.indexes[0].type);
             assertEqual("i", node.outVariable.name);
           }
           else {
             // second FOR should use a hash index
-            assertEqual("hash", node.index.type);
+            assertEqual("hash", node.indexes[0].type);
             assertEqual("j", node.outVariable.name);
           }
         }
@@ -476,7 +471,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual(0, collectionNodes);
       assertEqual(2, indexNodes);
-      assertEqual(2, explain.stats.plansCreated);
+      assertEqual(1, explain.stats.plansCreated);
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
@@ -500,7 +495,7 @@ function optimizerIndexesTestSuite () {
         if (node.type === "IndexNode") {
           ++indexNodes;
           // skiplist must be used for both FORs
-          assertEqual("skiplist", node.index.type);
+          assertEqual("skiplist", node.indexes[0].type);
           if (indexNodes === 1) {
             assertEqual("i", node.outVariable.name);
           }
@@ -539,15 +534,15 @@ function optimizerIndexesTestSuite () {
         if (node.type === "IndexNode") {
           ++indexNodes;
           if (indexNodes === 1) {
-            assertEqual("hash", node.index.type);
+            assertEqual("hash", node.indexes[0].type);
             assertEqual("i", node.outVariable.name);
           }
           else if (indexNodes === 2) {
-            assertEqual("hash", node.index.type);
+            assertEqual("hash", node.indexes[0].type);
             assertEqual("j", node.outVariable.name);
           }
           else {
-            assertEqual("skiplist", node.index.type);
+            assertEqual("skiplist", node.indexes[0].type);
             assertEqual("k", node.outVariable.name);
           }
         }
@@ -558,7 +553,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual(0, collectionNodes);
       assertEqual(3, indexNodes);
-      assertEqual(4, explain.stats.plansCreated);
+      assertEqual(1, explain.stats.plansCreated);
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
@@ -601,12 +596,7 @@ function optimizerIndexesTestSuite () {
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
-          if (indexNodes < 5 || indexNodes === 6) {
-            assertEqual("hash", node.index.type);
-          }
-          else {
-            assertEqual("skiplist", node.index.type);
-          }
+          assertEqual("hash", node.indexes[0].type);
         }
         else if (node.type === "EnumerateCollectionNode") {
           ++collectionNodes;
@@ -615,7 +605,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual(0, collectionNodes);
       assertEqual(20, indexNodes);
-      assertEqual(32, explain.stats.plansCreated);
+      assertEqual(1, explain.stats.plansCreated);
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
@@ -633,7 +623,7 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("primary", node.index.type);
+          assertEqual("primary", node.indexes[0].type);
         }
         return node.type;
       });
@@ -696,8 +686,8 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.index.type);
-          assertFalse(node.index.unique);
+          assertEqual("hash", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
         }
         return node.type;
       });
@@ -721,8 +711,8 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.index.type);
-          assertTrue(node.index.unique);
+          assertEqual("hash", node.indexes[0].type);
+          assertTrue(node.indexes[0].unique);
         }
         return node.type;
       });
@@ -745,8 +735,8 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.index.type);
-          assertFalse(node.index.unique);
+          assertEqual("skiplist", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
         }
         return node.type;
       });
@@ -770,8 +760,8 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.index.type);
-          assertTrue(node.index.unique);
+          assertEqual("skiplist", node.indexes[0].type);
+          assertTrue(node.indexes[0].unique);
         }
         return node.type;
       });
@@ -799,12 +789,12 @@ function optimizerIndexesTestSuite () {
         return node.type;
       });
 
-      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1 ], results.json, query);
-      assertEqual(0, results.stats.scannedIndex);
-      assertTrue(results.stats.scannedFull > 0);
+      assertTrue(results.stats.scannedIndex > 0);
+      assertEqual(0, results.stats.scannedFull);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -935,9 +925,9 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.index.type);
-          assertFalse(node.index.unique);
-          assertEqual([ "value2", "value3" ], node.index.fields);
+          assertEqual("hash", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertEqual([ "value2", "value3" ], node.indexes[0].fields);
         }
         return node.type;
       });
@@ -963,9 +953,9 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.index.type);
-          assertFalse(node.index.unique);
-          assertEqual([ "value2", "value3" ], node.index.fields);
+          assertEqual("skiplist", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertEqual([ "value2", "value3" ], node.indexes[0].fields);
         }
         return node.type;
       });
@@ -1036,9 +1026,9 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.index.type);
-          assertFalse(node.index.unique);
-          assertEqual([ "value2", "value3" ], node.index.fields);
+          assertEqual("skiplist", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertEqual([ "value2", "value3" ], node.indexes[0].fields);
         }
         return node.type;
       });
@@ -1911,9 +1901,10 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.index.type);
-          assertFalse(node.index.unique);
-          assertTrue(node.index.sparse);
+          assertEqual(1, node.indexes.length);
+          assertEqual("hash", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertTrue(node.indexes[0].sparse);
         }
         return node.type;
       });
@@ -1939,9 +1930,10 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.index.type);
-          assertTrue(node.index.unique);
-          assertTrue(node.index.sparse);
+          assertEqual(1, node.indexes.length);
+          assertEqual("hash", node.indexes[0].type);
+          assertTrue(node.indexes[0].unique);
+          assertTrue(node.indexes[0].sparse);
         }
         return node.type;
       });
@@ -1967,9 +1959,10 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.index.type);
-          assertFalse(node.index.unique);
-          assertTrue(node.index.sparse);
+          assertEqual(1, node.indexes.length);
+          assertEqual("hash", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertTrue(node.indexes[0].sparse);
         }
         return node.type;
       });
@@ -1995,9 +1988,10 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.index.type);
-          assertFalse(node.index.unique);
-          assertTrue(node.index.sparse);
+          assertEqual(1, node.indexes.length);
+          assertEqual("hash", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertTrue(node.indexes[0].sparse);
         }
         return node.type;
       });
@@ -2078,9 +2072,10 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.index.type);
-          assertFalse(node.index.unique);
-          assertFalse(node.index.sparse);
+          assertEqual(1, node.indexes.length);
+          assertEqual("hash", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertFalse(node.indexes[0].sparse);
         }
         return node.type;
       });
@@ -2111,9 +2106,10 @@ function optimizerIndexesTestSuite () {
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           if (node.type === "IndexNode") {
-            assertEqual("hash", node.index.type);
-            assertFalse(node.index.unique);
-            assertTrue(node.index.sparse);
+            assertEqual(1, node.indexes.length);
+            assertEqual("hash", node.indexes[0].type);
+            assertFalse(node.indexes[0].unique);
+            assertTrue(node.indexes[0].sparse);
           }
           return node.type;
         });
@@ -2201,9 +2197,10 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.index.type);
-          assertFalse(node.index.unique);
-          assertFalse(node.index.sparse);
+          assertEqual(1, node.indexes.length);
+          assertEqual("hash", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertFalse(node.indexes[0].sparse);
         }
         return node.type;
       });
@@ -2229,9 +2226,10 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.index.type);
-          assertFalse(node.index.unique);
-          assertTrue(node.index.sparse);
+          assertEqual(1, node.indexes.length);
+          assertEqual("skiplist", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertTrue(node.indexes[0].sparse);
         }
         return node.type;
       });
@@ -2257,9 +2255,10 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.index.type);
-          assertTrue(node.index.unique);
-          assertTrue(node.index.sparse);
+          assertEqual(1, node.indexes.length);
+          assertEqual("skiplist", node.indexes[0].type);
+          assertTrue(node.indexes[0].unique);
+          assertTrue(node.indexes[0].sparse);
         }
         return node.type;
       });
@@ -2285,9 +2284,10 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.index.type);
-          assertFalse(node.index.unique);
-          assertTrue(node.index.sparse);
+          assertEqual(1, node.indexes.length);
+          assertEqual("skiplist", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertTrue(node.indexes[0].sparse);
         }
         return node.type;
       });
@@ -2313,9 +2313,10 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.index.type);
-          assertFalse(node.index.unique);
-          assertTrue(node.index.sparse);
+          assertEqual(1, node.indexes.length);
+          assertEqual("skiplist", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertTrue(node.indexes[0].sparse);
         }
         return node.type;
       });
@@ -2396,9 +2397,10 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.index.type);
-          assertFalse(node.index.unique);
-          assertFalse(node.index.sparse);
+          assertEqual(1, node.indexes.length);
+          assertEqual("skiplist", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertFalse(node.indexes[0].sparse);
         }
         return node.type;
       });
@@ -2429,9 +2431,10 @@ function optimizerIndexesTestSuite () {
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           if (node.type === "IndexNode") {
-            assertEqual("skiplist", node.index.type);
-            assertFalse(node.index.unique);
-            assertTrue(node.index.sparse);
+            assertEqual(1, node.indexes.length);
+            assertEqual("skiplist", node.indexes[0].type);
+            assertFalse(node.indexes[0].unique);
+            assertTrue(node.indexes[0].sparse);
           }
           return node.type;
         });
@@ -2465,12 +2468,12 @@ function optimizerIndexesTestSuite () {
           return node.type;
         });
 
-        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
         var results = AQL_EXECUTE(query);
         assertEqual([ 2 ], results.json, query);
-        assertEqual(0, results.stats.scannedIndex);
-        assertTrue(results.stats.scannedFull > 0);
+        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(0, results.stats.scannedFull);
       });
     },
 
@@ -2519,9 +2522,10 @@ function optimizerIndexesTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.index.type);
-          assertFalse(node.index.unique);
-          assertFalse(node.index.sparse);
+          assertEqual(1, node.indexes.length);
+          assertEqual("skiplist", node.indexes[0].type);
+          assertFalse(node.indexes[0].unique);
+          assertFalse(node.indexes[0].sparse);
         }
         return node.type;
       });
