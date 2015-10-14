@@ -31,6 +31,8 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 
+#include <iostream>
+
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
     
@@ -115,23 +117,19 @@ bool ConditionFinder::before (ExecutionNode* en) {
       for (auto& it : _variableDefinitions) {
         if (_filters.find(it.first) != _filters.end()) {
           // a variable used in a FILTER
-
-          // now check if all variables from the FILTER condition are still valid here
-          Ast::getReferencedVariables(it.second, varsUsed);
-          bool valid = true;
-          for (auto& it2 : varsUsed) {
-            if (varsValid.find(it2) == varsValid.end()) {
-              valid = false;
-            }
-          }
-
-          if (valid) {
-            condition->andCombine(it.second);
-          }
+          condition->andCombine(it.second);
         }
       }
 
+      // normalize the condition
       condition->normalize(_plan);
+
+      // remove all invalid variables from the condition
+      if (condition->removeInvalidVariables(varsValid)) {
+        // removing left a previously non-empty OR block empty...
+        // this means we can't use the index to restrict the results
+        break;
+      }
     
       std::unique_ptr<SortCondition> sortCondition; 
       if (! en->isInInnerLoop()) {
