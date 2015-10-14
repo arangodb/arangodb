@@ -120,6 +120,11 @@ namespace triagens {
                    std::string const& errorMessage,
                    char const* file,
                    int line);
+        
+        Exception (int code,
+                   char const* errorMessage,
+                   char const* file,
+                   int line);
 
         ~Exception () throw ();
 
@@ -127,7 +132,7 @@ namespace triagens {
         char const * what () const throw (); 
         std::string message () const throw ();
         int code () const throw ();
-        void addToMessage (std::string More);
+        void addToMessage (std::string const&);
 
       protected:
         std::string       _errorMessage;

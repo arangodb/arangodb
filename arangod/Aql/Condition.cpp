@@ -244,7 +244,8 @@ bool ConditionPart::isCoveredBy (ConditionPart const& other) const {
     [whichCompareOperation()];
 
   if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
-      res == CompareResult::CONVERT_EQUAL) { 
+      res == CompareResult::CONVERT_EQUAL ||
+      res == CompareResult::IMPOSSIBLE) { 
     return true;
   }
 
@@ -525,54 +526,12 @@ void Condition::normalize (ExecutionPlan* plan) {
   _root = fixRoot(_root, 0);
 
   optimize(plan);
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers an attribute access for a particular (collection) variable
-////////////////////////////////////////////////////////////////////////////////
-
-void Condition::storeAttributeAccess (VariableUsageType& variableUsage, 
-                                      AstNode const* node, 
-                                      size_t position, 
-                                      AttributeSideType side) {
-
-  std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
-          
-  if (! node->isAttributeAccessForVariable(result)) {
-    return;
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  if (_root != nullptr) {
+    validateAst(_root, 0);
   }
-
-  auto variable = result.first;
-
-  if (variable != nullptr) {
-    auto it = variableUsage.find(variable);
-
-    if (it == variableUsage.end()) {
-      // nothing recorded yet for variable
-      it = variableUsage.emplace(variable, AttributeUsageType()).first;
-    }
-
-    std::string attributeName;
-    TRI_AttributeNamesToString(result.second, attributeName, false);
-
-    auto it2 = (*it).second.find(attributeName);
-        
-    if (it2 == (*it).second.end()) {
-      // nothing recorded yet for attribute name in this variable
-      it2 = (*it).second.emplace(attributeName, UsagePositionType()).first;
-    }
-          
-    auto& dst = (*it2).second;
-
-    if (! dst.empty() && dst.back().first == position) {
-      // already have this attribute for this variable. can happen in case a condition refers to itself (e.g. a.x == a.x)
-      // in this case, we won't optimize it
-      dst.erase(dst.begin() + dst.size() - 1);
-    }
-    else {
-      dst.emplace_back(position, side);
-    }
-  }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -821,6 +780,7 @@ fastForwardToNextOrItem:
 /// @brief removes condition parts from another
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 AstNode const* Condition::removeIndexCondition (Variable const* variable,
                                                 AstNode const* other) {
   if (_root == nullptr || other == nullptr) {
@@ -836,7 +796,7 @@ AstNode const* Condition::removeIndexCondition (Variable const* variable,
   if (other->numMembers() != 1 && _root->numMembers() != 1) {
     return _root;
   }
-  
+    
   auto andNode = _root->getMemberUnchecked(0);
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
   size_t const n = andNode->numMembers();
@@ -975,6 +935,82 @@ bool Condition::removeInvalidVariables (std::unordered_set<Variable const*> cons
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief registers an attribute access for a particular (collection) variable
+////////////////////////////////////////////////////////////////////////////////
+
+void Condition::storeAttributeAccess (VariableUsageType& variableUsage, 
+                                      AstNode const* node, 
+                                      size_t position, 
+                                      AttributeSideType side) {
+
+  std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
+          
+  if (! node->isAttributeAccessForVariable(result)) {
+    return;
+  }
+
+  auto variable = result.first;
+
+  if (variable != nullptr) {
+    auto it = variableUsage.find(variable);
+
+    if (it == variableUsage.end()) {
+      // nothing recorded yet for variable
+      it = variableUsage.emplace(variable, AttributeUsageType()).first;
+    }
+
+    std::string attributeName;
+    TRI_AttributeNamesToString(result.second, attributeName, false);
+
+    auto it2 = (*it).second.find(attributeName);
+        
+    if (it2 == (*it).second.end()) {
+      // nothing recorded yet for attribute name in this variable
+      it2 = (*it).second.emplace(attributeName, UsagePositionType()).first;
+    }
+          
+    auto& dst = (*it2).second;
+
+    if (! dst.empty() && dst.back().first == position) {
+      // already have this attribute for this variable. can happen in case a condition refers to itself (e.g. a.x == a.x)
+      // in this case, we won't optimize it
+      dst.erase(dst.begin() + dst.size() - 1);
+    }
+    else {
+      dst.emplace_back(position, side);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate the condition's AST
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+void Condition::validateAst (AstNode const* node, 
+                             int level) {
+  return; // TODO: re-enable
+  if (level == 0) {
+    TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR);
+  }
+    
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    auto sub = node->getMemberUnchecked(i);
+    if (level == 0) {
+      TRI_ASSERT(sub->type == NODE_TYPE_OPERATOR_NARY_AND);
+    }
+    else {
+      TRI_ASSERT(sub->type != NODE_TYPE_OPERATOR_NARY_OR &&
+                 sub->type != NODE_TYPE_OPERATOR_NARY_AND);
+    }
+
+    validateAst(sub, level + 1);
+  }
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the current condition is covered by the other
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1072,6 +1108,10 @@ AstNode* Condition::mergeInOperations (AstNode const* lhs,
 
   return _ast->createNodeMergedArray(lValue, rValue);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts binary logical operators into n-ary operators
+////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Condition::transformNode (AstNode* node) {
   if (node == nullptr) {
@@ -1198,6 +1238,10 @@ AstNode* Condition::transformNode (AstNode* node) {
   return node;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Collapses nested logical AND/OR nodes
+////////////////////////////////////////////////////////////////////////////////
+
 AstNode* Condition::collapseNesting (AstNode* node) {
   if (node == nullptr) {
     return nullptr;
@@ -1231,6 +1275,12 @@ AstNode* Condition::collapseNesting (AstNode* node) {
 
   return node;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Creates a top-level OR node if it does not already exist, and make 
+/// sure that all second level nodes are AND nodes. Additionally, this step will
+/// remove all NOP nodes.
+////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Condition::fixRoot (AstNode* node, int level) {
   if (node == nullptr) {

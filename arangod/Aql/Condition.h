@@ -224,15 +224,6 @@ namespace triagens {
         void normalize (ExecutionPlan* plan);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registers an attribute access for a particular (collection) variable
-////////////////////////////////////////////////////////////////////////////////
-
-        void storeAttributeAccess (VariableUsageType&,
-                                   AstNode const*, 
-                                   size_t, 
-                                   AttributeSideType);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief optimize the condition expression tree
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -268,6 +259,24 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief registers an attribute access for a particular (collection) variable
+////////////////////////////////////////////////////////////////////////////////
+
+        void storeAttributeAccess (VariableUsageType&,
+                                   AstNode const*, 
+                                   size_t, 
+                                   AttributeSideType);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate the condition's AST
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+        void validateAst (AstNode const*, 
+                          int);
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the current condition covers the other
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -288,7 +297,7 @@ namespace triagens {
         AstNode* mergeInOperations (AstNode const*, AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief transforms the AstNode
+/// @brief converts binary logical operators into n-ary operators
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* transformNode (AstNode*);
@@ -300,9 +309,9 @@ namespace triagens {
         AstNode* collapseNesting (AstNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Creates a top-level OR node if it does not already exist, and make sure that all second
-///        level nodes are AND nodes. Additionally, this processing step will
-///        remove all NOP nodes.
+/// @brief Creates a top-level OR node if it does not already exist, and make 
+/// sure that all second level nodes are AND nodes. Additionally, this step will
+/// remove all NOP nodes.
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* fixRoot (AstNode*, int);
