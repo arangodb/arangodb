@@ -189,13 +189,17 @@ bool ConditionPart::isCoveredBy (ConditionPart const& other) const {
       other.valueNode->isArray()) {
     // compare an EQ with an IN
     if (operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      // TODO: currently this code will not fire
+      // only activate it when it is confirmed that this code path is tested
+      /*
       size_t const n = other.valueNode->numMembers();
+
       for (size_t i = 0; i < n; ++i) {
         auto v = other.valueNode->getMemberUnchecked(i);
   
         ConditionPartCompareResult res = ConditionPart::ResultsTable
           [CompareAstNodes(v, valueNode, false) + 1] 
-          [0 /* NODE_TYPE_OPERATOR_BINARY_EQ*/ ]
+          [0] // NODE_TYPE_OPERATOR_BINARY_EQ
           [whichCompareOperation()];
   
         if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
@@ -203,6 +207,7 @@ bool ConditionPart::isCoveredBy (ConditionPart const& other) const {
           return true;
         }
       }
+      */
     }
     else if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
              valueNode->isConstant() &&
