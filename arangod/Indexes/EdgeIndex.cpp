@@ -439,7 +439,7 @@ EdgeIndex::~EdgeIndex () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a selectivity esimtate for the index
+/// @brief return a selectivity estimate for the index
 ////////////////////////////////////////////////////////////////////////////////
 
 double EdgeIndex::selectivityEstimate () const {  

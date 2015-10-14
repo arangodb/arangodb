@@ -31,8 +31,6 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 
-#include <iostream>
-
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
     
@@ -146,13 +144,24 @@ bool ConditionFinder::before (ExecutionNode* en) {
       }
 
       std::vector<Index const*> usedIndexes;
-      if (condition->findIndexes(node, usedIndexes, sortCondition.get())) {
+      auto canUseIndex = condition->findIndexes(node, usedIndexes, sortCondition.get());
+
+      if (canUseIndex.first || canUseIndex.second) {
         bool reverse = false;
-        if (sortCondition->isUnidirectional()) {
+        if (canUseIndex.second &&
+            sortCondition->isUnidirectional()) {
           reverse = sortCondition->isDescending();
         }
 
+        if (! canUseIndex.first) {
+          // index cannot be used for filtering, but only for sorting
+          TRI_ASSERT(canUseIndex.second);
+          condition.reset(new Condition(_plan->getAst()));
+          condition->normalize(_plan);
+        }
+        
         TRI_ASSERT(! usedIndexes.empty());
+
           // We either can find indexes for everything or findIndexes will clear out usedIndexes
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
           _plan, 

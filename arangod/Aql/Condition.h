@@ -49,6 +49,15 @@ namespace triagens {
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
+    enum ConditionPartCompareResult {
+      IMPOSSIBLE              = 0,
+      SELF_CONTAINED_IN_OTHER = 1,
+      OTHER_CONTAINED_IN_SELF = 2,
+      DISJOINT                = 3,
+      CONVERT_EQUAL           = 4,
+      UNKNOWN                 = 5
+    };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief side on which an attribute occurs in a condition
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,22 +72,17 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     struct ConditionPart {
-      enum ConditionPartCompareResult {
-        IMPOSSIBLE              = 0,
-        SELF_CONTAINED_IN_OTHER = 1,
-        OTHER_CONTAINED_IN_SELF = 2,
-        DISJOINT                = 3,
-        CONVERT_EQUAL           = 4,
-        UNKNOWN                 = 5
-      };
-
       static ConditionPartCompareResult const ResultsTable[3][7][7];
 
       ConditionPart () = delete;
 
       ConditionPart (Variable const*,
                      std::string const&,
-                     size_t,
+                     AstNode const*,
+                     AttributeSideType);
+      
+      ConditionPart (Variable const*,
+                     std::vector<triagens::basics::AttributeName> const&,
                      AstNode const*,
                      AttributeSideType);
 
@@ -103,20 +107,18 @@ namespace triagens {
         }
       }
 
-#if 0
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dump the condition for debug purposes
+/// @brief true if the condition is completely covered by the other condition
 ////////////////////////////////////////////////////////////////////////////////
 
-      void dump () const;
-#endif      
-      
+      bool isCoveredBy (ConditionPart const&) const;
+
       Variable const*             variable;
-      std::string const           attributeName;
-      size_t                      sourcePosition;
+      std::string                 attributeName;
       AstNodeType                 operatorType;
       AstNode const*              operatorNode;
       AstNode const*              valueNode;
+      bool                        isExpanded;
     };
 
 // -----------------------------------------------------------------------------
@@ -237,6 +239,13 @@ namespace triagens {
         void optimize (ExecutionPlan* plan);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief removes condition parts from another
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode const* removeIndexCondition (Variable const*,
+                                             AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief remove (now) invalid variables from the condition
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -244,25 +253,26 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate indexes which can be used for conditions
+/// return value is a pair indicating whether the index can be used for
+/// filtering(first) and sorting(second)
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool findIndexes (EnumerateCollectionNode const*, 
-                          std::vector<Index const*>&, 
-                          SortCondition const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dump the condition
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-        void dump () const;
-#endif        
+        std::pair<bool, bool> findIndexes (EnumerateCollectionNode const*, 
+                                           std::vector<Index const*>&, 
+                                           SortCondition const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if the current condition covers the other
+////////////////////////////////////////////////////////////////////////////////
+
+        bool canRemove (ConditionPart const&,
+                        AstNode const*) const; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deduplicate IN condition values
@@ -311,11 +321,11 @@ namespace triagens {
 /// @brief finds the best index that can match this single node
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool findIndexForAndNode (size_t,
-                                  Variable const*, 
-                                  EnumerateCollectionNode const*, 
-                                  std::vector<Index const*>&,
-                                  SortCondition const*);
+        std::pair<bool, bool> findIndexForAndNode (size_t,
+                                                   Variable const*, 
+                                                   EnumerateCollectionNode const*, 
+                                                   std::vector<Index const*>&,
+                                                   SortCondition const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

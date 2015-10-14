@@ -1999,6 +1999,7 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
                                                     ExecutionPlan* plan,
                                                     Optimizer::Rule const* rule) {
   std::unordered_set<ExecutionNode*> toUnlink;
+  bool modified = false;
   std::vector<ExecutionNode*>&& nodes= plan->findNodesOfType(EN::FILTER, true); 
   
   for (auto const& node : nodes) {
@@ -2013,9 +2014,12 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
       continue;
     }
         
+    auto calculationNode = static_cast<CalculationNode*>(setter);
+    auto conditionNode = calculationNode->expression()->node();
+
     // build the filter condition 
     std::unique_ptr<Condition> condition(new Condition(plan->getAst()));
-    condition->andCombine(static_cast<CalculationNode const*>(setter)->expression()->node());
+    condition->andCombine(conditionNode);
     condition->normalize(plan);
 
     if (condition->root() == nullptr) {
@@ -2038,16 +2042,32 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
         // found an index node, now check if the expression is covered by the index
         auto indexCondition = indexNode->condition();
 
-        if (indexCondition != nullptr) {
+        if (indexCondition != nullptr && ! indexCondition->isEmpty()) {
           auto const& indexesUsed = indexNode->getIndexes();
 
           if (indexesUsed.size() == 1) {
             // single index. this is something that we can handle
 
-            if (false) {
-              // TODO: check if filter condition contained in index condition
+            auto newNode = condition->removeIndexCondition(indexNode->outVariable(), indexCondition->root());
+
+            if (newNode == nullptr) {
+              // no condition left...
+              // FILTER node can be completely removed
               toUnlink.emplace(setter);
               toUnlink.emplace(node);
+              modified = true;
+              handled = true;
+            }
+            else if (newNode != condition->root()) {
+              // some condition is left, but it is a different one than
+              // the one from the FILTER node
+              std::unique_ptr<Expression> expr(new Expression(plan->getAst(), newNode));
+              CalculationNode* cn = new CalculationNode(plan, plan->nextId(), expr.get(), calculationNode->outVariable());
+              expr.release();
+              plan->registerNode(cn);
+              plan->replaceNode(setter, cn);
+              modified = true;
+              handled = true;
             }
           }
         }
@@ -2068,13 +2088,12 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
       current = current->getFirstDependency();
     }
   }
-
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule, ! toUnlink.empty());
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }

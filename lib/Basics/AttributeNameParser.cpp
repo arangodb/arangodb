@@ -33,6 +33,25 @@
 
 using AttributeName = triagens::basics::AttributeName;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two attribute name vectors
+////////////////////////////////////////////////////////////////////////////////
+      
+bool triagens::basics::AttributeName::isIdentical (std::vector<AttributeName> const& lhs,
+                                                   std::vector<AttributeName> const& rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < lhs.size(); ++i) {
+    if (lhs[i] != rhs[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 void triagens::basics::TRI_ParseAttributeString (std::string const& input,
                                                  std::vector<AttributeName>& result) {
   size_t parsedUntil = 0;

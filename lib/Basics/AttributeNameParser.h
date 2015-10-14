@@ -72,6 +72,12 @@ namespace triagens {
         return name != other.name || shouldExpand != other.shouldExpand;
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two attribute name vectors
+////////////////////////////////////////////////////////////////////////////////
+
+      static bool isIdentical (std::vector<AttributeName> const&,
+                               std::vector<AttributeName> const&);
     };
 
 // -----------------------------------------------------------------------------
@@ -110,7 +116,7 @@ namespace triagens {
 
   }
 }
-    
+      
 std::ostream& operator<< (std::ostream&, triagens::basics::AttributeName const*);
 std::ostream& operator<< (std::ostream&, triagens::basics::AttributeName const&);
 std::ostream& operator<< (std::ostream&, std::vector<triagens::basics::AttributeName> const*);
