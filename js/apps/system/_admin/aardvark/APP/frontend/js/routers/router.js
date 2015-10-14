@@ -21,27 +21,10 @@
       "applications": "applications",
       "applications/:mount": "applicationDetail",
       "graph": "graphManagement",
-      "graph2": "graph2",
       "graph/:name": "showGraph",
       "userManagement": "userManagement",
       "userProfile": "userProfile",
-      "logs": "logs",
-      "demo": "demo",
-      "demo/:collection": "demo"
-    },
-
-    demo: function (collection) {
-      if (!collection) {
-        collection = "flights";
-      }
-      if (!this.demoView) {
-        this.demoView = new window.DemoView({
-          collectionName: collection
-        });
-      }
-
-      this.demoView.render();
-      //this.naviView.selectMenuItem('demo-menu');
+      "logs": "logs"
     },
 
     initialize: function () {
@@ -285,15 +268,6 @@
         });
       }
       this.dashboardView.render();
-    },
-
-    graph2: function () {
-      if (!this.checkUser()) {
-        return;
-      }
-      this.graphTestView = new window.GraphTestView();
-      this.graphTestView.render();
-      this.naviView.selectMenuItem('graphviewer-menu');
     },
 
     graphManagement: function () {

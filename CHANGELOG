@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
@@ -23,6 +24,13 @@ v2.8.0 (XXXX-XX-XX)
       FOR doc IN colName 
         FILTER "ArangoDB" IN doc.tags 
         RETURN doc
+
+
+v2.7.1 (XXXX-XX-XX)
+-------------------
+
+* fixed hard-coded `incremental` parameter in shell implementation of
+  `syncCollection` function in replication module
 
 
 v2.7.0 (2015-10-09)

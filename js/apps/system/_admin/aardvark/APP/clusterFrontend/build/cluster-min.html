@@ -479,6 +479,7 @@
 
     %>
       <li class="tile">
+        <div class="borderBox"></div>
         <a class="coordinator single <%=statusClass(c.get('status'))%>" id="<%=id%>">
           <span class="fa fa-compass icon"></span>
         </a>
@@ -490,6 +491,7 @@
         id = createID(c.get("address"));
     %>
       <li class="tile">
+        <div class="borderBox"></div>
         <a class="dbserver single <%=statusClass(c.get('status'))%>" id="<%=id%>">
           <img src="img/databaseIcon.svg" class="icon svgToReplace"/>
         </a>
@@ -508,6 +510,7 @@
         }
   %>
       <li class="tile">
+        <div class="borderBox"></div>
         <% _.each(s.coords, function(c) {
           url = c.get("protocol")
             + "://"
