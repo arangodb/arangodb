@@ -376,6 +376,8 @@ TRI_doc_mptr_t* EdgeIndexIterator::next () {
 
     // found no result. now go to next lookup value in _keys
     ++_position;
+    // reset the _last value
+    _last = nullptr;
   }
 }
 
