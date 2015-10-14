@@ -86,8 +86,6 @@ function optimizerIndexesTestSuite () {
         });
 
         assertNotEqual(-1, plan.rules.indexOf("propagate-constant-attributes"));
-        require("internal").print("### 89 ###");
-        require("org/arangodb/aql/explainer").explain({query: query, options: {optimizer: {rules: ["-propagate-constant-attributes"]}}});
         assertEqual(2, indexNodes);
 
         var results = AQL_EXECUTE(query);
@@ -764,8 +762,6 @@ function optimizerIndexesTestSuite () {
         if (node.type === "IndexNode") {
           assertEqual("skiplist", node.indexes[0].type);
           assertTrue(node.indexes[0].unique);
-          require("internal").print("###### 775");
-          require("internal").print(node.indexes);
         }
         return node.type;
       });
@@ -797,9 +793,7 @@ function optimizerIndexesTestSuite () {
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 1 ], results.json, query);
-      require("internal").print("##############798");
-      require("internal").print(results.stats);
-      assertEqual(results.stats.scannedIndex > 0);
+      assertTrue(results.stats.scannedIndex > 0);
       assertEqual(0, results.stats.scannedFull);
     },
 
@@ -2478,8 +2472,8 @@ function optimizerIndexesTestSuite () {
 
         var results = AQL_EXECUTE(query);
         assertEqual([ 2 ], results.json, query);
-        assertEqual(0, results.stats.scannedIndex);
-        assertTrue(results.stats.scannedFull > 0);
+        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(0, results.stats.scannedFull);
       });
     },
 
