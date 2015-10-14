@@ -675,7 +675,6 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        require("org/arangodb/aql/explainer").explain(query);
         // no index is used for sorting
         assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
