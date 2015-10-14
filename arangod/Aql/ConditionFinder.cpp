@@ -107,9 +107,6 @@ bool ConditionFinder::before (ExecutionNode* en) {
         break;
       }
 
-      auto const& varsValid = node->getVarsValid();
-      std::unordered_set<Variable const*> varsUsed;
-
       std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
 
       for (auto& it : _variableDefinitions) {
@@ -121,6 +118,8 @@ bool ConditionFinder::before (ExecutionNode* en) {
 
       // normalize the condition
       condition->normalize(_plan);
+
+      auto const& varsValid = node->getVarsValid();
 
       // remove all invalid variables from the condition
       if (condition->removeInvalidVariables(varsValid)) {
