@@ -36,6 +36,7 @@
 #include "Basics/json-utilities.h"
 #include "VocBase/server.h"
 #include "VocBase/VocShaper.h"
+#include <iostream>
 
 using namespace triagens::arango;
 

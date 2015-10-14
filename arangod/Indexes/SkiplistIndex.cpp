@@ -1213,16 +1213,19 @@ bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* s
                                            double& estimatedCost) const {
   TRI_ASSERT(sortCondition != nullptr);
 
-  if (! _useExpansion &&
-      sortCondition->isUnidirectional() && 
-      sortCondition->isOnlyAttributeAccess()) {
+  if (! _sparse) {
+    // only non-sparse indexes can be used for sorting
+    if (! _useExpansion &&
+        sortCondition->isUnidirectional() && 
+        sortCondition->isOnlyAttributeAccess()) {
 
-    size_t const coveredAttributes = sortCondition->coveredAttributes(reference, _fields);
+      size_t const coveredAttributes = sortCondition->coveredAttributes(reference, _fields);
 
-    if (coveredAttributes >= sortCondition->numAttributes()) {
-      // sort is fully covered by index. no additional sort costs!
-      estimatedCost = 0.0;
-      return true;
+      if (coveredAttributes >= sortCondition->numAttributes()) {
+        // sort is fully covered by index. no additional sort costs!
+        estimatedCost = 0.0;
+        return true;
+      }
     }
   }
 

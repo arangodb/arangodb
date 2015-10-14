@@ -57,13 +57,12 @@ namespace triagens {
       ATTRIBUTE_LEFT,
       ATTRIBUTE_RIGHT
     };
-
+      
 // -----------------------------------------------------------------------------
 // --SECTION--                                              struct ConditionPart
 // -----------------------------------------------------------------------------
 
     struct ConditionPart {
-
       enum ConditionPartCompareResult {
         IMPOSSIBLE              = 0,
         SELF_CONTAINED_IN_OTHER = 1,
@@ -72,6 +71,7 @@ namespace triagens {
         CONVERT_EQUAL           = 4,
         UNKNOWN                 = 5
       };
+
       static ConditionPartCompareResult const ResultsTable[3][7][7];
 
       ConditionPart () = delete;
