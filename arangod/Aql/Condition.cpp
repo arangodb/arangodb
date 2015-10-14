@@ -452,6 +452,7 @@ void Condition::storeAttributeAccess (VariableUsageType& variableUsage,
   if (! node->isAttributeAccessForVariable(result)) {
     return;
   }
+
   auto variable = result.first;
 
   if (variable != nullptr) {
@@ -705,6 +706,196 @@ fastForwardToNextOrItem:
     }
   }
 }
+/*
+ConditionPartCompareResult Condition::compare (Condition const* other) {
+  if (_root == nullptr) {
+    return CompareResult::UNKNOWN;
+  } 
+
+  TRI_ASSERT(_root != nullptr);
+  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
+
+  // handle sub nodes of top-level OR node
+  size_t const n = _root->numMembers();
+  
+  if (n != 1) {
+    return CompareResult::UNKNOWN;
+  }
+
+  for (size_t i = 0; i < n; ++i) {
+    auto andNode = _root->getMemberUnchecked(i);
+    TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+
+    size_t const andNumMembers = andNode->numMembers();
+    VariableUsageType variableUsage;
+ 
+    for (size_t j = 0; j < andNumMembers; ++j) {
+      auto operand = andNode->getMemberUnchecked(j);
+
+      if (operand->isComparisonOperator()) {
+        auto lhs = operand->getMember(0);
+        auto rhs = operand->getMember(1);
+
+        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          storeAttributeAccess(variableUsage, lhs, j, ATTRIBUTE_LEFT);
+        }
+        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+            rhs->type == NODE_TYPE_EXPANSION) {
+          storeAttributeAccess(variableUsage, rhs, j, ATTRIBUTE_RIGHT);
+        }
+      }
+    }
+
+    // now find the variables and attributes for which there are multiple conditions
+    for (auto const& it : variableUsage) { // foreach sub-and-node
+      auto variable = it.first;
+
+      for (auto const& it2 : it.second) { // cross compare sub-and-nodes
+        auto const& attributeName = it2.first;
+        auto const& positions = it2.second;
+
+        if (positions.size() <= 1) {
+          // none or only one occurence of the attribute
+          continue;
+        }
+
+        // multiple occurrences of the same attribute
+        auto leftNode = andNode->getMemberUnchecked(positions[0].first);
+
+        ConditionPart current(variable, attributeName, 0, leftNode, positions[0].second);
+
+        if (! current.valueNode->isConstant()) {
+          continue;
+        }
+
+        // current.dump();
+        size_t j = 1;
+
+        while (j < positions.size()) {
+          auto rightNode = andNode->getMemberUnchecked(positions[j].first);
+
+          ConditionPart other(variable, attributeName, j, rightNode, positions[j].second);
+
+          if (! other.valueNode->isConstant()) {
+            ++j;
+            continue;
+          }
+
+          // IN-merging 
+          if (leftNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
+              leftNode->getMemberUnchecked(1)->isConstant()) {
+            TRI_ASSERT(leftNode->numMembers() == 2);
+
+            if (rightNode->type == NODE_TYPE_OPERATOR_BINARY_IN &&
+                rightNode->getMemberUnchecked(1)->isConstant()) {
+              // merge IN with IN on same attribute
+              TRI_ASSERT(rightNode->numMembers() == 2);
+
+              auto merged = _ast->createNodeBinaryOperator(
+                  NODE_TYPE_OPERATOR_BINARY_IN, 
+                  leftNode->getMemberUnchecked(0), 
+                  mergeInOperations(leftNode, rightNode)
+                  );
+              andNode->removeMemberUnchecked(positions[j].first);
+              andNode->changeMember(positions[0].first, merged);
+              goto restartThisOrItem;
+            }
+            else if (rightNode->isSimpleComparisonOperator()) {
+              // merge other comparison operator with IN
+              TRI_ASSERT(rightNode->numMembers() == 2);
+
+              auto inNode = _ast->createNodeArray();
+              auto values = leftNode->getMemberUnchecked(1);
+
+              for (size_t k = 0; k < values->numMembers(); ++k) {
+                auto value = values->getMemberUnchecked(k);
+                ConditionPart::ConditionPartCompareResult res = ConditionPart::ResultsTable
+                  [CompareAstNodes(value, other.valueNode, false) + 1]
+                  [0 NODE_TYPE_OPERATOR_BINARY_EQ]
+                  [other.whichCompareOperation()];
+
+                bool const keep = (res == CompareResult::OTHER_CONTAINED_IN_SELF || res == CompareResult::CONVERT_EQUAL);
+                if (keep) {
+                  inNode->addMember(value);
+                }
+              }
+
+              if (inNode->numMembers() == 0) {
+                // no values left after merging -> IMPOSSIBLE
+                _root->removeMemberUnchecked(r);
+                retry = true;
+                goto fastForwardToNextOrItem;
+              }
+
+              // use the new array of values
+              andNode->getMemberUnchecked(positions[0].first)->changeMember(1, inNode);
+              // remove the other operator
+              andNode->removeMemberUnchecked(positions[j].first);
+              goto restartThisOrItem;
+            }
+          }
+          // end of IN-merging
+
+          // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
+          ConditionPart::ConditionPartCompareResult res = ConditionPart::ResultsTable
+            [CompareAstNodes(current.valueNode, other.valueNode, false) + 1] 
+            [current.whichCompareOperation()]
+            [other.whichCompareOperation()];
+
+          switch (res) {
+            case CompareResult::IMPOSSIBLE: {
+              // impossible condition
+              // j = positions.size(); 
+              // we remove this one, so fast forward the loops to their end:
+              _root->removeMemberUnchecked(r);
+              retry = true;
+              goto fastForwardToNextOrItem;
+            }
+            case CompareResult::SELF_CONTAINED_IN_OTHER: {
+              andNode->removeMemberUnchecked(positions[0].first);
+              goto restartThisOrItem;
+            }
+            case CompareResult::OTHER_CONTAINED_IN_SELF: { 
+              andNode->removeMemberUnchecked(positions[j].first);
+              goto restartThisOrItem;
+            }
+            case CompareResult::CONVERT_EQUAL: { /// beide gehen, werden umgeformt zu a == x (== y)
+              andNode->removeMemberUnchecked(positions[j].first);
+              auto origNode = andNode->getMemberUnchecked(positions[0].first);
+              auto newNode = plan->getAst()->createNode(NODE_TYPE_OPERATOR_BINARY_EQ);
+              for (size_t iMemb = 0; iMemb < origNode->numMembers(); iMemb++) {
+                newNode->addMember(origNode->getMemberUnchecked(iMemb));
+              }
+
+              andNode->changeMember(positions[0].first, newNode);
+              break;
+            }
+            case CompareResult::DISJOINT: {
+              break;
+            }
+            case CompareResult::UNKNOWN: {
+              break;
+            }
+          }
+
+          ++j;
+        }
+      } // cross compare sub-and-nodes
+    } // foreach sub-and-node
+
+fastForwardToNextOrItem:
+    if (retry) {
+      // number of root sub-nodes has probably changed.
+      // now recalculate the number and don't modify r!
+      n = _root->numMembers();
+    }
+    else {
+      // root nodes hasn't changed. go to next sub-node!
+      ++r;
+    }
+  }
+}
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove (now) invalid variables from the condition

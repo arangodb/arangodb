@@ -424,9 +424,15 @@ function processQuery (query, explain) {
       case "ternary":
         return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);
       case "n-ary or":
-        return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" || ");
+        if (node.hasOwnProperty("subNodes")) {
+          return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" || ");
+        }
+        return "";
       case "n-ary and":
-        return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" && ");
+        if (node.hasOwnProperty("subNodes")) {
+          return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" && ");
+        }
+        return "";
       default: 
         return "unhandled node type (" + node.type + ")";
     }
