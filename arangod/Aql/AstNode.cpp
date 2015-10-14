@@ -39,6 +39,10 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#include <iostream>
+#endif
+
 using namespace triagens::aql;
 using JsonHelper = triagens::basics::JsonHelper;
 using Json = triagens::basics::Json;
@@ -617,6 +621,33 @@ AstNode::~AstNode () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump the node (for debugging purposes)
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+void AstNode::dump (int level) const { 
+  for (int i = 0; i < level; ++i) {
+    std::cout << "  ";
+  }
+  std::cout << "- " << getTypeString();
+
+  if (type == NODE_TYPE_VALUE ||
+      type == NODE_TYPE_ARRAY) {
+    std::unique_ptr<TRI_json_t> json(toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+    std::cout << ": " << json.get();
+  }
+  std::cout << "\n";
+    
+  size_t const n = numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto sub = getMemberUnchecked(i);
+    sub->dump(level + 1);
+  }
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute the JSON for a constant value node

@@ -110,6 +110,8 @@ triagens::aql::AstNode* IndexBlock::makeUnique (triagens::aql::AstNode* node) co
 }
 
 void IndexBlock::executeExpressions () {
+  TRI_ASSERT(_condition != nullptr);
+
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
 
@@ -247,6 +249,8 @@ bool IndexBlock::initIndexes () {
   // Find out about the actual values for the bounds in the variable bound case:
 
   if (! _nonConstExpressions.empty()) {
+    TRI_ASSERT(_condition != nullptr);
+
     if (_hasV8Expression) {
       bool const isRunningInCluster = triagens::arango::ServerState::instance()->isRunningInCluster();
 
@@ -331,15 +335,16 @@ void IndexBlock::startNextIterator () {
     auto outVariable = node->outVariable();
     auto ast = node->_plan->getAst();
 
-    _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable, node->_reverse);
+    TRI_ASSERT(_indexes.size() == _condition->numMembers());
+
+    _iterator = _indexes[_currentIndex]->getIterator(
+      _context, 
+      ast, 
+      _condition->getMember(_currentIndex), 
+      outVariable, 
+      node->_reverse
+    );
   }
-  /*
-  else {
-    // If all indexes have been exhausted we set _iterator to nullptr;
-    delete _iterator;
-    _iterator = nullptr;
-  }
-  */
 }
 
 // this is called every time everything in _documents has been passed on

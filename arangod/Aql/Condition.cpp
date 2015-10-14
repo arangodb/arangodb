@@ -399,7 +399,20 @@ std::pair<bool, bool> Condition::findIndexes (EnumerateCollectionNode const* nod
   for (size_t i = 0; i < _root->numMembers(); ++i) {
     auto canUseIndex = findIndexForAndNode(i, reference, node, usedIndexes, sortCondition);
 
-    // fear...
+    if (canUseIndex.second && ! canUseIndex.first) {
+      // index can be used for sorting only
+      // we need to abort further searching and only return one index
+      TRI_ASSERT(! usedIndexes.empty());
+      if (usedIndexes.size() > 1) {
+        auto sortIndex = usedIndexes.back();
+
+        usedIndexes.clear();
+        usedIndexes.emplace_back(sortIndex);
+      }
+
+      return std::make_pair(false, true);
+    }
+
     canUseForFilter &= canUseIndex.first;
     canUseForSort   |= canUseIndex.second;
   }
@@ -522,13 +535,13 @@ void Condition::normalize (ExecutionPlan* plan) {
   }
 
   _root = transformNode(_root);
-  _root = collapseNesting(_root);
   _root = fixRoot(_root, 0);
 
   optimize(plan);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
+    // _root->dump(0);
     validateAst(_root, 0);
   }
 #endif
@@ -780,7 +793,6 @@ fastForwardToNextOrItem:
 /// @brief removes condition parts from another
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 AstNode const* Condition::removeIndexCondition (Variable const* variable,
                                                 AstNode const* other) {
   if (_root == nullptr || other == nullptr) {
@@ -989,7 +1001,6 @@ void Condition::storeAttributeAccess (VariableUsageType& variableUsage,
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 void Condition::validateAst (AstNode const* node, 
                              int level) {
-  return; // TODO: re-enable
   if (level == 0) {
     TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR);
   }
@@ -1110,6 +1121,35 @@ AstNode* Condition::mergeInOperations (AstNode const* lhs,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief merges the current node with the sub nodes of same type
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Condition::collapse (AstNode const* node) {
+  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR ||
+             node->type == NODE_TYPE_OPERATOR_NARY_AND);
+
+  auto newOperator = _ast->createNode(node->type);
+
+  size_t const n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto sub = node->getMemberUnchecked(i);
+
+    if (sub->type == node->type) {
+      // merge
+      for (size_t j = 0; j < sub->numMembers(); ++j) {
+        newOperator->addMember(sub->getMemberUnchecked(j));
+      }
+    }
+    else {
+      newOperator->addMember(sub);
+    }
+  }
+
+  return newOperator;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief converts binary logical operators into n-ary operators
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1134,25 +1174,47 @@ AstNode* Condition::transformNode (AstNode* node) {
              node->type != NODE_TYPE_OPERATOR_BINARY_OR);
 
   if (node->type == NODE_TYPE_OPERATOR_NARY_AND) {
-    // first recurse into subnodes
     bool processChildren = false;
+    bool mustCollapse = false;
     size_t const n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      node->changeMember(i, transformNode(node->getMemberUnchecked(i)));
+      // process subnodes first
+      auto sub = transformNode(node->getMemberUnchecked(i));
+      node->changeMember(i, sub);
 
-      if (node->type == NODE_TYPE_OPERATOR_NARY_OR ||
-          node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      if (sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
+          sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
         processChildren = true;
       }
+      else if (sub->type == NODE_TYPE_OPERATOR_NARY_AND) {
+        mustCollapse = true;
+      }
     }
-      
+    
     if (processChildren) {
+      // we found an AND with at least one OR child, e.g.
+      //        AND
+      //   OR          c
+      // a    b 
+      //
+      // we need to move the OR to the top by converting the condition to:
+      //         OR
+      //   AND        AND
+      //  a   c      b   c
+      //
       auto newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
 
       std::vector<PermutationState> permutationStates;
       for (size_t i = 0; i < n; ++i) {
-        permutationStates.emplace_back(PermutationState(node->getMemberUnchecked(i), node->numMembers()));
+        auto sub = node->getMemberUnchecked(i);
+
+        if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) { // || sub->type == NODE_TYPE_OPERATOR_NARY_AND) {
+          permutationStates.emplace_back(PermutationState(sub, sub->numMembers()));
+        }
+        else {
+          permutationStates.emplace_back(PermutationState(sub, 1));
+        }
       }
   
       size_t current = 0;
@@ -1187,20 +1249,37 @@ AstNode* Condition::transformNode (AstNode* node) {
         }
       }
 
-      return newOperator;
+      node = newOperator;
     }
-    // fallthrough intentional
+
+    if (mustCollapse) {
+      node = collapse(node);
+    }
+
+    return node;
   }
-  else if (node->type == NODE_TYPE_OPERATOR_NARY_OR) {
-    // recurse into subnodes
+
+  if (node->type == NODE_TYPE_OPERATOR_NARY_OR) {
     size_t const n = node->numMembers();
+    bool mustCollapse = false;
 
     for (size_t i = 0; i < n; ++i) {
-      node->changeMember(i, transformNode(node->getMemberUnchecked(i)));
+      auto sub = transformNode(node->getMemberUnchecked(i));
+      node->changeMember(i, sub);
+
+      if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {
+        mustCollapse = true;
+      }
     }
-    // fallthrough intentional
+
+    if (mustCollapse) {
+      node = collapse(node);
+    }
+
+    return node;
   }
-  else if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+
+  if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
     // push down logical negations
     auto sub = node->getMemberUnchecked(0);
 
@@ -1232,47 +1311,10 @@ AstNode* Condition::transformNode (AstNode* node) {
     }
 
     node->changeMember(0, transformNode(sub));
-    // fallthrough intentional
+
+    return node;
   }
   
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Collapses nested logical AND/OR nodes
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Condition::collapseNesting (AstNode* node) {
-  if (node == nullptr) {
-    return nullptr;
-  }
-
-  if (node->type == NODE_TYPE_OPERATOR_NARY_AND || 
-      node->type == NODE_TYPE_OPERATOR_NARY_OR) {
-    // first recurse into subnodes
-    size_t const n = node->numMembers();
-
-    for (size_t i = 0; i < n; ++i) {
-      auto sub = collapseNesting(node->getMemberUnchecked(i));
-
-      if (sub->type == node->type) {
-        // sub-node has the same type as parent node
-        // now merge the sub-nodes of the sub-node into the parent node
-        size_t const subNumMembers = sub->numMembers();
-
-        for (size_t j = 0; j < subNumMembers; ++j) {
-          node->addMember(sub->getMemberUnchecked(j));
-        }
-        // invalidate the child node which we just expanded
-        node->changeMember(i, _ast->createNodeNop());
-      }
-      else { 
-        // different type
-        node->changeMember(i, sub);
-      }
-    }
-  }
-
   return node;
 }
 
