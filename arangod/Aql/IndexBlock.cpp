@@ -174,11 +174,12 @@ int IndexBlock::initialize () {
     }
   };
 
-  auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
   if (_condition == nullptr) {
     // This Node has no condition. Iterate over the complete index. 
     return TRI_ERROR_NO_ERROR;
   }
+  
+  auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
 
   for (size_t i = 0; i < _condition->numMembers(); ++i) {
     auto andCond = _condition->getMemberUnchecked(i);

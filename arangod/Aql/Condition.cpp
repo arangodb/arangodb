@@ -181,25 +181,68 @@ bool ConditionPart::isCoveredBy (ConditionPart const& other) const {
     return false;
   }
 
-/*
-  // special case for IN...
+  // special cases for IN...
   if (! isExpanded && 
       ! other.isExpanded &&
-      operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-      other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
-    // compare two INs
+      other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+      other.valueNode->isConstant() &&
+      other.valueNode->isArray()) {
+    // compare an EQ with an IN
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      size_t const n = other.valueNode->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        auto v = other.valueNode->getMemberUnchecked(i);
+  
+        ConditionPartCompareResult res = ConditionPart::ResultsTable
+          [CompareAstNodes(v, valueNode, false) + 1] 
+          [0 /* NODE_TYPE_OPERATOR_BINARY_EQ*/ ]
+          [whichCompareOperation()];
+  
+        if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
+            res == CompareResult::CONVERT_EQUAL) { 
+          return true;
+        }
+      }
+    }
+    else if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+             valueNode->isConstant() &&
+             valueNode->isArray()) {
+      // compare IN with an IN
+      // this has quadratic complexity
+      size_t const n1 = valueNode->numMembers();
+      size_t const n2 = other.valueNode->numMembers();
+
+      // maximum number of comparisons that we will accept
+      // otherwise the optimization will be aborted
+      static size_t const MaxComparisons = 2048;
+
+      if (n1 * n2 < MaxComparisons) {
+        for (size_t i = 0; i < n1; ++i) {
+          auto v = valueNode->getMemberUnchecked(i);
+          for (size_t j = 0; j < n2; ++j) {
+            auto w = other.valueNode->getMemberUnchecked(j);
+    
+            ConditionPartCompareResult res = ConditionPart::ResultsTable[CompareAstNodes(v, w, false) + 1][0][0];
+    
+            if (res != CompareResult::OTHER_CONTAINED_IN_SELF && 
+                res != CompareResult::CONVERT_EQUAL && 
+                res != CompareResult::IMPOSSIBLE) { 
+              return false;
+            }
+          }
+        }
+
+        return true;
+      }
+    }
   }
-*/
+
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
   ConditionPartCompareResult res = ConditionPart::ResultsTable
     [CompareAstNodes(other.valueNode, valueNode, false) + 1] 
     [other.whichCompareOperation()]
     [whichCompareOperation()];
-/*     
-  std::cout << "VALUENODE: " << valueNode << ", OTHER VALUENODE: " << other.valueNode << "\n";
-  std::cout << "WHICHCOMP: " << whichCompareOperation() << ", OTHER WHICH: " << other.whichCompareOperation() << "\n";
-  std::cout << "IS COVERED BY CALLED. RES: " << (int) res << "\n";
-*/
+
   if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
       res == CompareResult::CONVERT_EQUAL) { 
     return true;
