@@ -511,9 +511,10 @@ function optimizerIndexesSortTestSuite () {
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           if (node.type === "IndexNode") {
-            assertEqual(idx.id.replace(/^.+\//g, ''), node.index.id);
-            assertEqual("skiplist", node.index.type);
-            assertTrue(node.index.sparse);
+            assertEqual(node.indexes.length, 1);
+            assertEqual(idx.id.replace(/^.+\//g, ''), node.indexes[0].id);
+            assertEqual("skiplist", node.indexes[0].type);
+            assertTrue(node.indexes[0].sparse);
           }
           return node.type;
         });
@@ -575,10 +576,10 @@ function optimizerIndexesSortTestSuite () {
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           if (node.type === "IndexNode") {
-            assertNotEqual(idx1.id.replace(/^.+\//g, ''), node.index.id);
-            assertEqual(idx2.id.replace(/^.+\//g, ''), node.index.id);
-            assertEqual("skiplist", node.index.type);
-            assertFalse(node.index.sparse);
+            assertNotEqual(idx1.id.replace(/^.+\//g, ''), node.indexes[0].id);
+            assertEqual(idx2.id.replace(/^.+\//g, ''), node.indexes[0].id);
+            assertEqual("skiplist", node.indexes[0].type);
+            assertFalse(node.indexes[0].sparse);
           }
           return node.type;
         });
@@ -610,9 +611,10 @@ function optimizerIndexesSortTestSuite () {
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           if (node.type === "IndexNode") {
-            assertEqual(idx.id.replace(/^.+\//g, ''), node.index.id);
-            assertEqual("skiplist", node.index.type);
-            assertTrue(node.index.sparse);
+            assertEqual(node.indexes.length, 1);
+            assertEqual(idx.id.replace(/^.+\//g, ''), node.indexes[0].id);
+            assertEqual("skiplist", node.indexes[0].type);
+            assertTrue(node.indexes[0].sparse);
           }
           return node.type;
         });
@@ -673,6 +675,7 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
+        require("org/arangodb/aql/explainer").explain(query);
         // no index is used for sorting
         assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
