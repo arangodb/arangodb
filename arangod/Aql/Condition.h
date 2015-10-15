@@ -79,12 +79,14 @@ namespace triagens {
       ConditionPart (Variable const*,
                      std::string const&,
                      AstNode const*,
-                     AttributeSideType);
+                     AttributeSideType,
+                     void*);
       
       ConditionPart (Variable const*,
                      std::vector<triagens::basics::AttributeName> const&,
                      AstNode const*,
-                     AttributeSideType);
+                     AttributeSideType,
+                     void*);
 
       ~ConditionPart ();
 
@@ -118,6 +120,7 @@ namespace triagens {
       AstNodeType                 operatorType;
       AstNode const*              operatorNode;
       AstNode const*              valueNode;
+      void*                       data;
       bool                        isExpanded;
     };
 
