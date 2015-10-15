@@ -27,6 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+// TODO: sort IN values
+
 #include "Condition.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -37,8 +39,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
-
-#include <iostream>
 
 using namespace triagens::aql;
 using CompareResult = ConditionPartCompareResult;
@@ -527,6 +527,9 @@ std::pair<bool, bool> Condition::findIndexForAndNode (size_t position,
   }
 
   _root->changeMember(position, bestIndex->specializeCondition(node, reference)); 
+#if 0
+  _isSorted = sortOrs();
+#endif  
 
   usedIndexes.emplace_back(bestIndex);
 
@@ -549,8 +552,6 @@ void Condition::normalize (ExecutionPlan* plan) {
 
   optimize(plan);
 
-  fixOrs(plan);
-
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
     // _root->dump(0);
@@ -559,16 +560,176 @@ void Condition::normalize (ExecutionPlan* plan) {
 #endif
 }
 
-void Condition::fixOrs (ExecutionPlan* plan) {
-  if (_root == nullptr) {
-    return;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes condition parts from another
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode const* Condition::removeIndexCondition (Variable const* variable,
+                                                AstNode const* other) {
+  if (_root == nullptr || other == nullptr) {
+    return _root;
+  } 
+
+  TRI_ASSERT(_root != nullptr);
+  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
+
+  TRI_ASSERT(other != nullptr);
+  TRI_ASSERT(other->type == NODE_TYPE_OPERATOR_NARY_OR);
+  
+  if (other->numMembers() != 1 && _root->numMembers() != 1) {
+    return _root;
+  }
+    
+  auto andNode = _root->getMemberUnchecked(0);
+  TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+  size_t const n = andNode->numMembers();
+
+  std::unordered_set<size_t> toRemove;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto operand = andNode->getMemberUnchecked(i);
+
+    if (operand->isComparisonOperator()) {
+      auto lhs = operand->getMember(0);
+      auto rhs = operand->getMember(1);
+
+      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
+          
+        if (lhs->isAttributeAccessForVariable(result) &&
+            rhs->isConstant()) {
+          if (result.first != variable) {
+            // attribute access for different variable
+            continue;
+          }
+        
+          ConditionPart current(variable, result.second, operand, ATTRIBUTE_LEFT, nullptr);
+
+          if (canRemove(current, other)) {
+            toRemove.emplace(i);
+          }
+        }
+      }
+
+      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+          rhs->type == NODE_TYPE_EXPANSION) {
+        std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
+          
+        if (rhs->isAttributeAccessForVariable(result) &&
+            lhs->isConstant()) {
+          if (result.first != variable) {
+            // attribute access for different variable
+            continue;
+          }
+          
+          ConditionPart current(variable, result.second, operand, ATTRIBUTE_RIGHT, nullptr);
+
+          if (canRemove(current, other)) {
+            toRemove.emplace(i);
+          }
+        }
+      }
+    }
   }
 
-return;
+  if (toRemove.empty()) {
+    return _root;
+  }
+
+  // build a new AST condition
+  AstNode* newNode = nullptr;
+
+  for (size_t i = 0; i < n; ++i) {
+    if (toRemove.find(i) == toRemove.end()) {
+      auto what = andNode->getMemberUnchecked(i);
+
+      if (newNode == nullptr) {
+        // the only node so far
+        newNode = what;
+      }
+      else {
+        // AND-combine with existing node
+        newNode = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, newNode, what);
+      }
+    }
+  }
+
+  return newNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove (now) invalid variables from the condition
+////////////////////////////////////////////////////////////////////////////////
+
+bool Condition::removeInvalidVariables (std::unordered_set<Variable const*> const& validVars) {
+  if (_root == nullptr) {
+    return false;
+  }
+
+  TRI_ASSERT(_root != nullptr);
+  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
+ 
+  bool isEmpty = false;
+
+  // handle sub nodes of top-level OR node
+  size_t const n = _root->numMembers();
+  std::unordered_set<Variable const*> varsUsed;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto andNode = _root->getMemberUnchecked(i);
+    TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+
+    size_t nAnd = andNode->numMembers();
+    for (size_t j = 0; j < nAnd; /* no hoisting */) {
+      // check which variables are used in each AND
+      varsUsed.clear();
+      Ast::getReferencedVariables(andNode, varsUsed);
+
+      bool invalid = false;
+      for (auto& it : varsUsed) {
+        if (validVars.find(it) == validVars.end()) {
+          // found an invalid variable here...
+          invalid = true;
+          break;
+        }
+      }
+
+      if (invalid) {
+        andNode->removeMemberUnchecked(j);
+        // repeat with some member index
+        TRI_ASSERT(nAnd > 0);
+        --nAnd;
+        if (nAnd == 0) {
+          isEmpty = true;
+        }
+      }
+      else {
+        ++j;
+      }
+    }
+  }
+
+  return isEmpty;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort ORs for the same attribute so they are in ascending value
+/// order. this will only work if the condition is for a single attribute
+////////////////////////////////////////////////////////////////////////////////
+
+bool Condition::sortOrs () {
+  if (_root == nullptr) {
+    return true;
+  }
+
   size_t const n = _root->numMembers();
   
   if (n < 2) {
-    return;
+    return true;
   }
     
   std::vector<ConditionPart> parts;
@@ -583,13 +744,13 @@ return;
 
     if (nAnd != 1) {
       // we can't handle this one
-      return;
+      return false;
     }
     
     auto operand = sub->getMemberUnchecked(0);
 
     if (! operand->isComparisonOperator()) {
-      return;
+      return false;
     }
 
     auto lhs = operand->getMember(0);
@@ -617,7 +778,6 @@ return;
     }
   }
  
-  return; 
   TRI_ASSERT(parts.size() == _root->numMembers());
 
   // now sort all conditions by variable name, attribute name, attribute value
@@ -637,63 +797,67 @@ return;
     }
 
     // compare attribute values next
-    res = CompareAstNodes(lhs.valueNode, rhs.valueNode, false);
+    auto ll = lhs.lowerBound();
+    auto lr = rhs.lowerBound();
 
-    if (res != 0) {
-      return res < 0;
+    if (ll == nullptr && lr != nullptr) {
+      // left lower bound is not set but right
+      return true;
+    }
+    else if (ll != nullptr && lr == nullptr) {
+      // left lower bound is set but not right
+      return false;
+    }
+
+    if (ll != nullptr && lr != nullptr) {
+      // both lower bounds are set
+      res = CompareAstNodes(ll, lr, false);
+
+      if (res != 0) {
+        return res < 0;
+      }
+    }
+
+    if (lhs.isLowerInclusive() && ! rhs.isLowerInclusive()) {
+      return true;
+    }
+    if (rhs.isLowerInclusive() && ! lhs.isLowerInclusive()) {
+      return false;
     }
 
     // all things equal
     return false;
   });
+
 /*
-  struct CompValue {
-    AstNode const* lowerValue = nullptr;
-    AstNode const* upperValue = nullptr;
-    bool lowerIncluded        = false;
-    bool upperIncluded        = false;
-    bool empty                = true;
-    
-    CompValue (AstNodeType opType, AstNode const* valueNode) {
-      if (opType == NODE_TYPE_OPERATOR_BINARY_LE || opType == NODE_TYPE_OPERATOR_BINARY_LT || opType == NODE_TYPE_OPERATOR_BINARY_EQ) {
-        upperValue = valueNode;
-      }
-      if (opType == NODE_TYPE_OPERATOR_BINARY_GE || opType == NODE_TYPE_OPERATOR_BINARY_GT || opType == NODE_TYPE_OPERATOR_BINARY_EQ) {
-        lowerValue = valueNode;
-      }
-      lowerIncluded = (opType == NODE_TYPE_OPERATOR_BINARY_GE || opType == NODE_TYPE_OPERATOR_BINARY_EQ);
-      upperIncluded = (opType == NODE_TYPE_OPERATOR_BINARY_LE || opType == NODE_TYPE_OPERATOR_BINARY_EQ);
-      empty = false;
-    }
-  };
+  auto l = 0;
+  for (size_t r = 1; r < n; ++r) {
+    auto& l = parts[l].data;
+    auto& r = parts[r].data;
 
-  CompValue lastValue;
-*/
-  // now finally sort the members of the AND-node
-  for (size_t i = 1; i < parts.size(); ++i) {
-    // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-    auto& other = parts[i - 1];
-    auto& current = parts[i];
-
-    ConditionPartCompareResult res = ConditionPart::ResultsTable
-      [CompareAstNodes(current.valueNode, other.valueNode, false) + 1] 
-      [current.whichCompareOperation()]
-      [other.whichCompareOperation()];
-
-    std::cout << "CURRENT: " << current.valueNode << ", OTHER: " << other.valueNode << ", RES: " << (int) res << "\n";
-    if (res == CompareResult::IMPOSSIBLE) {
-      // means disjoint ranges here
-      std::cout << "DISJOINT\n";
+    if (l.higher > r.higher ||
+        (l.higher == r.higher && (l.inclusive || ! r.inclusive)) {
+      // r is contained in l => remove r (i.e. do nothing)
+      r.data = nullptr;
     }
-    else if (res == CompareResult::OTHER_CONTAINED_IN_SELF) {
-      std::cout << "KEEPING OTHER\n";
-    }
-    else if (res == CompareResult::DISJOINT) {
-      std::cout << "KEEPING OTHER\n";
-    }
+    else if (r.lower < l.higher || (r.lower == l.higher && (r.inclusive || l.inclusive))) {
+      // r extends l => fuse l.lower & r.higher
 
-//    _root->changeMember(i, static_cast<AstNode*>(parts[i].data));
+      r.data = nullptr;
+      newOrNode->getMember(newor
+    }
+    else {
+      // disjoint ranges. simply add the node
+      newOrNode->addMember(r);
+    }
   }
+  */
+
+  for (size_t i = 0; i < n; ++i) {
+    _root->changeMember(i, static_cast<AstNode*>(parts[i].data));
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -766,7 +930,6 @@ restartThisOrItem:
         andNode->changeMember(p++, it);
         stack.pop_back();
       }
-      
     }
     
     // optimization is only necessary if an AND node has multiple members
@@ -928,173 +1091,15 @@ restartThisOrItem:
     } // foreach sub-and-node
 
 fastForwardToNextOrItem:
-    if (retry) {
-      // number of root sub-nodes has probably changed.
-      // now recalculate the number and don't modify r!
-      n = _root->numMembers();
-    }
-    else {
+    if (! retry) {
       // root nodes hasn't changed. go to next sub-node!
       ++r;
     }
+    // number of root sub-nodes has probably changed.
+    // now recalculate the number and don't modify r!
+    n = _root->numMembers();
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes condition parts from another
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode const* Condition::removeIndexCondition (Variable const* variable,
-                                                AstNode const* other) {
-  if (_root == nullptr || other == nullptr) {
-    return _root;
-  } 
-
-  TRI_ASSERT(_root != nullptr);
-  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
-
-  TRI_ASSERT(other != nullptr);
-  TRI_ASSERT(other->type == NODE_TYPE_OPERATOR_NARY_OR);
-  
-  if (other->numMembers() != 1 && _root->numMembers() != 1) {
-    return _root;
-  }
-    
-  auto andNode = _root->getMemberUnchecked(0);
-  TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-  size_t const n = andNode->numMembers();
-
-  std::unordered_set<size_t> toRemove;
-
-  for (size_t i = 0; i < n; ++i) {
-    auto operand = andNode->getMemberUnchecked(i);
-
-    if (operand->isComparisonOperator()) {
-      auto lhs = operand->getMember(0);
-      auto rhs = operand->getMember(1);
-
-      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
-          
-        if (lhs->isAttributeAccessForVariable(result) &&
-            rhs->isConstant()) {
-          if (result.first != variable) {
-            // attribute access for different variable
-            continue;
-          }
-        
-          ConditionPart current(variable, result.second, operand, ATTRIBUTE_LEFT, nullptr);
-
-          if (canRemove(current, other)) {
-            toRemove.emplace(i);
-          }
-        }
-      }
-
-      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-          rhs->type == NODE_TYPE_EXPANSION) {
-        std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
-          
-        if (rhs->isAttributeAccessForVariable(result) &&
-            lhs->isConstant()) {
-          if (result.first != variable) {
-            // attribute access for different variable
-            continue;
-          }
-          
-          ConditionPart current(variable, result.second, operand, ATTRIBUTE_RIGHT, nullptr);
-
-          if (canRemove(current, other)) {
-            toRemove.emplace(i);
-          }
-        }
-      }
-    }
-  }
-
-  if (toRemove.empty()) {
-    return _root;
-  }
-
-  // build a new AST condition
-  AstNode* newNode = nullptr;
-
-  for (size_t i = 0; i < n; ++i) {
-    if (toRemove.find(i) == toRemove.end()) {
-      auto what = andNode->getMemberUnchecked(i);
-
-      if (newNode == nullptr) {
-        // the only node so far
-        newNode = what;
-      }
-      else {
-        // AND-combine with existing node
-        newNode = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, newNode, what);
-      }
-    }
-  }
-
-  return newNode;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove (now) invalid variables from the condition
-////////////////////////////////////////////////////////////////////////////////
-
-bool Condition::removeInvalidVariables (std::unordered_set<Variable const*> const& validVars) {
-  if (_root == nullptr) {
-    return false;
-  }
-
-  TRI_ASSERT(_root != nullptr);
-  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
- 
-  bool isEmpty = false;
-
-  // handle sub nodes of top-level OR node
-  size_t const n = _root->numMembers();
-  std::unordered_set<Variable const*> varsUsed;
-
-  for (size_t i = 0; i < n; ++i) {
-    auto andNode = _root->getMemberUnchecked(i);
-    TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-
-    size_t nAnd = andNode->numMembers();
-    for (size_t j = 0; j < nAnd; /* no hoisting */) {
-      // check which variables are used in each AND
-      varsUsed.clear();
-      Ast::getReferencedVariables(andNode, varsUsed);
-
-      bool invalid = false;
-      for (auto& it : varsUsed) {
-        if (validVars.find(it) == validVars.end()) {
-          // found an invalid variable here...
-          invalid = true;
-          break;
-        }
-      }
-
-      if (invalid) {
-        andNode->removeMemberUnchecked(j);
-        // repeat with some member index
-        TRI_ASSERT(nAnd > 0);
-        --nAnd;
-        if (nAnd == 0) {
-          isEmpty = true;
-        }
-      }
-      else {
-        ++j;
-      }
-    }
-  }
-
-  return isEmpty;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers an attribute access for a particular (collection) variable
