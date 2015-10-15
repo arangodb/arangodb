@@ -1871,16 +1871,41 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       }
 
       auto const& indexes = indexNode->getIndexes();
+
       if (indexes.size() != 1) {
-        // can only use this index node if it uses exactly one index
-        return true;
+        // can only use this index node if it uses exactly one index or multiple indexes on exactly the same attributes
+        auto cond = indexNode->condition();
+
+        if (! cond->isSorted()) {
+          // index conditions do not guarantee sortedness
+          return true;
+        }
+
+        std::vector<std::vector<triagens::basics::AttributeName>> seen;
+
+        for (auto& index : indexes) {
+          if (index->sparse) {
+            // cannot use a sparse index for sorting
+            return true;
+          }
+
+          if (! seen.empty() && triagens::basics::AttributeName::isIdentical(index->fields, seen)) {
+            // different attributes
+            return true;
+          }
+        }
+
+        // all indexes use the same attributes and index conditions guarantee sorted output
       }
 
+      // if we get here, we either have one index or multiple indexes on the same attributes
       auto index = indexes[0];
+
       if (! index->isSorted()) {
         // can only use a sorted index
         return true;
       }
+
       if (index->sparse) {
         // cannot use a sparse index for sorting
         return true;
