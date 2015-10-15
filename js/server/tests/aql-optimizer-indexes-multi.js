@@ -47,13 +47,13 @@ function makeNumber (nr, len) {
 }
 
 function makeObj (i) {
-  return { _key: "test" + i, 
-           a: "a" + makeNumber(i,4), 
+  return { _key: "test" + i,
+           a: "a" + makeNumber(i,4),
            b: "b" + makeNumber(i % 100,3),
-           c: "c" + makeNumber((((i * 17) % 2001) * 12) % 79, 3) 
+           c: "c" + makeNumber((((i * 17) % 2001) * 12) % 79, 3)
          };
 }
- 
+
 function makeResult (f) {
   var res = [];
   for (var i = 0; i < 8000; i++) {
@@ -87,66 +87,66 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseTwoHashIndexesOr : function () {
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["b"] } );
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["c"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.b == "b012" || x.c == "c017"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.b === "b012" || x.c === "c017"; 
+      makers.push(function (x) {
+                    return x.b === "b012" || x.c === "c017";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.b == "b007" && x.c == "c023"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.b === "b007" && x.c === "c023"; 
+      makers.push(function (x) {
+                    return x.b === "b007" && x.c === "c023";
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.b == "b044" && x.c >= "c034"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.b === "b044" && x.c >= "c034"; 
+      makers.push(function (x) {
+                    return x.b === "b044" && x.c >= "c034";
                   });
       filterchecks.push( { type : "compare >=", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.c == "c006" && x.b == "b012"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.c === "c006" && x.b === "b012"; 
+      makers.push(function (x) {
+                    return x.c === "c006" && x.b === "b012";
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.c == "c007" && x.b >= "b042"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.c === "c007" && x.b >= "b042"; 
+      makers.push(function (x) {
+                    return x.c === "c007" && x.b >= "b042";
                   });
       filterchecks.push( { type : "compare >=", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.c == "c077" && x.b <= "b043"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.c === "c077" && x.b <= "b043"; 
+      makers.push(function (x) {
+                    return x.c === "c077" && x.b <= "b043";
                   });
       filterchecks.push( { type : "compare <=", nrSubs : 2 } );
 
@@ -175,11 +175,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -196,66 +196,66 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseTwoSkiplistIndexesOr : function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["b"] } );
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["c"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.b == "b012" || x.c == "c017"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.b === "b012" || x.c === "c017"; 
+      makers.push(function (x) {
+                    return x.b === "b012" || x.c === "c017";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.b == "b007" && x.c == "c023"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.b === "b007" && x.c === "c023"; 
+      makers.push(function (x) {
+                    return x.b === "b007" && x.c === "c023";
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.b == "b044" && x.c >= "c034"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.b === "b044" && x.c >= "c034"; 
+      makers.push(function (x) {
+                    return x.b === "b044" && x.c >= "c034";
                   });
       filterchecks.push( { type : "compare >=", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.c == "c006" && x.b == "b012"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.c === "c006" && x.b === "b012"; 
+      makers.push(function (x) {
+                    return x.c === "c006" && x.b === "b012";
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.c == "c007" && x.b >= "b042"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.c === "c007" && x.b >= "b042"; 
+      makers.push(function (x) {
+                    return x.c === "c007" && x.b >= "b042";
                   });
       filterchecks.push( { type : "compare >=", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.c == "c077" && x.b <= "b043"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.c === "c077" && x.b <= "b043"; 
+      makers.push(function (x) {
+                    return x.c === "c077" && x.b <= "b043";
                   });
       filterchecks.push( { type : "compare <=", nrSubs : 2 } );
 
@@ -284,11 +284,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -305,75 +305,75 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkipAndHashIndexForOr : function () {
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["b"] } );
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["c"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.b == "b012" || x.c == "c017"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.b === "b012" || x.c === "c017"; 
+      makers.push(function (x) {
+                    return x.b === "b012" || x.c === "c017";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.b == "b019" || x.c >= "c077"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.b === "b019" || x.c >= "c077"; 
+      makers.push(function (x) {
+                    return x.b === "b019" || x.c >= "c077";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.b == "b007" && x.c == "c023"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.b === "b007" && x.c === "c023"; 
+      makers.push(function (x) {
+                    return x.b === "b007" && x.c === "c023";
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.b == "b044" && x.c >= "c034"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.b === "b044" && x.c >= "c034"; 
+      makers.push(function (x) {
+                    return x.b === "b044" && x.c >= "c034";
                   });
       filterchecks.push( { type : "compare >=", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.c == "c006" && x.b == "b012"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.c === "c006" && x.b === "b012"; 
+      makers.push(function (x) {
+                    return x.c === "c006" && x.b === "b012";
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.c == "c007" && x.b == "b042"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.c === "c007" && x.b === "b042"; 
+      makers.push(function (x) {
+                    return x.c === "c007" && x.b === "b042";
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.c == "c077" && x.b <= "b043"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.c === "c077" && x.b <= "b043"; 
+      makers.push(function (x) {
+                    return x.c === "c077" && x.b <= "b043";
                   });
       filterchecks.push( { type : "compare <=", nrSubs : 2 } );
 
@@ -401,11 +401,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -422,28 +422,28 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForDNF : function () {
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["b", "c"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022"; 
+      makers.push(function (x) {
+                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022"; 
+      makers.push(function (x) {
+                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
@@ -471,11 +471,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -492,28 +492,28 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForDNF2 : function () {
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["b"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022"; 
+      makers.push(function (x) {
+                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022"; 
+      makers.push(function (x) {
+                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
@@ -541,11 +541,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -562,28 +562,28 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForDNF3 : function () {
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["c"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022"; 
+      makers.push(function (x) {
+                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022"; 
+      makers.push(function (x) {
+                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
@@ -611,11 +611,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -632,30 +632,30 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForDNF4: function () {
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["b"] } );
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["c"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022"; 
+      makers.push(function (x) {
+                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022"; 
+      makers.push(function (x) {
+                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
@@ -683,11 +683,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -704,28 +704,28 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForDNF5 : function () {
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["c", "b"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022"; 
+      makers.push(function (x) {
+                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022"; 
+      makers.push(function (x) {
+                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
@@ -753,11 +753,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -774,28 +774,28 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForDNF : function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["b", "c"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022"; 
+      makers.push(function (x) {
+                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022"; 
+      makers.push(function (x) {
+                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
@@ -823,11 +823,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -844,28 +844,28 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForDNF2 : function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["b"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022"; 
+      makers.push(function (x) {
+                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022"; 
+      makers.push(function (x) {
+                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
@@ -893,11 +893,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -914,28 +914,28 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForDNF3: function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["c"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022"; 
+      makers.push(function (x) {
+                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022"; 
+      makers.push(function (x) {
+                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
@@ -963,11 +963,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -984,30 +984,30 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForDNF4 : function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["b"] } );
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["c"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022"; 
+      makers.push(function (x) {
+                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022"; 
+      makers.push(function (x) {
+                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
@@ -1035,11 +1035,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -1056,28 +1056,28 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForDNF5 : function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["c", "b"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.b === "b012" || x.b === "b073") && x.c === "c022"; 
+      makers.push(function (x) {
+                    return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return (x.c === "c012" || x.c === "c073") && x.b === "b022"; 
+      makers.push(function (x) {
+                    return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
@@ -1105,11 +1105,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -1126,32 +1126,32 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForMultipleOr : function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["a"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
-                      FILTER x.a == "a0123" || x.a == "a5564" || 
+      queries.push(`FOR x in ${c.name()}
+                      FILTER x.a == "a0123" || x.a == "a5564" ||
                              x.a == "a7768" || x.a == "a0678"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.a === "a0123" || x.a === "a5564" || 
-                           x.a === "a7768" || x.a === "a0678"; 
+      makers.push(function (x) {
+                    return x.a === "a0123" || x.a === "a5564" ||
+                           x.a === "a7768" || x.a === "a0678";
                   });
       filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
-                      FILTER x.a == "a0123" || x.a == "a1234" || 
+      queries.push(`FOR x in ${c.name()}
+                      FILTER x.a == "a0123" || x.a == "a1234" ||
                              x.a == "a4567" || x.a == "a5567"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.a === "a0123" || x.a === "a1234" || 
-                           x.a === "a4567" || x.a === "a5567"; 
+      makers.push(function (x) {
+                    return x.a === "a0123" || x.a === "a1234" ||
+                           x.a === "a4567" || x.a === "a5567";
                   });
       filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
@@ -1179,11 +1179,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -1200,32 +1200,32 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForMultipleOr2 : function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["a"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
-                      FILTER x.a >= "a7800" || x.a >= "a7810" || 
+      queries.push(`FOR x in ${c.name()}
+                      FILTER x.a >= "a7800" || x.a >= "a7810" ||
                              x.a == "a1234" || x.a == "a6543"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.a >= "a7800" || x.a >= "a7810" || 
-                           x.a === "a1234" || x.a === "a6543"; 
+      makers.push(function (x) {
+                    return x.a >= "a7800" || x.a >= "a7810" ||
+                           x.a === "a1234" || x.a === "a6543";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
-                      FILTER x.a == "a1234" || x.a >= "a7800" || 
+      queries.push(`FOR x in ${c.name()}
+                      FILTER x.a == "a1234" || x.a >= "a7800" ||
                               x.a >= "a7810" || x.a == "a6543"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.a === "a1234" || x.a >= "a7800" || 
-                           x.a >= "a7810" || x.a === "a6543"; 
+      makers.push(function (x) {
+                    return x.a === "a1234" || x.a >= "a7800" ||
+                           x.a >= "a7810" || x.a === "a6543";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
@@ -1253,11 +1253,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -1274,43 +1274,43 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForMultipleOr3: function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["a"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
-                      FILTER x.a < "a0123" || x.a > "a6964" || 
+      queries.push(`FOR x in ${c.name()}
+                      FILTER x.a < "a0123" || x.a > "a6964" ||
                              x.a == "a5555" || x.a == "a6666"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.a < "a0123" || x.a > "a6964" || 
-                           x.a === "a5555" || x.a === "a6666"; 
+      makers.push(function (x) {
+                    return x.a < "a0123" || x.a > "a6964" ||
+                           x.a === "a5555" || x.a === "a6666";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
-                      FILTER x.a == "a5555" || x.a < "a0123" || 
+      queries.push(`FOR x in ${c.name()}
+                      FILTER x.a == "a5555" || x.a < "a0123" ||
                              x.a > "a6964" || x.a == "a6666"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.a === "a5555" || x.a < "a0123" || 
-                           x.a > "a6964" || x.a === "a6666"; 
+      makers.push(function (x) {
+                    return x.a === "a5555" || x.a < "a0123" ||
+                           x.a > "a6964" || x.a === "a6666";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
-                      FILTER x.a == "a5555" || x.a < "a5123" || 
+      queries.push(`FOR x in ${c.name()}
+                      FILTER x.a == "a5555" || x.a < "a5123" ||
                              x.a > "a4964" || x.a == "a6666"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.a === "a5555" || x.a < "a5123" || 
-                           x.a > "a4964" || x.a === "a6666"; 
+      makers.push(function (x) {
+                    return x.a === "a5555" || x.a < "a5123" ||
+                           x.a > "a4964" || x.a === "a6666";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
@@ -1338,11 +1338,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -1359,27 +1359,27 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForIn : function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["a"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.a IN ["a0123", "a5564", "a7768", "a0678"]
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["a0123", "a5564", "a7768", "a0678"].indexOf(x.a) !== -1;
                   });
       filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.a IN ["a0123", "a1234", "a4567", "a5567"]
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["a0123", "a1234", "a4567", "a5567"].indexOf(x.a) !== -1;
                   });
       filterchecks.push( { type : "compare in", nrSubs : 2 } );
@@ -1408,11 +1408,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -1429,32 +1429,32 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForMultipleOr : function () {
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["a"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
-                      FILTER x.a == "a0123" || x.a == "a5564" || 
+      queries.push(`FOR x in ${c.name()}
+                      FILTER x.a == "a0123" || x.a == "a5564" ||
                              x.a == "a7768" || x.a == "a0678"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.a === "a0123" || x.a === "a5564" || 
-                           x.a === "a7768" || x.a === "a0678"; 
+      makers.push(function (x) {
+                    return x.a === "a0123" || x.a === "a5564" ||
+                           x.a === "a7768" || x.a === "a0678";
                   });
       filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
-                      FILTER x.a == "a0123" || x.a == "a1234" || 
+      queries.push(`FOR x in ${c.name()}
+                      FILTER x.a == "a0123" || x.a == "a1234" ||
                              x.a == "a4567" || x.a == "a5567"
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
-                    return x.a === "a0123" || x.a === "a1234" || 
-                           x.a === "a4567" || x.a === "a5567"; 
+      makers.push(function (x) {
+                    return x.a === "a0123" || x.a === "a1234" ||
+                           x.a === "a4567" || x.a === "a5567";
                   });
       filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
@@ -1482,11 +1482,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -1503,27 +1503,27 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForIn : function () {
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["a"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.a IN ["a0123", "a5564", "a7768", "a0678"]
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["a0123", "a5564", "a7768", "a0678"].indexOf(x.a) !== -1;
                   });
       filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER x.a IN ["a0123", "a1234", "a4567", "a5567"]
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["a0123", "a1234", "a4567", "a5567"].indexOf(x.a) !== -1;
                   });
       filterchecks.push( { type : "compare in", nrSubs : 2 } );
@@ -1552,11 +1552,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -1573,54 +1573,54 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexesForInOrIn : function () {
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["b"] } );
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["c"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b IN ["b057", "b017"]) ||
                              (x.c IN ["c056", "c023"])
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["b057", "b017"].indexOf(x.b) !== -1 ||
                            ["c056", "c023"].indexOf(x.c) !== -1;
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b IN ["b017", "b057"]) ||
                              (x.c IN ["c056", "c023"])
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["b017", "b057"].indexOf(x.b) !== -1 ||
                            ["c056", "c023"].indexOf(x.c) !== -1;
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b IN ["b057", "b017"]) ||
                              (x.c IN ["c023", "c056"])
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["b057", "b017"].indexOf(x.b) !== -1 ||
                            ["c023", "c056"].indexOf(x.c) !== -1;
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b IN ["b017", "b057"]) ||
                              (x.c IN ["c023", "c056"])
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["b017", "b057"].indexOf(x.b) !== -1 ||
                            ["c023", "c056"].indexOf(x.c) !== -1;
                   });
@@ -1650,11 +1650,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -1671,54 +1671,54 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexesForInOrIn : function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["b"] } );
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["c"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b IN ["b057", "b017"]) ||
                              (x.c IN ["c056", "c023"])
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["b057", "b017"].indexOf(x.b) !== -1 ||
                            ["c056", "c023"].indexOf(x.c) !== -1;
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b IN ["b017", "b057"]) ||
                              (x.c IN ["c056", "c023"])
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["b017", "b057"].indexOf(x.b) !== -1 ||
                            ["c056", "c023"].indexOf(x.c) !== -1;
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b IN ["b057", "b017"]) ||
                              (x.c IN ["c023", "c056"])
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["b057", "b017"].indexOf(x.b) !== -1 ||
                            ["c023", "c056"].indexOf(x.c) !== -1;
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b IN ["b017", "b057"]) ||
                              (x.c IN ["c023", "c056"])
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["b017", "b057"].indexOf(x.b) !== -1 ||
                            ["c023", "c056"].indexOf(x.c) !== -1;
                   });
@@ -1748,11 +1748,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -1769,50 +1769,50 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistRespHashIndexesForInOrEq : function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["b"] } );
-      c.ensureIndex( { type: "hash", sparse: false, unique: false, 
+      c.ensureIndex( { type: "hash", sparse: false, unique: false,
                        fields: ["c"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.b IN ["b057", "b017"]) || (x.c == "c056")
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["b057", "b017"].indexOf(x.b) !== -1 ||
                            x.c === "c056";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c IN ["c017", "c057"]) || (x.b == "b056")
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["c017", "c057"].indexOf(x.c) !== -1 ||
                            x.b === "b056";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c IN ["c057", "c017"]) || (x.b == "b056")
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["c057", "c017"].indexOf(x.c) !== -1 ||
                            x.b === "b056";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.c IN ["c017", "c057"]) || (x.b == "b056")
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return ["c017", "c057"].indexOf(x.c) !== -1 ||
                            x.b === "b056";
                   });
@@ -1842,11 +1842,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
@@ -1863,30 +1863,30 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistForOverlappingRanges : function () {
-      c.ensureIndex( { type: "skiplist", sparse: false, unique: false, 
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
                        fields: ["a"] } );
 
       var queries = [];
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.a >= "a0123" && x.a < "a0207") ||
                              (x.a >= "a0200" && x.a < "a0300")
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return x.a >= "a0123" && x.a < "a0207" ||
                            x.a >= "a0200" && x.a < "a0300";
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()} 
+      queries.push(`FOR x in ${c.name()}
                       FILTER (x.a >= "a0200" && x.a < "a0300") ||
-                             (x.a >= "a0123" && x.a < "a0207") 
+                             (x.a >= "a0123" && x.a < "a0207")
                       SORT x.a
                       RETURN x.a`);
-      makers.push(function (x) { 
+      makers.push(function (x) {
                     return x.a >= "a0200" && x.a < "a0300" ||
                            x.a >= "a0123" && x.a < "a0207";
                   });
@@ -1920,11 +1920,11 @@ function optimizerIndexesMultiTestSuite () {
         if (filtercheck !== null) {
           assertEqual("CalculationNode", plan.nodes[2].type, query);
           assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable, 
+          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
                       query);
           assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
           assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length, 
+                      plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
 
