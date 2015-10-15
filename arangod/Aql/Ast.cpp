@@ -1768,9 +1768,9 @@ AstNode const* Ast::deduplicateArray (AstNode const* node) {
 
   for (auto& it : cache) {
     // TODO: check if the node needs cloning or if we can get away without
-    // copy->addMember(clone((*it).second));
     copy->addMember(it.second);
   }
+  copy->sort();
 
   return copy;
 }

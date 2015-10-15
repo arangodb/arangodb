@@ -27,8 +27,6 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO: sort IN values
-
 #include "Condition.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -232,7 +230,7 @@ bool ConditionPart::isCoveredBy (ConditionPart const& other) const {
           for (size_t j = 0; j < n2; ++j) {
             auto w = other.valueNode->getMemberUnchecked(j);
     
-            ConditionPartCompareResult res = ConditionPart::ResultsTable[CompareAstNodes(v, w, false) + 1][0][0];
+            ConditionPartCompareResult res = ConditionPart::ResultsTable[CompareAstNodes(v, w, true) + 1][0][0];
     
             if (res != CompareResult::OTHER_CONTAINED_IN_SELF && 
                 res != CompareResult::CONVERT_EQUAL && 
@@ -249,7 +247,7 @@ bool ConditionPart::isCoveredBy (ConditionPart const& other) const {
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
   ConditionPartCompareResult res = ConditionPart::ResultsTable
-    [CompareAstNodes(other.valueNode, valueNode, false) + 1] 
+    [CompareAstNodes(other.valueNode, valueNode, true) + 1] 
     [other.whichCompareOperation()]
     [whichCompareOperation()];
 
@@ -527,9 +525,7 @@ std::pair<bool, bool> Condition::findIndexForAndNode (size_t position,
   }
 
   _root->changeMember(position, bestIndex->specializeCondition(node, reference)); 
-#if 0
   _isSorted = sortOrs();
-#endif  
 
   usedIndexes.emplace_back(bestIndex);
 
@@ -777,8 +773,10 @@ bool Condition::sortOrs () {
       }
     }
   }
- 
-  TRI_ASSERT(parts.size() == _root->numMembers());
+
+  if (parts.size() != _root->numMembers()) { 
+    return false;
+  }
 
   // now sort all conditions by variable name, attribute name, attribute value
   std::sort(parts.begin(), parts.end(), [] (ConditionPart const& lhs, ConditionPart const& rhs) -> bool {
@@ -811,7 +809,7 @@ bool Condition::sortOrs () {
 
     if (ll != nullptr && lr != nullptr) {
       // both lower bounds are set
-      res = CompareAstNodes(ll, lr, false);
+      res = CompareAstNodes(ll, lr, true);
 
       if (res != 0) {
         return res < 0;
@@ -882,21 +880,24 @@ void Condition::optimize (ExecutionPlan* plan) {
     TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
 restartThisOrItem:
-    size_t const andNumMembers = andNode->numMembers();
+    size_t andNumMembers = andNode->numMembers();
   
-    // deduplicate all IN arrays
+    // deduplicate and sort all IN arrays
     size_t inComparisons = 0;
     for (size_t j = 0; j < andNumMembers; ++j) {
       auto op = andNode->getMemberUnchecked(j);
+
       if (op->type == NODE_TYPE_OPERATOR_BINARY_IN) {
         ++inComparisons;
       }
       deduplicateInOperation(op);
     }
+    andNumMembers = andNode->numMembers();
 
     if (andNumMembers <= 1) {
       // simple AND item with 0 or 1 members. nothing to do
       ++r;
+      n = _root->numMembers();
       continue;
     }
 
@@ -1017,11 +1018,12 @@ restartThisOrItem:
               for (size_t k = 0; k < values->numMembers(); ++k) {
                 auto value = values->getMemberUnchecked(k);
                 ConditionPartCompareResult res = ConditionPart::ResultsTable
-                  [CompareAstNodes(value, other.valueNode, false) + 1]
+                  [CompareAstNodes(value, other.valueNode, true) + 1]
                   [0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
                   [other.whichCompareOperation()];
 
                 bool const keep = (res == CompareResult::OTHER_CONTAINED_IN_SELF || res == CompareResult::CONVERT_EQUAL);
+
                 if (keep) {
                   inNode->addMember(value);
                 }
@@ -1045,7 +1047,7 @@ restartThisOrItem:
 
           // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
           ConditionPartCompareResult res = ConditionPart::ResultsTable
-            [CompareAstNodes(current.valueNode, other.valueNode, false) + 1] 
+            [CompareAstNodes(current.valueNode, other.valueNode, true) + 1] 
             [current.whichCompareOperation()]
             [other.whichCompareOperation()];
 
@@ -1059,23 +1061,23 @@ restartThisOrItem:
               goto fastForwardToNextOrItem;
             }
             case CompareResult::SELF_CONTAINED_IN_OTHER: {
-              andNode->removeMemberUnchecked(positions[0].first);
+              andNode->removeMemberUnchecked(positions.at(0).first);
               goto restartThisOrItem;
             }
             case CompareResult::OTHER_CONTAINED_IN_SELF: { 
-              andNode->removeMemberUnchecked(positions[j].first);
+              andNode->removeMemberUnchecked(positions.at(j).first);
               goto restartThisOrItem;
             }
             case CompareResult::CONVERT_EQUAL: { // both ok, now transform to a == x (== y)
-              andNode->removeMemberUnchecked(positions[j].first);
-              auto origNode = andNode->getMemberUnchecked(positions[0].first);
+              andNode->removeMemberUnchecked(positions.at(j).first);
+              auto origNode = andNode->getMemberUnchecked(positions.at(0).first);
               auto newNode = plan->getAst()->createNode(NODE_TYPE_OPERATOR_BINARY_EQ);
               for (size_t iMemb = 0; iMemb < origNode->numMembers(); iMemb++) {
                 newNode->addMember(origNode->getMemberUnchecked(iMemb));
               }
 
-              andNode->changeMember(positions[0].first, newNode);
-              break;
+              andNode->changeMember(positions.at(0).first, newNode);
+              goto restartThisOrItem;
             }
             case CompareResult::DISJOINT: {
               break;
@@ -1231,7 +1233,7 @@ bool Condition::canRemove (ConditionPart const& me,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deduplicate IN condition values
+/// @brief deduplicate IN condition values (and sort them)
 /// this may modify the node in place
 ////////////////////////////////////////////////////////////////////////////////
 
