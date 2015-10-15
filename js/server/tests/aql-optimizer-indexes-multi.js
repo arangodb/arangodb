@@ -96,7 +96,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b012" || x.c == "c017"
                       SORT x.a
                       RETURN x.a`);
@@ -105,7 +105,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b007" && x.c == "c023"
                       SORT x.a
                       RETURN x.a`);
@@ -114,7 +114,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b044" && x.c >= "c034"
                       SORT x.a
                       RETURN x.a`);
@@ -123,7 +123,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare >=", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c006" && x.b == "b012"
                       SORT x.a
                       RETURN x.a`);
@@ -132,7 +132,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c007" && x.b >= "b042"
                       SORT x.a
                       RETURN x.a`);
@@ -141,7 +141,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare >=", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c077" && x.b <= "b043"
                       SORT x.a
                       RETURN x.a`);
@@ -205,7 +205,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b012" || x.c == "c017"
                       SORT x.a
                       RETURN x.a`);
@@ -214,7 +214,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b007" && x.c == "c023"
                       SORT x.a
                       RETURN x.a`);
@@ -223,7 +223,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b044" && x.c >= "c034"
                       SORT x.a
                       RETURN x.a`);
@@ -232,7 +232,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare >=", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c006" && x.b == "b012"
                       SORT x.a
                       RETURN x.a`);
@@ -241,7 +241,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c007" && x.b >= "b042"
                       SORT x.a
                       RETURN x.a`);
@@ -250,7 +250,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare >=", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c077" && x.b <= "b043"
                       SORT x.a
                       RETURN x.a`);
@@ -314,7 +314,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b012" || x.c == "c017"
                       SORT x.a
                       RETURN x.a`);
@@ -323,7 +323,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b019" || x.c >= "c077"
                       SORT x.a
                       RETURN x.a`);
@@ -332,7 +332,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b007" && x.c == "c023"
                       SORT x.a
                       RETURN x.a`);
@@ -341,7 +341,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b044" && x.c >= "c034"
                       SORT x.a
                       RETURN x.a`);
@@ -350,7 +350,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare >=", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c006" && x.b == "b012"
                       SORT x.a
                       RETURN x.a`);
@@ -359,7 +359,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c007" && x.b == "b042"
                       SORT x.a
                       RETURN x.a`);
@@ -368,7 +368,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare ==", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c077" && x.b <= "b043"
                       SORT x.a
                       RETURN x.a`);
@@ -429,7 +429,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
@@ -438,7 +438,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
@@ -499,7 +499,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
@@ -508,7 +508,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
@@ -569,7 +569,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
@@ -578,7 +578,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
@@ -641,7 +641,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
@@ -650,7 +650,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
@@ -711,7 +711,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
@@ -720,7 +720,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
@@ -781,7 +781,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
@@ -790,7 +790,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
@@ -851,7 +851,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
@@ -860,7 +860,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
@@ -921,7 +921,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
@@ -930,7 +930,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
@@ -993,7 +993,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
@@ -1002,7 +1002,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
@@ -1063,7 +1063,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b == "b012" || x.b == "b073") && x.c == "c022"
                       SORT x.a
                       RETURN x.a`);
@@ -1072,7 +1072,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical and", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
                       SORT x.a
                       RETURN x.a`);
@@ -1133,7 +1133,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a0123" || x.a == "a5564" ||
                              x.a == "a7768" || x.a == "a0678"
                       SORT x.a
@@ -1144,7 +1144,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a0123" || x.a == "a1234" ||
                              x.a == "a4567" || x.a == "a5567"
                       SORT x.a
@@ -1207,7 +1207,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a >= "a7800" || x.a >= "a7810" ||
                              x.a == "a1234" || x.a == "a6543"
                       SORT x.a
@@ -1218,7 +1218,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a1234" || x.a >= "a7800" ||
                               x.a >= "a7810" || x.a == "a6543"
                       SORT x.a
@@ -1281,7 +1281,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a < "a0123" || x.a > "a6964" ||
                              x.a == "a5555" || x.a == "a6666"
                       SORT x.a
@@ -1292,7 +1292,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a5555" || x.a < "a0123" ||
                              x.a > "a6964" || x.a == "a6666"
                       SORT x.a
@@ -1303,7 +1303,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a5555" || x.a < "a5123" ||
                              x.a > "a4964" || x.a == "a6666"
                       SORT x.a
@@ -1366,7 +1366,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a IN ["a0123", "a5564", "a7768", "a0678"]
                       SORT x.a
                       RETURN x.a`);
@@ -1375,7 +1375,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a IN ["a0123", "a1234", "a4567", "a5567"]
                       SORT x.a
                       RETURN x.a`);
@@ -1436,7 +1436,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a0123" || x.a == "a5564" ||
                              x.a == "a7768" || x.a == "a0678"
                       SORT x.a
@@ -1447,7 +1447,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a0123" || x.a == "a1234" ||
                              x.a == "a4567" || x.a == "a5567"
                       SORT x.a
@@ -1510,7 +1510,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a IN ["a0123", "a5564", "a7768", "a0678"]
                       SORT x.a
                       RETURN x.a`);
@@ -1519,7 +1519,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER x.a IN ["a0123", "a1234", "a4567", "a5567"]
                       SORT x.a
                       RETURN x.a`);
@@ -1582,7 +1582,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b057", "b017"]) ||
                              (x.c IN ["c056", "c023"])
                       SORT x.a
@@ -1593,7 +1593,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b017", "b057"]) ||
                              (x.c IN ["c056", "c023"])
                       SORT x.a
@@ -1604,7 +1604,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b057", "b017"]) ||
                              (x.c IN ["c023", "c056"])
                       SORT x.a
@@ -1615,7 +1615,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b017", "b057"]) ||
                              (x.c IN ["c023", "c056"])
                       SORT x.a
@@ -1680,7 +1680,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b057", "b017"]) ||
                              (x.c IN ["c056", "c023"])
                       SORT x.a
@@ -1691,7 +1691,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b017", "b057"]) ||
                              (x.c IN ["c056", "c023"])
                       SORT x.a
@@ -1702,7 +1702,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b057", "b017"]) ||
                              (x.c IN ["c023", "c056"])
                       SORT x.a
@@ -1713,7 +1713,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b017", "b057"]) ||
                              (x.c IN ["c023", "c056"])
                       SORT x.a
@@ -1778,7 +1778,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b057", "b017"]) || (x.c == "c056")
                       SORT x.a
                       RETURN x.a`);
@@ -1788,7 +1788,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c IN ["c017", "c057"]) || (x.b == "b056")
                       SORT x.a
                       RETURN x.a`);
@@ -1798,7 +1798,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c IN ["c057", "c017"]) || (x.b == "b056")
                       SORT x.a
                       RETURN x.a`);
@@ -1808,7 +1808,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c IN ["c017", "c057"]) || (x.b == "b056")
                       SORT x.a
                       RETURN x.a`);
@@ -1870,7 +1870,7 @@ function optimizerIndexesMultiTestSuite () {
       var makers = [];
       var filterchecks = [];
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.a >= "a0123" && x.a < "a0207") ||
                              (x.a >= "a0200" && x.a < "a0300")
                       SORT x.a
@@ -1881,7 +1881,7 @@ function optimizerIndexesMultiTestSuite () {
                   });
       filterchecks.push( { type : "logical or", nrSubs : 2 } );
 
-      queries.push(`FOR x in ${c.name()}
+      queries.push(`FOR x IN ${c.name()}
                       FILTER (x.a >= "a0200" && x.a < "a0300") ||
                              (x.a >= "a0123" && x.a < "a0207")
                       SORT x.a
@@ -1927,6 +1927,169 @@ function optimizerIndexesMultiTestSuite () {
                       plan.nodes[2].expression.subNodes.length,
                       "Number of subnodes in filter expression, " + query);
         }
+
+        var results = AQL_EXECUTE(query);
+        var correct = makeResult(maker).map(function(x) { return x.a; });
+        assertEqual(correct, results.json, query);
+        assertEqual(0, results.stats.scannedFull);
+        assertTrue(results.stats.scannedIndex > 0);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multiple ranges with ||
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseSkiplistForMultipleRangesWithOr: function () {
+      c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+                       fields: ["a"] } );
+
+      var queries = [];
+      var makers = [];
+
+      var intervals = [
+           // First all combinations of two closed intervals:    
+           [{ low:"a0100", lowincl:true, high:"a0200", highincl:true },
+            { low:"a0150", lowincl:true, high:"a0250", highincl:true }],
+           [{ low:"a0100", lowincl:true, high:"a0200", highincl:true },
+            { low:"a0200", lowincl:true, high:"a0300", highincl:true }],
+           [{ low:"a0100", lowincl:true, high:"a0200", highincl:true },
+            { low:"a0250", lowincl:true, high:"a0350", highincl:true }],
+           [{ low:"a0150", lowincl:true, high:"a0250", highincl:true },
+            { low:"a0100", lowincl:true, high:"a0200", highincl:true }],
+           [{ low:"a0200", lowincl:true, high:"a0300", highincl:true },
+            { low:"a0100", lowincl:true, high:"a0200", highincl:true }],
+           [{ low:"a0250", lowincl:true, high:"a0350", highincl:true },
+            { low:"a0100", lowincl:true, high:"a0200", highincl:true }],
+           // All combinations of two open intervals:
+           [{ low:"a0100", lowincl:false, high:"a0200", highincl:false },
+            { low:"a0150", lowincl:false, high:"a0250", highincl:false }],
+           [{ low:"a0100", lowincl:false, high:"a0200", highincl:false },
+            { low:"a0200", lowincl:false, high:"a0300", highincl:false }],
+           [{ low:"a0100", lowincl:false, high:"a0200", highincl:false },
+            { low:"a0250", lowincl:false, high:"a0350", highincl:false }],
+           [{ low:"a0150", lowincl:false, high:"a0250", highincl:false },
+            { low:"a0100", lowincl:false, high:"a0200", highincl:false }],
+           [{ low:"a0200", lowincl:false, high:"a0300", highincl:false },
+            { low:"a0100", lowincl:false, high:"a0200", highincl:false }],
+           [{ low:"a0250", lowincl:false, high:"a0350", highincl:false },
+            { low:"a0100", lowincl:false, high:"a0200", highincl:false }],
+           // All combinations of two half-open intervals:
+           [{ low:"a0100", lowincl:true, high:"a0200", highincl:false },
+            { low:"a0150", lowincl:true, high:"a0250", highincl:false }],
+           [{ low:"a0100", lowincl:true, high:"a0200", highincl:false },
+            { low:"a0200", lowincl:true, high:"a0300", highincl:false }],
+           [{ low:"a0100", lowincl:true, high:"a0200", highincl:false },
+            { low:"a0250", lowincl:true, high:"a0350", highincl:false }],
+           [{ low:"a0150", lowincl:true, high:"a0250", highincl:false },
+            { low:"a0100", lowincl:true, high:"a0200", highincl:false }],
+           [{ low:"a0200", lowincl:true, high:"a0300", highincl:false },
+            { low:"a0100", lowincl:true, high:"a0200", highincl:false }],
+           [{ low:"a0250", lowincl:true, high:"a0350", highincl:false },
+            { low:"a0100", lowincl:true, high:"a0200", highincl:false }],
+           // Other orientation:
+           [{ low:"a0100", lowincl:false, high:"a0200", highincl:true },
+            { low:"a0150", lowincl:false, high:"a0250", highincl:true }],
+           [{ low:"a0100", lowincl:false, high:"a0200", highincl:true },
+            { low:"a0200", lowincl:false, high:"a0300", highincl:true }],
+           [{ low:"a0100", lowincl:false, high:"a0200", highincl:true },
+            { low:"a0250", lowincl:false, high:"a0350", highincl:true }],
+           [{ low:"a0150", lowincl:false, high:"a0250", highincl:true },
+            { low:"a0100", lowincl:false, high:"a0200", highincl:true }],
+           [{ low:"a0200", lowincl:false, high:"a0300", highincl:true },
+            { low:"a0100", lowincl:false, high:"a0200", highincl:true }],
+           [{ low:"a0250", lowincl:false, high:"a0350", highincl:true },
+            { low:"a0100", lowincl:false, high:"a0200", highincl:true }],
+           // One open on the right, the other on the left:
+           [{ low:"a0100", lowincl:true, high:"a0200", highincl:false },
+            { low:"a0150", lowincl:false, high:"a0250", highincl:true }],
+           [{ low:"a0100", lowincl:true, high:"a0200", highincl:false },
+            { low:"a0200", lowincl:false, high:"a0300", highincl:true }],
+           [{ low:"a0100", lowincl:true, high:"a0200", highincl:false },
+            { low:"a0250", lowincl:false, high:"a0350", highincl:true }],
+           [{ low:"a0150", lowincl:true, high:"a0250", highincl:false },
+            { low:"a0100", lowincl:false, high:"a0200", highincl:true }],
+           [{ low:"a0200", lowincl:true, high:"a0300", highincl:false },
+            { low:"a0100", lowincl:false, high:"a0200", highincl:true }],
+           [{ low:"a0250", lowincl:true, high:"a0350", highincl:false },
+            { low:"a0100", lowincl:false, high:"a0200", highincl:true }],
+           // Three intervals in some permutations:
+           [{ low:"a0100", lowincl:true, high:"a0200", highincl:true },
+            { low:"a0150", lowincl:true, high:"a0250", highincl:true },
+            { low:"a0200", lowincl:true, high:"a0300", highincl:true }],
+           [{ low:"a0100", lowincl:true, high:"a0200", highincl:true },
+            { low:"a0200", lowincl:true, high:"a0300", highincl:true },
+            { low:"a0150", lowincl:true, high:"a0250", highincl:true }],
+           [{ low:"a0150", lowincl:true, high:"a0250", highincl:true },
+            { low:"a0100", lowincl:true, high:"a0200", highincl:true },
+            { low:"a0200", lowincl:true, high:"a0300", highincl:true }],
+           [{ low:"a0150", lowincl:true, high:"a0250", highincl:true },
+            { low:"a0200", lowincl:true, high:"a0300", highincl:true },
+            { low:"a0100", lowincl:true, high:"a0200", highincl:true }],
+           [{ low:"a0200", lowincl:true, high:"a0300", highincl:true },
+            { low:"a0100", lowincl:true, high:"a0200", highincl:true },
+            { low:"a0150", lowincl:true, high:"a0250", highincl:true }],
+           [{ low:"a0200", lowincl:true, high:"a0300", highincl:true },
+            { low:"a0150", lowincl:true, high:"a0250", highincl:true },
+            { low:"a0100", lowincl:true, high:"a0200", highincl:true }],
+          ];
+
+      var j, k;
+      for (j = 0; j < intervals.length; j++) {
+        var inters = intervals[j];
+        var q = `FOR x IN ${c.name()} FILTER `;
+        for (k = 0; k < inters.length; k++) {
+          if (k > 0) {
+            q += " || ";
+          }
+          q += "(x.a >";
+          if (inters[k].lowincl) {
+            q += "=";
+          }
+          q += ' "' + inters[k].low + '" && x.a <';
+          if (inters[k].highincl) {
+            q += "=";
+          }
+          q += ' "' + inters[k].high + '")';
+        }
+        q += " SORT x.a RETURN x.a";
+        queries.push(q);
+
+        var m = function (intervalList, x) {
+          var i;
+          var y = x.a;
+          for (i = 0; i < intervalList.length; i++) {
+            if ((y > intervalList[i].low ||
+                 (y === intervalList[i].low && intervalList[i].lowincl)) &&
+                (y < intervalList[i].high ||
+                 (y === intervalList[i].high && intervalList[i].highincl))) {
+              return true;
+            }
+          }
+          return false;
+        }.bind(this, inters);
+        makers.push(m);
+      }
+
+      for (var i = 0; i < queries.length; i++) {
+        var query = queries[i];
+        var maker = makers[i];
+
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertEqual("SingletonNode", nodeTypes[0], query);
+        assertEqual(-1, nodeTypes.indexOf("EnumerateCollection"),
+                    "found EnumerateCollection node for:" + query);
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"),
+                       "no index used for: " + query);
+        // Check for a sort node, later, with better optimizations this
+        // might be gone, we will adjust tests then.
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"),
+                       "no index used for: " + query);
+        assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         var results = AQL_EXECUTE(query);
         var correct = makeResult(maker).map(function(x) { return x.a; });
