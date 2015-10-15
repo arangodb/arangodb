@@ -129,6 +129,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
           auto noRes = new NoResultsNode(_plan, _plan->nextId());
           _plan->registerNode(noRes);
           _plan->insertDependency(x, noRes);
+          *_hasEmptyResult = true;
         }
         break;
       }

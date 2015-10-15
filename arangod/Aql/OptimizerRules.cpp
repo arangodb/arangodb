@@ -1757,9 +1757,9 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
   };
 
   TRI_DEFER(cleanupChanges());
-    
+  bool hasEmptyResult = false; 
   for (auto const& n : nodes) {
-    ConditionFinder finder(plan, &changes);
+    ConditionFinder finder(plan, &changes, &hasEmptyResult);
     n->walk(&finder);
   }
 
@@ -1775,7 +1775,7 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
     plan->findVarUsage();
   }
   else {
-    opt->addPlan(plan, rule, false);
+    opt->addPlan(plan, rule, hasEmptyResult);
   }
 
   return TRI_ERROR_NO_ERROR;

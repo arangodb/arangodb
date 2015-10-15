@@ -44,12 +44,14 @@ namespace triagens {
       public:
 
         ConditionFinder (ExecutionPlan* plan,
-                         std::unordered_map<size_t, ExecutionNode*>* changes)
+                         std::unordered_map<size_t, ExecutionNode*>* changes,
+                         bool* hasEmptyResult)
           : _plan(plan),
             _variableDefinitions(),
             _filters(),
             _sorts(),
-            _changes(changes) {
+            _changes(changes),
+            _hasEmptyResult(hasEmptyResult) {
         };
 
         ~ConditionFinder () {
@@ -67,6 +69,7 @@ namespace triagens {
         std::vector<std::pair<VariableId, bool>>       _sorts;
         // note: this class will never free the contents of this map
         std::unordered_map<size_t, ExecutionNode*>*    _changes;
+        bool*                                          _hasEmptyResult;
     
     };
   }
