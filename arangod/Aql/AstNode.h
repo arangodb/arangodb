@@ -254,6 +254,14 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief dump the node (for debugging purposes)
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+        void dump (int) const; 
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compute the JSON for a constant value node
 /// the JSON is owned by the node and must not be freed by the caller
 /// note that the return value might be NULL in case of OOM

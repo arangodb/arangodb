@@ -1248,12 +1248,18 @@ void Executor::generateCodeNode (AstNode const* node) {
     case NODE_TYPE_VARIABLE:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_PASSTHRU:
-    case NODE_TYPE_ARRAY_LIMIT:
+    case NODE_TYPE_ARRAY_LIMIT: {
       // we're not expecting these types here
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type in generateCodeNode");
+      std::string message("unexpected node type in generateCodeNode: ");
+      message.append(node->getTypeString());
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, message);
+    }
 
-    default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not implemented in generateCodeNode");
+    default: {
+      std::string message("node type not implemented in generateCodeNode: ");
+      message.append(node->getTypeString());
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, message);
+    }
   }
 }
 

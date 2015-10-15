@@ -181,27 +181,76 @@ bool ConditionPart::isCoveredBy (ConditionPart const& other) const {
     return false;
   }
 
-/*
-  // special case for IN...
+  // special cases for IN...
   if (! isExpanded && 
       ! other.isExpanded &&
-      operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-      other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
-    // compare two INs
+      other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+      other.valueNode->isConstant() &&
+      other.valueNode->isArray()) {
+    // compare an EQ with an IN
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      // TODO: currently this code will not fire
+      // only activate it when it is confirmed that this code path is tested
+      /*
+      size_t const n = other.valueNode->numMembers();
+
+      for (size_t i = 0; i < n; ++i) {
+        auto v = other.valueNode->getMemberUnchecked(i);
+  
+        ConditionPartCompareResult res = ConditionPart::ResultsTable
+          [CompareAstNodes(v, valueNode, false) + 1] 
+          [0] // NODE_TYPE_OPERATOR_BINARY_EQ
+          [whichCompareOperation()];
+  
+        if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
+            res == CompareResult::CONVERT_EQUAL) { 
+          return true;
+        }
+      }
+      */
+    }
+    else if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+             valueNode->isConstant() &&
+             valueNode->isArray()) {
+      // compare IN with an IN
+      // this has quadratic complexity
+      size_t const n1 = valueNode->numMembers();
+      size_t const n2 = other.valueNode->numMembers();
+
+      // maximum number of comparisons that we will accept
+      // otherwise the optimization will be aborted
+      static size_t const MaxComparisons = 2048;
+
+      if (n1 * n2 < MaxComparisons) {
+        for (size_t i = 0; i < n1; ++i) {
+          auto v = valueNode->getMemberUnchecked(i);
+          for (size_t j = 0; j < n2; ++j) {
+            auto w = other.valueNode->getMemberUnchecked(j);
+    
+            ConditionPartCompareResult res = ConditionPart::ResultsTable[CompareAstNodes(v, w, false) + 1][0][0];
+    
+            if (res != CompareResult::OTHER_CONTAINED_IN_SELF && 
+                res != CompareResult::CONVERT_EQUAL && 
+                res != CompareResult::IMPOSSIBLE) { 
+              return false;
+            }
+          }
+        }
+
+        return true;
+      }
+    }
   }
-*/
+
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
   ConditionPartCompareResult res = ConditionPart::ResultsTable
     [CompareAstNodes(other.valueNode, valueNode, false) + 1] 
     [other.whichCompareOperation()]
     [whichCompareOperation()];
-/*     
-  std::cout << "VALUENODE: " << valueNode << ", OTHER VALUENODE: " << other.valueNode << "\n";
-  std::cout << "WHICHCOMP: " << whichCompareOperation() << ", OTHER WHICH: " << other.whichCompareOperation() << "\n";
-  std::cout << "IS COVERED BY CALLED. RES: " << (int) res << "\n";
-*/
+
   if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
-      res == CompareResult::CONVERT_EQUAL) { 
+      res == CompareResult::CONVERT_EQUAL ||
+      res == CompareResult::IMPOSSIBLE) { 
     return true;
   }
 
@@ -355,7 +404,20 @@ std::pair<bool, bool> Condition::findIndexes (EnumerateCollectionNode const* nod
   for (size_t i = 0; i < _root->numMembers(); ++i) {
     auto canUseIndex = findIndexForAndNode(i, reference, node, usedIndexes, sortCondition);
 
-    // fear...
+    if (canUseIndex.second && ! canUseIndex.first) {
+      // index can be used for sorting only
+      // we need to abort further searching and only return one index
+      TRI_ASSERT(! usedIndexes.empty());
+      if (usedIndexes.size() > 1) {
+        auto sortIndex = usedIndexes.back();
+
+        usedIndexes.clear();
+        usedIndexes.emplace_back(sortIndex);
+      }
+
+      return std::make_pair(false, true);
+    }
+
     canUseForFilter &= canUseIndex.first;
     canUseForSort   |= canUseIndex.second;
   }
@@ -478,58 +540,16 @@ void Condition::normalize (ExecutionPlan* plan) {
   }
 
   _root = transformNode(_root);
-  _root = collapseNesting(_root);
   _root = fixRoot(_root, 0);
 
   optimize(plan);
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers an attribute access for a particular (collection) variable
-////////////////////////////////////////////////////////////////////////////////
-
-void Condition::storeAttributeAccess (VariableUsageType& variableUsage, 
-                                      AstNode const* node, 
-                                      size_t position, 
-                                      AttributeSideType side) {
-
-  std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
-          
-  if (! node->isAttributeAccessForVariable(result)) {
-    return;
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  if (_root != nullptr) {
+    // _root->dump(0);
+    validateAst(_root, 0);
   }
-
-  auto variable = result.first;
-
-  if (variable != nullptr) {
-    auto it = variableUsage.find(variable);
-
-    if (it == variableUsage.end()) {
-      // nothing recorded yet for variable
-      it = variableUsage.emplace(variable, AttributeUsageType()).first;
-    }
-
-    std::string attributeName;
-    TRI_AttributeNamesToString(result.second, attributeName, false);
-
-    auto it2 = (*it).second.find(attributeName);
-        
-    if (it2 == (*it).second.end()) {
-      // nothing recorded yet for attribute name in this variable
-      it2 = (*it).second.emplace(attributeName, UsagePositionType()).first;
-    }
-          
-    auto& dst = (*it2).second;
-
-    if (! dst.empty() && dst.back().first == position) {
-      // already have this attribute for this variable. can happen in case a condition refers to itself (e.g. a.x == a.x)
-      // in this case, we won't optimize it
-      dst.erase(dst.begin() + dst.size() - 1);
-    }
-    else {
-      dst.emplace_back(position, side);
-    }
-  }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -793,7 +813,7 @@ AstNode const* Condition::removeIndexCondition (Variable const* variable,
   if (other->numMembers() != 1 && _root->numMembers() != 1) {
     return _root;
   }
-  
+    
   auto andNode = _root->getMemberUnchecked(0);
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
   size_t const n = andNode->numMembers();
@@ -932,6 +952,81 @@ bool Condition::removeInvalidVariables (std::unordered_set<Variable const*> cons
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief registers an attribute access for a particular (collection) variable
+////////////////////////////////////////////////////////////////////////////////
+
+void Condition::storeAttributeAccess (VariableUsageType& variableUsage, 
+                                      AstNode const* node, 
+                                      size_t position, 
+                                      AttributeSideType side) {
+
+  std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
+          
+  if (! node->isAttributeAccessForVariable(result)) {
+    return;
+  }
+
+  auto variable = result.first;
+
+  if (variable != nullptr) {
+    auto it = variableUsage.find(variable);
+
+    if (it == variableUsage.end()) {
+      // nothing recorded yet for variable
+      it = variableUsage.emplace(variable, AttributeUsageType()).first;
+    }
+
+    std::string attributeName;
+    TRI_AttributeNamesToString(result.second, attributeName, false);
+
+    auto it2 = (*it).second.find(attributeName);
+        
+    if (it2 == (*it).second.end()) {
+      // nothing recorded yet for attribute name in this variable
+      it2 = (*it).second.emplace(attributeName, UsagePositionType()).first;
+    }
+          
+    auto& dst = (*it2).second;
+
+    if (! dst.empty() && dst.back().first == position) {
+      // already have this attribute for this variable. can happen in case a condition refers to itself (e.g. a.x == a.x)
+      // in this case, we won't optimize it
+      dst.erase(dst.begin() + dst.size() - 1);
+    }
+    else {
+      dst.emplace_back(position, side);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate the condition's AST
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+void Condition::validateAst (AstNode const* node, 
+                             int level) {
+  if (level == 0) {
+    TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR);
+  }
+    
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    auto sub = node->getMemberUnchecked(i);
+    if (level == 0) {
+      TRI_ASSERT(sub->type == NODE_TYPE_OPERATOR_NARY_AND);
+    }
+    else {
+      TRI_ASSERT(sub->type != NODE_TYPE_OPERATOR_NARY_OR &&
+                 sub->type != NODE_TYPE_OPERATOR_NARY_AND);
+    }
+
+    validateAst(sub, level + 1);
+  }
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the current condition is covered by the other
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1030,6 +1125,39 @@ AstNode* Condition::mergeInOperations (AstNode const* lhs,
   return _ast->createNodeMergedArray(lValue, rValue);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merges the current node with the sub nodes of same type
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Condition::collapse (AstNode const* node) {
+  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR ||
+             node->type == NODE_TYPE_OPERATOR_NARY_AND);
+
+  auto newOperator = _ast->createNode(node->type);
+
+  size_t const n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto sub = node->getMemberUnchecked(i);
+
+    if (sub->type == node->type) {
+      // merge
+      for (size_t j = 0; j < sub->numMembers(); ++j) {
+        newOperator->addMember(sub->getMemberUnchecked(j));
+      }
+    }
+    else {
+      newOperator->addMember(sub);
+    }
+  }
+
+  return newOperator;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts binary logical operators into n-ary operators
+////////////////////////////////////////////////////////////////////////////////
+
 AstNode* Condition::transformNode (AstNode* node) {
   if (node == nullptr) {
     return nullptr;
@@ -1051,25 +1179,47 @@ AstNode* Condition::transformNode (AstNode* node) {
              node->type != NODE_TYPE_OPERATOR_BINARY_OR);
 
   if (node->type == NODE_TYPE_OPERATOR_NARY_AND) {
-    // first recurse into subnodes
     bool processChildren = false;
+    bool mustCollapse = false;
     size_t const n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      node->changeMember(i, transformNode(node->getMemberUnchecked(i)));
+      // process subnodes first
+      auto sub = transformNode(node->getMemberUnchecked(i));
+      node->changeMember(i, sub);
 
-      if (node->type == NODE_TYPE_OPERATOR_NARY_OR ||
-          node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      if (sub->type == NODE_TYPE_OPERATOR_NARY_OR ||
+          sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
         processChildren = true;
       }
+      else if (sub->type == NODE_TYPE_OPERATOR_NARY_AND) {
+        mustCollapse = true;
+      }
     }
-      
+    
     if (processChildren) {
+      // we found an AND with at least one OR child, e.g.
+      //        AND
+      //   OR          c
+      // a    b 
+      //
+      // we need to move the OR to the top by converting the condition to:
+      //         OR
+      //   AND        AND
+      //  a   c      b   c
+      //
       auto newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
 
       std::vector<PermutationState> permutationStates;
       for (size_t i = 0; i < n; ++i) {
-        permutationStates.emplace_back(PermutationState(node->getMemberUnchecked(i), node->numMembers()));
+        auto sub = node->getMemberUnchecked(i);
+
+        if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) { // || sub->type == NODE_TYPE_OPERATOR_NARY_AND) {
+          permutationStates.emplace_back(PermutationState(sub, sub->numMembers()));
+        }
+        else {
+          permutationStates.emplace_back(PermutationState(sub, 1));
+        }
       }
   
       size_t current = 0;
@@ -1104,20 +1254,37 @@ AstNode* Condition::transformNode (AstNode* node) {
         }
       }
 
-      return newOperator;
+      node = newOperator;
     }
-    // fallthrough intentional
+
+    if (mustCollapse) {
+      node = collapse(node);
+    }
+
+    return node;
   }
-  else if (node->type == NODE_TYPE_OPERATOR_NARY_OR) {
-    // recurse into subnodes
+
+  if (node->type == NODE_TYPE_OPERATOR_NARY_OR) {
     size_t const n = node->numMembers();
+    bool mustCollapse = false;
 
     for (size_t i = 0; i < n; ++i) {
-      node->changeMember(i, transformNode(node->getMemberUnchecked(i)));
+      auto sub = transformNode(node->getMemberUnchecked(i));
+      node->changeMember(i, sub);
+
+      if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {
+        mustCollapse = true;
+      }
     }
-    // fallthrough intentional
+
+    if (mustCollapse) {
+      node = collapse(node);
+    }
+
+    return node;
   }
-  else if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+
+  if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
     // push down logical negations
     auto sub = node->getMemberUnchecked(0);
 
@@ -1149,45 +1316,18 @@ AstNode* Condition::transformNode (AstNode* node) {
     }
 
     node->changeMember(0, transformNode(sub));
-    // fallthrough intentional
+
+    return node;
   }
   
   return node;
 }
 
-AstNode* Condition::collapseNesting (AstNode* node) {
-  if (node == nullptr) {
-    return nullptr;
-  }
-
-  if (node->type == NODE_TYPE_OPERATOR_NARY_AND || 
-      node->type == NODE_TYPE_OPERATOR_NARY_OR) {
-    // first recurse into subnodes
-    size_t const n = node->numMembers();
-
-    for (size_t i = 0; i < n; ++i) {
-      auto sub = collapseNesting(node->getMemberUnchecked(i));
-
-      if (sub->type == node->type) {
-        // sub-node has the same type as parent node
-        // now merge the sub-nodes of the sub-node into the parent node
-        size_t const subNumMembers = sub->numMembers();
-
-        for (size_t j = 0; j < subNumMembers; ++j) {
-          node->addMember(sub->getMemberUnchecked(j));
-        }
-        // invalidate the child node which we just expanded
-        node->changeMember(i, _ast->createNodeNop());
-      }
-      else { 
-        // different type
-        node->changeMember(i, sub);
-      }
-    }
-  }
-
-  return node;
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Creates a top-level OR node if it does not already exist, and make 
+/// sure that all second level nodes are AND nodes. Additionally, this step will
+/// remove all NOP nodes.
+////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Condition::fixRoot (AstNode* node, int level) {
   if (node == nullptr) {

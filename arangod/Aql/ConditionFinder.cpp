@@ -107,9 +107,6 @@ bool ConditionFinder::before (ExecutionNode* en) {
         break;
       }
 
-      auto const& varsValid = node->getVarsValid();
-      std::unordered_set<Variable const*> varsUsed;
-
       std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
 
       for (auto& it : _variableDefinitions) {
@@ -121,6 +118,8 @@ bool ConditionFinder::before (ExecutionNode* en) {
 
       // normalize the condition
       condition->normalize(_plan);
+
+      auto const& varsValid = node->getVarsValid();
 
       // remove all invalid variables from the condition
       if (condition->removeInvalidVariables(varsValid)) {
@@ -155,6 +154,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
 
         if (! canUseIndex.first) {
           // index cannot be used for filtering, but only for sorting
+          // remove the condition now
           TRI_ASSERT(canUseIndex.second);
           condition.reset(new Condition(_plan->getAst()));
           condition->normalize(_plan);
@@ -175,7 +175,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
         ));
         condition.release();
 
-        // We keep this nodes change
+        // We keep this node's change
         _changes->emplace(node->id(), newNode.get());
         newNode.release();
       }
