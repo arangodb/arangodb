@@ -739,11 +739,19 @@ TRI_index_element_t* SkiplistIterator::nextIteration () {
 // -----------------------------------------------------------------------------
 
 TRI_doc_mptr_t* SkiplistIndexIterator::next () {
-  if (_iterator == nullptr) {
+  while (_iterator == nullptr) {
+    if (_currentOperator == _operators.size()) {
+      // Sorry nothing found at all
+      return nullptr;
+    }
     // We restart the lookup
     _iterator = _index->lookup(_operators[_currentOperator], _reverse);
-    TRI_ASSERT(_iterator != nullptr);
+    if (_iterator == nullptr) {
+      // This iterator was not created.
+      _currentOperator++;
+    }
   }
+  TRI_ASSERT(_iterator != nullptr);
   TRI_index_element_t* res = _iterator->next();
   while (res == nullptr) {
     // Try the next iterator

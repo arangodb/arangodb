@@ -58,15 +58,10 @@ function optimizerRuleTestSuite() {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, "has no filter node");
   };
   
-  var hasFilterNode = function (plan) {
-    assertEqual(findExecutionNodes(plan, "FilterNode").length, 1, "has filter node");
-  };
-
   var hasIndexNodeWithRanges = function (plan) {
     var rn = findExecutionNodes(plan, "IndexNode");
     assertTrue(rn.length >= 1, "has IndexNode");
-    assertTrue(rn[0].ranges.length > 0, "whether the IndexNode ranges array is valid");
-    assertTrue(rn[0].ranges[0].length > 0, "have IndexNode with ranges");
+    assertTrue(rn[0].indexes.length > 0, "whether the IndexNode uses at least one index");
   };
 
   return {
@@ -178,14 +173,14 @@ function optimizerRuleTestSuite() {
       queries.forEach(function(query) {
         var result;
         result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
-        assertEqual([ IndexesRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
-        hasFilterNode(result);
+        assertEqual([ IndexesRule, FilterRemoveRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasNoFilterNode(result);
 
         hasIndexNodeWithRanges(result);
 
         result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
-        assertEqual([ IndexesRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
-        hasFilterNode(result);
+        assertEqual([ IndexesRule, FilterRemoveRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasNoFilterNode(result);
         hasIndexNodeWithRanges(result);
 
         var QResults = [];

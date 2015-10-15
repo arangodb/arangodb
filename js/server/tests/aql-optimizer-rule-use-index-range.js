@@ -138,7 +138,6 @@ function optimizerRuleUseIndexRangeTester () {
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 RETURN i",
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 0 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 3 RETURN i",
         "FOR i IN UTUseIndexRangeHashInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a <= 2 RETURN i",
@@ -162,7 +161,6 @@ function optimizerRuleUseIndexRangeTester () {
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 RETURN i",
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 0 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 3 RETURN i",
         "FOR i IN UTUseIndexRangeHashInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a <= 2 RETURN i",
@@ -172,6 +170,27 @@ function optimizerRuleUseIndexRangeTester () {
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramAll);
         assertTrue(result.plan.rules.indexOf(ruleName) >= 0, query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that impossible conditions are detected and optimized
+////////////////////////////////////////////////////////////////////////////////
+
+    testImpossibleRangesAreDetected : function () {
+      var queries = [ 
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 3 RETURN i"
+      ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query, { }, paramAll);
+        var foundNoResults = false;
+        for (var t in result.plan.nodes) {
+          if (result.plan.nodes[t].type === "NoResultsNode") {
+            foundNoResults = true;
+          }
+        }
+        assertTrue(foundNoResults, query);
       });
     },
 
