@@ -544,12 +544,60 @@ void Condition::normalize (ExecutionPlan* plan) {
 
   optimize(plan);
 
+  // fixOrs(plan);
+
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
     // _root->dump(0);
     validateAst(_root, 0);
   }
 #endif
+}
+
+void Condition::fixOrs (ExecutionPlan* plan) {
+  if (_root == nullptr) {
+    return;
+  }
+
+  size_t const n = _root->numMembers();
+  
+  if (n < 2) {
+    return;
+  }
+
+  for (size_t i = 0; i < n; ++i) {
+    // sort the conditions of each AND
+    auto sub = _root->getMemberUnchecked(i);
+
+    TRI_ASSERT(sub != nullptr && sub->type == NODE_TYPE_OPERATOR_NARY_AND);
+    size_t const nAnd = sub->numMembers();
+
+    if (nAnd < 2) {
+      // no need for sorting
+      continue;
+    }
+    
+    VariableUsageType variableUsage;
+    
+    for (size_t j = 0; j < nAnd; ++j) {
+      auto operand = sub->getMemberUnchecked(j);
+
+      if (! operand->isComparisonOperator()) {
+        return;
+      }
+
+      auto lhs = operand->getMember(0);
+      auto rhs = operand->getMember(1);
+
+      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        storeAttributeAccess(variableUsage, lhs, j, ATTRIBUTE_LEFT);
+      }
+      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+          rhs->type == NODE_TYPE_EXPANSION) {
+        storeAttributeAccess(variableUsage, rhs, j, ATTRIBUTE_RIGHT);
+      }
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
