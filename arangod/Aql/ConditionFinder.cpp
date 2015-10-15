@@ -109,15 +109,29 @@ bool ConditionFinder::before (ExecutionNode* en) {
 
       std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
 
+      bool foundCondition = false;
       for (auto& it : _variableDefinitions) {
         if (_filters.find(it.first) != _filters.end()) {
           // a variable used in a FILTER
           condition->andCombine(it.second);
+          foundCondition = true;
         }
       }
 
       // normalize the condition
       condition->normalize(_plan);
+
+      bool const conditionIsImpossible = (foundCondition && condition->isEmpty());
+
+      if (conditionIsImpossible) {
+        // condition is always false
+        for (auto const& x : en->getParents()) {
+          auto noRes = new NoResultsNode(_plan, _plan->nextId());
+          _plan->registerNode(noRes);
+          _plan->insertDependency(x, noRes);
+        }
+        break;
+      }
 
       auto const& varsValid = node->getVarsValid();
 
@@ -162,7 +176,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
         
         TRI_ASSERT(! usedIndexes.empty());
 
-          // We either can find indexes for everything or findIndexes will clear out usedIndexes
+        // We either can find indexes for everything or findIndexes will clear out usedIndexes
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
           _plan, 
           _plan->nextId(), 
