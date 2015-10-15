@@ -334,16 +334,13 @@ void IndexBlock::startNextIterator () {
     IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
     auto outVariable = node->outVariable();
     auto ast = node->_plan->getAst();
-
-    TRI_ASSERT(_indexes.size() == _condition->numMembers());
-
-    _iterator = _indexes[_currentIndex]->getIterator(
-      _context, 
-      ast, 
-      _condition->getMember(_currentIndex), 
-      outVariable, 
-      node->_reverse
-    );
+    if (_condition == nullptr) {
+      _iterator = _indexes[_currentIndex]->getIterator(_context, ast, nullptr, outVariable, node->_reverse);
+    }
+    else {
+      TRI_ASSERT(_indexes.size() == _condition->numMembers());
+      _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable, node->_reverse);
+    }
   }
 }
 
