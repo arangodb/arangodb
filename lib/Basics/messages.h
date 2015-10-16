@@ -53,6 +53,7 @@
 #define TRI_BYE_MESSAGE_NL "Tot ziens!"
 #define TRI_BYE_MESSAGE_RU "До свидания!"
 #define TRI_BYE_MESSAGE_SV "Adjö!"
+#define TRI_BYE_MESSAGE_PT "Até Logo!"
 
 #define TRI_BYE_MESSAGE \
   TRI_BYE_MESSAGE_CH " " \
@@ -68,7 +69,8 @@
   TRI_BYE_MESSAGE_SV " " \
   TRI_BYE_MESSAGE_GR " " \
   TRI_BYE_MESSAGE_JP " " \
-  TRI_BYE_MESSAGE_RU
+  TRI_BYE_MESSAGE_RU " " \
+  TRI_BYE_MESSAGE_PT
 
 #endif
 
