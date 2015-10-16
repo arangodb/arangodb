@@ -47,10 +47,7 @@
             "frontend/js/lib/jquery.textfill.min.js",
             "frontend/js/lib/select2.min.js",
             "frontend/js/lib/jsoneditor-min.js",
-            "frontend/js/lib/d3.v3.min.js",
-            "frontend/js/lib/nv.d3.min.js",
             "frontend/js/lib/strftime-min.js",
-            "frontend/js/lib/dygraph-combined.min.js",
             "frontend/js/lib/d3.fisheye.min.js",
             "frontend/js/lib/bootstrap-pagination.min.js",
             "frontend/js/lib/jqconsole.min.js",
@@ -71,7 +68,6 @@
             "frontend/js/arango/arango.js",
             "frontend/js/arango/templateEngine.js",
             "frontend/js/shell/browser.js",
-            "frontend/js/config/dygraphConfig.js",
             "frontend/js/modules/underscore.js"
           ],
           js: [
@@ -201,7 +197,7 @@
           },
           files: [{
             expand: true,
-            src: ['clusterFrontend/build/cluster.js'],
+            src: ['clusterFrontend/build/cluster.js', 'clusterFrontend/build/libs.js'],
             dest: '.',
             ext: '.js.gz'
           }]
@@ -338,7 +334,11 @@
             "frontend/js/lib/jquery-2.1.0.min.js",
             "frontend/js/lib/underscore-min.js",
             "frontend/js/lib/backbone-min.js",
-            "frontend/js/lib/bootstrap-min.js"
+            "frontend/js/lib/bootstrap-min.js",
+            "frontend/js/lib/d3.v3.min.js",
+            "frontend/js/lib/nv.d3.min.js",
+            "frontend/js/config/dygraphConfig.js",
+            "frontend/js/lib/dygraph-combined.min.js"
           ],
           dest: 'build/sharedLibs.js',
           options: {
@@ -372,10 +372,6 @@
         },
         jsCluster: {
           src: [
-            "frontend/js/lib/dygraph-combined.min.js",
-            "frontend/js/config/dygraphConfig.js",
-            "frontend/js/lib/d3.v3.min.js",
-            "frontend/js/lib/nv.d3.min.js",
             "frontend/js/arango/arango.js",
             "clusterFrontend/js/models/*",
             "clusterFrontend/js/collections/*",
@@ -479,19 +475,36 @@
       },
 
       uglify: {
-        default: {
+        default1: {
           files: {
-            'frontend/build/app.min.js': 'frontend/build/app.js',
+            'frontend/build/app.min.js': 'frontend/build/app.js'
+          }
+        },
+        default2: {
+          files: {
             'clusterFrontend/build/cluster.min.js': 'clusterFrontend/build/cluster.js'
           }
         },
-        libs: {
+        libs1: {
           files: {
-            'frontend/build/libs.min.js': 'frontend/build/libs.js',
-            'build/sharedLibs.min.js': 'build/sharedLibs.js',
+            'frontend/build/libs.min.js': 'frontend/build/libs.js'
+          }
+        },
+        libs2: {
+          files: {
+            'build/sharedLibs.min.js': 'build/sharedLibs.js'
+          }
+        },
+        libs3: {
+          files: {
             'frontend/src/ace.min.js': 'frontend/src/ace.js'
           }
         }
+      },
+
+      concurrent: {
+        uglifyFast: ['uglify:default1', 'uglify:default2'],
+        uglifyAll: ['uglify:default1', 'uglify:default2', 'uglify:libs1', 'uglify:libs2', 'uglify:libs3']
       },
 
       watch: {
@@ -560,7 +573,6 @@
       'sass:dev',
       'jshint:default',
       'replace',
-      'imagemin',
       'concat',
       'concat_in_order:sharedES',
       'babel',
@@ -570,7 +582,7 @@
       'concat_in_order:htmlCluster',
       'concat_in_order:htmlStandalone',
       'cssmin',
-      'uglify:default',
+      'concurrent:uglifyFast',
       'htmlmin',
       'compress'
     ]);
@@ -587,7 +599,7 @@
       'concat_in_order:jsCluster',
       'concat_in_order:htmlCluster',
       'concat_in_order:htmlStandalone',
-      'uglify:default',
+      'concurrent:uglifyFast',
       'watch'
     ]);
 
@@ -606,8 +618,7 @@
       'concat_in_order:htmlCluster',
       'concat_in_order:htmlStandalone',
       'cssmin',
-      'uglify:default',
-      'uglify:libs',
+      'concurrent:uglifyAll',
       'htmlmin',
       'compress'
     ]);
