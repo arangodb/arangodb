@@ -324,11 +324,25 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
   }
 
   if (lType == TRI_JSON_STRING) {
+    size_t maxLength = (std::max)(lhs->getStringLength(), rhs->getStringLength());
+
     if (compareUtf8) {
-      return TRI_compare_utf8(lhs->getStringValue(), rhs->getStringValue());
+      return TRI_compare_utf8(lhs->getStringValue(), lhs->getStringLength(), rhs->getStringValue(), rhs->getStringLength());
     }
-    return strcmp(lhs->getStringValue(), rhs->getStringValue());
-  }
+
+    int res = strncmp(lhs->getStringValue(), rhs->getStringValue(), maxLength);
+
+    if (res != 0) {
+      return res;
+    }
+
+    int diff = lhs->getStringLength() - rhs->getStringLength();
+
+    if (diff != 0) {
+      return diff < 0 ? -1 : 1;
+    }
+    return 0;
+  } 
 
   if (lType == TRI_JSON_ARRAY) {
     size_t const numLhs = lhs->numMembers();
