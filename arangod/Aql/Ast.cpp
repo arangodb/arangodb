@@ -1742,6 +1742,8 @@ AstNode const* Ast::deduplicateArray (AstNode const* node) {
     return node;
   }
 
+  // TODO: sort values in place first and compare two adjacent members each
+
   std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
     n,
     triagens::basics::JsonHash(), 
@@ -1757,12 +1759,7 @@ AstNode const* Ast::deduplicateArray (AstNode const* node) {
     }
   }
 
-  if (cache.size() == n) {
-    // no duplicates
-    return node;
-  }
-
-  // we got duplicates. now create a copy of the deduplicated values
+  // we may have got duplicates. now create a copy of the deduplicated values
   auto copy = createNodeArray();
   copy->members.reserve(cache.size());
 
