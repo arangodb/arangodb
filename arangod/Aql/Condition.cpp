@@ -525,7 +525,7 @@ std::pair<bool, bool> Condition::findIndexForAndNode (size_t position,
   }
 
   _root->changeMember(position, bestIndex->specializeCondition(node, reference)); 
-  _isSorted = sortOrs();
+  _isSorted = sortOrs(reference);
 
   usedIndexes.emplace_back(bestIndex);
 
@@ -717,7 +717,7 @@ bool Condition::removeInvalidVariables (std::unordered_set<Variable const*> cons
 /// order. this will only work if the condition is for a single attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Condition::sortOrs () {
+bool Condition::sortOrs (Variable const* variable) {
   if (_root == nullptr) {
     return true;
   }
@@ -748,6 +748,10 @@ bool Condition::sortOrs () {
     if (! operand->isComparisonOperator()) {
       return false;
     }
+    if (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+        operand->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+      return false;
+    }
 
     auto lhs = operand->getMember(0);
     auto rhs = operand->getMember(1);
@@ -757,8 +761,9 @@ bool Condition::sortOrs () {
           
       if (lhs->isAttributeAccessForVariable(result) &&
           rhs->isConstant()) {
-        
-        parts.emplace_back(ConditionPart(result.first, result.second, operand, ATTRIBUTE_LEFT, sub));
+        if (result.first == variable) { 
+          parts.emplace_back(ConditionPart(result.first, result.second, operand, ATTRIBUTE_LEFT, sub));
+        }
       }
     }
 
@@ -769,7 +774,9 @@ bool Condition::sortOrs () {
       if (rhs->isAttributeAccessForVariable(result) &&
           lhs->isConstant()) {
           
-        parts.emplace_back(ConditionPart(result.first, result.second, operand, ATTRIBUTE_RIGHT, sub));
+        if (result.first == variable) { 
+          parts.emplace_back(ConditionPart(result.first, result.second, operand, ATTRIBUTE_RIGHT, sub));
+        }
       }
     }
   }
@@ -1468,8 +1475,6 @@ AstNode* Condition::transformNode (AstNode* node) {
     }
 
     node->changeMember(0, transformNode(sub));
-
-    return node;
   }
   
   return node;
