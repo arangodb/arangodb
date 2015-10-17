@@ -294,9 +294,13 @@ bool IndexBlock::initIndexes () {
       }
     }
   }
-
-  _currentIndex = 0;
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
+  if (node->_reverse) {
+    _currentIndex = _indexes.size() - 1;
+  }
+  else {
+    _currentIndex = 0;
+  }
   auto outVariable = node->outVariable();
   auto ast = node->_plan->getAst();
   if (_condition == nullptr) {
@@ -307,8 +311,14 @@ bool IndexBlock::initIndexes () {
   }
 
   while (_iterator == nullptr) {
-    ++_currentIndex;
+    if (node->_reverse) {
+      --_currentIndex;
+    }
+    else {
+      ++_currentIndex;
+    }
     if (_currentIndex < _indexes.size()) {
+      // This check will work as long as _indexes.size() < MAX_SIZE_T
       if (_condition == nullptr) {
         _iterator = _indexes[_currentIndex]->getIterator(_context, ast, nullptr, outVariable, node->_reverse);
       }
@@ -329,9 +339,15 @@ void IndexBlock::startNextIterator () {
   delete _iterator;
   _iterator = nullptr;
 
-  ++_currentIndex;
+  IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
+  if (node->_reverse) {
+    --_currentIndex;
+  }
+  else {
+    ++_currentIndex;
+  }
   if (_currentIndex < _indexes.size()) {
-    IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
+    // This check will work as long as _indexes.size() < MAX_SIZE_T
     auto outVariable = node->outVariable();
     auto ast = node->_plan->getAst();
     if (_condition == nullptr) {

@@ -1472,6 +1472,9 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
   if (searchValues.empty()) {
     return nullptr;
   }
+  if (reverse) {
+    std::reverse(searchValues.begin(), searchValues.end());
+  }
 
   return new SkiplistIndexIterator(this, searchValues, reverse);
 }
