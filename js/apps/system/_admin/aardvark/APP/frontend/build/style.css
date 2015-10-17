@@ -2087,7 +2087,7 @@ textarea,
   height: 0;
   visibility: hidden; }
 
-.script-dropdown-menu .dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus, div.demo-dropdown-menu {
+.script-dropdown-menu .dropdown-item, .addButton, .deleteButton, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus {
   cursor: pointer; }
 
 .navbar, footer.footer {
@@ -7933,40 +7933,3 @@ table .sorting {
   .ajax-upload-dragdrop span {
     position: relative;
     top: -22px; }
-
-div.demo-dropdown-menu {
-  -moz-border-radius: 0 0 5px 5px;
-  -webkit-border-radius: 0 0 5px 5px;
-  border-radius: 0 0 5px 5px;
-  background-color: #686766;
-  margin-bottom: 5px;
-  margin-left: 5px;
-  position: absolute;
-  top: 32px;
-  width: 222px;
-  z-index: 100; }
-
-#flightQuerySelect.query-select {
-  font-size: 13px;
-  height: 25px;
-  line-height: 1.1em;
-  margin-top: 6px; }
-
-#demo-mapdiv {
-  position: relative; }
-
-#demo-mapdiv-info {
-  background-color: rgba(255, 255, 255, 0.75);
-  border: 1.5px solid #666;
-  border-radius: 3px;
-  bottom: 20px;
-  font-size: 11px;
-  height: 150px;
-  line-height: 1.3em;
-  padding: 6px 6px 3px;
-  position: absolute;
-  right: 20px;
-  width: 225px; }
-
-.amcharts-balloon-div {
-  line-height: 1.1em; }
