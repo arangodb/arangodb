@@ -680,7 +680,7 @@ bool Condition::removeInvalidVariables (std::unordered_set<Variable const*> cons
     for (size_t j = 0; j < nAnd; /* no hoisting */) {
       // check which variables are used in each AND
       varsUsed.clear();
-      Ast::getReferencedVariables(andNode, varsUsed);
+      Ast::getReferencedVariables(andNode->getMemberUnchecked(j), varsUsed);
 
       bool invalid = false;
       for (auto& it : varsUsed) {
