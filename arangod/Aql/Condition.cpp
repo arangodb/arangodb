@@ -425,6 +425,8 @@ std::pair<bool, bool> Condition::findIndexes (EnumerateCollectionNode const* nod
     canUseForSort   |= canUseIndex.second;
   }
 
+  _isSorted = sortOrs(reference);
+
   // should always be true here. maybe not in the future in case a collection
   // has absolutely no indexes
   return std::make_pair(canUseForFilter, canUseForSort);
@@ -525,7 +527,6 @@ std::pair<bool, bool> Condition::findIndexForAndNode (size_t position,
   }
 
   _root->changeMember(position, bestIndex->specializeCondition(node, reference)); 
-  _isSorted = sortOrs(reference);
 
   usedIndexes.emplace_back(bestIndex);
 
