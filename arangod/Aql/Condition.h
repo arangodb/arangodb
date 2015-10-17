@@ -319,7 +319,7 @@ namespace triagens {
 /// order. this will only work if the condition is for a single attribute
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool sortOrs ();
+        bool sortOrs (Variable const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimize the condition expression tree
