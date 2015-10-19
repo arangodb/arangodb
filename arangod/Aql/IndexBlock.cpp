@@ -387,7 +387,9 @@ bool IndexBlock::readIndex (size_t atMost) {
     return false;
   }
 
-  size_t lastIndexNr = _indexes.size();
+  size_t lastIndexNr = _indexes.size() - 1;
+  bool isReverse = (static_cast<IndexNode const*>(getPlanNode()))->_reverse;
+  bool isLastIndex = (_currentIndex == lastIndexNr && !isReverse) || (_currentIndex == 0 && isReverse);
   try {
     size_t nrSent = 0;
     while (nrSent < atMost && _iterator != nullptr) {
@@ -399,9 +401,8 @@ bool IndexBlock::readIndex (size_t atMost) {
         TRI_IF_FAILURE("IndexBlock::readIndex") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        if (_currentIndex == 0 ||
-          _alreadyReturned.find(indexElement) == _alreadyReturned.end()) {
-          if (_currentIndex < lastIndexNr) {
+        if (_alreadyReturned.find(indexElement) == _alreadyReturned.end()) {
+          if (! isLastIndex) {
             _alreadyReturned.emplace(indexElement);
           }
 
