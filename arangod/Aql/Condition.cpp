@@ -306,11 +306,14 @@ Condition* Condition::fromJson (ExecutionPlan* plan,
                                 triagens::basics::Json const& json) {
   std::unique_ptr<Condition> condition(new Condition(plan->getAst()));
 
-  std::unique_ptr<AstNode> node(new AstNode(plan->getAst(), json)); 
-  condition->andCombine(node.get());
-  node.release();
-
+  if (json.isObject() && json.members() != 0) {
+    std::unique_ptr<AstNode> node(new AstNode(plan->getAst(), json)); 
+    condition->andCombine(node.get());
+    node.release();
+  }
   condition->_isNormalized = true;
+  // TODO
+  condition->_isSorted = false;
 
   return condition.release();
 }

@@ -359,33 +359,26 @@ TRI_json_t const* JsonHelper::checkAndGetArrayValue (TRI_json_t const* json,
   return sub;
 }
 
-namespace triagens {
-  namespace basics {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the JSON contents to an output stream
 ////////////////////////////////////////////////////////////////////////////////
      
-    std::ostream& operator<< (std::ostream& stream,
-                              Json const* json) {
-      stream << json->toString();
-      return stream;
-    }
+std::ostream& operator<< (std::ostream& stream,
+                          Json const* json) {
+  stream << json->toString();
+  return stream;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the JSON contents to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::ostream& operator<< (std::ostream& stream,
-                              Json const& json) {
-      stream << json.toString();
-      return stream;
-    }
-
-
-
-  }
+std::ostream& operator<< (std::ostream& stream,
+                          Json const& json) {
+  stream << json.toString();
+  return stream;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the JSON contents to an output stream
