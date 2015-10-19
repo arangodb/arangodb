@@ -88,11 +88,12 @@ function optimizerIndexesRangesTestSuite () {
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1].length * 20, results.json.length, query);
-        var last = query[1][0];
+        // var last = query[1][0];
         results.json.forEach(function(value) {
           assertNotEqual(-1, query[1].indexOf(value));
-          assertTrue(value >= last);
-          last = value;
+          // This is not guaranteed any more
+          // assertTrue(value >= last, query[0]);
+          // last = value;
         });
      
         assertTrue(results.stats.scannedIndex > 0);
@@ -136,11 +137,12 @@ function optimizerIndexesRangesTestSuite () {
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1].length * 20, results.json.length, query);
-        var last = query[1][0];
+        // var last = query[1][0];
         results.json.forEach(function(value) {
           assertNotEqual(-1, query[1].indexOf(value));
-          assertTrue(value >= last);
-          last = value;
+          // This is not guaranteed any more
+          // assertTrue(value >= last, query[0]);
+          // last = value;
         });
      
         assertTrue(results.stats.scannedIndex > 0);

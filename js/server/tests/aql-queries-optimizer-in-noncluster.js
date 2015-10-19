@@ -1005,7 +1005,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var expected = [ 1, 2 ];
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
-      ruleIsNotUsed(query);
+      ruleIsUsed(query);
     },
     
     testOverlappingDynamicAndNonDynamic: function () {
@@ -1031,6 +1031,11 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= 2) || (x.value1 in [1,6] && x.value2 == 9) RETURN x.value1";
       var expected = [ 1, 4, 4, 5, 5, 6 ];
       var actual = getQueryResults(query);
+      // Sorting is not guaranteed any more.
+      // We sort the result ourself
+      actual.sort(function (a, b) {
+        return a - b;
+      });
       assertEqual(expected, actual);
       ruleIsUsed(query);
     }, 
@@ -1061,6 +1066,11 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= PASSTHRU(2)) || (x.value1 in [1,6] && x.value2 == 9) RETURN x.value1";
       var expected = [ 1, 4, 4, 5, 5, 6 ];
       var actual = getQueryResults(query);
+      // Sorting is not guaranteed any more.
+      // We sort the result ourself
+      actual.sort(function (a, b) {
+        return a - b;
+      });
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
@@ -1091,6 +1101,11 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= PASSTHRU(2)) || (x.value1 in [PASSTHRU(1),6] && x.value2 == 9) RETURN x.value1";
       var expected = [ 1, 4, 4, 5, 5, 6 ];
       var actual = getQueryResults(query);
+      // Sorting is not guaranteed any more.
+      // We sort the result ourself
+      actual.sort(function (a, b) {
+        return a - b;
+      });
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
@@ -1112,6 +1127,14 @@ function ahuacatlQueryOptimizerInTestSuite () {
                        [ 3, 10, 13, "somethings20" ], 
                      ];
       var actual = getQueryResults(query);
+      // Sorting is not guaranteed any more.
+      // We sort the result ourself
+      actual.sort(function (a, b) {
+        if (a[0] !== b[0]) {
+          return a[0] - b[0];
+        }
+        return a[2] - b[2];
+      });
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
@@ -1159,6 +1182,14 @@ function ahuacatlQueryOptimizerInTestSuite () {
                        [ 3, 10, 2, "somethings20" ] 
                      ];
       var actual = getQueryResults(query);
+      // Sorting is not guaranteed any more.
+      // We sort the result ourself
+      actual.sort(function (a, b) {
+        if (a[0] !== b[0]) {
+          return a[0] - b[0];
+        }
+        return a[2] - b[2];
+      });
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
@@ -1176,7 +1207,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
 
       c.ensureSkiplist("value1", "value2", "value3", "value4");
 
-      var query = "FOR x IN " + cn + " FILTER (x.value1 IN [PASSTHRU(1), PASSTHRU(2), PASSTHRU(3)] && x.value1 IN [2, 3, 4] && x.value2 == PASSTHRU(10) && x.value3 <= 2) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 == PASSTHRU(6) && x.value4 in ['somethings2', PASSTHRU('somethings4')] ) SORT x.value1 DESC RETURN [x.value1, x.value2, x.value3, x.value4]";
+      var query = "FOR x IN " + cn + " FILTER (x.value1 IN [PASSTHRU(1), PASSTHRU(2), PASSTHRU(3)] && x.value1 IN [2, 3, 4] && x.value2 == PASSTHRU(10) && x.value3 <= 2) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 == PASSTHRU(6) && x.value4 in ['somethings2', PASSTHRU('somethings4')] ) SORT x.value1, x.value2, x.value3 DESC RETURN [x.value1, x.value2, x.value3, x.value4]";
       var expected = [ 
                        [ 3, 10, 2, "somethings20" ], 
                        [ 3, 10, 1, "somethings20" ],
@@ -1211,6 +1242,14 @@ function ahuacatlQueryOptimizerInTestSuite () {
                        [ 3, 10, 2, "somethings20" ] 
                      ];
       var actual = getQueryResults(query);
+      // Sorting is not guaranteed any more.
+      // We sort the result ourself
+      actual.sort(function (a, b) {
+        if (a[0] !== b[0]) {
+          return a[0] - b[0];
+        }
+        return a[2] - b[2];
+      });
       assertEqual(expected, actual);
       ruleIsUsed(query);
     }
