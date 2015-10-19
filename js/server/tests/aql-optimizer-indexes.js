@@ -2464,34 +2464,22 @@ function optimizerIndexesTestSuite () {
       c.ensureSkiplist("value2", "value3", { sparse: true });
 
       var queries = [
-        ["FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value", true],
-        ["FOR i IN " + c.name() + " FILTER i.value3 == 2 RETURN i.value", false]
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value3 == 2 RETURN i.value"
       ];
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
+        var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
-        var results;
 
-        if (query[1]) {
-          // Can use Index
-          assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query[0]);
-          results = AQL_EXECUTE(query[0]);
-          assertEqual([ 2 ], results.json, query[0]);
-          assertTrue(results.stats.scannedIndex > 0);
-          assertEqual(0, results.stats.scannedFull);
-        }
-        else {
-          // Cannot use Index
-          assertEqual(-1, nodeTypes.indexOf("IndexNode"), query[0]);
-          results = AQL_EXECUTE(query[0]);
-          assertEqual([ 2 ], results.json, query[0]);
-          assertTrue(results.stats.scannedFull > 0);
-          assertEqual(0, results.stats.scannedIndex);
-        }
-
+        // Cannot use Index
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual([ 2 ], results.json, query);
+        assertTrue(results.stats.scannedFull > 0);
+        assertEqual(0, results.stats.scannedIndex);
       });
     },
 

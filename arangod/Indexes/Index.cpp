@@ -508,6 +508,10 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
                                  triagens::aql::Variable const* reference) const {
 
   if (_sparse) {
+    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
+      return false;
+    }
+
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
         other->type == triagens::aql::NODE_TYPE_EXPANSION) {
       // value IN a.b
@@ -525,15 +529,23 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
         return false;
       }
 
-      if (other->isNullValue()) {
+      if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+          op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
+        // <  and  <= are not supported with sparse indexes as this may include null values
         return false;
       }
 
-      TRI_ASSERT_EXPENSIVE(other->isConstant());
+      if (other->isNullValue() &&
+          (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+           op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
+        // ==  and  >= null are not supported with sparse indexes for the same reason
+        return false;
+      }
 
       if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
           other->type == triagens::aql::NODE_TYPE_ARRAY) {
         size_t const n = other->numMembers();
+
         for (size_t i = 0; i < n; ++i) {
           if (other->getMemberUnchecked(i)->isNullValue()) {
             return false;
