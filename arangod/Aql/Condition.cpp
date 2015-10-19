@@ -275,7 +275,8 @@ bool ConditionPart::isCoveredBy (ConditionPart const& other) const {
 Condition::Condition (Ast* ast)
   : _ast(ast),
     _root(nullptr),
-    _isNormalized(false) {
+    _isNormalized(false),
+    _isSorted(false) {
 
 }
 
@@ -425,7 +426,9 @@ std::pair<bool, bool> Condition::findIndexes (EnumerateCollectionNode const* nod
     canUseForSort   |= canUseIndex.second;
   }
 
-  _isSorted = sortOrs(reference);
+  if (canUseForFilter) {
+    _isSorted = sortOrs(reference, usedIndexes);
+  }
 
   // should always be true here. maybe not in the future in case a collection
   // has absolutely no indexes
@@ -716,9 +719,11 @@ bool Condition::removeInvalidVariables (std::unordered_set<Variable const*> cons
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort ORs for the same attribute so they are in ascending value
 /// order. this will only work if the condition is for a single attribute
+/// the usedIndexes vector may also be re-sorted
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Condition::sortOrs (Variable const* variable) {
+bool Condition::sortOrs (Variable const* variable,
+                         std::vector<Index const*>& usedIndexes) {
   if (_root == nullptr) {
     return true;
   }
@@ -728,6 +733,24 @@ bool Condition::sortOrs (Variable const* variable) {
   if (n < 2) {
     return true;
   }
+
+  if (n != usedIndexes.size()) {
+    // sorting will break if the number of ORs is unequal to the number of indexes
+    // but we shouldn't have got here then
+    TRI_ASSERT(false);
+    return false;
+  }
+
+  typedef std::pair<AstNode*, Index const*> ConditionData;
+  std::vector<ConditionData*> conditionData;
+
+  auto cleanup = [&conditionData] () -> void {
+    for (auto& it : conditionData) {
+      delete it;
+    }
+  };
+
+  TRI_DEFER(cleanup());
     
   std::vector<ConditionPart> parts;
   parts.reserve(n);
@@ -761,10 +784,16 @@ bool Condition::sortOrs (Variable const* variable) {
       std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
           
       if (lhs->isAttributeAccessForVariable(result) &&
-          rhs->isConstant()) {
-        if (result.first == variable) { 
-          parts.emplace_back(ConditionPart(result.first, result.second, operand, ATTRIBUTE_LEFT, sub));
-        }
+          rhs->isConstant() && 
+          result.first == variable) {
+        // create the condition data struct on the heap
+        std::unique_ptr<ConditionData> data(new ConditionData(sub, usedIndexes[i])); 
+        // push it into an owning vector
+        conditionData.emplace_back(data.get());
+        // vector is now responsible for data
+        auto p = data.release();
+        // also add the pointer to the (non-owning) parts vector
+        parts.emplace_back(ConditionPart(result.first, result.second, operand, ATTRIBUTE_LEFT, p));
       }
     }
 
@@ -773,11 +802,16 @@ bool Condition::sortOrs (Variable const* variable) {
       std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
           
       if (rhs->isAttributeAccessForVariable(result) &&
-          lhs->isConstant()) {
-          
-        if (result.first == variable) { 
-          parts.emplace_back(ConditionPart(result.first, result.second, operand, ATTRIBUTE_RIGHT, sub));
-        }
+          lhs->isConstant() &&
+          result.first == variable) { 
+        // create the condition data struct on the heap
+        std::unique_ptr<ConditionData> data(new ConditionData(sub, usedIndexes[i])); 
+        // push it into an owning vector
+        conditionData.emplace_back(data.get());
+        // vector is now responsible for data
+        auto p = data.release();
+        // also add the pointer to the (non-owning) parts vector
+        parts.emplace_back(ConditionPart(result.first, result.second, operand, ATTRIBUTE_RIGHT, p));
       }
     }
   }
@@ -859,8 +893,15 @@ bool Condition::sortOrs (Variable const* variable) {
   }
   */
 
+  TRI_ASSERT(parts.size() == conditionData.size());
+
+  // re-sort ORs in condition AND usedIndexes vector
+  usedIndexes.clear();
+
   for (size_t i = 0; i < n; ++i) {
-    _root->changeMember(i, static_cast<AstNode*>(parts[i].data));
+    auto conditionData = static_cast<ConditionData*>(parts[i].data);
+    _root->changeMember(i, conditionData->first);
+    usedIndexes.emplace_back(conditionData->second);
   }
 
   return true;
