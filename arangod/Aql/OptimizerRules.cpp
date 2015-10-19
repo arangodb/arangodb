@@ -3092,12 +3092,15 @@ struct CommonNodeFinder {
             && ( node->type == NODE_TYPE_OPERATOR_BINARY_LE 
               || node->type == NODE_TYPE_OPERATOR_BINARY_LT
               || node->type == NODE_TYPE_OPERATOR_BINARY_GE 
-              || node->type == NODE_TYPE_OPERATOR_BINARY_GT ))) {
+              || node->type == NODE_TYPE_OPERATOR_BINARY_GT
+              || node->type == NODE_TYPE_OPERATOR_BINARY_IN))) {
 
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
 
-      if (lhs->isConstant()) {
+      bool const isIn = (node->type == NODE_TYPE_OPERATOR_BINARY_IN && rhs->isArray());
+
+      if (! isIn && lhs->isConstant()) {
         commonNode = rhs;
         commonName = commonNode->toString();
         possibleNodes.clear();
@@ -3120,17 +3123,19 @@ struct CommonNodeFinder {
         return true;
       }
 
-      if (lhs->type == NODE_TYPE_FCALL || 
-          lhs->type == NODE_TYPE_FCALL_USER ||
-          lhs->type == NODE_TYPE_REFERENCE) {
+      if (! isIn && 
+          (lhs->type == NODE_TYPE_FCALL || 
+           lhs->type == NODE_TYPE_FCALL_USER ||
+           lhs->type == NODE_TYPE_REFERENCE)) {
         commonNode = rhs;
         commonName = commonNode->toString();
         possibleNodes.clear();
         return true;
       }
 
-      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-          lhs->type == NODE_TYPE_INDEXED_ACCESS) {
+      if (! isIn &&
+          (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+           lhs->type == NODE_TYPE_INDEXED_ACCESS)) {
         if (possibleNodes.size() == 2) {
           for (size_t i = 0; i < 2; i++) {
             if (lhs->toString() == possibleNodes[i]->toString()) {
@@ -3198,6 +3203,9 @@ struct OrToInConverter {
     if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_EQ, commonNode, commonName)) {
       return canConvertExpressionWalker(node);
     }
+    else if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_IN, commonNode, commonName)) {
+      return canConvertExpressionWalker(node);
+    }
     return false;
   }
 
@@ -3222,6 +3230,20 @@ struct OrToInConverter {
       } 
       // if canConvertExpressionWalker(lhs) and canConvertExpressionWalker(rhs), then one of
       // the equalities in the OR statement is of the form x == x
+      // fall-through intentional
+    }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
+
+      if (canConvertExpressionWalker(lhs) && ! canConvertExpressionWalker(rhs) && rhs->isArray()) {
+        size_t const n = rhs->numMembers();
+
+        for (size_t i = 0; i < n; ++i) {
+          valueNodes.emplace_back(rhs->getMemberUnchecked(i));
+        }
+        return true;
+      } 
       // fall-through intentional
     }
     else if (node->type == NODE_TYPE_REFERENCE ||

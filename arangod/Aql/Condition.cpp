@@ -777,6 +777,7 @@ bool Condition::sortOrs (Variable const* variable,
     if (! operand->isComparisonOperator()) {
       return false;
     }
+
     if (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
         operand->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
       return false;
@@ -788,8 +789,8 @@ bool Condition::sortOrs (Variable const* variable,
     if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
           
-      if (lhs->isAttributeAccessForVariable(result) &&
-          rhs->isConstant() && 
+      if (rhs->isConstant() &&
+          lhs->isAttributeAccessForVariable(result) &&
           result.first == variable) {
         // create the condition data struct on the heap
         std::unique_ptr<ConditionData> data(new ConditionData(sub, usedIndexes[i])); 
@@ -806,8 +807,8 @@ bool Condition::sortOrs (Variable const* variable,
         rhs->type == NODE_TYPE_EXPANSION) {
       std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
           
-      if (rhs->isAttributeAccessForVariable(result) &&
-          lhs->isConstant() &&
+      if (lhs->isConstant() &&
+          rhs->isAttributeAccessForVariable(result) &&
           result.first == variable) { 
         // create the condition data struct on the heap
         std::unique_ptr<ConditionData> data(new ConditionData(sub, usedIndexes[i])); 
