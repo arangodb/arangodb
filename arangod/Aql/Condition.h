@@ -119,6 +119,17 @@ namespace triagens {
             operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
           return valueNode;
         }
+
+        if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN && 
+            valueNode->isConstant() &&
+            valueNode->isArray() && 
+            valueNode->numMembers() > 0) {
+          // return first item from IN array.
+          // this requires IN arrays to be sorted, which they should be when
+          // we get here
+          return valueNode->getMember(0);
+        }
+
         return nullptr;
       }
 
@@ -128,9 +139,11 @@ namespace triagens {
 
       inline bool isLowerInclusive () const {
         if (operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
-            operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
+            operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
+            operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
           return true;
         }
+
         return false;
       }
 
@@ -144,6 +157,17 @@ namespace triagens {
             operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
           return valueNode;
         }
+        
+        if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN && 
+            valueNode->isConstant() &&
+            valueNode->isArray() && 
+            valueNode->numMembers() > 0) {
+          // return last item from IN array.
+          // this requires IN arrays to be sorted, which they should be when
+          // we get here
+          return valueNode->getMember(valueNode->numMembers() - 1);
+        }
+
         return nullptr;
       }
 
@@ -153,7 +177,8 @@ namespace triagens {
 
       inline bool isUpperInclusive () const {
         if (operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
-            operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
+            operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
+            operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
           return true;
         }
         return false;
