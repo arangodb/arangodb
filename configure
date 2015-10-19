@@ -700,6 +700,8 @@ ENABLE_LOGGER_TRUE
 RANLIB
 ENABLE_GOLD_FALSE
 ENABLE_GOLD_TRUE
+CXX_HAS_STDLIB_FALSE
+CXX_HAS_STDLIB_TRUE
 HAVE_CXX11
 LN_S
 CPP
@@ -5686,6 +5688,25 @@ if test x$GCC == xyes;  then
 
   if test x$tr_DARWIN == xyes;  then
     WALL="${WALL} -Wno-deprecated-declarations"
+
+
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking -stdlib=libc++ for $CXX" >&5
+$as_echo_n "checking -stdlib=libc++ for $CXX... " >&6; }
+          if { ac_try='${CXX} -Werror -stdlib=libc++ -xc++ /dev/null -S -o /dev/null'
+  { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; }; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+                tr_CXX_HAS_STDLIB="yes"
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+                tr_CXX_HAS_STDLIB="no"
+fi
   fi
 
   WALLC="${WALL} -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement"
@@ -5790,6 +5811,15 @@ fi
   CFLAGS="${GCCSTD} ${CFLAGS} ${WALLC}"
   CXXFLAGS="${GXXSTD} ${CXXFLAGS} ${WALLCXX}"
 fi
+
+ if test "x$tr_CXX_HAS_STDLIB" = "yes"; then
+  CXX_HAS_STDLIB_TRUE=
+  CXX_HAS_STDLIB_FALSE='#'
+else
+  CXX_HAS_STDLIB_TRUE='#'
+  CXX_HAS_STDLIB_FALSE=
+fi
+
 
 
 # Check whether --enable-isystem was given.
@@ -8807,6 +8837,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${am__fastdepCXX_TRUE}" && test -z "${am__fastdepCXX_FALSE}"; then
   as_fn_error $? "conditional \"am__fastdepCXX\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${CXX_HAS_STDLIB_TRUE}" && test -z "${CXX_HAS_STDLIB_FALSE}"; then
+  as_fn_error $? "conditional \"CXX_HAS_STDLIB\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_GOLD_TRUE}" && test -z "${ENABLE_GOLD_FALSE}"; then

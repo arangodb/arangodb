@@ -4,6 +4,8 @@ v2.7.1 (XXXX-XX-XX)
 * fixed hard-coded `incremental` parameter in shell implementation of
   `syncCollection` function in replication module
 
+* fix for GCC5: added check for '-stdlib' option
+
 
 v2.7.0 (2015-10-09)
 -------------------
