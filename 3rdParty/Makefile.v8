@@ -20,6 +20,12 @@ GOLD_V8_FLAGS =
 GOLD_V8_GYP = -Dlinux_use_bundled_gold=0 -Dlinux_use_gold_flags=0
 endif
 
+if CXX_HAS_STDLIB
+STDLIB_FLAGS = -stdlib=libc++
+else
+STDLIB_FLAGS =
+endif
+
 V8DIR=@V8_DIR@
 
 @V8_LIBS@: @srcdir@/.v8-build-@TRI_BITS@
@@ -116,8 +122,8 @@ if ENABLE_V8_DEBUG
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
 		LDFLAGS="-lc++" \
-		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
-		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) -stdlib=libc++" \
+		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) $(CXX_HAS_STDLIB)" \
+		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS) $(CXX_HAS_STDLIB)" \
 		debug=on v8_optimized_debug=0 v8_enable_backtrace=on \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
@@ -135,8 +141,8 @@ else # ! ENABLE_V8_DEBUG
 		CXX.host="$(CXX)" \
 		LINK="$(CXX)" \
 		LDFLAGS="-lc++" \
-		CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
-		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) -stdlib=libc++" \
+		CFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) $(CXX_HAS_STDLIB)" \
+		CXXFLAGS="-O3 -fomit-frame-pointer -g $(GOLD_V8_FLAGS) $(CXX_HAS_STDLIB)" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif # ENABLE_V8_DEBUG
 
