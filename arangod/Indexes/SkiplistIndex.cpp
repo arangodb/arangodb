@@ -1459,16 +1459,17 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
         }
       }
 
+      size_t const np = permutationStates.size() - 1;
       size_t current = 0;
       // now permute
       while (true) {
-        if (++permutationStates[current].current < permutationStates[current].n) {
+        if (++permutationStates[np - current].current < permutationStates[np - current].n) {
           current = 0;
           // abort inner iteration
           break;
         }
 
-        permutationStates[current].current = 0;
+        permutationStates[np - current].current = 0;
 
         if (++current >= usedFields) {
           done = true;
