@@ -76,6 +76,12 @@ v2.7.0-rc2 (2015-09-22)
 v2.7.0-rc1 (2015-09-17)
 -----------------------
 
+* removed undocumented server-side-only collection functions:
+  * collection.OFFSET()
+  * collection.NTH()
+  * collection.NTH2()
+  * collection.NTH3()
+
 * upgraded Swagger to version 2.0 for the Documentation
  
   This gives the user better prepared test request structures.
