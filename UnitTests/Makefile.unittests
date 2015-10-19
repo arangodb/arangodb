@@ -620,6 +620,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-index-ranges.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-indexes.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-indexes-in-or.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-indexes-multi.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-indexes-sort.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-keep.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-plans.js \
