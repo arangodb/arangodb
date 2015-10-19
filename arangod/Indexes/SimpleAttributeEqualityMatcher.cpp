@@ -151,7 +151,7 @@ bool SimpleAttributeEqualityMatcher::matchAll (triagens::arango::Index const* in
     }
 
     calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
-    estimatedItems *= static_cast<double>(values);
+    estimatedItems *= values;
     estimatedCost  *= static_cast<double>(values);
     return true;
   }

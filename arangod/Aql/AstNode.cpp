@@ -336,7 +336,7 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
       return res;
     }
 
-    int diff = lhs->getStringLength() - rhs->getStringLength();
+    int diff = static_cast<int>(lhs->getStringLength()) - static_cast<int>(rhs->getStringLength());
 
     if (diff != 0) {
       return diff < 0 ? -1 : 1;

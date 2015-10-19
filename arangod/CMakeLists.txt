@@ -77,6 +77,7 @@ add_executable(
     Aql/Collections.cpp
     Aql/CollectionScanner.cpp
     Aql/Condition.cpp
+    Aql/ConditionFinder.cpp
     Aql/EnumerateCollectionBlock.cpp
     Aql/EnumerateListBlock.cpp
     Aql/ExecutionBlock.cpp
