@@ -1239,6 +1239,10 @@ bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* s
         estimatedCost = 0.0;
         return true;
       }
+      else if (coveredAttributes > 0) {
+        estimatedCost = (itemsInIndex / (coveredAttributes + 1)) * std::log2(static_cast<double>(itemsInIndex));
+        return true;
+      }
     }
   }
 
