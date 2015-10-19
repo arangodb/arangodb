@@ -1207,7 +1207,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
 
       c.ensureSkiplist("value1", "value2", "value3", "value4");
 
-      var query = "FOR x IN " + cn + " FILTER (x.value1 IN [PASSTHRU(1), PASSTHRU(2), PASSTHRU(3)] && x.value1 IN [2, 3, 4] && x.value2 == PASSTHRU(10) && x.value3 <= 2) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 == PASSTHRU(6) && x.value4 in ['somethings2', PASSTHRU('somethings4')] ) SORT x.value1, x.value2, x.value3 DESC RETURN [x.value1, x.value2, x.value3, x.value4]";
+      var query = "FOR x IN " + cn + " FILTER (x.value1 IN [PASSTHRU(1), PASSTHRU(2), PASSTHRU(3)] && x.value1 IN [2, 3, 4] && x.value2 == PASSTHRU(10) && x.value3 <= 2) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 == PASSTHRU(6) && x.value4 in ['somethings2', PASSTHRU('somethings4')] ) SORT x.value1 DESC RETURN [x.value1, x.value2, x.value3, x.value4]";
       var expected = [ 
                        [ 3, 10, 2, "somethings20" ], 
                        [ 3, 10, 1, "somethings20" ],
