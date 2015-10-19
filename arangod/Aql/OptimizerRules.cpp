@@ -1818,6 +1818,9 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
         Variable const* outVariable = enumerateCollectionNode->outVariable();
         auto const& indexes = enumerateCollectionNode->collection()->getIndexes();
+        triagens::aql::Index const* bestIndex = nullptr;
+        double bestCost                       = 0.0;
+        size_t bestNumCovered                 = 0;
 
         for (auto& index : indexes) {
           if (! index->isSorted() || index->sparse) {
@@ -1827,32 +1830,51 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           }
 
           auto numCovered = sortCondition.coveredAttributes(outVariable, index->fields);
+     
+          if (numCovered == 0) {
+            continue;
+          }
+          
+          double estimatedCost = 0.0;
+          if (! index->supportsSortCondition(&sortCondition, outVariable, enumerateCollectionNode->collection()->count(), estimatedCost)) {
+            // should never happen
+            TRI_ASSERT(false);
+            continue;
+          }
 
-          if (numCovered == sortCondition.numAttributes()) {
-            std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
-            condition->normalize(_plan);
-             
-            std::unique_ptr<ExecutionNode> newNode(new IndexNode(
-              _plan, 
-              _plan->nextId(), 
-              enumerateCollectionNode->vocbase(), 
-              enumerateCollectionNode->collection(), 
-              outVariable, 
-              std::vector<Index const*>({ index }),
-              condition.get(),
-              sortCondition.isDescending()
-            ));
+          if (bestIndex == nullptr || estimatedCost < bestCost) {
+            bestIndex      = index;
+            bestCost       = estimatedCost;
+            bestNumCovered = numCovered;
+          }
+        }
 
-            condition.release();
+        if (bestIndex != nullptr) {
+          std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
+          condition->normalize(_plan);
+            
+          std::unique_ptr<ExecutionNode> newNode(new IndexNode(
+            _plan, 
+            _plan->nextId(), 
+            enumerateCollectionNode->vocbase(), 
+            enumerateCollectionNode->collection(), 
+            outVariable, 
+            std::vector<Index const*>({ bestIndex }),
+            condition.get(),
+            sortCondition.isDescending()
+          ));
 
-            auto n = newNode.release();
+          condition.release();
 
-            _plan->registerNode(n);
-            _plan->replaceNode(enumerateCollectionNode, n);
+          auto n = newNode.release();
 
+          _plan->registerNode(n);
+          _plan->replaceNode(enumerateCollectionNode, n);
+          _modified = true;
+          
+          if (bestNumCovered == sortCondition.numAttributes()) {
+            // if the index covers the complete sort condition, we can also remove the sort node
             _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-            _modified = true;
-            break;
           }
         }
       }
