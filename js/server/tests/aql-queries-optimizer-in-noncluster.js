@@ -743,11 +743,6 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value == 1) && x.value IN [1,3,35,90] SORT x.value RETURN x.value";
       var expected = [ 1, 35, 90 ];
       var actual = getQueryResults(query);
-      // Sorting is not guaranteed any more.
-      // We sort the result ourself
-      actual.sort(function (a, b) {
-        return a - b;
-      });
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
@@ -760,11 +755,6 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value == 1) && x.value IN [1,3,35,90] SORT x.value DESC RETURN x.value";
       var expected = [ 90, 35, 1 ];
       var actual = getQueryResults(query);
-      // Sorting is not guaranteed any more.
-      // We sort the result ourself
-      actual.sort(function (a, b) {
-        return b - a;
-      });
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
@@ -800,14 +790,8 @@ function ahuacatlQueryOptimizerInTestSuite () {
       c.ensureSkiplist("value");
       var query = "FOR x IN " + cn + " FILTER (x.value IN [3,35,90] || x.value IN [3, 90]) SORT x.value DESC RETURN x.value";
       var expected = [ 90, 35, 3 ];
-      require("org/arangodb/aql/explainer").explain(query);
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
-      // Sorting is not guaranteed any more.
-      // We sort the result ourself
-      actual.sort(function (a, b) {
-        return b - a;
-      });
       ruleIsUsed(query);
     },
     
@@ -1102,11 +1086,6 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= PASSTHRU(2)) || (x.value1 in [1,6] && x.value2 == 9) SORT x.value1 DESC RETURN x.value1";
       var expected = [ 6, 5, 5, 4, 4, 1 ];
       var actual = getQueryResults(query);
-      // Sorting is not guaranteed any more.
-      // We sort the result ourself
-      actual.sort(function (a, b) {
-        return b - a;
-      });
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
@@ -1228,7 +1207,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
 
       c.ensureSkiplist("value1", "value2", "value3", "value4");
 
-      var query = "FOR x IN " + cn + " FILTER (x.value1 IN [PASSTHRU(1), PASSTHRU(2), PASSTHRU(3)] && x.value1 IN [2, 3, 4] && x.value2 == PASSTHRU(10) && x.value3 <= 2) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 == PASSTHRU(6) && x.value4 in ['somethings2', PASSTHRU('somethings4')] ) SORT x.value1 DESC RETURN [x.value1, x.value2, x.value3, x.value4]";
+      var query = "FOR x IN " + cn + " FILTER (x.value1 IN [PASSTHRU(1), PASSTHRU(2), PASSTHRU(3)] && x.value1 IN [2, 3, 4] && x.value2 == PASSTHRU(10) && x.value3 <= 2) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 == PASSTHRU(6) && x.value4 in ['somethings2', PASSTHRU('somethings4')] ) SORT x.value1, x.value2, x.value3 DESC RETURN [x.value1, x.value2, x.value3, x.value4]";
       var expected = [ 
                        [ 3, 10, 2, "somethings20" ], 
                        [ 3, 10, 1, "somethings20" ],
@@ -1237,14 +1216,6 @@ function ahuacatlQueryOptimizerInTestSuite () {
                        [ 1, 2, 6, "somethings4" ]  ,
                      ];
       var actual = getQueryResults(query);
-      // Sorting is not guaranteed any more.
-      // We sort the result ourself
-      actual.sort(function (a, b) {
-        if (a[0] !== b[0]) {
-          return b[0] - a[0];
-        }
-        return b[2] - a[2];
-      });
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
