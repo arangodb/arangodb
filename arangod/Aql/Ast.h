@@ -550,8 +550,16 @@ namespace triagens {
 /// @brief create an AST unique array node, AND-merged from two other arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeMergedArray (AstNode const*, 
-                                        AstNode const*);
+        AstNode* createNodeIntersectedArray (AstNode const*, 
+                                             AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST unique array node, OR-merged from two other arrays
+/// TODO: optimize this function
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* createNodeUnionizedArray (AstNode const*, 
+                                           AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST object node

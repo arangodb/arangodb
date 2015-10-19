@@ -794,7 +794,8 @@ bool Condition::sortOrs (Variable const* variable,
           
       if (rhs->isConstant() &&
           lhs->isAttributeAccessForVariable(result) &&
-          result.first == variable) {
+          result.first == variable &&
+          (operand->type != NODE_TYPE_OPERATOR_BINARY_IN || rhs->isArray())) {
         // create the condition data struct on the heap
         std::unique_ptr<ConditionData> data(new ConditionData(sub, usedIndexes[i])); 
         // push it into an owning vector
@@ -828,6 +829,45 @@ bool Condition::sortOrs (Variable const* variable,
   if (parts.size() != _root->numMembers()) { 
     return false;
   }
+  
+  // check if all parts use the same variable and attribute
+  for (size_t i = 1; i < n; ++i) {
+    auto& lhs = parts[i - 1];
+    auto& rhs = parts[i];
+
+    if (lhs.variable != rhs.variable ||
+        lhs.attributeName != rhs.attributeName) {
+      // oops, the different OR parts are on different variables or attributes
+      return false;
+    }
+  }
+
+  size_t previousIn = SIZE_MAX;
+  
+  for (size_t i = 0; i < n; ++i) {
+    auto& p = parts[i];
+
+    if (p.operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
+      TRI_ASSERT(p.valueNode->isConstant());
+      TRI_ASSERT(p.valueNode->isArray());
+
+      if (previousIn != SIZE_MAX) {
+        // merge IN with IN
+        TRI_ASSERT(previousIn < i);
+        auto emptyArray = _ast->createNodeArray();
+        auto mergedIn = _ast->createNodeUnionizedArray(parts[previousIn].valueNode, p.valueNode); 
+        parts[previousIn].valueNode = mergedIn;
+        parts[i].valueNode = emptyArray;
+        _root->getMember(previousIn)->getMember(0)->changeMember(1, mergedIn);
+        _root->getMember(i)->getMember(0)->changeMember(1, emptyArray);
+      }
+      else {
+        // note first IN
+        previousIn = i;
+      }
+    }
+  }
+
 
   // now sort all conditions by variable name, attribute name, attribute value
   std::sort(parts.begin(), parts.end(), [] (ConditionPart const& lhs, ConditionPart const& rhs) -> bool {
@@ -904,12 +944,23 @@ bool Condition::sortOrs (Variable const* variable,
 
   TRI_ASSERT(parts.size() == conditionData.size());
 
-  // re-sort ORs in condition AND usedIndexes vector
+  // clean up
   usedIndexes.clear();
+  while (_root->numMembers()) {
+    _root->removeMemberUnchecked(0);
+  }
 
+  // and rebuild
   for (size_t i = 0; i < n; ++i) {
+    if (parts[i].operatorType == NODE_TYPE_OPERATOR_BINARY_IN && 
+        parts[i].valueNode->isArray() && 
+        parts[i].valueNode->numMembers() == 0) {
+      // can optimize away empty IN array
+      continue;
+    }
+
     auto conditionData = static_cast<ConditionData*>(parts[i].data);
-    _root->changeMember(i, conditionData->first);
+    _root->addMember(conditionData->first);
     usedIndexes.emplace_back(conditionData->second);
   }
 
@@ -1332,7 +1383,7 @@ AstNode* Condition::mergeInOperations (AstNode const* lhs,
   TRI_ASSERT(lValue->isArray() && lValue->isConstant());
   TRI_ASSERT(rValue->isArray() && rValue->isConstant());
 
-  return _ast->createNodeMergedArray(lValue, rValue);
+  return _ast->createNodeIntersectedArray(lValue, rValue);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

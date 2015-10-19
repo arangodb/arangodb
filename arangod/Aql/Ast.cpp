@@ -1022,8 +1022,8 @@ AstNode* Ast::createNodeArray () {
 /// @brief create an AST unique array node, AND-merged from two other arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeMergedArray (AstNode const* lhs, 
-                                     AstNode const* rhs) {
+AstNode* Ast::createNodeIntersectedArray (AstNode const* lhs, 
+                                          AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
 
@@ -1057,6 +1057,48 @@ AstNode* Ast::createNodeMergedArray (AstNode const* lhs,
       node->addMember((*it).second); 
     }
   }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST unique array node, OR-merged from two other arrays
+/// TODO: optimize this function
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeUnionizedArray (AstNode const* lhs, 
+                                        AstNode const* rhs) {
+  TRI_ASSERT(lhs->isArray() && lhs->isConstant());
+  TRI_ASSERT(rhs->isArray() && rhs->isConstant());
+
+  size_t const nl = lhs->numMembers();
+  size_t const nr = rhs->numMembers();
+
+  std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
+    nl + nr,
+    triagens::basics::JsonHash(), 
+    triagens::basics::JsonEqual()
+  );
+
+  for (size_t i = 0; i < nl + nr; ++i) {
+    AstNode* member;
+    if (i < nl) {
+      member = lhs->getMemberUnchecked(i);
+    }
+    else {
+      member = rhs->getMemberUnchecked(i - nl);
+    }
+    auto json = member->computeJson();
+        
+    cache.emplace(json, member);
+  }
+  
+  auto node = createNodeArray();
+
+  for (auto& it : cache) {
+    node->addMember(it.second);
+  }
+  node->sort();
 
   return node;
 }
