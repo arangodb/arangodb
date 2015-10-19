@@ -243,7 +243,8 @@ function optimizerIndexesSortTestSuite () {
         });
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+        // The HashIndex does not yet guarantee sorting
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
 
@@ -272,7 +273,8 @@ function optimizerIndexesSortTestSuite () {
         });
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+        // The HashIndex does not yet guarantee sorting
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
 
@@ -280,7 +282,7 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUsePrimaryIndexForSortIfConstRanges : function () {
+    testCannotUsePrimaryIndexForSortIfConstRanges : function () {
       var queries = [
         "FOR i IN " + c.name() + " FILTER i._key == 'test1' SORT i._key RETURN i._key",
         "FOR i IN " + c.name() + " FILTER i._key == 'test1' SORT i._key DESC RETURN i._key"
@@ -293,7 +295,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
 
@@ -301,7 +303,7 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForSortIfConstRanges : function () {
+    testCannotUseHashIndexForSortIfConstRanges : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       c.ensureHashIndex("value2", "value3");
@@ -322,7 +324,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
 
@@ -393,10 +395,6 @@ function optimizerIndexesSortTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 DESC, i.value3 DESC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 ASC, i.value3 ASC, i.value4 ASC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 DESC, i.value3 DESC, i.value4 DESC RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 ASC RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 DESC RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 ASC, i.value4 ASC RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 DESC, i.value4 DESC RETURN i.value2",
 
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 DESC RETURN i.value2",
@@ -404,19 +402,48 @@ function optimizerIndexesSortTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 DESC, i.value3 DESC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC, i.value3 ASC, i.value4 ASC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 DESC, i.value3 DESC, i.value4 DESC RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 ASC RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 DESC RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 ASC, i.value4 ASC RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 DESC, i.value4 DESC RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value4 ASC RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value4 DESC RETURN i.value2",
 
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 ASC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 DESC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 ASC, i.value3 ASC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 DESC, i.value3 DESC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 ASC, i.value3 ASC, i.value4 ASC RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 DESC, i.value3 DESC, i.value4 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 DESC, i.value3 DESC, i.value4 DESC RETURN i.value2"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testCannotUseSkiplistIndexForSortIfConstRanges : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value, value4: i.value } IN " + c.name());
+
+      c.ensureSkiplist("value2", "value3", "value4");
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 ASC, i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 DESC, i.value4 DESC RETURN i.value2",
+
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value4 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 ASC, i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 DESC, i.value4 DESC RETURN i.value2",
+
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value3 ASC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value3 DESC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value3 ASC, i.value4 ASC RETURN i.value2",
@@ -432,9 +459,10 @@ function optimizerIndexesSortTestSuite () {
         });
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test index usage
@@ -519,9 +547,10 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        // index is used for sorting
+        // index is used for sorting we made sure it is not null
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+        // right now sparse indexes are not able to deliver sorting
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
 
@@ -600,9 +629,6 @@ function optimizerIndexesSortTestSuite () {
       var idx = c.ensureSkiplist("value2", "value3", { sparse: true });
 
       var queries = [
-        "FOR i IN " + c.name() + " FILTER i.value2 > null && i.value3 > null SORT i.value2, i.value3 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 > 10 && i.value3 > 4 SORT i.value2, i.value3 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 >= 10 && i.value3 >= 4 SORT i.value2, i.value3 RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 10 && i.value3 >= 4 SORT i.value2, i.value3 RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 10 && i.value3 == 4 SORT i.value2, i.value3 RETURN i.value2"
       ];
@@ -619,9 +645,43 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        // index is used for sorting
+        // index is used for sorting and filtering. We made sure it is never null
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseIndexSortMultiNotDetected : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      // If the first value is a range, the optimizer doesn't detect the index properly
+      var idx = c.ensureSkiplist("value2", "value3", { sparse: true });
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 > null && i.value3 > null SORT i.value2, i.value3 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 > 10 && i.value3 > 4 SORT i.value2, i.value3 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 >= 10 && i.value3 >= 4 SORT i.value2, i.value3 RETURN i.value2"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          if (node.type === "IndexNode") {
+            assertEqual(node.indexes.length, 1);
+            assertEqual(idx.id.replace(/^.+\//g, ''), node.indexes[0].id);
+            assertEqual("skiplist", node.indexes[0].type);
+            assertTrue(node.indexes[0].sparse);
+          }
+          return node.type;
+        });
+
+        // index is used for sorting and filtering. We made sure it is never null
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
 
