@@ -38,6 +38,8 @@
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 
+#pragma warning(disable : 4503)
+
 using namespace triagens::aql;
 using CompareResult = ConditionPartCompareResult;
         
