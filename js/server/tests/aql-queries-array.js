@@ -75,7 +75,16 @@ function arrayIndexSuite () {
               */
   };
 
-  var validateResults = function (query) {
+  var validateIndexNotUsed = function (query, bindVars) {
+    var plan = AQL_EXPLAIN(query, bindVars || {}).plan;
+    var nodeTypes = plan.nodes.map(function(node) {
+      return node.type;
+    });
+    assertEqual(-1, nodeTypes.indexOf("IndexNode"),
+                "index used for: " + query);
+  };
+
+  var validateResults = function (query, sparse) {
     var bindVars = {};
     bindVars.tag = "tenth";
 
@@ -102,6 +111,18 @@ function arrayIndexSuite () {
       assertTrue(last < parseInt(actual.json[i]));
       last = parseInt(actual.json[i]);
     }
+
+    bindVars.tag = null;
+    if (!sparse) {
+      checkIsOptimizedQuery(query, bindVars);
+    }
+    else {
+      validateIndexNotUsed(query, bindVars);
+    }
+    actual = AQL_EXECUTE(query, bindVars);
+    // We check if we found the Arrays with NULL in it
+    assertNotEqual(-1, actual.json.indexOf("0t"), "Did not find the null array");
+    assertNotEqual(-1, actual.json.indexOf("50t"), "Did not find the null array");
   };
 
   var validateCombinedResults = function (query) {
@@ -183,6 +204,38 @@ function arrayIndexSuite () {
       validateCombinedResults(query);
     },
 
+    testHashArrayNotUsed : function () {
+      col.ensureHashIndex("a[*]");
+      for (var i = 0; i < 100; ++i) {
+        col.save({ _key: i + "t", a: buildTags(i)});
+      }
+      var operators = ["==", "<", ">", "<=", ">="];
+      var elements = ["x.a", "x.a[*]"];
+      operators.forEach(function(op) {
+        elements.forEach(function(e) {
+          var query = `FOR x IN ${cName} FILTER 1 ${op} ${e} RETURN x`;
+          validateIndexNotUsed(query);
+          query = `FOR x IN ${cName} FILTER ${e} ${op} 1 RETURN x`;
+          validateIndexNotUsed(query);
+        });
+      });
+      var query = `FOR x IN ${cName} FILTER 1 IN x.a[*] RETURN x`;
+      validateIndexNotUsed(query);
+      query = `FOR x IN ${cName} FILTER 1 IN x.a RETURN x`;
+      validateIndexNotUsed(query);
+      query = `FOR x IN ${cName} FILTER x.a IN [1] RETURN x`;
+      validateIndexNotUsed(query);
+    },
+
+    testHashArraySparse : function () {
+      col.ensureHashIndex("a[*]", {sparse: true});
+      for (var i = 0; i < 100; ++i) {
+        col.save({ _key: i + "t", a: buildTags(i)});
+      }
+      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
+      validateResults(query, true);
+    },
+
     testSkiplistPlainArray : function () {
       col.ensureSkiplist("a[*]");
       for (var i = 0; i < 100; ++i) {
@@ -222,8 +275,39 @@ function arrayIndexSuite () {
       }
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] AND x.b IN @list SORT x._key RETURN x`;
       validateCombinedResults(query);
-    }
+    },
 
+    testSkiplistArrayNotUsed : function () {
+      col.ensureHashIndex("a[*]");
+      for (var i = 0; i < 100; ++i) {
+        col.save({ _key: i + "t", a: buildTags(i)});
+      }
+      var operators = ["==", "<", ">", "<=", ">="];
+      var elements = ["x.a", "x.a[*]"];
+      operators.forEach(function(op) {
+        elements.forEach(function(e) {
+          var query = `FOR x IN ${cName} FILTER 1 ${op} ${e} RETURN x`;
+          validateIndexNotUsed(query);
+          query = `FOR x IN ${cName} FILTER ${e} ${op} 1 RETURN x`;
+          validateIndexNotUsed(query);
+        });
+      });
+      var query = `FOR x IN ${cName} FILTER 1 IN x.a[*] RETURN x`;
+      validateIndexNotUsed(query);
+      query = `FOR x IN ${cName} FILTER 1 IN x.a RETURN x`;
+      validateIndexNotUsed(query);
+      query = `FOR x IN ${cName} FILTER x.a IN [1] RETURN x`;
+      validateIndexNotUsed(query);
+    },
+
+    testSkiplsitArraySparse : function () {
+      col.ensureSkiplist("a[*]", {sparse: true});
+      for (var i = 0; i < 100; ++i) {
+        col.save({ _key: i + "t", a: buildTags(i)});
+      }
+      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
+      validateResults(query, true);
+    }
 
   };
 
