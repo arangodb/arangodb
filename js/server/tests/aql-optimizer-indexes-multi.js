@@ -1131,7 +1131,6 @@ function optimizerIndexesMultiTestSuite () {
 
       var queries = [];
       var makers = [];
-      var filterchecks = [];
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a0123" || x.a == "a5564" ||
@@ -1142,7 +1141,6 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a === "a0123" || x.a === "a5564" ||
                            x.a === "a7768" || x.a === "a0678";
                   });
-      filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a0123" || x.a == "a1234" ||
@@ -1153,12 +1151,10 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a === "a0123" || x.a === "a1234" ||
                            x.a === "a4567" || x.a === "a5567";
                   });
-      filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -1173,19 +1169,14 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         // This is somewhat fragile, we test whether the 3rd node is
-        // a calculation node and the 4th is a filter refering to it.
+        // a calculation node and the 4th is the Return Node
+        // No filtering needed any more
         // Furthermore, we check the type of expression in the CalcNode
         // and the number of subnodes:
-        if (filtercheck !== null) {
-          assertEqual("CalculationNode", plan.nodes[2].type, query);
-          assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
-                      query);
-          assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
-          assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length,
-                      "Number of subnodes in filter expression, " + query);
-        }
+        assertEqual("CalculationNode", plan.nodes[2].type, query);
+        assertEqual("ReturnNode", plan.nodes[3].type, query);
+        assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
+                    query);
 
         var results = AQL_EXECUTE(query);
         var correct = makeResult(maker).map(function(x) { return x.a; });
@@ -1364,7 +1355,6 @@ function optimizerIndexesMultiTestSuite () {
 
       var queries = [];
       var makers = [];
-      var filterchecks = [];
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.a IN ["a0123", "a5564", "a7768", "a0678"]
@@ -1373,7 +1363,6 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return ["a0123", "a5564", "a7768", "a0678"].indexOf(x.a) !== -1;
                   });
-      filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.a IN ["a0123", "a1234", "a4567", "a5567"]
@@ -1382,12 +1371,10 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return ["a0123", "a1234", "a4567", "a5567"].indexOf(x.a) !== -1;
                   });
-      filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -1405,16 +1392,7 @@ function optimizerIndexesMultiTestSuite () {
         // a calculation node and the 4th is a filter refering to it.
         // Furthermore, we check the type of expression in the CalcNode
         // and the number of subnodes:
-        if (filtercheck !== null) {
-          assertEqual("CalculationNode", plan.nodes[2].type, query);
-          assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
-                      query);
-          assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
-          assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length,
-                      "Number of subnodes in filter expression, " + query);
-        }
+        assertEqual("CalculationNode", plan.nodes[2].type, query);
 
         var results = AQL_EXECUTE(query);
         var correct = makeResult(maker).map(function(x) { return x.a; });
@@ -1445,7 +1423,6 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a === "a0123" || x.a === "a5564" ||
                            x.a === "a7768" || x.a === "a0678";
                   });
-      filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a0123" || x.a == "a1234" ||
@@ -1456,12 +1433,10 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a === "a0123" || x.a === "a1234" ||
                            x.a === "a4567" || x.a === "a5567";
                   });
-      filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -1476,19 +1451,11 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         // This is somewhat fragile, we test whether the 3rd node is
-        // a calculation node and the 4th is a filter refering to it.
+        // a calculation node and the 4th is a ReturnNode refering to it.
         // Furthermore, we check the type of expression in the CalcNode
         // and the number of subnodes:
-        if (filtercheck !== null) {
-          assertEqual("CalculationNode", plan.nodes[2].type, query);
-          assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
-                      query);
-          assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
-          assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length,
-                      "Number of subnodes in filter expression, " + query);
-        }
+        assertEqual("CalculationNode", plan.nodes[2].type, query);
+        assertEqual("SortNode", plan.nodes[3].type, query);
 
         var results = AQL_EXECUTE(query);
         var correct = makeResult(maker).map(function(x) { return x.a; });
@@ -1508,7 +1475,6 @@ function optimizerIndexesMultiTestSuite () {
 
       var queries = [];
       var makers = [];
-      var filterchecks = [];
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.a IN ["a0123", "a5564", "a7768", "a0678"]
@@ -1517,7 +1483,6 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return ["a0123", "a5564", "a7768", "a0678"].indexOf(x.a) !== -1;
                   });
-      filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.a IN ["a0123", "a1234", "a4567", "a5567"]
@@ -1526,12 +1491,10 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return ["a0123", "a1234", "a4567", "a5567"].indexOf(x.a) !== -1;
                   });
-      filterchecks.push( { type : "compare in", nrSubs : 2 } );
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
-        var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
         var nodeTypes = plan.nodes.map(function(node) {
@@ -1546,20 +1509,11 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         // This is somewhat fragile, we test whether the 3rd node is
-        // a calculation node and the 4th is a filter refering to it.
+        // a calculation node and the 4th is a SortNode.
         // Furthermore, we check the type of expression in the CalcNode
         // and the number of subnodes:
-        if (filtercheck !== null) {
-          assertEqual("CalculationNode", plan.nodes[2].type, query);
-          assertEqual("FilterNode", plan.nodes[3].type, query);
-          assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
-                      query);
-          assertEqual(filtercheck.type, plan.nodes[2].expression.type, query);
-          assertEqual(filtercheck.nrSubs,
-                      plan.nodes[2].expression.subNodes.length,
-                      "Number of subnodes in filter expression, " + query);
-        }
-
+        assertEqual("CalculationNode", plan.nodes[2].type, query);
+        assertEqual("SortNode", plan.nodes[3].type, query);
         var results = AQL_EXECUTE(query);
         var correct = makeResult(maker).map(function(x) { return x.a; });
         assertEqual(correct, results.json, query);
