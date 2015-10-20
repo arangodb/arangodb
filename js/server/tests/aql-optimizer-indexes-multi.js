@@ -1412,7 +1412,6 @@ function optimizerIndexesMultiTestSuite () {
 
       var queries = [];
       var makers = [];
-      var filterchecks = [];
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a0123" || x.a == "a5564" ||
