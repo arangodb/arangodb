@@ -34,7 +34,8 @@ function createSession(sessionData, userData) {
     _key: sid,
     uid: (userData && userData._id) || null,
     sessionData: sessionData || {},
-    userData: userData || {}
+    userData: userData || {},
+    lastAccess: Date.now()
   });
   sessions.save(session);
   return session;
@@ -67,10 +68,14 @@ Session.fromClient = function (sid) {
       try {
         session = sessions.byId(sid);
 
-        const now = internal.accessSid(sid);
-        session.set('lastAccess', now);
+        const internalAccessTime = internal.accessSid(sid);
+        if (internalAccessTime) {
+          session.set('lastAccess', internalAccessTime);
+        }
         session.enforceTimeout();
 
+        const now = Date.now();
+        session.set('lastAccess', now);
         sessions.collection.update(
           session.get('_key'),
           {lastAccess: now}
