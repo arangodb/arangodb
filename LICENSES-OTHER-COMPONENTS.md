@@ -21,6 +21,11 @@
 
 * free as-is license
 
+### Valgrind
+
+* valgrind.h header file only
+* [BSD-style license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/valgrind/valgrind.h)
+
 ### boost
 
 * http://www.boost.org/
