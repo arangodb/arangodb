@@ -227,6 +227,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline bool isAttributeExpanded (size_t i) const {
+          if (i >= _fields.size()) {
+            return false;
+          }
           TRI_ASSERT(i < _fields.size());
           for (auto const& it : _fields[i]) {
             if (it.shouldExpand) {

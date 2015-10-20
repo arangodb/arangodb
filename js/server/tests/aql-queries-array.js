@@ -219,7 +219,7 @@ function arrayIndexSuite () {
           validateIndexNotUsed(query);
         });
       });
-      var query = `FOR x IN ${cName} FILTER 1 IN x.a[*] RETURN x`;
+      var query = `FOR x IN ${cName} FILTER x.a[*] IN [1] RETURN x`;
       validateIndexNotUsed(query);
       query = `FOR x IN ${cName} FILTER 1 IN x.a RETURN x`;
       validateIndexNotUsed(query);
@@ -292,7 +292,7 @@ function arrayIndexSuite () {
           validateIndexNotUsed(query);
         });
       });
-      var query = `FOR x IN ${cName} FILTER 1 IN x.a[*] RETURN x`;
+      var query = `FOR x IN ${cName} FILTER x.a[*] IN [1] RETURN x`;
       validateIndexNotUsed(query);
       query = `FOR x IN ${cName} FILTER 1 IN x.a RETURN x`;
       validateIndexNotUsed(query);
