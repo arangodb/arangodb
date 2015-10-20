@@ -136,6 +136,17 @@
             ext: '.html.gz'
           }]
         },
+        clusterHTML: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['clusterFrontend/build/*min*.html'],
+            dest: '.',
+            ext: '.html.gz'
+          }]
+        },
         standaloneCSS: {
           options: {
             mode: 'gzip'

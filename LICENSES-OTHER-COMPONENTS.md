@@ -131,6 +131,11 @@
 * https://github.com/hapijs/joi
 * BSD 3-Clause License
 
+#### Ace
+
+* https://github.com/ajaxorg/ace
+* BSD 3-Clause License
+
 #### YAML
 
 * https://github.com/nodeca/js-yaml
@@ -208,8 +213,9 @@
 * http://www.embeddedjs.com
 * MIT License
 
-#### Handlebars
+#### jq-console
 
+* https://github.com/replit/jq-console
 * MIT License
 
 #### Highlight.js
@@ -225,6 +231,51 @@
 
 * http://jquery.com
 * MIT License
+
+#### jQuery UI
+
+* http://jqueryui.com
+* MIT License
+
+#### jQuery Snippet 
+
+* http://steamdev.com/snippet
+* MIT License 
+
+#### jQuery Hotkeys
+
+* https://github.com/jeresig/jquery.hotkeys
+* MIT License or GPL Version 2 License
+
+#### jQuery Contextmenu
+
+* https://github.com/swisnl/jQuery-contextMenu
+* MIT License
+
+#### jQuery Form
+
+* https://github.com/malsup/form/
+* MIT License or GPL Version 2 License
+
+#### jQuery UploadFile
+
+* https://github.com/hayageek/jquery-upload-file/
+* MIT License
+
+#### jQuery Textfill
+
+* https://github.com/jquery-textfill/jquery-textfill
+* MIT License
+
+#### jQuery Strftime
+
+* https://github.com/samsonjs/strftime
+* MIT License
+
+#### nvd3
+
+* https://github.com/novus/nvd3
+* Apache 2 License 
 
 #### jsoneditor.js
 
