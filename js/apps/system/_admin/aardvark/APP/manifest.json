@@ -41,7 +41,7 @@
     },
     "/cluster.html": {
       "path": "clusterFrontend/build/cluster-min.html",
-      "gzip": false
+      "gzip": true
     },
     "/css/sass.css": {
       "path": "frontend/build/style-minified.css",
