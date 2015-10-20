@@ -54,11 +54,12 @@ function GharialAdapterControls(list, adapter) {
             text: "Start with random vertex",
             id: "random",
             selected: true
-          },{
+          },//currently disabled outbound only view
+          /*{
             type: "checkbox",
             id: "undirected",
             selected: (adapter.getDirection() === "any")
-          }], function () {
+          }*/], function () {
             var graph = $("#" + idprefix + "graph")
                 .children("option")
                 .filter(":selected")
