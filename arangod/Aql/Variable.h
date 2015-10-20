@@ -52,7 +52,7 @@ namespace triagens {
 
       Variable (basics::Json const& json);
 
-      Variable *clone() const {
+      Variable* clone () const {
         return new Variable(name, id);
       }
 

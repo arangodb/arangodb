@@ -30,7 +30,6 @@
 #ifndef ARANGODB_AQL_INDEX_H
 #define ARANGODB_AQL_INDEX_H 1
 
-#include "Aql/SortCondition.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
@@ -39,6 +38,9 @@
 
 namespace triagens {
   namespace aql {
+    struct AstNode;
+    class SortCondition;
+    struct Variable;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      struct Index
@@ -148,49 +150,53 @@ namespace triagens {
         return (internals != nullptr);
       }
 
-      triagens::arango::Index* getInternals () const {
-        if (internals == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "accessing undefined index internals");
-        }
-        return internals; 
-      }
+      triagens::arango::Index* getInternals () const;
       
-      void setInternals (triagens::arango::Index* idx) {
-        TRI_ASSERT(internals == nullptr);
-        internals = idx;
-      }
+      void setInternals (triagens::arango::Index*);
 
       bool isSorted () const {
         return getInternals()->isSorted();
       }
 
-      bool supportsFilterCondition (triagens::aql::AstNode const* node,
-                                    triagens::aql::Variable const* reference,
-                                    size_t itemsInIndex,
-                                    size_t& estimatedItems,
-                                    double& estimatedCost) const {
-        return getInternals()->supportsFilterCondition(node, reference, itemsInIndex, estimatedItems, estimatedCost);
-      }
-      
-      bool supportsSortCondition (triagens::aql::SortCondition const* sortCondition,
-                                  triagens::aql::Variable const* reference,
-                                  size_t itemsInIndex,
-                                  double& estimatedCost) const {
-        return getInternals()->supportsSortCondition(sortCondition, reference, itemsInIndex, estimatedCost);
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether or not the index supports the filter condition
+/// and calculate the filter costs and number of items
+////////////////////////////////////////////////////////////////////////////////
 
-      arango::IndexIterator* getIterator (arango::IndexIteratorContext* context, 
-                                          triagens::aql::Ast* ast,
-                                          triagens::aql::AstNode const* condition,
-                                          triagens::aql::Variable const* reference,
-                                          bool const reverse) const {
-        return getInternals()->iteratorForCondition(context, ast, condition, reference, reverse);
-      }
+      bool supportsFilterCondition (triagens::aql::AstNode const*,
+                                    triagens::aql::Variable const*,
+                                    size_t,
+                                    size_t&,
+                                    double&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether or not the index supports the sort condition
+/// and calculate the sort costs
+////////////////////////////////////////////////////////////////////////////////
       
-      triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode* node,
-                                                   triagens::aql::Variable const* reference) const {
-        return getInternals()->specializeCondition(node, reference);
-      }
+      bool supportsSortCondition (triagens::aql::SortCondition const*,
+                                  triagens::aql::Variable const*,
+                                  size_t,
+                                  double&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get an iterator for the index
+////////////////////////////////////////////////////////////////////////////////
+
+      arango::IndexIterator* getIterator (arango::IndexIteratorContext*, 
+                                          triagens::aql::Ast*,
+                                          triagens::aql::AstNode const*,
+                                          triagens::aql::Variable const*,
+                                          bool) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specialize the condition for the index
+/// this will remove all nodes from the condition that the index cannot
+/// handle
+////////////////////////////////////////////////////////////////////////////////
+      
+      triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
+                                                   triagens::aql::Variable const*) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables

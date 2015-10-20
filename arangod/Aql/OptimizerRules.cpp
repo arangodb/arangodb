@@ -37,6 +37,7 @@
 #include "Aql/Index.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"

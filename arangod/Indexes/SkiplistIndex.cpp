@@ -787,10 +787,10 @@ void SkiplistIndexIterator::reset () {
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIndex::SkiplistIndex (TRI_idx_iid_t iid,
-                                TRI_document_collection_t* collection,
-                                std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
-                                bool unique,
-                                bool sparse) 
+                              TRI_document_collection_t* collection,
+                              std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+                              bool unique,
+                              bool sparse) 
   : PathBasedIndex(iid, collection, fields, unique, sparse),
     CmpElmElm(this),
     CmpKeyElm(this),

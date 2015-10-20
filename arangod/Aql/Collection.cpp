@@ -257,6 +257,7 @@ void Collection::fillIndexesCoordinator () const {
   // coordinator case, remote collection
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
   auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
+
   if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL, 
                                   "collection not found '%s' in database '%s'",
@@ -288,7 +289,9 @@ void Collection::fillIndexesCoordinator () const {
         continue;
       }
 
-      indexes.emplace_back(new triagens::aql::Index(v));
+      std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(v));
+      indexes.emplace_back(idx.get());
+      idx.release();
     }
   }
 }
@@ -392,7 +395,9 @@ void Collection::fillIndexesLocal () const {
       continue;
     }
 
-    indexes.emplace_back(new triagens::aql::Index(allIndexes[i]));
+    std::unique_ptr<triagens::aql::Index> idx(allIndexes[i]);
+    indexes.emplace_back(idx.get());
+    idx.release();
   }
 }
 
