@@ -60,6 +60,7 @@ namespace triagens {
           type(idx->type()),
           unique(false),
           sparse(false),
+          ownsInternals(false),
           fields(idx->fields()),
           internals(idx) {
 
@@ -80,6 +81,7 @@ namespace triagens {
           type(triagens::arango::Index::type(triagens::basics::JsonHelper::checkAndGetStringValue(json, "type").c_str())),
           unique(triagens::basics::JsonHelper::getBooleanValue(json, "unique", false)),
           sparse(triagens::basics::JsonHelper::getBooleanValue(json, "sparse", false)),
+          ownsInternals(false),
           fields(),
           internals(nullptr) {
 
@@ -90,7 +92,7 @@ namespace triagens {
           fields.reserve(n);
 
           for (size_t i = 0; i < n; ++i) {
-            auto * name = static_cast<TRI_json_t const*>(TRI_AtVector(&f->_value._objects, i));
+            auto* name = static_cast<TRI_json_t const*>(TRI_AtVector(&f->_value._objects, i));
 
             if (TRI_IsStringJson(name)) {
               std::vector<triagens::basics::AttributeName> parsedAttributes;
@@ -100,12 +102,10 @@ namespace triagens {
           }
         }
 
-        // it is the caller's responsibility to fill the data attribute with something sensible later!
+        // it is the caller's responsibility to fill the internals attribute with something sensible later!
       }
       
-      ~Index() {
-      }
-  
+      ~Index();
   
       triagens::basics::Json toJson () const {
         triagens::basics::Json json(triagens::basics::Json::Object);
@@ -152,7 +152,7 @@ namespace triagens {
 
       triagens::arango::Index* getInternals () const;
       
-      void setInternals (triagens::arango::Index*);
+      void setInternals (triagens::arango::Index*, bool);
 
       bool isSorted () const {
         return getInternals()->isSorted();
@@ -208,6 +208,7 @@ namespace triagens {
         triagens::arango::Index::IndexType                               type;
         bool                                                             unique;
         bool                                                             sparse;
+        bool                                                             ownsInternals;
         std::vector<std::vector<triagens::basics::AttributeName>>        fields;
 
       private:

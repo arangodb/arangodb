@@ -37,6 +37,8 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
+struct TRI_json_t;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class PrimaryIndex
 // -----------------------------------------------------------------------------
@@ -86,8 +88,10 @@ namespace triagens {
       public:
 
         PrimaryIndex () = delete;
-
+        
         explicit PrimaryIndex (struct TRI_document_collection_t*);
+        
+        explicit PrimaryIndex (struct TRI_json_t const*);
 
         ~PrimaryIndex ();
 

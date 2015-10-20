@@ -37,8 +37,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
 
+struct TRI_json_t;
 class VocShaper;
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class PathBasedIndex
@@ -91,6 +91,8 @@ namespace triagens {
                         std::vector<std::vector<triagens::basics::AttributeName>> const&,
                         bool unique,
                         bool sparse);
+        
+        explicit PathBasedIndex (struct TRI_json_t const*);
 
         ~PathBasedIndex ();
 

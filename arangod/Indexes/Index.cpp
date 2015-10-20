@@ -33,7 +33,10 @@
 #include "Aql/Variable.h"
 #include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
+#include "Basics/JsonHelper.h"
+#include "Basics/json.h"
 #include "Basics/json-utilities.h"
+#include "Basics/StringUtils.h"
 #include "VocBase/server.h"
 #include "VocBase/VocShaper.h"
 #include <iostream>
@@ -57,7 +60,52 @@ Index::Index (TRI_idx_iid_t iid,
     _collection(collection),
     _fields(fields),
     _unique(unique),
-    _sparse(sparse) {
+    _sparse(sparse),
+    _selectivityEstimate(0.0) {
+
+  // note: _collection can be a nullptr in the cluster coordinator case!!
+  // note: _selectivityEstimate is only used in cluster coordinator case
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index stub with a hard-coded selectivity estimate
+/// this is used in the cluster coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+Index::Index (TRI_json_t const* json)
+  : _iid(triagens::basics::StringUtils::uint64(triagens::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
+    _collection(nullptr),
+    _fields(),
+    _unique(triagens::basics::JsonHelper::getBooleanValue(json, "unique", false)),
+    _sparse(triagens::basics::JsonHelper::getBooleanValue(json, "sparse", false)),
+    _selectivityEstimate(0.0) {
+        
+  TRI_json_t const* fields = TRI_LookupObjectJson(json, "fields");
+
+  if (! TRI_IsArrayJson(fields)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index description");
+  }
+
+  size_t const n = TRI_LengthArrayJson(fields);
+  _fields.reserve(n);
+
+  for (size_t i = 0; i < n; ++i) {
+    auto name = static_cast<TRI_json_t const*>(TRI_AtVector(&fields->_value._objects, i));
+
+    if (! TRI_IsStringJson(name)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index description");
+    }
+
+    std::vector<triagens::basics::AttributeName> parsedAttributes;
+    TRI_ParseAttributeString(std::string(name->_value._string.data, name->_value._string.length - 1), parsedAttributes);
+    _fields.emplace_back(parsedAttributes);
+  }
+
+  TRI_json_t const* se = TRI_LookupObjectJson(json, "selectivityEstimate");
+
+  if (TRI_IsNumberJson(se)) {
+    _selectivityEstimate = json->_value._number;
+  }
 }
 
 Index::~Index () {

@@ -35,6 +35,10 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/EdgeIndex.h"
+#include "Indexes/HashIndex.h"
+#include "Indexes/PrimaryIndex.h"
+#include "Indexes/SkiplistIndex.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -290,8 +294,22 @@ void Collection::fillIndexesCoordinator () const {
       }
 
       std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(v));
+
       indexes.emplace_back(idx.get());
-      idx.release();
+      auto p = idx.release();
+      
+      if (p->type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        p->setInternals(new triagens::arango::PrimaryIndex(v), true);
+      }
+      else if (p->type == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        p->setInternals(new triagens::arango::EdgeIndex(v), true);
+      }
+      else if (p->type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
+        p->setInternals(new triagens::arango::HashIndex(v), true);
+      }
+      else if (p->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+        p->setInternals(new triagens::arango::SkiplistIndex(v), true);
+      }
     }
   }
 }
@@ -363,17 +381,12 @@ void Collection::fillIndexesDBServer () const {
         }
       }
 
-      auto idx = new triagens::aql::Index(v);
+      std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(v));
       // assign the found local index
-      idx->setInternals(data);
+      idx->setInternals(data, false);
 
-      try {
-        indexes.emplace_back(idx);
-      }
-      catch (...) {
-        delete idx;
-        throw;
-      }
+      indexes.emplace_back(idx.get());
+      idx.release();
     }
   }
 }

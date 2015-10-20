@@ -40,6 +40,8 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
+struct TRI_json_t;
+
 typedef struct {
   TRI_shaped_json_t* _fields;   // list of shaped json objects which the
                                 // collection should know about
@@ -218,7 +220,7 @@ namespace triagens {
         int operator() (TRI_skiplist_index_key_t const* leftKey,
                         TRI_index_element_t const* rightElement) const;
 
-        KeyElementComparator (SkiplistIndex* idx) {
+        explicit KeyElementComparator (SkiplistIndex* idx) {
           _idx = idx;
         }
 
@@ -232,7 +234,7 @@ namespace triagens {
                         TRI_index_element_t const* rightElement,
                         triagens::basics::SkipListCmpType cmptype) const;
 
-        ElementElementComparator (SkiplistIndex* idx) {
+        explicit ElementElementComparator (SkiplistIndex* idx) {
           _idx = idx;
         }
 
@@ -260,6 +262,8 @@ namespace triagens {
                         std::vector<std::vector<triagens::basics::AttributeName>> const&,
                         bool,
                         bool);
+        
+        explicit SkiplistIndex (struct TRI_json_t const*);
 
         ~SkiplistIndex ();
 

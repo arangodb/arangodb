@@ -41,6 +41,8 @@
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
 
+struct TRI_json_t;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash index query parameter
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,6 +119,8 @@ namespace triagens {
                    std::vector<std::vector<triagens::basics::AttributeName>> const&,
                    bool,
                    bool);
+        
+        explicit HashIndex (struct TRI_json_t const*);
 
         ~HashIndex ();
 

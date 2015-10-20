@@ -115,7 +115,7 @@ void PrimaryIndexIterator::reset () {
 PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection) 
   : Index(0, collection, std::vector<std::vector<triagens::basics::AttributeName>>( { { { TRI_VOC_ATTRIBUTE_KEY, false } } } ), true, false),
     _primaryIndex(nullptr) {
-
+  
   uint32_t indexBuckets = 1;
 
   if (collection != nullptr) {
@@ -133,6 +133,16 @@ PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection)
   );
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index stub with a hard-coded selectivity estimate
+/// this is used in the cluster coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+PrimaryIndex::PrimaryIndex (TRI_json_t const* json)
+  : Index(json),
+    _primaryIndex(nullptr) {
+}
+
 PrimaryIndex::~PrimaryIndex () {
   delete _primaryIndex;
 }
@@ -140,10 +150,18 @@ PrimaryIndex::~PrimaryIndex () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of documents from the index
+////////////////////////////////////////////////////////////////////////////////
         
 size_t PrimaryIndex::size () const {
   return _primaryIndex->size();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory usage of the index
+////////////////////////////////////////////////////////////////////////////////
 
 size_t PrimaryIndex::memory () const {
   return _primaryIndex->memoryUsage();

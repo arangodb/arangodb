@@ -325,6 +325,17 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index stub with a hard-coded selectivity estimate
+/// this is used in the cluster coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+HashIndex::HashIndex (TRI_json_t const* json)
+  : PathBasedIndex(json),
+    _uniqueArray(nullptr) {
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -348,6 +359,11 @@ HashIndex::~HashIndex () {
 double HashIndex::selectivityEstimate () const {
   if (_unique) {
     return 1.0; 
+  }
+
+  if (_multiArray == nullptr) {
+    // use hard-coded selectivity estimate in case of cluster coordinator
+    return _selectivityEstimate;
   }
 
   double estimate = _multiArray->_hashArray->selectivity();

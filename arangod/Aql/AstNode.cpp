@@ -192,10 +192,11 @@ static AstNode const* ResolveAttribute (AstNode const* node) {
     attributeNames.emplace_back(attributeName);
     node = node->getMember(0);
   }
+    
+  size_t which = attributeNames.size();
+  TRI_ASSERT(which > 0);
 
-  while (true) {
-    TRI_ASSERT(! attributeNames.empty());
-
+  while (which > 0) {
     TRI_ASSERT(node->type == NODE_TYPE_VALUE ||
                node->type == NODE_TYPE_ARRAY ||
                node->type == NODE_TYPE_OBJECT);
@@ -203,8 +204,9 @@ static AstNode const* ResolveAttribute (AstNode const* node) {
     bool found = false;
 
     if (node->type == NODE_TYPE_OBJECT) {
-      char const* attributeName = attributeNames.back().c_str();
-      attributeNames.pop_back();
+      TRI_ASSERT(which > 0);
+      char const* attributeName = attributeNames[which - 1].c_str();
+      --which;
 
       size_t const n = node->numMembers();
       for (size_t i = 0; i < n; ++i) {
@@ -214,7 +216,7 @@ static AstNode const* ResolveAttribute (AstNode const* node) {
             && strcmp(member->getStringValue(), attributeName) == 0) {
           // found the attribute
           node = member->getMember(0);
-          if (attributeNames.empty()) {
+          if (which == 0) {
             // we found what we looked for
             return node;
           }
@@ -271,6 +273,9 @@ static TRI_json_type_e GetNodeCompareType (AstNode const* node) {
 int triagens::aql::CompareAstNodes (AstNode const* lhs, 
                                     AstNode const* rhs,
                                     bool compareUtf8) {
+  TRI_ASSERT_EXPENSIVE(lhs != nullptr);
+  TRI_ASSERT_EXPENSIVE(rhs != nullptr);
+
   if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     lhs = ResolveAttribute(lhs);
   }

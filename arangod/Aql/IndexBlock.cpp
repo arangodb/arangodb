@@ -82,6 +82,8 @@ IndexBlock::IndexBlock (ExecutionEngine* engine,
 IndexBlock::~IndexBlock () {
   delete _iterator;
   delete _context;
+
+  cleanupNonConstExpressions();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,10 +139,7 @@ int IndexBlock::initialize () {
   ENTER_BLOCK
   int res = ExecutionBlock::initialize();
 
-  for (auto it : _nonConstExpressions) {
-    delete it;
-  }
-  _nonConstExpressions.clear();
+  cleanupNonConstExpressions();
 
   _alreadyReturned.clear();
   auto en = static_cast<IndexNode const*>(getPlanNode());
@@ -620,6 +619,17 @@ size_t IndexBlock::skipSome (size_t atLeast,
   }
 
   return skipped; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the memory for all non-constant expressions
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexBlock::cleanupNonConstExpressions () {
+  for (auto it : _nonConstExpressions) {
+    delete it;
+  }
+  _nonConstExpressions.clear();
 }
 
 // Local Variables:

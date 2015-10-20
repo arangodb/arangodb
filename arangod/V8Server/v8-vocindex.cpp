@@ -1067,7 +1067,8 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   }
 
   // create a dummy primary index
-  std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(new triagens::arango::PrimaryIndex(nullptr));
+  TRI_document_collection_t* doc = nullptr;
+  std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(new triagens::arango::PrimaryIndex(doc));
 
   auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 

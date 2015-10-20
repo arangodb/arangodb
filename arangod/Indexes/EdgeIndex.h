@@ -38,6 +38,8 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
+struct TRI_json_t;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class EdgeIndex
 // -----------------------------------------------------------------------------
@@ -99,6 +101,8 @@ namespace triagens {
 
         EdgeIndex (TRI_idx_iid_t,
                    struct TRI_document_collection_t*);
+        
+        explicit EdgeIndex (struct TRI_json_t const*);
 
         ~EdgeIndex ();
 

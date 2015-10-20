@@ -44,6 +44,7 @@
 
 struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
+struct TRI_json_t;
 struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
@@ -160,6 +161,8 @@ namespace triagens {
                std::vector<std::vector<triagens::basics::AttributeName> >const&,
                bool unique,
                bool sparse);
+
+        explicit Index (struct TRI_json_t const*);
 
         virtual ~Index ();
 
@@ -310,8 +313,8 @@ namespace triagens {
 /// contents are the same
 ////////////////////////////////////////////////////////////////////////////////
 
-        static bool Compare (TRI_json_t const* lhs,
-                             TRI_json_t const* rhs);
+        static bool Compare (struct TRI_json_t const* lhs,
+                             struct TRI_json_t const* rhs);
 
         virtual IndexType type () const = 0;
 
@@ -372,19 +375,20 @@ namespace triagens {
 
       protected:
 
-        TRI_idx_iid_t const                                                    _iid;
+        TRI_idx_iid_t const                                         _iid;
 
-        struct TRI_document_collection_t*                                      _collection;
+        struct TRI_document_collection_t*                           _collection;
 
-        std::vector<std::vector<triagens::basics::AttributeName>> const        _fields;
+        std::vector<std::vector<triagens::basics::AttributeName>>   _fields;
 
-        bool const                                                             _unique;
+        bool const                                                  _unique;
 
-        bool const                                                             _sparse;
+        bool const                                                  _sparse;
+
+        double                                                      _selectivityEstimate;
                
     };
         
-
   }
 }
       

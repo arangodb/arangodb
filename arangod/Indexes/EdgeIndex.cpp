@@ -431,6 +431,18 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                                      context);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index stub with a hard-coded selectivity estimate
+/// this is used in the cluster coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+EdgeIndex::EdgeIndex (TRI_json_t const* json)
+  : Index(json),
+    _edgesFrom(nullptr),
+    _edgesTo(nullptr),
+    _numBuckets(1) {
+}
+
 EdgeIndex::~EdgeIndex () {
   delete _edgesTo;
   delete _edgesFrom;
@@ -444,14 +456,25 @@ EdgeIndex::~EdgeIndex () {
 /// @brief return a selectivity estimate for the index
 ////////////////////////////////////////////////////////////////////////////////
 
-double EdgeIndex::selectivityEstimate () const {  
+double EdgeIndex::selectivityEstimate () const {
+  if (_edgesFrom == nullptr || _edgesTo == nullptr) {
+    // use hard-coded selectivity estimate in case of cluster coordinator
+    return _selectivityEstimate;
+  }
+
   // return average selectivity of the two index parts
   double estimate = (_edgesFrom->selectivity() + _edgesTo->selectivity()) * 0.5;
   TRI_ASSERT(estimate >= 0.0 && estimate <= 1.00001); // floating-point tolerance 
   return estimate;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory usage for the index
+////////////////////////////////////////////////////////////////////////////////
  
 size_t EdgeIndex::memory () const {
+  TRI_ASSERT(_edgesFrom != nullptr);
+  TRI_ASSERT(_edgesTo != nullptr);
   return _edgesFrom->memoryUsage() + _edgesTo->memoryUsage();
 }
 

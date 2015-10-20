@@ -39,12 +39,22 @@ using namespace triagens::aql;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the index
+////////////////////////////////////////////////////////////////////////////////
+       
+Index::~Index () {
+  if (ownsInternals) {
+    TRI_ASSERT(internals != nullptr);
+    delete internals;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the index internals
 ////////////////////////////////////////////////////////////////////////////////
       
 triagens::arango::Index* Index::getInternals () const {
   if (internals == nullptr) {
-    TRI_PrintBacktrace();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "accessing undefined index internals");
   }
   return internals; 
@@ -54,9 +64,11 @@ triagens::arango::Index* Index::getInternals () const {
 /// @brief set the index internals
 ////////////////////////////////////////////////////////////////////////////////
       
-void Index::setInternals (triagens::arango::Index* idx) {
+void Index::setInternals (triagens::arango::Index* idx, 
+                          bool owns) {
   TRI_ASSERT(internals == nullptr);
   internals = idx;
+  ownsInternals = owns;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

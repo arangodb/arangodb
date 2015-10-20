@@ -78,8 +78,29 @@ PathBasedIndex::PathBasedIndex (TRI_idx_iid_t iid,
 
   TRI_ASSERT(iid != 0);
   
-  for (auto const& list : fields) {
-    if (TRI_AttributeNamesHaveExpansion(list)) {
+  for (auto const& it : fields) {
+    if (TRI_AttributeNamesHaveExpansion(it)) {
+      _useExpansion = true;
+      break;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index stub with a hard-coded selectivity estimate
+/// this is used in the cluster coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+PathBasedIndex::PathBasedIndex (TRI_json_t const* json)
+  : Index(json),
+    _shaper(nullptr),
+    _paths(),
+    _useExpansion(false) {
+
+  TRI_ASSERT(! _fields.empty());
+
+  for (auto const& it : _fields) {
+    if (TRI_AttributeNamesHaveExpansion(it)) {
       _useExpansion = true;
       break;
     }
