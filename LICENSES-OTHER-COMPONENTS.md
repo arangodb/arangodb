@@ -54,6 +54,19 @@
 * https://coreos.com/using-coreos/etcd/
 * [Apache 2 License](https://github.com/coreos/etcd/blob/master/LICENSE)
 
+### Bison
+
+* https://www.gnu.org/software/bison/
+* GNU GPL3
+* only used to generate code, not part of the distribution
+* see https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20
+
+### Flex
+
+* http://flex.sourceforge.net/
+* only used to generate code, not part of the distribution
+* [free as-is license](http://flex.sourceforge.net/manual/Copyright.html#Copyright)
+
 ## Javascript, Node and NPM
 
 ### Node core modules
@@ -196,7 +209,6 @@
 * MIT License
 
 #### Handlebars
-
 
 * MIT License
 
