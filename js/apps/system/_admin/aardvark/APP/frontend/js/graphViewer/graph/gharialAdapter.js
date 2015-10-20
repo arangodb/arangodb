@@ -106,7 +106,9 @@ function GharialAdapter(nodes, edges, viewer, config) {
           direction = "outbound";
         }
       } else {
-        direction = "outbound";
+        // currently there is a bug with outbound-direction graphs.
+        // any should be default at the moment
+        direction = "any";
       }
 
       api.base = arangodb + "_api/";
