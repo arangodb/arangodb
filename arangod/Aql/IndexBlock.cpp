@@ -137,7 +137,11 @@ int IndexBlock::initialize () {
   ENTER_BLOCK
   int res = ExecutionBlock::initialize();
 
+  for (auto it : _nonConstExpressions) {
+    delete it;
+  }
   _nonConstExpressions.clear();
+
   _alreadyReturned.clear();
   auto en = static_cast<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
@@ -301,14 +305,11 @@ bool IndexBlock::initIndexes () {
   else {
     _currentIndex = 0;
   }
-  auto outVariable = node->outVariable();
-  auto ast = node->_plan->getAst();
-  if (_condition == nullptr) {
-    _iterator = _indexes[_currentIndex]->getIterator(_context, ast, nullptr, outVariable, node->_reverse);
-  }
-  else {
-    _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable, node->_reverse);
-  }
+
+  delete _iterator;
+  _iterator = nullptr;
+  
+  _iterator = createIterator();
 
   while (_iterator == nullptr) {
     if (node->_reverse) {
@@ -319,12 +320,7 @@ bool IndexBlock::initIndexes () {
     }
     if (_currentIndex < _indexes.size()) {
       // This check will work as long as _indexes.size() < MAX_SIZE_T
-      if (_condition == nullptr) {
-        _iterator = _indexes[_currentIndex]->getIterator(_context, ast, nullptr, outVariable, node->_reverse);
-      }
-      else {
-        _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable, node->_reverse);
-      }
+      _iterator = createIterator();
     }
     else {
       // We were not able to initialize any index with this condition
@@ -334,6 +330,27 @@ bool IndexBlock::initIndexes () {
   return true;
   LEAVE_BLOCK;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an iterator object
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::arango::IndexIterator* IndexBlock::createIterator () {
+  IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
+  auto outVariable = node->outVariable();
+  auto ast = node->_plan->getAst();
+
+  if (_condition == nullptr) {
+    return _indexes[_currentIndex]->getIterator(_context, ast, nullptr, outVariable, node->_reverse);
+  }
+
+  TRI_ASSERT(_indexes.size() == _condition->numMembers());
+  return _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable, node->_reverse);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Forwards _iterator to the next available index
+////////////////////////////////////////////////////////////////////////////////
 
 void IndexBlock::startNextIterator () {
   delete _iterator;
@@ -348,15 +365,7 @@ void IndexBlock::startNextIterator () {
   }
   if (_currentIndex < _indexes.size()) {
     // This check will work as long as _indexes.size() < MAX_SIZE_T
-    auto outVariable = node->outVariable();
-    auto ast = node->_plan->getAst();
-    if (_condition == nullptr) {
-      _iterator = _indexes[_currentIndex]->getIterator(_context, ast, nullptr, outVariable, node->_reverse);
-    }
-    else {
-      TRI_ASSERT(_indexes.size() == _condition->numMembers());
-      _iterator = _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable, node->_reverse);
-    }
+    _iterator = createIterator();
   }
 }
 

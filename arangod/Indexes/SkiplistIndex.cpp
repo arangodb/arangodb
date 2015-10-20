@@ -106,7 +106,7 @@ static TRI_index_operator_t* buildBoundOperator (TRI_json_t const* bound,
     return nullptr;
   }
 
-  TRI_PushBack2ArrayJson(paramCopy.get(), TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, bound));
+  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, paramCopy.get(), TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, bound));
   boundOperator.reset(TRI_CreateIndexOperator(type,
                                               nullptr,
                                               nullptr, 

@@ -395,7 +395,7 @@ void Collection::fillIndexesLocal () const {
       continue;
     }
 
-    std::unique_ptr<triagens::aql::Index> idx(allIndexes[i]);
+    std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(allIndexes[i]));
     indexes.emplace_back(idx.get());
     idx.release();
   }
