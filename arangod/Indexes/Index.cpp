@@ -523,6 +523,17 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
         return false;
       }
     }
+    else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+             access->type == triagens::aql::NODE_TYPE_EXPANSION) {
+      // value IN a.b
+      if (! other->isConstant()) {
+        return false;
+      }
+
+      if (other->isNullValue()) {
+        return false;
+      }
+    }
     else if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       // a.b == value  OR  a.b IN values
       if (! other->isConstant()) {
