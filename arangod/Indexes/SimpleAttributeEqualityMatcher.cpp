@@ -452,6 +452,11 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex (triagens::arango::Index co
       // attribute path length differs
       continue;
     }
+    if (index->isAttributeExpanded(i) &&
+        op->type != triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      // If this attribute is correct or not, it could only serve for IN
+      continue;
+    }
 
     bool match = true;
     for (size_t j = 0; j < _attributes[i].size(); ++j) {
