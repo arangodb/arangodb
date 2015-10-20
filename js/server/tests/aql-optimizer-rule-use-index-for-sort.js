@@ -174,8 +174,6 @@ function optimizerRuleTestSuite() {
         var result = AQL_EXPLAIN(query[0], { }, paramIndexFromSort);
         assertEqual([], removeAlwaysOnClusterRules(result.plan.rules), query);
         if (query[1]) {
-          require("internal").print(query[0]);
-          require("org/arangodb/aql/explainer").explain(query[0]);
           var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
           for (j = 1; j < allresults.results.length; j++) {
             assertTrue(isEqual(allresults.results[0],
@@ -251,7 +249,6 @@ function optimizerRuleTestSuite() {
       queries.forEach(function(query) {
         var j;
         var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
-        require("org/arangodb/aql/explainer").explain(query);
         assertEqual([ ruleName ], removeAlwaysOnClusterRules(result.plan.rules));
         hasIndexNode(result);
         hasSortNode(result);
@@ -364,7 +361,6 @@ function optimizerRuleTestSuite() {
       QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
 
-      require("org/arangodb/aql/explainer").explain(query);
       // -> use-index-for-sort alone.
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
