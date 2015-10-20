@@ -91,6 +91,11 @@
 * https://github.com/arangodb/aqbjs
 * Apache 2
 
+#### Chai
+
+* http://chaijs.com
+* MIT License
+
 #### CoffeeScript
 
 * http://coffeescript.org
@@ -115,6 +120,11 @@
 
 * https://github.com/moonglum/foxx_generator
 * Apache 2 License
+
+#### highlight.js
+
+* https://highlightjs.org
+* BSD 3-Clause License
 
 #### http-errors
 
@@ -213,18 +223,9 @@
 * http://www.embeddedjs.com
 * MIT License
 
-#### jq-console
-
-* https://github.com/replit/jq-console
-* MIT License
-
-#### Highlight.js
-
-* https://highlightjs.org
-* BSD 3-Clause License
-
 #### jqconsole
 
+* https://github.com/replit/jq-console
 * MIT License
 
 #### jQuery
