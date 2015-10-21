@@ -85,15 +85,15 @@ In order to create a sparse index, an object with the attribute `sparse` can be 
 the index creation commands:
 
 ```js
-db.collection.ensureHashIndex(attributeName, { sparse: true }); 
-db.collection.ensureHashIndex(attributeName1, attributeName2, { sparse: true }); 
-db.collection.ensureUniqueConstraint(attributeName, { sparse: true }); 
-db.collection.ensureUniqueConstraint(attributeName1, attributeName2, { sparse: true }); 
+db.collection.ensureIndex({ type: "hash", fields: [ "attributeName" ], sparse: true }); 
+db.collection.ensureIndex({ type: "hash", fields: [ "attributeName1", "attributeName2" ], sparse: true }); 
+db.collection.ensureIndex({ type: "hash", fields: [ "attributeName" ], unique: true, sparse: true }); 
+db.collection.ensureIndex({ type: "hash", fields: [ "attributeName1", "attributeName2" ], unique: true, sparse: true }); 
 
-db.collection.ensureSkiplist(attributeName, { sparse: true }); 
-db.collection.ensureSkiplist(attributeName1, attributeName2, { sparse: true }); 
-db.collection.ensureUniqueSkiplist(attributeName, { sparse: true }); 
-db.collection.ensureUniqueSkiplist(attributeName1, attributeName2, { sparse: true }); 
+db.collection.ensureIndex({ type: "skiplist", fields: [ "attributeName" ], sparse: true }); 
+db.collection.ensureIndex({ type: "skiplist", fields: [ "attributeName1", "attributeName2" ], sparse: true }); 
+db.collection.ensureIndex({ type: "skiplist", fields: [ "attributeName" ], unique: true, sparse: true }); 
+db.collection.ensureIndex({ type: "skiplist", fields: [ "attributeName1", "attributeName2" ], unique: true, sparse: true }); 
 ```
 
 When not explicitly set, the `sparse` attribute defaults to `false` for new indexes.
@@ -130,6 +130,5 @@ index range does not include `null` for any of the index attributes.
 
 Note that if you intend to use [joins](../AqlExamples/Join.html) it may be clever
 to use non-sparsity and maybe even uniqueness for that attribute, else all items containing
-the NULL-value will match against each other and thus produce large results.
-
+the `null` value will match against each other and thus produce large results.
 

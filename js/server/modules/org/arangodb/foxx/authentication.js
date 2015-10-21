@@ -404,7 +404,7 @@ Users.prototype.setup = function (options) {
     db._create(this._collectionName, createOptions);
   }
 
-  this.storage().ensureUniqueConstraint("identifier", { sparse: true });
+  this.storage().ensureIndex({ type: "hash", fields: [ "identifier" ], sparse: true });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -754,7 +754,7 @@ Sessions.prototype.setup = function (options) {
     db._create(this._collectionName, createOptions);
   }
 
-  this.storage().ensureHashIndex("identifier");
+  this.storage().ensureIndex({ type: "hash", fields: ["identifier"]});
 };
 
 ////////////////////////////////////////////////////////////////////////////////

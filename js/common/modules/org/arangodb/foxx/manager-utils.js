@@ -56,7 +56,7 @@ var getStorage = function() {
   var c = db._collection("_apps");
   if (c === null) {
     c = db._create("_apps", {isSystem: true});
-    c.ensureUniqueConstraint("mount");
+    c.ensureIndex({ type: "hash", fields: [ "mount" ], unique: true });
   }
   return c;
 };
