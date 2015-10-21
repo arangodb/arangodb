@@ -1086,6 +1086,9 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
       else {
         (*it).second.emplace_back(op);
       }
+      TRI_IF_FAILURE("SkiplistIndex::accessFitsIndex")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
 
       return true;
     }
@@ -1342,16 +1345,25 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       // This is an equalityCheck, we can continue with the next field
       permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, 1));
+      TRI_IF_FAILURE("SkiplistIndex::permutationEQ")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
     }
     else if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       if (isAttributeExpanded(usedFields)) {
         permutationStates.emplace_back(PermutationState(aql::NODE_TYPE_OPERATOR_BINARY_EQ, value, usedFields, 1));
+        TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
       }
       else {
         if (value->numMembers() == 0) {
           return nullptr;
         }
         permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, value->numMembers()));
+        TRI_IF_FAILURE("SkiplistIndex::permutationIN")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         maxPermutations *= value->numMembers();
       }
     }
@@ -1423,6 +1435,9 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     auto op = buildRangeOperator(lower.get(), includeLower, upper.get(), includeUpper, nullptr, _shaper);
     if (op != nullptr) {
       searchValues.emplace_back(op);
+      TRI_IF_FAILURE("SkiplistIndex::onlyRangeOperator")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
     }
   }
   else {
@@ -1465,11 +1480,17 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
           rangeOperator.release();
           tmpOp.release();
           searchValues.emplace_back(combinedOp.get());
+          TRI_IF_FAILURE("SkiplistIndex::rangeOperatorNoTmp")  {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
           combinedOp.release();
         }
         else {
           if (tmpOp != nullptr) {
             searchValues.emplace_back(tmpOp.get());
+            TRI_IF_FAILURE("SkiplistIndex::rangeOperatorTmp")  {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+            }
             tmpOp.release();
           }
         }
@@ -1502,6 +1523,9 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     std::reverse(searchValues.begin(), searchValues.end());
   }
 
+  TRI_IF_FAILURE("SkiplistIndex::noIterator")  {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   return new SkiplistIndexIterator(this, searchValues, reverse);
 }
 
