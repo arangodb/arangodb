@@ -106,6 +106,22 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
   return new ArangoStatement(this, payload).execute();
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explains a query
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._explain = function (query, bindVars, options) {
+  if (typeof query === 'object' && typeof query.toAQL === 'function') {
+    query = { query: query.toAQL() };
+  }
+
+  if (arguments.length > 1) {
+    query = { query: query, bindVars: bindVars, options: options };
+  }
+
+  require("org/arangodb/aql/explainer").explain(query);
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      transactions
 // -----------------------------------------------------------------------------

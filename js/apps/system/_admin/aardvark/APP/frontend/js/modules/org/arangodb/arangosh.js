@@ -129,6 +129,7 @@ exports.HELP = exports.createHelpHeadline("Help") +
   'Examples:                                                          ' + "\n" +
   ' > db._collections()                    list all collections       ' + "\n" +
   ' > db._query(<query>).toArray()         execute an AQL query       ' + "\n" +
+  ' > db._explain(<query>)                 explain an AQL query       ' + "\n" +
   ' > help                                 show help pages            ' + "\n" +
   ' > exit                                                            ' + "\n" +
   'Note: collection names and statuses may be cached in arangosh.     ' + "\n" +
