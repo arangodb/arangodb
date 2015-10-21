@@ -67,7 +67,7 @@ if test $? -eq 0; then
   echo "removing ${LOGFILE} ${DBDIR}"
   rm -rf ${LOGFILE} ${DBDIR}
 else
-  echo "failed - don't remove ${LOGFILE} ${DBDIR} - heres the logfile:"
+  echo "failed - don't remove ${LOGFILE} ${DBDIR} - here's the logfile:"
   cat ${LOGFILE}
 fi
 
