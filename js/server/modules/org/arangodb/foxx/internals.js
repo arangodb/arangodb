@@ -64,18 +64,6 @@ function constructUrlObject(url, constraint, method) {
   return urlObject;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// JSF_foxx_internals_constructNickname
-/// @brief Construct a swagger-compatible nickname from a httpMethod and URL
-////////////////////////////////////////////////////////////////////////////////
-
-function constructNickname(httpMethod, url) {
-  return (httpMethod + "_" + url)
-    .replace(/\W/g, '_')
-    .replace(/((_){2,})/g, '_')
-    .toLowerCase();
-}
-
 function constructRoute(method, route, callback, controller, constraints) {
   var res = {};
   res.url = constructUrlObject(route, undefined, method);
@@ -107,37 +95,5 @@ function constructRoute(method, route, callback, controller, constraints) {
   return res;
 }
 
-function constructPathParamDoc(paramName, description, dataType, required) {
-  return {
-    paramType: "path",
-    name: paramName,
-    description: description,
-    dataType: dataType,
-    required: required
-  };
-}
-
-function constructQueryParamDoc(paramName, description, dataType, required, allowMultiple) {
-  return {
-    paramType: "query",
-    name: paramName,
-    description: description,
-    dataType: dataType,
-    required: required,
-    allowMultiple: allowMultiple
-  };
-}
-
-function constructErrorResponseDoc(code, reason) {
-  return {
-    code: code,
-    reason: reason
-  };
-}
-
 exports.constructUrlObject = constructUrlObject;
-exports.constructNickname = constructNickname;
 exports.constructRoute = constructRoute;
-exports.constructPathParamDoc = constructPathParamDoc;
-exports.constructQueryParamDoc = constructQueryParamDoc;
-exports.constructErrorResponseDoc = constructErrorResponseDoc;
