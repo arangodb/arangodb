@@ -175,7 +175,7 @@ function parseRoutes(tag, routes, models) {
         tags: [tag],
         summary: route.docs.summary,
         description: route.docs.notes,
-        operationId: route.docs.nickname,
+        operationId: (method + '_' + path).replace(/\W/g, '_').replace(/_{2,}/g, '_').toLowerCase(),
         responses: {
           default: {
             description: 'undocumented body',
