@@ -138,8 +138,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the costs of using this index
-/// costs returned are scaled from 0.0 to 1.0, with 0.0 being the lowest cost
+/// @brief determine the costs of using this index and the number of items
+/// that will return in average
+/// cost values have no special meaning, except that multiple cost values are 
+/// comparable, and lower values mean lower costs
 ////////////////////////////////////////////////////////////////////////////////
 
         void calculateIndexCosts (triagens::arango::Index const*,

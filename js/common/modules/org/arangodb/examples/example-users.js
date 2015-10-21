@@ -1093,7 +1093,7 @@ exports.createLocations = function (name, usersCollection, limit) {
     collection.truncate();
   }
 
-  collection.ensureGeoIndex("location");
+  collection.ensureIndex({ type: "geo", fields: [ "location" ] });
 
   var cursor = usersCollection.all();
   var lat = 59;

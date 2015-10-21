@@ -458,7 +458,7 @@ ArangoCollection.prototype.byConditionSkiplist = function (index, condition) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{005_collectionRange}
 /// ~ db._create("old");
-///   db.old.ensureSkiplist("age");
+///   db.old.ensureIndex({ type: "skiplist", fields: [ "age" ] });
 ///   db.old.save({ age: 15 });
 ///   db.old.save({ age: 25 });
 ///   db.old.save({ age: 30 });
@@ -504,7 +504,7 @@ ArangoCollection.prototype.range = function (name, left, right) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{006_collectionClosedRange}
 /// ~ db._create("old");
-///   db.old.ensureSkiplist("age");
+///   db.old.ensureIndex({ type: "skiplist", fields: [ "age" ] });
 ///   db.old.save({ age: 15 });
 ///   db.old.save({ age: 25 });
 ///   db.old.save({ age: 30 });
@@ -570,10 +570,10 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 /// |}
 ///
 ///  db.complex.near(0, 170).limit(5); // xpError(ERROR_QUERY_GEO_INDEX_MISSING)
-///  db.complex.ensureGeoIndex("home");
+///  db.complex.ensureIndex({ type: "geo", fields: [ "home" ] });
 ///  db.complex.near(0, 170).limit(5).toArray();
 ///  db.complex.geo("work").near(0, 170).limit(5); // xpError(ERROR_QUERY_GEO_INDEX_MISSING)
-///  db.complex.ensureGeoIndex("work");
+///  db.complex.ensureIndex({ type: "geo", fields: [ "work" ] });
 ///  db.complex.geo("work").near(0, 170).limit(5).toArray();
 /// ~ db._drop("complex");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -694,7 +694,7 @@ ArangoCollection.prototype.geo = function(loc, order) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{007_collectionNear}
 /// ~ db._create("geo");
-///   db.geo.ensureGeoIndex("loc");
+///   db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
 ///   |for (var i = -90;  i <= 90;  i += 10) { 
 ///   |   for (var j = -180; j <= 180; j += 10) {
 ///   |     db.geo.save({
@@ -710,7 +710,7 @@ ArangoCollection.prototype.geo = function(loc, order) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{008_collectionNearDistance}
 /// ~ db._create("geo");
-///   db.geo.ensureGeoIndex("loc");
+///   db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
 ///   |for (var i = -90;  i <= 90;  i += 10) {
 ///   |  for (var j = -180; j <= 180; j += 10) {
 ///   |     db.geo.save({
@@ -767,7 +767,7 @@ ArangoCollection.prototype.near = function (lat, lon) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{009_collectionWithin}
 /// ~ db._create("geo");
-/// ~ db.geo.ensureGeoIndex("loc");
+/// ~ db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
 /// |~ for (var i = -90;  i <= 90;  i += 10) {
 /// |  for (var j = -180; j <= 180; j += 10) {
 ///       db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
@@ -819,7 +819,7 @@ ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
 /// |  }
 /// |}
 ///
-///  db.example.ensureGeoIndex("home");
+///  db.example.ensureIndex({ type: "geo", fields: [ "home" ] });
 ///  |items = db.example.getIndexes().map(function(x) { return x.id; });
 ///  db.example.index(items[1]);
 /// ~ db._drop("example");

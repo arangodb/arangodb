@@ -891,7 +891,7 @@ ArangoCollection.prototype.updateByExample = function (example,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a cap constraint exists
 /// @startDocuBlock collectionEnsureCapConstraint
-/// `collection.ensureCapConstraint(size, byteSize)`
+/// `collection.ensureIndex({ type: "cap", size: size, byteSize: byteSize })`
 ///
 /// Creates a size restriction aka cap for the collection of `size`
 /// documents and/or `byteSize` data size. If the restriction is in place
@@ -918,7 +918,7 @@ ArangoCollection.prototype.updateByExample = function (example,
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionEnsureCapConstraint}
 /// ~db._create('examples');
-///  db.examples.ensureCapConstraint(10);
+///  db.examples.ensureIndex({ type: "cap", size: 10 });
 ///  for (var i = 0;  i < 20;  ++i) { var d = db.examples.save( { n : i } ); }
 ///  db.examples.count();
 /// ~db._drop('examples');
@@ -940,19 +940,19 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a unique skiplist index exists
 /// @startDocuBlock ensureUniqueSkiplist
-/// `collection.ensureUniqueSkiplist(field1, field2, ..., fieldn)`
+/// `collection.ensureIndex({ type: "skiplist", fields: [ "field1", ..., "fieldn" ], unique: true })`
 ///
-/// Creates a unique skiplist index on all documents using *field1*, *field2*, ...
+/// Creates a unique skiplist index on all documents using *field1*, ... *fieldn*
 /// as attribute paths. At least one attribute path has to be given. The index will
-///  be non-sparse by default.
+/// be non-sparse by default.
 ///
 /// All documents in the collection must differ in terms of the indexed 
 /// attributes. Creating a new document or updating an existing document will
 /// will fail if the attribute uniqueness is violated. 
 ///
-/// To create a sparse index, use the following command:
+/// To create a sparse unique index, set the *sparse* attribute to `true`:
 /// 
-/// `collection.ensureUniqueSkiplist(field1, field2, ..., fieldn, { sparse: true })`
+/// `collection.ensureIndex({ type: "skiplist", fields: [ "field1", ..., "fieldn" ], unique: true, sparse: true })`
 /// 
 /// In a sparse index all documents will be excluded from the index that do not 
 /// contain at least one of the specified index attributes or that have a value 
@@ -968,7 +968,7 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplist}
 /// ~db._create("ids");
-/// db.ids.ensureUniqueSkiplist("myId");
+/// db.ids.ensureIndex({ type: "skiplist", fields: [ "myId" ], unique: true });
 /// db.ids.save({ "myId": 123 });
 /// db.ids.save({ "myId": 456 });
 /// db.ids.save({ "myId": 789 });
@@ -977,7 +977,7 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplistMultiColmun}
 /// ~db._create("ids");
-/// db.ids.ensureUniqueSkiplist("name.first", "name.last");
+/// db.ids.ensureIndex({ type: "skiplist", fields: [ "name.first", "name.last" ], unique: true });
 /// db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});
 /// db.ids.save({ "name" : { "first" : "jens", "last": "jensen" }});
 /// db.ids.save({ "name" : { "first" : "hans", "last": "jensen" }});
@@ -1001,24 +1001,20 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a non-unique skiplist index exists
 /// @startDocuBlock ensureSkiplist
-/// `collection.ensureSkiplist(field1, field2, ..., fieldn)`
+/// `collection.ensureIndex({ type: "skiplist", fields: [ "field1", ..., "fieldn" ] })`
 ///
-/// Creates a non-unique skiplist index on all documents using *field1*, 
-/// *field2*, ... as attribute paths. At least one attribute path has to be given.
+/// Creates a non-unique skiplist index on all documents using *field1*, ...
+/// *fieldn* as attribute paths. At least one attribute path has to be given.
 /// The index will be non-sparse by default.
 ///
-/// Additional index options can be specified in the *options* argument. If
-/// set, it has to be an object. Currently the following index options are
-/// supported:
-///
-/// - *sparse*: controls if the index is sparse. The default is *false*.
+/// To create a sparse unique index, set the *sparse* attribute to `true`.
 ///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{ensureSkiplist}
 /// ~db._create("names");
-/// db.names.ensureSkiplist("first");
+/// db.names.ensureIndex({ type: "skiplist", fields: [ "first" ] });
 /// db.names.save({ "first" : "Tim" });
 /// db.names.save({ "first" : "Tom" });
 /// db.names.save({ "first" : "John" });
@@ -1039,8 +1035,8 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
-/// @startDocuBlock ensureFulltextIndex
-/// `ensureFulltextIndex(field, minWordLength)`
+/// @startDocuBlock ensureIndex
+/// `collection.ensureIndex({ type: "fulltext", fields: [ "field" ], minLength: minLength })`
 ///
 /// Creates a fulltext index on all documents on attribute *field*.
 ///
@@ -1052,8 +1048,8 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 /// unsupported.
 ///
 /// The minimum length of words that are indexed can be specified via the
-/// *minWordLength* parameter. Words shorter than minWordLength characters will 
-/// not be indexed. *minWordLength* has a default value of 2, but this value might
+/// *minLength* parameter. Words shorter than minLength characters will 
+/// not be indexed. *minLength* has a default value of 2, but this value might
 /// be changed in future versions of ArangoDB. It is thus recommended to explicitly
 /// specify this value.
 ///
@@ -1062,7 +1058,7 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{ensureFulltextIndex}
 /// ~db._create("example");
-/// db.example.ensureFulltextIndex("text");
+/// db.example.ensureIndex({ type: "fulltext", fields: [ "text" ], minLength: 3 });
 /// db.example.save({ text : "the quick brown", b : { c : 1 } });
 /// db.example.save({ text : "quick brown fox", b : { c : 2 } });
 /// db.example.save({ text : "brown fox jums", b : { c : 3 } });
@@ -1093,19 +1089,19 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a unique constraint exists
 /// @startDocuBlock ensureUniqueConstraint
-/// `collection.ensureUniqueConstraint(field1, field2, ..., fieldn)`
+/// `collection.ensureIndex({ type: "hash", fields: [ "field1", ..., "fieldn" ], unique: true })`
 ///
-/// Creates a unique hash index on all documents using *field1*, *field2*,
-/// ... as attribute paths. At least one attribute path has to be given.
+/// Creates a unique hash index on all documents using *field1*, ... *fieldn*
+/// as attribute paths. At least one attribute path has to be given.
 /// The index will be non-sparse by default.
 ///
 /// All documents in the collection must differ in terms of the indexed 
 /// attributes. Creating a new document or updating an existing document will
 /// will fail if the attribute uniqueness is violated. 
 ///
-/// To create a sparse index, use the following command:
+/// To create a sparse unique index, set the *sparse* attribute to `true`:
 /// 
-/// `collection.ensureUniqueConstraint(field1, field2, ..., fieldn, { sparse: true })`
+/// `collection.ensureIndex({ type: "hash", fields: [ "field1", ..., "fieldn" ], unique: true, sparse: true })`
 /// 
 /// In case that the index was successfully created, the index identifier is returned.
 /// 
@@ -1122,7 +1118,7 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueConstraint}
 /// ~db._create("test");
-/// db.test.ensureUniqueConstraint("a", "b.c");
+/// db.test.ensureIndex({ type: "hash", fields: [ "a", "b.c" ], unique: true });
 /// db.test.save({ a : 1, b : { c : 1 } });
 /// db.test.save({ a : 1, b : { c : 1 } }); // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
 /// db.test.save({ a : 1, b : { c : null } });
@@ -1144,22 +1140,22 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a non-unique hash index exists
 /// @startDocuBlock ensureHashIndex
-/// `collection.ensureHashIndex(field1, field2, ..., fieldn)`
+/// `collection.ensureIndex({ type: "hash", fields: [ "field1", ..., "fieldn" ] })`
 ///
-/// Creates a non-unique hash index on all documents using  *field1*, *field2*
-/// ... as attribute paths. At least one attribute path has to be given.
+/// Creates a non-unique hash index on all documents using  *field1*, ... *fieldn*
+/// as attribute paths. At least one attribute path has to be given.
 /// The index will be non-sparse by default.
 ///
-/// To create a sparse index, use the following command:
-///
-/// `collection.ensureHashIndex(field1, field2, ..., fieldn, { sparse: true })`
+/// To create a sparse unique index, set the *sparse* attribute to `true`:
+/// 
+/// `collection.ensureIndex({ type: "hash", fields: [ "field1", ..., "fieldn" ], sparse: true })`
 ///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{ensureHashIndex}
 /// ~db._create("test");
-/// db.test.ensureHashIndex("a");
+/// db.test.ensureIndex({ type: "hash", fields: [ "a" ] });
 /// db.test.save({ a : 1 });
 /// db.test.save({ a : 1 });
 /// db.test.save({ a : null });
@@ -1179,7 +1175,7 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists
 /// @startDocuBlock collectionEnsureGeoIndex
-/// `collection.ensureGeoIndex(location)`
+/// `collection.ensureIndex({ type: "geo", fields: [ "location" ] })`
 ///
 /// Creates a geo-spatial index on all documents using *location* as path to
 /// the coordinates. The value of the attribute has to be an array with at least two
@@ -1194,23 +1190,17 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
 ///
-/// `collection.ensureGeoIndex(location, true)`
-///
-/// As above whith the exception, that the order within the array is longitude
-/// followed by latitude. This corresponds to the format described in
+/// To create a geo on an array attribute that contains longitude first, set the
+/// *geoJson* attribute to `true`. This corresponds to the format described in
 /// [positions](http://geojson.org/geojson-spec.html)
 ///
-/// `collection.ensureGeoIndex(latitude, longitude)`
+/// `collection.ensureIndex({ type: "geo", fields: [ "location" ], geoJson: true })`
 ///
-/// Creates a geo-spatial index on all documents using *latitude* and
-/// *longitude* as paths the latitude and the longitude. The values of the
-/// attributes *latitude* and  *longitude* has to be numeric.
-/// All documents, which do not have the attribute paths or 
-/// have non-conforming values in the index attributes are excluded from the index.
+/// To create a geo-spatial index on all documents using *latitude* and
+/// *longitude* as separate attribute paths, two paths need to be specified
+/// in the *fields* array:
 ///
-/// Geo indexes are always sparse, meaning that documents which do not contain
-/// the index attributes or have non-numeric values in the index attributes
-/// will not be indexed.
+/// `collection.ensureIndex({ type: "geo", fields: [ "latitude", "longitude" ] })`
 ///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
@@ -1221,7 +1211,7 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{geoIndexCreateForArrayAttribute}
 /// ~db._create("geo")
-///  db.geo.ensureGeoIndex("loc");
+///  db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
 /// | for (i = -90;  i <= 90;  i += 10) {
 /// |     for (j = -180; j <= 180; j += 10) {
 /// |         db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] });
@@ -1237,7 +1227,7 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 /// 
 /// @EXAMPLE_ARANGOSH_OUTPUT{geoIndexCreateForArrayAttribute2}
 /// ~db._create("geo2")
-/// db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
+/// db.geo2.ensureIndex({ type: "geo", fields: [ "location.latitude", "location.longitude" ] });
 /// | for (i = -90;  i <= 90;  i += 10) {
 /// |     for (j = -180; j <= 180; j += 10) {
 /// |         db.geo2.save({ name : "Name/" + i + "/" + j, location: { latitude : i, longitude : j } });
@@ -1281,11 +1271,7 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo constraint exists
 /// @startDocuBlock collectionEnsureGeoConstraint
-/// `collection.ensureGeoConstraint(location)`
-///
-/// `collection.ensureGeoConstraint(location, true)`
-///
-/// `collection.ensureGeoConstraint(latitude, longitude)`
+/// `collection.ensureIndex({ type: "geo", fields: [ "location" ] })`
 ///
 /// Since ArangoDB 2.5, this method is an alias for *ensureGeoIndex* since 
 /// geo indexes are always sparse, meaning that documents that do not contain
@@ -1357,7 +1343,7 @@ ArangoCollection.prototype.lookupSkiplist = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a fulltext index
 /// @startDocuBlock lookUpFulltextIndex
-/// `lookupFulltextIndex(attribute, minLength)`
+/// `collection.lookupFulltextIndex(attribute, minLength)`
 ///
 /// Checks whether a fulltext index on the given attribute *attribute* exists.
 /// @endDocuBlock

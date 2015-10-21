@@ -25,7 +25,7 @@ method of `ArangoStatement`:
     ~addIgnoreCollection("test")
     db._create("test"); 
     for (i = 0; i < 100; ++i) { db.test.save({ value: i }); }
-    db.test.ensureSkiplist("value");
+    db.test.ensureIndex({ type: "skiplist", fields: [ "value" ] });
     stmt = db._createStatement("FOR i IN test FILTER i.value > 97 SORT i.value RETURN i.value");
     stmt.explain();
     @END_EXAMPLE_ARANGOSH_OUTPUT

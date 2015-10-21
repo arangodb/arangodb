@@ -279,7 +279,7 @@ start. The following example using a cap constraint should illustrate that:
 db._create("c1");
 
 // limit the number of documents to 3 
-db.c1.ensureCapConstraint(3); 
+db.c1.ensureIndex({ type: "cap", size: 3 });
 
 // insert 3 documents 
 db.c1.save({ _key: "key1" });

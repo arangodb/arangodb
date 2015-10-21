@@ -366,6 +366,7 @@ class FoxxService {
       return module.exports;
     } catch(e) {
       if (e instanceof ArangoError) {
+        e.errorMessage += "\n(app relative include paths not supported anymore) \nFile: " + filename;
         throw e;
       }
       var err = new ArangoError({

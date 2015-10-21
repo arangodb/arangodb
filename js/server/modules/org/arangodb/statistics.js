@@ -76,7 +76,7 @@ function createStatisticsCollection (name) {
   }
 
   if (collection !== null) {
-    collection.ensureSkiplist("time");
+    collection.ensureIndex({ type: "skiplist", fields: [ "time" ] });
   }
 
   return true;
