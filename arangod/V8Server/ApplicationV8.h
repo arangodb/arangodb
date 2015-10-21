@@ -331,7 +331,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         V8Context* enterContext (TRI_vocbase_t*,
-                                 bool useDatabase);
+                                 bool useDatabase,
+				 ssize_t forceContext = -1);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exists an context

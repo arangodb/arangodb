@@ -706,7 +706,7 @@ function DocumentationAndConstraintsSpec () {
       var paramName = stub(),
         description = stub(),
         ModelPrototype = stub(),
-        jsonSchema = { id: 'a', required: [], properties: {} };
+        jsonSchema = { required: [], properties: {} };
 
       allow(ModelPrototype)
         .toReceive("toJSONSchema")
@@ -731,7 +731,7 @@ function DocumentationAndConstraintsSpec () {
       var paramName = stub(),
         description = stub(),
         ModelPrototype = stub(),
-        jsonSchema = { id: 'a', required: [], properties: {} };
+        jsonSchema = { required: [], properties: {} };
 
       allow(ModelPrototype)
         .toReceive("toJSONSchema")
@@ -756,7 +756,7 @@ function DocumentationAndConstraintsSpec () {
       var paramName = stub(),
         description = stub(),
         ModelPrototype = stub(),
-        jsonSchema = { id: 'a', required: [], properties: {} };
+        jsonSchema = { required: [], properties: {} };
 
       allow(ModelPrototype)
         .toReceive("toJSONSchema")
@@ -788,7 +788,7 @@ function DocumentationAndConstraintsSpec () {
         .andReturn(requestBody);
 
       ModelPrototype = mockConstructor(requestBody);
-      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+      ModelPrototype.toJSONSchema = function () { return { }; };
 
       app.get('/foxx', function (providedReq) {
         called = (providedReq.parameters[paramName] instanceof ModelPrototype);

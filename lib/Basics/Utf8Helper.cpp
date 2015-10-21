@@ -742,7 +742,6 @@ int TRI_compare_utf8 (char const* left,
   return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength, right, rightLength);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Lowercase the characters in a UTF-8 string (implemented in Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////

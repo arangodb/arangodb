@@ -17,3 +17,7 @@ are offered.
 !SECTION Executing Traversals via HTTP
 
 @startDocuBlock JSF_HTTP_API_TRAVERSAL
+
+All examples were using this graph:
+
+![Persons relation Example Graph](../Graphs/knows_graph.png)

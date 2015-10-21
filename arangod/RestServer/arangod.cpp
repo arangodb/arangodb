@@ -27,8 +27,6 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-
 #include "Basics/Common.h"
 #include "Basics/files.h"
 #include "Basics/logging.h"
@@ -37,6 +35,10 @@
 #include "RestServer/ArangoServer.h"
 #include "Statistics/statistics.h"
 #include <signal.h>
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#include <iostream>
+#endif
 
 using namespace triagens;
 using namespace triagens::rest;
@@ -98,20 +100,21 @@ static void AbortHandler (int signum) {
 int main (int argc, char* argv[]) {
   int res = EXIT_SUCCESS;
 
+  // Note: NEVER start threads or create global objects in here. The server
+  //       might enter enter a daemon mode, in which it leave the main function
+  //       in the parent and only a forked child is running.
+  //
+  //       Any startup handling MUST be done inside "startupServer".
+
   signal(SIGSEGV, AbortHandler);
 
-#ifdef _WIN32
+  // windows only
   bool const startAsService = TRI_ParseMoreArgs(argc, argv);
-#else
-  bool const startAsService = false;
-#endif
 
   // initialize sub-systems
   TRI_GlobalEntryFunction();
   TRIAGENS_REST_INITIALIZE(argc, argv);
       
-  TRI_InitializeStatistics();
-
   if (startAsService) {
     TRI_StartService(argc, argv);
   }
@@ -135,8 +138,6 @@ int main (int argc, char* argv[]) {
     ArangoInstance = nullptr;
   }
   
-  TRI_ShutdownStatistics();
-
   // shutdown sub-systems
   TRIAGENS_REST_SHUTDOWN;
   TRI_GlobalExitFunction(res, nullptr);

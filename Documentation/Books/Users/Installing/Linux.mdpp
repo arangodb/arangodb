@@ -23,21 +23,6 @@ page to use your favorite package manager for the major distributions. After
 setting up the ArangoDB repository you can easily install ArangoDB using yum,
 aptitude, urpmi or zypper.
 
-!SUBSECTION Gentoo
-
-Please use the [portage](https://github.com/mgiken/portage-overlay/tree/master/dev-db/ArangoDB)
-provided by @mgiken.
-
-!SUBSECTION Debian sid
-
-To use ArangoDB on Debian sid (the development version of Debian), a different version
-of ICU is required. User baslr provided the following instructions for getting ArangoDB 2.0.7
-to work on an x86_64:
-
-[link to Github issue](https://github.com/arangodb/arangodb/issues/865)
-
-Other versions of ArangoDB or other architectures should work similarly.
-
 !SUBSECTION Linux-Mint
 
 Please use the corresponding Ubuntu or Debian packages.
@@ -54,4 +39,3 @@ An [Ansible](http://ansible.com) role is available through [Ansible-Galaxy](http
 
 * Role on Ansible-Galaxy: https://galaxy.ansible.com/list#/roles/2344
 * Source on Github: https://github.com/stackmagic/ansible-arangodb
-

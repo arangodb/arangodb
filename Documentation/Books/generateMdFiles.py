@@ -103,8 +103,8 @@ def getRestReplyBodyParam(param):
     try:
         rc += unwrapPostJson(getReference(thisVerb['responses'][param]['schema'], route, verb), 0)
     except Exception:
-        print "failed to search " + param + " in: "
-        print json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True)
+        print >>sys.stderr,"failed to search " + param + " in: "
+        print >>sys.stderr,json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True)
         raise
     return rc + "</ul>\n"
 
@@ -328,9 +328,13 @@ def replaceCodeIndex(lines):
   #lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
   return lines
 
+RXUnEscapeMDInLinks = re.compile("\\\\_")
+def setAnchor(param):
+    unescapedParam = RXUnEscapeMDInLinks.sub("_", param)
+    return "<a name=\"" + unescapedParam + "\">#</a>" 
 
 RXFinal = [
-    (re.compile(r"@anchor (.*)"), "<a name=\"\g<1>\">#</a>")
+    (re.compile(r"@anchor (.*)"), setAnchor),
 ]
 def replaceCodeFullFile(lines):
     for (oneRX, repl) in RXFinal:
@@ -408,9 +412,9 @@ def replaceTextInline(text, pathOfFile, searchText):
   global dokuBlocks
   if not searchText in dokuBlocks[1]:
       print >> sys.stderr, "Failed to locate the inline docublock '%s' for replacing it into the file '%s'\n have:" % (searchText, pathOfFile)
-      print dokuBlocks[1].keys()
-      print '*' * 80
-      print text
+      print >> sys.stderr, dokuBlocks[1].keys()
+      print >> sys.stderr, '*' * 80
+      print >> sys.stderr, text
       exit(1)
   rePattern = r'(?s)\s*@startDocuBlockInline\s+'+ searchText +'.*@endDocuBlock\s' + searchText
   # (?s) is equivalent to flags=re.DOTALL but works in Python 2.6

@@ -100,6 +100,10 @@ namespace triagens {
 
           return TRI_IDX_TYPE_GEO2_INDEX;
         }
+        
+        bool isSorted () const override final {
+          return false;
+        }
 
         bool hasSelectivityEstimate () const override final {
           return false;

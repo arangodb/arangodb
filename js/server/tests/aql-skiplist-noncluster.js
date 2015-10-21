@@ -41,7 +41,7 @@ function ahuacatlSkiplistTestSuite () {
   var skiplist;
       
   var explain = function (query, params) {
-    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
+    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes" ] } })).map(function(node) { return node.type; });
   };
 
   return {
@@ -83,7 +83,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +97,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,7 +111,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,7 +125,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,7 +139,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,7 +153,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,7 +167,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +181,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,7 +195,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -374,7 +374,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,7 +388,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -426,7 +426,7 @@ function ahuacatlSkiplistTestSuite () {
 
           assertEqual(expected, actual);
       
-          assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: i, b: j }));
+          assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: i, b: j }));
         }
       }
     },
@@ -1071,8 +1071,7 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1085,8 +1084,7 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-        
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1106,7 +1104,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a == 20 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
@@ -1114,7 +1112,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a >= 20 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
@@ -1122,7 +1120,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a >= 21 && a.a <= 21 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
@@ -1130,7 +1128,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a >= 20 && a.a <= 21 && a.c <= 2 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
@@ -1138,7 +1136,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a == 20 && a.c >= 1 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
@@ -1146,7 +1144,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

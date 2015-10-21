@@ -5,8 +5,8 @@ are used in a query. While ArangoDB automatically indexes some system
 attributes, users are free to create extra indexes on non-system attributes
 of documents.
 
-A user-defined index is created on collection level. Most user-defined indexes 
-can be created by specifying the names of the attributes which should be indexed. 
+User-defined indexes can be created on collection level. Most user-defined indexes 
+can be created by specifying the names of the index attributes.
 Some index types allow indexing just one attribute (e.g. fulltext index) whereas 
 other index types allow indexing multiple attributes at the same time.
 
@@ -35,8 +35,8 @@ db.collection.document("<document-key>");
 db._document("<document-id>");
 ```
 
-As the primary index is a hash index, it cannot be used for range queries or for sorting
-on `_key` or `_id`. 
+As the primary index is a hash index, it cannot be used for non-equality range 
+queries or for sorting.
 
 The primary index of a collection cannot be dropped or changed, and there is no
 mechanism to create user-defined primary indexes.
@@ -77,12 +77,12 @@ A hash index can be used to quickly find documents with specific attribute value
 The hash index is unsorted, so it supports equality lookups but no range queries or sorting.
 
 A hash index can be created on one or multiple document attributes. A hash index will 
-only be used by a query if all indexed attributes are present in the search condition,
+only be used by a query if all index attributes are present in the search condition,
 and if all attributes are compared using the equality (`==`) operator. Hash indexes are 
 used from within AQL and several query functions, e.g. `byExample`, `firstExample` etc.
 
-Hash indexes can optionally be declared to be unique, disallowing saving the same
-value in the indexed attribute. Hash indexes can optionally be sparse.
+Hash indexes can optionally be declared unique, then disallowing saving the same
+value(s) in the indexed attribute(s). Hash indexes can optionally be sparse.
 
 The different types of hash indexes have the following characteristics:
 
@@ -116,10 +116,9 @@ The different types of hash indexes have the following characteristics:
 The amortized complexity of lookup, insert, update, and removal operations in unique hash 
 indexes is O(1). 
 
-Non-unique hash indexes have an amortized complexity of O(1) for inserts. Lookup, update
-and removal operations in non-unique hash indexes have an amortized complexity that is 
-linearly correlated with the number of duplicates for a given key. That means non-unique 
-hash indexes should not be used on attributes with very low cardinality. 
+Non-unique hash indexes have an amortized complexity of O(1) for insert, update, and
+removal operations. That means non-unique hash indexes can be used on attributes with 
+low cardinality. 
 
 If a hash index is created on an attribute that it is missing in all or many of the documents,
 the behavior is as follows:
@@ -129,15 +128,13 @@ the behavior is as follows:
   for the index.
 
 * if the index is non-sparse, the documents missing the attribute will be contained in the
-  index with a key value of `null`. If many such documents get indexed, a lot of collisions
-  will occur, and lookup, update and removal of documents will become expensive. This 
-  should be avoided if possible.
+  index with a key value of `null`. 
 
 
 !SUBSECTION Skiplist Index
 
 A skiplist is a sorted index structure. It can be used to quickly find documents 
-with specific attribute values but also for range queries and returning documents from
+with specific attribute values, for range queries and for returning documents from
 the index in sorted order. Skiplists will be used from within AQL and several query 
 functions, e.g. `byExample`, `firstExample` etc.
 
@@ -146,8 +143,8 @@ index attributes are provided in a query, or if a leftmost prefix of the index a
 is specified.
 
 For example, if a skiplist index is created on attributes `value1` and `value2`, the 
-following conditions could use the index (note: the `<=` and `>=` operators are intentionally
-omitted here for the sake of brevity):
+following filter conditions can use the index (note: the `<=` and `>=` operators are 
+intentionally omitted here for the sake of brevity):
 
     FILTER doc.value1 == ...
     FILTER doc.value1 < ...
@@ -163,18 +160,19 @@ the `SORT` clause of the query in the same order as they appear in the index def
 Skiplist indexes are always created in ascending order, but they can be used to access
 the indexed elements in both ascending or descending order. However, for a combined index
 (an index on multiple attributes) this requires that the sort orders in a single query
-as specified in the `SORT` clause must all be either all ascending (optionally ommitted 
+as specified in the `SORT` clause must be either all ascending (optionally ommitted 
 as ascending is the default) or all descending. 
 
-For example, if the skiplist index is created on attributes `value1` and `value2` (in this order),
-then the following sorts clauses can use the index to determine the sort order:
+For example, if the skiplist index is created on attributes `value1` and `value2` 
+(in this order), then the following sorts clauses can use the index for sorting:
 
 * `SORT value1 ASC, value2 ASC` (and its equivalent `SORT value1, value2`)
 * `SORT value1 DESC, value2 DESC`
 * `SORT value1 ASC` (and its equivalent `SORT value1`)
 * `SORT value1 DESC`
 
-However, the following sort clauses cannot make use of the index only:
+The following sort clauses cannot make use of the index order, and require an extra
+sort step:
 
 * `SORT value1 ASC, value2 DESC`
 * `SORT value1 DESC, value2 ASC`
@@ -184,8 +182,8 @@ However, the following sort clauses cannot make use of the index only:
 Note: the latter two sort clauses cannot use the index because the sort clause does not
 refer to a leftmost prefix of the index attributes.
 
-Skiplists can optionally be declared to be unique, disallowing saving the same
-value in the indexed attribute. They can be sparse or non-sparse.
+Skiplists can optionally be declared unique, disallowing saving the same value in the indexed 
+attribute. They can be sparse or non-sparse.
 
 The different types of skiplist indexes have the following characteristics:
 

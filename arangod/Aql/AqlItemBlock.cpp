@@ -231,7 +231,7 @@ void AqlItemBlock::shrink (size_t nrItems) {
   
   if (nrItems > _nrItems) {
     // cannot use shrink() to increase the size of the block
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannout use shrink() to increase block");
   }
 
   // erase all stored values in the region that we freed

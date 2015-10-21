@@ -1037,7 +1037,7 @@ function foxxRouting (req, res, options, next) {
 
   try {
     var app = foxxManager.lookupApp(mount);
-    var devel = app._isDevelopment;
+    var devel = app.isDevelopment;
 
     if (devel || ! options.hasOwnProperty('routing')) {
       delete options.error;
@@ -1047,8 +1047,8 @@ function foxxRouting (req, res, options, next) {
         app = foxxManager.lookupApp(mount);
       }
 
-      if (app._isBroken) {
-        throw app._error;
+      if (app.isBroken) {
+        throw app.error;
       }
 
       options.routing = flattenRoutingTree(buildRoutingTree([foxxManager.routes(mount)]));

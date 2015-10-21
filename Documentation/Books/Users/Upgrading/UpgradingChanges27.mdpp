@@ -58,8 +58,6 @@ MyModel.prototype.schema = {/* ... */};
 
 The `assets` property is no longer supported in Foxx manifests and is scheduled to be removed in a future version of ArangoDB. The `files` property can still be used to serve static assets but it is recommended to use separate tooling to compile and bundle your assets.
 
-The support for loading and ad-hoc compiling CoffeeScript source files has been deprecated and will be removed as well. If you want to continue to write Foxx apps in CoffeeScript you should use a CoffeeScript compiler directly as part of your build process.
-
 !SUBSECTION Manifest scripts
 
 The properties `setup` and `teardown` have been moved into the `scripts` property map:

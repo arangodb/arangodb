@@ -42,7 +42,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
   var cn = "UnitTestsAhuacatlOptimizerRef";
   
   var explain = function (query, params) {
-    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
+    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes" ] } })).map(function(node) { return node.type; });
   };
 
   return {
@@ -183,7 +183,7 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { att: "name", what: "age" }));
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { att: "name", what: "age" }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

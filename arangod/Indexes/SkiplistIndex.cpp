@@ -28,16 +28,133 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SkiplistIndex.h"
+#include "Aql/AstNode.h"
+#include "Aql/SortCondition.h"
+#include "Basics/AttributeNameParser.h"
+#include "Basics/debugging.h"
+#include "Basics/json-utilities.h"
 #include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
 using namespace triagens::arango;
+using Json = triagens::basics::Json;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+static size_t sortWeight (triagens::aql::AstNode const* node) {
+  switch (node->type) {
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      return 1;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+      return 2;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      return 3;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      return 4;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      return 5;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+      return 6;
+    default:
+      return 42;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create an index operator for the given bound.
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_operator_t* buildBoundOperator (TRI_json_t const* bound,
+                                                 bool includeEqual,
+                                                 bool upper,
+                                                 TRI_json_t const* parameters,
+                                                 VocShaper* shaper) {
+  if (bound == nullptr) {
+    return nullptr;
+  }
+  std::unique_ptr<TRI_index_operator_t> boundOperator;
+  TRI_index_operator_type_e type;
+  if (includeEqual) {
+    if (upper) {
+      type = TRI_LE_INDEX_OPERATOR;
+    }
+    else {
+      type = TRI_GE_INDEX_OPERATOR;
+    }
+  }
+  else {
+    if (upper) {
+      type = TRI_LT_INDEX_OPERATOR;
+    }
+    else {
+      type = TRI_GT_INDEX_OPERATOR;
+    }
+  }
+
+  std::unique_ptr<TRI_json_t> paramCopy;
+  if (parameters == nullptr) {
+    paramCopy.reset(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1));
+  }
+  else {
+    paramCopy.reset(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters));
+  }
+  if (paramCopy == nullptr) {
+    return nullptr;
+  }
+
+  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, paramCopy.get(), TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, bound));
+  boundOperator.reset(TRI_CreateIndexOperator(type,
+                                              nullptr,
+                                              nullptr, 
+                                              paramCopy.get(), 
+                                              shaper, 
+                                              1));
+  paramCopy.release();
+  return boundOperator.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Create an index operator for the range information.
+///        Will either be a nullptr if no range is used.
+///        Or a LE, LT, GE, GT operator if only one bound is given
+///        Or an AND operator if both bounds are given.
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_index_operator_t* buildRangeOperator (TRI_json_t const* lowerBound,
+                                                 bool lowerBoundInclusive,
+                                                 TRI_json_t const* upperBound,
+                                                 bool upperBoundInclusive,
+                                                 TRI_json_t const* parameters,
+                                                 VocShaper* shaper) {
+  std::unique_ptr<TRI_index_operator_t> lowerOperator(buildBoundOperator(lowerBound, lowerBoundInclusive, false, parameters, shaper));
+  std::unique_ptr<TRI_index_operator_t> upperOperator(buildBoundOperator(upperBound, upperBoundInclusive, true, parameters, shaper));
+
+  /*
+  std::cout << "LOWER BOUND: " << lowerBound << ", LOWER INCLUSIVE: " << lowerBoundInclusive << "\n";
+  std::cout << "UPPER BOUND: " << upperBound << ", UPPER INCLUSIVE: " << upperBoundInclusive << "\n";
+  */
+
+  if (lowerOperator == nullptr) {
+    return upperOperator.release();
+  }
+  if (upperOperator == nullptr) {
+    return lowerOperator.release();
+  }
+  // And combine both
+  std::unique_ptr<TRI_index_operator_t> rangeOperator(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
+                                                      lowerOperator.get(),
+                                                      upperOperator.get(),
+                                                      nullptr,
+                                                      nullptr,
+                                                      2));
+  lowerOperator.release();
+  upperOperator.release();
+  return rangeOperator.release();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees an element in the skiplist
@@ -356,10 +473,8 @@ bool SkiplistIterator::findHelperIntervalIntersectionValid (
   return findHelperIntervalValid(interval);
 }
 
-void SkiplistIterator::findHelper (
-    TRI_index_operator_t const* indexOperator,
-    std::vector<SkiplistIteratorInterval>& intervals
-  ) {
+void SkiplistIterator::findHelper (TRI_index_operator_t const* indexOperator,
+                                   std::vector<SkiplistIteratorInterval>& intervals) {
   TRI_skiplist_index_key_t               values;
   std::vector<SkiplistIteratorInterval>  leftResult;
   std::vector<SkiplistIteratorInterval>  rightResult;
@@ -620,6 +735,50 @@ TRI_index_element_t* SkiplistIterator::nextIteration () {
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+TRI_doc_mptr_t* SkiplistIndexIterator::next () {
+  while (_iterator == nullptr) {
+    if (_currentOperator == _operators.size()) {
+      // Sorry nothing found at all
+      return nullptr;
+    }
+    // We restart the lookup
+    _iterator = _index->lookup(_operators[_currentOperator], _reverse);
+    if (_iterator == nullptr) {
+      // This iterator was not created.
+      _currentOperator++;
+    }
+  }
+  TRI_ASSERT(_iterator != nullptr);
+  TRI_index_element_t* res = _iterator->next();
+  while (res == nullptr) {
+    // Try the next iterator
+    _currentOperator++;
+    if (_currentOperator == _operators.size()) {
+      // We are done
+      return nullptr;
+    }
+    // Free the former iterator and get the next one
+    delete _iterator;
+    _iterator = _index->lookup(_operators[_currentOperator], _reverse);
+    res = _iterator->next();
+  }
+  return res->document();
+}
+
+void SkiplistIndexIterator::reset () {
+  delete _iterator;
+  _iterator = nullptr;
+  _currentOperator = 0;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class SkiplistIndex
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -628,16 +787,29 @@ TRI_index_element_t* SkiplistIterator::nextIteration () {
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIndex::SkiplistIndex (TRI_idx_iid_t iid,
-                                TRI_document_collection_t* collection,
-                                std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
-                                bool unique,
-                                bool sparse) 
+                              TRI_document_collection_t* collection,
+                              std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+                              bool unique,
+                              bool sparse) 
   : PathBasedIndex(iid, collection, fields, unique, sparse),
     CmpElmElm(this),
     CmpKeyElm(this),
     _skiplistIndex(nullptr) {
 
   _skiplistIndex = new TRI_Skiplist(CmpElmElm, CmpKeyElm, FreeElm, unique, _useExpansion);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index stub with a hard-coded selectivity estimate
+/// this is used in the cluster coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+SkiplistIndex::SkiplistIndex (TRI_json_t const* json)
+  : PathBasedIndex(json),
+    CmpElmElm(this),
+    CmpKeyElm(this),
+    _skiplistIndex(nullptr) {
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -758,10 +930,8 @@ int SkiplistIndex::remove (TRI_doc_mptr_t const* doc,
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
-                                          bool reverse) {
-  if (slOperator == nullptr) {
-    return nullptr;
-  }
+                                         bool reverse) const {
+  TRI_ASSERT(slOperator != nullptr);
 
   // .........................................................................
   // fill the relation operators which may be embedded in the slOperator with
@@ -773,15 +943,9 @@ SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-
     return nullptr;
   }
   std::unique_ptr<SkiplistIterator> results(new SkiplistIterator(this, reverse));
-
-  if (! results) {
-    // Check if we could not get an iterator.
-    return nullptr; // calling procedure needs to care when the iterator is null
-  }
 
   results->findHelper(slOperator, results->_intervals);
 
@@ -877,6 +1041,573 @@ int SkiplistIndex::ElementElementComparator::operator() (TRI_index_element_t con
     return 1;
   }
   return 0;
+}
+
+bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
+                                     triagens::aql::AstNode const* other,
+                                     triagens::aql::AstNode const* op,
+                                     triagens::aql::Variable const* reference,
+                                     std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>& found) const {
+  if (! this->canUseConditionPart(access, other, op, reference)) {
+    return false;
+  }
+  
+  std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> attributeData;
+
+  if (! access->isAttributeAccessForVariable(attributeData) ||
+      attributeData.first != reference) {
+    // this access is not referencing this collection
+    return false;
+  }
+          
+  std::vector<triagens::basics::AttributeName> const& fieldNames = attributeData.second;
+
+  for (size_t i = 0; i < _fields.size(); ++i) {
+    if (_fields[i].size() != fieldNames.size()) {
+      // attribute path length differs
+      continue;
+    }
+
+    bool match = true;
+    for (size_t j = 0; j < _fields[i].size(); ++j) {
+      if (_fields[i][j] != fieldNames[j]) {
+        match = false;
+        break;
+      }
+    }
+
+    if (match) {
+      // mark ith attribute as being covered
+      auto it = found.find(i);
+
+      if (it == found.end()) {
+        found.emplace(i, std::vector<triagens::aql::AstNode const*>{ op });
+      }
+      else {
+        (*it).second.emplace_back(op);
+      }
+
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void SkiplistIndex::matchAttributes (triagens::aql::AstNode const* node,
+                                     triagens::aql::Variable const* reference,
+                                     std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>& found,
+                                     size_t& values) const {
+  for (size_t i = 0; i < node->numMembers(); ++i) {
+    auto op = node->getMember(i);
+
+    switch (op->type) {
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+        TRI_ASSERT(op->numMembers() == 2);
+        accessFitsIndex(op->getMember(0), op->getMember(1), op, reference, found);
+        accessFitsIndex(op->getMember(1), op->getMember(0), op, reference, found);
+        break;
+
+      case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+        if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference, found)) {
+          auto m = op->getMember(1);
+          if (m->type != triagens::aql::NODE_TYPE_EXPANSION && m->numMembers() > 1) {
+            // attr IN [ a, b, c ]  =>  this will produce multiple items, so count them!
+            values += m->numMembers() - 1;
+          }
+        }
+        else {
+          accessFitsIndex(op->getMember(1), op->getMember(0), op, reference, found);
+        }
+        break;
+
+      default:
+        break;
+    }
+  }
+}
+
+bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
+                                             triagens::aql::Variable const* reference,
+                                             size_t itemsInIndex,
+                                             size_t& estimatedItems,
+                                             double& estimatedCost) const {
+  std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
+  size_t values = 0;
+  matchAttributes(node, reference, found, values);
+
+  bool lastContainsEquality = true;
+  size_t attributesCovered = 0;
+  size_t attributesCoveredByEquality = 0;
+  double equalityReductionFactor = 20.0;
+  estimatedCost = static_cast<double>(itemsInIndex);
+
+  for (size_t i = 0; i < _fields.size(); ++i) {
+    auto it = found.find(i);
+
+    if (it == found.end()) {
+      // index attribute not covered by condition
+      break;
+    }
+
+    // check if the current condition contains an equality condition
+    auto const& nodes = (*it).second;
+    bool containsEquality = false;
+    for (size_t j = 0; j < nodes.size(); ++j) {
+      if (nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+          nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN ) {
+        containsEquality = true;
+        break;
+      }
+    }
+
+    if (! lastContainsEquality) {
+      // unsupported condition. must abort
+      break;
+    }
+
+    ++attributesCovered;
+    if (containsEquality) {
+      ++attributesCoveredByEquality;
+      estimatedCost /= equalityReductionFactor;
+
+      // decrease the effect of the equality reduction factor
+      equalityReductionFactor *= 0.25; 
+      if (equalityReductionFactor < 2.0) {
+        // equalityReductionFactor shouldn't get too low
+        equalityReductionFactor = 2.0; 
+      }
+    }
+    else {
+      // quick estimate for the potential reductions caused by the conditions
+      if (nodes.size() >= 2) {
+        // at least two (non-equality) conditions. probably a range with lower
+        // and upper bound defined
+        estimatedCost /= 7.5;
+      }
+      else {
+        // one (non-equality). this is either a lower or a higher bound
+        estimatedCost /= 2.0;
+      }
+    }
+
+    lastContainsEquality = containsEquality;
+  }
+  
+  if (values == 0) {
+    values = 1;
+  }
+
+  if (attributesCoveredByEquality == _fields.size() && unique()) {
+    // index is unique and condition covers all attributes by equality
+    if (estimatedItems >= values) {
+      // reduce costs due to uniqueness
+      estimatedItems = values;
+      estimatedCost  = static_cast<double>(estimatedItems);
+    }
+    else {
+      // cost is already low... now slightly prioritize the unique index
+      estimatedCost *= 0.995;
+    }
+    return true;
+  }
+
+  if (attributesCovered > 0 &&
+      (! _sparse || (_sparse && attributesCovered == _fields.size()))) {
+    // if the condition contains at least one index attribute and is not sparse,
+    // or the index is sparse and all attributes are covered by the condition,
+    // then it can be used (note: additional checks for condition parts in 
+    // sparse indexes are contained in Index::canUseConditionPart)
+    estimatedItems = static_cast<size_t>((std::max)(static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
+    estimatedCost *= static_cast<double>(values);
+    return true;
+  }
+
+  // no condition
+  estimatedItems = itemsInIndex;
+  estimatedCost  = static_cast<double>(estimatedItems);
+  return false;
+}
+
+bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* sortCondition,
+                                           triagens::aql::Variable const* reference,
+                                           size_t itemsInIndex,
+                                           double& estimatedCost) const {
+  TRI_ASSERT(sortCondition != nullptr);
+
+  if (! _sparse) {
+    // only non-sparse indexes can be used for sorting
+    if (! _useExpansion &&
+        sortCondition->isUnidirectional() && 
+        sortCondition->isOnlyAttributeAccess()) {
+
+      size_t const coveredAttributes = sortCondition->coveredAttributes(reference, _fields);
+
+      if (coveredAttributes >= sortCondition->numAttributes()) {
+        // sort is fully covered by index. no additional sort costs!
+        estimatedCost = 0.0;
+        return true;
+      }
+      else if (coveredAttributes > 0) {
+        estimatedCost = (itemsInIndex / coveredAttributes) * std::log2(static_cast<double>(itemsInIndex));
+        return true;
+      }
+    }
+  }
+
+  // by default no sort conditions are supported
+  if (itemsInIndex > 0) {
+    estimatedCost = itemsInIndex * std::log2(static_cast<double>(itemsInIndex));
+  }
+  else {
+    estimatedCost = 0.0;
+  }
+  return false;
+}        
+
+IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* context,
+                                                    triagens::aql::Ast* ast,
+                                                    triagens::aql::AstNode const* node,
+                                                    triagens::aql::Variable const* reference,
+                                                    bool const reverse) const {
+
+  // Create the skiplistOperator for the IndexLookup
+  if (node == nullptr) {
+    // We have no condition, we just use sort
+    Json nullArray(Json::Array);
+    nullArray.add(Json(Json::Null));
+    std::unique_ptr<TRI_index_operator_t> unboundOperator(TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr,
+                                                          nullptr, nullArray.steal(), _shaper, 1));
+    std::vector<TRI_index_operator_t*> searchValues({unboundOperator.get()});
+    unboundOperator.release();
+
+    TRI_IF_FAILURE("SkiplistIndex::noSortIterator")  {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    return new SkiplistIndexIterator(this, searchValues, reverse);
+  }
+  std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
+  size_t unused = 0;
+  matchAttributes(node, reference, found, unused);
+
+  // found contains all attributes that are relevant for this node.
+  // It might be less than fields().
+  //
+  // Handle the first attributes. They can only be == or IN and only
+  // one node per attribute
+  
+  auto getValueAccess = [&] (triagens::aql::AstNode const* comp, triagens::aql::AstNode const*& access, triagens::aql::AstNode const*& value) -> bool {
+    access = comp->getMember(0);
+    value = comp->getMember(1);
+    std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> paramPair;
+    if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
+      access = comp->getMember(1);
+      value = comp->getMember(0);
+      if (! (access->isAttributeAccessForVariable(paramPair) && paramPair.first == reference)) {
+        // Both side do not have a correct AttributeAccess, this should not happen and indicates
+        // an error in the optimizer
+        TRI_ASSERT(false);
+      }
+      return true;
+    }
+    return false;
+  };
+
+  // initialize permutations
+  std::vector<PermutationState> permutationStates;
+  permutationStates.reserve(_fields.size());
+  size_t maxPermutations = 1;
+
+  size_t usedFields = 0;
+  for (; usedFields < _fields.size(); ++usedFields) {
+    // We are in the equality range, we only allow one == or IN node per attribute
+    auto it = found.find(usedFields);
+    if (it == found.end() ||
+        it->second.size() != 1) {
+      // We are either done,
+      // or this is a range.
+      // Continue with more complicated loop
+      break;
+    }
+    auto comp = it->second[0];
+    TRI_ASSERT(comp->numMembers() == 2);
+    triagens::aql::AstNode const* access = nullptr;
+    triagens::aql::AstNode const* value = nullptr;
+    getValueAccess(comp, access, value);
+    // We found an access for this field
+    if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      // This is an equalityCheck, we can continue with the next field
+      permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, 1));
+    }
+    else if (comp->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      if (isAttributeExpanded(usedFields)) {
+        permutationStates.emplace_back(PermutationState(aql::NODE_TYPE_OPERATOR_BINARY_EQ, value, usedFields, 1));
+      }
+      else {
+        if (value->numMembers() == 0) {
+          return nullptr;
+        }
+        permutationStates.emplace_back(PermutationState(comp->type, value, usedFields, value->numMembers()));
+        maxPermutations *= value->numMembers();
+      }
+    }
+    else {
+      // This is a one-sided range
+      break;
+    }
+  }
+    
+  // Now handle the next element, which might be a range
+  bool includeLower = false;
+  bool includeUpper = false;
+  std::unique_ptr<TRI_json_t> lower;
+  std::unique_ptr<TRI_json_t> upper;
+  if (usedFields < _fields.size()) {
+    auto it = found.find(usedFields); 
+    if (it != found.end()) {
+      auto rangeConditions = it->second;
+      TRI_ASSERT(rangeConditions.size() <= 2);
+
+      for (auto& comp : rangeConditions) {
+        TRI_ASSERT(comp->numMembers() == 2);
+        triagens::aql::AstNode const* access = nullptr;
+        triagens::aql::AstNode const* value = nullptr;
+        bool isReverseOrder = getValueAccess(comp, access, value);
+
+        auto setBorder = [&] (bool isLower, bool includeBound) -> void {
+          if ( isLower == isReverseOrder ) {
+            // We set an upper bound
+            TRI_ASSERT(upper == nullptr);
+            upper.reset(value->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+            includeUpper = includeBound;
+          }
+          else {
+            // We set an lower bound
+            TRI_ASSERT(lower == nullptr);
+            lower.reset(value->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+            includeLower = includeBound;
+          }
+        };
+        // This is not an equalityCheck, set lower or upper
+        switch (comp->type) {
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+            setBorder(false, false);
+            break;
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+            setBorder(false, true);
+            break;
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+            setBorder(true, false);
+            break;
+          case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+            setBorder(true, true);
+            break;
+          default:
+            // unsupported right now. Should have been rejected by supportsFilterCondition
+            TRI_ASSERT(false);
+            return nullptr;
+        }
+      }
+    }
+  }
+
+  std::vector<TRI_index_operator_t*> searchValues;
+  searchValues.reserve(maxPermutations);
+
+  if (usedFields == 0) {
+    // We have a range query based on the first _field
+    auto op = buildRangeOperator(lower.get(), includeLower, upper.get(), includeUpper, nullptr, _shaper);
+    if (op != nullptr) {
+      searchValues.emplace_back(op);
+    }
+  }
+  else {
+    bool done = false;
+    // create all permutations
+    while (! done) {
+      std::unique_ptr<TRI_json_t> parameter(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, usedFields));
+
+      bool valid = true;
+      for (size_t i = 0; i < usedFields; ++i) {
+        TRI_ASSERT(i < permutationStates.size());
+        auto& state = permutationStates[i];
+        std::unique_ptr<TRI_json_t> json(state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+
+        if (json == nullptr) {
+          valid = false;
+          break;
+        }
+        TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter.get(), json.release());
+      }
+
+      if (valid) {
+        std::unique_ptr<TRI_index_operator_t> tmpOp(TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, 
+                                                                            nullptr,
+                                                                            nullptr, 
+                                                                            parameter.get(), 
+                                                                            _shaper, 
+                                                                            usedFields)); 
+        // Note we create a new RangeOperator always.
+        std::unique_ptr<TRI_index_operator_t> rangeOperator(buildRangeOperator(lower.get(), includeLower, upper.get(), includeUpper, parameter.get(), _shaper));
+        parameter.release();
+
+        if (rangeOperator != nullptr) {
+          std::unique_ptr<TRI_index_operator_t> combinedOp(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
+                                                                                   tmpOp.get(),
+                                                                                   rangeOperator.get(),
+                                                                                   nullptr,
+                                                                                   _shaper,
+                                                                                   2));
+          rangeOperator.release();
+          tmpOp.release();
+          searchValues.emplace_back(combinedOp.get());
+          combinedOp.release();
+        }
+        else {
+          if (tmpOp != nullptr) {
+            searchValues.emplace_back(tmpOp.get());
+            tmpOp.release();
+          }
+        }
+      }
+
+      size_t const np = permutationStates.size() - 1;
+      size_t current = 0;
+      // now permute
+      while (true) {
+        if (++permutationStates[np - current].current < permutationStates[np - current].n) {
+          current = 0;
+          // abort inner iteration
+          break;
+        }
+
+        permutationStates[np - current].current = 0;
+
+        if (++current >= usedFields) {
+          done = true;
+          break;
+        }
+        // next inner iteration
+      }
+    }
+  }
+  if (searchValues.empty()) {
+    return nullptr;
+  }
+  if (reverse) {
+    std::reverse(searchValues.begin(), searchValues.end());
+  }
+
+  return new SkiplistIndexIterator(this, searchValues, reverse);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specializes the condition for use with the index
+////////////////////////////////////////////////////////////////////////////////
+        
+triagens::aql::AstNode* SkiplistIndex::specializeCondition (triagens::aql::AstNode* node,
+                                                            triagens::aql::Variable const* reference) const {
+  std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
+  size_t values = 0;
+  matchAttributes(node, reference, found, values);
+
+  std::vector<triagens::aql::AstNode const*> children;  
+  bool lastContainsEquality = true;
+
+  for (size_t i = 0; i < _fields.size(); ++i) {
+    auto it = found.find(i);
+
+    if (it == found.end()) {
+      // index attribute not covered by condition
+      break;
+    }
+
+    // check if the current condition contains an equality condition
+    auto& nodes = (*it).second;
+    bool containsEquality = false;
+    for (size_t j = 0; j < nodes.size(); ++j) {
+      if (nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+          nodes[j]->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+        containsEquality = true;
+        break;
+      }
+    }
+
+    if (! lastContainsEquality) {
+      // unsupported condition. must abort
+      break;
+    }
+
+    std::sort(nodes.begin(), nodes.end(), [] (triagens::aql::AstNode const* lhs,
+                                              triagens::aql::AstNode const* rhs) -> bool {
+      return sortWeight(lhs) < sortWeight(rhs);
+    });
+
+    lastContainsEquality = containsEquality;
+    std::unordered_set<int> operatorsFound;
+    for (auto& it : nodes) {
+      // do not less duplicate or related operators pass
+      if (isDuplicateOperator(it, operatorsFound)) {
+        continue;
+      }
+      operatorsFound.emplace(static_cast<int>(it->type));
+      children.emplace_back(it);
+    }
+  }
+
+  while (node->numMembers() > 0) {
+    node->removeMemberUnchecked(0);
+  }
+
+  for (auto& it : children) {
+    node->addMember(it);
+  }
+  return node;
+}
+
+bool SkiplistIndex::isDuplicateOperator (triagens::aql::AstNode const* node,
+                                         std::unordered_set<int> const& operatorsFound) const {
+  auto type = node->type;
+  if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
+    // duplicate operator
+    return true;
+  }
+
+  if (operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) != operatorsFound.end() ||
+      operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN)) != operatorsFound.end()) {
+    return true;
+  }
+
+  bool duplicate = false;
+  switch (type) {
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      duplicate = operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE)) != operatorsFound.end();
+      break;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      duplicate = operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT)) != operatorsFound.end();
+      break;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+      duplicate = operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE)) != operatorsFound.end();
+      break;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+      duplicate = operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT)) != operatorsFound.end();
+      break;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      duplicate = operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN)) != operatorsFound.end();
+      break;
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
+      duplicate = operatorsFound.find(static_cast<int>(triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ)) != operatorsFound.end();
+      break;
+    default: {
+      // ignore
+    }
+  }
+
+  return duplicate;
 }
 
 // -----------------------------------------------------------------------------

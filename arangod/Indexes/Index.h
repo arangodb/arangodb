@@ -22,7 +22,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,7 +32,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/JsonHelper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
@@ -45,18 +44,18 @@
 
 struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
+struct TRI_json_t;
 struct TRI_shaped_json_s;
 struct TRI_transaction_collection_s;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index query parameter
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_index_search_value_s {
-  size_t _length;
-  struct TRI_shaped_json_s* _values;
+namespace triagens {
+  namespace aql {
+    class Ast;
+    struct AstNode;
+    class SortCondition;
+    struct Variable;
+  }
 }
-TRI_index_search_value_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              struct index_element
@@ -138,6 +137,8 @@ struct TRI_index_element_t {
 
 namespace triagens {
   namespace arango {
+    class IndexIterator;
+    struct IndexIteratorContext;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Index
@@ -157,7 +158,11 @@ namespace triagens {
 
         Index (TRI_idx_iid_t,
                struct TRI_document_collection_t*,
-               std::vector<std::vector<triagens::basics::AttributeName> >const&);
+               std::vector<std::vector<triagens::basics::AttributeName> >const&,
+               bool unique,
+               bool sparse);
+
+        explicit Index (struct TRI_json_t const*);
 
         virtual ~Index ();
 
@@ -204,6 +209,40 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the index fields names
+////////////////////////////////////////////////////////////////////////////////
+
+        inline std::vector<std::vector<std::string>> fieldNames () const {
+          std::vector<std::vector<std::string>> result;
+
+          for (auto const& it : _fields) {
+            std::vector<std::string> parts;
+            for (auto const& it2 : it) {
+              parts.emplace_back(it2.name);
+            }
+            result.emplace_back(std::move(parts));
+          }
+          return result;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the ith attribute is expanded (somewhere)
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isAttributeExpanded (size_t i) const {
+          if (i >= _fields.size()) {
+            return false;
+          }
+          TRI_ASSERT(i < _fields.size());
+          for (auto const& it : _fields[i]) {
+            if (it.shouldExpand) {
+              return true;
+            }
+          }
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the underlying collection
 ////////////////////////////////////////////////////////////////////////////////
         
@@ -216,6 +255,22 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string context () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the index is sparse
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool sparse () const {
+          return _sparse;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the index is unique
+////////////////////////////////////////////////////////////////////////////////
+        
+        inline bool unique () const {
+          return _unique;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the name of the index
@@ -261,10 +316,17 @@ namespace triagens {
 /// contents are the same
 ////////////////////////////////////////////////////////////////////////////////
 
-        static bool Compare (TRI_json_t const* lhs,
-                             TRI_json_t const* rhs);
+        static bool Compare (struct TRI_json_t const* lhs,
+                             struct TRI_json_t const* rhs);
 
         virtual IndexType type () const = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the index is sorted
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual bool isSorted () const = 0;
+
         virtual bool hasSelectivityEstimate () const = 0;
         virtual double selectivityEstimate () const;
         virtual size_t memory () const = 0;
@@ -285,8 +347,30 @@ namespace triagens {
 
         virtual bool hasBatchInsert () const;
 
-        friend std::ostream& operator<< (std::ostream&, Index const*);
-        friend std::ostream& operator<< (std::ostream&, Index const&);
+        virtual bool supportsFilterCondition (triagens::aql::AstNode const*,
+                                              triagens::aql::Variable const*,
+                                              size_t,
+                                              size_t&,
+                                              double&) const;
+        
+        virtual bool supportsSortCondition (triagens::aql::SortCondition const*,
+                                            triagens::aql::Variable const*,
+                                            size_t,
+                                            double&) const;
+
+        virtual IndexIterator* iteratorForCondition (IndexIteratorContext*,
+                                                     triagens::aql::Ast*,
+                                                     triagens::aql::AstNode const*,
+                                                     triagens::aql::Variable const*,
+                                                     bool const) const;
+        
+        virtual triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
+                                                             triagens::aql::Variable const*) const;
+
+        bool canUseConditionPart (triagens::aql::AstNode const* access,
+                                  triagens::aql::AstNode const* other,
+                                  triagens::aql::AstNode const* op,
+                                  triagens::aql::Variable const* reference) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -294,16 +378,25 @@ namespace triagens {
 
       protected:
 
-        TRI_idx_iid_t const                                                    _iid;
+        TRI_idx_iid_t const                                         _iid;
 
-        struct TRI_document_collection_t*                                      _collection;
+        struct TRI_document_collection_t*                           _collection;
 
-        std::vector<std::vector<triagens::basics::AttributeName>> const        _fields;
+        std::vector<std::vector<triagens::basics::AttributeName>>   _fields;
+
+        bool const                                                  _unique;
+
+        bool const                                                  _sparse;
+
+        double                                                      _selectivityEstimate;
                
     };
-
+        
   }
 }
+      
+std::ostream& operator<< (std::ostream&, triagens::arango::Index const*);
+std::ostream& operator<< (std::ostream&, triagens::arango::Index const&);
 
 #endif
 

@@ -191,12 +191,12 @@ function printIndexes (indexes) {
     stringBuilder.appendLine(" " + value("none"));
   }
   else {
-    var maxIdLen = String("Id").length;
+    var maxIdLen = String("By").length;
     var maxCollectionLen = String("Collection").length;
     var maxUniqueLen = String("Unique").length;
     var maxSparseLen = String("Sparse").length;
     var maxTypeLen = String("Type").length;
-    var maxSelectivityLen = String("Selectivity Est.").length;
+    var maxSelectivityLen = String("Selectivity").length;
     var maxFieldsLen = String("Fields").length;
     indexes.forEach(function(index) {
       var l = String(index.node).length;
@@ -207,7 +207,7 @@ function printIndexes (indexes) {
       if (l > maxTypeLen) {
         maxTypeLen = l;
       }
-      l = index.fields.map(attributeUncolored).join(", ").length;
+      l = index.fields.map(attributeUncolored).join(", ").length + "[  ]".length;
       if (l > maxFieldsLen) {
         maxFieldsLen = l;
       }
@@ -216,12 +216,12 @@ function printIndexes (indexes) {
         maxCollectionLen = l;
       }
     });
-    var line = " " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " +
+    var line = " " + pad(1 + maxIdLen - String("By").length) + header("By") + "   " +
                header("Type") + pad(1 + maxTypeLen - "Type".length) + "   " +
                header("Collection") + pad(1 + maxCollectionLen - "Collection".length) + "   " +
                header("Unique") + pad(1 + maxUniqueLen - "Unique".length) + "   " +
                header("Sparse") + pad(1 + maxSparseLen - "Sparse".length) + "   " +
-               header("Selectivity Est.") + "   " +
+               header("Selectivity") + "   " +
                header("Fields") + pad(1 + maxFieldsLen - "Fields".length) + "   " +
                header("Ranges");
 
@@ -230,9 +230,15 @@ function printIndexes (indexes) {
     for (var i = 0; i < indexes.length; ++i) {
       var uniqueness = (indexes[i].unique ? "true" : "false");
       var sparsity = (indexes[i].hasOwnProperty("sparse") ? (indexes[i].sparse ? "true" : "false") : "n/a");
-      var fields = indexes[i].fields.map(attribute).join(", ");
-      var fieldsLen = indexes[i].fields.map(attributeUncolored).join(", ").length;
-      var ranges = "[ " + indexes[i].ranges + " ]";
+      var fields = "[ " + indexes[i].fields.map(attribute).join(", ") + " ]";
+      var fieldsLen = indexes[i].fields.map(attributeUncolored).join(", ").length + "[  ]".length;
+      var ranges;
+      if (indexes[i].hasOwnProperty("condition")) {
+        ranges = indexes[i].condition;
+      }
+      else {
+        ranges = "[ " + indexes[i].ranges + " ]";
+      }
       var selectivity = (indexes[i].hasOwnProperty("selectivityEstimate") ?
         (indexes[i].selectivityEstimate * 100).toFixed(2) + " %" :
         "n/a"
@@ -350,6 +356,10 @@ function processQuery (query, explain) {
         return "[ " + buildExpression(node.subNodes[0]) + " ] : " + buildExpression(node.subNodes[1]);
       case "array":
         if (node.hasOwnProperty("subNodes")) {
+          if (node.subNodes.length > 20) {
+            // print only the first 20 values from the array
+            return "[ " + node.subNodes.slice(0, 20).map(buildExpression).join(", ") + " ... ]";
+          }
           return "[ " + node.subNodes.map(buildExpression).join(", ") + " ]";
         }
         return "[ ]";
@@ -378,8 +388,6 @@ function processQuery (query, explain) {
           references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];
         }
         return buildExpression(node.subNodes[1]);
-      case "verticalizer":
-        return buildExpression(node.subNodes[0]);
       case "user function call":
         return func(node.name) + "(" + ((node.subNodes && node.subNodes[0].subNodes) || [ ]).map(buildExpression).join(", ") + ")" + "   " + annotation("/* user-defined function */");
       case "function call":
@@ -416,6 +424,16 @@ function processQuery (query, explain) {
         return buildExpression(node.subNodes[0]) + " && " + buildExpression(node.subNodes[1]);
       case "ternary":
         return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);
+      case "n-ary or":
+        if (node.hasOwnProperty("subNodes")) {
+          return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" || ");
+        }
+        return "";
+      case "n-ary and":
+        if (node.hasOwnProperty("subNodes")) {
+          return node.subNodes.map(function(sub) { return buildExpression(sub); }).join(" && ");
+        }
+        return "";
       default: 
         return "unhandled node type (" + node.type + ")";
     }
@@ -483,6 +501,22 @@ function processQuery (query, explain) {
         return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* full collection scan" + (node.random ? ", random order" : "") + " */");
       case "EnumerateListNode":
         return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + variableName(node.inVariable) + "   " + annotation("/* list iteration */");
+      case "IndexNode":
+        collectionVariables[node.outVariable.id] = node.collection;
+        var types = [ ];
+        node.indexes.forEach(function (idx, i) {
+          types.push((idx.reverse ? "reverse " : "") + idx.type + " index scan");
+          idx.collection = node.collection;
+          idx.node = node.id;
+          if (node.condition.type && node.condition.type === 'n-ary or') {
+            idx.condition = buildExpression(node.condition.subNodes[i]);
+          }
+          else {
+            idx.condition = "*"; // empty condition. this is likely an index used for sorting only
+          } 
+          indexes.push(idx);
+        });
+        return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");
       case "IndexRangeNode":
         collectionVariables[node.outVariable.id] = node.collection;
         var index = node.index;

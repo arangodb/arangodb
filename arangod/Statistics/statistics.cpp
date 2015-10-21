@@ -54,13 +54,13 @@ static triagens::basics::Mutex RequestDataLock;
 /// @brief the request statistics queue
 ////////////////////////////////////////////////////////////////////////////////
 
-boost::lockfree::queue<TRI_request_statistics_t*, boost::lockfree::capacity<QUEUE_SIZE>> RequestFreeList;
+static boost::lockfree::queue<TRI_request_statistics_t*, boost::lockfree::capacity<QUEUE_SIZE>> RequestFreeList;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the request statistics queue for finished requests
 ////////////////////////////////////////////////////////////////////////////////
 
-boost::lockfree::queue<TRI_request_statistics_t*, boost::lockfree::capacity<QUEUE_SIZE>> RequestFinishedList;
+static boost::lockfree::queue<TRI_request_statistics_t*, boost::lockfree::capacity<QUEUE_SIZE>> RequestFinishedList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                              private request statistics functions
@@ -173,6 +173,16 @@ void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
     RequestFinishedList.push(statistics);
 #endif
   }
+  else {
+    statistics->reset(); 
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    bool ok = RequestFreeList.push(statistics);
+    TRI_ASSERT(ok);
+#else
+    RequestFreeList.push(statistics);
+#endif
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,7 +219,7 @@ static triagens::basics::Mutex ConnectionDataLock;
 /// @brief free list
 ////////////////////////////////////////////////////////////////////////////////
 
-boost::lockfree::queue<TRI_connection_statistics_t*, boost::lockfree::capacity<QUEUE_SIZE>> ConnectionFreeList;
+static boost::lockfree::queue<TRI_connection_statistics_t*, boost::lockfree::capacity<QUEUE_SIZE>> ConnectionFreeList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                            public connection statistics functions

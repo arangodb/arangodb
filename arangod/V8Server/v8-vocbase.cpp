@@ -221,7 +221,7 @@ static void JS_Transaction (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   // extract collections
-  v8::Handle<v8::Array> collections = v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_ASCII_STRING("collections")));
+  v8::Handle<v8::Object> collections = v8::Handle<v8::Object>::Cast(object->Get(TRI_V8_ASCII_STRING("collections")));
 
   if (collections.IsEmpty()) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(collectionError);
@@ -230,6 +230,11 @@ static void JS_Transaction (const v8::FunctionCallbackInfo<v8::Value>& args) {
   bool isValid = true;
   vector<string> readCollections;
   vector<string> writeCollections;
+  
+  bool allowImplicitCollections = true;
+  if (collections->Has(TRI_V8_ASCII_STRING("allowImplicit"))) {
+    allowImplicitCollections = TRI_ObjectToBoolean(collections->Get(TRI_V8_ASCII_STRING("allowImplicit")));
+  }
 
   // collections.read
   if (collections->Has(TRI_V8_ASCII_STRING("read"))) {
@@ -354,7 +359,8 @@ static void JS_Transaction (const v8::FunctionCallbackInfo<v8::Value>& args) {
                           writeCollections,
                           lockTimeout,
                           waitForSync,
-                          embed);
+                          embed,
+                          allowImplicitCollections);
 
   int res = trx.begin();
   

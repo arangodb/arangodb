@@ -38,7 +38,6 @@
 
 #include <random>
 #include <chrono>
-#include <iostream>
 
 using namespace std;
 using namespace triagens::basics;
@@ -174,7 +173,7 @@ namespace RandomHelper {
         // ..............................................................................
         {
           #ifdef _WIN32
-            abort();
+            std::abort();
           #else
             long flags = fcntl(fd, F_GETFL, 0);
             bool ok = (flags >= 0);
@@ -191,15 +190,11 @@ namespace RandomHelper {
         fillBuffer();
       }
 
-
-
       ~RandomDeviceCombined () {
         if (fd >= 0) {
           TRI_CLOSE(fd);
         }
       }
-
-
 
       uint32_t random () {
         if (pos >= N) {

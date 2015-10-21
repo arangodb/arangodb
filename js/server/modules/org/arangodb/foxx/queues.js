@@ -336,8 +336,6 @@ _.extend(Queue.prototype, {
   }
 });
 
-createQueue('default');
-
 module.exports = {
   _updateQueueDelay: updateQueueDelay,
   get: getQueue,

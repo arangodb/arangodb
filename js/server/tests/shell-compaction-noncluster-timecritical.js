@@ -53,7 +53,7 @@ function CompactionSuite () {
       var collectionName = "example";
       internal.db._drop(collectionName);
 
-      var cn = internal.db._create(cn, { "journalSize" : 1048576 });
+      var cn = internal.db._create(collectionName, { "journalSize" : 1048576 });
       var x, i, j, doc;
 
       for (i = 0; i < 1000; ++i) {
@@ -128,7 +128,7 @@ function CompactionSuite () {
         }
       }
 
-      internal.db._drop(cn);
+      internal.db._drop(collectionName);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -979,8 +979,6 @@ function CompactionSuite () {
         assertEqual(payload + ", isn't that nice?", doc.payload);
         assertTrue(doc.updated);
       }
-      
-      internal.print(c1.figures());
       
       assertEqual(0, c1.figures().dead.count);
 

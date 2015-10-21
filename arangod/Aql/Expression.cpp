@@ -149,7 +149,7 @@ Expression::~Expression () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Expression::variables (std::unordered_set<Variable const*>& result) const {
-  return Ast::getReferencedVariables(_node, result);
+  Ast::getReferencedVariables(_node, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1029,17 +1029,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Expression::isAttributeAccess () const {
-  auto expNode = _node;
-
-  if (expNode->type != triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    return false;
-  }
-
-  while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    expNode = expNode->getMember(0);
-  }
-  
-  return (expNode->type == triagens::aql::NODE_TYPE_REFERENCE);
+  return _node->isAttributeAccessForVariable();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

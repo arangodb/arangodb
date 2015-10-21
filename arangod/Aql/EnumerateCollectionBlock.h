@@ -28,7 +28,6 @@
 #ifndef ARANGODB_AQL_ENUMERATE_COLLECTION_BLOCK_H
 #define ARANGODB_AQL_ENuMERATE_COLLECTION_BLOCK_H 1
 
-#include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 
@@ -36,11 +35,9 @@ struct TRI_doc_mptr_copy_t;
 
 namespace triagens {
   namespace aql {
-
     class AqlItemBlock;
-
+    struct Collection;
     struct CollectionScanner;
-
     class ExecutionEngine;
 
 // -----------------------------------------------------------------------------

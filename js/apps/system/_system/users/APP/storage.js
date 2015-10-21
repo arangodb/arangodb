@@ -21,7 +21,7 @@ const users = new Foxx.Repository(
 
 function resolve(username) {
   const user = users.firstExample({user: username});
-  if (!user.get('_key')) {
+  if (user === null || !user.get('_key')) {
     return null;
   }
   return user;

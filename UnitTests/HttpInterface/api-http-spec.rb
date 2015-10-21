@@ -6,6 +6,50 @@ require 'arangodb.rb'
 describe ArangoDB do
   prefix = "api-http"
 
+################################################################################
+## checking binary data
+################################################################################
+
+  context "binary data" do
+    before do
+      # clean up first
+      ArangoDB.delete("/_api/document/_modules/UnitTestRoutingTest")
+      ArangoDB.delete("/_api/document/_routing/UnitTestRoutingTest")
+      
+      # register module in _modules
+      body = "{ \"_key\" : \"UnitTestRoutingTest\", \"path\" : \"/db:/FoxxTest\", \"content\" : \"exports.do = function(req, res, options, next) { res.body = require('internal').rawRequestBody(req); res.responseCode = 201; res.contentType = 'application/x-foobar'; };\" }"
+      doc = ArangoDB.log_post("#{prefix}-post-binary-data", "/_api/document?collection=_modules", :body => body)
+      doc.code.should eq(202)
+
+      # register module in _routing
+      body = "{ \"_key\" : \"UnitTestRoutingTest\", \"url\" : { \"match\" : \"/foxxtest\", \"methods\" : [ \"post\", \"put\" ] }, \"action\": { \"controller\" : \"db://FoxxTest\" } }"
+      doc = ArangoDB.log_post("#{prefix}-post-binary-data", "/_api/document?collection=_routing", :body => body)
+      doc.code.should eq(202)
+      
+      ArangoDB.post("/_admin/routing/reload", :body => "")
+    end
+
+    after do
+      ArangoDB.delete("/_api/document/_modules/UnitTestRoutingTest")
+      ArangoDB.delete("/_api/document/_routing/UnitTestRoutingTest")
+    end
+
+    it "checks handling of a request with binary data" do
+      body = "\x01\x02\x03\x04\xff mötör"
+      doc = ArangoDB.log_post("#{prefix}-post-binary-data", "/foxxtest", :body => body, :format => :plain)
+      doc.headers['content-type'].should eq("application/x-foobar")
+      doc.code.should eq(201)
+
+      doc = ArangoDB.log_put("#{prefix}-post-binary-data", "/foxxtest", :body => body, :format => :plain)
+      doc.headers['content-type'].should eq("application/x-foobar")
+      doc.code.should eq(201)
+    end
+  end
+
+################################################################################
+## checking timeouts
+################################################################################
+
   context "dealing with timeouts:" do
     before do
       # load the most current routing information
@@ -192,11 +236,7 @@ describe ArangoDB do
 ################################################################################
 
     context "gzip requests" do
-      before do
-        @headers = "DELETE, GET, HEAD, PATCH, POST, PUT"
-      end
-
-      it "checks handling of an request, with gzip support" do
+      it "checks handling of a request, with gzip support" do
         require 'uri'
         require 'net/http'
 

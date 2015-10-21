@@ -41,7 +41,7 @@
     },
     "/cluster.html": {
       "path": "clusterFrontend/build/cluster-min.html",
-      "gzip": false
+      "gzip": true
     },
     "/css/sass.css": {
       "path": "frontend/build/style-minified.css",
@@ -71,8 +71,16 @@
       "path": "build/sharedLibs.min.js",
       "gzip": true
     },
+    "/arangoes5.js": {
+      "path": "frontend/build/arangoes5.min.js",
+      "gzip": true
+    },
     "/app.js": {
       "path": "frontend/build/app.min.js",
+      "gzip": true
+    },
+    "/libs.js": {
+      "path": "frontend/build/libs.min.js",
       "gzip": true
     },
     "/favicon.ico": {
@@ -81,7 +89,6 @@
     },
     "/fonts": "frontend/fonts",
     "/img": "frontend/compressed-img",
-    "/ammapLibs": "frontend/js/lib/ammap/plugins/export/libs",
     "/data": "frontend/data",
     "/js/arango/aqltemplates.json": "frontend/aqltemplates.json",
     "/worker-json.js": {

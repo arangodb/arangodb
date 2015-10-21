@@ -57,7 +57,7 @@ publicController.get("/whoAmI", function(req, res) {
   var uid = req.session && req.session.get("uid");
   var user = null;
   if (uid) {
-    var users = Foxx.requireApp("_system/users").userStorage;
+    var users = Foxx.getExports("_system/users").userStorage;
     try {
       user = users.get(uid).get("user");
     } catch (e) {
@@ -82,11 +82,11 @@ publicController.post("/login", function (req, res) {
   } else {
     req.session = publicController.sessions.getSessionStorage().create();
   }
-  var users = Foxx.requireApp("_system/users").userStorage;
+  var users = Foxx.getExports("_system/users").userStorage;
   var credentials = req.parameters.credentials;
   var user = users.resolve(credentials.get("username"));
   if (!user) throw new UnauthorizedError();
-  var auth = Foxx.requireApp("_system/simple-auth").auth;
+  var auth = Foxx.getExports("_system/simple-auth").auth;
   var valid = auth.verifyPassword(user.get("authData").simple, credentials.get("password"));
   if (!valid) throw new UnauthorizedError();
   req.session.setUser(user);

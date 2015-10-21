@@ -34,8 +34,10 @@ var FoxxManager = require("org/arangodb/foxx/manager");
 var arangodb = require("org/arangodb");
 var ArangoError = arangodb.ArangoError;
 var fs = require("fs");
+var Module = require('module');
 var errors = require("internal").errors;
-var basePath = fs.makeAbsolute(fs.join(module.startupPath(), "common", "test-data", "apps"));
+var internal = require('internal');
+var basePath = fs.makeAbsolute(fs.join(internal.startupPath, "common", "test-data", "apps"));
 
 function validateError(type, error) {
   expect(error instanceof ArangoError).toBeTruthy();
@@ -54,7 +56,7 @@ describe("Foxx Manager install", function() {
     } catch(e) {
       try {
         // Make sure that the files are physically removed
-        var appPath = fs.makeAbsolute(module.appPath());
+        var appPath = fs.makeAbsolute(Module._appPath);
         appPath = fs.join(appPath, "unittest", "broken");
         fs.removeDirectoryRecursive(appPath, true);
       } catch(err) {
@@ -134,7 +136,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-controller-path"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_FILE_NOT_FOUND, e);
+        validateError(errors.ERROR_SYS_ERROR, e);
       }
     });
 
@@ -179,7 +181,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-exports-path"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_FILE_NOT_FOUND, e);
+        validateError(errors.ERROR_SYS_ERROR, e);
       }
     });
 
@@ -197,7 +199,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-setup-path"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_FILE_NOT_FOUND, e);
+        validateError(errors.ERROR_SYS_ERROR, e);
       }
     });
 
@@ -206,7 +208,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "missing-controller-file"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_FILE_NOT_FOUND, e);
+        validateError(errors.ERROR_SYS_ERROR, e);
       }
     });
 
@@ -215,7 +217,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "missing-exports-file"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_FILE_NOT_FOUND, e);
+        validateError(errors.ERROR_SYS_ERROR, e);
       }
     });
 
@@ -224,7 +226,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "missing-setup-file"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_FILE_NOT_FOUND, e);
+        validateError(errors.ERROR_SYS_ERROR, e);
       }
     });
   });

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rules for the query optimizer
 ///
-/// @file arangod/Aql/OptimizerRules.cpp
+/// @file 
 ///
 /// DISCLAIMER
 ///
@@ -22,28 +22,30 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Jan Steemann
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/OptimizerRules.h"
+#include "OptimizerRules.h"
+#include "Aql/AggregateNode.h"
 #include "Aql/AggregationOptions.h"
+#include "Aql/ClusterNodes.h"
+#include "Aql/ConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
+#include "Aql/Index.h"
+#include "Aql/IndexNode.h"
+#include "Aql/ModificationNodes.h"
+#include "Aql/SortCondition.h"
+#include "Aql/SortNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
+#include "Basics/json-utilities.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using EN   = triagens::aql::ExecutionNode;
-
-#if 0
-#define ENTER_BLOCK try { (void) 0;
-#define LEAVE_BLOCK } catch (...) { std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ << ":" << __LINE__ << "!\n"; throw; }
-#else
-#define ENTER_BLOCK
-#define LEAVE_BLOCK
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           rules for the optimizer
@@ -845,9 +847,9 @@ int triagens::aql::removeSortRandRule (Optimizer* opt,
         case EN::FILTER: 
         case EN::SUBQUERY:
         case EN::ENUMERATE_LIST:
-        case EN::INDEX_RANGE: {
+        case EN::INDEX: { 
           // if we found another SortNode, an AggregateNode, FilterNode, a SubqueryNode, 
-          // an EnumerateListNode or an IndexRangeNode
+          // an EnumerateListNode or an IndexNode
           // this means we cannot apply our optimization
           collectionNode = nullptr;
           current = nullptr;
@@ -1044,7 +1046,7 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
         // we found something interesting that justifies moving our node down
         shouldMove = true;
       } 
-      else if (currentType == EN::INDEX_RANGE ||
+      else if (currentType == EN::INDEX ||
                currentType == EN::ENUMERATE_COLLECTION ||
                currentType == EN::ENUMERATE_LIST ||
                currentType == EN::AGGREGATE ||
@@ -1735,1308 +1737,223 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function to find variable and attribute names from a node (if any)
-//////////////////////////////////////////////////////////////////////////////////////////////////
-
-static void FindVarAndAttr (ExecutionPlan const* plan,
-                            AstNode const* node, 
-                            Variable const*& enumCollVar,
-                            std::string& attr) {
-  if (node->type == NODE_TYPE_REFERENCE) {
-    auto x = static_cast<Variable*>(node->getData());
-    auto setter = plan->getVarSetBy(x->id);
-    if (setter != nullptr && 
-        setter->getType() == EN::ENUMERATE_COLLECTION) {
-      enumCollVar = x;
-    }
-    return;
-  }
-  
-  if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    FindVarAndAttr(plan, node->getMember(0), enumCollVar, attr);
-
-    if (enumCollVar != nullptr) {
-      attr.append(node->getStringValue(), node->getStringLength());
-      attr.push_back('.');
-    }
-    return;
-  }
-  
-  attr.clear();
-  enumCollVar = nullptr;
-  return;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief builds a range info from the expression node
-////////////////////////////////////////////////////////////////////////////////
-    
-static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
-                                        AstNode const* node, 
-                                        Variable const*& enumCollVar,
-                                        std::string& attr,
-                                        bool& mustNotUseRanges,
-                                        AstNodeType combineType = NODE_TYPE_OPERATOR_BINARY_AND) {
-  TRI_ASSERT(combineType == NODE_TYPE_OPERATOR_BINARY_AND ||
-             combineType == NODE_TYPE_OPERATOR_BINARY_OR);
-
-  bool foundSomething = false;
-
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-    auto lhs = node->getMember(0);
-    auto rhs = node->getMember(1);
-    std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
-
-    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      FindVarAndAttr(plan, rhs, enumCollVar, attr);
-
-      if (enumCollVar != nullptr) {
-        std::unordered_set<Variable const*> varsUsed;
-        Ast::getReferencedVariables(lhs, varsUsed);
-
-        if (varsUsed.find(enumCollVar) == varsUsed.end()) {
-          // Found a multiple attribute access of a variable and an
-          // expression which does not involve that variable:
-          foundSomething = true;
-          rim->insert(enumCollVar->name, 
-                      attr.substr(0, attr.size() - 1), 
-                      RangeInfoBound(lhs, true)); 
-
-          enumCollVar = nullptr;
-          attr.clear();
-        }
-      }
-    }
-
-    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      FindVarAndAttr(plan, lhs, enumCollVar, attr);
-
-      if (enumCollVar != nullptr) {
-        std::unordered_set<Variable const*> varsUsed;
-        Ast::getReferencedVariables(rhs, varsUsed);
-
-        if (varsUsed.find(enumCollVar) == varsUsed.end()) {
-          // Found a multiple attribute access of a variable and an
-          // expression which does not involve that variable:
-          foundSomething = true;
-          rim->insert(enumCollVar->name, 
-                      attr.substr(0, attr.size() - 1), 
-                      RangeInfoBound(rhs, true));
-
-          enumCollVar = nullptr;
-          attr.clear();
-        }
-      }
-    }
-
-    if (combineType == NODE_TYPE_OPERATOR_BINARY_OR && ! foundSomething) {
-      // disable the use of the range because we may have found something like this,
-      // which makes using an index for a.x invalid:
-      // a.x == 1 || RAND() > 0 
-      mustNotUseRanges = true;
-    }
-
-    return new RangeInfoMapVec(rim.release());
-  }
-
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
-      node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
-      node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
-      node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
-  
-    std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
-    bool include = (node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
-                    node->type == NODE_TYPE_OPERATOR_BINARY_GE);
-    
-    auto lhs = node->getMember(0);
-    auto rhs = node->getMember(1);
-
-    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      // Attribute access on the right:
-      // First find out whether there is a multiple attribute access
-      // of a variable on the right:
-      FindVarAndAttr(plan, rhs, enumCollVar, attr);
-
-      if (enumCollVar != nullptr) {
-        foundSomething = true;
-        RangeInfoBound low;
-        RangeInfoBound high;
-      
-        // Constant value on the left, so insert a constant condition:
-        if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-            node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-          high.assign(lhs, include);
-        } 
-        else {
-          low.assign(lhs, include);
-        }
-        
-        rim->insert(enumCollVar->name, 
-                    attr.substr(0, attr.size() - 1), 
-                    low,
-                    high,
-                    false);
-
-        enumCollVar = nullptr;
-        attr.clear();
-      }
-    }
-
-    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      // Attribute access on the left:
-      // First find out whether there is a multiple attribute access
-      // of a variable on the left:
-      FindVarAndAttr(plan, lhs, enumCollVar, attr);
-
-      if (enumCollVar != nullptr) {
-        foundSomething = true;
-        RangeInfoBound low;
-        RangeInfoBound high;
-      
-        // Constant value on the right, so insert a constant condition:
-        if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-            node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-          low.assign(rhs, include);
-        } 
-        else {
-          high.assign(rhs, include);
-        }
-
-        rim->insert(enumCollVar->name, 
-                    attr.substr(0, attr.size() - 1), 
-                    low,
-                    high,
-                    false);
-
-        enumCollVar = nullptr;
-        attr.clear();
-      }
-    }
-
-    if (combineType == NODE_TYPE_OPERATOR_BINARY_OR && ! foundSomething) {
-      // disable the use of the range because we may have found something like this,
-      // which makes using an index for a.x invalid:
-      // a.x == 1 || RAND() > 0 
-      mustNotUseRanges = true;
-    }
-
-    return new RangeInfoMapVec(rim.release());
-  }
-  
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-    auto lhs = BuildRangeInfo(plan, node->getMember(0), enumCollVar, attr, mustNotUseRanges, node->type);
-    auto rhs = BuildRangeInfo(plan, node->getMember(1), enumCollVar, attr, mustNotUseRanges, node->type);
-    
-    mustNotUseRanges = false;
-
-    // distribute AND into OR
-    return andCombineRangeInfoMapVecsIgnoreEmpty(lhs, rhs);
-  }
-
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
-    auto lhs = node->getMember(0); // enumCollVar
-    auto rhs = node->getMember(1); // value
-
-    std::unique_ptr<RangeInfoMapVec> rimv(new RangeInfoMapVec());
-
-    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      FindVarAndAttr(plan, lhs, enumCollVar, attr);
-
-      if (enumCollVar != nullptr) {
-        std::unordered_set<Variable const*> varsUsed;
-        Ast::getReferencedVariables(rhs, varsUsed);
-
-        if (varsUsed.find(enumCollVar) == varsUsed.end()) {
-          // Found a multiple attribute access of a variable and an
-          // expression which does not involve that variable:
-          foundSomething = true;
-
-          if (rhs->type == NODE_TYPE_ARRAY) {
-            size_t const n = rhs->numMembers();
-            rimv->reserve(n);
- 
-            std::string const attrName(attr.substr(0, attr.size() - 1)); 
-
-            for (size_t i = 0; i < n; i++) {
-              RangeInfo ri(enumCollVar->name, 
-                           attrName,
-                           RangeInfoBound(rhs->getMember(i), true));
-              // the following does not seem to be necessary here, but will slow things down
-              // considerably if the array is very big
-              // rimv->differenceRangeInfo(ri);
-              if (ri.isValid()) { 
-                std::unique_ptr<RangeInfoMap> temp(new RangeInfoMap(ri));
-                rimv->emplace_back(temp.get());
-                temp.release();
-              }
-            }
-          } 
-          else { 
-            RangeInfo ri(enumCollVar->name, 
-                         attr.substr(0, attr.size() - 1), 
-                         RangeInfoBound(rhs, true));
-            rimv->differenceRangeInfo(ri);
-            if (ri.isValid()) { 
-              std::unique_ptr<RangeInfoMap> temp(new RangeInfoMap(ri));
-              rimv->emplace_back(temp.get());
-              temp.release();
-            }
-          }
-          enumCollVar = nullptr;
-          attr.clear();
-        }
-      }
-    }
-
-    if (combineType == NODE_TYPE_OPERATOR_BINARY_OR && ! foundSomething) {
-      // disable the use of the range because we may have found something like this,
-      // which makes using an index for a.x invalid:
-      // a.x == 1 || RAND() > 0 
-      mustNotUseRanges = true;
-    }
-
-    return rimv.release();
-  }
-
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-    bool lhsMustNotUseRange = false;
-    bool rhsMustNotUseRange = false;
-
-    auto lhs = BuildRangeInfo(plan, node->getMember(0), enumCollVar, attr, lhsMustNotUseRange, node->type);
-    auto rhs = BuildRangeInfo(plan, node->getMember(1), enumCollVar, attr, rhsMustNotUseRange, node->type);
-   
-    if (lhsMustNotUseRange || rhsMustNotUseRange) {
-      mustNotUseRanges = true;
-    }
-
-    return orCombineRangeInfoMapVecs(lhs, rhs);
-  }
-    
-  if (combineType == NODE_TYPE_OPERATOR_BINARY_AND) {
-    attr.clear();
-    enumCollVar = nullptr;
-    return nullptr;
-  }
-
-  // default case
-  mustNotUseRanges = true;
-  attr.clear();
-  enumCollVar = nullptr;
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prefer IndexRange nodes over EnumerateCollection nodes
+/// @brief useIndex, try to use an index for filtering
 ////////////////////////////////////////////////////////////////////////////////
 
-class FilterToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
-
-  public:
-
-    typedef std::unordered_map<ExecutionNode const*, std::unordered_set<triagens::aql::Index const*>> IndexCache;
-
-  private:
-
-    RangeInfoMapVec* _rangeInfoMapVec;
-    ExecutionPlan* _plan;
-    std::unordered_set<VariableId> _varIds;
-    bool _modified;
-    bool _canThrow; 
-    // The following maps ids of EnumerateCollectionNodes in the original
-    // plan to an index in the (outer vector) of the _changes container.
-    std::unordered_map<size_t, size_t>& _changesPlaces;
-    // The outer vector is for the different ids of EnumerateCollectionNodes
-    // in the original plan that could be replaced. For each one, the pair
-    // contains the id of the node in the original plan and a vector 
-    // that holds the possible replacements.
-    std::vector<std::pair<size_t, std::vector<ExecutionNode*>>>& _changes;
-
-    // a reference to the CollectionNodes for which all indexes have been processed
-    std::unordered_set<ExecutionNode const*>& _doneCollections;
-    
-    // a reference to the indexes processed for CollectionNodes
-    IndexCache& _doneIndexes;
+int triagens::aql::useIndexesRule (Optimizer* opt, 
+                                   ExecutionPlan* plan, 
+                                   Optimizer::Rule const* rule) {
   
-  public:
+  // These are all the FILTER nodes where we start
+  std::vector<ExecutionNode*>&& nodes = plan->findEndNodes(true);
 
-    FilterToEnumCollFinder (ExecutionPlan* plan,
-                            Variable const* var,
-                            std::unordered_map<size_t, size_t>& changesPlaces,
-                            std::vector<std::pair<size_t, std::vector<ExecutionNode*>>>& changes,
-                            std::unordered_set<ExecutionNode const*>& doneCollections, 
-                            IndexCache& doneIndexes)
-      : _rangeInfoMapVec(nullptr),
-        _plan(plan), 
-        _varIds(),
-        _modified(false),
-        _canThrow(false),
-        _changesPlaces(changesPlaces),
-        _changes(changes),
-        _doneCollections(doneCollections),
-        _doneIndexes(doneIndexes) {
+  std::unordered_map<size_t, ExecutionNode*> changes;
 
-      _varIds.emplace(var->id);
-    }
-
-    ~FilterToEnumCollFinder () {
-      delete _rangeInfoMapVec;
-    }
-
-    bool modified () const {
-      return _modified;
-    }
-    
-    bool before (ExecutionNode* en) override final {
-      _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
-
-      switch (en->getType()) {
-        case EN::ENUMERATE_LIST:
-        case EN::SUBQUERY:        
-        case EN::SORT:
-        case EN::INDEX_RANGE:
-          break;
-
-        case EN::CALCULATION: {
-          auto&& outvar = en->getVariablesSetHere();
-          TRI_ASSERT(outvar.size() == 1);
-
-          if (_varIds.find(outvar[0]->id) != _varIds.end()) {
-            auto node = static_cast<CalculationNode*>(en);
-            std::string attr;
-            Variable const* enumCollVar = nullptr;
-            auto expression = node->expression()->node();
-            bool mustNotUseRanges = false;
-
-            // there is an implicit AND between FILTER statements
-            if (_rangeInfoMapVec == nullptr) {
-              // don't yet have anything to AND-combine
-              _rangeInfoMapVec = BuildRangeInfo(_plan, expression, enumCollVar, attr, mustNotUseRanges);
-            } 
-            else {
-              // AND-combine with previous ranges
-              auto other = BuildRangeInfo(_plan, expression, enumCollVar, attr, mustNotUseRanges);
-
-              if (mustNotUseRanges) {
-                mustNotUseRanges = false;
-
-                if (other != nullptr) {
-                  delete other;
-                }
-                // keep existing _rangeInfoMapVec
-              }
-              else {
-                // AND-combine ranges in FILTER found with previous ranges
-                _rangeInfoMapVec = andCombineRangeInfoMapVecsIgnoreEmpty(_rangeInfoMapVec, other);
-              }
-            }
-
-            if (_rangeInfoMapVec != nullptr && mustNotUseRanges) {
-              // it is unsafe to use the ranges found. throw them away immediately
-              delete _rangeInfoMapVec;
-              _rangeInfoMapVec = nullptr;
-            }
-          }
-          break;
-        }
-
-        case EN::FILTER: {
-          std::vector<Variable const*>&& inVar = en->getVariablesUsedHere();
-          TRI_ASSERT(inVar.size() == 1);
-          _varIds.emplace(inVar[0]->id);
-          break;
-        }
-
-        case EN::AGGREGATE:
-        case EN::SCATTER:
-        case EN::DISTRIBUTE:
-        case EN::GATHER:
-        case EN::REMOTE:
-          // in these cases we simply ignore the intermediate nodes, note
-          // that we have taken care of nodes that could throw exceptions
-          // above.
-          break;
-
-        case EN::SINGLETON:
-        case EN::INSERT:
-        case EN::REMOVE:
-        case EN::REPLACE:
-        case EN::UPDATE:
-        case EN::UPSERT:
-        case EN::RETURN:
-        case EN::NORESULTS:
-        case EN::ILLEGAL:
-          // in all these cases something is seriously wrong and we better abort
-          return true;
-
-        case EN::LIMIT:           
-          // if we meet a limit node between a filter and an enumerate
-          // collection, we abort . . .
-          return true;
-
-        case EN::ENUMERATE_COLLECTION: {
-          if (_rangeInfoMapVec == nullptr) {
-            break;
-          }
-
-          if (_doneCollections.find(en) != _doneCollections.end()) {
-            // all indexes for this collection have been used. done
-            break;
-          }
-
-          auto const node = static_cast<EnumerateCollectionNode*>(en);
-          auto var = node->getVariablesSetHere()[0];  // should only be 1
-
-          // check if we have any ranges with this var
-          std::unordered_map<std::string, RangeInfo>* map = _rangeInfoMapVec->find(var->name, 0);        
-
-          if (map != nullptr) {
-            // Remove all variable bounds that are no longer defined here:
-            std::unordered_set<Variable const*> varsDefined = node->getVarsValid();
-            // Take out the variable we define only here, because we are
-            // not allowed to use it in a variable bound expression:
-            std::vector<Variable const*>&& varsSetHere = node->getVariablesSetHere();
-            for (auto const& v : varsSetHere) {
-              varsDefined.erase(v);
-            }
-
-            size_t pos = 0;
-            std::unordered_set<Variable const*> varsUsed; 
-            do {
-              for (auto& x : *map) {
-                auto worker = [&] (std::list<RangeInfoBound>& bounds) -> void {
-                  for (auto it = bounds.begin(); it != bounds.end();
-                       /* no hoisting */) {
-                    AstNode const* a = it->getExpressionAst(_plan->getAst());
-                    varsUsed.clear();
-                    Ast::getReferencedVariables(a, varsUsed);
-
-                    bool bad = false;
-                    for (auto const& v : varsUsed) {
-                      if (varsDefined.find(const_cast<Variable const*>(v)) == varsDefined.end()) {
-                        bad = true;
-                        break;
-                      }
-                    }
-                    if (bad) {
-                      it = bounds.erase(it);
-                      x.second.revokeEquality();  // just to be sure
-                    }
-                    else {
-                      it++;
-                    }
-                  }
-                };
-                worker(x.second._lows);
-                worker(x.second._highs);
-              }
-              map = _rangeInfoMapVec->find(var->name, ++pos);  
-            } 
-            while (map != nullptr);
-
-            // Now remove empty conditions: 
-            _rangeInfoMapVec->eraseEmptyOrUndefined(var->name);
-            
-            // if var->name is not mapped in every position of _rangeInfoMapVec
-            // then we cannot use the index range node (we would return too few
-            // results), for example
-            // x.a == 1 || y.c == 2 || x.a == 3
-            if (_rangeInfoMapVec->isMapped(var->name)) {
-              std::vector<size_t>&& validPos = _rangeInfoMapVec->validPositions(var->name);
-
-              // are any of the RangeInfoMaps in the vector valid? 
-
-              if (! _canThrow) {
-                if (validPos.empty()) { // ranges are not valid . . . 
-                  for (auto const& x : node->getParents()) {
-                    auto noRes = new NoResultsNode(_plan, _plan->nextId());
-                    _plan->registerNode(noRes);
-                    _plan->insertDependency(x, noRes);
-                  }
-                  _modified = true;
-                }
-                else {
-                  std::vector<Index*> idxs;
-                  std::vector<size_t> prefixes;
-                  // {idxs.at(i)->_fields[0]..idxs.at(i)->_fields[prefixes.at(i)]}
-                  // is a subset of <attrs>
-
-                  // note: prefixes are only used for skiplist indexes
-                  // for all other index types, the prefix value will always be 0
-                  node->getIndexesForIndexRangeNode(_rangeInfoMapVec->attributes(var->name), idxs, prefixes);
-                  // make one new plan for every index in <idxs> that replaces the
-                  // enumerate collection node with a IndexRangeNode ... 
-
-                  for (size_t i = 0; i < idxs.size(); ++i) {
-                    // ranges must be valid and all comparisons == if hash
-                    // index or == followed by a single <, >, >=, or <=
-                    // if a skip index in the order of the fields of the
-                    // index.
-                    auto const idx = idxs.at(i);
-                    TRI_ASSERT(idx != nullptr);
-
-                    {
-                      // prevent duplicate usage of the same index for the same collection node
-                      auto p1 = _doneIndexes.find(en);
-
-                      if (p1 != _doneIndexes.end()) {
-                        auto p2 = (*p1).second.find(idx);
-
-                        if (p2 != (*p1).second.end()) {
-                          // already processed this index for this collection node
-                          continue;
-                        }
-                      } 
-                    }
-
-                    // initialize all conditions with empty ranges
-                    IndexOrCondition indexOrCondition(validPos.size());
-
-
-                    if (idx->type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-                      for (size_t k = 0; k < validPos.size(); k++) {
-                        bool handled = false;
-
-                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
-                        auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_ID));
-
-                        if (range != map->end()) { 
-                          if (! range->second.is1ValueRangeInfo()) {
-                            indexOrCondition.clear();   // not usable
-                            break;
-                          }
-
-                          indexOrCondition.at(k).emplace_back(range->second);
-                          handled = true;
-                        }
-
-                        if (! handled) {
-                          range = map->find(std::string(TRI_VOC_ATTRIBUTE_KEY));
-
-                          if (range != map->end()) {
-                            if (! range->second.is1ValueRangeInfo()) {
-                              indexOrCondition.clear();   // not usable
-                              break;
-                            }
-
-                            indexOrCondition.at(k).emplace_back(range->second);
-                          }
-                        }
-                      }
-                    }
-                    else if (idx->type == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-                      for (size_t k = 0; k < validPos.size(); k++) {
-                        bool handled = false;
-
-                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
-                        auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_FROM));
-
-                        if (range != map->end()) { 
-                          if (! range->second.is1ValueRangeInfo()) {
-                            indexOrCondition.clear();
-                            break; // not usable
-                          }
-
-                          indexOrCondition.at(k).emplace_back(range->second);
-                          handled = true;
-                        }
-
-                        if (! handled) {
-                          range = map->find(std::string(TRI_VOC_ATTRIBUTE_TO));
-
-                          if (range != map->end()) {
-                            if (! range->second.is1ValueRangeInfo()) {
-                              indexOrCondition.clear();   // not usable
-                              break;
-                            }
-
-                            indexOrCondition.at(k).emplace_back(range->second);
-                          }
-                        }
-                      }
-                    }
-                    else if (idx->type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
-                      // each valid orCondition should match every field of the given index
-                      for (size_t k = 0; k < validPos.size() && ! indexOrCondition.empty(); k++) {
-                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
-                      
-                        for (size_t j = 0; j < idx->fields.size(); j++) {
-                          std::string fieldString;
-                          TRI_AttributeNamesToString(idx->fields[j], fieldString, true);
-                          auto range = map->find(fieldString);
-                      
-                          if (range == map->end() || ! range->second.is1ValueRangeInfo()) {
-                            indexOrCondition.clear();   // not usable
-                            break;
-                          }
- 
-                          if (idx->sparse) {
-                            // a sparse hash index must not be used if any of the lookup values is
-                            // either null (null is not contained in a sparse index) or is calculated
-                            // using an expression with unknown result. this is because the expression
-                            // result may be null and using the sparse index then would not allow
-                            // finding the document
-                            bool mustClear = false;
-                            auto const& rib = range->second; 
-
-                            if (rib.isConstant()) {
-                              // value is constant (and an equality because we're looking at a hash index)
-                              auto const& value = rib._lowConst.bound();
-                              if (value.isEmpty() || value.isNull()) {
-                                // lookup value is null. can't use a sparse index.
-                                mustClear = true;
-                              }
-                            }
-                            else {
-                              // non-constant lookup value. it might be null, so we can't use the index
-                              mustClear = true;
-                            }
-                          
-                            if (mustClear) {
-                              // not usable
-                              indexOrCondition.clear();   
-                              break; // exit for loop
-                            }
-                          }
-
-                          indexOrCondition.at(k).emplace_back(range->second);
-                        }
-                      }
-                    }
-                    else if (idx->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-                      for (size_t k = 0; k < validPos.size(); k++) {
-                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
-
-                        std::string fieldString;
-                        TRI_AttributeNamesToString(idx->fields[0], fieldString, true);
-                        // check if there is a range that contains the first index attribute
-                        auto range = map->find(fieldString);
-
-                        if (range == map->end()) { 
-                          indexOrCondition.clear();
-                          break; // not usable
-                        }
-
-                        // insert the first index attribute
-                        indexOrCondition.at(k).emplace_back(range->second);
-                       
-                        // iterate over all index attributes from left to right 
-                        bool equality = range->second.is1ValueRangeInfo();
-                        bool handled = false;
-                        size_t j = 0;
-                        while (++j < prefixes.at(i) && equality) {
-                          std::string fieldString;
-                          TRI_AttributeNamesToString(idx->fields[j], fieldString, true);
-                          range = map->find(fieldString);
-
-                          if (range == map->end()) { 
-                            indexOrCondition.clear();
-                            handled = true;
-                            break; // not usable
-                          }
-
-                          indexOrCondition.at(k).emplace_back(range->second);
-                          equality = equality && range->second.is1ValueRangeInfo();
-                        }
-
-                        if (handled) {
-                          break; // exit for loop
-                        }
-                      }
-
-                      // check if index is sparse and exclude it if required
-                      // a sparse skiplist index must not be used if any of the lookup values is
-                      // either null (null is not contained in a sparse index) or is calculated
-                      // using an expression with unknown result. this is because the expression
-                      // result may be null and using the sparse index then would not allow
-                      // finding the document
-                      if (idx->sparse && ! indexOrCondition.empty()) {
-                        for (size_t k = 0; k < validPos.size() && ! indexOrCondition.empty(); k++) {
-                          auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
-
-                          for (size_t j = 0; j < idx->fields.size(); j++) {
-                            std::string fieldString;
-                            TRI_AttributeNamesToString(idx->fields[j], fieldString, true);
-                            auto range = map->find(fieldString);
-
-                            if (range == map->end()) { 
-                              indexOrCondition.clear();
-                              break; // not usable
-                            }
-
-                            auto const& rib = range->second; 
-
-                            // if the lookup value is dynamic, undefined or includes null, then we 
-                            // can't use the index
-                            if (! rib.isConstant() || 
-                                ! rib._lowConst.isDefined() ||
-                                (rib._lowConst.inclusive() && rib._lowConst.bound().isNull())) {
-                              indexOrCondition.clear();
-                              break;
-                            }
-                          }
-                        }
-                      }
-
-                    }
-
-                    // check if there are all positions are non-empty
-                    bool isEmpty = indexOrCondition.empty();
-
-                    if (! isEmpty) {
-                      size_t const vs = validPos.size();
-
-                      for (size_t k = 0; k < vs; k++) {
-                        if (indexOrCondition[k].empty()) {
-                          isEmpty = true;
-                          break;
-                        }
-                      }
-                    }
-
-                    if (! isEmpty) {
-                      // enter index into the index cache
-                      {
-                        size_t indexesUsed = 0;
-                        auto p1 = _doneIndexes.find(en);
-
-                        if (p1 != _doneIndexes.end()) {
-                          indexesUsed = (*p1).second.size() + 1;
-                          (*p1).second.emplace(idx);
-                        }
-                        else {
-                          _doneIndexes.emplace(en, std::unordered_set<triagens::aql::Index const*>{ idx });
-                          indexesUsed = 1;
-                        }
-
-                        if (indexesUsed == idxs.size()) {
-                          // we processed all usable indexes for this CollectionNode
-                          _doneCollections.emplace(en);
-                        }
-                      }
-
-                      auto indexRangeNode = new IndexRangeNode(
-                        _plan, 
-                        _plan->nextId(), 
-                        node->vocbase(), 
-                        node->collection(), 
-                        node->outVariable(), 
-                        idx, 
-                        indexOrCondition, 
-                        false
-                      );
-
-                      std::unique_ptr<ExecutionNode> newNode(indexRangeNode);
-                      size_t place = node->id();
-
-                      std::unordered_map<size_t, size_t>::iterator it = _changesPlaces.find(place);
-
-                      if (it == _changesPlaces.end()) {
-                        _changes.emplace_back(place, std::vector<ExecutionNode*>());
-                        it = _changesPlaces.emplace(place, _changes.size() - 1).first;
-                      }
-
-                      std::vector<ExecutionNode*>& vec = _changes[it->second].second;
-                      vec.emplace_back(newNode.release());
-                      // if all goes well, this node will be used, if an 
-                      // exception happens, the destructor will free it
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-        break;
-      }
-
-      return false;
-    }
-
-    bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) final {
-      return false;
-    }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief useIndexRange, try to use an index for filtering
-////////////////////////////////////////////////////////////////////////////////
-
-int triagens::aql::useIndexRangeRule (Optimizer* opt, 
-                                      ExecutionPlan* plan, 
-                                      Optimizer::Rule const* rule) {
-  std::vector<ExecutionNode::NodeType> const types = {
-    EN::ENUMERATE_COLLECTION,
-    EN::FILTER
-  };
-
-  // These are all the EnumerateCollection and Filter nodes in the query
-  std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(types, true);
-
-  size_t numCollections = 0;
-  for (auto& it : nodes) {
-    if (it->getType() == EN::ENUMERATE_COLLECTION) {
-      ++numCollections;
-    } 
-  }
-
-  if (numCollections == 0) {
-    // shortcut
-    opt->addPlan(plan, rule, false);
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  // The following maps ids of EnumerateCollectionNodes in the original
-  // plan to an index in the (outer vector) of the _changes container.
-  std::unordered_map<size_t, size_t> changesPlaces;
-  // The outer vector is for the different ids of EnumerateCollectionNodes
-  // in the original plan that could be replaced. For each one, the pair
-  // contains the id of the node in the original plan and a vector 
-  // that holds the possible replacements.
-  std::vector<std::pair<size_t, std::vector<ExecutionNode*>>> changes;
-
-  auto cleanupChanges = [&] () -> void {
+  auto cleanupChanges = [&changes] () -> void {
     for (auto& v : changes) {
-      for (ExecutionNode* n : v.second) {
-        delete n;
-      }
+      delete v.second;
     }
     changes.clear();
-    changesPlaces.clear();
   };
 
-  bool modified = false;
-  // In the following loop we only collect changes, maybe we introduce some
-  // NoResultsNode, possibly in subqueries.
-
-  try {
-    std::unordered_set<ExecutionNode const*> doneCollections;
-    FilterToEnumCollFinder::IndexCache doneIndexes;
-
-    for (auto const& n : nodes) {
-      if (n->getType() != EN::FILTER) {
-        // only process FILTER nodes, not ENUMERATE_COLLECTION here!
-        continue;
-      }
-
-      auto nn = static_cast<FilterNode*>(n);
-      auto invars = nn->getVariablesUsedHere();
-      TRI_ASSERT(invars.size() == 1);
-
-      FilterToEnumCollFinder finder(plan, invars[0], changesPlaces, changes, doneCollections, doneIndexes);
-      nn->walk(&finder);
-      modified |= finder.modified();
-
-      if (doneCollections.size() == numCollections) {
-        // handled all possible combinations already
-        break;
-      }
-    }
-  }
-  catch (...) {
-    cleanupChanges();
-    throw;
+  TRI_DEFER(cleanupChanges());
+  bool hasEmptyResult = false; 
+  for (auto const& n : nodes) {
+    ConditionFinder finder(plan, &changes, &hasEmptyResult);
+    n->walk(&finder);
   }
 
-  // First find out how many possibilities for plan changes we actually have:
-  size_t nrPlans = opt->numberOfPlans();
-  size_t possibilities = 1;
-  size_t i = 0;
-  while (i < changes.size()) {
-    possibilities *= changes[i].second.size();
-    i++;
-    if (possibilities + nrPlans > 30) {
-      break;
+  if (! changes.empty()) {
+    for (auto& it : changes) {
+      plan->registerNode(it.second); 
+      plan->replaceNode(plan->getNodeById(it.first), it.second);
+
+      // prevent double deletion by cleanupChanges()
+      it.second = nullptr;
     }
+    opt->addPlan(plan, rule, true);
+    plan->findVarUsage();
   }
-
-  // We will apply the first possible change for changes[i..changes.size()-1]
-  // and all possible changes for changes[0..i-1] and create all these plans.
-  // First make all the changes from i on in the original plan and those
-  // for which there is only one possibility:
-  try {
-    for (size_t j = 0; j < changes.size(); j++) {
-      std::vector<ExecutionNode*>& v = changes[j].second;
-      if (j >= i || v.size() == 1) {
-        size_t choice = 0;
-        if (v.size() > 1) {
-          // If in doubt, take a skiplist index:
-          for (size_t k = 0; k < v.size(); k++) {
-            auto n = static_cast<IndexRangeNode*>(v[k]);
-            if (n->getIndex()->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-              choice = k;
-              break;
-            }
-          }
-        }
-        size_t id = changes[j].first;
-        // Just in case:
-        if (! v.empty()) {
-          plan->registerNode(v[choice]);
-          plan->replaceNode(plan->getNodeById(id), v[choice]);
-          modified = true;
-          // Free the other nodes, if they are there:
-          for (size_t k = 0; k < v.size(); k++) {
-            if (k != choice) {
-              delete v[k];
-            }
-          }
-          v.clear();   // take the new node away from changes such that 
-                       // cleanupChanges does not touch it
-        }
-      }
-    }
+  else {
+    opt->addPlan(plan, rule, hasEmptyResult);
   }
-  catch (...) {
-    cleanupChanges();
-    throw;
-  }
-
-  // Now see whether it is actually only one plan we make:
-  if (possibilities == 1) {
-    try {
-      opt->addPlan(plan, rule, modified);
-      cleanupChanges();
-    }
-    catch (...) {
-      cleanupChanges();
-    }
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // Now we have to create more than one plan, we have to use those from
-  // changes[0..i-1] which have more than one possibility. Note that those
-  // with exactly 1 possibility have already been done above. This amounts
-  // to doing a cartesian product, which we do recursively. The result will
-  // be in the todo variable:
-
-  std::function <void(size_t, size_t, std::vector<size_t>&)> doworkRecursive;
-  std::vector<std::vector<size_t>> todo;
-  std::vector<size_t> work;
-
-  doworkRecursive = [&doworkRecursive, &changes, &todo] 
-                    (size_t index, size_t limit, std::vector<size_t>& v) {
-    if (index >= limit) {
-      todo.push_back(v);  // intentionally copy vector
-    }
-    else if (changes[index].second.size() < 2) {
-      doworkRecursive(index + 1, limit, v);
-    }
-    else {
-      for (size_t l = 0; l < changes[index].second.size(); l++) {
-        v[index] = l;
-        doworkRecursive(index + 1, limit, v);
-      }
-    }
-  };
- 
-  // if we get here, we can choose between multiple plans... 
-  TRI_ASSERT(possibilities != 1);
-
-  try {
-    work.reserve(i);
-    for (size_t l = 0; l < i; l++) {
-      work.emplace_back(0);
-    }
-
-    doworkRecursive(0, i, work);
-  }
-  catch (...) {
-    cleanupChanges();
-    throw;
-  }
-
-  // Now we only have to go through todo and do what needs doing:
-  try {
-    for (auto const& v : todo) {
-      std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
-      for (size_t l = 0; l < i; l++) {
-        if (changes[l].second.size() >= 2) {
-          ExecutionNode* newNode = changes[l].second[v[l]]->clone(newPlan.get(), true, false);
-          newPlan->registerNode(newNode);
-          newPlan->replaceNode(newPlan->getNodeById(changes[l].first), newNode);
-        }
-      }
-      opt->addPlan(newPlan.release(), rule, true);
-    }
-  }
-  catch (...) {
-    cleanupChanges();
-    throw;
-  }
-
-  cleanupChanges();
-  // finally delete the original plan. all plans created in this rule will be better(tm)
-  delete plan;
 
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief analyse the sortnode and its calculation nodes
-////////////////////////////////////////////////////////////////////////////////
-
-class SortAnalysis {
-  using ECN = triagens::aql::EnumerateCollectionNode;
-
-  typedef std::pair<ECN::IndexMatchVec, IndexOrCondition> RangeIndexPair;
-
-  struct sortNodeData {
-    bool ASC;
-    size_t calculationNodeID;
-    std::string variableName;
-    std::string attributevec;
-  };
-
-  std::vector<sortNodeData*> _sortNodeData;
-  std::unordered_set<size_t> removedNodes;
-
-public:
-  size_t const sortNodeID;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor; fetches the referenced calculation nodes and builds 
-///   _sortNodeData for later use.
-////////////////////////////////////////////////////////////////////////////////
-
-  SortAnalysis (SortNode* node)
-    : sortNodeID(node->id()) {
-    auto sortParams = node->getCalcNodePairs();
-
-    for (size_t n = 0; n < sortParams.size(); n++) {
-      auto d = new sortNodeData;
-      try {
-        d->ASC = sortParams[n].second;
-        d->calculationNodeID = sortParams[n].first->id();
-
-        if (sortParams[n].first->getType() == EN::CALCULATION) {
-          auto cn = static_cast<triagens::aql::CalculationNode*>(sortParams[n].first);
-          auto oneSortExpression = cn->expression();
-          
-          if (oneSortExpression->isAttributeAccess()) {
-            auto simpleExpression = oneSortExpression->getAttributeAccess();
-            d->variableName = simpleExpression.first;
-            d->attributevec = simpleExpression.second;
-          }
-        }
-        _sortNodeData.emplace_back(d);
-      }
-      catch (...) {
-        delete d;
-        throw;
-      }
-    }
-  }
-
-  ~SortAnalysis () {
-    for (auto& x : _sortNodeData) {
-      delete x;
-    }
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the whether we only have simple calculation nodes
-////////////////////////////////////////////////////////////////////////////////
-
-  bool isAnalyzeable () {
-    if (_sortNodeData.size() == 0) {
-      return false;
-    }
-    for (size_t j = 0; j < _sortNodeData.size(); j ++) {
-      if (_sortNodeData[j]->variableName.length() == 0) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether our calculation nodes reference variableName; 
-/// returns pair used for further processing with the indices.
-////////////////////////////////////////////////////////////////////////////////
-
-  RangeIndexPair getAttrsForVariableName (std::string const& variableName) {
-    ECN::IndexMatchVec v;
-    IndexOrCondition rangeInfo;
-
-    for (size_t j = 0; j < _sortNodeData.size(); ++j) {
-      if (_sortNodeData[j]->variableName != variableName) {
-        return std::make_pair(v, rangeInfo); // for now, no mixed support.
-      }
-    }
-
-    // Collect the right data for the sorting:
-    v.reserve(_sortNodeData.size());
-
-    for (size_t j = 0; j < _sortNodeData.size(); ++j) {
-      v.emplace_back(_sortNodeData[j]->attributevec, _sortNodeData[j]->ASC);
-    }
-    // We only need one or-condition (because this is mandatory) which
-    // refers to 0 of the attributes:
-    rangeInfo.emplace_back(std::vector<RangeInfo>());
-    return std::make_pair(v, rangeInfo);
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes the sortNode and its referenced Calculationnodes from
-/// the plan.
-////////////////////////////////////////////////////////////////////////////////
-
-  void removeSortNodeFromPlan (ExecutionPlan* newPlan) {
-    // only remove a node once, otherwise this might cause follow up failures
-    if (removedNodes.find(sortNodeID) == removedNodes.end()) {
-      newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
-      removedNodes.emplace(sortNodeID);
-    }
-  }
-};
-
-class SortToIndexNode final : public WalkerWorker<ExecutionNode> {
-  using ECN = triagens::aql::EnumerateCollectionNode;
-
-  ExecutionPlan*       _plan;
-  SortAnalysis*        _sortNode;
-  Optimizer::RuleLevel _level;
-  bool                 _modified;
+struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
+  ExecutionPlan*                                 _plan;
+  SortNode*                                      _sortNode;
+  std::vector<std::pair<VariableId, bool>>       _sorts;
+  std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
+  bool                                           _modified;
 
   public:
 
-    SortToIndexNode (ExecutionPlan* plan,
-                     SortAnalysis* Node,
-                     Optimizer::RuleLevel level)
+    SortToIndexNode (ExecutionPlan* plan)
       : _plan(plan),
-        _sortNode(Node),
-        _level(level),
+        _sortNode(nullptr),
+        _sorts(),
+        _variableDefinitions(),
         _modified(false) {
     }
 
-    bool modified () const {
-      return _modified;
-    }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if an enumerate collection or index range node is part of an
-/// outer loop - this is necessary to ensure that the overall query result
-/// does not change by replacing a SortNode with an IndexRangeNode
-/// Example:
-/// FOR i IN [ 1, 2 ] FOR j IN collectionWithIndex SORT j.indexdedAttr RETURN j
-/// this must not be optimized because removing the sort and using the index
-/// would only guarantee the sortedness within each iteration of the outer for
-/// loop but not for the total result
-////////////////////////////////////////////////////////////////////////////////
-
-    bool isInnerLoop (ExecutionNode const* node) const {
-      while (node != nullptr) {
-        if (! node->hasDependency()) {
-          return false;
-        }
-
-        node = node->getFirstDependency();
-        TRI_ASSERT(node != nullptr);
-
-        if (node->getType() == EN::ENUMERATE_COLLECTION ||
-            node->getType() == EN::INDEX_RANGE ||
-            node->getType() == EN::ENUMERATE_LIST) {
-          // we are contained in an outer loop
-          return true;
-
-          // future potential optimization: check if the outer loop has 0 or 1 
-          // iterations. in this case it is still possible to remove the sort
-        }
-      }
-
-      return false;
-    }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief if the sort is already done by an indexrange, remove the sort.
-////////////////////////////////////////////////////////////////////////////////
-
-    bool handleIndexRangeNode (IndexRangeNode* node) {
-      if (isInnerLoop(node)) {
-        // index range contained in an outer loop. must not optimize away the sort!
+    bool handleEnumerateCollectionNode (EnumerateCollectionNode* enumerateCollectionNode) {
+      if (_sortNode == nullptr) {
         return true;
       }
 
-      auto variableName = node->getVariablesSetHere()[0]->name;
-      auto result = _sortNode->getAttrsForVariableName(variableName);
-
-      auto const& match = node->matchesIndex(result.first);
-
-      if (match.doesMatch) {
-        if (match.reverse) {
-          node->reverse(true); 
-        } 
-        _sortNode->removeSortNodeFromPlan(_plan);
-        _modified = true;
-      }
-
-      return true;
-    }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether we can sort via an index.
-////////////////////////////////////////////////////////////////////////////////
-
-    bool handleEnumerateCollectionNode (EnumerateCollectionNode* node, 
-                                        Optimizer::RuleLevel level) {
-      if (isInnerLoop(node)) {
-        // index range contained in an outer loop. must not optimize away the sort!
+      if (enumerateCollectionNode->isInInnerLoop()) {
+        // index node contained in an outer loop. must not optimize away the sort!
         return true;
-      }
-
-      auto variableName = node->getVariablesSetHere()[0]->name;
-      auto result = _sortNode->getAttrsForVariableName(variableName);
-
-      if (result.first.size() == 0) {
-        return true; // we didn't find anything replaceable by index
-      }
-
-      // get all candidate indexes
-      // note: can only use the index if it is a skip list (or a hash and we
-      // are checking equality)
-
-      auto const& indexes = node->getIndicesOrdered(result.first);
-
-      EnumerateCollectionNode::IndexMatch const* preferredIndex = nullptr;
- 
-      // enumerate all indexes and pick the first one that covers the condition
-      for (auto const& idx : indexes) {
-        if (idx.doesMatch) {
-          preferredIndex = &idx;
-          break;
-        }
-      }
-
-      if (preferredIndex == nullptr && ! indexes.empty()) {
-        // did not find an index which covers the condition. now pick the first one
-        preferredIndex = &indexes[0];
-      }
-
-      if (preferredIndex != nullptr) { 
-        ExecutionNode* newNode = new IndexRangeNode(
-          _plan,
-          _plan->nextId(),
-          node->vocbase(), 
-          node->collection(),
-          node->outVariable(),
-          preferredIndex->index,
-          result.second,
-          (preferredIndex->doesMatch && preferredIndex->reverse)
-        );
-
-        _plan->registerNode(newNode);
-        _plan->replaceNode(node, newNode);
-
-        if (preferredIndex->doesMatch) { // if the index superseedes the sort, remove it.
-          _sortNode->removeSortNodeFromPlan(_plan);
-        }
-        
-        _modified = true;
       }
       
-      return true;
+      SortCondition sortCondition(_sorts, _variableDefinitions);
+
+      if (! sortCondition.isEmpty() &&
+          sortCondition.isOnlyAttributeAccess() &&
+          sortCondition.isUnidirectional()) {
+          // we have found a sort condition, which is unidirectionl
+          // now check if any of the collection's indexes covers it
+
+        Variable const* outVariable = enumerateCollectionNode->outVariable();
+        auto const& indexes = enumerateCollectionNode->collection()->getIndexes();
+        triagens::aql::Index const* bestIndex = nullptr;
+        double bestCost                       = 0.0;
+        size_t bestNumCovered                 = 0;
+
+        for (auto& index : indexes) {
+          if (! index->isSorted() || index->sparse) {
+            // can only use a sorted index
+            // cannot use a sparse index for sorting
+            continue;
+          }
+
+          auto numCovered = sortCondition.coveredAttributes(outVariable, index->fields);
+     
+          if (numCovered == 0) {
+            continue;
+          }
+          
+          double estimatedCost = 0.0;
+          if (! index->supportsSortCondition(&sortCondition, outVariable, enumerateCollectionNode->collection()->count(), estimatedCost)) {
+            // should never happen
+            TRI_ASSERT(false);
+            continue;
+          }
+
+          if (bestIndex == nullptr || estimatedCost < bestCost) {
+            bestIndex      = index;
+            bestCost       = estimatedCost;
+            bestNumCovered = numCovered;
+          }
+        }
+
+        if (bestIndex != nullptr) {
+          std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
+          condition->normalize(_plan);
+            
+          std::unique_ptr<ExecutionNode> newNode(new IndexNode(
+            _plan, 
+            _plan->nextId(), 
+            enumerateCollectionNode->vocbase(), 
+            enumerateCollectionNode->collection(), 
+            outVariable, 
+            std::vector<Index const*>({ bestIndex }),
+            condition.get(),
+            sortCondition.isDescending()
+          ));
+
+          condition.release();
+
+          auto n = newNode.release();
+
+          _plan->registerNode(n);
+          _plan->replaceNode(enumerateCollectionNode, n);
+          _modified = true;
+          
+          if (bestNumCovered == sortCondition.numAttributes()) {
+            // if the index covers the complete sort condition, we can also remove the sort node
+            _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+          }
+        }
+      }
+
+      return true; // always abort further searching here
+    }
+
+    bool handleIndexNode (IndexNode* indexNode) {
+      if (_sortNode == nullptr) {
+        return true;
+      }
+
+      if (indexNode->isInInnerLoop()) {
+        // index node contained in an outer loop. must not optimize away the sort!
+        return true;
+      }
+
+      auto const& indexes = indexNode->getIndexes();
+
+      if (indexes.size() != 1) {
+        // can only use this index node if it uses exactly one index or multiple indexes on exactly the same attributes
+        auto cond = indexNode->condition();
+
+        if (! cond->isSorted()) {
+          // index conditions do not guarantee sortedness
+          return true;
+        }
+
+        std::vector<std::vector<triagens::basics::AttributeName>> seen;
+
+        for (auto& index : indexes) {
+          if (index->sparse) {
+            // cannot use a sparse index for sorting
+            return true;
+          }
+
+          if (! seen.empty() && triagens::basics::AttributeName::isIdentical(index->fields, seen)) {
+            // different attributes
+            return true;
+          }
+        }
+
+        // all indexes use the same attributes and index conditions guarantee sorted output
+      }
+
+      // if we get here, we either have one index or multiple indexes on the same attributes
+      auto index = indexes[0];
+
+      if (! index->isSorted()) {
+        // can only use a sorted index
+        return true;
+      }
+
+      if (index->sparse) {
+        // cannot use a sparse index for sorting
+        return true;
+      }
+
+      SortCondition sortCondition(_sorts, _variableDefinitions);
+
+      if (! sortCondition.isEmpty() && 
+          sortCondition.isOnlyAttributeAccess() &&
+          sortCondition.isUnidirectional() && 
+          sortCondition.isDescending() == indexNode->reverse()) {
+        // we have found a sort condition, which is unidirectional and in the same
+        // order as the IndexNode...
+        // now check if the sort attributes match the ones of the index
+        Variable const* outVariable = indexNode->outVariable();
+        auto numCovered = sortCondition.coveredAttributes(outVariable, index->fields);
+
+        if (numCovered == sortCondition.numAttributes()) {
+          // sort condition is fully covered by index... now we can remove the sort node from the plan
+          _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+          _modified = true;
+        }
+      }
+
+      return true; // always abort after we found an IndexNode
     }
 
     bool enterSubquery (ExecutionNode*, ExecutionNode*) override final { 
@@ -3045,37 +1962,51 @@ class SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     bool before (ExecutionNode* en) override final {
       switch (en->getType()) {
-      case EN::ENUMERATE_LIST:
-      case EN::CALCULATION:
-      case EN::SUBQUERY:
-      case EN::FILTER:
-        return false;                           // skip. we don't care.
+        case EN::ENUMERATE_LIST:
+        case EN::SUBQUERY:
+        case EN::FILTER:
+          return false;                           // skip. we don't care.
 
-      case EN::SINGLETON:
-      case EN::AGGREGATE:
-      case EN::INSERT:
-      case EN::REMOVE:
-      case EN::REPLACE:
-      case EN::UPDATE:
-      case EN::UPSERT:
-      case EN::RETURN:
-      case EN::NORESULTS:
-      case EN::SCATTER:
-      case EN::DISTRIBUTE:
-      case EN::GATHER:
-      case EN::REMOTE:
-      case EN::ILLEGAL:
-      case EN::LIMIT:                      // LIMIT is criterion to stop
-        return true;  // abort.
+        case EN::CALCULATION: {
+          auto outvars = en->getVariablesSetHere();
+          TRI_ASSERT(outvars.size() == 1);
 
-      case EN::SORT:     // pulling two sorts together is done elsewhere.
-        return en->id() != _sortNode->sortNodeID;    // ignore ourselves.
+          _variableDefinitions.emplace(outvars[0]->id, static_cast<CalculationNode const*>(en)->expression()->node());
+          return false;
+        }
 
-      case EN::INDEX_RANGE:
-        return handleIndexRangeNode(static_cast<IndexRangeNode*>(en));
+        case EN::SINGLETON:
+        case EN::AGGREGATE:
+        case EN::INSERT:
+        case EN::REMOVE:
+        case EN::REPLACE:
+        case EN::UPDATE:
+        case EN::UPSERT:
+        case EN::RETURN:
+        case EN::NORESULTS:
+        case EN::SCATTER:
+        case EN::DISTRIBUTE:
+        case EN::GATHER:
+        case EN::REMOTE:
+        case EN::ILLEGAL:
+        case EN::LIMIT:                      // LIMIT is criterion to stop
+          return true;  // abort.
 
-      case EN::ENUMERATE_COLLECTION:
-        return handleEnumerateCollectionNode(static_cast<EnumerateCollectionNode*>(en), _level);
+        case EN::SORT:     // pulling two sorts together is done elsewhere.
+          if (! _sorts.empty() || _sortNode != nullptr) {
+            return true; // a different SORT node. abort
+          }
+          _sortNode = static_cast<SortNode*>(en);
+          for (auto& it : _sortNode->getElements()) {
+            _sorts.emplace_back((it.first)->id, it.second);
+          }
+          return false;
+
+        case EN::INDEX: 
+          return handleIndexNode(static_cast<IndexNode*>(en));
+
+        case EN::ENUMERATE_COLLECTION:
+          return handleEnumerateCollectionNode(static_cast<EnumerateCollectionNode*>(en));
       }
       return true;
     }
@@ -3084,20 +2015,18 @@ class SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 int triagens::aql::useIndexForSortRule (Optimizer* opt, 
                                         ExecutionPlan* plan,
                                         Optimizer::Rule const* rule) {
+
   bool modified = false;
   std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(EN::SORT, true);
 
   for (auto const& n : nodes) {
-    auto thisSortNode = static_cast<SortNode*>(n);
-    SortAnalysis node(thisSortNode);
+    auto sortNode = static_cast<SortNode*>(n);
 
-    if (node.isAnalyzeable() && n->hasDependency()) {
-      SortToIndexNode finder(plan, &node, rule->level);
-      thisSortNode->getFirstDependency()->walk(&finder);
+    SortToIndexNode finder(plan);
+    sortNode->walk(&finder);
 
-      if (finder.modified()) {
-        modified = true;
-      }
+    if (finder._modified) {
+      modified = true;
     }
   }
     
@@ -3110,175 +2039,6 @@ int triagens::aql::useIndexForSortRule (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
-// TODO: finish rule and test it
-struct FilterCondition {
-  std::string variableName;
-  std::string attributeName;
-  AstNode const* lowNode  = nullptr;
-  AstNode const* highNode = nullptr;
-  bool lowInclusive       = false;
-  bool highInclusive      = false;
-  
-  FilterCondition () {
-  }
-
-  bool isFullyCoveredBy (RangeInfo const& other) {
-    if (! other.isConstant()) {
-      return false;
-    }
-
-    if (other._var != variableName ||
-        other._attr != attributeName) {
-      return false;
-    }
-
-    bool const lowDefined = (lowNode != nullptr);
-    bool const highDefined = (highNode != nullptr);
-
-    // do the quickest checks first
-    if (lowDefined != other._lowConst.isDefined()) {
-      return false;
-    }
-
-    if (highDefined != other._highConst.isDefined()) {
-      return false;
-    }
-
-    if (lowDefined && other._lowConst.inclusive() != lowInclusive) {
-      return false;
-    }
-
-    if (highDefined && other._highConst.inclusive() != highInclusive) {
-      return false;
-    }
-
-    // now the expensive checks
-    if (lowDefined) {
-      Json json(TRI_UNKNOWN_MEM_ZONE, lowNode->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
-
-      if (! TRI_CheckSameValueJson(other._lowConst.bound().json(), json.json())) {
-        return false;
-      } 
-    }
-
-    if (highDefined) {
-      Json json(TRI_UNKNOWN_MEM_ZONE, highNode->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
-
-      if (! TRI_CheckSameValueJson(other._highConst.bound().json(), json.json())) {
-        return false;
-      } 
-    }
-
-    return true;
-  }
-
-  bool analyze (AstNode const* node) {
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_LT ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-      AstNodeType op = node->type;
-      bool found = false;
-
-      if (lhs->isConstant() && 
-         rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        found = (lhs->type == NODE_TYPE_VALUE);
-      }
-      else if (rhs->isConstant() &&
-               lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        // reverse the nodes
-        lhs = node->getMember(1);
-        rhs = node->getMember(0);
-
-        op = Ast::ReverseOperator(node->type);
-        found = (lhs->type == NODE_TYPE_VALUE);
-      }
-
-      if (found) {
-        TRI_ASSERT(lhs->type == NODE_TYPE_VALUE);
-        TRI_ASSERT(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS);
-
-        std::function<void(AstNode const*, std::string&, std::string&)> buildName;
-        buildName = [&] (AstNode const* node, std::string& variableName, std::string& attributeName) -> void {
-          if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-            buildName(node->getMember(0), variableName, attributeName);
-
-            if (! attributeName.empty()) {
-              attributeName.push_back('.');
-            } 
-
-            attributeName.append(node->getStringValue(), node->getStringLength()); 
-          }
-          else if (node->type == NODE_TYPE_REFERENCE) { 
-            auto variable = static_cast<Variable const*>(node->getData());
-            variableName = variable->name;
-          }
-        }; 
-
-        if (attributeName.empty()) {
-
-          buildName(rhs, variableName, attributeName);
-          if (op == NODE_TYPE_OPERATOR_BINARY_EQ ||
-              op == NODE_TYPE_OPERATOR_BINARY_NE) {
-            lowInclusive  = true;
-            lowNode       = lhs;
-            highInclusive = true;
-            highNode      = lhs;
-          }
-          else if (op == NODE_TYPE_OPERATOR_BINARY_LT) {
-            lowInclusive  = false;
-            lowNode       = lhs;
-          }
-          else if (op == NODE_TYPE_OPERATOR_BINARY_LE) {
-            lowInclusive  = true;
-            lowNode       = lhs;
-          } 
-          else if (op == NODE_TYPE_OPERATOR_BINARY_GT) {
-            highInclusive = false;
-            highNode      = lhs;
-          }
-          else if (op == NODE_TYPE_OPERATOR_BINARY_GE) {
-            highInclusive = true;
-            highNode      = lhs;
-          }
-
-          return true;
-        }
-        else {
-          // already have collected something, now check if the next condition
-          // is for the same variable / attribute
-          std::string compareVariableName;
-          std::string compareAttributeName;
-          buildName(rhs, compareVariableName, compareAttributeName);
-
-          if (variableName == compareVariableName && 
-              attributeName == compareAttributeName) {
-            // same attribute
-            // TODO
-          }
-        }
-
-        // fall-through 
-      }
-
-      return false;
-    }
-
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      auto lhs = node->getMember(0);
-      auto rhs = node->getMember(1);
-
-      return (analyze(lhs) && analyze(rhs));
-    } 
-
-    return false;
-  }
-
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to remove filters which are covered by indexes
 ////////////////////////////////////////////////////////////////////////////////
@@ -3287,50 +2047,81 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
                                                     ExecutionPlan* plan,
                                                     Optimizer::Rule const* rule) {
   std::unordered_set<ExecutionNode*> toUnlink;
+  bool modified = false;
   std::vector<ExecutionNode*>&& nodes= plan->findNodesOfType(EN::FILTER, true); 
   
-  for (auto const& n : nodes) {
-    auto fn = static_cast<FilterNode*>(n);
+  for (auto const& node : nodes) {
+    auto fn = static_cast<FilterNode const*>(node);
     // find the node with the filter expression
     auto inVar = fn->getVariablesUsedHere();
     TRI_ASSERT(inVar.size() == 1);
-    // auto outVar = cn->getVariablesSetHere();
           
     auto setter = plan->getVarSetBy(inVar[0]->id);
-    if (setter == nullptr) {
+
+    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+      continue;
+    }
+        
+    auto calculationNode = static_cast<CalculationNode*>(setter);
+    auto conditionNode = calculationNode->expression()->node();
+
+    // build the filter condition 
+    std::unique_ptr<Condition> condition(new Condition(plan->getAst()));
+    condition->andCombine(conditionNode);
+    condition->normalize(plan);
+
+    if (condition->root() == nullptr) {
       continue;
     }
 
-    if (setter->getType() != EN::CALCULATION) {
-      continue;
-    }
-   
-    // check the filter condition 
-    FilterCondition condition;
-    if (! condition.analyze(static_cast<CalculationNode const*>(setter)->expression()->node())) {
+    size_t const n = condition->root()->numMembers();
+
+    if (n != 1) {
+      // either no condition or multiple ORed conditions...
       continue;
     }
 
     bool handled = false;
-    auto current = n;
+    auto current = node;
     while (current != nullptr) {
-      if (current->getType() == EN::INDEX_RANGE) {
-        // found an index range, now check if the expression is covered by the index
-        auto const& ranges = static_cast<IndexRangeNode const*>(current)->ranges();
+      if (current->getType() == EN::INDEX) {
+        auto indexNode = static_cast<IndexNode const*>(current);
 
-        // TODO: this is not prepared for OR conditions
-        for (auto const& it : ranges) {
-          for (auto it2 : it) {
-            if (condition.isFullyCoveredBy(it2)) {
+        // found an index node, now check if the expression is covered by the index
+        auto indexCondition = indexNode->condition();
+
+        if (indexCondition != nullptr && ! indexCondition->isEmpty()) {
+          auto const& indexesUsed = indexNode->getIndexes();
+
+          if (indexesUsed.size() == 1) {
+            // single index. this is something that we can handle
+
+            auto newNode = condition->removeIndexCondition(indexNode->outVariable(), indexCondition->root());
+
+            if (newNode == nullptr) {
+              // no condition left...
+              // FILTER node can be completely removed
               toUnlink.emplace(setter);
-              toUnlink.emplace(n);
-              break;
+              toUnlink.emplace(node);
+              modified = true;
+              handled = true;
             }
-          } 
-
-          if (handled) {
-            break;
+            else if (newNode != condition->root()) {
+              // some condition is left, but it is a different one than
+              // the one from the FILTER node
+              std::unique_ptr<Expression> expr(new Expression(plan->getAst(), newNode));
+              CalculationNode* cn = new CalculationNode(plan, plan->nextId(), expr.get(), calculationNode->outVariable());
+              expr.release();
+              plan->registerNode(cn);
+              plan->replaceNode(setter, cn);
+              modified = true;
+              handled = true;
+            }
           }
+        }
+
+        if (handled) {
+          break;
         }
       }
 
@@ -3345,13 +2136,12 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
       current = current->getFirstDependency();
     }
   }
-
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule, ! toUnlink.empty());
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3495,7 +2285,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
             newPlan->insertDependency(parent, newNodes[permTuple[j]]);
           }
         }
-
+    
         // OK, the new plan is ready, let's report it:
         if (! opt->addPlan(newPlan, rule, true)) {
           // have enough plans. stop permutations
@@ -3528,10 +2318,10 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
 
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // we are a coordinator. now look in the plan for nodes of type
-    // EnumerateCollectionNode and IndexRangeNode
+    // EnumerateCollectionNode and IndexNode
     std::vector<ExecutionNode::NodeType> const types = { 
       ExecutionNode::ENUMERATE_COLLECTION, 
-      ExecutionNode::INDEX_RANGE,
+      ExecutionNode::INDEX,
       ExecutionNode::INSERT,
       ExecutionNode::UPDATE,
       ExecutionNode::REPLACE,
@@ -3564,9 +2354,9 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
         vocbase = static_cast<EnumerateCollectionNode*>(node)->vocbase();
         collection = static_cast<EnumerateCollectionNode*>(node)->collection();
       }
-      else if (nodeType == ExecutionNode::INDEX_RANGE) {
-        vocbase = static_cast<IndexRangeNode*>(node)->vocbase();
-        collection = static_cast<IndexRangeNode*>(node)->collection();
+      else if (nodeType == ExecutionNode::INDEX) {
+        vocbase = static_cast<IndexNode*>(node)->vocbase();
+        collection = static_cast<IndexNode*>(node)->collection();
       }
       else if (nodeType == ExecutionNode::INSERT ||
                nodeType == ExecutionNode::UPDATE ||
@@ -3892,7 +2682,7 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::SORT:
-        case EN::INDEX_RANGE:
+        case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
           //do break
           stopSearching = true;
@@ -3988,7 +2778,7 @@ int triagens::aql::distributeSortToClusterRule (Optimizer* opt,
         case EN::ILLEGAL:
         case EN::REMOTE:
         case EN::LIMIT:
-        case EN::INDEX_RANGE:
+        case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -4262,7 +3052,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         case EN::ILLEGAL:
         case EN::LIMIT:           
         case EN::SORT:
-        case EN::INDEX_RANGE: {
+        case EN::INDEX: {
           // if we meet any of the above, then we abort . . .
         }
     }
@@ -4325,12 +3115,15 @@ struct CommonNodeFinder {
             && ( node->type == NODE_TYPE_OPERATOR_BINARY_LE 
               || node->type == NODE_TYPE_OPERATOR_BINARY_LT
               || node->type == NODE_TYPE_OPERATOR_BINARY_GE 
-              || node->type == NODE_TYPE_OPERATOR_BINARY_GT ))) {
+              || node->type == NODE_TYPE_OPERATOR_BINARY_GT
+              || node->type == NODE_TYPE_OPERATOR_BINARY_IN))) {
 
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
 
-      if (lhs->isConstant()) {
+      bool const isIn = (node->type == NODE_TYPE_OPERATOR_BINARY_IN && rhs->isArray());
+
+      if (! isIn && lhs->isConstant()) {
         commonNode = rhs;
         commonName = commonNode->toString();
         possibleNodes.clear();
@@ -4353,17 +3146,19 @@ struct CommonNodeFinder {
         return true;
       }
 
-      if (lhs->type == NODE_TYPE_FCALL || 
-          lhs->type == NODE_TYPE_FCALL_USER ||
-          lhs->type == NODE_TYPE_REFERENCE) {
+      if (! isIn && 
+          (lhs->type == NODE_TYPE_FCALL || 
+           lhs->type == NODE_TYPE_FCALL_USER ||
+           lhs->type == NODE_TYPE_REFERENCE)) {
         commonNode = rhs;
         commonName = commonNode->toString();
         possibleNodes.clear();
         return true;
       }
 
-      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-          lhs->type == NODE_TYPE_INDEXED_ACCESS) {
+      if (! isIn &&
+          (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+           lhs->type == NODE_TYPE_INDEXED_ACCESS)) {
         if (possibleNodes.size() == 2) {
           for (size_t i = 0; i < 2; i++) {
             if (lhs->toString() == possibleNodes[i]->toString()) {
@@ -4431,6 +3226,9 @@ struct OrToInConverter {
     if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_EQ, commonNode, commonName)) {
       return canConvertExpressionWalker(node);
     }
+    else if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_IN, commonNode, commonName)) {
+      return canConvertExpressionWalker(node);
+    }
     return false;
   }
 
@@ -4455,6 +3253,20 @@ struct OrToInConverter {
       } 
       // if canConvertExpressionWalker(lhs) and canConvertExpressionWalker(rhs), then one of
       // the equalities in the OR statement is of the form x == x
+      // fall-through intentional
+    }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
+
+      if (canConvertExpressionWalker(lhs) && ! canConvertExpressionWalker(rhs) && rhs->isArray()) {
+        size_t const n = rhs->numMembers();
+
+        for (size_t i = 0; i < n; ++i) {
+          valueNodes.emplace_back(rhs->getMemberUnchecked(i));
+        }
+        return true;
+      } 
       // fall-through intentional
     }
     else if (node->type == NODE_TYPE_REFERENCE ||
@@ -4803,7 +3615,7 @@ int triagens::aql::patchUpdateStatementsRule (Optimizer* opt,
       auto const type = dep->getType();
 
       if (type == EN::ENUMERATE_LIST || 
-          type == EN::INDEX_RANGE ||
+          type == EN::INDEX ||
           type == EN::SUBQUERY) {
         // not suitable
         modified = false;

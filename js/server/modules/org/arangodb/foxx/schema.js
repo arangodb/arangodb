@@ -71,7 +71,6 @@ function toJSONSchema(id, schema) {
       flags = attributeDescription.flags;
 
     if (flags && flags.presence === 'required') {
-      attributeSchema.required = true;
       jsonSchema.required.push(attributeName);
     }
 
@@ -87,6 +86,10 @@ function toJSONSchema(id, schema) {
 
     jsonSchema.properties[attributeName] = attributeSchema;
   });
+
+  if (!jsonSchema.required.length) {
+    delete jsonSchema.required;
+  }
 
   return jsonSchema;
 }

@@ -158,7 +158,6 @@ SlotInfo Slots::nextUnused (uint32_t size) {
           CONDITION_LOCKER(guard, _condition);
           TRI_ASSERT(_waiting > 0);
           --_waiting;
-          hasWaited = false;
         }
 
         // cycle until we have a valid logfile
@@ -286,7 +285,6 @@ SlotInfo Slots::nextUnused (uint32_t size,
           CONDITION_LOCKER(guard, _condition);
           TRI_ASSERT(_waiting > 0);
           --_waiting;
-          hasWaited = false;
         }
 
         // cycle until we have a valid logfile

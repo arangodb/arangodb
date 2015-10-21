@@ -59,7 +59,7 @@ V8Job::V8Job (TRI_vocbase_t* vocbase,
     _v8Dealer(v8Dealer),
     _command(command),
     _parameters(nullptr),
-    _canceled(0),
+    _canceled(false),
     _allowUseDatabase(allowUseDatabase) {
 
   if (parameters != nullptr) {
@@ -138,7 +138,7 @@ Job::status_t V8Job::work () {
             TRI_GET_GLOBALS();
 
             v8g->_canceled = true;
-            LOG_WARNING("caught non-catchable exception (aka termination) in periodic job");
+            LOG_WARNING("caught non-catchable exception (aka termination) in job");
           }
         }
       }
@@ -164,7 +164,7 @@ Job::status_t V8Job::work () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8Job::cancel () {
-  _canceled = 1;
+  _canceled = true;
   return true;
 }
 

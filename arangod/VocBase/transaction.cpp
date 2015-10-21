@@ -934,7 +934,8 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
                                   TRI_voc_cid_t cid,
                                   TRI_transaction_type_e accessType,
                                   int nestingLevel,
-                                  bool force) {
+                                  bool force,
+                                  bool allowImplicitCollections) {
 
   LOG_TRX(trx, nestingLevel, "adding collection %llu", (unsigned long long) cid);
 
@@ -986,6 +987,10 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
 
+  if (accessType == TRI_TRANSACTION_READ && ! allowImplicitCollections) {
+    return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
+  }
+
   // collection was not contained. now create and insert it
   trxCollection = CreateCollection(trx, cid, accessType, nestingLevel);
 
@@ -1008,8 +1013,8 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
 /// @brief make sure all declared collections are used & locked
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_EnsureCollectionsTransaction (TRI_transaction_t* trx) {
-  return UseCollections(trx, 0);
+int TRI_EnsureCollectionsTransaction (TRI_transaction_t* trx, int nestingLevel) {
+  return UseCollections(trx, nestingLevel);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

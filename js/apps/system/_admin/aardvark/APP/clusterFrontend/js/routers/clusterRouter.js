@@ -121,12 +121,12 @@ arangoDatabase, btoa, _*/
     },
 
     handleResize: function() {
-        if (this.dashboardView) {
-            this.dashboardView.resize();
-        }
-        if (this.showClusterView) {
-            this.showClusterView.resize();
-        }
+      if (this.dashboardView) {
+        this.dashboardView.resize();
+      }
+      if (this.showClusterView) {
+        this.showClusterView.resize();
+      }
     },
 
     planTest: function() {

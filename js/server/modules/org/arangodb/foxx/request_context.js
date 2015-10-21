@@ -126,7 +126,6 @@ class RequestContext {
     this.constraints = constraints;
 
     this.docs = new SwaggerDocs(this.route.docs, models);
-    this.docs.addNickname(route.docs.httpMethod, route.url.match);
 
     var attr;
     var extensionWrapper = function(scope, func) {
@@ -649,7 +648,7 @@ class RequestContext {
       reason: reason,
       errorHandler: errorHandler
     });
-    this.route.docs.errorResponses.push(internal.constructErrorResponseDoc(code, reason));
+    this.route.docs.errorResponses.push({code: code, reason: reason});
     return this;
   }
 

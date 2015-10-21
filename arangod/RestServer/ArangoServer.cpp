@@ -34,7 +34,6 @@
 
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
-#include "Admin/ApplicationAdminServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/RestAqlHandler.h"
@@ -353,7 +352,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _applicationScheduler(nullptr),
     _applicationDispatcher(nullptr),
     _applicationEndpointServer(nullptr),
-    _applicationAdminServer(nullptr),
     _applicationCluster(nullptr),
     _jobManager(nullptr),
     _applicationV8(nullptr),
@@ -498,14 +496,6 @@ void ArangoServer::buildApplicationServer () {
   ;
 
   // .............................................................................
-  // and start a simple admin server
-  // .............................................................................
-
-  _applicationAdminServer = new ApplicationAdminServer();
-
-  _applicationServer->addFeature(_applicationAdminServer);
-
-  // .............................................................................
   // define server options
   // .............................................................................
 
@@ -524,19 +514,6 @@ void ArangoServer::buildApplicationServer () {
     ("temp-path", &_tempPath, "temporary path")
     ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
-  string languageName;
-
-  if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
-    char const* ICU_env = getenv("ICU_DATA");
-    LOG_FATAL_AND_EXIT("failed to initialize ICU; ICU_DATA='%s'", (ICU_env) ? ICU_env : "");
-  }
-
-  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
-    languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-  }
-  else {
-    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-  }
 
   // other options
   additional["Hidden Options"]
@@ -682,6 +659,24 @@ void ArangoServer::buildApplicationServer () {
   IGNORE_DATAFILE_ERRORS = _ignoreDatafileErrors;
   
   // .............................................................................
+  // set language name
+  // .............................................................................
+
+  string languageName;
+
+  if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
+    char const* ICU_env = getenv("ICU_DATA");
+    LOG_FATAL_AND_EXIT("failed to initialize ICU; ICU_DATA='%s'", (ICU_env) ? ICU_env : "");
+  }
+
+  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
+    languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+  }
+  else {
+    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+  }
+
+  // .............................................................................
   // init nonces
   // .............................................................................
 
@@ -818,6 +813,8 @@ void ArangoServer::buildApplicationServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::startupServer () {
+  TRI_InitializeStatistics();
+
   OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
   bool startServer = true;
 
@@ -856,7 +853,6 @@ int ArangoServer::startupServer () {
     // unable to initialize & start WAL logfile manager
     LOG_FATAL_AND_EXIT("unable to start WAL logfile manager");
   }
-
 
   // .............................................................................
   // prepare the various parts of the Arango server
@@ -1199,6 +1195,8 @@ int ArangoServer::startupServer () {
   if (mode == OperationMode::MODE_CONSOLE) {
     cout << endl << TRI_BYE_MESSAGE << endl;
   }
+
+  TRI_ShutdownStatistics();
 
   return res;
 }
@@ -1575,8 +1573,3 @@ void ArangoServer::closeDatabases () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

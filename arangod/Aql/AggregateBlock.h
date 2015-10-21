@@ -29,6 +29,7 @@
 #define ARANGODB_AQL_AGGREGATE_BLOCK_H 1
 
 #include "Basics/Common.h"
+#include "Aql/AggregateNode.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 
@@ -38,7 +39,6 @@ namespace triagens {
   }
 
   namespace aql {
-
     class AqlItemBlock;
     class ExecutionEngine;
 

@@ -287,7 +287,7 @@ The following execution node types will appear in the output of `explain`:
   attribute). Will appear exactly once in a query that contains an *INSERT* statement.
 * *RemoveNode*: removes documents from a collection (given in its *collection* 
   attribute). Will appear exactly once in a query that contains a *REMOVE* statement.
-* *ReplacesNode*: replaces documents in a collection (given in its *collection* 
+* *ReplaceNode*: replaces documents in a collection (given in its *collection* 
   attribute). Will appear exactly once in a query that contains a *REPLACE* statement.
 * *UpdateNode*: updates documents in a collection (given in its *collection* 
   attribute). Will appear exactly once in a query that contains an *UPDATE* statement.

@@ -87,33 +87,6 @@ namespace triagens {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
       }
 
-
-      ifstream * createInput (string const& filename) {
-        ifstream * s = new ifstream(filename.c_str());
-
-        if (! *s) {
-          delete s;
-          return nullptr;
-        }
-
-        return s;
-      }
-
-
-
-      ofstream * createOutput (string const& filename) {
-        ofstream* s = new ofstream(filename.c_str());
-
-        if (! *s) {
-          delete s;
-          return nullptr;
-        }
-
-        return s;
-      }
-
-
-
       string slurp (string const& filename) {
         int fd = TRI_OPEN(filename.c_str(), O_RDONLY);
 

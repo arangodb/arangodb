@@ -1,4 +1,5 @@
 window.onload = function(){
+window.localStorage.removeItem(":keyword");
 
 $(document).ready(function() {
 

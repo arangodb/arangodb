@@ -28,9 +28,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EdgeIndex.h"
+#include "Aql/AstNode.h"
+#include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
+#include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/transaction.h"
@@ -328,12 +332,71 @@ static bool IsEqualElementEdgeToByKey (void const* left,
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                           class EdgeIndexIterator
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+TRI_doc_mptr_t* EdgeIndexIterator::next () {
+  while (true) {
+    if (_position >= _keys.size()) {
+      // we're at the end of the lookup values
+      return nullptr;
+    }
+
+    if (_buffer == nullptr) {
+      // We start a new lookup
+      TRI_ASSERT(_position == 0);
+      _posInBuffer = 0;
+      _last = nullptr;
+      _buffer = _index->lookupByKey(&_keys[_position], _batchSize);
+      // fallthrough intentional
+    }
+    else if (_posInBuffer >= _buffer->size()) {
+      // We have to refill the buffer
+      delete _buffer;
+      _buffer = nullptr;
+
+      _posInBuffer = 0;
+      if (_last != nullptr) {
+        _buffer = _index->lookupByKeyContinue(_last, _batchSize);
+      }
+      else {
+        _buffer = _index->lookupByKey(&_keys[_position], _batchSize);
+      }
+    }
+
+    if (! _buffer->empty()) {
+      // found something
+      _last = _buffer->back();
+      return _buffer->at(_posInBuffer++);
+    }
+
+    // found no result. now go to next lookup value in _keys
+    ++_position;
+    // reset the _last value
+    _last = nullptr;
+  }
+}
+
+void EdgeIndexIterator::reset () {
+  _last = nullptr;
+  _position = 0;
+  _posInBuffer = 0;
+  // Free the vector space, not the content
+  delete _buffer;
+  _buffer = nullptr;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                       TRI_document_collection_t* collection) 
-  : Index(iid, collection, std::vector<std::vector<triagens::basics::AttributeName>>({ { { TRI_VOC_ATTRIBUTE_FROM, false } }, { { TRI_VOC_ATTRIBUTE_TO , false } } })),
+  : Index(iid, collection, std::vector<std::vector<triagens::basics::AttributeName>>({ { { TRI_VOC_ATTRIBUTE_FROM, false } }, { { TRI_VOC_ATTRIBUTE_TO , false } } }), false, false),
     _edgesFrom(nullptr),
     _edgesTo(nullptr),
     _numBuckets(1) {
@@ -368,6 +431,18 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
                                      context);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index stub with a hard-coded selectivity estimate
+/// this is used in the cluster coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+EdgeIndex::EdgeIndex (TRI_json_t const* json)
+  : Index(json),
+    _edgesFrom(nullptr),
+    _edgesTo(nullptr),
+    _numBuckets(1) {
+}
+
 EdgeIndex::~EdgeIndex () {
   delete _edgesTo;
   delete _edgesFrom;
@@ -378,17 +453,28 @@ EdgeIndex::~EdgeIndex () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a selectivity esimtate for the index
+/// @brief return a selectivity estimate for the index
 ////////////////////////////////////////////////////////////////////////////////
 
-double EdgeIndex::selectivityEstimate () const {  
+double EdgeIndex::selectivityEstimate () const {
+  if (_edgesFrom == nullptr || _edgesTo == nullptr) {
+    // use hard-coded selectivity estimate in case of cluster coordinator
+    return _selectivityEstimate;
+  }
+
   // return average selectivity of the two index parts
   double estimate = (_edgesFrom->selectivity() + _edgesTo->selectivity()) * 0.5;
   TRI_ASSERT(estimate >= 0.0 && estimate <= 1.00001); // floating-point tolerance 
   return estimate;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory usage for the index
+////////////////////////////////////////////////////////////////////////////////
  
 size_t EdgeIndex::memory () const {
+  TRI_ASSERT(_edgesFrom != nullptr);
+  TRI_ASSERT(_edgesTo != nullptr);
   return _edgesFrom->memoryUsage() + _edgesTo->memoryUsage();
 }
 
@@ -422,7 +508,7 @@ triagens::basics::Json EdgeIndex::toJsonFigures (TRI_memory_zone_t* zone) const 
 
 int EdgeIndex::insert (TRI_doc_mptr_t const* doc, 
                        bool isRollback) {
-  auto element = const_cast<void*>(static_cast<void const*>(doc));
+  auto element = const_cast<TRI_doc_mptr_t*>(doc);
   _edgesFrom->insert(element, true, isRollback);
 
   try {
@@ -446,8 +532,8 @@ int EdgeIndex::remove (TRI_doc_mptr_t const* doc,
         
 int EdgeIndex::batchInsert (std::vector<TRI_doc_mptr_t const*> const* documents, 
                             size_t numThreads) {
-  _edgesFrom->batchInsert(reinterpret_cast<std::vector<void*> const*>(documents), numThreads);
-  _edgesTo->batchInsert(reinterpret_cast<std::vector<void*> const*>(documents), numThreads);
+  _edgesFrom->batchInsert(reinterpret_cast<std::vector<TRI_doc_mptr_t *> const*>(documents), numThreads);
+  _edgesTo->batchInsert(reinterpret_cast<std::vector<TRI_doc_mptr_t *> const*>(documents), numThreads);
   
   return TRI_ERROR_NO_ERROR;
 }
@@ -459,16 +545,14 @@ int EdgeIndex::batchInsert (std::vector<TRI_doc_mptr_t const*> const* documents,
       
 void EdgeIndex::lookup (TRI_edge_index_iterator_t const* edgeIndexIterator,
                         std::vector<TRI_doc_mptr_copy_t>& result,
-                        void*& next,
+                        TRI_doc_mptr_copy_t*& next,
                         size_t batchSize) {
 
-  std::function<void(void*)> callback = [&result] (void* data) -> void {
-    TRI_doc_mptr_t* doc = static_cast<TRI_doc_mptr_t*>(data);
-
-    result.emplace_back(*(doc));
+  auto callback = [&result] (TRI_doc_mptr_t* data) -> void {
+    result.emplace_back(*(data));
   };
 
-  std::vector<void*>* found = nullptr;
+  std::vector<TRI_doc_mptr_t*>* found = nullptr;
   if (next == nullptr) {
     if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
       found = _edgesFrom->lookupByKey(&(edgeIndexIterator->_edge), batchSize);
@@ -480,7 +564,7 @@ void EdgeIndex::lookup (TRI_edge_index_iterator_t const* edgeIndexIterator,
       TRI_ASSERT(false);
     }
     if (found != nullptr && found->size() != 0) {
-      next = found->back();
+      next = static_cast<TRI_doc_mptr_copy_t*>(found->back());
     }
   }
   else {
@@ -494,7 +578,7 @@ void EdgeIndex::lookup (TRI_edge_index_iterator_t const* edgeIndexIterator,
       TRI_ASSERT(false);
     }
     if (found != nullptr && found->size() != 0) {
-      next = found->back();
+      next = static_cast<TRI_doc_mptr_copy_t*>(found->back());
     }
     else {
       next = nullptr;
@@ -534,6 +618,144 @@ int EdgeIndex::sizeHint (size_t size) {
   // set an initial size for the index for some new nodes to be created
   // without resizing
   return _edgesTo->resize(static_cast<uint32_t>(size + 2049));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether the index supports the condition
+////////////////////////////////////////////////////////////////////////////////
+
+bool EdgeIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
+                                         triagens::aql::Variable const* reference,
+                                         size_t itemsInIndex,
+                                         size_t& estimatedItems,
+                                         double& estimatedCost) const {
+  SimpleAttributeEqualityMatcher matcher({ 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false) }, 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false) } 
+  });
+  return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an IndexIterator for the given Condition
+////////////////////////////////////////////////////////////////////////////////
+
+IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
+                                                triagens::aql::Ast* ast,
+                                                triagens::aql::AstNode const* node,
+                                                triagens::aql::Variable const* reference,
+                                                bool const reverse) const {
+  TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+  SimpleAttributeEqualityMatcher matcher({ 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false) }, 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false) } 
+  });
+
+  triagens::aql::AstNode* allVals = matcher.getOne(ast, this, node, reference);
+  TRI_ASSERT(allVals->numMembers() == 1);
+
+  auto comp = allVals->getMember(0);
+
+  // assume a.b == value
+  auto attrNode = comp->getMember(0);
+  auto valNode  = comp->getMember(1);
+
+  if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // got value == a.b  -> flip sides
+    attrNode = comp->getMember(1);
+    valNode  = comp->getMember(0);
+  }
+  TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS); 
+
+  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    // a.b == value
+    return createIterator(context, attrNode, std::vector<triagens::aql::AstNode const*>({ valNode }));
+  }
+  else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    // a.b IN values
+    if (! valNode->isArray()) {
+      return nullptr;
+    }
+
+    std::vector<triagens::aql::AstNode const*> valNodes;
+    size_t const n = valNode->numMembers();
+    valNodes.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      valNodes.emplace_back(valNode->getMemberUnchecked(i));
+    }
+
+    return createIterator(context, attrNode, valNodes);
+  }
+
+  // operator type unsupported
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specializes the condition for use with the index
+////////////////////////////////////////////////////////////////////////////////
+        
+triagens::aql::AstNode* EdgeIndex::specializeCondition (triagens::aql::AstNode* node,
+                                                        triagens::aql::Variable const* reference) const {
+  SimpleAttributeEqualityMatcher matcher({ 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false) }, 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false) } 
+  });
+
+  return matcher.specializeOne(this, node, reference);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the iterator
+////////////////////////////////////////////////////////////////////////////////
+    
+IndexIterator* EdgeIndex::createIterator (IndexIteratorContext* context,
+                                          triagens::aql::AstNode const* attrNode,
+                                          std::vector<triagens::aql::AstNode const*> const& valNodes) const {
+
+  // only leave the valid elements in the vector
+  size_t const n = valNodes.size();
+  std::vector<TRI_edge_header_t> keys;
+  keys.reserve(n);
+
+  for (size_t i = 0; i < n; ++i) {
+    auto valNode = valNodes[i];
+
+    if (! valNode->isStringValue()) {
+      continue;
+    }
+    if (valNode->getStringLength() == 0) {
+      continue;
+    }
+
+    TRI_voc_cid_t cid;
+    char const* key;
+    int res = context->resolveId(valNode->getStringValue(), cid, key);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      continue;
+    }
+
+    TRI_ASSERT(key != nullptr);
+    TRI_ASSERT(cid != 0);
+
+    keys.emplace_back(TRI_edge_header_t(cid, const_cast<char*>(key)));
+  }
+
+  if (keys.empty()) {
+    // nothing to do
+    return nullptr;
+  }
+
+  // _from or _to?
+  bool const isFrom = (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0);
+
+  return new EdgeIndexIterator(isFrom ? _edgesFrom : _edgesTo, keys);
 }
 
 // -----------------------------------------------------------------------------

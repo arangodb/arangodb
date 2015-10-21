@@ -1,4 +1,8 @@
+/*eslint no-extend-native:0 */
+/*eslint-disable */
+(function () {
 'use strict';
+/*eslint-enable */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief monkey-patches to built-in prototypes
@@ -28,7 +32,6 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    monkey-patches
@@ -42,8 +45,8 @@
 /// @brief shallow copies properties
 ////////////////////////////////////////////////////////////////////////////////
 
-Object.defineProperty(Object.prototype, "_shallowCopy", {
-  get: function () {
+Object.defineProperty(Object.prototype, '_shallowCopy', {
+  get() {
     var self = this;
     return this.propertyKeys.reduce(function (previous, key) {
       previous[key] = self[key];
@@ -56,8 +59,8 @@ Object.defineProperty(Object.prototype, "_shallowCopy", {
 /// @brief returns the property keys
 ////////////////////////////////////////////////////////////////////////////////
 
-Object.defineProperty(Object.prototype, "propertyKeys", {
-  get: function () {
+Object.defineProperty(Object.prototype, 'propertyKeys', {
+  get() {
     return Object.keys(this).filter(function (key) {
       return (key.charAt(0) !== '_' && key.charAt(0) !== '$');
     });

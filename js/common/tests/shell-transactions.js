@@ -218,6 +218,193 @@ function TransactionsInvocationsSuite () {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function TransactionsImplicitCollectionsSuite () {
+  'use strict';
+
+  var cn1 = "UnitTestsTransaction1";
+  var cn2 = "UnitTestsTransaction2";
+  var c1 = null;
+  var c2 = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn1);
+      db._drop(cn2);
+      c1 = db._create(cn1);
+      c2 = db._create(cn2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      c1 = null;
+      c2 = null;
+      db._drop(cn1);
+      db._drop(cn2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses implicitly declared collections in AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseInAql : function () {
+      var result = db._executeTransaction({
+        collections: { allowImplicit: false },
+        action: "function (params) { " +
+          "return require('internal').db._query('FOR i IN @@cn1 RETURN i', { '@cn1' : params.cn1 }).toArray(); }",
+        params: { cn1: cn1 }
+      });
+      assertEqual([ ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses implicitly declared collections in AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseImplicitAql : function () {
+      var result = db._executeTransaction({
+        collections: { allowImplicit: true, read: cn1 },
+        action: "function (params) { " + 
+          "return require('internal').db._query('FOR i IN @@cn1 RETURN i', { '@cn1' : params.cn1 }).toArray(); }",
+        params: { cn1: cn1 }
+      });
+      assertEqual([ ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses implicitly declared collections in AQL
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseNoImplicitAql : function () {
+      try {
+        db._executeTransaction({
+          collections: { allowImplicit: false, read: cn2 },
+          action: "function (params) { " +
+            "return require('internal').db._query('FOR i IN @@cn1 RETURN i', { '@cn1' : params.cn1 }).toArray(); }",
+          params: { cn1: cn1 }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses an explicitly declared collection for reading
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseForRead : function () {
+      var result = db._executeTransaction({
+        collections: { read: cn1 },
+        action: "function (params) { var db = require('internal').db; return db._collection(params.cn1).toArray(); }",
+        params: { cn1: cn1 }
+      });
+
+      assertEqual([ ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses an explicitly declared collection for writing
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseForWriteAllowImplicit : function () {
+      db._executeTransaction({
+        collections: { write: cn1, allowImplicit: true },
+        action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
+        params: { cn1: cn1 }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses an explicitly declared collection for writing
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseForWriteNoAllowImplicit : function () {
+      db._executeTransaction({
+        collections: { write: cn1, allowImplicit: false },
+        action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
+        params: { cn1: cn1 }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses an implicitly declared collection for reading
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseOtherForRead : function () {
+      var result = db._executeTransaction({
+        collections: { read: cn1 },
+        action: "function (params) { var db = require('internal').db; return db._collection(params.cn2).toArray(); }",
+        params: { cn2: cn2 }
+      });
+      
+      assertEqual([ ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses an implicitly declared collection for reading
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseOtherForReadAllowImplicit : function () {
+      var result = db._executeTransaction({
+        collections: { read: cn1, allowImplicit : true },
+        action: "function (params) { var db = require('internal').db; return db._collection(params.cn2).toArray(); }",
+        params: { cn2: cn2 }
+      });
+      
+      assertEqual([ ], result);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses an implicitly declared collection for reading
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseOtherForReadNoAllowImplicit : function () {
+      try {
+        db._executeTransaction({
+          collections: { read: cn1, allowImplicit : false },
+          action: "function (params) { var db = require('internal').db; return db._collection(params.cn2).toArray(); }",
+          params: { cn2: cn2 }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uses an implicitly declared collection for writing
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseOtherForWriteNoAllowImplicit : function () {
+      try {
+        db._executeTransaction({
+          collections: { read: cn1, allowImplicit : false },
+          action: "function (params) { var db = require('internal').db; db._collection(params.cn2).truncate(); }",
+          params: { cn2: cn2 }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    }
+  };
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
@@ -227,6 +414,7 @@ function TransactionsInvocationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(TransactionsInvocationsSuite);
+jsunity.run(TransactionsImplicitCollectionsSuite);
 
 return jsunity.done();
 

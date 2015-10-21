@@ -225,13 +225,14 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   }
 
   std::unique_ptr<TRI_json_t> json(TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (! TRI_IsObjectJson(json.get())) {
+    LOG_ERROR("unable to read replication applier configuration from file '%s'", filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
   }
-
-  int res = TRI_ERROR_NO_ERROR;
+  
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (config->_endpoint != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, config->_endpoint);
@@ -250,20 +251,8 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
     config->_password = nullptr;
   }
 
-  // read the endpoint
-  TRI_json_t const* value = TRI_LookupObjectJson(json.get(), "endpoint");
-
-  if (! TRI_IsStringJson(value)) {
-    res = TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
-  }
-  else {
-    config->_endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
-                                              value->_value._string.data,
-                                              value->_value._string.length - 1);
-  }
-
   // read the database name
-  value = TRI_LookupObjectJson(json.get(), "database");
+  TRI_json_t const* value = TRI_LookupObjectJson(json.get(), "database");
 
   if (! TRI_IsStringJson(value)) {
     config->_database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE,
@@ -385,8 +374,21 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
       }
     }
   }
+  
+  // read the endpoint
+  value = TRI_LookupObjectJson(json.get(), "endpoint");
 
-  return res;
+  if (! TRI_IsStringJson(value)) {
+    // we haven't found an endpoint. now don't let the start fail but continue
+    config->_autoStart = false;
+  }
+  else {
+    config->_endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
+                                              value->_value._string.data,
+                                              value->_value._string.length - 1);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -559,10 +561,6 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
                                                          TRI_vocbase_t* vocbase) {
   TRI_replication_applier_t* applier = new TRI_replication_applier_t(server, vocbase);
 
-  if (applier == nullptr) {
-    return nullptr;
-  }
-  
   TRI_InitConfigurationReplicationApplier(&applier->_configuration);
   TRI_InitStateReplicationApplier(&applier->_state);
 
@@ -571,10 +569,10 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
 
     if (res != TRI_ERROR_NO_ERROR &&
         res != TRI_ERROR_FILE_NOT_FOUND) {
-      TRI_set_errno(res);
       TRI_DestroyStateReplicationApplier(&applier->_state);
       TRI_DestroyConfigurationReplicationApplier(&applier->_configuration);
       delete applier;
+      TRI_set_errno(res);
 
       return nullptr;
     }
@@ -583,10 +581,10 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
 
     if (res != TRI_ERROR_NO_ERROR &&
         res != TRI_ERROR_FILE_NOT_FOUND) {
-      TRI_set_errno(res);
       TRI_DestroyStateReplicationApplier(&applier->_state);
       TRI_DestroyConfigurationReplicationApplier(&applier->_configuration);
       delete applier;
+      TRI_set_errno(res);
 
       return nullptr;
     }
@@ -897,8 +895,9 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
-    // read the safeResumeTick
-    res |= ReadTick(json.get(), "safeResumeTick", &state->_safeResumeTick, true);
+    // read the safeResumeTick. note: this is an optional attribute
+    state->_safeResumeTick = 0;
+    ReadTick(json.get(), "safeResumeTick", &state->_safeResumeTick, true);
   }
 
   LOG_TRACE("replication state file read successfully");

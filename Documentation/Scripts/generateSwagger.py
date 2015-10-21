@@ -713,7 +713,7 @@ def restbodyparam(cargo, r=Regexen()):
                 }
 
         if required:
-            setRequired(swagger['schema'][ptype2], name)
+            setRequired(swagger['definitions'][ptype2], name)
         
         return generic_handler_desc(cargo, r, "restbodyparam", None,
                                     swagger['definitions'][ptype2],
@@ -808,7 +808,6 @@ def reststruct(cargo, r=Regexen()):
             'description': ''
             }
 
-
     swagger['definitions'][className]['properties'][name] = {
         'type': ptype,
         'description': ''
@@ -823,6 +822,25 @@ def reststruct(cargo, r=Regexen()):
             swagger['definitions'][className]['properties'][name]['items'] = {
                 'type': ptype2
             }
+    if ptype == 'object' and len(ptype2) > 0:
+        if not ptype2 in swagger['definitions']:
+            swagger['definitions'][ptype2] = {
+                'x-filename': fn,
+                'type': 'object',
+                'properties' : {},
+                'description': ''
+                }
+        swagger['definitions'][className]['properties'][name] = {
+            '$ref': '#/definitions/' + ptype2
+            }
+
+        if required:
+            setRequired(swagger['definitions'][className], name)
+       
+        return generic_handler_desc(cargo, r, "reststruct", None,
+                                    swagger['definitions'][ptype2],
+                                    'description')
+
     elif ptype != 'string' and ptype != 'boolean':
         swagger['definitions'][className]['properties'][name]['format'] = ptype2
 
@@ -887,6 +905,9 @@ def restreplybody(cargo, r=Regexen()):
     else:
         required = False
 
+    if currentReturnCode == 0:
+        raise Exception("failed to add text to reply body: (have to specify the HTTP-code first) " + parameters(last))
+
     rcBlock = currentDocuBlock + '_rc_' +  currentReturnCode
     #if currentReturnCode:
     if restReplyBodyParam == None:
@@ -929,7 +950,7 @@ def restreplybody(cargo, r=Regexen()):
                 }
 
         if required:
-            setRequired(swagger['schema'][ptype2], name)
+            setRequired(swagger['definitions'][ptype2], name)
        
         return generic_handler_desc(cargo, r, "restbodyparam", None,
                                     swagger['definitions'][ptype2],
@@ -1211,7 +1232,7 @@ files = {
   "Database" : [ "js/actions/api-database.js" ],
   "Cluster" : ["js/actions/api-cluster.js"],
   "Documents" : [ "arangod/RestHandler/RestDocumentHandler.cpp" ],
-  "Graph" : ["js/apps/system/_api/gharial/APP/gharial.js", "js/actions/api-graph.js" ],
+  "Graph" : ["js/apps/system/_api/gharial/APP/gharial.js"],
   "Graph edges" : [ "arangod/RestHandler/RestEdgeHandler.cpp", "js/actions/api-edges.js" ],
   "Graph Traversal" : [ "js/actions/api-traversal.js" ],
   "Indexes" : [ "js/actions/api-index.js" ],

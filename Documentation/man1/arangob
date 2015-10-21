@@ -26,7 +26,7 @@ total number of requests to perform ENDOPTION
 OPTION "--test-case <string>"
 name of test case to perform (possible values: version, document, collection,
 import-document, hash, skiplist, edge, shapes, shapes-append, random-shapes, crud,
-crud-append, crud-write-read, aqltrx, counttrx, multitrx, multi-collection, aqlinsert) ENDOPTION
+crud-append, crud-write-read, aqltrx, counttrx, multitrx, multi-collection, aqlinsert, aqlv8) ENDOPTION
 OPTION "--complexity <int32>"
 complexity value for test case (meaning depends on test case) ENDOPTION
 OPTION "--server.endpoint <string>"

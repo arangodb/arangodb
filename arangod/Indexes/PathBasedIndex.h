@@ -37,6 +37,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
 
+struct TRI_json_t;
 class VocShaper;
 
 // -----------------------------------------------------------------------------
@@ -44,9 +45,38 @@ class VocShaper;
 // -----------------------------------------------------------------------------
 
 namespace triagens {
+  namespace aql {
+    enum AstNodeType : uint32_t;
+  }
+
   namespace arango {
 
     class PathBasedIndex : public Index {
+
+      protected:
+
+        struct PermutationState {
+          PermutationState (triagens::aql::AstNodeType type, triagens::aql::AstNode const* value, size_t attributePosition, size_t n)
+            : type(type),
+              value(value),
+              attributePosition(attributePosition),
+              current(0),
+              n(n) {
+            TRI_ASSERT(n > 0);
+          }
+            
+          triagens::aql::AstNode const* getValue () const; 
+
+          triagens::aql::AstNodeType    type;
+          triagens::aql::AstNode const* value;
+          size_t const                  attributePosition;
+          size_t                        current;
+          size_t const                  n;
+        };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          shared Permuation struct
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -61,6 +91,8 @@ namespace triagens {
                         std::vector<std::vector<triagens::basics::AttributeName>> const&,
                         bool unique,
                         bool sparse);
+        
+        explicit PathBasedIndex (struct TRI_json_t const*);
 
         ~PathBasedIndex ();
 
@@ -84,22 +116,6 @@ namespace triagens {
         
         std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths () const {
           return _paths;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the index is sparse
-////////////////////////////////////////////////////////////////////////////////
-
-        inline bool sparse () const {
-          return _sparse;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the index is unique
-////////////////////////////////////////////////////////////////////////////////
-        
-        inline bool unique () const {
-          return _unique;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,18 +195,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const  _paths;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether the index is unique
-////////////////////////////////////////////////////////////////////////////////
-
-        bool const _unique;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether the index is sparse
-////////////////////////////////////////////////////////////////////////////////
-
-        bool const _sparse;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not at least one attribute is expanded

@@ -156,18 +156,21 @@ function main (argv) {
     print(JSON.stringify(r));
   }
 
-  fs.write("out/UNITTEST_RESULT.json", JSON.stringify(r));
-  fs.write("out/UNITTEST_RESULT_SUMMARY.txt", JSON.stringify(! r.crashed));
+  if (options.writeXmlReport) {
 
-  try {
-    resultsToXml(r, "UNITTEST_RESULT_", (options.hasOwnProperty('cluster') && options.cluster));
-  }
-  catch (x) {
-    print("exception while serializing status xml!");
-    print(x.message);
-    print(JSON.stringify(r));
-  }
+    fs.write("out/UNITTEST_RESULT.json", JSON.stringify(r));
+    fs.write("out/UNITTEST_RESULT_SUMMARY.txt", JSON.stringify(! r.crashed));
 
+    try {
+      resultsToXml(r, "UNITTEST_RESULT_", (options.hasOwnProperty('cluster') && options.cluster));
+    }
+    catch (x) {
+      print("exception while serializing status xml!");
+      print(x.message);
+      print(x.stack);
+      print(JSON.stringify(r));
+    }
+  }
   UnitTest.unitTestPrettyPrintResults(r);
 
   if (r.hasOwnProperty("crashed") && r.crashed) {

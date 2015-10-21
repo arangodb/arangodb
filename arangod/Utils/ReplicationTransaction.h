@@ -101,7 +101,7 @@ namespace triagens {
           TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE);
 
           if (trxCollection == nullptr) {
-            int res = TRI_AddCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE, 0, true);
+            int res = TRI_AddCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE, 0, true, true);
 
             if (res == TRI_ERROR_NO_ERROR) {
               res = TRI_EnsureCollectionsTransaction(this->_trx);

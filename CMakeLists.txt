@@ -480,6 +480,9 @@ macro (generate_path_config name)
   if ((${name} STREQUAL "arangod") AND RASPBIAN)
     STRING(REGEX REPLACE "[\r\n]threads =[^\r\n]*" "\nthreads = 1" 
            FileContent "${FileContent}")
+
+    STRING(REGEX REPLACE "[\r\n]v8-contexts =[^\r\n]*" "\n8-contexts = 1" 
+           FileContent "${FileContent}")
   endif ()
 
   FILE(WRITE ${PROJECT_BINARY_DIR}/etc/arangodb/${name}.conf "${FileContent}")

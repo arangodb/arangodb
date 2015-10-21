@@ -3,7 +3,7 @@
 /*global CPP_SHORTEST_PATH, CPP_NEIGHBORS, Set */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, internal query functions
+/// @brief Aql, internal query functions
 ///
 /// @file
 ///
@@ -2948,7 +2948,7 @@ function AQL_RANGE (from, to, step) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a list of unique elements from the list
+/// @brief return a list of unique elements from the array
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_UNIQUE (values) {
@@ -2975,6 +2975,23 @@ function AQL_UNIQUE (values) {
   });
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a list of unique elements from the array
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_SORTED_UNIQUE (values) {
+  'use strict';
+
+  var unique = AQL_UNIQUE(values);
+
+  if (TYPEWEIGHT(unique) !== TYPEWEIGHT_ARRAY) {
+    return null;
+  }
+
+  unique.sort(RELATIONAL_CMP);
+  return unique;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5397,7 +5414,7 @@ function AQL_PATHS (vertices, edgeCollection, direction, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_paths
+/// @startDocuBlock JSF_aql_general_graph_paths
 /// The GRAPH\_PATHS function returns all paths of a graph.
 ///
 /// `GRAPH_PATHS (graphName, options)`
@@ -6617,7 +6634,7 @@ function IS_EXAMPLE_SET (example) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_shortest_paths
+/// @startDocuBlock JSF_aql_general_graph_shortest_paths
 /// The GRAPH\_SHORTEST\_PATH function returns all shortest paths of a graph.
 ///
 /// `GRAPH_SHORTEST_PATH (graphName, startVertexExample, endVertexExample, options)`
@@ -6641,43 +6658,43 @@ function IS_EXAMPLE_SET (example) {
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample* : An example for the desired start Vertices
-/// (see [example](#short_explanation_of_the_example_parameter)).
+///   (see [example](#short_explanation_of_the_example_parameter)).
 /// * *endVertexExample*   : An example for the desired
-/// end Vertices (see [example](#short_explanation_of_the_example_parameter)).
+///   end Vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options* (optional) : An object containing the following options:
 ///   * *direction*                        : The direction of the edges as a string.
-///   Possible values are *outbound*, *inbound* and *any* (default).
+///     Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
-///   collection names. Only edges from these collections will be considered for the path.
+///     collection names. Only edges from these collections will be considered for the path.
 ///   * *startVertexCollectionRestriction* : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   start vertex of a path.
+///     collection names. Only vertices from these collections will be considered as
+///     start vertex of a path.
 ///   * *endVertexCollectionRestriction*   : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   end vertex of a path.
+///     collection names. Only vertices from these collections will be considered as
+///     end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the
-///   edges in the shortest paths
-///   (see [example](#short_explanation_of_the_example_parameter)).
+///     edges in the shortest paths
+///     (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
-///   the shortest paths. If both start and end vertex examples are empty
-///   [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
-///   used, otherwise the default is [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
+///     the shortest paths. If both start and end vertex examples are empty
+///     [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
+///     used, otherwise the default is [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 ///   * *weight*                           : The name of the attribute of
-///   the edges containing the length as a string.
+///     the edges containing the length as a string.
 ///   * *defaultWeight*                    : Only used with the option *weight*.
-///   If an edge does not have the attribute named as defined in option *weight* this default
-///   is used as length.
-///   If no default is supplied the default would be positive Infinity so the path could
-///   not be calculated.
+///     If an edge does not have the attribute named as defined in option *weight* this default
+///     is used as length.
+///     If no default is supplied the default would be positive Infinity so the path could
+///     not be calculated.
 ///   * *stopAtFirstMatch*                 : Only useful if targetVertices is an example that matches 
-///                                          to more than one vertex. If so only the shortest path to
-///                                          the closest of these target vertices is returned.
-///                                          This flag is of special use if you have target pattern and
-///                                          you want to know which vertex with this pattern is matched first.
+///     to more than one vertex. If so only the shortest path to
+///     the closest of these target vertices is returned.
+///     This flag is of special use if you have target pattern and
+///     you want to know which vertex with this pattern is matched first.
 ///   * *includeData*                      : Triggers if only *_id*'s are returned (*false*, default)
-///                                          or if data is included for all objects as well (*true*)
-///                                          This will modify the content of *vertex*, *path.vertices*
-///                                          and *path.edges*. 
+///     or if data is included for all objects as well (*true*)
+///     This will modify the content of *vertex*, *path.vertices*
+///     and *path.edges*. 
 ///
 /// NOTE: Since version 2.6 we have included a new optional parameter *includeData*.
 /// This parameter triggers if the result contains the real data object *true* or
@@ -6866,7 +6883,7 @@ function AQL_TRAVERSAL (vertexCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_traversal
+/// @startDocuBlock JSF_aql_general_graph_traversal
 /// The GRAPH\_TRAVERSAL function traverses through the graph.
 ///
 /// `GRAPH_TRAVERSAL (graphName, startVertexExample, direction, options)`
@@ -7049,7 +7066,7 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_distance
+/// @startDocuBlock JSF_aql_general_graph_distance
 /// The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.
 ///
 /// `GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
@@ -7121,7 +7138,7 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_traversal_tree
+/// @startDocuBlock JSF_aql_general_graph_traversal_tree
 /// The GRAPH\_TRAVERSAL\_TREE function traverses through the graph.
 ///
 /// `GRAPH_TRAVERSAL_TREE (graphName, startVertexExample, direction, connectName, options)`
@@ -7222,7 +7239,7 @@ function AQL_EDGES (edgeCollection,
     if (options && options.includeVertices) {
       for (let i = 0; i < result.length; ++i) {
         try {
-          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._from) };
+          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._to) };
         }
         catch (err) {
         }
@@ -7234,7 +7251,7 @@ function AQL_EDGES (edgeCollection,
     if (options && options.includeVertices) {
       for (let i = 0; i < result.length; ++i) {
         try {
-          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._to) };
+          result[i] = { edge: CLONE(result[i]), vertex: DOCUMENT_HANDLE(result[i]._from) };
         }
         catch (err) {
         }
@@ -7387,7 +7404,7 @@ function AQL_NEIGHBORS (vertexCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_neighbors
+/// @startDocuBlock JSF_aql_general_graph_neighbors
 /// The GRAPH\_NEIGHBORS function returns all neighbors of vertices.
 ///
 /// `GRAPH_NEIGHBORS (graphName, vertexExample, options)`
@@ -7402,7 +7419,7 @@ function AQL_NEIGHBORS (vertexCollection,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-///                          vertices (see [example](#short_explanation_of_the_example_parameter)).
+///   vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options*            : An object containing the following options:
 ///   * *direction*                        : The direction
 ///     of the edges. Possible values are *outbound*, *inbound* and *any* (default).
@@ -7613,7 +7630,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_edges
+/// @startDocuBlock JSF_aql_general_graph_edges
 ///
 /// `GRAPH_EDGES (graphName, vertexExample, options)`
 ///
@@ -7785,7 +7802,7 @@ function AQL_GRAPH_EDGES (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_vertices
+/// @startDocuBlock JSF_aql_general_graph_vertices
 /// The GRAPH\_VERTICES function returns all vertices.
 ///
 /// `GRAPH_VERTICES (graphName, vertexExample, options)`
@@ -7858,9 +7875,9 @@ function AQL_GRAPH_VERTICES (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_common_neighbors
-/// *The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
-/// defined by the examples.*
+/// @startDocuBlock JSF_aql_general_graph_common_neighbors
+/// The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
+/// defined by the examples.
 ///
 /// `GRAPH_COMMON_NEIGHBORS (graphName, vertex1Example, vertex2Examples,
 /// optionsVertex1, optionsVertex2)`
@@ -7995,7 +8012,7 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_common_properties
+/// @startDocuBlock JSF_aql_general_graph_common_properties
 ///
 /// `GRAPH_COMMON_PROPERTIES (graphName, vertex1Example, vertex2Examples, options)`
 ///
@@ -8167,7 +8184,7 @@ function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_absolute_eccentricity
+/// @startDocuBlock JSF_aql_general_graph_absolute_eccentricity
 ///
 /// `GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)`
 ///
@@ -8280,7 +8297,7 @@ function TRAVERSAL_ECCENTRICITY_VISITOR (config, result, node, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_eccentricity
+/// @startDocuBlock JSF_aql_general_graph_eccentricity
 ///
 /// `GRAPH_ECCENTRICITY (graphName, options)`
 ///
@@ -8384,7 +8401,7 @@ function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_absolute_closeness
+/// @startDocuBlock JSF_aql_general_graph_absolute_closeness
 ///
 /// `GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options)`
 ///
@@ -8542,7 +8559,7 @@ function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_closeness
+/// @startDocuBlock JSF_aql_general_graph_closeness
 ///
 /// `GRAPH_CLOSENESS (graphName, options)`
 ///
@@ -8650,7 +8667,7 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_absolute_betweenness
+/// @startDocuBlock JSF_aql_general_graph_absolute_betweenness
 ///
 /// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, options)`
 ///
@@ -8746,7 +8763,7 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_betweenness
+/// @startDocuBlock JSF_aql_general_graph_betweenness
 ///
 /// `GRAPH_BETWEENNESS (graphName, options)`
 ///
@@ -8827,7 +8844,7 @@ function AQL_GRAPH_BETWEENNESS (graphName, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_radius
+/// @startDocuBlock JSF_aql_general_graph_radius
 ///
 /// `GRAPH_RADIUS (graphName, options)`
 ///
@@ -8914,7 +8931,7 @@ function AQL_GRAPH_RADIUS (graphName, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_ahuacatl_general_graph_diameter
+/// @startDocuBlock JSF_aql_general_graph_diameter
 ///
 /// `GRAPH_DIAMETER (graphName, options)`
 ///
@@ -9079,6 +9096,7 @@ exports.AQL_NTH = AQL_NTH;
 exports.AQL_REVERSE = AQL_REVERSE;
 exports.AQL_RANGE = AQL_RANGE;
 exports.AQL_UNIQUE = AQL_UNIQUE;
+exports.AQL_SORTED_UNIQUE = AQL_SORTED_UNIQUE;
 exports.AQL_UNION = AQL_UNION;
 exports.AQL_UNION_DISTINCT = AQL_UNION_DISTINCT;
 exports.AQL_CALL = AQL_CALL;

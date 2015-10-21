@@ -29,7 +29,7 @@ make jslint || exit 1
 echo
 echo "$0: testing ArangoDB"
 
-make unittests-shell-server unittests-shell-server-aql unittests-http-server SKIP_RANGES=1 || exit 1
+./scripts/unittest all --skipRanges true --skipTimeCritical true --skipSsl true || exit 1
 
 echo
 echo "$0: done"

@@ -6,6 +6,28 @@ if [[ "$1" == "" ]]; then
 fi
 out="$1"
 
+rm -f completions-template
+
+cat << 'EOF' > completions-template
+_PROGNAME()
+{
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    opts="PROGOPTS"
+
+    if [[ ${cur} == -* ]] ; then
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+}
+
+complete -o default -F _PROGNAME PROGNAME
+
+EOF
+
+
 echo "" > $out
 
 for progname in arangob arangosh arangoimp arangodump arangorestore arangod
@@ -22,15 +44,13 @@ for progname in arangob arangosh arangoimp arangodump arangorestore arangod
       fi
 
       # set up the list of completions for the executable
-      # completions="`\"$executable\" $command | grep -o \"^\\ \\+--[a-z-]\\+\\(\\.[a-z0-9-]\\+\\)\\?\" | sed -e \"s/^/complete --command $progname -a /g\"`"
-      echo "# completions for $progname" >> "$out"
+      completions="`\"$executable\" $command | grep -o \"^\\ \\+--[a-z-]\\+\\(\\.[a-z0-9-]\\+\\)\\?\" | xargs`"
 
-      completions="`\"$executable\" $command`"
-      (echo "$completions" | grep "^  " | awk '/^  --/{if (x)print x;x="";}{x=(!x)?$0:x" "$0;}END{print x;}' | sed -e "s/ \+/ /g" | sed -e "s/(default:.*)//g" | sed -e "s/(current:.*)//g" | sed -e "s/<[a-zA-Z0-9]\+>//g" | tr -d "'" | sed -e "s/^ \+--\([a-zA-Z0-9.\-]\+\) \+\(.\+\)$/complete --command $progname -l '\\1' -d '\\2'/g" | sed -e "s/ \+'$/'/g") >> "$out"
-
-      echo "" >> "$out"
+      sed -e "s/PROGNAME/$progname/g" -e "s/PROGOPTS/$completions/g" completions-template >> $out          
     fi
   done
+
+rm -f completions-template
 
 echo "completions stored in file $out"
 echo "now copy this file to /etc/bash_completion.d/arangodb"

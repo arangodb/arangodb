@@ -234,7 +234,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
+bool ApplicationEndpointServer::afterOptionParsing (ProgramOptions& options) {
   // create the ssl context (if possible)
   bool ok = createSslContext();
 
@@ -385,27 +385,6 @@ bool ApplicationEndpointServer::prepare () {
                                            _contextData);
 
   LOG_INFO("using default API compatibility: %ld", (long int) _defaultApiCompatibility);
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationEndpointServer::prepare2 () {
-  if (_disabled) {
-    return true;
-  }
-
-  // scheduler might be created after prepare(), so we need to use prepare2()!!
-  Scheduler* scheduler = _applicationScheduler->scheduler();
-
-  if (scheduler == nullptr) {
-    LOG_FATAL_AND_EXIT("no scheduler is known, cannot create server");
-
-    return false;
-  }
 
   return true;
 }

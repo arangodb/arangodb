@@ -58,6 +58,7 @@ var optionsDocumentation = [
   '   - `skipGraph`: if set to true the Graph tests are skipped',
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipArangoB`: if set to true benchmark tests are skipped',
+  '   - `skipArangoBNonConnKeepAlive`: if set to true benchmark tests are skipped',
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipMemoryIntense`: tests using lots of resources will be skippet.',
@@ -128,6 +129,7 @@ var optionsDefaults = { "cluster": false,
                         "skipMemoryIntense": false,
                         "skipAql": false,
                         "skipArangoB": false,
+                        "skipArangoBNonConnKeepAlive": false,
                         "skipRanges": false,
                         "skipLogAnalysis": false,
                         "username": "root",
@@ -139,7 +141,8 @@ var optionsDefaults = { "cluster": false,
                         "valgrindargs": [],
                         "valgrindXmlFileBase" : "",
                         "extraargs": [],
-                        "coreDirectory": "/var/tmp"
+                        "coreDirectory": "/var/tmp",
+                        "writeXmlReport": true
 
 };
 var allTests =
@@ -864,7 +867,7 @@ function runThere (options, instanceInfo, file) {
     var t;
     if (file.indexOf("-spec") === -1) {
       t = 'var runTest = require("jsunity").runTest; '+
-          'return runTest(' + JSON.stringify(file) + ');';
+          'return runTest(' + JSON.stringify(file) + ', true);';
     }
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
@@ -909,7 +912,7 @@ function runHere (options, instanceInfo, file) {
   try {
     if (file.indexOf("-spec") === -1) {
       var runTest = require("jsunity").runTest; 
-      result = runTest(file);
+      result = runTest(file, true);
     }
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
@@ -1107,6 +1110,7 @@ function single_usage (testsuite, list) {
 
 testFuncs.single_server = function (options) {
   var result = { };
+  options.writeXmlReport = false;
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_server");
     if (instanceInfo === false) {
@@ -1144,6 +1148,7 @@ testFuncs.single_server = function (options) {
 
 testFuncs.single_localserver = function (options) {
   var result = { };
+  options.writeXmlReport = false;
   if (options.test !== undefined) {
     var instanceInfo;
     var te = options.test;
@@ -1163,6 +1168,7 @@ testFuncs.single_localserver = function (options) {
 
 testFuncs.single_client = function (options) {
   var result = { };
+  options.writeXmlReport = false;
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_client");
     if (instanceInfo === false) {
@@ -1904,6 +1910,11 @@ testFuncs.arangob = function (options) {
   var continueTesting = true;
 
   for (i = 0; i < benchTodo.length; i++) {
+    if ((options.skipArangoBNonConnKeepAlive) && 
+        benchTodo[i].hasOwnProperty('keep-alive') && 
+        (benchTodo[i]['keep-alive'] === "false")) {
+      benchTodo[i]['keep-alive'] = true;
+    }
     // On the cluster we do not yet have working transaction functionality:
     if (! options.cluster ||
         (benchTodo[i].test !== "counttrx" &&
@@ -2073,7 +2084,19 @@ testFuncs.authentication_parameters = function (options) {
   return results;
 };
 
-var internalMembers = ["code", "error", "status", "duration", "failed", "total", "crashed", "all_ok", "ok", "message"];
+var internalMembers = [
+  "code",
+  "error",
+  "status",
+  "duration",
+  "failed",
+  "total",
+  "crashed",
+  "all_ok",
+  "ok",
+  "message",
+  "suiteName"
+];
 
 function unitTestPrettyPrintResults(r) {
   var testrun;

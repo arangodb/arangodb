@@ -31,8 +31,10 @@
 #include "Aql/Arithmetic.h"
 #include "Aql/Collection.h"
 #include "Aql/Executor.h"
-#include "Basics/tri-strings.h"
+#include "Aql/Query.h"
 #include "Basics/Exceptions.h"
+#include "Basics/json-utilities.h"
+#include "Basics/tri-strings.h"
 #include "VocBase/collection.h"
 #include "VocBase/Graphs.h"
 
@@ -120,7 +122,7 @@ Ast::Ast (Query* query)
     _bindParameters(),
     _root(nullptr),
     _queries(),
-    _writeCollection(nullptr),
+    _writeCollections(),
     _functionsMayAccessDocuments(false) {
 
   TRI_ASSERT(_query != nullptr);
@@ -1018,6 +1020,91 @@ AstNode* Ast::createNodeArray () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST unique array node, AND-merged from two other arrays
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeIntersectedArray (AstNode const* lhs, 
+                                          AstNode const* rhs) {
+  TRI_ASSERT(lhs->isArray() && lhs->isConstant());
+  TRI_ASSERT(rhs->isArray() && rhs->isConstant());
+
+  size_t const nl = lhs->numMembers();
+  size_t const nr = rhs->numMembers();
+
+  std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
+    nl + nr,
+    triagens::basics::JsonHash(), 
+    triagens::basics::JsonEqual()
+  );
+
+  for (size_t i = 0; i < nl; ++i) {
+    auto member = lhs->getMemberUnchecked(i);
+    auto json = member->computeJson();
+        
+    cache.emplace(json, member);
+  }
+  
+  auto node = createNodeArray();
+
+  for (size_t i = 0; i < nr; ++i) {
+    auto member = rhs->getMemberUnchecked(i);
+    auto json = member->computeJson();
+        
+    auto it = cache.find(json);
+
+    if (it != cache.end()) {
+      // TODO: check if the node needs cloning or if we can get away without
+      // node->addMember(clone((*it).second));
+      node->addMember((*it).second); 
+    }
+  }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST unique array node, OR-merged from two other arrays
+/// TODO: optimize this function
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeUnionizedArray (AstNode const* lhs, 
+                                        AstNode const* rhs) {
+  TRI_ASSERT(lhs->isArray() && lhs->isConstant());
+  TRI_ASSERT(rhs->isArray() && rhs->isConstant());
+
+  size_t const nl = lhs->numMembers();
+  size_t const nr = rhs->numMembers();
+
+  std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
+    nl + nr,
+    triagens::basics::JsonHash(), 
+    triagens::basics::JsonEqual()
+  );
+
+  for (size_t i = 0; i < nl + nr; ++i) {
+    AstNode* member;
+    if (i < nl) {
+      member = lhs->getMemberUnchecked(i);
+    }
+    else {
+      member = rhs->getMemberUnchecked(i - nl);
+    }
+    auto json = member->computeJson();
+        
+    cache.emplace(json, member);
+  }
+  
+  auto node = createNodeArray();
+
+  for (auto& it : cache) {
+    node->addMember(it.second);
+  }
+  node->sort();
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST object node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1264,6 +1351,40 @@ AstNode* Ast::createNodeNop () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the AST nop node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::getNodeNop () {
+  return const_cast<AstNode*>(&NopNode);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST n-ary operator node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeNaryOperator (AstNodeType type) {
+  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND ||
+             type == NODE_TYPE_OPERATOR_NARY_OR);
+
+  return createNode(type);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST n-ary operator node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeNaryOperator (AstNodeType type,
+                                      AstNode const* child) {
+  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND ||
+             type == NODE_TYPE_OPERATOR_NARY_OR);
+
+  AstNode* node = createNode(type);
+  node->addMember(child);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief injects bind parameters into the AST
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1297,11 +1418,15 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         // collection parameter
         TRI_ASSERT(TRI_IsStringJson(value));
 
+        // check if the collection was used in a data-modification query
         bool isWriteCollection = false;
-        if (_writeCollection != nullptr && 
-            _writeCollection->type == NODE_TYPE_PARAMETER &&
-            ::strcmp(param, _writeCollection->getStringValue()) == 0) {
-          isWriteCollection = true;
+
+        for (auto const& it : _writeCollections) {
+          if (it->type == NODE_TYPE_PARAMETER &&
+              strcmp(param, it->getStringValue()) == 0) {
+            isWriteCollection = true;
+            break;
+          }
         }
 
         // turn node into a collection node
@@ -1311,8 +1436,14 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         node = createNodeCollection(name, isWriteCollection ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
 
         if (isWriteCollection) {
-          // this was the bind parameter that contained the collection to update 
-          _writeCollection = node;
+          // must update AST info now for all nodes that contained this parameter
+          for (size_t i = 0; i < _writeCollections.size(); ++i) {
+            if (_writeCollections[i]->type == NODE_TYPE_PARAMETER &&
+                strcmp(param, _writeCollections[i]->getStringValue()) == 0) {
+              _writeCollections[i] = node;
+              // no break here. replace all occurrences
+            }
+          }
         }
       }
       else {
@@ -1373,11 +1504,12 @@ void Ast::injectBindParameters (BindParameters& parameters) {
   };
 
   _root = traverseAndModify(_root, func, &p); 
-  
-  if (_writeCollection != nullptr &&
-      _writeCollection->type == NODE_TYPE_COLLECTION) {
-
-    _query->collections()->add(_writeCollection->getStringValue(), TRI_TRANSACTION_WRITE);
+ 
+  // add all collections used in data-modification statements
+  for (auto& it : _writeCollections) { 
+    if (it->type == NODE_TYPE_COLLECTION) {
+      _query->collections()->add(it->getStringValue(), TRI_TRANSACTION_WRITE);
+    }
   }
 
   for (auto it = p.begin(); it != p.end(); ++it) {
@@ -1721,6 +1853,11 @@ TopLevelAttributes Ast::getReferencedAttributes (AstNode const* node,
 
 AstNode* Ast::clone (AstNode const* node) {
   auto type = node->type;
+  if (type == NODE_TYPE_NOP) {
+    // nop node is a singleton
+    return const_cast<AstNode*>(node);
+  }
+
   auto copy = createNode(type);
 
   // special handling for certain node types
@@ -1737,8 +1874,9 @@ AstNode* Ast::clone (AstNode const* node) {
            type == NODE_TYPE_FCALL) {
     copy->setData(node->getData());
   }
-  else if (type == NODE_TYPE_UPSERT) {
-    copy->setIntValue(node->getIntValue());
+  else if (type == NODE_TYPE_UPSERT ||
+           type == NODE_TYPE_EXPANSION) {
+    copy->setIntValue(node->getIntValue(true));
   }
   else if (type == NODE_TYPE_VALUE) {
     switch (node->value.type) {
@@ -1774,6 +1912,65 @@ AstNode* Ast::clone (AstNode const* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief deduplicate an array
+/// will return the original node if no modifications were made, and a new
+/// node if the array contained modifications
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode const* Ast::deduplicateArray (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+
+  if (! node->isArray() || ! node->isConstant()) {
+    return node;
+  }
+
+  // ok, now we're sure node is a constant array
+  size_t const n = node->numMembers();
+
+  if (n <= 1) {
+    // nothing to do
+    return node;
+  }
+
+  // TODO: sort values in place first and compare two adjacent members each
+
+  std::unordered_map<TRI_json_t*, AstNode const*, triagens::basics::JsonHash, triagens::basics::JsonEqual> cache(
+    n,
+    triagens::basics::JsonHash(), 
+    triagens::basics::JsonEqual()
+  );
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMemberUnchecked(i);
+    auto json = member->computeJson();
+        
+    if (cache.find(json) == cache.end()) {
+      cache.emplace(json, member);
+    }
+  }
+
+  // we may have got duplicates. now create a copy of the deduplicated values
+  auto copy = createNodeArray();
+  copy->members.reserve(cache.size());
+
+  for (auto& it : cache) {
+    // TODO: check if the node needs cloning or if we can get away without
+    copy->addMember(it.second);
+  }
+  copy->sort();
+
+  return copy;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if an operator is reversible
+////////////////////////////////////////////////////////////////////////////////
+  
+bool Ast::IsReversibleOperator (AstNodeType type) {
+  return (ReversedOperators.find(static_cast<int>(type)) != ReversedOperators.end());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the reversed operator for a comparison operator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1785,6 +1982,24 @@ AstNodeType Ast::ReverseOperator (AstNodeType type) {
   }
   
   return (*it).second;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the n-ary operator type equivalent for a binary operator type
+////////////////////////////////////////////////////////////////////////////////
+
+AstNodeType Ast::NaryOperatorType (AstNodeType old) {
+  TRI_ASSERT(old == NODE_TYPE_OPERATOR_BINARY_AND ||
+             old == NODE_TYPE_OPERATOR_BINARY_OR);
+
+  if (old == NODE_TYPE_OPERATOR_BINARY_AND) {
+    return NODE_TYPE_OPERATOR_NARY_AND;
+  }
+  if (old == NODE_TYPE_OPERATOR_BINARY_OR) {
+    return NODE_TYPE_OPERATOR_NARY_OR;
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type for n-ary operator");
 }
 
 // -----------------------------------------------------------------------------
@@ -2604,6 +2819,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json,
   if (json->_type == TRI_JSON_ARRAY) {
     auto node = createNodeArray();
     size_t const n = TRI_LengthArrayJson(json);
+    node->members.reserve(n);
 
     for (size_t i = 0; i < n; ++i) {
       node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i)), copyStringValues)); 
@@ -2790,6 +3006,8 @@ std::pair<std::string, bool> Ast::normalizeFunctionName (char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNode (AstNodeType type) {
+  TRI_ASSERT(_query != nullptr);
+
   auto node = new AstNode(type);
 
   try {

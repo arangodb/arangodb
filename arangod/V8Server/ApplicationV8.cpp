@@ -260,7 +260,7 @@ void ApplicationV8::V8Context::handleCancelationCleanup () {
 
   TRI_ExecuteJavaScriptString(isolate,
                               isolate->GetCurrentContext(),
-                              TRI_V8_ASCII_STRING("require('internal').cleanupCancelation();"),
+                              TRI_V8_ASCII_STRING("require('module')._cleanupCancelation();"),
                               TRI_V8_ASCII_STRING("context cleanup method"),
                               false);
 }
@@ -349,11 +349,59 @@ void ApplicationV8::setVocbase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_t* vocbase,
-                                                       bool allowUseDatabase) {
+                                                       bool allowUseDatabase,
+						       ssize_t forceContext) {
   v8::Isolate* isolate = nullptr;
   V8Context* context   = nullptr;
 
-  {
+  // this is for TESTING / DEBUGGING only
+  if (forceContext != -1) {
+    size_t id = (size_t) forceContext;
+
+    while (! _stopping) {
+      {
+	CONDITION_LOCKER(guard, _contextCondition);
+
+	for (auto iter = _freeContexts.begin();  iter != _freeContexts.end();  ++iter) {
+	  if ((*iter)->_id == id) {
+	    context = *iter;
+	    _freeContexts.erase(iter);
+	    _busyContexts.emplace(context);
+	    break;
+	  }
+	}
+
+	if (context != nullptr) {
+	  break;
+	}
+
+	for (auto iter = _dirtyContexts.begin();  iter != _dirtyContexts.end();  ++iter) {
+	  if ((*iter)->_id == id) {
+	    context = *iter;
+	    _dirtyContexts.erase(iter);
+	    _busyContexts.emplace(context);
+	    break;
+	  }
+	}
+
+	if (context != nullptr) {
+	  break;
+	}
+      }
+
+      LOG_DEBUG("waiting for V8 context %d to become available", (int) id);
+      usleep(100 * 1000);
+    }
+
+    if (context == nullptr) {
+      return nullptr;
+    }
+
+    isolate = context->isolate;
+  }
+
+  // look for a free context
+  else {
     CONDITION_LOCKER(guard, _contextCondition);
 
     while (_freeContexts.empty() && ! _stopping) {
@@ -393,6 +441,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_t* vocbase,
     isolate = context->isolate;
 
     _freeContexts.pop_back();
+
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
   }
@@ -407,6 +456,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_t* vocbase,
   v8::HandleScope scope(isolate);
   auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
   localContext->Enter();
+
   {
     v8::Context::Scope contextScope(localContext);
 
@@ -568,7 +618,7 @@ void ApplicationV8::collectGarbage () {
   // can be performed more early for all dirty contexts. The flag is set
   // to false again once all contexts have been cleaned up and there is nothing
   // more to do
-  bool useReducedWait = false;
+  volatile bool useReducedWait = false;
 
   // the time we'll wait for a signal
   uint64_t const regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);

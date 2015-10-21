@@ -180,7 +180,7 @@ function Done (suiteName) {
 /// @brief runs a JSUnity test file
 ////////////////////////////////////////////////////////////////////////////////
 
-function RunTest (path) {
+function RunTest (path, outputReply) {
   var content;
   var f;
 
@@ -193,7 +193,13 @@ function RunTest (path) {
     throw "cannot create context function";
   }
 
-  return f(path);
+  var rc = f(path);
+  if (outputReply === true) {
+    return rc;
+  }
+  else {
+    return rc.status;
+  }
 }
 
 // -----------------------------------------------------------------------------

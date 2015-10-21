@@ -1,5 +1,72 @@
-v2.7.0 (XXXX-XX-XX)
+v2.8.0 (XXXX-XX-XX)
 -------------------
+
+* Added array indexes
+
+  Hash indexes and skiplist indexes can now optionally be defined for array values 
+  so they index individual array members.
+  
+  To define an index for array values, the attribute name is extended with the
+  expansion operator `[*]` in the index definition:
+  
+      arangosh> db.colName.ensureHashIndex("tags[*]");
+  
+  When given the following document
+  
+      { tags: [ "AQL", "ArangoDB", "Index" ] }
+
+  the index will now contain the individual values `"AQL"`, `"ArangoDB"` and `"Index"`.
+  
+  Now the index will be for finding all documents having `"ArangoDB"` somewhere in their
+  tags array using the following AQL query:
+    
+      FOR doc IN colName 
+        FILTER "ArangoDB" IN doc.tags 
+        RETURN doc
+
+* added convenience function `db._explain(query)` for human-readable explanation
+  of AQL queries
+
+
+v2.7.1 (XXXX-XX-XX)
+-------------------
+
+* fixed hard-coded `incremental` parameter in shell implementation of
+  `syncCollection` function in replication module
+
+* fix for GCC5: added check for '-stdlib' option
+
+
+v2.7.0 (2015-10-09)
+-------------------
+
+* fixed request statistics aggregation
+  When arangod was started in supervisor mode, the request statistics always showed
+  0 requests, as the statistics aggregation thread did not run then.
+
+* read server configuration files before dropping privileges. this ensures that
+  the SSL keyfile specified in the configuration can be read with the server's start
+  privileges (i.e. root when using a standard ArangoDB package).
+
+* fixed replication with a 2.6 replication configuration and issues with a 2.6 master
+
+* raised default value of `--server.descriptors-minimum` to 1024
+
+* allow Foxx apps to be installed underneath URL path `/_open/`, so they can be
+  (intentionally) accessed without authentication. 
+
+* added *allowImplicit* sub-attribute in collections declaration of transactions.
+  The *allowImplicit* attributes allows making transactions fail should they
+  read-access a collection that was not explicitly declared in the *collections* 
+  array of the transaction.
+
+* added "special" password ARANGODB_DEFAULT_ROOT_PASSWORD. If you pass
+  ARANGODB_DEFAULT_ROOT_PASSWORD as password, it will read the password
+  from the environment variable ARANGODB_DEFAULT_ROOT_PASSWORD
+
+
+v2.7.0-rc2 (2015-09-22)
+-----------------------
 
 * fix over-eager datafile compaction
 
@@ -36,8 +103,19 @@ v2.7.0 (XXXX-XX-XX)
   `(` `)` `+` `,` `=` `;` `$` `!` `*` `'` `%`
 
 
-v2.7.0-rc1 (XXXX-XX-XX)
+v2.7.0-rc1 (2015-09-17)
 -----------------------
+
+* removed undocumented server-side-only collection functions:
+  * collection.OFFSET()
+  * collection.NTH()
+  * collection.NTH2()
+  * collection.NTH3()
+
+* upgraded Swagger to version 2.0 for the Documentation
+ 
+  This gives the user better prepared test request structures.
+  More conversions will follow so finally client libraries can be auto-generated.
 
 * added extra AQL functions for date and time calculation and manipulation. 
   These functions were contributed by GitHub users @CoDEmanX and @friday. 
@@ -104,26 +182,39 @@ v2.7.0-rc1 (XXXX-XX-XX)
 
   * `DATE_FORMAT(date, format)`: Format a date according to the given format string.
     It supports the following placeholders (case-insensitive):
-    - %t: timestamp
+    - %t: timestamp, in milliseconds since midnight 1970-01-01
     - %z: ISO date (0000-00-00T00:00:00.000Z)
     - %w: day of week (0..6)
-    - %y: year (0000..9999)
-    - %m: month (01..12)
-    - %d: day (01..31)
-    - %h: hour (00..23)
-    - %i: minute (00..59)
-    - %s: second (00..59)
-    - %f: millisecond (000..999)
-    - %x: day of year (001..366)
-    - %k: ISO week date (01..53)
+    - %y: year (0..9999)
+    - %yy: year (00..99), abbreviated (last two digits)
+    - %yyyy: year (0000..9999), padded to length of 4
+    - %yyyyyy: year (-009999 .. +009999), with sign prefix and padded to length of 6
+    - %m: month (1..12)
+    - %mm: month (01..12), padded to length of 2
+    - %d: day (1..31)
+    - %dd: day (01..31), padded to length of 2
+    - %h: hour (0..23)
+    - %hh: hour (00..23), padded to length of 2
+    - %i: minute (0..59)
+    - %ii: minute (00..59), padded to length of 2
+    - %s: second (0..59)
+    - %ss: second (00..59), padded to length of 2
+    - %f: millisecond (0..999)
+    - %fff: millisecond (000..999), padded to length of 3
+    - %x: day of year (1..366)
+    - %xxx: day of year (001..366), padded to length of 3
+    - %k: ISO week date (1..53)
+    - %kk: ISO week date (01..53), padded to length of 2
     - %l: leap year (0 or 1)
     - %q: quarter (1..4)
     - %a: days in month (28..31)
-    - %n: English name of month (January..December)
-    - %o: abbreviated English name of month (Jan..Dec)
-    - %e: English name of weekday (Sunday..Saturday)
-    - %g: abbreviated English name of weekday (Sun..Sat)
+    - %mmm: abbreviated English name of month (Jan..Dec)
+    - %mmmm: English name of month (January..December)
+    - %www: abbreviated English name of weekday (Sun..Sat)
+    - %wwww: English name of weekday (Sunday..Saturday)
+    - %&: special escape sequence for rare occasions
     - %%: literal %
+    - %: ignored
 
 * new WAL logfiles and datafiles are now created non-sparse
     
@@ -435,7 +526,31 @@ v2.7.0-rc1 (XXXX-XX-XX)
   The "Applications" tab in the web interfaces has been renamed to "Services".
 
 
-v2.6.8 (XXXX-XX-XX)
+v2.6.10 (XXXX-XX-XX)
+--------------------
+
+* issue #1521: Can't dump/restore with user and password
+
+
+v2.6.9 (2015-09-29)
+-------------------
+
+* added "special" password ARANGODB_DEFAULT_ROOT_PASSWORD. If you pass
+  ARANGODB_DEFAULT_ROOT_PASSWORD as password, it will read the password
+  from the environment variable ARANGODB_DEFAULT_ROOT_PASSWORD
+
+* fixed failing AQL skiplist, sort and limit combination
+
+  When using a Skiplist index on an attribute (say "a") and then using sort
+  and skip on this attribute caused the result to be empty e.g.:
+    
+    require("internal").db.test.ensureSkiplist("a");
+    require("internal").db._query("FOR x IN test SORT x.a LIMIT 10, 10");
+
+  Was always empty no matter how many documents are stored in test.
+  This is now fixed.
+
+v2.6.8 (2015-09-09)
 -------------------
 
 * ARM only:

@@ -30,8 +30,6 @@
 
 #include "DispatcherThread.h"
 
-#include <iostream>
-
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/logging.h"

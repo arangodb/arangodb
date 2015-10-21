@@ -141,6 +141,7 @@ RestBatchHandler::~RestBatchHandler () {
 ///
 /// The boundary (`SomeBoundaryValue`) is passed to the server in the HTTP
 /// `Content-Type` HTTP header.
+/// *Please note the reply is not displayed all accurate.*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestBatchMultipartHeader}
 ///     var parts = [

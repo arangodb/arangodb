@@ -50,8 +50,7 @@ Parser::Parser (Query* query)
     _offset(0),
     _marker(nullptr),
     _stack(),
-    _type(AQL_QUERY_READ),
-    _writeNode(nullptr) {
+    _isModificationQuery(false) {
   
   _stack.reserve(4);
 }
@@ -71,10 +70,8 @@ Parser::~Parser () {
 /// @brief set data for write queries
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Parser::configureWriteQuery (QueryType type,
-                                  AstNode const* collectionNode,
+bool Parser::configureWriteQuery (AstNode const* collectionNode,
                                   AstNode* optionNode) {
-  TRI_ASSERT(type != AQL_QUERY_READ);
 
   // check if we currently are in a subquery
   if (_ast->isInSubQuery()) {
@@ -84,21 +81,21 @@ bool Parser::configureWriteQuery (QueryType type,
   }
 
   // check current query type
-  if (_type != AQL_QUERY_READ) {
+  if (_isModificationQuery) {
     // already a data-modification query, cannot have two data-modification operations in one query
     _query->registerError(TRI_ERROR_QUERY_MULTI_MODIFY);
     return false;
   }
 
   // now track which collection is going to be modified
-  _ast->setWriteCollection(collectionNode);
+  _ast->addWriteCollection(collectionNode);
 
   if (optionNode != nullptr && ! optionNode->isConstant()) {
     _query->registerError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
   }
 
-  // register query type 
-  _type = type;
+  // register that we have seen a modification operation
+  _isModificationQuery = true;
 
   return true;
 }

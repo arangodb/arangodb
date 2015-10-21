@@ -63,6 +63,8 @@
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
 
+#include <iostream>
+
 using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3256,13 +3258,13 @@ static int FillIndexSequential (TRI_document_collection_t* document,
 
   idx->sizeHint(nrUsed);
 
+  if (nrUsed > 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  static const int LoopSize = 10000;
-  int counter = 0;
-  int loops = 0;
+    static const int LoopSize = 10000;
+    int counter = 0;
+    int loops = 0;
 #endif
 
-  if (nrUsed > 0) {
     triagens::basics::BucketPosition position;
     uint64_t total = 0;
 
@@ -3745,11 +3747,12 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
                                      std::vector<std::vector<triagens::basics::AttributeName>>& names,
                                      bool sorted,
                                      bool create) {
+
   pids.reserve(attributes.size());
   names.reserve(attributes.size());
   
   // .............................................................................
-  // sorted case
+  // sorted case (hash index)
   // .............................................................................
 
   if (sorted) {
@@ -3761,8 +3764,11 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
     for (auto const& name : attributes) {
       std::vector<triagens::basics::AttributeName> attrNameList;
       TRI_ParseAttributeString(name, attrNameList);
-      TRI_ASSERT(attrNameList.size() > 0);
-      std::string pidPath = attrNameList.front().name;
+      TRI_ASSERT(! attrNameList.empty());
+      std::vector<std::string> joinedNames;
+      TRI_AttributeNamesJoinNested(attrNameList, joinedNames, true);
+      // We only need the first pid here
+      std::string pidPath = joinedNames[0];
 
       TRI_shape_pid_t pid;
 
@@ -3792,7 +3798,7 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
   }
 
   // .............................................................................
-  // unsorted case
+  // unsorted case (skiplist index)
   // .............................................................................
 
   else {
@@ -3800,8 +3806,11 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
 
       std::vector<triagens::basics::AttributeName> attrNameList;
       TRI_ParseAttributeString(name, attrNameList);
-      TRI_ASSERT(attrNameList.size() > 0);
-      std::string pidPath = attrNameList.front().name;
+      TRI_ASSERT(! attrNameList.empty());
+      std::vector<std::string> joinedNames;
+      TRI_AttributeNamesJoinNested(attrNameList, joinedNames, true);
+      // We only need the first pid here
+      std::string pidPath = joinedNames[0];
 
       TRI_shape_pid_t pid;
     

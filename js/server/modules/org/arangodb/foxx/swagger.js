@@ -29,6 +29,7 @@
 
 var _ = require('underscore');
 var fs = require('fs');
+var internal = require('internal');
 var ArangoError = require('org/arangodb').ArangoError;
 var errors = require('org/arangodb').errors;
 var resultNotFound = require('org/arangodb/actions').resultNotFound;
@@ -96,7 +97,7 @@ function swaggerPath(path, basePath) {
     return path;
   }
   if (!basePath) {
-    basePath = fs.join(module.startupPath(), 'server', 'assets', 'swagger');
+    basePath = fs.join(internal.startupPath, 'server', 'assets', 'swagger');
   }
   return fs.safeJoin(basePath, path);
 }
@@ -117,12 +118,12 @@ function swaggerJson(req, res, opts) {
   res.json({
     swagger: '2.0',
     info: {
-      description: app && app._manifest.description,
-      version: app && app._manifest.version,
-      title: app && app._manifest.name,
-      license: app && app._manifest.license && {name: app._manifest.license}
+      description: app && app.manifest.description,
+      version: app && app.manifest.version,
+      title: app && app.manifest.name,
+      license: app && app.manifest.license && {name: app.manifest.license}
     },
-    basePath: '/_db/' + encodeURIComponent(req.database) + (app ? app._mount : opts.appPath),
+    basePath: '/_db/' + encodeURIComponent(req.database) + (app ? app.mount : opts.appPath),
     schemes: [req.protocol],
     paths: swagger.paths,
     // securityDefinitions: {},
@@ -174,7 +175,7 @@ function parseRoutes(tag, routes, models) {
         tags: [tag],
         summary: route.docs.summary,
         description: route.docs.notes,
-        operationId: route.docs.nickname,
+        operationId: (method + '_' + path).replace(/\W/g, '_').replace(/_{2,}/g, '_').toLowerCase(),
         responses: {
           default: {
             description: 'undocumented body',

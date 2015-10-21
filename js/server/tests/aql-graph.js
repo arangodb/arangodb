@@ -27,7 +27,6 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
 var internal = require("internal");
@@ -173,7 +172,125 @@ function ahuacatlQueryEdgesTestSuite () {
       assertEqual(actual, [ ]);
       
       assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "FOR e IN EDGES(UnitTestsAhuacatlEdge, 'thefox/thefox', 'outbound') SORT e.what RETURN e.what");
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES() with includeVertices
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesAnyInclVertices : function () {
+      "use strict";
+      let actual;
+      const query = "FOR e IN EDGES(@@col, @start, @dir, null, {includeVertices: true}) SORT e.edge.what RETURN e.vertex._key";
+      let bindVars = {
+        "@col": "UnitTestsAhuacatlEdge",
+        "dir": "any"
+      };
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v1";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v2", "v3"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v2";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v1", "v3", "v4"]);
+      
+      bindVars.start = "UnitTestsAhuacatlVertex/v3";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v1", "v2", "v4", "v6", "v7", "v6", "v7"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v8";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/thefox";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+     
+      bindVars.start = "thefox/thefox";
+
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, query, bindVars);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES() with includeVertices
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesInInclVertices : function () {
+      "use strict";
+      let actual;
+      const query = "FOR e IN EDGES(@@col, @start, @dir, null, {includeVertices: true}) SORT e.edge.what RETURN e.vertex._key";
+      let bindVars = {
+        "@col": "UnitTestsAhuacatlEdge",
+        "dir": "inbound"
+      };
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v1";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, []);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v2";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v1", "v4"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v3";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v1", "v2", "v6", "v7"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v8";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+      
+      bindVars.start = "UnitTestsAhuacatlVertex/thefox";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+     
+      bindVars.start = "thefox/thefox";
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, query, bindVars);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES() with includeVertices
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesOutInclVertices : function () {
+      "use strict";
+      let actual;
+      const query = "FOR e IN EDGES(@@col, @start, @dir, null, {includeVertices: true}) SORT e.edge.what RETURN e.vertex._key";
+      let bindVars = {
+        "@col": "UnitTestsAhuacatlEdge",
+        "dir": "outbound"
+      };
+     
+      bindVars.start = "UnitTestsAhuacatlVertex/v1";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v2", "v3"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v2";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v3"]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v3";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, ["v4", "v6", "v7"]);
+      
+      bindVars.start = "UnitTestsAhuacatlVertex/v8";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+
+      bindVars.start = "UnitTestsAhuacatlVertex/v5";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+      
+      bindVars.start = "UnitTestsAhuacatlVertex/thefox";
+      actual = getQueryResults(query, bindVars);
+      assertEqual(actual, [ ]);
+      
+      bindVars.start = "thefox/thefox";
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, query, bindVars);
+    },
+
+
 
   };
 }
@@ -1941,7 +2058,6 @@ if (internal.debugCanUseFailAt() && ! cluster.isCluster()) {
   jsunity.run(ahuacatlQueryNeighborsErrorsSuite);
   jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }
-
 return jsunity.done();
 
 // Local Variables:

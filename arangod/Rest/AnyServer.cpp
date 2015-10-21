@@ -368,17 +368,6 @@ void AnyServer::beginShutdown () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prepares the server for startup
-////////////////////////////////////////////////////////////////////////////////
-
-void AnyServer::prepareServer () {
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
@@ -519,7 +508,6 @@ int AnyServer::startupSupervisor () {
 #endif
 
         // startup server
-        prepareServer();
         result = startupServer();
 
         // remove pid file
@@ -566,7 +554,6 @@ int AnyServer::startupDaemon () {
     LOG_DEBUG("daemon mode: within child");
 
     // and startup server
-    prepareServer();
     result = startupServer();
 
     // remove pid file

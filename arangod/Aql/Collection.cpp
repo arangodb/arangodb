@@ -29,11 +29,16 @@
 
 #include "Collection.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Index.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/EdgeIndex.h"
+#include "Indexes/HashIndex.h"
+#include "Indexes/PrimaryIndex.h"
+#include "Indexes/SkiplistIndex.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -172,7 +177,7 @@ std::vector<std::string> Collection::shardKeys () const {
 /// @brief returns the indexes of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<Index*> Collection::getIndexes () {
+std::vector<Index const*> Collection::getIndexes () const {
   fillIndexes();
 
   return indexes;
@@ -182,7 +187,7 @@ std::vector<Index*> Collection::getIndexes () {
 /// @brief return an index by its id
 ////////////////////////////////////////////////////////////////////////////////
   
-Index* Collection::getIndex (TRI_idx_iid_t id) const {
+Index const* Collection::getIndex (TRI_idx_iid_t id) const {
   fillIndexes();
 
   for (auto const& idx : indexes) {
@@ -198,7 +203,7 @@ Index* Collection::getIndex (TRI_idx_iid_t id) const {
 /// @brief return an index by its id
 ////////////////////////////////////////////////////////////////////////////////
   
-Index* Collection::getIndex (std::string const& id) const {
+Index const* Collection::getIndex (std::string const& id) const {
   return getIndex(triagens::basics::StringUtils::uint64(id));
 }
 
@@ -256,6 +261,7 @@ void Collection::fillIndexesCoordinator () const {
   // coordinator case, remote collection
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
   auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
+
   if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL, 
                                   "collection not found '%s' in database '%s'",
@@ -287,7 +293,23 @@ void Collection::fillIndexesCoordinator () const {
         continue;
       }
 
-      indexes.emplace_back(new triagens::aql::Index(v));
+      std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(v));
+
+      indexes.emplace_back(idx.get());
+      auto p = idx.release();
+      
+      if (p->type == triagens::arango::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        p->setInternals(new triagens::arango::PrimaryIndex(v), true);
+      }
+      else if (p->type == triagens::arango::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        p->setInternals(new triagens::arango::EdgeIndex(v), true);
+      }
+      else if (p->type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX) {
+        p->setInternals(new triagens::arango::HashIndex(v), true);
+      }
+      else if (p->type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+        p->setInternals(new triagens::arango::SkiplistIndex(v), true);
+      }
     }
   }
 }
@@ -359,17 +381,12 @@ void Collection::fillIndexesDBServer () const {
         }
       }
 
-      auto idx = new triagens::aql::Index(v);
+      std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(v));
       // assign the found local index
-      idx->setInternals(data);
+      idx->setInternals(data, false);
 
-      try {
-        indexes.emplace_back(idx);
-      }
-      catch (...) {
-        delete idx;
-        throw;
-      }
+      indexes.emplace_back(idx.get());
+      idx.release();
     }
   }
 }
@@ -391,7 +408,9 @@ void Collection::fillIndexesLocal () const {
       continue;
     }
 
-    indexes.emplace_back(new triagens::aql::Index(allIndexes[i]));
+    std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(allIndexes[i]));
+    indexes.emplace_back(idx.get());
+    idx.release();
   }
 }
 

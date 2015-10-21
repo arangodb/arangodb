@@ -86,7 +86,7 @@ exports.run = function runMochaTests(app, reporterName) {
     files.forEach(function (file) {
       var context = {};
       suite.emit('pre-require', context, file, mocha);
-      suite.emit('require', app.loadAppScript(file, {context: context}), file, mocha);
+      suite.emit('require', app.run(file, {context: context}), file, mocha);
       suite.emit('post-require', global, file, mocha);
     });
 
@@ -111,11 +111,11 @@ function isNotPattern(pattern) {
 }
 
 function findTestFiles(app) {
-  var patterns = app._manifest.tests || [];
+  var patterns = app.manifest.tests || [];
   if (patterns.every(isNotPattern)) {
     return patterns.slice();
   }
-  var basePath = fs.join(app._root, app._path);
+  var basePath = fs.join(app.root, app.path);
   var paths = fs.listTree(basePath);
   var matchers = patterns.map(function (pattern) {
     if (pattern.charAt(0) === '/') {

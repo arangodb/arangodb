@@ -200,6 +200,12 @@ int InitialSyncer::run (string& errorMsg,
     return res;
   }
 
+  if (_masterInfo._majorVersion == 1 ||
+      (_masterInfo._majorVersion == 2 && _masterInfo._minorVersion <= 6)) {
+    LOG_WARNING("incremental replication is not supported with a master < ArangoDB 2.7");
+    incremental = false;
+  }
+
   if (incremental) {
     res = sendFlush(errorMsg);
   

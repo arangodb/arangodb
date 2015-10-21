@@ -102,11 +102,10 @@ class TRI_index_operator_t {
     TRI_index_operator_type_e const _type;
     VocShaper const* _shaper;
 
-    TRI_index_operator_t (
-      TRI_index_operator_type_e const type,
-      VocShaper const* shaper
-    ) : _type(type),
-        _shaper(shaper) {
+    TRI_index_operator_t (TRI_index_operator_type_e const type,
+                          VocShaper const* shaper) 
+    : _type(type),
+      _shaper(shaper) {
     }
 
     virtual ~TRI_index_operator_t () {

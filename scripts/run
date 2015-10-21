@@ -1,6 +1,5 @@
 #!/bin/bash
 export PID=$$
-mkdir data-$PID
 
 self=$0
 if test -f "${self}.js"; then 
@@ -19,6 +18,10 @@ else
     PS='/'
 fi;
 
+LOGFILE="out${PS}log-$PID"
+DBDIR="out${PS}data-$PID"
+mkdir -p ${DBDIR}
+
 export PORT=`expr 1024 + $RANDOM`
 declare -a ARGS
 export VG=''
@@ -36,9 +39,9 @@ for i in "$@"; do
       ARGS+=("$i")
     fi
 done
-mkdir out
-echo Database has its data in out${PS}data-$PID
-echo Logfile is in out${PS}log-$PID
+
+echo Database has its data in ${DBDIR}
+echo Logfile is in ${LOGFILE}
 $VG bin/arangod \
     --configuration none \
     --cluster.agent-path bin${PS}etcd-arango${EXT} \
@@ -49,8 +52,8 @@ $VG bin/arangod \
     --cluster.disable-dispatcher-kickstarter false \
     --cluster.data-path cluster \
     --cluster.log-path cluster \
-    --database.directory out${PS}data-$PID \
-    --log.file out${PS}log-$PID \
+    --database.directory ${DBDIR} \
+    --log.file ${LOGFILE} \
     --server.endpoint tcp://127.0.0.1:$PORT \
     --javascript.startup-directory js \
     --javascript.app-path js${PS}apps \
@@ -61,11 +64,11 @@ $VG bin/arangod \
     $VXML
 
 if test $? -eq 0; then
-  echo removing out${PS}log-$PID out${PS}data-$PID
-  rm -rf out${PS}log-$PID out${PS}data-$PID
+  echo "removing ${LOGFILE} ${DBDIR}"
+  rm -rf ${LOGFILE} ${DBDIR}
 else
-  echo "failed - don't remove out${PS}log-$PID out${PS}data-$PID - heres the logfile:"
-  cat out${PS}log-$PID
+  echo "failed - don't remove ${LOGFILE} ${DBDIR} - heres the logfile:"
+  cat ${LOGFILE}
 fi
 
 echo Server has terminated.

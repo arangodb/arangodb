@@ -83,9 +83,11 @@ BOOST_AUTO_TEST_CASE (test_subAttribute) {
 
   TRI_ParseAttributeString(input, result);
   
-  BOOST_CHECK_EQUAL(result.size(), static_cast<size_t>(1));
-  BOOST_CHECK_EQUAL(result[0].name, "foo.bar");
+  BOOST_CHECK_EQUAL(result.size(), static_cast<size_t>(2));
+  BOOST_CHECK_EQUAL(result[0].name, "foo");
   BOOST_CHECK_EQUAL(result[0].shouldExpand, false);
+  BOOST_CHECK_EQUAL(result[1].name, "bar");
+  BOOST_CHECK_EQUAL(result[1].shouldExpand, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,9 +100,13 @@ BOOST_AUTO_TEST_CASE (test_subsubAttribute) {
 
   TRI_ParseAttributeString(input, result);
   
-  BOOST_CHECK_EQUAL(result.size(), static_cast<size_t>(1));
-  BOOST_CHECK_EQUAL(result[0].name, "foo.bar.baz");
+  BOOST_CHECK_EQUAL(result.size(), static_cast<size_t>(3));
+  BOOST_CHECK_EQUAL(result[0].name, "foo");
   BOOST_CHECK_EQUAL(result[0].shouldExpand, false);
+  BOOST_CHECK_EQUAL(result[1].name, "bar");
+  BOOST_CHECK_EQUAL(result[1].shouldExpand, false);
+  BOOST_CHECK_EQUAL(result[2].name, "baz");
+  BOOST_CHECK_EQUAL(result[2].shouldExpand, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,9 +134,11 @@ BOOST_AUTO_TEST_CASE (test_expandSubAttribute) {
 
   TRI_ParseAttributeString(input, result);
   
-  BOOST_CHECK_EQUAL(result.size(), static_cast<size_t>(1));
-  BOOST_CHECK_EQUAL(result[0].name, "foo.bar");
-  BOOST_CHECK_EQUAL(result[0].shouldExpand, true);
+  BOOST_CHECK_EQUAL(result.size(), static_cast<size_t>(2));
+  BOOST_CHECK_EQUAL(result[0].name, "foo");
+  BOOST_CHECK_EQUAL(result[0].shouldExpand, false);
+  BOOST_CHECK_EQUAL(result[1].name, "bar");
+  BOOST_CHECK_EQUAL(result[1].shouldExpand, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

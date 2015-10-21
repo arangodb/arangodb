@@ -14,9 +14,9 @@
           ],
           lib: [
             "frontend/js/lib/jquery-2.1.0.min.js",
-            "frontend/js/lib/underscore.js",
-            "frontend/js/lib/backbone.js",
-            "frontend/js/lib/bootstrap.js"
+            "frontend/js/lib/underscore-min.js",
+            "frontend/js/lib/backbone-min.js",
+            "frontend/js/lib/bootstrap-min.js"
           ],
           css: [
             "frontend/css/swagger/hightlight.default.css",
@@ -38,35 +38,22 @@
             "frontend/scss/style.scss"
           ],
           lib: [
-            "frontend/js/lib/jquery-ui-1.9.2.custom.js",
-            "frontend/js/lib/jquery.snippet.js",
-            "frontend/js/lib/jquery.slideto.min.js",
-            "frontend/js/lib/jquery.wiggle.min.js",
-            "frontend/js/lib/jquery.contextmenu.js",
-            "frontend/js/lib/jquery.hotkeys.js",
-            "frontend/js/lib/jquery.form.js",
-            "frontend/js/lib/jquery.uploadfile.js",
+            "frontend/js/lib/jquery-ui-1.9.2.custom.min.js",
+            "frontend/js/lib/jquery.snippet.min.js",
+            "frontend/js/lib/jquery.hotkeys.min.js",
+            "frontend/js/lib/jquery.contextmenu.min.js",
+            "frontend/js/lib/jquery.form.min.js",
+            "frontend/js/lib/jquery.uploadfile.min.js",
             "frontend/js/lib/jquery.textfill.min.js",
             "frontend/js/lib/select2.min.js",
-            "frontend/js/lib/handlebars-1.0.rc.1.js",
             "frontend/js/lib/jsoneditor-min.js",
-            "frontend/js/lib/d3.v3.min.js",
-            "frontend/js/lib/nv.d3.js",
             "frontend/js/lib/strftime-min.js",
-            "frontend/js/lib/dygraph-combined.js",
-            "frontend/js/lib/vivagraph.js",
-            "frontend/js/lib/d3.fisheye.js",
-            "frontend/js/lib/bootstrap-pagination.js",
+            "frontend/js/lib/d3.fisheye.min.js",
+            "frontend/js/lib/bootstrap-pagination.min.js",
             "frontend/js/lib/jqconsole.min.js",
-            "frontend/js/lib/swagger.js",
-            "frontend/js/lib/swagger-ui.js",
-            "frontend/js/lib/highlight.7.3.pack.js",
+            "frontend/js/lib/highlight.7.3.pack.min.js",
             "frontend/js/lib/joi.browser.js",
-            "frontend/js/lib/md5.js",
-            "frontend/js/lib/lunr.min.js",
-            "frontend/js/lib/ammap/ammap.js",
-            "frontend/js/lib/ammap/maps/js/usa2High.js",
-            "frontend/js/lib/ammap/themes/light.js",
+            "frontend/js/lib/md5.min.js",
             "frontend/src/ace.js",
             "frontend/src/theme-textmate.js",
             "frontend/src/mode-json.js",
@@ -81,37 +68,7 @@
             "frontend/js/arango/arango.js",
             "frontend/js/arango/templateEngine.js",
             "frontend/js/shell/browser.js",
-            "frontend/js/config/dygraphConfig.js",
-            "frontend/js/modules/underscore.js",
-            "frontend/js/modules/org/arangodb/aql/explainer.js",
-            "frontend/js/modules/org/arangodb/aql/functions.js",
-            "frontend/js/modules/org/arangodb/aql/queries.js",
-            "frontend/js/modules/org/arangodb/graph/traversal.js",
-            "frontend/js/modules/org/arangodb/arango-collection-common.js",
-            "frontend/js/modules/org/arangodb/arango-collection.js",
-            "frontend/js/modules/org/arangodb/arango-database.js",
-            "frontend/js/modules/org/arangodb/arango-query-cursor.js",
-            "frontend/js/modules/org/arangodb/arango-statement-common.js",
-            "frontend/js/modules/org/arangodb/arango-statement.js",
-            "frontend/js/modules/org/arangodb/arangosh.js",
-            "frontend/js/modules/org/arangodb/general-graph.js",
-            "frontend/js/modules/org/arangodb/graph-blueprint.js",
-            "frontend/js/modules/org/arangodb/graph-common.js",
-            "frontend/js/modules/org/arangodb/graph.js",
-            "frontend/js/modules/org/arangodb/is.js",
-            "frontend/js/modules/org/arangodb/mimetypes.js",
-            "frontend/js/modules/org/arangodb/replication.js",
-            "frontend/js/modules/org/arangodb/simple-query-common.js",
-            "frontend/js/modules/org/arangodb/simple-query.js",
-            "frontend/js/modules/org/arangodb/tutorial.js",
-            "frontend/js/modules/org/arangodb-common.js",
-            "frontend/js/modules/org/arangodb.js",
-            "frontend/js/bootstrap/errors.js",
-            "frontend/js/bootstrap/monkeypatches.js",
-            "frontend/js/bootstrap/module-internal.js",
-            "frontend/js/client/bootstrap/module-internal.js",
-            "frontend/js/client/client.js",
-            "frontend/js/bootstrap/module-console.js"
+            "frontend/js/modules/underscore.js"
           ],
           js: [
             "frontend/js/models/*",
@@ -179,6 +136,17 @@
             ext: '.html.gz'
           }]
         },
+        clusterHTML: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['clusterFrontend/build/*min*.html'],
+            dest: '.',
+            ext: '.html.gz'
+          }]
+        },
         standaloneCSS: {
           options: {
             mode: 'gzip'
@@ -218,7 +186,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.min.js'],
+            src: ['frontend/build/app.min.js', 'frontend/build/libs.min.js'],
             dest: '.',
             ext: '.min.js.gz'
           }]
@@ -229,7 +197,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.js'],
+            src: ['frontend/build/app.js', 'frontend/build/libs.js'],
             dest: '.',
             ext: '.js.gz'
           }]
@@ -240,9 +208,20 @@
           },
           files: [{
             expand: true,
-            src: ['clusterFrontend/build/cluster.js'],
+            src: ['clusterFrontend/build/cluster.js', 'clusterFrontend/build/libs.js'],
             dest: '.',
             ext: '.js.gz'
+          }]
+        },
+        clusterMinJS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['clusterFrontend/build/cluster.min.js'],
+            dest: '.',
+            ext: '.min.js.gz'
           }]
         },
         aceJS: {
@@ -276,6 +255,17 @@
             src: ['build/sharedLibs.js'],
             dest: '.',
             ext: '.js.gz'
+          }]
+        },
+        sharedMinJS: {
+          options: {
+            mode: 'gzip'
+          },
+          files: [{
+            expand: true,
+            src: ['build/sharedLibs.min.js'],
+            dest: '.',
+            ext: '.min.js.gz'
           }]
         }
       },
@@ -319,11 +309,26 @@
         default: {
           files: {
             'frontend/build/app.js': [
-              '<%=project.shared.lib %>',
-              '<%=project.standalone.lib %>',
               '<%=project.standalone.graphViewer %>',
               '<%=project.standalone.modules %>',
+              'frontend/build/arangoes5.js',
               '<%=project.standalone.js %>'
+            ]
+          },
+          options: {
+            extractRequired: function () {
+              return [];
+            },
+            extractDeclared: function () {
+              return [];
+            }
+          }
+        },
+        libs: {
+          files: {
+            'frontend/build/libs.js': [
+              '<%=project.shared.lib %>',
+              '<%=project.standalone.lib %>'
             ]
           },
           options: {
@@ -338,9 +343,13 @@
         sharedLibs: {
           src: [
             "frontend/js/lib/jquery-2.1.0.min.js",
-            "frontend/js/lib/underscore.js",
-            "frontend/js/lib/backbone.js",
-            "frontend/js/lib/bootstrap.js"
+            "frontend/js/lib/underscore-min.js",
+            "frontend/js/lib/backbone-min.js",
+            "frontend/js/lib/bootstrap-min.js",
+            "frontend/js/lib/d3.v3.min.js",
+            "frontend/js/lib/nv.d3.min.js",
+            "frontend/js/config/dygraphConfig.js",
+            "frontend/js/lib/dygraph-combined.min.js"
           ],
           dest: 'build/sharedLibs.js',
           options: {
@@ -352,12 +361,28 @@
             }
           }
         },
+        sharedES: {
+          src: [
+            "frontend/js/bootstrap/modules/internal.js", 
+            "frontend/js/bootstrap/errors.js",
+            "frontend/js/bootstrap/modules/console.js",
+            "frontend/js/client/bootstrap/modules/internal.js", 
+            "frontend/js/bootstrap/monkeypatches.js", 
+            "frontend/js/modules/**/*.js",
+            "frontend/js/client/client.js"
+          ],
+          dest: 'frontend/build/arangoes6.js',
+          options: {
+            extractRequired: function () {
+              return [];
+            },
+            extractDeclared: function () {
+              return [];
+            }
+          }
+        },
         jsCluster: {
           src: [
-            "frontend/js/lib/dygraph-combined.js",
-            "frontend/js/config/dygraphConfig.js",
-            "frontend/js/lib/d3.v3.min.js",
-            "frontend/js/lib/nv.d3.js",
             "frontend/js/arango/arango.js",
             "clusterFrontend/js/models/*",
             "clusterFrontend/js/collections/*",
@@ -378,7 +403,7 @@
           dest: 'clusterFrontend/build/cluster.js'
         },
         htmlCluster: {
-          src: [ 
+          src: [
             "frontend/html/start.html.part",
             "clusterFrontend/html/head.html.part",
             "frontend/js/templates/dashboardView.ejs",
@@ -402,13 +427,14 @@
             "frontend/build/scripts.html.part",
             "frontend/html/end.html.part"
           ],
-          dest: 'frontend/build/standalone.html' 
+          dest: 'frontend/build/standalone.html'
         },
         coverage: {
           files: {
             'frontend/build/lib.test.js': [
               '<%=project.shared.lib %>',
               '<%=project.standalone.lib %>',
+              'frontend/build/arangoes5.js',
               '<%=project.standalone.modules %>'
             ],
             'frontend/build/app.test.js': [
@@ -448,15 +474,48 @@
         ]
       },
 
-      uglify: {
+      babel: {
+        options: {
+          sourceMap: false
+        },
         dist: {
           files: {
-            'frontend/build/app.min.js': 'frontend/build/app.js',
-            'clusterFrontend/build/cluster.min.js': 'clusterFrontend/build/cluster.js',
-            'frontend/src/ace.min.js': 'frontend/src/ace.js',
-            'build/sharedLibs.min.js': 'build/sharedLibs.js'
+            'frontend/build/arangoes5.js': 'frontend/build/arangoes6.js'
           }
         }
+      },
+
+      uglify: {
+        default1: {
+          files: {
+            'frontend/build/app.min.js': 'frontend/build/app.js'
+          }
+        },
+        default2: {
+          files: {
+            'clusterFrontend/build/cluster.min.js': 'clusterFrontend/build/cluster.js'
+          }
+        },
+        libs1: {
+          files: {
+            'frontend/build/libs.min.js': 'frontend/build/libs.js'
+          }
+        },
+        libs2: {
+          files: {
+            'build/sharedLibs.min.js': 'build/sharedLibs.js'
+          }
+        },
+        libs3: {
+          files: {
+            'frontend/src/ace.min.js': 'frontend/src/ace.js'
+          }
+        }
+      },
+
+      concurrent: {
+        uglifyFast: ['uglify:default1', 'uglify:default2'],
+        uglifyAll: ['uglify:default1', 'uglify:default2', 'uglify:libs1', 'uglify:libs2', 'uglify:libs3']
       },
 
       watch: {
@@ -480,11 +539,13 @@
         },
         concat_in_order: {
           files: [
+            '!frontend/js/modules/**/*.js',
             'frontend/js/{,*/}*.js',
             'frontend/js/graphViewer/**/*.js',
             'clusterFrontend/js/{,*/}*.js'
           ],
           tasks: [
+            'concat_in_order:sharedES',
             'concat_in_order:sharedLibs',
             'concat_in_order:default',
             'concat_in_order:jsCluster',
@@ -512,8 +573,9 @@
     grunt.loadNpmTasks('grunt-contrib-cssmin');
     grunt.loadNpmTasks('grunt-contrib-compress');
     grunt.loadNpmTasks("grunt-contrib-concat");
-    grunt.loadNpmTasks('grunt-contrib-htmlmin')
-    grunt.loadNpmTasks('grunt-contrib-uglify')
+    grunt.loadNpmTasks('grunt-contrib-htmlmin');
+    grunt.loadNpmTasks('grunt-contrib-uglify');
+    require('load-grunt-tasks')(grunt);
 
     require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
     grunt.loadNpmTasks('grunt-text-replace');
@@ -522,41 +584,54 @@
       'sass:dev',
       'jshint:default',
       'replace',
-      'imagemin',
       'concat',
+      'concat_in_order:sharedES',
+      'babel',
       'concat_in_order:sharedLibs',
       'concat_in_order:default',
       'concat_in_order:jsCluster',
       'concat_in_order:htmlCluster',
       'concat_in_order:htmlStandalone',
       'cssmin',
-      'uglify',
+      'concurrent:uglifyFast',
       'htmlmin',
-      'compress',
-      'watch'
+      'compress'
     ]);
-
 
     grunt.registerTask('devel', [
       'sass:dev',
+      'jshint:default',
       'replace',
       'concat',
+      'concat_in_order:sharedES',
+      'babel',
       'concat_in_order:sharedLibs',
       'concat_in_order:default',
       'concat_in_order:jsCluster',
       'concat_in_order:htmlCluster',
       'concat_in_order:htmlStandalone',
+      'concurrent:uglifyFast',
       'watch'
     ]);
 
     grunt.registerTask('deploy', [
-      'sass:dist',
+      'sass:dev',
+      'jshint:default',
+      'replace',
+      'imagemin',
+      'concat',
+      'concat_in_order:sharedES',
+      'babel',
       'concat_in_order:sharedLibs',
+      'concat_in_order:libs',
       'concat_in_order:default',
       'concat_in_order:jsCluster',
       'concat_in_order:htmlCluster',
       'concat_in_order:htmlStandalone',
-      'uglify:dist'
+      'cssmin',
+      'concurrent:uglifyAll',
+      'htmlmin',
+      'compress'
     ]);
 
     grunt.registerTask('coverage', [

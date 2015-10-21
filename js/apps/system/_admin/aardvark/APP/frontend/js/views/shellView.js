@@ -51,7 +51,7 @@
         var result = window.eval(data);
         if (result !== undefined) {
           internal.browserOutputBuffer = "";
-          internal.printShell.apply(internal.printShell, [ result ]);
+          internal.printShell(result);
           jqconsole.Write('==> ' + internal.browserOutputBuffer + '\n', 'jssuccess');
         }
         internal.browserOutputBuffer = "";

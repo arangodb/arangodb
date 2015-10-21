@@ -70,6 +70,7 @@ Related blog posts:
     - multitrx
     - multi-collection
     - aqlinsert
+    - aqlv8
 
 - *--verbose*: Print out replies if the HTTP header indicates DB errors.
   (default: false).

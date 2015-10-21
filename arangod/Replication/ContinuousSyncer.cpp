@@ -74,7 +74,8 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
     _useTick(useTick),
     _includeSystem(configuration->_includeSystem),
     _requireFromPresent(configuration->_requireFromPresent),
-    _verbose(configuration->_verbose) {
+    _verbose(configuration->_verbose),
+    _masterIs27OrHigher(false) {
 
   uint64_t c = configuration->_chunkSize;
   if (c == 0) {
@@ -139,8 +140,7 @@ int ContinuousSyncer::run () {
     setProgress("fetching master state information");
     res = getMasterState(errorMsg);
 
-    if (res == TRI_ERROR_REPLICATION_NO_RESPONSE ||
-        res == TRI_ERROR_REPLICATION_MASTER_ERROR) {
+    if (res == TRI_ERROR_REPLICATION_NO_RESPONSE) {
       // master error. try again after a sleep period
       connectRetries++;
 
@@ -167,6 +167,12 @@ int ContinuousSyncer::run () {
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
+    _masterIs27OrHigher = (_masterInfo._majorVersion > 2 || 
+                           (_masterInfo._majorVersion == 2 && _masterInfo._minorVersion >= 7));
+    if (_requireFromPresent && ! _masterIs27OrHigher) {
+      LOG_WARNING("requireFromPresent feature is not supported on master server < ArangoDB 2.7");
+    }
+
     WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
     res = getLocalState(errorMsg);
 
@@ -930,10 +936,15 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     fetchTick = safeResumeTick;
   }
   else {
-    int res = fetchMasterState(errorMsg, safeResumeTick, fromTick, fetchTick);
+    if (_masterIs27OrHigher) {
+      int res = fetchMasterState(errorMsg, safeResumeTick, fromTick, fetchTick);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
+    else {
+      fetchTick = fromTick;
     }
   }
 
@@ -1176,31 +1187,35 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
 
   std::string body;
 
-  if (! _ongoingTransactions.empty()) {
-    // stringify list of open transactions
-    body.append("[\"");
-    bool first = true;
+  if (_masterIs27OrHigher) {
+    if (! _ongoingTransactions.empty()) {
+      // stringify list of open transactions
+      body.append("[\"");
+      bool first = true;
 
-    for (auto& it : _ongoingTransactions) {
-      if (first) {
-        first = false;
-      }
-      else {
-        body.append("\",\"");
-      }
+      for (auto& it : _ongoingTransactions) {
+        if (first) {
+          first = false;
+        }
+        else {
+          body.append("\",\"");
+        }
 
-      body.append(StringUtils::itoa(it.first));
+        body.append(StringUtils::itoa(it.first));
+      }
+      body.append("\"]");
     }
-    body.append("\"]");
-  }
-  else {
-    body.append("[]");
+    else {
+      body.append("[]");
+    }
   }
 
-  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
-                                                url,
-                                                body.c_str(),
-                                                body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+    _client->request(_masterIs27OrHigher ? HttpRequest::HTTP_REQUEST_PUT : HttpRequest::HTTP_REQUEST_GET,
+                     url,
+                     body.c_str(),
+                     body.size())
+  );
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
@@ -1219,14 +1234,14 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
 
-  int res;
+  int res           = TRI_ERROR_NO_ERROR;
   bool checkMore    = false;
   bool active       = false;
   bool fromIncluded = false;
   TRI_voc_tick_t tick;
 
   bool found;
-  string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
+  std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
 
   if (found) {
     checkMore = StringUtils::boolean(header);
@@ -1276,6 +1291,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
       ! fromIncluded && 
       _requireFromPresent &&
       fetchTick > 0) {
+    TRI_ASSERT(_masterIs27OrHigher);
     res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
     errorMsg = "required tick value '" + StringUtils::itoa(fetchTick) + 
                "' is not present (anymore?) on master at " + string(_masterInfo._endpoint) +

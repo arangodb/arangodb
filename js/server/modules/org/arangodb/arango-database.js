@@ -106,6 +106,22 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
   return new ArangoStatement(this, payload).execute();
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explains a query
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._explain = function (query, bindVars, options) {
+  if (typeof query === 'object' && typeof query.toAQL === 'function') {
+    query = { query: query.toAQL() };
+  }
+
+  if (arguments.length > 1) {
+    query = { query: query, bindVars: bindVars, options: options };
+  }
+
+  require("org/arangodb/aql/explainer").explain(query);
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      transactions
 // -----------------------------------------------------------------------------
@@ -282,8 +298,8 @@ ArangoDatabase.prototype._truncate = function(name) {
 /// So you've created an index, and since its maintainance isn't for free,
 /// you definitely want to know whether your Query can utilize it.
 ///
-/// You can use explain to verify whether **skiplist** or **hash indices** are used:
-/// (if you ommit `colors: false` you will get nice colors on ArangoSH)
+/// You can use explain to verify whether **skiplist** or **hash indices** are used
+/// (if you ommit `colors: false` you will get nice colors in ArangoShell):
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{IndexVerify}
 /// ~db._create("example");

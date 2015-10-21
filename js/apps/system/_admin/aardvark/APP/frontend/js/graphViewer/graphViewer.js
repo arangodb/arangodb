@@ -227,7 +227,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     });
   };
 
-  this.loadGraphWithRandomStart = function(callback) {
+  this.loadGraphWithRandomStart = function(callback, size) {
     adapter.loadRandomNode(function (node) {
       if (node.errorCode && node.errorCode === 404) {
         callback(node);
@@ -238,7 +238,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       if (_.isFunction(callback)) {
         callback();
       }
-    });
+    }, size);
   };
 
   this.loadGraphWithAdditionalNode = function(attribute, value, callback) {

@@ -51,7 +51,7 @@ struct VertexId {
 
   VertexId () 
     : cid(0), 
-      key(nullptr) {
+      key("") {
   }
 
   VertexId (TRI_voc_cid_t cid, char const* key) 

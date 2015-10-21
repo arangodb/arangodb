@@ -194,7 +194,7 @@ static inline uint64_t TRI_DecModU64 (uint64_t i, uint64_t len) {
   if ((i--) != 0) {
     return i;
   }
-  return len-1;
+  return len - 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,8 +223,8 @@ static inline uint32_t TRI_64to32 (uint64_t x) {
 #define TRI_FAKE_SPIN_LOCKS 1
 
 #ifndef TRI_ASSERT
-#define TRI_ASSERT(expr) { if (! (expr)) TRI_PrintBacktrace(); assert(expr); }
-#define TRI_ASSERT_EXPENSIVE(expr) { if (! (expr)) TRI_PrintBacktrace(); assert(expr); }
+#define TRI_ASSERT(expr) { if (! (expr)) { TRI_PrintBacktrace(); assert(expr); } }
+#define TRI_ASSERT_EXPENSIVE(expr) { if (! (expr)) { TRI_PrintBacktrace(); assert(expr); } }
 #endif
 
 
@@ -234,8 +234,9 @@ static inline uint32_t TRI_64to32 (uint64_t x) {
 #undef TRI_FAKE_SPIN_LOCKS
 
 #ifndef TRI_ASSERT
-#define TRI_ASSERT(expr) (static_cast<void>(0))
-#define TRI_ASSERT_EXPENSIVE(expr) (static_cast<void>(0))
+#define TRI_ASSERT(expr) do { (void) 0; } while (0)
+#define TRI_ASSERT_EXPENSIVE(expr) do { (void) 0; } while (0)
+
 #endif
 
 #endif
@@ -298,13 +299,10 @@ struct TRI_AutoOutOfScope {
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-//  using namespace std;
-
   typedef TRI_blob_t blob_t;
   typedef TRI_datetime_t datetime_t;
   typedef TRI_date_t date_t;
   typedef TRI_seconds_t seconds_t;
-  typedef TRI_msec_t msec_t;
 }
 
 #undef TRI_SHOW_LOCK_TIME 

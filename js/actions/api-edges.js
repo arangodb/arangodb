@@ -31,8 +31,6 @@
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 
-var API = "/_api/edges";
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock API_EDGE_READINOUTBOUND
 /// @brief get edges
@@ -149,7 +147,7 @@ function get_edges (req, res) {
     actions.resultBad(req,
                       res,
                       arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expected GET " + API +
+                      "expected GET /_api/edges" +
                       "/<collection-identifier>?vertex=<vertex-handle>&direction=<direction>");
     return;
   }
@@ -189,7 +187,7 @@ function get_edges (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API,
+  url : "_api/edges",
 
   callback : function (req, res) {
     try {

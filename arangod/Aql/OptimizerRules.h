@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rules for the query optimizer
 ///
-/// @file arangod/Aql/OptimizerRules.h
+/// @file 
 ///
 /// DISCLAIMER
 ///
@@ -22,6 +22,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Jan Steemann
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -142,10 +143,10 @@ namespace triagens {
     int removeUnnecessaryCalculationsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prefer IndexRange nodes over EnumerateCollection nodes
+/// @brief useIndex, try to use an index for filtering
 ////////////////////////////////////////////////////////////////////////////////
 
-    int useIndexRangeRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int useIndexesRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to use the index for sorting

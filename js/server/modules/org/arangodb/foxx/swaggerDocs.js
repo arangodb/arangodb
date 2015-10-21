@@ -27,7 +27,6 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var foxxInternal = require("org/arangodb/foxx/internals");
 var _ = require("underscore");
 var internal = require("internal");
 
@@ -37,28 +36,36 @@ var SwaggerDocs = function (docs, models) {
   this.models = models;
 };
 
-SwaggerDocs.prototype.addNickname = function (httpMethod, match) {
-  this.docs.nickname = foxxInternal.constructNickname(httpMethod, match);
-};
-
 SwaggerDocs.prototype.addPathParam = function (paramName, description, dataType, required) {
-  this.docs.parameters.push(foxxInternal.constructPathParamDoc(paramName, description, dataType, required));
+  this.docs.parameters.push({
+    paramType: "path",
+    name: paramName,
+    description: description,
+    dataType: dataType,
+    required: required
+  });
 };
 
 SwaggerDocs.prototype.addQueryParam = function (paramName, description, dataType, required, allowMultiple) {
-  this.docs.parameters.push(foxxInternal.constructQueryParamDoc(
-    paramName,
-    description,
-    dataType,
-    required,
-    allowMultiple
-  ));
+  this.docs.parameters.push({
+    paramType: "query",
+    name: paramName,
+    description: description,
+    dataType: dataType,
+    required: required,
+    allowMultiple: allowMultiple
+  });
 };
 
 SwaggerDocs.prototype.addBodyParam = function (paramName, description, jsonSchema) {
 
   var token = internal.genRandomAlphaNumbers(32);
+  while (this.models[token]) {
+    // Brute-force against random collisions
+    token = internal.genRandomAlphaNumbers(32);
+  }
   this.models[token] = jsonSchema;
+  delete jsonSchema.id;
 
   var param = _.find(this.docs.parameters, function (parameter) {
     return parameter.name === 'undocumented body';

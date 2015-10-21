@@ -401,7 +401,10 @@ function validateMount(mount, internal) {
     }
   }
   if (!internal) {
-    if (mount[1] === "_") {
+    // routes starting with _ are disallowed...
+    // ...except they start with _open. the _open prefix provides a non-authenticated
+    // way to access routes
+    if (mount[1] === "_" && ! /^\/_open\//.test(mount)) {
       throw new ArangoError({
         errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
         errorMessage: "/_ apps are reserved for internal use."

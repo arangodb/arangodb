@@ -3677,7 +3677,7 @@ static TRI_vocbase_col_t* GetCollectionFromArgument (TRI_vocbase_t* vocbase,
                                                      v8::Handle<v8::Value> const val) {
   // number
   if (val->IsNumber() || val->IsNumberObject()) {
-    uint64_t cid = (uint64_t) TRI_ObjectToUInt64(val, true);
+    uint64_t cid = TRI_ObjectToUInt64(val, true);
 
     return TRI_LookupCollectionByIdVocBase(vocbase, cid);
   }

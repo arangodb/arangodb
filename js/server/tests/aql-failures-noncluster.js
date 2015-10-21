@@ -418,9 +418,9 @@ function ahuacatlFailureSuite () {
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIndexRangeBlock1 : function () {
+    testIndexBlock1 : function () {
       c.ensureHashIndex("value");
-      internal.debugSetFailAt("IndexRangeBlock::initialize");
+      internal.debugSetFailAt("IndexBlock::initialize");
       assertFailingQuery("LET f = PASSTHRU(1) FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value == f RETURN i");
       assertFailingQuery("FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j RETURN i");
     },
@@ -429,59 +429,15 @@ function ahuacatlFailureSuite () {
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIndexRangeBlock2 : function () {
+    testIndexBlock2 : function () {
       c.ensureHashIndex("value");
-      internal.debugSetFailAt("IndexRangeBlock::initializeExpressions");
+      internal.debugSetFailAt("IndexBlock::initializeExpressions");
       assertFailingQuery("LET f = PASSTHRU(1) FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value == f RETURN i");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIndexRangeBlock3 : function () {
-      c.ensureSkiplist("value");
-      internal.debugSetFailAt("IndexRangeBlock::sortConditions");
-      assertFailingQuery("FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER i.value == j.value && 10 == i.value RETURN i.value");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIndexRangeBlock4 : function () {
-      c.ensureSkiplist("value1", "value2");
-      internal.debugSetFailAt("IndexRangeBlock::sortConditionsInner");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER (i.value1 == 30 || i.value1 == 29 || i.value1 == 32) && (i.value2 == 32 || i.value2 == 29 || i.value2 == 30 || i.value2 == 35) SORT i.value1, i.value2 RETURN [ i.value1, i.value2 ]");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
-    testIndexRangeBlock5 : function () {
-      c.ensureHashIndex("value", "value2");
-      internal.debugSetFailAt("IndexRangeBlock::cartesian");
-      assertFailingQuery("FOR j IN 1..10 FOR k IN 1..2 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value2 == k RETURN i");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
-    testIndexRangeBlock6 : function () {
-      c.ensureSkiplist("value");
-      internal.debugSetFailAt("IndexRangeBlock::andCombineRangeInfoVecs");
-      assertFailingQuery("LET a = PASSTHRU('test23') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ 'test23' ], a) RETURN i._key");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
-    testIndexRangeBlock7 : function () {
+    testIndexBlock3 : function () {
       c.ensureSkiplist("value", "value2");
-      internal.debugSetFailAt("IndexRangeBlock::readIndex");
+      internal.debugSetFailAt("IndexBlock::readIndex");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 25 RETURN i");
       assertFailingQuery("FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j RETURN i");
       assertFailingQuery("FOR j IN 1..10 FOR k IN 1..2 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value2 == k RETURN i");
@@ -491,9 +447,9 @@ function ahuacatlFailureSuite () {
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIndexRangeBlock8 : function () {
+    testIndexBlock4 : function () {
       c.ensureHashIndex("value", "value2");
-      internal.debugSetFailAt("IndexRangeBlock::readHashIndex");
+      internal.debugSetFailAt("IndexBlock::readIndex");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 25 && i.value2 == 5 RETURN i");
     },
 
@@ -501,10 +457,50 @@ function ahuacatlFailureSuite () {
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIndexRangeBlock9 : function () {
+    testIndexBlock5 : function () {
       c.ensureSkiplist("value", "value2");
-      internal.debugSetFailAt("IndexRangeBlock::readSkiplistIndex");
+      internal.debugSetFailAt("IndexBlock::readIndex");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 25 && i.value2 == 5 RETURN i");
+    },
+
+    testIndexBlock6 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("IndexBlock::executeV8");
+      // DATE_NOW is an arbitrary v8 function and can be replaced
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == NOOPT(PASSTHRU(DATE_NOW())) RETURN i");
+    },
+
+    testIndexBlock7 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("IndexBlock::executeExpression");
+      // CONCAT  is an arbitrary non v8 function and can be replaced
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == NOOPT(PASSTHRU(CONCAT('1','2'))) RETURN i");
+    },
+
+    testConditionFinder1 : function () {
+      internal.debugSetFailAt("ConditionFinder::insertIndexNode");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i._key == 'test' RETURN i");
+    },
+
+    testConditionFinder2 : function () {
+      internal.debugSetFailAt("ConditionFinder::normalizePlan");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i._key == 'test' RETURN i");
+    },
+
+    testConditionFinder3 : function () {
+      internal.debugSetFailAt("ConditionFinder::sortNode");
+      assertFailingQuery("FOR i IN " + c.name() + " SORT i._key RETURN i");
+    },
+
+    testConditionFinder4 : function () {
+      internal.debugSetFailAt("ConditionFinder::variableDefinition");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i._key == 'test' RETURN i");
+    },
+
+    testIndexNodeSkiplist1 : function () {
+      c.ensureSkiplist("value");
+      internal.debugSetFailAt("SkiplistIndex::noSortIterator");
+      assertFailingQuery("FOR i IN " + c.name() + " SORT i.value RETURN i");
     }
 
   };

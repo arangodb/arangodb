@@ -1059,29 +1059,6 @@ static void JS_Execute (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registers the executes file function
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_RegisterExecuteFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  TRI_GET_GLOBALS();
-
-  // extract arguments
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("registerExecuteCallback(<func>)");
-  }
-
-  auto func = v8::Handle<v8::Function>::Cast(args[0]);
-
-  v8g->ExecuteFileCallback.Reset(isolate, func);
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a file of any type or directory exists
 /// @startDocuBlock JS_Exists
 /// `fs.exists(path)`
@@ -4432,9 +4409,6 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_TEST_PORT"), JS_TestPort);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_TIME"), JS_Time);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_WAIT"), JS_Wait);
-
-  // register callback functions
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REGISTER_EXECUTE_FILE"), JS_RegisterExecuteFile);
 
   // debugging functions
 #ifdef TRI_ENABLE_FAILURE_TESTS

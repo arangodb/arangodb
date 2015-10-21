@@ -31,13 +31,13 @@
 #define ARANGODB_AQL_COLLECTIONS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Exceptions.h"
-#include "Aql/Collection.h"
+#include "VocBase/transaction.h"
 
 struct TRI_vocbase_t;
 
 namespace triagens {
   namespace aql {
+    struct Collection;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class Collections
@@ -49,77 +49,22 @@ namespace triagens {
 
         Collections& operator= (Collections const& other) = delete;
       
-        Collections (TRI_vocbase_t* vocbase) 
-          : _vocbase(vocbase),
-            _collections() {
-        }
+        Collections (TRI_vocbase_t*); 
       
-        ~Collections () {
-          for (auto& it : _collections) {
-            delete it.second;
-          }
-        }
+        ~Collections ();
 
       public:
 
-        Collection* get (std::string const& name) {
-          auto it = _collections.find(name);
+        Collection* get (std::string const&) const;
 
-          if (it != _collections.end()) {
-            return (*it).second;
-          }
+        Collection* add (std::string const&,
+                         TRI_transaction_type_e);
 
-          return nullptr;
-        }
+        std::vector<std::string> collectionNames () const;
 
-        Collection* add (std::string const& name,
-                         TRI_transaction_type_e accessType) {
-          // check if collection already is in our map
-          TRI_ASSERT(! name.empty());
-          auto it = _collections.find(name);
-
-          if (it == _collections.end()) {
-            if (_collections.size() >= MaxCollections) {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS);
-            }
-
-            std::unique_ptr<Collection> collection(new Collection(name, _vocbase, accessType));
-            _collections.emplace(name, collection.get());
-
-            return collection.release();
-          }
-          else {
-            // note that the collection is used in both read & write ops
-            if (accessType != (*it).second->accessType) {
-              (*it).second->isReadWrite = true;
-            }
-
-            // change access type from read to write
-            if (accessType == TRI_TRANSACTION_WRITE &&
-                (*it).second->accessType == TRI_TRANSACTION_READ) {
-              (*it).second->accessType = TRI_TRANSACTION_WRITE;
-            }
-          }
-          return (*it).second;
-        }
-
-        std::vector<std::string> collectionNames () const {
-          std::vector<std::string> result;
-          result.reserve(_collections.size());
-
-          for (auto const& it : _collections) {
-            result.emplace_back(it.first);
-          }
-          return result;
-        }
-
-        std::map<std::string, Collection*>* collections () {
-          return &_collections;
-        }
+        std::map<std::string, Collection*>* collections ();
         
-        std::map<std::string, Collection*> const* collections () const {
-          return &_collections;
-        }
+        std::map<std::string, Collection*> const* collections () const;
 
       private:
 

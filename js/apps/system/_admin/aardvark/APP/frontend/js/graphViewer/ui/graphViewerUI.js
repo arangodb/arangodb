@@ -486,6 +486,29 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       dispatcherUI.addAll();
       // Default selection
       $("#control_event_expand").click();
+
+
+    },
+
+    createOptionBox = function() {
+      //create select option box 
+      var optionBox = '<li class="enabled" style="float:right">'+
+      '<select id="graphSize" class="documents-size">'+
+      '<optgroup label="Starting points:">'+
+      '<option value="5" selected="">5 vertices</option>'+
+      '<option value="10">10 vertices</option>'+
+      '<option value="20">20 vertices</option>'+
+      '<option value="50">50 vertices</option>'+
+      '<option value="100">100 vertices</option>'+
+      '<option value="500">500 vertices</option>'+
+      '<option value="1000">1000 vertices</option>'+
+      '<option value="2500">2500 vertices</option>'+
+      '<option value="5000">5000 vertices</option>'+
+      '<option value="all">All vertices</option>'+
+      '</select>'+
+      '</optgroup>'+
+      '</li>';
+      $('.headerBar .headerButtonList').prepend(optionBox);
     },
 
     updateAttributeExamples = function(e) {
@@ -600,6 +623,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       colourList.className = "gv-colour-list";
       background.insertBefore(colourList, svg[0][0]);
     };
+
   container.appendChild(menubar);
   container.appendChild(background);
   background.className = "contentDiv gv-background ";
@@ -617,6 +641,16 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   createMenu();
   createColourList();
   makeDisplayInformationDiv();
+  createOptionBox();
+
+  $('#graphSize').on('change', function() {
+    var size = $('#graphSize').find(":selected").val();
+      graphViewer.loadGraphWithRandomStart(function(node) {
+        if (node && node.errorCode) {
+          window.alert("Sorry your graph seems to be empty");
+        }
+      }, size);
+  });
 
   if (startNode) {
     if (typeof startNode === "string") {

@@ -12,27 +12,33 @@ var runTest = require('jsunity').runTest,
 function runJSUnityTests(tests) {
   var result = true;
   var allResults = [];
+  var failed = [];
   var res;
 
+  // find out whether we're on server or client...
+  var runenvironment = "arangod";
+  if (typeof(require('internal').arango) === 'object') {
+    runenvironment = "arangosh";
+  }
+  
   _.each(tests, function (file) {
-    // find out whether we're on server or client...
-    var runenvironment = "arangod";
-    if (typeof(require('internal').arango) === 'object') {
-      runenvironment = "arangosh";
-    }
-
     if (result) {
       print("\n" + Date() + " " + runenvironment + ": Running JSUnity test from file '" + file + "'");
-    } else {
+    } 
+    else {
       print("\n" + Date() + " " + runenvironment +
             ": Skipping JSUnity test from file '" + file + "' due to previous errors");
     }
 
     try {
-      res = runTest(file);
+      res = runTest(file, true);
       allResults.push(res);
       result = result && res.status;
-    } catch (err) {
+      if (! res.status) {
+        failed.push(file);
+      }
+    } 
+    catch (err) {
       print(runenvironment + ": cannot run test file '" + file + "': " + err);
       print(err.stack);
       print(err.message);
@@ -42,6 +48,10 @@ function runJSUnityTests(tests) {
     internal.wait(0); // force GC
   });
   require("fs").write("testresult.json", JSON.stringify(allResults));
+
+  if (failed.length > 1) {
+    print("The following " + failed.length + " test files produced errors: ", failed.join(", "));
+  }
   return result;
 }
 
@@ -69,7 +79,7 @@ function runCommandLineTests(opts) {
     options = opts || {},
     jasmineReportFormat = options.jasmineReportFormat || 'progress',
     unitTests = internal.unitTests(),
-    isSpecRegEx = /.+spec\.js/,
+    isSpecRegEx = /.+-spec.*\.js/,
     isSpec = function (unitTest) {
       return isSpecRegEx.test(unitTest);
     },

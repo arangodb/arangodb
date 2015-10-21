@@ -63,7 +63,8 @@ namespace triagens {
                              std::vector<std::string> const& writeCollections,
                              double lockTimeout,
                              bool waitForSync,
-                             bool embed)
+                             bool embed,
+                             bool allowImplicitCollections)
           : Transaction(new V8TransactionContext(embed), vocbase, 0) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
@@ -75,6 +76,8 @@ namespace triagens {
           if (waitForSync) {
             this->setWaitForSync();
           }
+
+          this->setAllowImplicitCollections(allowImplicitCollections);
           
           for (auto const& it : readCollections) {
             this->addCollection(it, TRI_TRANSACTION_READ);

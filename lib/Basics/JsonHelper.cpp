@@ -213,12 +213,16 @@ TRI_json_t* JsonHelper::fromString (char const* data,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string JsonHelper::toString (TRI_json_t const* json) {
+  if (json == nullptr) {
+    return "";
+  }
   TRI_string_buffer_t buffer;
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
   int res = TRI_StringifyJson(&buffer, json);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_DestroyStringBuffer(&buffer);
     return "";
   }
 
@@ -355,30 +359,45 @@ TRI_json_t const* JsonHelper::checkAndGetArrayValue (TRI_json_t const* json,
   return sub;
 }
 
-namespace triagens {
-  namespace basics {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the JSON contents to an output stream
+////////////////////////////////////////////////////////////////////////////////
+     
+std::ostream& operator<< (std::ostream& stream,
+                          Json const* json) {
+  stream << json->toString();
+  return stream;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the JSON contents to an output stream
+////////////////////////////////////////////////////////////////////////////////
+
+std::ostream& operator<< (std::ostream& stream,
+                          Json const& json) {
+  stream << json.toString();
+  return stream;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the JSON contents to an output stream
 ////////////////////////////////////////////////////////////////////////////////
      
-    std::ostream& operator<< (std::ostream& stream,
-                              Json const* json) {
-      stream << json->toString();
-      return stream;
-    }
+std::ostream& operator<< (std::ostream& stream,
+                          TRI_json_t const* json) {
+  stream << JsonHelper::toString(json);
+  return stream;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the JSON contents to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::ostream& operator<< (std::ostream& stream,
-                              Json const& json) {
-      stream << json.toString();
-      return stream;
-    }
-
-  }
+std::ostream& operator<< (std::ostream& stream,
+                          TRI_json_t const& json) {
+  stream << JsonHelper::toString(&json);
+  return stream;
 }
 
 // -----------------------------------------------------------------------------

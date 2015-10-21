@@ -7,13 +7,13 @@ arangosh&gt; query.outEdges().toVertices().path().toArray();
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1466475052"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1405999559"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
     }, 
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndBob"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndBob"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1467523628"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1407048135"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/bob"</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span> 
@@ -21,7 +21,7 @@ arangosh&gt; query.outEdges().toVertices().path().toArray();
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1466802732"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1406327239"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
     } 
   ], 
@@ -29,13 +29,13 @@ arangosh&gt; query.outEdges().toVertices().path().toArray();
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1466475052"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1405999559"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
     }, 
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndCharly"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndCharly"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1467785772"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1407310279"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"female/alice"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"male/charly"</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"friend"</span> 
@@ -43,7 +43,7 @@ arangosh&gt; query.outEdges().toVertices().path().toArray();
     { 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/charly"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"charly"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1466999340"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1406523847"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Charly"</span> 
     } 
   ] 

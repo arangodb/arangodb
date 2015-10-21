@@ -619,8 +619,13 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
       }
       query += "]";
     } else {
-      query += "MERGE(@vertexExample_" + this.stack.length 
-        + "," + mergeWith + ")";
+      if (Array.isArray(ex)) {
+        query += "@vertexExample_" + this.stack.length + " [ * RETURN MERGE(CURRENT," + mergeWith + ")]";
+      }
+      else {
+        query += "MERGE(@vertexExample_" + this.stack.length 
+          + "," + mergeWith + ")";
+      }
     }
   } else {
     query += "@vertexExample_" + this.stack.length;

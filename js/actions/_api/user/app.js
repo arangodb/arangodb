@@ -133,9 +133,13 @@ function get_api_user (req, res) {
 /// The following data need to be passed in a JSON representation in the body
 /// of the POST request:
 ///
-/// - *user*: The name of the user as a string. This is mandatory
-/// - *passwd*: The user password as a string. If no password is specified,
-///   the empty string will be used
+/// - *user*: The name of the user as a string. This is mandatory.
+/// - *passwd*: The user password as a string. If no password is specified, the
+///   empty string will be used. If you pass the special value
+///   *ARANGODB_DEFAULT_ROOT_PASSWORD*, the password will be set the value
+///   stored in the environment variable `ARANGODB_DEFAULT_ROOT_PASSWORD`. This
+///   can be used to pass an instance variable into ArangoDB. For example, the
+///   instance identifier from Amazon.
 /// - *active*: An optional flag that specifies whether the user is active.
 ///   If not specified, this will default to true
 /// - *extra*: An optional JSON object with arbitrary extra data about the user

@@ -33,16 +33,61 @@
 #include "Basics/Common.h"
 #include "Basics/AssocMulti.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+
+struct TRI_json_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class EdgeIndex
 // -----------------------------------------------------------------------------
 
 namespace triagens {
+  namespace aql {
+    class SortCondition;
+  }
+
   namespace arango {
+
+    class EdgeIndexIterator : public IndexIterator {
+
+      public:
+
+        typedef triagens::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t, uint32_t, true> TRI_EdgeIndexHash_t;
+
+        TRI_doc_mptr_t* next () override;
+
+        void reset () override;
+
+        EdgeIndexIterator (TRI_EdgeIndexHash_t const* index,
+                           std::vector<TRI_edge_header_t>& searchValues) 
+        : _index(index),
+          _keys(std::move(searchValues)),
+          _position(0),
+          _last(nullptr),
+          _buffer(nullptr),
+          _posInBuffer(0),
+          _batchSize(50) { // This might be adjusted
+        }
+
+        ~EdgeIndexIterator () {
+          // Free the vector space, not the content
+          delete _buffer;
+        }
+
+      private:
+
+        TRI_EdgeIndexHash_t const*         _index;
+        std::vector<TRI_edge_header_t>     _keys;
+        size_t                             _position;
+        TRI_doc_mptr_t*                    _last;
+        std::vector<TRI_doc_mptr_t*>*      _buffer;
+        size_t                             _posInBuffer;
+        size_t                             _batchSize;
+
+    };
 
     class EdgeIndex : public Index {
 
@@ -56,6 +101,8 @@ namespace triagens {
 
         EdgeIndex (TRI_idx_iid_t,
                    struct TRI_document_collection_t*);
+        
+        explicit EdgeIndex (struct TRI_json_t const*);
 
         ~EdgeIndex ();
 
@@ -69,7 +116,7 @@ namespace triagens {
 /// @brief typedef for hash tables
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef triagens::basics::AssocMulti<void, void, uint32_t, true> TRI_EdgeIndexHash_t;
+        typedef triagens::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t, uint32_t, true> TRI_EdgeIndexHash_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -79,6 +126,10 @@ namespace triagens {
         
         IndexType type () const override final {
           return Index::TRI_IDX_TYPE_EDGE_INDEX;
+        }
+        
+        bool isSorted () const override final {
+          return false;
         }
 
         bool hasSelectivityEstimate () const override final {
@@ -110,7 +161,7 @@ namespace triagens {
       
         void lookup (TRI_edge_index_iterator_t const*,
                      std::vector<TRI_doc_mptr_copy_t>&,
-                     void*&,
+                     TRI_doc_mptr_copy_t*&,
                      size_t);
 
         int sizeHint (size_t) override final;
@@ -126,6 +177,35 @@ namespace triagens {
         TRI_EdgeIndexHash_t* to () {
           return _edgesTo;
         }
+
+        bool supportsFilterCondition (triagens::aql::AstNode const*,
+                                      triagens::aql::Variable const*,
+                                      size_t,
+                                      size_t&,
+                                      double&) const override;
+
+        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+                                             triagens::aql::Ast*,
+                                             triagens::aql::AstNode const*,
+                                             triagens::aql::Variable const*,
+                                             bool const) const override;
+
+        triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
+                                                     triagens::aql::Variable const*) const override;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the iterator
+////////////////////////////////////////////////////////////////////////////////
+    
+        IndexIterator* createIterator (IndexIteratorContext*,
+                                       triagens::aql::AstNode const*,
+                                       std::vector<triagens::aql::AstNode const*> const&) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

@@ -61,14 +61,14 @@ JSLoader::JSLoader () {
 
 v8::Handle<v8::Value> JSLoader::executeGlobalScript (v8::Isolate* isolate,
                                                      v8::Handle<v8::Context> context,
-                                                     string const& name) {
+                                                     std::string const& name) {
   v8::TryCatch tryCatch;
   v8::EscapableHandleScope scope(isolate);
   v8::Handle<v8::Value> result;
 
   findScript(name);
 
-  map<string, string>::iterator i = _scripts.find(name);
+  std::map<std::string, std::string>::iterator i = _scripts.find(name);
 
   if (i == _scripts.end()) {
     // correct the path/name
@@ -84,7 +84,7 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript (v8::Isolate* isolate,
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      TRI_LogV8Exception(isolate, &tryCatch);/// TODO: could this be the place where we loose the information about parse errors of scripts?
+      TRI_LogV8Exception(isolate, &tryCatch); // TODO: could this be the place where we lose the information about parse errors of scripts?
       return v8::Undefined(isolate);
     }
     else {
