@@ -35,8 +35,8 @@ db.collection.document("<document-key>");
 db._document("<document-id>");
 ```
 
-As the primary index is a hash index, it cannot be used for non-equality range 
-queries or for sorting.
+As the primary index is an unsorted hash index, it cannot be used for non-equality 
+range queries or for sorting.
 
 The primary index of a collection cannot be dropped or changed, and there is no
 mechanism to create user-defined primary indexes.
@@ -64,11 +64,11 @@ db.collection.inEdges("<from-value>");
 db.collection.inEdges("<to-value>");
 ```
 
-The edges index is a hash index. It can be used for equality lookups only, but not for range
-queries or for sorting. As edges indexes are automatically created for edge collections, it
-is not possible to create user-defined edges indexes.
+Internally, the edges index is implemented as a hash index. It can be used for equality 
+lookups, but not for range queries or for sorting. As edges indexes are automatically 
+created for edge collections, it is not possible to create user-defined edges indexes.
 
-The edges index cannot be dropped or changed.
+An edges index cannot be dropped or changed.
 
 
 !SUBSECTION Hash Index
@@ -120,7 +120,7 @@ Non-unique hash indexes have an amortized complexity of O(1) for insert, update,
 removal operations. That means non-unique hash indexes can be used on attributes with 
 low cardinality. 
 
-If a hash index is created on an attribute that it is missing in all or many of the documents,
+If a hash index is created on an attribute that is missing in all or many of the documents,
 the behavior is as follows:
 
 * if the index is sparse, the documents missing the attribute will not be indexed and not
@@ -129,6 +129,9 @@ the behavior is as follows:
 
 * if the index is non-sparse, the documents missing the attribute will be contained in the
   index with a key value of `null`. 
+
+Hash indexes support indexing array values if the index attribute name is extended with
+a <i>[\*]</i>`. 
 
 
 !SUBSECTION Skiplist Index
@@ -217,6 +220,9 @@ The different types of skiplist indexes have the following characteristics:
 The operational amortized complexity for skiplist indexes is logarithmically correlated
 with the number of documents in the index.
 
+Skiplist indexes support indexing array values if the index attribute name is extended with
+a <i>[\*]</i>`. 
+
 
 !SUBSECTION Geo Index
 
@@ -231,8 +237,8 @@ Th geo index provides operations to find documents with coordinates nearest to a
 comparison coordinate, and to find documents with coordinates that are within a specifiable
 radius around a comparison coordinate.
 
-The geo index is used via dedicated functions in AQL or the simple queries, but will
-not enabled for other types of queries or conditions.
+The geo index is used via dedicated functions in AQL or the simple queries functions, 
+but will not be used for other types of queries or conditions.
 
 
 !SUBSECTION Fulltext Index
