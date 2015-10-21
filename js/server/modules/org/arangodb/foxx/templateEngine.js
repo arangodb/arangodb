@@ -112,8 +112,8 @@ _.extend(Engine.prototype, {
       modelInstance = collectionStart.toLowerCase() + modelBase;
       repositoryName = collectionStart.toUpperCase() + repositoryBase;
       repositoryInstance = collectionStart.toLowerCase() + repositoryBase;
-      repositoryPath = 'repositories/' + collectionName;
-      modelPath = 'models/' + modelName.toLowerCase();
+      repositoryPath = '../repositories/' + collectionName;
+      modelPath = '../models/' + modelName.toLowerCase();
 
       this.collectionNames.push(collectionName);
       this.controllers.push({
