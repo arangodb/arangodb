@@ -3071,7 +3071,7 @@ window.StatisticsDescriptionCollection = Backbone.Collection.extend({
 
 }());
 
-/*global window, $, Backbone, templateEngine, plannerTemplateEngine, alert, _ */
+/*global window, $, Backbone, XMLHttpRequest, templateEngine, plannerTemplateEngine, alert, _ */
 
 (function() {
   "use strict";
@@ -3092,11 +3092,41 @@ window.StatisticsDescriptionCollection = Backbone.Collection.extend({
       });
     },
 
+    retryCounter: 0,
+
+    retryNavigation: function() {
+      var self = this;
+
+      if (this.retryCounter === 10) {
+        this.retryCounter = 0;
+
+        var xhttp = new XMLHttpRequest(); xhttp.open("GET", window.location.origin + window.location.pathname, false);
+        xhttp.send();
+
+        if (xhttp.status === 200) {
+          window.location.reload();
+        }
+        else {
+          window.setTimeout(function() {
+            self.retryCounter++;
+            self.retryNavigation();
+          }, 1000);
+        }
+      }
+      else {
+        this.retryCounter++;
+        window.setTimeout(function() {
+          self.retryNavigation();
+        }, 1000);
+      }
+    },
 
     retryConnection: function() {
-      this.coordinators.checkConnection(function() {
-        window.App.showCluster();
-      });
+        this.coordinators.checkConnection(function() {
+          window.App.showCluster();
+        });
+
+        this.retryNavigation();
     },
 
     shutdown: function() {

@@ -24,6 +24,9 @@ v2.8.0 (XXXX-XX-XX)
         FILTER "ArangoDB" IN doc.tags 
         RETURN doc
 
+* added convenience function `db._explain(query)` for human-readable explanation
+  of AQL queries
+
 
 v2.7.1 (XXXX-XX-XX)
 -------------------
