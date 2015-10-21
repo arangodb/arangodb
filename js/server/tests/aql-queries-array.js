@@ -125,6 +125,40 @@ function arrayIndexSuite () {
     assertNotEqual(-1, actual.json.indexOf("50t"), "Did not find the null array");
   };
 
+  var validateResultsOr = function (query, sparse) {
+    var bindVars = {};
+    bindVars.tag1 = "tenth";
+    bindVars.tag2 = "duplicate";
+
+    checkIsOptimizedQuery(query, bindVars);
+    // Assert the result
+    var actual = AQL_EXECUTE(query, bindVars);
+    assertTrue(actual.stats.scannedIndex > 0);
+    assertEqual(actual.stats.scannedFull, 0);
+    assertEqual(actual.json.length, 40); // 10 + 34 - 4
+    var last = "0";
+    for (var i = 0; i < actual.json.length; ++i) {
+      var key = parseInt(actual.json[i]);
+      if (key % 3 !== 0) {
+        assertEqual(key % 10, 0, "A tenth _key is not divisble by ten: " + actual.json[i]);
+      }
+      assertTrue(last < actual.json[i], last + " < " + actual.json[i]);
+      last = actual.json[i];
+    }
+
+    bindVars.tag1 = null;
+    if (!sparse) {
+      checkIsOptimizedQuery(query, bindVars);
+    }
+    else {
+      validateIndexNotUsed(query, bindVars);
+    }
+    actual = AQL_EXECUTE(query, bindVars);
+    // We check if we found the Arrays with NULL in it
+    assertNotEqual(-1, actual.json.indexOf("0t"), "Did not find the null array");
+    assertNotEqual(-1, actual.json.indexOf("50t"), "Did not find the null array");
+  };
+
   var validateCombinedResults = function (query) {
     var bindVars = {};
     bindVars.tag = "tenth";
@@ -170,6 +204,8 @@ function arrayIndexSuite () {
       }
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
       validateResults(query);
+      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] || @tag2 IN x.a[*] SORT x._key RETURN x._key`;
+      validateResultsOr(orQuery);
     },
 
     testHashNestedArray : function () {
@@ -179,6 +215,8 @@ function arrayIndexSuite () {
       }
       const query = `FOR x IN ${cName} FILTER @tag IN x.a.b[*] SORT x._key RETURN x._key`;
       validateResults(query);
+      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a.b[*] || @tag2 IN x.a.b[*] SORT x._key RETURN x._key`;
+      validateResultsOr(orQuery);
     },
 
     testHashArraySubattributes : function () {
@@ -193,6 +231,8 @@ function arrayIndexSuite () {
       }
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*].b SORT x._key RETURN x._key`;
       validateResults(query);
+      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*].b || @tag2 IN x.a[*].b SORT x._key RETURN x._key`;
+      validateResultsOr(orQuery);
     },
 
     testHashArrayCombinedIndex : function () {
@@ -234,6 +274,8 @@ function arrayIndexSuite () {
       }
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
       validateResults(query, true);
+      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] || @tag2 IN x.a[*] SORT x._key RETURN x._key`;
+      validateResultsOr(orQuery, true);
     },
 
     testSkiplistPlainArray : function () {
@@ -243,6 +285,8 @@ function arrayIndexSuite () {
       }
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
       validateResults(query);
+      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] || @tag2 IN x.a[*] SORT x._key RETURN x._key`;
+      validateResultsOr(orQuery);
     },
 
     testSkiplistNestedArray : function () {
@@ -252,6 +296,8 @@ function arrayIndexSuite () {
       }
       const query = `FOR x IN ${cName} FILTER @tag IN x.a.b[*] SORT x._key RETURN x._key`;
       validateResults(query);
+      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a.b[*] || @tag2 IN x.a.b[*] SORT x._key RETURN x._key`;
+      validateResultsOr(orQuery);
     },
 
     testSkiplistArraySubattributes : function () {
@@ -266,6 +312,8 @@ function arrayIndexSuite () {
       }
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*].b SORT x._key RETURN x._key`;
       validateResults(query);
+      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*].b || @tag2 IN x.a[*].b SORT x._key RETURN x._key`;
+      validateResultsOr(orQuery);
     },
 
     testSkiplistArrayCombinedIndex : function () {
@@ -300,14 +348,40 @@ function arrayIndexSuite () {
       validateIndexNotUsed(query);
     },
 
-    testSkiplsitArraySparse : function () {
+    testSkiplistArraySparse : function () {
       col.ensureSkiplist("a[*]", {sparse: true});
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
       validateResults(query, true);
+      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] || @tag2 IN x.a[*] SORT x._key RETURN x._key`;
+      validateResultsOr(orQuery, true);
     }
+
+  };
+
+}
+
+function arrayIndexCrazyQueriesSuite () {
+
+  const cName = "UnitTestsArray";
+  var col;
+
+  return {
+
+    setUp : function () {
+      this.tearDown();
+      col = db._create(cName);
+    },
+
+    tearDown : function () {
+      db._drop(cName);
+    },
+
+    testLongChainediArrayHash : function () {
+    }
+
 
   };
 
@@ -318,6 +392,7 @@ function arrayIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(arrayIndexSuite);
+jsunity.run(arrayIndexCrazyQueriesSuite);
 
 return jsunity.done();
 
