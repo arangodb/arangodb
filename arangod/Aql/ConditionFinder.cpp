@@ -87,6 +87,9 @@ bool ConditionFinder::before (ExecutionNode* en) {
        if (_sorts.empty()) {
          for (auto& it : static_cast<SortNode const*>(en)->getElements()) {
            _sorts.emplace_back((it.first)->id, it.second);
+            TRI_IF_FAILURE("ConditionFinder::sortNode") {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+            }
          }
        }
        break;
@@ -97,6 +100,9 @@ bool ConditionFinder::before (ExecutionNode* en) {
       TRI_ASSERT(outvars.size() == 1);
 
       _variableDefinitions.emplace(outvars[0]->id, static_cast<CalculationNode const*>(en)->expression()->node());
+      TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
       break;
     }
 
@@ -120,6 +126,9 @@ bool ConditionFinder::before (ExecutionNode* en) {
 
       // normalize the condition
       condition->normalize(_plan);
+      TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
 
       bool const conditionIsImpossible = (foundCondition && condition->isEmpty());
 
@@ -189,6 +198,9 @@ bool ConditionFinder::before (ExecutionNode* en) {
           reverse
         ));
         condition.release();
+        TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
 
         // We keep this node's change
         _changes->emplace(node->id(), newNode.get());

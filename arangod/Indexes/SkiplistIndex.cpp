@@ -1285,6 +1285,9 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     std::vector<TRI_index_operator_t*> searchValues({unboundOperator.get()});
     unboundOperator.release();
 
+    TRI_IF_FAILURE("SkiplistIndex::noSortIterator")  {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     return new SkiplistIndexIterator(this, searchValues, reverse);
   }
   std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
