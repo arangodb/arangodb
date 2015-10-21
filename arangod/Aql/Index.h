@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Aql, Index
 ///
-/// @file
+/// @file 
 ///
 /// DISCLAIMER
 ///
@@ -35,10 +35,12 @@
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 #include "Indexes/Index.h"
-#include "Indexes/PathBasedIndex.h"
 
 namespace triagens {
   namespace aql {
+    struct AstNode;
+    class SortCondition;
+    struct Variable;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      struct Index
@@ -58,6 +60,7 @@ namespace triagens {
           type(idx->type()),
           unique(false),
           sparse(false),
+          ownsInternals(false),
           fields(idx->fields()),
           internals(idx) {
 
@@ -68,9 +71,8 @@ namespace triagens {
         }
         else if (type == triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX ||
                  type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-          auto pathBasedIndex = static_cast<triagens::arango::PathBasedIndex const*>(idx);
-          sparse = pathBasedIndex->sparse();
-          unique = pathBasedIndex->unique();
+          sparse = idx->sparse();
+          unique = idx->unique();
         }
       }
       
@@ -79,6 +81,7 @@ namespace triagens {
           type(triagens::arango::Index::type(triagens::basics::JsonHelper::checkAndGetStringValue(json, "type").c_str())),
           unique(triagens::basics::JsonHelper::getBooleanValue(json, "unique", false)),
           sparse(triagens::basics::JsonHelper::getBooleanValue(json, "sparse", false)),
+          ownsInternals(false),
           fields(),
           internals(nullptr) {
 
@@ -89,7 +92,7 @@ namespace triagens {
           fields.reserve(n);
 
           for (size_t i = 0; i < n; ++i) {
-            auto * name = static_cast<TRI_json_t const*>(TRI_AtVector(&f->_value._objects, i));
+            auto* name = static_cast<TRI_json_t const*>(TRI_AtVector(&f->_value._objects, i));
 
             if (TRI_IsStringJson(name)) {
               std::vector<triagens::basics::AttributeName> parsedAttributes;
@@ -99,12 +102,10 @@ namespace triagens {
           }
         }
 
-        // it is the caller's responsibility to fill the data attribute with something sensible later!
+        // it is the caller's responsibility to fill the internals attribute with something sensible later!
       }
       
-      ~Index() {
-      }
-  
+      ~Index();
   
       triagens::basics::Json toJson () const {
         triagens::basics::Json json(triagens::basics::Json::Object);
@@ -149,17 +150,53 @@ namespace triagens {
         return (internals != nullptr);
       }
 
-      triagens::arango::Index* getInternals () const {
-        if (internals == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "accessing undefined index internals");
-        }
-        return internals; 
-      }
+      triagens::arango::Index* getInternals () const;
       
-      void setInternals (triagens::arango::Index* idx) {
-        TRI_ASSERT(internals == nullptr);
-        internals = idx;
+      void setInternals (triagens::arango::Index*, bool);
+
+      bool isSorted () const {
+        return getInternals()->isSorted();
       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether or not the index supports the filter condition
+/// and calculate the filter costs and number of items
+////////////////////////////////////////////////////////////////////////////////
+
+      bool supportsFilterCondition (triagens::aql::AstNode const*,
+                                    triagens::aql::Variable const*,
+                                    size_t,
+                                    size_t&,
+                                    double&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether or not the index supports the sort condition
+/// and calculate the sort costs
+////////////////////////////////////////////////////////////////////////////////
+      
+      bool supportsSortCondition (triagens::aql::SortCondition const*,
+                                  triagens::aql::Variable const*,
+                                  size_t,
+                                  double&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get an iterator for the index
+////////////////////////////////////////////////////////////////////////////////
+
+      arango::IndexIterator* getIterator (arango::IndexIteratorContext*, 
+                                          triagens::aql::Ast*,
+                                          triagens::aql::AstNode const*,
+                                          triagens::aql::Variable const*,
+                                          bool) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specialize the condition for the index
+/// this will remove all nodes from the condition that the index cannot
+/// handle
+////////////////////////////////////////////////////////////////////////////////
+      
+      triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
+                                                   triagens::aql::Variable const*) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
@@ -171,16 +208,20 @@ namespace triagens {
         triagens::arango::Index::IndexType                               type;
         bool                                                             unique;
         bool                                                             sparse;
-        std::vector<std::vector<triagens::basics::AttributeName>>  fields;
+        bool                                                             ownsInternals;
+        std::vector<std::vector<triagens::basics::AttributeName>>        fields;
 
       private:
 
-        triagens::arango::Index*                      internals;
+        triagens::arango::Index*                                         internals;
 
     };
 
   }
 }
+
+std::ostream& operator<< (std::ostream&, triagens::aql::Index const*);
+std::ostream& operator<< (std::ostream&, triagens::aql::Index const&);
 
 #endif
 

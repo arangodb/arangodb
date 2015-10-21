@@ -85,13 +85,13 @@ static bool FindEdges (TRI_edge_direction_e direction,
                        std::vector<TRI_doc_mptr_copy_t>& result,
                        TRI_edge_header_t const* entry,
                        int matchType) {
-  std::unique_ptr<std::vector<void*>> found;
+  std::unique_ptr<std::vector<TRI_doc_mptr_t*>> found;
 
   if (direction == TRI_EDGE_OUT) {
-    found.reset(edgeIndex->from()->lookupByKey(static_cast<void const*>(entry)));
+    found.reset(edgeIndex->from()->lookupByKey(entry));
   }
   else if (direction == TRI_EDGE_IN) {
-    found.reset(edgeIndex->to()->lookupByKey(static_cast<void const*>(entry)));
+    found.reset(edgeIndex->to()->lookupByKey(entry));
   }
   else {
     TRI_ASSERT(false);   // TRI_EDGE_ANY not supported here
@@ -108,7 +108,7 @@ static bool FindEdges (TRI_edge_direction_e direction,
 
     // add all results found
     for (size_t i = 0;  i < n;  ++i) {
-      TRI_doc_mptr_t* edge = static_cast<TRI_doc_mptr_t*>(found->at(i));
+      TRI_doc_mptr_t* edge = found->at(i);
 
       // the following queries will use the following sequences of matchTypes:
       // inEdges(): 1,  outEdges(): 1,  edges(): 1, 3

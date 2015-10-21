@@ -29,20 +29,22 @@
 #define ARANGODB_AQL_CLUSTER_BLOCKS_H 1
 
 #include "Basics/Common.h"
-#include "Aql/Collection.h"
+#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionStats.h"
-#include "Cluster/ClusterMethods.h"
-#include "Utils/AqlTransaction.h"
 
 struct TRI_json_t;
 
 namespace triagens {
+  namespace arango {
+    class AqlTransaction;
+    struct ClusterCommResult;
+  }
+
   namespace aql {
-
     class AqlItemBlock;
-
+    struct Collection;
     class ExecutionEngine;
 
 // -----------------------------------------------------------------------------

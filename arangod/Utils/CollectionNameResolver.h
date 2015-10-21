@@ -57,10 +57,10 @@ namespace triagens {
 /// @brief create the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionNameResolver (TRI_vocbase_t* vocbase) :
-          _vocbase(vocbase),
-          _resolvedNames(),
-          _resolvedIds() {
+        CollectionNameResolver (TRI_vocbase_t* vocbase) 
+          : _vocbase(vocbase),
+            _resolvedNames(),
+            _resolvedIds() {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -31,12 +31,16 @@
 #define ARANGODB_INDEXES_SKIPLIST_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Aql/AstNode.h"
 #include "Basics/SkipList.h"
+#include "Indexes/IndexIterator.h"
 #include "Indexes/PathBasedIndex.h"
 #include "IndexOperators/index-operator.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+
+struct TRI_json_t;
 
 typedef struct {
   TRI_shaped_json_t* _fields;   // list of shaped json objects which the
@@ -48,6 +52,11 @@ typedef struct {
 TRI_skiplist_index_key_t;
 
 namespace triagens {
+  namespace aql {
+    class SortCondition;
+    struct Variable;
+  }
+
   namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +114,7 @@ namespace triagens {
 
         SkiplistIterator (SkiplistIndex const* idx,
                           bool reverse) 
-          : _index(idx) ,
+          : _index(idx),
             _currentInterval(0),
             _reverse(reverse),
             _cursor(nullptr) {
@@ -166,6 +175,41 @@ namespace triagens {
         bool findHelperIntervalValid (SkiplistIteratorInterval const& interval);
     };
 
+    class SkiplistIndexIterator : public IndexIterator {
+
+      public:
+        
+        SkiplistIndexIterator (SkiplistIndex const* index,
+                               std::vector<TRI_index_operator_t*> op,
+                               bool reverse)
+        : _index(index),
+          _operators(op),
+          _reverse(reverse),
+          _currentOperator(0),
+          _iterator(nullptr) {
+        }
+
+        ~SkiplistIndexIterator () {
+          for (auto& op : _operators) {
+            delete op;
+          }
+          delete _iterator;
+        }
+
+        TRI_doc_mptr_t* next () override;
+
+        void reset () override;
+
+
+      private:
+
+        SkiplistIndex const*                 _index;
+        std::vector<TRI_index_operator_t*>   _operators;
+        bool                                 _reverse;
+        size_t                               _currentOperator;
+        SkiplistIterator*                    _iterator;
+
+    };
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class SkiplistIndex
 // -----------------------------------------------------------------------------
@@ -176,7 +220,7 @@ namespace triagens {
         int operator() (TRI_skiplist_index_key_t const* leftKey,
                         TRI_index_element_t const* rightElement) const;
 
-        KeyElementComparator (SkiplistIndex* idx) {
+        explicit KeyElementComparator (SkiplistIndex* idx) {
           _idx = idx;
         }
 
@@ -190,7 +234,7 @@ namespace triagens {
                         TRI_index_element_t const* rightElement,
                         triagens::basics::SkipListCmpType cmptype) const;
 
-        ElementElementComparator (SkiplistIndex* idx) {
+        explicit ElementElementComparator (SkiplistIndex* idx) {
           _idx = idx;
         }
 
@@ -218,6 +262,8 @@ namespace triagens {
                         std::vector<std::vector<triagens::basics::AttributeName>> const&,
                         bool,
                         bool);
+        
+        explicit SkiplistIndex (struct TRI_json_t const*);
 
         ~SkiplistIndex ();
 
@@ -229,6 +275,10 @@ namespace triagens {
         
         IndexType type () const override final {
           return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
+        }
+        
+        bool isSorted () const override final {
+          return true;
         }
 
         bool hasSelectivityEstimate () const override final {
@@ -252,7 +302,27 @@ namespace triagens {
 /// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkiplistIterator* lookup (TRI_index_operator_t*, bool);
+        SkiplistIterator* lookup (TRI_index_operator_t*, bool) const;
+
+        bool supportsFilterCondition (triagens::aql::AstNode const*,
+                                      triagens::aql::Variable const*,
+                                      size_t,
+                                      size_t&,
+                                      double&) const override;
+        
+        bool supportsSortCondition (triagens::aql::SortCondition const*,
+                                    triagens::aql::Variable const*,
+                                    size_t,
+                                    double&) const override;
+
+        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+                                             triagens::aql::Ast*,
+                                             triagens::aql::AstNode const*,
+                                             triagens::aql::Variable const*,
+                                             bool const) const override;
+
+        triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
+                                                     triagens::aql::Variable const*) const override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -260,12 +330,26 @@ namespace triagens {
 
       private:
 
+        bool isDuplicateOperator (triagens::aql::AstNode const*,
+                                  std::unordered_set<int> const&) const;
+
         int _CmpElmElm (TRI_index_element_t const* leftElement,
                        TRI_index_element_t const* rightElement,
                        triagens::basics::SkipListCmpType cmptype);
 
         int _CmpKeyElm (TRI_skiplist_index_key_t const* leftKey,
                        TRI_index_element_t const* rightElement);
+
+        bool accessFitsIndex (triagens::aql::AstNode const*,
+                              triagens::aql::AstNode const*,
+                              triagens::aql::AstNode const*,
+                              triagens::aql::Variable const*,
+                              std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&) const;
+
+        void matchAttributes (triagens::aql::AstNode const*,
+                              triagens::aql::Variable const*,
+                              std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
+                              size_t&) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

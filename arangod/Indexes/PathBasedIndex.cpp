@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathBasedIndex.h"
+#include "Aql/AstNode.h"
 #include "Basics/logging.h"
 
 using namespace triagens::arango;
@@ -35,6 +36,25 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class PathBasedIndex
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           struct PermutationState
+// -----------------------------------------------------------------------------
+
+triagens::aql::AstNode const* PathBasedIndex::PermutationState::getValue () const {
+  if (type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    TRI_ASSERT(current == 0);
+    return value;
+  }
+  else if (type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    TRI_ASSERT(n > 0);
+    TRI_ASSERT(current < n);
+    return value->getMember(current);
+  }
+
+  TRI_ASSERT(false);
+  return nullptr;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -49,19 +69,38 @@ PathBasedIndex::PathBasedIndex (TRI_idx_iid_t iid,
                                 std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
                                 bool unique,
                                 bool sparse) 
-  : Index(iid, collection, fields),
+  : Index(iid, collection, fields, unique, sparse),
     _shaper(_collection->getShaper()),
     _paths(fillPidPaths()),
-    _unique(unique),
-    _sparse(sparse),
     _useExpansion(false) {
 
   TRI_ASSERT(! fields.empty());
 
   TRI_ASSERT(iid != 0);
   
-  for (auto const& list : fields) {
-    if (TRI_AttributeNamesHaveExpansion(list)) {
+  for (auto const& it : fields) {
+    if (TRI_AttributeNamesHaveExpansion(it)) {
+      _useExpansion = true;
+      break;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index stub with a hard-coded selectivity estimate
+/// this is used in the cluster coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+PathBasedIndex::PathBasedIndex (TRI_json_t const* json)
+  : Index(json),
+    _shaper(nullptr),
+    _paths(),
+    _useExpansion(false) {
+
+  TRI_ASSERT(! _fields.empty());
+
+  for (auto const& it : _fields) {
+    if (TRI_AttributeNamesHaveExpansion(it)) {
       _useExpansion = true;
       break;
     }
@@ -184,7 +223,7 @@ void PathBasedIndex::buildIndexValue (TRI_shaped_json_t const* documentShape,
   size_t const n = _paths.size();
 
   for (size_t i = 0; i < n; ++i) {
-    TRI_ASSERT(_paths[i].size() == 1);
+    TRI_ASSERT(! _paths[i].empty());
 
     TRI_shaped_json_t shapedJson;
     TRI_shape_pid_t pid = _paths[i][0].first;
@@ -336,10 +375,12 @@ std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> PathBasedIndex::fillP
 
   for (auto const& list : _fields) {
     std::vector<std::pair<TRI_shape_pid_t, bool>> interior;
+    std::vector<std::string> joinedNames;
+    TRI_AttributeNamesJoinNested(list, joinedNames, false);
 
-    for (auto const& attr : list) {
-      auto pid = _shaper->findOrCreateAttributePathByName(attr.name.c_str());
-      interior.emplace_back(pid, attr.shouldExpand);
+    for (size_t i = 0; i < joinedNames.size(); ++i) {
+      auto pid = _shaper->findOrCreateAttributePathByName(joinedNames[i].c_str());
+      interior.emplace_back(pid, i < joinedNames.size() - 1);
     }
     result.emplace_back(interior);
   }

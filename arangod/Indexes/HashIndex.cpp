@@ -28,6 +28,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HashIndex.h"
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
+#include "Aql/SortCondition.h"
+#include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
@@ -58,7 +62,7 @@ static bool IsEqualElementElement (TRI_index_element_t const* left,
 /// @brief given a key generates a hash integer
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKey (TRI_index_search_value_t const* key) {
+static uint64_t HashKey (TRI_hash_index_search_value_t const* key) {
   uint64_t hash = 0x0123456789abcdef;
 
   for (size_t j = 0;  j < key->_length;  ++j) {
@@ -73,7 +77,7 @@ static uint64_t HashKey (TRI_index_search_value_t const* key) {
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyElement (TRI_index_search_value_t const* left,
+static bool IsEqualKeyElement (TRI_hash_index_search_value_t const* left,
                                TRI_index_element_t const* right) {
   TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
 
@@ -103,10 +107,50 @@ static bool IsEqualKeyElement (TRI_index_search_value_t const* left,
   return true;
 }
 
-static bool IsEqualKeyElementHash (TRI_index_search_value_t const* left,
+static bool IsEqualKeyElementHash (TRI_hash_index_search_value_t const* left,
                                    uint64_t const hash, // Has been computed but is not used here
                                    TRI_index_element_t const* right) {
   return IsEqualKeyElement(left, right);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           class HashIndexIterator
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+TRI_doc_mptr_t* HashIndexIterator::next () {
+  while (true) {
+    if (_posInBuffer >= _buffer.size()) {
+      if (_position >= _keys.size()) {
+        // we're at the end of the lookup values
+        return nullptr;
+      }
+
+      // We have to refill the buffer
+      _buffer.clear();
+      _posInBuffer = 0;
+
+      int res = _index->lookup(_keys[_position++], _buffer);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+  
+    if (! _buffer.empty()) {
+      // found something
+      return _buffer.at(_posInBuffer++);
+    }
+  }
+}
+
+void HashIndexIterator::reset () {
+  _buffer.clear();
+  _position = 0;
+  _posInBuffer = 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -178,6 +222,46 @@ HashIndex::MultiArray::~MultiArray () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                              struct TRI_hash_index_search_value_t
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index search value
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_hash_index_search_value_t::TRI_hash_index_search_value_t ()
+  : _length(0),
+    _values(nullptr) {
+
+}
+
+TRI_hash_index_search_value_t::~TRI_hash_index_search_value_t () {
+  destroy();
+}
+  
+void TRI_hash_index_search_value_t::reserve (size_t n) {
+  TRI_ASSERT(_values == nullptr);
+  _values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(TRI_shaped_json_t), true));
+
+  if (_values == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  _length = n;
+}
+
+void TRI_hash_index_search_value_t::destroy () {
+  if (_values != nullptr) {
+    for (size_t i = 0;  i < _length;  ++i) {
+      TRI_DestroyShapedJson(TRI_UNKNOWN_MEM_ZONE, &_values[i]);
+    }
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _values);
+    _values = nullptr;
+  }
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   class HashIndex
 // -----------------------------------------------------------------------------
 
@@ -241,6 +325,17 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index stub with a hard-coded selectivity estimate
+/// this is used in the cluster coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+HashIndex::HashIndex (TRI_json_t const* json)
+  : PathBasedIndex(json),
+    _uniqueArray(nullptr) {
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -264,6 +359,11 @@ HashIndex::~HashIndex () {
 double HashIndex::selectivityEstimate () const {
   if (_unique) {
     return 1.0; 
+  }
+
+  if (_multiArray == nullptr) {
+    // use hard-coded selectivity estimate in case of cluster coordinator
+    return _selectivityEstimate;
   }
 
   double estimate = _multiArray->_hashArray->selectivity();
@@ -369,15 +469,15 @@ int HashIndex::sizeHint (size_t size) {
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::lookup (TRI_index_search_value_t* searchValue,
-                       std::vector<TRI_doc_mptr_copy_t>& documents) const {
+int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
+                       std::vector<TRI_doc_mptr_t*>& documents) const {
 
   if (_unique) {
     TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(searchValue);
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
-      documents.emplace_back(*(found->document()));
+      documents.emplace_back(found->document());
     }
     return TRI_ERROR_NO_ERROR;
   }
@@ -392,7 +492,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
   if (results != nullptr) {
     try {
       for (size_t i = 0; i < results->size(); i++) {
-        documents.emplace_back(*((*results)[i]->document()));
+        documents.emplace_back((*results)[i]->document());
       }
       delete results;
     }
@@ -408,7 +508,7 @@ int HashIndex::lookup (TRI_index_search_value_t* searchValue,
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::lookup (TRI_index_search_value_t* searchValue,
+int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_copy_t>& documents,
                        TRI_index_element_t*& next,
                        size_t batchSize) const {
@@ -689,6 +789,165 @@ int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
   }
                  
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether the index supports the condition
+////////////////////////////////////////////////////////////////////////////////
+
+bool HashIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
+                                         triagens::aql::Variable const* reference,
+                                         size_t itemsInIndex,
+                                         size_t& estimatedItems,
+                                         double& estimatedCost) const {
+  SimpleAttributeEqualityMatcher matcher(fields());
+  return matcher.matchAll(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an IndexIterator for the given Condition
+////////////////////////////////////////////////////////////////////////////////
+
+IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
+                                                triagens::aql::Ast* ast,
+                                                triagens::aql::AstNode const* node,
+                                                triagens::aql::Variable const* reference,
+                                                bool const reverse) const {
+  TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+  SimpleAttributeEqualityMatcher matcher(fields());
+  size_t const n = _fields.size();
+  triagens::aql::AstNode* allVals = matcher.getAll(ast, this, node, reference);
+  TRI_ASSERT(allVals->numMembers() == n);
+ 
+  // initialize permutations
+  std::vector<PermutationState> permutationStates;
+  permutationStates.reserve(n);
+  size_t maxPermutations = 1;
+
+  for (size_t i = 0; i < n; ++i) {
+    std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> paramPair;
+    auto comp     = allVals->getMemberUnchecked(i);
+    auto attrNode = comp->getMember(0);
+    auto valNode  = comp->getMember(1);
+
+    if (! attrNode->isAttributeAccessForVariable(paramPair) || paramPair.first != reference) {
+      attrNode = comp->getMember(1);
+      valNode  = comp->getMember(0);
+
+      if (! attrNode->isAttributeAccessForVariable(paramPair) || paramPair.first != reference) {
+        return nullptr;
+      }
+    }
+
+    size_t attributePosition = SIZE_MAX;
+    for (size_t j = 0; j < _fields.size(); ++j) {
+      if (_fields[j] == paramPair.second) {
+        attributePosition = j;
+        break;
+      }
+    }
+
+    if (attributePosition == SIZE_MAX) {
+      // index attribute not found in condition. this is a severe error
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+
+    triagens::aql::AstNodeType type = comp->type;
+
+    if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 1));
+    }
+    else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      if (isAttributeExpanded(attributePosition)) {
+        type = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
+        permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 1));
+      }
+      else {
+        if (valNode->numMembers() == 0) {
+          return nullptr;
+        }
+        permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, valNode->numMembers()));
+        maxPermutations *= valNode->numMembers();
+      }
+    }
+  }
+    
+  if (permutationStates.empty()) {
+    // can only be caused by empty IN lists
+    return nullptr;
+  }
+
+  std::vector<TRI_hash_index_search_value_t*> searchValues;
+  searchValues.reserve(maxPermutations);
+
+  // create all permutations
+  auto shaper = _collection->getShaper(); 
+  size_t current = 0;
+  bool done = false;
+  while (! done) {
+    std::unique_ptr<TRI_hash_index_search_value_t> searchValue(new TRI_hash_index_search_value_t);
+    searchValue->reserve(n);
+
+    bool valid = true;
+    for (size_t i = 0; i < n; ++i) {
+      auto& state = permutationStates[i];
+      std::unique_ptr<TRI_json_t> json(state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+
+      if (json == nullptr) {
+        valid = false;
+        break;
+      }
+
+      auto shaped = TRI_ShapedJsonJson(shaper, json.get(), false);
+         
+      if (shaped == nullptr) {
+        // no such shape exists. this means we won't find this value and can go on with the next permutation
+        valid = false;
+        break;
+      }
+      
+      searchValue->_values[state.attributePosition] = *shaped;
+      TRI_Free(shaper->memoryZone(), shaped);
+    }
+
+    if (valid) {
+      searchValues.push_back(searchValue.get());
+      searchValue.release();
+    }
+
+    // now permute
+    while (true) {
+      if (++permutationStates[current].current < permutationStates[current].n) {
+        current = 0;
+        // abort inner iteration
+        break;
+      }
+
+      permutationStates[current].current = 0;
+
+      if (++current >= n) {
+        done = true;
+        break;
+      }
+      // next inner iteration
+    }
+  }
+
+  TRI_ASSERT(searchValues.size() <= maxPermutations);
+    
+  // Create the iterator
+  return new HashIndexIterator(this, searchValues);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specializes the condition for use with the index
+////////////////////////////////////////////////////////////////////////////////
+        
+triagens::aql::AstNode* HashIndex::specializeCondition (triagens::aql::AstNode* node,
+                                                        triagens::aql::Variable const* reference) const {
+  SimpleAttributeEqualityMatcher matcher(fields());
+  return matcher.specializeAll(this, node, reference);
 }
 
 // -----------------------------------------------------------------------------

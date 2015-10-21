@@ -33,15 +33,51 @@
 #include "Basics/Common.h"
 #include "Basics/AssocUnique.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+
+struct TRI_json_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class PrimaryIndex
 // -----------------------------------------------------------------------------
 
 namespace triagens {
+  namespace aql {
+    class SortCondition;
+  }
+  namespace basics {
+    struct AttributeName;
+  }
+
   namespace arango {
+
+    class PrimaryIndexIterator : public IndexIterator {
+ 
+      public:
+
+        PrimaryIndexIterator (PrimaryIndex const* index,
+                              std::vector<char const*>& keys) 
+          : _index(index),
+            _keys(std::move(keys)),
+            _position(0) {
+        }
+
+        ~PrimaryIndexIterator () {
+        }
+
+        TRI_doc_mptr_t* next () override;
+
+        void reset () override;
+
+      private:
+
+        PrimaryIndex const*       _index;
+        std::vector<char const*>  _keys;
+        size_t                    _position;
+
+    };
 
     class PrimaryIndex : public Index {
 
@@ -52,8 +88,10 @@ namespace triagens {
       public:
 
         PrimaryIndex () = delete;
-
+        
         explicit PrimaryIndex (struct TRI_document_collection_t*);
+        
+        explicit PrimaryIndex (struct TRI_json_t const*);
 
         ~PrimaryIndex ();
 
@@ -74,6 +112,10 @@ namespace triagens {
         
         IndexType type () const override final {
           return Index::TRI_IDX_TYPE_PRIMARY_INDEX;
+        }
+
+        bool isSorted () const override final {
+          return false;
         }
 
         bool hasSelectivityEstimate () const override final {
@@ -159,7 +201,36 @@ namespace triagens {
         static uint64_t calculateHash (char const*, size_t);
 
         void invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)>);
+
+        bool supportsFilterCondition (triagens::aql::AstNode const*,
+                                      triagens::aql::Variable const*,
+                                      size_t,
+                                      size_t&,
+                                      double&) const override;
         
+        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+                                             triagens::aql::Ast*,
+                                             triagens::aql::AstNode const*,
+                                             triagens::aql::Variable const*,
+                                             bool const) const override;
+        
+        triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
+                                                     triagens::aql::Variable const*) const override;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the iterator
+////////////////////////////////////////////////////////////////////////////////
+
+        IndexIterator* createIterator (IndexIteratorContext*,
+                                       triagens::aql::AstNode const*,
+                                       std::vector<triagens::aql::AstNode const*> const&) const;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------

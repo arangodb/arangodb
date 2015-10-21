@@ -34,18 +34,75 @@
 #include "Basics/AssocMulti.h"
 #include "Basics/AssocUnique.h"
 #include "Indexes/PathBasedIndex.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
 
+struct TRI_json_t;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hash index query parameter
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_hash_index_search_value_t {
+  TRI_hash_index_search_value_t ();
+  ~TRI_hash_index_search_value_t ();
+
+  TRI_hash_index_search_value_t (TRI_hash_index_search_value_t const&) = delete;
+  TRI_hash_index_search_value_t& operator= (TRI_hash_index_search_value_t const&) = delete;
+
+  void reserve (size_t);
+  void destroy ();
+
+  size_t _length;
+  struct TRI_shaped_json_s* _values;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class HashIndex
 // -----------------------------------------------------------------------------
 
 namespace triagens {
+  namespace aql {
+    class SortCondition;
+  }
   namespace arango {
+
+    class HashIndexIterator : public IndexIterator {
+
+      public:
+
+        HashIndexIterator (HashIndex const* index,
+                           std::vector<TRI_hash_index_search_value_t*>& keys)
+        : _index(index),
+          _keys(keys),
+          _position(0),
+          _buffer(),
+          _posInBuffer(0) {
+        }
+
+        ~HashIndexIterator() {
+          for (auto& it : _keys) {
+            delete it;
+          }
+        }
+
+        TRI_doc_mptr_t* next () override;
+
+        void reset () override;
+
+      private:
+
+        HashIndex const*                             _index;
+        std::vector<TRI_hash_index_search_value_t*>  _keys;
+        size_t                                       _position;
+        std::vector<TRI_doc_mptr_t*>                 _buffer;
+        size_t                                       _posInBuffer;
+
+    };
 
     class HashIndex : public PathBasedIndex {
 
@@ -62,6 +119,8 @@ namespace triagens {
                    std::vector<std::vector<triagens::basics::AttributeName>> const&,
                    bool,
                    bool);
+        
+        explicit HashIndex (struct TRI_json_t const*);
 
         ~HashIndex ();
 
@@ -73,6 +132,10 @@ namespace triagens {
         
         IndexType type () const override final {
           return Index::TRI_IDX_TYPE_HASH_INDEX;
+        }
+        
+        bool isSorted () const override final {
+          return false;
         }
 
         bool hasSelectivityEstimate () const override final {
@@ -107,17 +170,32 @@ namespace triagens {
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lookup (TRI_index_search_value_t*,
-                    std::vector<TRI_doc_mptr_copy_t>&) const;
+        int lookup (TRI_hash_index_search_value_t*,
+                    std::vector<TRI_doc_mptr_t*>&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lookup (TRI_index_search_value_t*,
+        int lookup (TRI_hash_index_search_value_t*,
                     std::vector<TRI_doc_mptr_copy_t>&,
                     TRI_index_element_t*&,
                     size_t batchSize) const;
+
+        bool supportsFilterCondition (triagens::aql::AstNode const*,
+                                      triagens::aql::Variable const*,
+                                      size_t,
+                                      size_t&,
+                                      double&) const override;
+
+        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+                                             triagens::aql::Ast*,
+                                             triagens::aql::AstNode const*,
+                                             triagens::aql::Variable const*,
+                                             bool const) const override;
+
+        triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
+                                                     triagens::aql::Variable const*) const override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -133,13 +211,18 @@ namespace triagens {
 
         int batchInsertMulti (std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
-        int removeUniqueElement(TRI_index_element_t*, bool);
+        int removeUniqueElement (TRI_index_element_t*, bool);
 
         int removeUnique (struct TRI_doc_mptr_t const*, bool);
 
-        int removeMultiElement(TRI_index_element_t*, bool);
+        int removeMultiElement (TRI_index_element_t*, bool);
 
         int removeMulti (struct TRI_doc_mptr_t const*, bool);
+
+        bool accessFitsIndex (triagens::aql::AstNode const* access,
+                              triagens::aql::AstNode const* other,
+                              triagens::aql::Variable const* reference,
+                              std::unordered_set<size_t>& found) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private classes
@@ -250,7 +333,7 @@ namespace triagens {
 /// @brief the actual hash index (unique type)
 ////////////////////////////////////////////////////////////////////////////////
   
-        typedef triagens::basics::AssocUnique<TRI_index_search_value_t,
+        typedef triagens::basics::AssocUnique<TRI_hash_index_search_value_t,
                                               TRI_index_element_t>
                 TRI_HashArray_t;
           
@@ -269,7 +352,7 @@ namespace triagens {
 /// @brief the actual hash index (multi type)
 ////////////////////////////////////////////////////////////////////////////////
         
-        typedef triagens::basics::AssocMulti<TRI_index_search_value_t,
+        typedef triagens::basics::AssocMulti<TRI_hash_index_search_value_t,
                                              TRI_index_element_t,
                                              uint32_t, true>
                 TRI_HashArrayMulti_t;

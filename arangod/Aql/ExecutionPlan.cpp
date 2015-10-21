@@ -27,15 +27,18 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ExecutionPlan.h"
+#include "ExecutionPlan.h"
+#include "Aql/AggregateNode.h"
 #include "Aql/AggregationOptions.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
+#include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
+#include "Aql/SortNode.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/JsonHelper.h"
@@ -1500,12 +1503,22 @@ std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (ExecutionNode::NodeT
 /// @brief find nodes of a certain types
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
-                                  std::vector<ExecutionNode::NodeType> const& types,
-                                  bool enterSubqueries) {
+std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (std::vector<ExecutionNode::NodeType> const& types,
+                                                            bool enterSubqueries) {
 
   std::vector<ExecutionNode*> result;
   NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
+  root()->walk(&finder);
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find all end nodes in a plan
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<ExecutionNode*> ExecutionPlan::findEndNodes (bool enterSubqueries) const {
+  std::vector<ExecutionNode*> result;
+  EndNodeFinder finder(result, enterSubqueries);
   root()->walk(&finder);
   return result;
 }
@@ -1577,10 +1590,10 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
     bool const _ownsVarSetBy;
 
     VarUsageFinder () 
-      : _varSetBy(new std::unordered_map<VariableId, ExecutionNode*>()),
+      : _varSetBy(nullptr),
         _ownsVarSetBy(true) {
       
-      TRI_ASSERT(_varSetBy != nullptr);
+      _varSetBy = new std::unordered_map<VariableId, ExecutionNode*>();
     }
     
     explicit VarUsageFinder (std::unordered_map<VariableId, ExecutionNode*>* varSetBy) 
@@ -1601,6 +1614,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
       en->invalidateVarUsage();
       en->setVarsUsedLater(_usedLater);
       // Add variables used here to _usedLater:
+
       en->getVariablesUsedHere(_usedLater);
 
       return false;
@@ -1609,7 +1623,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
     void after (ExecutionNode* en) override final {
       // Add variables set here to _valid:
       auto&& setHere = en->getVariablesSetHere();
-
+      
       for (auto& v : setHere) {
         _valid.emplace(v);
         _varSetBy->emplace(v->id, en);
@@ -1759,8 +1773,7 @@ void ExecutionPlan::insertDependency (ExecutionNode* oldNode,
 ExecutionNode* ExecutionPlan::fromJson (triagens::basics::Json const& json) {
   ExecutionNode* ret = nullptr;
   triagens::basics::Json nodes = json.get("nodes");
-  //std::cout << nodes.toString() << "\n";
-
+  
   if (! nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nodes is not an array");
   }
@@ -1775,8 +1788,8 @@ ExecutionNode* ExecutionPlan::fromJson (triagens::basics::Json const& json) {
     if (! oneJsonNode.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an object");
     }
-    ret = ExecutionNode::fromJsonFactory(this, oneJsonNode);
 
+    ret = ExecutionNode::fromJsonFactory(this, oneJsonNode);
     registerNode(ret);
 
     TRI_ASSERT(ret != nullptr);
@@ -1836,7 +1849,7 @@ bool ExecutionPlan::isDeadSimple () const {
     if (nodeType == ExecutionNode::SUBQUERY ||
         nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
         nodeType == ExecutionNode::ENUMERATE_LIST ||
-        nodeType == ExecutionNode::INDEX_RANGE) {
+        nodeType == ExecutionNode::INDEX) { 
       // these node types are not simple
       return false;
     }

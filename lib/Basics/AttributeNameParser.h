@@ -1,5 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Parser for Attibute Names. Tokenizes the attribute by dots and handles [*] expansion.
+/// @brief Parser for attibute names
+/// Tokenizes the attribute by dots and handles [*] expansion.
 ///
 /// @file
 ///
@@ -31,7 +32,6 @@
 #define ARANGODB_BASICS_ATTRIBUTENAMEPARSER_H 1
 
 #include "Common.h"
-#include <iostream>
 
 namespace triagens {
   namespace basics {
@@ -41,7 +41,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Struct that nows the name of the attribute, used to identify it's pid
+/// @brief Struct that knows the name of the attribute used to identify its pid
 ///        but also knows if the attribute was followed by [*] which means
 ///        it should be expanded. Only works on arrays.
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,13 +50,13 @@ namespace triagens {
       std::string name;
       bool shouldExpand;
 
-      AttributeName (std::string const& name)
+      explicit AttributeName (std::string const& name)
         : AttributeName(name, false) {
       }
 
-      AttributeName (std::string const& pName, bool pExpand)
-        : name(pName), 
-          shouldExpand(pExpand) { 
+      AttributeName (std::string const& name, bool expand)
+        : name(name), 
+          shouldExpand(expand) { 
       }
 
       AttributeName (AttributeName const& other) 
@@ -72,10 +72,20 @@ namespace triagens {
         return name != other.name || shouldExpand != other.shouldExpand;
       }
 
-    };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two attribute name vectors
+////////////////////////////////////////////////////////////////////////////////
 
-    std::ostream& operator<< (std::ostream&, AttributeName const*);
-    std::ostream& operator<< (std::ostream&, AttributeName const&);
+      static bool isIdentical (std::vector<AttributeName> const&,
+                               std::vector<AttributeName> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two attribute name vectors
+////////////////////////////////////////////////////////////////////////////////
+
+      static bool isIdentical (std::vector<std::vector<AttributeName>> const&,
+                               std::vector<std::vector<AttributeName>> const&);
+    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -97,6 +107,15 @@ namespace triagens {
                                      bool excludeExpansion = false);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Transform a vector of AttributeNames into joined nested strings
+///        The onlyFirst parameter is used to define if we only have to join the first attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    void TRI_AttributeNamesJoinNested (std::vector<AttributeName> const& input,
+                                       std::vector<std::string>& result,
+                                       bool onlyFirst);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Tests if this AttributeName uses an expansion operator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -104,7 +123,11 @@ namespace triagens {
 
   }
 }
-
+      
+std::ostream& operator<< (std::ostream&, triagens::basics::AttributeName const*);
+std::ostream& operator<< (std::ostream&, triagens::basics::AttributeName const&);
+std::ostream& operator<< (std::ostream&, std::vector<triagens::basics::AttributeName> const*);
+std::ostream& operator<< (std::ostream&, std::vector<triagens::basics::AttributeName> const&);
 
 #endif
 

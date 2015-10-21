@@ -1,3 +1,30 @@
+v2.8.0 (XXXX-XX-XX)
+-------------------
+
+* Added array indexes
+
+  Hash indexes and skiplist indexes can now optionally be defined for array values 
+  so they index individual array members.
+  
+  To define an index for array values, the attribute name is extended with the
+  expansion operator `[*]` in the index definition:
+  
+      arangosh> db.colName.ensureHashIndex("tags[*]");
+  
+  When given the following document
+  
+      { tags: [ "AQL", "ArangoDB", "Index" ] }
+
+  the index will now contain the individual values `"AQL"`, `"ArangoDB"` and `"Index"`.
+  
+  Now the index will be for finding all documents having `"ArangoDB"` somewhere in their
+  tags array using the following AQL query:
+    
+      FOR doc IN colName 
+        FILTER "ArangoDB" IN doc.tags 
+        RETURN doc
+
+
 v2.7.1 (XXXX-XX-XX)
 -------------------
 

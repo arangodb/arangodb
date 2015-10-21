@@ -41,6 +41,7 @@
 namespace triagens {
   namespace aql {
 
+    class AggregateNode;
     class Ast;
     struct AstNode;
     class CalculationNode;
@@ -242,6 +243,12 @@ namespace triagens {
 
         std::vector<ExecutionNode*> findNodesOfType (std::vector<ExecutionNode::NodeType> const&,
                                                      bool enterSubqueries);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find all end nodes in a plan
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<ExecutionNode*> findEndNodes (bool enterSubqueries) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check linkage

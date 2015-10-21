@@ -1044,7 +1044,7 @@ namespace triagens {
 /// @brief resize the array
 ////////////////////////////////////////////////////////////////////////////////
 
-        int resize (size_t size) throw() {
+        int resize (size_t size) noexcept {
           size /= _buckets.size();
           for (auto& b : _buckets) {
             if (2 * (2 * size + 1) < 3 * b._nrUsed) {

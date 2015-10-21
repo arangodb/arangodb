@@ -43,6 +43,10 @@ using Json = triagens::basics::Json;
 EnumerateListBlock::EnumerateListBlock (ExecutionEngine* engine,
                                         EnumerateListNode const* en)
   : ExecutionBlock(engine, en),
+    _index(0),
+    _thisBlock(0),
+    _seen(0),
+    _collection(nullptr),
     _inVarRegId(ExecutionNode::MaxRegisterId) {
 
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
@@ -75,9 +79,9 @@ int EnumerateListBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
   // handle local data (if any)
   _index = 0;     // index in _inVariable for next run
-  _thisblock = 0; // the current block in the _inVariable DOCVEC
+  _thisBlock = 0; // the current block in the _inVariable DOCVEC
   _seen = 0;      // the sum of the sizes of the blocks in the _inVariable
-  // DOCVEC that preceed _thisblock
+  // DOCVEC that preceed _thisBlock
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -130,14 +134,13 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
 
       case AqlValue::DOCVEC: {
         if (_index == 0) { // this is a (maybe) new DOCVEC
-          _DOCVECsize = 0;
+          _docVecSize = 0;
           // we require the total number of items
-
           for (size_t i = 0; i < inVarReg._vector->size(); i++) {
-            _DOCVECsize += inVarReg._vector->at(i)->size();
+            _docVecSize += inVarReg._vector->at(i)->size();
           }
         }
-        sizeInVar = _DOCVECsize;
+        sizeInVar = _docVecSize;
         if (sizeInVar > 0) {
           _collection = inVarReg._vector->at(0)->getDocumentCollection(0);
         }
@@ -196,7 +199,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
 
     if (_index == sizeInVar) {
       _index = 0;
-      _thisblock = 0;
+      _thisBlock = 0;
       _seen = 0;
       // advance read position in the current block . . .
       if (++_pos == cur->size()) {
@@ -214,7 +217,6 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
 }
 
 size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
-
   if (_done) {
     return 0;
   }
@@ -255,13 +257,16 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 
       case AqlValue::DOCVEC: {
         if (_index == 0) { // this is a (maybe) new DOCVEC
-          _DOCVECsize = 0;
-          //we require the total number of items 
+          _docVecSize = 0;
+          // we require the total number of items 
           for (size_t i = 0; i < inVarReg._vector->size(); i++) {
-            _DOCVECsize += inVarReg._vector->at(i)->size();
+            _docVecSize += inVarReg._vector->at(i)->size();
           }
         }
-        sizeInVar = _DOCVECsize;
+        sizeInVar = _docVecSize;
+        if (sizeInVar > 0) {
+          _collection = inVarReg._vector->at(0)->getDocumentCollection(0);
+        }
         break;
       }
 
@@ -280,7 +285,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
       // eat the whole of the current inVariable and proceed . . .
       skipped += (sizeInVar - _index);
       _index = 0;
-      _thisblock = 0;
+      _thisBlock = 0;
       _seen = 0;
       delete cur;
       _buffer.pop_front();
@@ -310,11 +315,11 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue const& inVarReg) {
       return AqlValue(new Json(static_cast<double>(inVarReg._range->at(_index++))));
     }
     case AqlValue::DOCVEC: { // incoming doc vec has a single column
-      AqlValue out = inVarReg._vector->at(_thisblock)->getValue(_index -
-                                                                _seen, 0).clone();
-      if (++_index == (inVarReg._vector->at(_thisblock)->size() + _seen)) {
-        _seen += inVarReg._vector->at(_thisblock)->size();
-        _thisblock++;
+      auto& block = inVarReg._vector->at(_thisBlock);
+      AqlValue out = block->getValue(_index - _seen, 0).clone();
+      if (++_index == block->size() + _seen) {
+        _seen += block->size();
+        _thisBlock++;
       }
       return out;
     }

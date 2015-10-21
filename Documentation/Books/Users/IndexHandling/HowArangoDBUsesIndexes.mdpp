@@ -1,27 +1,33 @@
 !SECTION How ArangoDB uses Indexes
 
-In general, ArangoDB will use a single index per collection in a given query.              
+In general, ArangoDB will use a single index per collection in a given query. AQL queries can
+use more than one index per collection when multiple FILTER conditions are combined with a 
+logical `OR` and these can be covered by indexes. AQL queries will use a single index per
+collection when FILTER conditions are combined with logical `AND`.
 
-Creating multiple indexes on different attributes of the same collection will not make ArangoDB
-use more than one index for the collection in a query, but may give the optimizer more choices
-when picking an index. Creating multiple indexes on different attributes can also help in speeding
-up different queries, with FILTER conditions on different attributes.
+Creating multiple indexes on different attributes of the same collection may give the query
+optimizer more choices when picking an index. Creating multiple indexes on different attributes 
+can also help in speeding up different queries, with FILTER conditions on different attributes.
 
-However, as a single index will be used per collection in a given query, it is often beneficial to
-create an index on more than just one attribute. By adding more attributes to an index, an index can
-become more selective and thus reduce the number of documents that operations later in a query need
-to process.
+It is often beneficial to create an index on more than just one attribute. By adding more attributes 
+to an index, an index can become more selective and thus reduce the number of documents that 
+queries need to process.
 
-ArangoDB will provide index selectivity estimates for edge and hash indexes in the web interface,
-the `getIndexes()` return value and in the `explain()` outputs for a given query. The more selective an 
-index is, the more documents it will filter on average. The query optimizer will also try to use the
-most selective index possible when it has the choice between multiple indexes with a known selectivity
-estimate. 
+ArangoDB's primary indexes, edges indexes and hash indexes will automatically provide selectivity
+estimates. Index selectivity estimates are provided in the web interface, the `getIndexes()` return 
+value and in the `explain()` output for a given query. 
 
-Sparse indexes do not contain `null` values. If the optimizer cannot safely determine whether a filter 
-condition used includes `null` values, it will not make use of a sparse index. The optimizer policy is
-to produce correct results, regardless of whether or which index is used to satisfy filter conditions.
-If it is unsure about whether using an index will violate the policy, it will not make use of the index.
+The more selective an index is, the more documents it will filter on average. The index selectivity 
+estimates are therefore used by the optimizer when creating query execution plans when there are 
+multiple indexes the optimizer can choose from. The optimizer will then select a combination of
+indexes with the lowest estimated total cost. In general, the optimizer will pick the indexes with
+the highest estimated selectivity.
+
+Sparse indexes do not contain `null` values. If the optimizer cannot safely determine whether a
+FILTER condition includes `null` values, it will not make use of a sparse index. The optimizer 
+policy is to produce correct results, regardless of whether or which index is used to satisfy 
+FILTER conditions. If it is unsure about whether using an index will violate the policy, it will 
+not make use of the index.
 
 
 !SUBSECTION Troubleshooting
@@ -35,10 +41,9 @@ var stmt = db._createStatement(query);
 stmt.explain();
 ```
 
-The `explain()` command will return a JSON representation of the query's execution plan, with many
-details. This might be overwhelming when just looking for index usage.
-
-In this case, the following command will provide a much more compact explanation of the query:
+The `explain()` command will return a detailed JSON representation of the query's execution plan.
+The JSON explain output is intended to be used by code. To get a human-readable and much more
+compact explanation of the query, there is an explainer tool:
 
 ```js
 var query = "FOR doc IN collection FILTER doc.value > 42 RETURN doc";
@@ -57,7 +62,7 @@ If any of the explain methods shows that a query is not using indexes, the follo
 
 * if indexes are present but not used by the query, the indexes may have the wrong type. For example, a 
   hash index will only be used for equality comparisons (i.e. `==`) but not for other comparison types such
-  as `<`, `<=`, `>`, `>=`. Additionally, a hash index will only be used if all of the index attributes are 
+  as `<`, `<=`, `>`, `>=`. Additionally hash indexes will only be used if all of the index attributes are 
   used in the query's FILTER conditions. A skiplist index will only be used if at least its first attribute 
   is used in a FILTER condition. If additionally of the skiplist index attributes are specified in the query 
   (from left-to-right), they may also be used and allow to filter more documents.
@@ -67,7 +72,16 @@ If any of the explain methods shows that a query is not using indexes, the follo
   
       FOR doc IN collection FILTER TO_NUMBER(doc.value) == 42 RETURN doc
       FOR doc IN collection FILTER doc.value - 1 == 42 RETURN doc
-      FOR doc IN collection FILTER doc.value == 42 || LENGTH(doc.value) == 0 RETURN doc
 
-  In the cases the queries should be rewritten so that only the index attribute is present on one side of 
+  In these cases the queries should be rewritten so that only the index attribute is present on one side of 
   the operator, or additional filters and indexes should be used to restrict the amount of documents otherwise.
+
+* the query optimizer will in general picking one index per collection in a query. It can pick more than
+  one index per collection if the FILTER condition contains multiple branches combined with logical `OR`.
+  For example, the following queries can use more than one index:
+
+      FOR doc IN collection FILTER doc.value1 == 42 || doc.value1 == 23 RETURN doc
+      FOR doc IN collection FILTER doc.value1 == 42 || doc.value2 == 23 RETURN doc
+
+  In the latter case, the query optimizer can only use indexes if there are indexes present on both `value1` 
+  and `value2`.

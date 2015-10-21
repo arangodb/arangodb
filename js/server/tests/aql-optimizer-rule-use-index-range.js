@@ -2,7 +2,7 @@
 /*global assertEqual, assertTrue, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rule use index-range
+/// @brief tests for optimizer rule use indexes
 ///
 /// @file
 ///
@@ -38,7 +38,7 @@ var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleUseIndexRangeTester () {
-  var ruleName = "use-index-range";
+  var ruleName = "use-indexes";
   var collBaseName = "UTUseIndexRange";
   var collNames = ["NoInd", "SkipInd", "HashInd", "BothInd"];
   var collNoInd;
@@ -138,7 +138,6 @@ function optimizerRuleUseIndexRangeTester () {
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 RETURN i",
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 0 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 3 RETURN i",
         "FOR i IN UTUseIndexRangeHashInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a <= 2 RETURN i",
@@ -162,7 +161,6 @@ function optimizerRuleUseIndexRangeTester () {
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 RETURN i",
         "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 0 RETURN i",
-        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 3 RETURN i",
         "FOR i IN UTUseIndexRangeHashInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a == 2 RETURN i",
         "FOR i IN UTUseIndexRangeBothInd FILTER i.a <= 2 RETURN i",
@@ -172,6 +170,27 @@ function optimizerRuleUseIndexRangeTester () {
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramAll);
         assertTrue(result.plan.rules.indexOf(ruleName) >= 0, query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that impossible conditions are detected and optimized
+////////////////////////////////////////////////////////////////////////////////
+
+    testImpossibleRangesAreDetected : function () {
+      var queries = [ 
+        "FOR i IN UTUseIndexRangeSkipInd FILTER i.a < 2 && i.a > 3 RETURN i"
+      ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query, { }, paramAll);
+        var foundNoResults = false;
+        for (var t in result.plan.nodes) {
+          if (result.plan.nodes[t].type === "NoResultsNode") {
+            foundNoResults = true;
+          }
+        }
+        assertTrue(foundNoResults, query);
       });
     },
 
@@ -213,9 +232,9 @@ function optimizerRuleUseIndexRangeTester () {
         "  RETURN {A:A, B:B, C:C, K:k}";
 
       var result = AQL_EXPLAIN(query, { }, paramEnabledAllPlans);
-      assertTrue(result.plans.length === 16, query);
+      assertTrue(result.plans.length === 1, query);
       result = AQL_EXPLAIN(query, { }, paramAllAllPlans);
-      assertTrue(result.plans.length === 16, query);
+      assertTrue(result.plans.length === 1, query);
     }
 
   };

@@ -60,6 +60,7 @@ add_executable(
     ApplicationServer/ApplicationFeature.cpp
     ApplicationServer/ApplicationServer.cpp
     Aql/AggregateBlock.cpp
+    Aql/AggregateNode.cpp
     Aql/AggregationOptions.cpp
     Aql/AqlItemBlock.cpp
     Aql/AqlItemBlockManager.cpp
@@ -71,8 +72,12 @@ add_executable(
     Aql/BindParameters.cpp
     Aql/CalculationBlock.cpp
     Aql/ClusterBlocks.cpp
+    Aql/ClusterNodes.cpp
     Aql/Collection.cpp
+    Aql/Collections.cpp
     Aql/CollectionScanner.cpp
+    Aql/Condition.cpp
+    Aql/ConditionFinder.cpp
     Aql/EnumerateCollectionBlock.cpp
     Aql/EnumerateListBlock.cpp
     Aql/ExecutionBlock.cpp
@@ -85,8 +90,11 @@ add_executable(
     Aql/Function.cpp
     Aql/Functions.cpp
     Aql/grammar.cpp
-    Aql/IndexRangeBlock.cpp
-    Aql/ModificationBlock.cpp
+    Aql/Index.cpp
+    Aql/IndexBlock.cpp
+    Aql/IndexNode.cpp
+    Aql/ModificationBlocks.cpp
+    Aql/ModificationNodes.cpp
     Aql/NodeFinder.cpp
     Aql/Optimizer.cpp
     Aql/OptimizerRules.cpp
@@ -95,12 +103,13 @@ add_executable(
     Aql/QueryCache.cpp
     Aql/QueryList.cpp
     Aql/QueryRegistry.cpp
-    Aql/RangeInfo.cpp
     Aql/Range.cpp
     Aql/RestAqlHandler.cpp
     Aql/Scopes.cpp
     Aql/ShortStringStorage.cpp
     Aql/SortBlock.cpp
+    Aql/SortCondition.cpp
+    Aql/SortNode.cpp
     Aql/SubqueryBlock.cpp
     Aql/tokens.cpp
     Aql/V8Expression.cpp
@@ -147,8 +156,10 @@ add_executable(
     Indexes/GeoIndex2.cpp
     Indexes/HashIndex.cpp
     Indexes/Index.cpp
+    Indexes/IndexIterator.cpp
     Indexes/PathBasedIndex.cpp
     Indexes/PrimaryIndex.cpp
+    Indexes/SimpleAttributeEqualityMatcher.cpp
     Indexes/SkiplistIndex.cpp
     IndexOperators/index-operator.cpp
     Replication/ContinuousSyncer.cpp

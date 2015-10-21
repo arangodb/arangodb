@@ -29,6 +29,7 @@
 
 #include "Aql/ExecutionEngine.h"
 #include "Aql/AggregateBlock.h"
+#include "Aql/AggregateNode.h"
 #include "Aql/AggregationOptions.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/CalculationBlock.h"
@@ -38,8 +39,8 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/IndexRangeBlock.h"
-#include "Aql/ModificationBlock.h"
+#include "Aql/IndexBlock.h"
+#include "Aql/ModificationBlocks.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortBlock.h"
 #include "Aql/SubqueryBlock.h"
@@ -64,8 +65,8 @@ static ExecutionBlock* CreateBlock (ExecutionEngine* engine,
     case ExecutionNode::SINGLETON: {
       return new SingletonBlock(engine, static_cast<SingletonNode const*>(en));
     }
-    case ExecutionNode::INDEX_RANGE: {
-      return new IndexRangeBlock(engine, static_cast<IndexRangeNode const*>(en));
+    case ExecutionNode::INDEX: {
+      return new IndexBlock(engine, static_cast<IndexNode const*>(en));
     }
     case ExecutionNode::ENUMERATE_COLLECTION: {
       return new EnumerateCollectionBlock(engine,
@@ -388,8 +389,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         if ((*en)->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
           collection = const_cast<Collection*>(static_cast<EnumerateCollectionNode*>((*en))->collection());
         }
-        else if ((*en)->getType() == ExecutionNode::INDEX_RANGE) {
-          collection = const_cast<Collection*>(static_cast<IndexRangeNode*>((*en))->collection());
+        else if ((*en)->getType() == ExecutionNode::INDEX) {
+          collection = const_cast<Collection*>(static_cast<IndexNode*>((*en))->collection());
         }
         else if ((*en)->getType() == ExecutionNode::INSERT ||
                  (*en)->getType() == ExecutionNode::UPDATE ||
@@ -722,21 +723,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
         if (nodeType == ExecutionNode::GATHER) {
           // we found a gather node
-          TRI_ASSERT(remoteNode != nullptr);
+          if (remoteNode == nullptr) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "expecting a remoteNode");
+          }
 
           // now we'll create a remote node for each shard and add it to the gather node
-          Collection const* collection = nullptr;
-          if (nodeType == ExecutionNode::GATHER) {
-            collection = static_cast<GatherNode const*>((*en))->collection();
-          }
-          else {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-          }
+          Collection const* collection = static_cast<GatherNode const*>((*en))->collection();
 
-          if (remoteNode == nullptr) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-          }
-          
           auto&& shardIds = collection->shardIds();
 
           for (auto const& shardId : shardIds) {

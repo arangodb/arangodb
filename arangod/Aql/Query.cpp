@@ -576,9 +576,10 @@ QueryResult Query::prepare (QueryRegistry* registry) {
         return QueryResult(TRI_ERROR_INTERNAL);
       }
 
-      // std::cout << "GOT PLAN:\n" << plan.get()->toJson(parser->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
       planRegisters = false;
     }
+      
+    // std::cout << "GOT PLAN:\n" << plan.get()->toJson(parser->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
 
     TRI_ASSERT(plan.get() != nullptr);
     /* // for debugging of serialization/deserialization . . . * /

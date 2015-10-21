@@ -223,8 +223,8 @@ static inline uint32_t TRI_64to32 (uint64_t x) {
 #define TRI_FAKE_SPIN_LOCKS 1
 
 #ifndef TRI_ASSERT
-#define TRI_ASSERT(expr) { if (! (expr)) TRI_PrintBacktrace(); assert(expr); }
-#define TRI_ASSERT_EXPENSIVE(expr) { if (! (expr)) TRI_PrintBacktrace(); assert(expr); }
+#define TRI_ASSERT(expr) { if (! (expr)) { TRI_PrintBacktrace(); assert(expr); } }
+#define TRI_ASSERT_EXPENSIVE(expr) { if (! (expr)) { TRI_PrintBacktrace(); assert(expr); } }
 #endif
 
 
@@ -234,8 +234,9 @@ static inline uint32_t TRI_64to32 (uint64_t x) {
 #undef TRI_FAKE_SPIN_LOCKS
 
 #ifndef TRI_ASSERT
-#define TRI_ASSERT(expr) (static_cast<void>(0))
-#define TRI_ASSERT_EXPENSIVE(expr) (static_cast<void>(0))
+#define TRI_ASSERT(expr) do { (void) 0; } while (0)
+#define TRI_ASSERT_EXPENSIVE(expr) do { (void) 0; } while (0)
+
 #endif
 
 #endif

@@ -121,7 +121,7 @@ FulltextIndex::FulltextIndex (TRI_idx_iid_t iid,
                               TRI_document_collection_t* collection,
                               std::string const& attribute,
                               int minWordLength) 
-  : Index(iid, collection, std::vector<std::vector<triagens::basics::AttributeName>> { { { attribute, false } } } ),
+  : Index(iid, collection, std::vector<std::vector<triagens::basics::AttributeName>>{ { { attribute, false } } }, false, true),
     _pid(0),
     _fulltextIndex(nullptr),
     _minWordLength(minWordLength > 0 ? minWordLength : 1) {

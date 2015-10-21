@@ -28,9 +28,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PrimaryIndex.h"
+#include "Aql/AstNode.h"
+#include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/hashes.h"
 #include "Basics/logging.h"
+#include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
@@ -71,6 +75,36 @@ static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                        class PrimaryIndexIterator
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+TRI_doc_mptr_t* PrimaryIndexIterator::next () {
+  while (true) {
+    if (_position >= _keys.size()) {
+      // we're at the end of the lookup values
+      return nullptr;
+    }
+
+    auto result = _index->lookupKey(_keys[_position++]);
+
+    if (result != nullptr) {
+      // found a result
+      return result;
+    }
+
+    // found no result. now go to next lookup value in _keys
+  }
+}
+
+void PrimaryIndexIterator::reset () {
+  _position = 0;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                class PrimaryIndex
 // -----------------------------------------------------------------------------
         
@@ -79,9 +113,9 @@ static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
 // -----------------------------------------------------------------------------
 
 PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection) 
-  : Index(0, collection, std::vector<std::vector<triagens::basics::AttributeName>>( { { { TRI_VOC_ATTRIBUTE_KEY, false } } } )),
+  : Index(0, collection, std::vector<std::vector<triagens::basics::AttributeName>>( { { { TRI_VOC_ATTRIBUTE_KEY, false } } } ), true, false),
     _primaryIndex(nullptr) {
-
+  
   uint32_t indexBuckets = 1;
 
   if (collection != nullptr) {
@@ -99,6 +133,16 @@ PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection)
   );
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index stub with a hard-coded selectivity estimate
+/// this is used in the cluster coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+PrimaryIndex::PrimaryIndex (TRI_json_t const* json)
+  : Index(json),
+    _primaryIndex(nullptr) {
+}
+
 PrimaryIndex::~PrimaryIndex () {
   delete _primaryIndex;
 }
@@ -106,10 +150,18 @@ PrimaryIndex::~PrimaryIndex () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of documents from the index
+////////////////////////////////////////////////////////////////////////////////
         
 size_t PrimaryIndex::size () const {
   return _primaryIndex->size();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory usage of the index
+////////////////////////////////////////////////////////////////////////////////
 
 size_t PrimaryIndex::memory () const {
   return _primaryIndex->memoryUsage();
@@ -265,6 +317,165 @@ uint64_t PrimaryIndex::calculateHash (char const* key,
 
 void PrimaryIndex::invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)> work) {
   _primaryIndex->invokeOnAllElements(work);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether the index supports the condition
+////////////////////////////////////////////////////////////////////////////////
+
+bool PrimaryIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
+                                            triagens::aql::Variable const* reference,
+                                            size_t itemsInIndex,
+                                            size_t& estimatedItems,
+                                            double& estimatedCost) const {
+  SimpleAttributeEqualityMatcher matcher({ 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_ID, false) },
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_KEY, false) } 
+  });
+
+  return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates an IndexIterator for the given Condition
+////////////////////////////////////////////////////////////////////////////////
+
+IndexIterator* PrimaryIndex::iteratorForCondition (IndexIteratorContext* context,
+                                                   triagens::aql::Ast* ast,
+                                                   triagens::aql::AstNode const* node,
+                                                   triagens::aql::Variable const* reference,
+                                                   bool const reverse) const {
+  TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+  SimpleAttributeEqualityMatcher matcher({ 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_ID, false) },
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_KEY, false) } 
+  });
+
+  triagens::aql::AstNode* allVals = matcher.getOne(ast, this, node, reference);
+  TRI_ASSERT(allVals->numMembers() == 1);
+
+  auto comp = allVals->getMember(0);
+
+  // assume a.b == value
+  auto attrNode = comp->getMember(0);
+  auto valNode  = comp->getMember(1);
+
+  if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value == a.b  ->  flip the two sides
+    attrNode = comp->getMember(1);
+    valNode  = comp->getMember(0);
+  }
+  TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS); 
+    
+  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    // a.b == value
+    return createIterator(context, attrNode, std::vector<triagens::aql::AstNode const*>({ valNode }));
+  }
+  else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    // a.b IN values
+    if (! valNode->isArray()) {
+      return nullptr;
+    }
+
+    std::vector<triagens::aql::AstNode const*> valNodes;
+    size_t const n = valNode->numMembers();
+    valNodes.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      valNodes.emplace_back(valNode->getMemberUnchecked(i));
+    }
+
+    return createIterator(context, attrNode, valNodes);
+  }
+
+  // operator type unsupported
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specializes the condition for use with the index
+////////////////////////////////////////////////////////////////////////////////
+        
+triagens::aql::AstNode* PrimaryIndex::specializeCondition (triagens::aql::AstNode* node,
+                                                           triagens::aql::Variable const* reference) const {
+  SimpleAttributeEqualityMatcher matcher({ 
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_ID, false) },
+    { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_KEY, false) } 
+  });
+
+  return matcher.specializeOne(this, node, reference);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the iterator
+////////////////////////////////////////////////////////////////////////////////
+    
+IndexIterator* PrimaryIndex::createIterator (IndexIteratorContext* context,
+                                             triagens::aql::AstNode const* attrNode,
+                                             std::vector<triagens::aql::AstNode const*> const& valNodes) const {
+
+  // _key or _id?
+  bool const isId = (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_ID) == 0);
+
+  // only leave the valid elements in the vector
+  size_t const n = valNodes.size();
+  std::vector<char const*> keys;
+  keys.reserve(n);
+
+  for (size_t i = 0; i < n; ++i) {
+    auto valNode = valNodes[i];
+
+    if (! valNode->isStringValue()) {
+      continue;
+    }
+    if (valNode->getStringLength() == 0) {
+      continue;
+    }
+
+    if (isId) {
+      // lookup by _id. now validate if the lookup is performed for the 
+      // correct collection (i.e. _collection)
+      TRI_voc_cid_t cid;
+      char const* key;
+      int res = context->resolveId(valNode->getStringValue(), cid, key);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        continue;
+      }
+
+      TRI_ASSERT(cid != 0);
+      TRI_ASSERT(key != nullptr);
+
+      if (! context->isCluster() && cid != _collection->_info._cid) {
+        // only continue lookup if the id value is syntactically correct and
+        // refers to "our" collection, using local collection id
+        continue;
+      }
+
+      if (context->isCluster() && cid != _collection->_info._planId) {
+        // only continue lookup if the id value is syntactically correct and
+        // refers to "our" collection, using cluster collection id
+        continue;
+      }
+
+      // use _key value from _id
+      keys.push_back(key);
+    }
+    else {
+      keys.push_back(valNode->getStringValue());
+    }
+  }
+
+  if (keys.empty()) {
+    // nothing to do
+    return nullptr;
+  }
+
+  return new PrimaryIndexIterator(this, keys);
 }
 
 // -----------------------------------------------------------------------------

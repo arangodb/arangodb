@@ -39,7 +39,7 @@ var _ = require("underscore");
 ////////////////////////////////////////////////////////////////////////////////
 
 function singleAttributeTestSuite () {
-  var ruleName = "use-index-range";
+  var ruleName = "use-indexes";
   var cn = "UnitTestsAhuacatlRange";
   var c;
 
@@ -137,7 +137,7 @@ function singleAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function nonIndexedAttributeTestSuite () {
-  var ruleName = "use-index-range";
+  var ruleName = "use-indexes";
   var cn = "UnitTestsAhuacatlRange";
   var c;
 
@@ -228,7 +228,7 @@ function nonIndexedAttributeTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function nestedAttributeTestSuite () {
-  var ruleName = "use-index-range";
+  var ruleName = "use-indexes";
   var cn = "UnitTestsAhuacatlRange";
   var c;
 

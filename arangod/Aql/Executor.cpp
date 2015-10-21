@@ -168,6 +168,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "STDDEV_SAMPLE",               Function("STDDEV_SAMPLE",               "AQL_STDDEV_SAMPLE", "l", true, true, false, true, true) },
   { "STDDEV_POPULATION",           Function("STDDEV_POPULATION",           "AQL_STDDEV_POPULATION", "l", true, true, false, true, true) },
   { "UNIQUE",                      Function("UNIQUE",                      "AQL_UNIQUE", "l", true, true, false, true, true, &Functions::Unique) },
+  { "SORTED_UNIQUE",               Function("SORTED_UNIQUE",               "AQL_SORTED_UNIQUE", "l", true, true, false, true, true, &Functions::SortedUnique) },
   { "SLICE",                       Function("SLICE",                       "AQL_SLICE", "l,n|n", true, true, false, true, true) },
   { "REVERSE",                     Function("REVERSE",                     "AQL_REVERSE", "ls", true, true, false, true, true) },    // note: REVERSE() can be applied on strings, too
   { "FIRST",                       Function("FIRST",                       "AQL_FIRST", "l", true, true, false, true, true) },
@@ -583,11 +584,11 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
     }
     
     // we can't figure out what kind of error occurred and throw a generic error
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown error in scripting");
   }
   
   if (result.IsEmpty()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown error in scripting");
   }
 
   // if we get here, no exception has been raised
@@ -1247,12 +1248,18 @@ void Executor::generateCodeNode (AstNode const* node) {
     case NODE_TYPE_VARIABLE:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_PASSTHRU:
-    case NODE_TYPE_ARRAY_LIMIT:
+    case NODE_TYPE_ARRAY_LIMIT: {
       // we're not expecting these types here
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type in generateCodeNode");
+      std::string message("unexpected node type in generateCodeNode: ");
+      message.append(node->getTypeString());
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, message);
+    }
 
-    default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not implemented in generateCodeNode");
+    default: {
+      std::string message("node type not implemented in generateCodeNode: ");
+      message.append(node->getTypeString());
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, message);
+    }
   }
 }
 

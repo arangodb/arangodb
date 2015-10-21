@@ -41,7 +41,7 @@ var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite() {
-  var IndexRangeRule = "use-index-range";
+  var IndexesRule = "use-indexes";
   var FilterRemoveRule = "remove-filter-covered-by-index";
   var SortRemoveRule = "use-index-for-sort"; 
   var colName = "UnitTestsAqlOptimizer" + FilterRemoveRule.replace(/-/g, "_");
@@ -49,8 +49,8 @@ function optimizerRuleTestSuite() {
 
   // various choices to control the optimizer: 
   var paramNone = { optimizer: { rules: [ "-all" ] } };
-  var paramIndexRangeFilter = { optimizer: { rules: [ "-all", "+" + IndexRangeRule,  "+" + FilterRemoveRule] } };
-  var paramIndexRangeSortFilter = { optimizer: { rules: [ "-all", "+" + IndexRangeRule,  "+" + FilterRemoveRule, "+" + SortRemoveRule] } };
+  var paramIndexRangeFilter = { optimizer: { rules: [ "-all", "+" + IndexesRule,  "+" + FilterRemoveRule] } };
+  var paramIndexRangeSortFilter = { optimizer: { rules: [ "-all", "+" + IndexesRule,  "+" + FilterRemoveRule, "+" + SortRemoveRule] } };
   var skiplist;
   var skiplist2;
 
@@ -58,15 +58,10 @@ function optimizerRuleTestSuite() {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, "has no filter node");
   };
   
-  var hasFilterNode = function (plan) {
-    assertEqual(findExecutionNodes(plan, "FilterNode").length, 1, "has filter node");
-  };
-
-  var hasIndexRangeNodeWithRanges = function (plan) {
-    var rn = findExecutionNodes(plan, "IndexRangeNode");
-    assertTrue(rn.length >= 1, "has IndexRangeNode");
-    assertTrue(rn[0].ranges.length > 0, "whether the IndexRangeNode ranges array is valid");
-    assertTrue(rn[0].ranges[0].length > 0, "have IndexRangeNode with ranges");
+  var hasIndexNodeWithRanges = function (plan) {
+    var rn = findExecutionNodes(plan, "IndexNode");
+    assertTrue(rn.length >= 1, "has IndexNode");
+    assertTrue(rn[0].indexes.length > 0, "whether the IndexNode uses at least one index");
   };
 
   return {
@@ -178,15 +173,15 @@ function optimizerRuleTestSuite() {
       queries.forEach(function(query) {
         var result;
         result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
-        assertEqual([ IndexRangeRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
-        hasFilterNode(result);
+        assertEqual([ IndexesRule, FilterRemoveRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasNoFilterNode(result);
 
-        hasIndexRangeNodeWithRanges(result);
+        hasIndexNodeWithRanges(result);
 
         result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
-        assertEqual([ IndexRangeRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
-        hasFilterNode(result);
-        hasIndexRangeNodeWithRanges(result);
+        assertEqual([ IndexesRule, FilterRemoveRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasNoFilterNode(result);
+        hasIndexNodeWithRanges(result);
 
         var QResults = [];
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
@@ -231,17 +226,17 @@ function optimizerRuleTestSuite() {
       queries.forEach(function(query) {
         var result;
         result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
-        assertEqual([ IndexRangeRule, FilterRemoveRule ], 
+        assertEqual([ IndexesRule, FilterRemoveRule ], 
           removeAlwaysOnClusterRules(result.plan.rules), query);
         hasNoFilterNode(result);
 
-        hasIndexRangeNodeWithRanges(result);
+        hasIndexNodeWithRanges(result);
 
         result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
-        assertEqual([ IndexRangeRule, FilterRemoveRule, SortRemoveRule ], 
+        assertEqual([ IndexesRule, FilterRemoveRule, SortRemoveRule ], 
           removeAlwaysOnClusterRules(result.plan.rules), query);
         hasNoFilterNode(result);
-        hasIndexRangeNodeWithRanges(result);
+        hasIndexNodeWithRanges(result);
 
         var QResults = [];
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
@@ -280,16 +275,16 @@ function optimizerRuleTestSuite() {
         var result;
 
         result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
-        assertEqual([ IndexRangeRule, FilterRemoveRule ], 
+        assertEqual([ IndexesRule, FilterRemoveRule ], 
           removeAlwaysOnClusterRules(result.plan.rules), query);
         hasNoFilterNode(result);
-        hasIndexRangeNodeWithRanges(result);
+        hasIndexNodeWithRanges(result);
 
         result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
-        assertEqual([ IndexRangeRule, FilterRemoveRule ], 
+        assertEqual([ IndexesRule, FilterRemoveRule ], 
           removeAlwaysOnClusterRules(result.plan.rules), query);
         hasNoFilterNode(result);
-        hasIndexRangeNodeWithRanges(result);
+        hasIndexNodeWithRanges(result);
 
         var QResults = [];
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;

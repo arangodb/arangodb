@@ -36,7 +36,6 @@
 
 #include <mutex>
 #include <functional>
-#include <iostream>
 
 namespace triagens {
   namespace basics {

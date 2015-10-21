@@ -22,17 +22,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Index.h"
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
+#include "Aql/Variable.h"
+#include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
+#include "Basics/JsonHelper.h"
+#include "Basics/json.h"
 #include "Basics/json-utilities.h"
+#include "Basics/StringUtils.h"
 #include "VocBase/server.h"
 #include "VocBase/VocShaper.h"
-
+#include <iostream>
 
 using namespace triagens::arango;
 
@@ -46,10 +53,59 @@ using namespace triagens::arango;
 
 Index::Index (TRI_idx_iid_t iid,
               TRI_document_collection_t* collection,
-              std::vector<std::vector<triagens::basics::AttributeName>> const& fields) 
+              std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+              bool unique,
+              bool sparse) 
   : _iid(iid),
     _collection(collection),
-    _fields(fields) {
+    _fields(fields),
+    _unique(unique),
+    _sparse(sparse),
+    _selectivityEstimate(0.0) {
+
+  // note: _collection can be a nullptr in the cluster coordinator case!!
+  // note: _selectivityEstimate is only used in cluster coordinator case
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index stub with a hard-coded selectivity estimate
+/// this is used in the cluster coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+Index::Index (TRI_json_t const* json)
+  : _iid(triagens::basics::StringUtils::uint64(triagens::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
+    _collection(nullptr),
+    _fields(),
+    _unique(triagens::basics::JsonHelper::getBooleanValue(json, "unique", false)),
+    _sparse(triagens::basics::JsonHelper::getBooleanValue(json, "sparse", false)),
+    _selectivityEstimate(0.0) {
+        
+  TRI_json_t const* fields = TRI_LookupObjectJson(json, "fields");
+
+  if (! TRI_IsArrayJson(fields)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index description");
+  }
+
+  size_t const n = TRI_LengthArrayJson(fields);
+  _fields.reserve(n);
+
+  for (size_t i = 0; i < n; ++i) {
+    auto name = static_cast<TRI_json_t const*>(TRI_AtVector(&fields->_value._objects, i));
+
+    if (! TRI_IsStringJson(name)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index description");
+    }
+
+    std::vector<triagens::basics::AttributeName> parsedAttributes;
+    TRI_ParseAttributeString(std::string(name->_value._string.data, name->_value._string.length - 1), parsedAttributes);
+    _fields.emplace_back(parsedAttributes);
+  }
+
+  TRI_json_t const* se = TRI_LookupObjectJson(json, "selectivityEstimate");
+
+  if (TRI_IsNumberJson(se)) {
+    _selectivityEstimate = json->_value._number;
+  }
 }
 
 Index::~Index () {
@@ -321,7 +377,17 @@ std::string Index::context () const {
   result << "index { id: " << id() 
          << ", type: " << typeName() 
          << ", collection: " << _collection->_vocbase->_name 
-         << "/" <<  _collection->_info._name << " }";
+         << "/" <<  _collection->_info._name
+         << ", unique: " <<  (_unique ? "true" : "false")
+         << ", fields: ";
+  result << "[";
+  for (size_t i = 0; i < _fields.size(); ++i) {
+    if (i > 0) {
+      result << ", ";
+    }
+    result << _fields[i];
+  }
+  result << "] }";
 
   return result.str();
 }
@@ -424,30 +490,167 @@ bool Index::hasBatchInsert () const {
   return false;
 }
 
-namespace triagens {
-  namespace arango {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default implementation for supportsFilterCondition
+////////////////////////////////////////////////////////////////////////////////
+
+bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
+                                     triagens::aql::Variable const* reference,
+                                     size_t itemsInIndex,
+                                     size_t& estimatedItems,
+                                     double& estimatedCost) const {
+  // by default, no filter conditions are supported
+  estimatedItems = itemsInIndex;
+  estimatedCost  = static_cast<double>(estimatedItems);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default implementation for supportsSortCondition
+////////////////////////////////////////////////////////////////////////////////
+
+bool Index::supportsSortCondition (triagens::aql::SortCondition const*,
+                                   triagens::aql::Variable const*,
+                                   size_t itemsInIndex,
+                                   double& estimatedCost) const { 
+  // by default, no sort conditions are supported
+  if (itemsInIndex > 0) {
+    estimatedCost = itemsInIndex * std::log2(itemsInIndex);
+  }
+  else {
+    estimatedCost = 0.0;
+  }
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default iterator factory method. does not create an iterator
+////////////////////////////////////////////////////////////////////////////////
+
+IndexIterator* Index::iteratorForCondition (IndexIteratorContext*,
+                                            triagens::aql::Ast*,
+                                            triagens::aql::AstNode const*,
+                                            triagens::aql::Variable const*,
+                                            bool const) const {
+  // the super class index cannot create an iterator
+  // the derived index classes have to manage this.
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specializes the condition for use with the index
+////////////////////////////////////////////////////////////////////////////////
+        
+triagens::aql::AstNode* Index::specializeCondition (triagens::aql::AstNode* node,
+                                                    triagens::aql::Variable const*) const {
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform some base checks for an index condition part
+////////////////////////////////////////////////////////////////////////////////
+        
+bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
+                                 triagens::aql::AstNode const* other,
+                                 triagens::aql::AstNode const* op,
+                                 triagens::aql::Variable const* reference) const {
+
+  if (_sparse) {
+    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
+      return false;
+    }
+
+    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+        other->type == triagens::aql::NODE_TYPE_EXPANSION) {
+      // value IN a.b
+      if (! access->isConstant()) {
+        return false;
+      }
+
+      if (access->isNullValue()) {
+        return false;
+      }
+    }
+    else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+             access->type == triagens::aql::NODE_TYPE_EXPANSION) {
+      // value IN a.b
+      if (! other->isConstant()) {
+        return false;
+      }
+
+      if (other->isNullValue()) {
+        return false;
+      }
+    }
+    else if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // a.b == value  OR  a.b IN values
+      if (! other->isConstant()) {
+        return false;
+      }
+
+      if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+          op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
+        // <  and  <= are not supported with sparse indexes as this may include null values
+        return false;
+      }
+
+      if (other->isNullValue() &&
+          (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+           op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
+        // ==  and  >= null are not supported with sparse indexes for the same reason
+        return false;
+      }
+
+      if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+          other->type == triagens::aql::NODE_TYPE_ARRAY) {
+        size_t const n = other->numMembers();
+
+        for (size_t i = 0; i < n; ++i) {
+          if (other->getMemberUnchecked(i)->isNullValue()) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+
+  // test if the reference variable is contained on both side of the expression
+  std::unordered_set<aql::Variable const*> variables;
+  if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+      other->type == triagens::aql::NODE_TYPE_EXPANSION) {
+    // value IN a.b
+    triagens::aql::Ast::getReferencedVariables(access, variables);
+  }
+  else {
+    // a.b == value  OR  a.b IN values
+    triagens::aql::Ast::getReferencedVariables(other, variables);
+  }
+  if (variables.find(reference) != variables.end()) {
+    // yes. then we cannot use an index here
+    return false;
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the index description to an output stream
 ////////////////////////////////////////////////////////////////////////////////
      
-    std::ostream& operator<< (std::ostream& stream,
-                              Index const* index) {
-      stream << index->context();
-      return stream;
-    }
+std::ostream& operator<< (std::ostream& stream,
+                          triagens::arango::Index const* index) {
+  stream << index->context();
+  return stream;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the index description to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::ostream& operator<< (std::ostream& stream,
-                              Index const& index) {
-      stream << index.context();
-      return stream;
-    }
-
-  }
+std::ostream& operator<< (std::ostream& stream,
+                          triagens::arango::Index const& index) {
+  stream << index.context();
+  return stream;
 }
 
 // -----------------------------------------------------------------------------

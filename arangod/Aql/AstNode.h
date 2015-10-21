@@ -31,11 +31,13 @@
 #define ARANGODB_AQL_ASTNODE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/vector.h"
 #include "Basics/JsonHelper.h"
-#include "Aql/Query.h"
+
+#include <functional>
 
 namespace triagens {
   namespace basics {
@@ -43,8 +45,8 @@ namespace triagens {
   }
 
   namespace aql {
-
     class Ast;
+    struct Variable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type for node flags
@@ -175,7 +177,9 @@ namespace triagens {
       NODE_TYPE_EXAMPLE                       = 55,
       NODE_TYPE_PASSTHRU                      = 56,
       NODE_TYPE_ARRAY_LIMIT                   = 57,
-      NODE_TYPE_DISTINCT                      = 58
+      NODE_TYPE_DISTINCT                      = 58,
+      NODE_TYPE_OPERATOR_NARY_AND             = 59,
+      NODE_TYPE_OPERATOR_NARY_OR              = 60
     };
 
     static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY,  "incorrect node types order");
@@ -190,6 +194,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     struct AstNode {
+      friend class Ast;
 
       static std::unordered_map<int, std::string const> const Operators;
       static std::unordered_map<int, std::string const> const TypeNames;
@@ -249,6 +254,14 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief dump the node (for debugging purposes)
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+        void dump (int) const; 
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compute the JSON for a constant value node
 /// the JSON is owned by the node and must not be freed by the caller
 /// note that the return value might be NULL in case of OOM
@@ -257,7 +270,7 @@ namespace triagens {
         TRI_json_t* computeJson () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sort the members of a (list) node
+/// @brief sort the members of an (array) node
 /// this will also set the FLAG_SORTED flag for the node
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -276,14 +289,20 @@ namespace triagens {
         std::string const& getValueTypeString () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether we know a type of this kind; throws exception if not.
+/// @brief stringify the AstNode
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string toString (AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether we know a type of this kind; throws exception if not
 ////////////////////////////////////////////////////////////////////////////////
 
         static void validateType (int type);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether we know a value type of this kind; 
-/// throws exception if not.
+/// throws exception if not
 ////////////////////////////////////////////////////////////////////////////////
 
         static void validateValueType (int type);
@@ -310,7 +329,7 @@ namespace triagens {
                             bool) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a JSON representation of the node to the JSON list specified
+/// @brief adds a JSON representation of the node to the JSON array specified
 /// in the first argument
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -462,6 +481,81 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of type attribute access that
+/// refers to a variable reference
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode const* getAttributeAccessForVariable () const {
+          if (type != NODE_TYPE_ATTRIBUTE_ACCESS &&
+              type != NODE_TYPE_EXPANSION) {
+            return nullptr;
+          }
+
+          auto node = this;
+     
+          while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+                 node->type == NODE_TYPE_EXPANSION) {
+            if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+              node = node->getMember(0);
+            }
+            else {
+              // expansion, i.e. [*]
+              TRI_ASSERT(node->type == NODE_TYPE_EXPANSION);
+              TRI_ASSERT(node->numMembers() >= 2);
+
+              if (node->getMember(1)->type != NODE_TYPE_REFERENCE) {
+                if (node->getMember(1)->getAttributeAccessForVariable() == nullptr) {
+                  return nullptr;
+                }
+              }
+              
+              TRI_ASSERT(node->getMember(0)->type == NODE_TYPE_ITERATOR);
+
+              node = node->getMember(0)->getMember(1);
+            }
+          }
+
+          if (node->type == NODE_TYPE_REFERENCE) {
+            return node;
+          }
+
+          return nullptr;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of type attribute access that
+/// refers to any variable reference
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isAttributeAccessForVariable () const {
+          return (getAttributeAccessForVariable() != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of type attribute access that
+/// refers to the specified variable reference
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isAttributeAccessForVariable (Variable const* variable) const {
+          auto node = getAttributeAccessForVariable();
+
+          if (node == nullptr) {
+            return false;
+          }
+
+          return (static_cast<Variable const*>(node->getData()) == variable);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of type attribute access that 
+/// refers to any variable reference
+/// returns true if yes, and then also returns variable reference and array
+/// of attribute names in the parameter passed by reference
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isAttributeAccessForVariable (std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>&) const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is simple enough to be used in a simple
 /// expression
 /// this may also set the FLAG_SIMPLE flag for the node
@@ -475,6 +569,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isConstant () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node is a simple comparison operator
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isSimpleComparisonOperator () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is a comparison operator
@@ -519,8 +619,8 @@ namespace triagens {
 /// @brief return the number of members
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline size_t numMembers () const throw() {
-          return members._length;
+        inline size_t numMembers () const noexcept {
+          return members.size();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -532,10 +632,10 @@ namespace triagens {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
 
-          int res = TRI_PushBackVectorPointer(&members, static_cast<void*>(node));
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            THROW_ARANGO_EXCEPTION(res);
+          try {
+            members.emplace_back(node);
+          } catch (...) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
         }
 
@@ -553,11 +653,18 @@ namespace triagens {
 
         void changeMember (size_t i,
                            AstNode* node) {
-          if (i >= members._length) {
+          if (i >= members.size()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
           }
+          members.at(i) = node;
+        }
 
-          members._buffer[i] = node;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a member from the node
+////////////////////////////////////////////////////////////////////////////////
+
+        inline void removeMemberUnchecked (size_t i) {
+          members.erase(members.begin() + i);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -565,7 +672,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline AstNode* getMember (size_t i) const {
-          if (i >= members._length) {
+          if (i >= members.size()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
           }
           return getMemberUnchecked(i);
@@ -575,8 +682,27 @@ namespace triagens {
 /// @brief return a member of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline AstNode* getMemberUnchecked (size_t i) const throw() {
-          return static_cast<AstNode*>(members._buffer[i]);
+        inline AstNode* getMemberUnchecked (size_t i) const noexcept {
+          return members[i];
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort members with a custom comparison function
+////////////////////////////////////////////////////////////////////////////////
+    
+        void sortMembers (std::function<bool(AstNode const*, AstNode const*)> const& func) {
+          std::sort(members.begin(), members.end(), func);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reduces the number of members of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        void reduceMembers (size_t i) {
+          if (i > members.size()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
+          }
+          members.erase(members.begin() + i, members.end());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -769,13 +895,20 @@ namespace triagens {
 /// @brief the node's sub nodes
 ////////////////////////////////////////////////////////////////////////////////
       
-        TRI_vector_pointer_t      members;
+        std::vector<AstNode*>     members;
 
     };
 
     int CompareAstNodes (AstNode const*, AstNode const*, bool);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the AstNode to an output stream
+////////////////////////////////////////////////////////////////////////////////
+
+std::ostream& operator<< (std::ostream&, triagens::aql::AstNode const*);
+std::ostream& operator<< (std::ostream&, triagens::aql::AstNode const&);
 
 #endif
 

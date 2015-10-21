@@ -97,8 +97,8 @@ int Exception::code () const throw () {
 /// @brief adds to the message
 ////////////////////////////////////////////////////////////////////////////////
 
-void Exception::addToMessage (string More) {
-  _errorMessage += More;
+void Exception::addToMessage (std::string const& more) {
+  _errorMessage += more;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,7 +107,32 @@ void Exception::addToMessage (string More) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Exception::Exception (int code,
-                      string const& errorMessage,
+                      std::string const& errorMessage,
+                      char const* file,
+                      int line)
+  : _errorMessage(errorMessage),
+    _file(file),
+    _line(line),
+    _code(code) {
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  if (WithBackTrace) {
+    _errorMessage += std::string("\n\n");
+    TRI_GetBacktrace(_errorMessage);
+    _errorMessage += std::string("\n\n");
+  }
+#endif
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, for creating an exception with an already created
+/// error message (normally based on error templates containing %s, %d etc.)
+////////////////////////////////////////////////////////////////////////////////
+
+Exception::Exception (int code,
+                      char const* errorMessage,
                       char const* file,
                       int line)
   : _errorMessage(errorMessage),
