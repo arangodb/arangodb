@@ -3109,7 +3109,7 @@ struct CommonNodeFinder {
       possibleNodes.clear();
       return true;
     }
-    
+      
     if (node->type == condition 
         || (condition != NODE_TYPE_OPERATOR_BINARY_EQ 
             && ( node->type == NODE_TYPE_OPERATOR_BINARY_LE 
@@ -3117,11 +3117,18 @@ struct CommonNodeFinder {
               || node->type == NODE_TYPE_OPERATOR_BINARY_GE 
               || node->type == NODE_TYPE_OPERATOR_BINARY_GT
               || node->type == NODE_TYPE_OPERATOR_BINARY_IN))) {
-
+      
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
 
       bool const isIn = (node->type == NODE_TYPE_OPERATOR_BINARY_IN && rhs->isArray());
+
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_IN && 
+          rhs->type == NODE_TYPE_EXPANSION) {
+        // ooh, cannot optimize this (yet)
+        possibleNodes.clear();
+        return false;
+      }
 
       if (! isIn && lhs->isConstant()) {
         commonNode = rhs;
@@ -3129,7 +3136,7 @@ struct CommonNodeFinder {
         possibleNodes.clear();
         return true;
       }
-
+      
       if (rhs->isConstant()) {
         commonNode = lhs;
         commonName = commonNode->toString();
@@ -3203,7 +3210,6 @@ struct CommonNodeFinder {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct OrToInConverter {
-
   std::vector<AstNode const*> valueNodes;
   CommonNodeFinder            finder;
   AstNode const*              commonNode = nullptr;
