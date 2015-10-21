@@ -618,8 +618,15 @@ AstNode::AstNode (Ast* ast,
   if (subNodes.isArray()) {
     size_t const len = subNodes.size();
     for (size_t i = 0; i < len; i++) {
-      Json subNode(subNodes.at(static_cast<int>(i)));
-      addMember(new AstNode(ast, subNode));
+      Json subNode(subNodes.at(i));
+      int type = JsonHelper::checkAndGetNumericValue<int>(subNode.json(), "typeID");
+      if (static_cast<AstNodeType>(type) == NODE_TYPE_NOP) {
+        // special handling for nop as it is a singleton
+        addMember(Ast::getNodeNop());
+      }
+      else {
+        addMember(new AstNode(ast, subNode));
+      }
     }
   }
 

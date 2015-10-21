@@ -1174,11 +1174,7 @@ function optimizerIndexesMultiTestSuite () {
         // Furthermore, we check the type of expression in the CalcNode
         // and the number of subnodes:
         assertEqual("CalculationNode", plan.nodes[2].type, query);
-        if (isCoordinator) {
-        }
-        assertEqual("ReturnNode", plan.nodes[3].type, query);
-        assertEqual(plan.nodes[2].outVariable, plan.nodes[3].inVariable,
-                    query);
+        assertEqual(-1, nodeTypes.indexOf("FilterNode"), "filter used for: " + query);
 
         var results = AQL_EXECUTE(query);
         var correct = makeResult(maker).map(function(x) { return x.a; });
