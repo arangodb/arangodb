@@ -1035,7 +1035,7 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a fulltext index exists
-/// @startDocuBlock ensureIndex
+/// @startDocuBlock ensureFulltextIndex
 /// `collection.ensureIndex({ type: "fulltext", fields: [ "field" ], minLength: minLength })`
 ///
 /// Creates a fulltext index on all documents on attribute *field*.
