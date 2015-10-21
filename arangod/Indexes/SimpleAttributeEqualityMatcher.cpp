@@ -328,6 +328,9 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll (triagens:
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference) ||
           accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference)) {
         children.emplace_back(op);
+        TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         if (_found.size() == _attributes.size()) {
           // got enough attributes
           break;
@@ -338,6 +341,9 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll (triagens:
       TRI_ASSERT(op->numMembers() == 2);
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference)) {
         children.emplace_back(op);
+        TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         if (_found.size() == _attributes.size()) {
           // got enough attributes
           break;
@@ -474,6 +480,9 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex (triagens::arango::Index co
     if (match) {
       // mark ith attribute as being covered
       _found.emplace(i);
+      TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
       return true;
     }
   }

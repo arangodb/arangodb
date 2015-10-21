@@ -582,7 +582,25 @@ function ahuacatlFailureSuite () {
       c.ensureHashIndex("value");
       internal.debugSetFailAt("SimpleAttributeMatcher::getAllParts");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
-    }
+    },
+
+    testSimpleAttributeMatcher2 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("SimpleAttributeMatcher::specializeAllChildrenEQ");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
+    },
+
+    testSimpleAttributeMatcher3 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("SimpleAttributeMatcher::specializeAllChildrenIN");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
+    },
+
+    testSimpleAttributeMatcher4 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("SimpleAttributeMatcher::accessFitsIndex");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
+    },
 
   };
 }
