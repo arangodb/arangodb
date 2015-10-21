@@ -232,6 +232,9 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::getAll (triagens::aql::A
 
       if (matches) {
         parts.emplace_back(op);
+        TRI_IF_FAILURE("SimpleAttributeMatcher::getAllParts")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
 
         if (_found.size() == _attributes.size()) {
           // got enough matches

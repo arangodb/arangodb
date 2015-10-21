@@ -554,6 +554,36 @@ function ahuacatlFailureSuite () {
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
     },
 
+    testIndexNodeHashIndex1 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("HashIndex::noIterator");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
+    },
+
+    testIndexNodeHashIndex2 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("HashIndex::permutationEQ");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
+    },
+
+    testIndexNodeHashIndex3 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("HashIndex::permutationIN");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
+    },
+
+    testIndexNodeHashIndex4 : function () {
+      c.ensureHashIndex("value[*]");
+      internal.debugSetFailAt("HashIndex::permutationArrayIN");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER 1 IN i.value[*] RETURN i");
+    },
+
+    testSimpleAttributeMatcher1 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("SimpleAttributeMatcher::getAllParts");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
+    }
+
   };
 }
  

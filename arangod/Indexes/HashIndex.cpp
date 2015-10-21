@@ -35,6 +35,7 @@
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
+#include <iostream>
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
@@ -471,9 +472,11 @@ int HashIndex::sizeHint (size_t size) {
 
 int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_t*>& documents) const {
+  std::cout << "really" << std::endl;
 
   if (_unique) {
     TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(searchValue);
+    std::cout << found << std::endl;
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
@@ -489,6 +492,7 @@ int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
   catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  std::cout << results << std::endl;
   if (results != nullptr) {
     try {
       for (size_t i = 0; i < results->size(); i++) {
@@ -857,17 +861,26 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
 
     if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 1));
+      TRI_IF_FAILURE("HashIndex::permutationEQ")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
     }
     else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       if (isAttributeExpanded(attributePosition)) {
         type = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
         permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 1));
+        TRI_IF_FAILURE("HashIndex::permutationArrayIN")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
       }
       else {
         if (valNode->numMembers() == 0) {
           return nullptr;
         }
         permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, valNode->numMembers()));
+        TRI_IF_FAILURE("HashIndex::permutationIN")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         maxPermutations *= valNode->numMembers();
       }
     }
@@ -937,6 +950,9 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
   TRI_ASSERT(searchValues.size() <= maxPermutations);
     
   // Create the iterator
+  TRI_IF_FAILURE("HashIndex::noIterator")  {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   return new HashIndexIterator(this, searchValues);
 }
 
