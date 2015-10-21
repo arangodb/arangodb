@@ -35,7 +35,6 @@
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
 
-#include <iostream>
 using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
@@ -472,11 +471,9 @@ int HashIndex::sizeHint (size_t size) {
 
 int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_t*>& documents) const {
-  std::cout << "really" << std::endl;
 
   if (_unique) {
     TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(searchValue);
-    std::cout << found << std::endl;
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
@@ -492,7 +489,6 @@ int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
   catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  std::cout << results << std::endl;
   if (results != nullptr) {
     try {
       for (size_t i = 0; i < results->size(); i++) {
