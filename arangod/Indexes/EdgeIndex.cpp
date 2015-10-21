@@ -683,6 +683,9 @@ IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
     valNodes.reserve(n);
     for (size_t i = 0; i < n; ++i) {
       valNodes.emplace_back(valNode->getMemberUnchecked(i));
+      TRI_IF_FAILURE("EdgeIndex::iteratorValNodes")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
     }
 
     return createIterator(context, attrNode, valNodes);
@@ -745,6 +748,9 @@ IndexIterator* EdgeIndex::createIterator (IndexIteratorContext* context,
     TRI_ASSERT(cid != 0);
 
     keys.emplace_back(TRI_edge_header_t(cid, const_cast<char*>(key)));
+    TRI_IF_FAILURE("EdgeIndex::collectKeys")  {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
   }
 
   if (keys.empty()) {
@@ -755,6 +761,9 @@ IndexIterator* EdgeIndex::createIterator (IndexIteratorContext* context,
   // _from or _to?
   bool const isFrom = (strcmp(attrNode->getStringValue(), TRI_VOC_ATTRIBUTE_FROM) == 0);
 
+  TRI_IF_FAILURE("EdgeIndex::noIterator")  {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   return new EdgeIndexIterator(isFrom ? _edgesFrom : _edgesTo, keys);
 }
 

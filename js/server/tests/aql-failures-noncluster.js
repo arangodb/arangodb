@@ -45,7 +45,9 @@ var internal = require("internal");
 function ahuacatlFailureSuite () {
   'use strict';
   var cn = "UnitTestsAhuacatlFailures";
+  var en = "UnitTestsAhuacatlEdgeFailures";
   var c;
+  var e;
   var count = 5000;
         
   var assertFailingQuery = function (query) {
@@ -64,8 +66,13 @@ function ahuacatlFailureSuite () {
       internal.debugClearFailAt();
       db._drop(cn);
       c = db._create(cn);
+      db._drop(en);
+      e = db._createEdgeCollection(en);
       for (var i = 0; i < count; ++i) {
-        c.save({ value: i, value2: i % 10 });
+        c.save({ _key: String(i), value: i, value2: i % 10 });
+      }
+      for (var j = 0; j < count / 10; ++j) {
+        e.save(cn + "/" + j, cn + "/" + (j + 1), { });
       }
     },
 
@@ -73,6 +80,8 @@ function ahuacatlFailureSuite () {
       internal.debugClearFailAt();
       db._drop(cn);
       c = null;
+      db._drop(en);
+      e = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -601,6 +610,38 @@ function ahuacatlFailureSuite () {
       internal.debugSetFailAt("SimpleAttributeMatcher::accessFitsIndex");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
     },
+
+    testIndexNodePrimaryIndex1 : function () {
+      internal.debugSetFailAt("PrimaryIndex::iteratorValNodes");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i._key IN ['1', '2'] RETURN i");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i._id IN ['" + c.name() + "/1', '" + c.name() + "/2'] RETURN i");
+    },
+
+    testIndexNodePrimaryIndex2 : function () {
+      internal.debugSetFailAt("PrimaryIndex::noIterator");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i._key == '1' RETURN i");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i._id == '" + c.name() + "/1' RETURN i");
+    },
+
+    testIndexNodeEdgeIndex1 : function () {
+      internal.debugSetFailAt("EdgeIndex::noIterator");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._from == '" + c.name() + "/1'  RETURN i");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._to == '" + c.name() + "/1'  RETURN i");
+    },
+
+    testIndexNodeEdgeIndex2 : function () {
+      internal.debugSetFailAt("EdgeIndex::collectKeys");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._from == '" + c.name() + "/1'  RETURN i");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._to == '" + c.name() + "/1'  RETURN i");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._from IN ['" + c.name() + "/1', '" + c.name() + "/2']  RETURN i");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._to IN ['" + c.name() + "/1', '" + c.name() + "/2']  RETURN i");
+    },
+
+    testIndexNodeEdgeIndex3 : function () {
+      internal.debugSetFailAt("EdgeIndex::iteratorValNodes");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._from IN ['" + c.name() + "/1', '" + c.name() + "/2']  RETURN i");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._to IN ['" + c.name() + "/1', '" + c.name() + "/2']  RETURN i");
+    }
 
   };
 }

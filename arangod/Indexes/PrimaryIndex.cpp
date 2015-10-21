@@ -383,6 +383,9 @@ IndexIterator* PrimaryIndex::iteratorForCondition (IndexIteratorContext* context
     valNodes.reserve(n);
     for (size_t i = 0; i < n; ++i) {
       valNodes.emplace_back(valNode->getMemberUnchecked(i));
+      TRI_IF_FAILURE("PrimaryIndex::iteratorValNodes")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
     }
 
     return createIterator(context, attrNode, valNodes);
@@ -475,6 +478,9 @@ IndexIterator* PrimaryIndex::createIterator (IndexIteratorContext* context,
     return nullptr;
   }
 
+  TRI_IF_FAILURE("PrimaryIndex::noIterator")  {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   return new PrimaryIndexIterator(this, keys);
 }
 
