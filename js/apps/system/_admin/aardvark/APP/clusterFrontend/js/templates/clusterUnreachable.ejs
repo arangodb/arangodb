@@ -4,12 +4,14 @@
 </div>
 
 <div class="cluster-unreachable-info">
-  <p>
-    None of your Coordinators is reachable.
-    However your DBServers are still running.
-    This might be a network problem.
+  <p class="updateInfo">
+    Refetching cluster state in a few seconds.
   </p>
-  Please check the your network connection to the following servers:
+  <p>
+    Your cluster Coordinators are not (yet) reachable.
+    The DBServer processes are still active. 
+    They may still be in their startup phase, or network connectivity may be unavailable.
+    Please check the network connection of the following servers:
   </p>
   <% if(coordinators.length > 0) { %>
   <ul>
@@ -19,11 +21,12 @@
   </ul>
   <% } %>
   <p>
-    If none of these servers is reachable they are either located behind a firewall and not accessable to the outside, or there is a network disconnection.
+    If your system is still very active, startup may take some more time.
+    If none of these servers is reachable they are either located behind a firewall and 
+    not accessable to the outside, or there is a network disconnection.
   </p>
   <p>
-    If at least of these servers is reachable the coordinator potentially crashed, please have a look in the log files.
-    In this case you can shutdown the cluster and relaunch it again.
+    If none of the above is true, consult the server logfiles for more error informations.
   </p>
   <p>
     <button id="clusterShutdown" class="button-danger shutdown">Shutdown Cluster</button>
