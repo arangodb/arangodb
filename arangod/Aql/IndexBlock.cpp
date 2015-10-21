@@ -282,6 +282,9 @@ bool IndexBlock::initIndexes () {
       v8::HandleScope scope(isolate); // do not delete this!
     
       executeExpressions();
+      TRI_IF_FAILURE("IndexBlock::executeV8")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
     }
     else {
       // no V8 context required!
@@ -289,6 +292,9 @@ bool IndexBlock::initIndexes () {
       Functions::InitializeThreadContext();
       try {
         executeExpressions();
+        TRI_IF_FAILURE("IndexBlock::executeExpression")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         Functions::DestroyThreadContext();
       }
       catch (...) {
@@ -422,7 +428,6 @@ bool IndexBlock::readIndex (size_t atMost) {
     }
   }
   catch (...) {
-    // TODO check if this is enough
     if (_iterator != nullptr) {
       delete _iterator;
       _iterator = nullptr;
