@@ -27,7 +27,6 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var foxxInternal = require("org/arangodb/foxx/internals");
 var _ = require("underscore");
 var internal = require("internal");
 
