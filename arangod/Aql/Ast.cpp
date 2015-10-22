@@ -1756,8 +1756,12 @@ AstNode* Ast::clone (AstNode const* node) {
 
   // recursively clone subnodes
   size_t const n = node->numMembers();
-  for (size_t i = 0; i < n; ++i) {
-    copy->addMember(clone(node->getMemberUnchecked(i)));
+  if (n > 0) {
+    copy->members.reserve(n);
+
+    for (size_t i = 0; i < n; ++i) {
+      copy->addMember(clone(node->getMemberUnchecked(i)));
+    }
   }
 
   return copy;

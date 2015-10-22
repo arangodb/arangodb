@@ -403,7 +403,7 @@ bool IndexBlock::readIndex (size_t atMost) {
 
   size_t lastIndexNr = _indexes.size() - 1;
   bool isReverse = (static_cast<IndexNode const*>(getPlanNode()))->_reverse;
-  bool isLastIndex = (_currentIndex == lastIndexNr && !isReverse) || (_currentIndex == 0 && isReverse);
+  bool isLastIndex = (_currentIndex == lastIndexNr && ! isReverse) || (_currentIndex == 0 && isReverse);
   try {
     size_t nrSent = 0;
     while (nrSent < atMost && _iterator != nullptr) {
