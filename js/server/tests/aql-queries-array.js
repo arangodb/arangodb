@@ -379,8 +379,9 @@ function arrayIndexCrazyQueriesSuite () {
       db._drop(cName);
     },
 
+    /* Needs a decission for nested arrays
     testLongChainedArrayHash : function () {
-      col.ensureHashIndex("the[*].quick.brown.foxx[*].jumps[*].over.the.lazy.dog[*]");
+      var idx = col.ensureHashIndex("the[*].quick.brown.foxx[*].jumps[*].over.the.lazy.dog[*]").id;
       const buildDocument = function (dog1, dog2) {
         dog2 = dog2 || dog1;
         var doc = { the: [] };
@@ -423,6 +424,7 @@ function arrayIndexCrazyQueriesSuite () {
       checkIsOptimizedQuery(query, bindVars);
 
     }
+    */
 
 
   };
