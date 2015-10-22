@@ -29,7 +29,7 @@ make jslint || exit 1
 echo
 echo "$0: testing ArangoDB"
 
-./scripts/unittest all --skipRanges true --skipTimeCritical true --skipSsl true || exit 1
+./scripts/unittest all --skipRanges true --skipTimeCritical true --skipSsl true --skipBoost true --skipGeo true || exit 1
 success=`cat out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json`
 if test "$success" == "false"; then
   exit 1

@@ -12,29 +12,46 @@ meaning that an optimization should not modify the result of a query. A notable 
 to this is that the optimizer is allowed to change the order of results for queries that
 do not explicitly specify how results should be sorted.
 
-
 !SUBSECTION Execution plans
 
 The `explain` command can be used to query the optimal executed plan or even all plans
 the optimizer has generated. Additionally, `explain` can reveal some more information
 about the optimizer's view of the query. 
 
-Here's an example that shows the execution plan for a simple query, using the `explain`
-method of `ArangoStatement`:
+!SUBSECTION Inspecting plans using the explain helper
 
-    @startDocuBlockInline AQLEXP_01_explainCreate
-    @EXAMPLE_ARANGOSH_OUTPUT{AQLEXP_01_explainCreate}
+The `explain` method of `ArangoStatement` as shown in the next chapters creates very verbose output. 
+You can work on the output programaticaly, or use this handsome tool that we created
+to generate a more human readable representation.
+
+You may use it like this: (we disable syntax highlighting here)
+
+    @startDocuBlockInline AQLEXP_01_axplainer
+    @EXAMPLE_ARANGOSH_OUTPUT{AQLEXP_01_axplainer}
     ~addIgnoreCollection("test")
     db._create("test"); 
     for (i = 0; i < 100; ++i) { db.test.save({ value: i }); }
     db.test.ensureIndex({ type: "skiplist", fields: [ "value" ] });
+    var explain = require("org/arangodb/aql/explainer").explain;
+    explain("FOR i IN test FILTER i.value > 97 SORT i.value RETURN i.value", {colors:false});
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock AQLEXP_01_axplainer
+    
+
+!SUBSECTION Execution plans in detail
+
+Lets have a look at the raw json output of the same execution plan
+using the `explain` method of `ArangoStatement`:
+
+    @startDocuBlockInline AQLEXP_01_explainCreate
+    @EXAMPLE_ARANGOSH_OUTPUT{AQLEXP_01_explainCreate}
     stmt = db._createStatement("FOR i IN test FILTER i.value > 97 SORT i.value RETURN i.value");
     stmt.explain();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock AQLEXP_01_explainCreate
 
-The result details will be very verbose so they are not shown here in full. Instead,
-let's take a closer look at the results step by step.
+The as you can see, result details are very verbose so we will not shown them in full in the next
+sections. Instead, lets take a closer look at the results step by step.
 
 !SUBSUBSECTION Execution nodes
 
