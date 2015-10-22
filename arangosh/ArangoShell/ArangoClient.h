@@ -98,7 +98,6 @@ namespace triagens {
 ///
 /// This sequence must be used before any non-visible characters in the prompt.
 ///
-/// From readline/display.c:
 /// \\001 (^A) start non-visible characters
 /// \\002 (^B) end non-visible characters
 ///

@@ -19,7 +19,7 @@
 
 ### zlib
 
-* free as-is license
+* [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/zlib-1.2.7/README#L85)
 
 ### Valgrind
 
@@ -30,12 +30,6 @@
 
 * http://www.boost.org/
 * [boost software license](http://www.boost.org/LICENSE_1_0.txt)
-
-### readline
-
-* http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html
-* GNU GPL
-* alternatively linenoise can be used
 
 ### linenoise
 
@@ -57,9 +51,8 @@
 ### Bison
 
 * https://www.gnu.org/software/bison/
-* GNU GPL3
 * only used to generate code, not part of the distribution
-* see https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20
+* parts used see https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20
 
 ### Flex
 
@@ -79,27 +72,27 @@
 #### Jasmine
 
 * https://jasmine.github.io
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/jasmine/jasmine/master/MIT.LICENSE)
 
 #### JSUnity
 
 * https://github.com/atesgoral/jsunity
-* MIT License
+* [MIT License](http://www.opensource.org/licenses/mit-license.php)
 
 #### ArangoDB Query Builder
 
 * https://github.com/arangodb/aqbjs
-* Apache 2
+* [Apache 2](https://raw.githubusercontent.com/arangodb/aqbjs/master/LICENSE)
 
 #### Chai
 
 * http://chaijs.com
-* MIT License
+* [MIT License](https://github.com/chaijs/chai/blob/master/README.md)
 
 #### CoffeeScript
 
 * http://coffeescript.org
-* MIT License
+* [MIT License](https://www.npmjs.com/package/coffee-script)
 
 #### stacktrace.js
 
@@ -109,72 +102,72 @@
 #### expect.js
 
 * https://github.com/Automattic/expect.js
-* MIT License
+* [MIT License](https://github.com/Automattic/expect.js/blob/master/README.md)
 
 #### extendible
 
 * https://github.com/3rd-Eden/extendible
-* MIT License
+* [MIT License](https://github.com/bigpipe/extendible/blob/master/README.md)
 
 #### Foxx Generator
 
 * https://github.com/moonglum/foxx_generator
-* Apache 2 License
+* [Apache 2 License](https://raw.githubusercontent.com/moonglum/foxx_generator/master/LICENSE)
 
 #### highlight.js
 
 * https://highlightjs.org
-* BSD 3-Clause License
+* [BSD 3-Clause License](https://raw.githubusercontent.com/isagalaev/highlight.js/master/LICENSE)
 
 #### http-errors
 
 * https://github.com/jshttp/http-errors
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/jshttp/http-errors/master/LICENSE)
 
 #### i
 
 * https://github.com/pksunkara/inflect
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/pksunkara/inflect/master/LICENSE)
 
 #### Joi
 
 * https://github.com/hapijs/joi
-* BSD 3-Clause License
+* [BSD 3-Clause License](https://raw.githubusercontent.com/hapijs/joi/master/LICENSE)
 
 #### Ace
 
 * https://github.com/ajaxorg/ace
-* BSD 3-Clause License
+* [BSD 3-Clause License](https://raw.githubusercontent.com/ajaxorg/ace/master/LICENSE)
 
 #### YAML
 
 * https://github.com/nodeca/js-yaml
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/nodeca/js-yaml/master/LICENSE)
 
 #### JSHint
 
 * http://jshint.com
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/jshint/jshint/master/LICENSE)
 
 #### minimatch
 
 * https://github.com/isaacs/minimatch
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/isaacs/minimatch/master/LICENSE)
 
 #### mocha
 
 * http://mochajs.org
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/mochajs/mocha/master/LICENSE)
 
 #### qs
 
 * https://github.com/hapijs/qs
-* BSD 3-Clause License
+* [BSD 3-Clause License](https://raw.githubusercontent.com/hapijs/hapi/master/LICENSE)
 
 #### Ramda
 
 * http://ramdajs.com
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/ramda/ramda/master/LICENSE.txt)
 
 #### semver
 
@@ -184,109 +177,111 @@
 #### Sinon.JS
 
 * http://sinonjs.org
-* BSD 3-Clause License
+* [BSD 3-Clause License](https://www.npmjs.com/package/sinon)
 
 #### underscore
 
 * http://underscorejs.org
-* MIT License
+* [MIT License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
 
 ### Frontend libraries
 
 #### swagger
 
 * http://swagger.io
-* Apache 2 License
+* [Apache 2 License](https://raw.githubusercontent.com/swagger-api/swagger-js/master/LICENSE)
 
 #### Backbone.js
 
 * http://backbonejs.org
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/jashkenas/backbone/master/LICENSE)
 
 #### Bootstrap
 
 * http://getbootstrap.com
-* MIT License
+* [MIT License](https://github.com/twbs/bootstrap/blob/master/LICENSE)
 
 #### D3js
 
 * http://d3js.org
-* BSD 3-Clause License
+* [BSD 3-Clause License](https://raw.githubusercontent.com/mbostock/d3/master/LICENSE)
 
 #### dygraph
 
 * http://dygraphs.com
-* MIT License
+* [MIT License](https://www.npmjs.com/package/dygraphs)
 
 #### EJS
 
 * http://www.embeddedjs.com
-* MIT License
+* [MIT License](http://www.embeddedjs.com/) under Highlights
 
 #### jqconsole
 
 * https://github.com/replit/jq-console
-* MIT License
+* [MIT License](https://github.com/replit/jq-console/blob/master/README.md)
 
 #### jQuery
 
 * http://jquery.com
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/jquery/jquery/master/LICENSE.txt)
 
 #### jQuery UI
 
 * http://jqueryui.com
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/jquery/jquery-ui/master/LICENSE.txt)
 
 #### jQuery Snippet 
 
 * http://steamdev.com/snippet
-* MIT License 
+* [MIT License](https://web.archive.org/web/20150817084109/http://steamdev.com/snippet/) in "section 5"
 
 #### jQuery Hotkeys
 
-* https://github.com/jeresig/jquery.hotkeys
-* MIT License or GPL Version 2 License
+* https://code.google.com/p/js-hotkeys/
+* [MIT License](https://code.google.com/p/js-hotkeys/) under "Code license"
 
 #### jQuery Contextmenu
 
 * https://github.com/swisnl/jQuery-contextMenu
-* MIT License
+* [MIT License](https://github.com/swisnl/jQuery-contextMenu) under "License"
 
 #### jQuery Form
 
 * https://github.com/malsup/form/
-* MIT License or GPL Version 2 License
+* [MIT License](https://github.com/malsup/form/) under "Copyright and License"
 
 #### jQuery UploadFile
 
 * https://github.com/hayageek/jquery-upload-file/
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/hayageek/jquery-upload-file/master/MIT-License.txt)
 
 #### jQuery Textfill
 
 * https://github.com/jquery-textfill/jquery-textfill
-* MIT License
+* [MIT License](https://raw.githubusercontent.com/jquery-textfill/jquery-textfill/master/COPYING.md)
 
 #### jQuery Strftime
 
 * https://github.com/samsonjs/strftime
-* MIT License
+* [MIT License](https://github.com/samsonjs/strftime) under "License"
 
 #### nvd3
 
 * https://github.com/novus/nvd3
-* Apache 2 License 
+* [Apache 2 License](https://github.com/novus/nvd3/blob/master/LICENSE.md) under "nvd3.js"
 
 #### jsoneditor.js
 
-* Apache 2 License
+* https://github.com/josdejong/jsoneditor/
+* [Apache 2 License](https://raw.githubusercontent.com/josdejong/jsoneditor/master/LICENSE)
 
 #### Crypto.js
 
 * https://github.com/brix/crypto-js
-* MIT License / BSD 3-Clause License
+* [MIT License](https://github.com/brix/crypto-js) under "License"
 
 #### select2
 
-* Apache 2 License
+* https://github.com/select2/select2
+* [Apache 2 License](https://github.com/select2/select2)

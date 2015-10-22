@@ -1047,8 +1047,9 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
                                      triagens::aql::AstNode const* other,
                                      triagens::aql::AstNode const* op,
                                      triagens::aql::Variable const* reference,
-                                     std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>& found) const {
-  if (! this->canUseConditionPart(access, other, op, reference)) {
+                                     std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>& found,
+                                     bool isExecution) const {
+  if (! this->canUseConditionPart(access, other, op, reference, isExecution)) {
     return false;
   }
   
@@ -1100,7 +1101,8 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
 void SkiplistIndex::matchAttributes (triagens::aql::AstNode const* node,
                                      triagens::aql::Variable const* reference,
                                      std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>& found,
-                                     size_t& values) const {
+                                     size_t& values,
+                                     bool isExecution) const {
   for (size_t i = 0; i < node->numMembers(); ++i) {
     auto op = node->getMember(i);
 
@@ -1111,12 +1113,12 @@ void SkiplistIndex::matchAttributes (triagens::aql::AstNode const* node,
       case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
       case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
         TRI_ASSERT(op->numMembers() == 2);
-        accessFitsIndex(op->getMember(0), op->getMember(1), op, reference, found);
-        accessFitsIndex(op->getMember(1), op->getMember(0), op, reference, found);
+        accessFitsIndex(op->getMember(0), op->getMember(1), op, reference, found, isExecution);
+        accessFitsIndex(op->getMember(1), op->getMember(0), op, reference, found, isExecution);
         break;
 
       case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-        if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference, found)) {
+        if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference, found, isExecution)) {
           auto m = op->getMember(1);
           if (m->type != triagens::aql::NODE_TYPE_EXPANSION && m->numMembers() > 1) {
             // attr IN [ a, b, c ]  =>  this will produce multiple items, so count them!
@@ -1124,7 +1126,7 @@ void SkiplistIndex::matchAttributes (triagens::aql::AstNode const* node,
           }
         }
         else {
-          accessFitsIndex(op->getMember(1), op->getMember(0), op, reference, found);
+          accessFitsIndex(op->getMember(1), op->getMember(0), op, reference, found, isExecution);
         }
         break;
 
@@ -1141,7 +1143,7 @@ bool SkiplistIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
                                              double& estimatedCost) const {
   std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
   size_t values = 0;
-  matchAttributes(node, reference, found, values);
+  matchAttributes(node, reference, found, values, false);
 
   bool lastContainsEquality = true;
   size_t attributesCovered = 0;
@@ -1276,7 +1278,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
                                                     triagens::aql::Ast* ast,
                                                     triagens::aql::AstNode const* node,
                                                     triagens::aql::Variable const* reference,
-                                                    bool const reverse) const {
+                                                    bool reverse) const {
 
   // Create the skiplistOperator for the IndexLookup
   if (node == nullptr) {
@@ -1295,7 +1297,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
   }
   std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
   size_t unused = 0;
-  matchAttributes(node, reference, found, unused);
+  matchAttributes(node, reference, found, unused, true);
 
   // found contains all attributes that are relevant for this node.
   // It might be less than fields().
@@ -1537,7 +1539,7 @@ triagens::aql::AstNode* SkiplistIndex::specializeCondition (triagens::aql::AstNo
                                                             triagens::aql::Variable const* reference) const {
   std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
   size_t values = 0;
-  matchAttributes(node, reference, found, values);
+  matchAttributes(node, reference, found, values, false);
 
   std::vector<triagens::aql::AstNode const*> children;  
   bool lastContainsEquality = true;

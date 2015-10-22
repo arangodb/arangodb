@@ -97,13 +97,6 @@ lib_libarango_a_SOURCES = \
 	lib/Zip/unzip.cpp \
 	lib/Zip/zip.cpp
 
-if ENABLE_READLINE
-
-lib_libarango_a_SOURCES += \
-	lib/Utilities/ReadlineShell.cpp
-
-endif
-
 ################################################################################
 ### @brief library "libarango.a", client part
 ################################################################################
