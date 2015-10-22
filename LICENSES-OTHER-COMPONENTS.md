@@ -51,9 +51,8 @@
 ### Bison
 
 * https://www.gnu.org/software/bison/
-* [GNU GPL v3](http://www.gnu.org/licenses/gpl.html)
-* *only used to generate code, not part of the distribution*
-* see https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20
+* only used to generate code, not part of the distribution
+* parts used see https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20
 
 ### Flex
 
