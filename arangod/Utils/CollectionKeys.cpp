@@ -31,6 +31,7 @@
 #include "Basics/hashes.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/DocumentHelper.h"

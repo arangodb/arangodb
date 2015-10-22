@@ -41,6 +41,7 @@ struct TRI_hash_index_element_multi_s;
 
 namespace triagens {
   namespace arango {
+    class IndexIterator;
     struct IndexIteratorContext;
   }
 

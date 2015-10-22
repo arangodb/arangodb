@@ -33,6 +33,7 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Rest/SslInterface.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
