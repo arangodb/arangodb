@@ -157,7 +157,8 @@ namespace triagens {
                               triagens::aql::AstNode const*,
                               triagens::aql::AstNode const*,
                               triagens::aql::AstNode const*,
-                              triagens::aql::Variable const*);
+                              triagens::aql::Variable const*,
+                              bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

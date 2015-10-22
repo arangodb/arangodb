@@ -370,7 +370,8 @@ namespace triagens {
         bool canUseConditionPart (triagens::aql::AstNode const* access,
                                   triagens::aql::AstNode const* other,
                                   triagens::aql::AstNode const* op,
-                                  triagens::aql::Variable const* reference) const;
+                                  triagens::aql::Variable const* reference,
+                                  bool) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables

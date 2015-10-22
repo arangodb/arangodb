@@ -319,7 +319,7 @@ namespace triagens {
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*,
-                                             bool const) const override;
+                                             bool) const override;
 
         triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
                                                      triagens::aql::Variable const*) const override;
@@ -344,12 +344,14 @@ namespace triagens {
                               triagens::aql::AstNode const*,
                               triagens::aql::AstNode const*,
                               triagens::aql::Variable const*,
-                              std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&) const;
+                              std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
+                              bool) const;
 
         void matchAttributes (triagens::aql::AstNode const*,
                               triagens::aql::Variable const*,
                               std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
-                              size_t&) const;
+                              size_t&,
+                              bool) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

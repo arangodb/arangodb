@@ -553,7 +553,8 @@ triagens::aql::AstNode* Index::specializeCondition (triagens::aql::AstNode* node
 bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
                                  triagens::aql::AstNode const* other,
                                  triagens::aql::AstNode const* op,
-                                 triagens::aql::Variable const* reference) const {
+                                 triagens::aql::Variable const* reference,
+                                 bool isExecution) const {
 
   if (_sparse) {
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
@@ -612,6 +613,11 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
         }
       }
     }
+  }
+
+  if (isExecution) {
+    // in execution phase, we do not need to check the variable usage again
+    return true;
   }
 
   // test if the reference variable is contained on both side of the expression
