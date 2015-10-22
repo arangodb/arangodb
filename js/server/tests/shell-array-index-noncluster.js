@@ -298,6 +298,7 @@ function arrayHashIndexSuite () {
       assertEqual(res.length, 0);
     },
 
+    /* TODO Decission required here
     testInsertAndReadNestedElements: function () {
       var idx = collection.ensureHashIndex("a[*].b").id;
       var id1 = collection.save({a: [{b: 1}]})._id;
@@ -305,7 +306,6 @@ function arrayHashIndexSuite () {
       collection.save({a: [1,2,3]});
       collection.save({b: [1,2,3]});
 
-      /*
       var res = collection.BY_EXAMPLE_HASH(idx, {a: {b: 1} }, 0, null).documents;
       assertEqual(res.length, 2);
       assertEqual(res[0]._id, id1);
@@ -314,8 +314,8 @@ function arrayHashIndexSuite () {
       res = collection.BY_EXAMPLE_HASH(idx, {a: {b: 2} }, 0, null).documents;
       assertEqual(res.length, 1);
       assertEqual(res[0]._id, id2);
-      */
     },
+    */
 
   };
 }
