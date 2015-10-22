@@ -305,10 +305,16 @@ function processQuery (query, explain) {
     isConst = true;
 
   var variableName = function (node) {
-    if (/^[0-9_]/.test(node.name)) {
-      return variable("#" + node.name);
+    try {
+      if (/^[0-9_]/.test(node.name)) {
+        return variable("#" + node.name);
+      }
     }
-   
+    catch(x) {
+      print(node);
+      throw(x)
+    }
+    
     if (collectionVariables.hasOwnProperty(node.id)) {
       usedVariables[node.name] = collectionVariables[node.id];
     }
@@ -318,6 +324,7 @@ function processQuery (query, explain) {
   var buildExpression = function (node) {
     isConst = isConst && ([ "value", "object", "object element", "array" ].indexOf(node.type) !== -1);
 
+    print (node.type)
     switch (node.type) {
       case "reference": 
         if (references.hasOwnProperty(node.name)) {
@@ -524,8 +531,18 @@ function processQuery (query, explain) {
         index.node = node.id;
         indexes.push(index);
         return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse ? "reverse " : "") + node.index.type + " index scan */");
+
       case "TraversalNode":
-        return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " TRAVERSE /* TODO FIXME */";
+        return keyword("FOR") + " [firstEdge: " +
+          variableName(node.edgeOutVariable) + ", firstVertex: " +
+          variableName(node.vertexOutVariable) + ", Paths: " +
+          variableName(node.pathOutVariable) + "] " + 
+          keyword("IN") +
+          " maxPathDepth: " + node.maxDepth + " " +
+          keyword("OUTBOUND") +
+          " Startnode: '" + node.vertexId + "' " +
+          keyword("GRAPH") +  " " + node.graph;
+
       case "CalculationNode":
         return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");
       case "FilterNode":

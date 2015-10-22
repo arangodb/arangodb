@@ -51,9 +51,16 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
   std::unique_ptr<arango::CollectionNameResolver> resolver(new arango::CollectionNameResolver(vocbase));
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     // List of edge collection names
+    _graphName = '[';
     for (size_t i = 0; i <  graph->numMembers(); ++i) {
       auto eColName = graph->getMember(i)->getStringValue();
       auto edgeStruct = resolver->getCollectionStruct(eColName);
+      if (_graphName.length() > 1) {
+        _graphName += "'";
+      }
+      _graphName += "'";
+      _graphName += eColName;
+      _graphName += "'";
       if (edgeStruct->_type != TRI_COL_TYPE_EDGE) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
       }
@@ -62,9 +69,10 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
   } else {
     if (_edgeCids.size() == 0) {
       if (graph->isStringValue()) {
+        _graphName = graph->getStringValue();
         auto graphObj = triagens::arango::GraphFactory::factory()->byName(
           _vocbase,
-          graph->getStringValue()
+          _graphName
         );
         auto eColls = graphObj.edgeCollections();
         for (const auto& n: eColls) {
@@ -240,6 +248,7 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
     ("minDepth", triagens::basics::Json(static_cast<int32_t>(_minDepth)))
     ("maxDepth", triagens::basics::Json(static_cast<int32_t>(_maxDepth)))
     ("direction", triagens::basics::Json(static_cast<int32_t>(_direction)));
+  json("graph" , triagens::basics::Json(_graphName));
 
   // In variable
   if (usesInVariable()) {
