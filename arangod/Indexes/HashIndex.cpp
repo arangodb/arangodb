@@ -666,7 +666,7 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
         return TRI_ERROR_NO_ERROR;
       }
       // This is TRI_RESULT_ELEMENT_EXISTS, but this should not happen:
-      return TRI_ERROR_INTERNAL;
+      return TRI_ERROR_NO_ERROR;
     }
     
     return TRI_ERROR_NO_ERROR;
