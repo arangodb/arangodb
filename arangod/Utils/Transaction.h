@@ -404,7 +404,7 @@ namespace triagens {
                              std::vector<TRI_doc_mptr_copy_t>& docs,
                              triagens::basics::BucketPosition& internalSkip,
                              uint64_t batchSize,
-                             int64_t skip,
+                             uint64_t& skip,
                              uint64_t limit,
                              uint64_t& total) {
 
@@ -430,11 +430,10 @@ namespace triagens {
             else if (batchSize > 0) {
               docs.reserve(batchSize);
             }
-            TRI_ASSERT(batchSize > 0);
-              
+
             auto primaryIndex = document->primaryIndex();
 
-            while (count < batchSize) {
+            while (count < batchSize || skip > 0) {
               TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(internalSkip, total);
 
               if (mptr == nullptr) {

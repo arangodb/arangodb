@@ -74,6 +74,18 @@ int RandomCollectionScanner::scan (std::vector<TRI_doc_mptr_copy_t>& docs,
                          totalCount);
 }
 
+int RandomCollectionScanner::forward (size_t batchSize, size_t& skipped) {
+  // Basic implementation, no gain
+  std::vector<TRI_doc_mptr_copy_t> unusedDocs;
+  unusedDocs.reserve(batchSize);
+  int res = scan(unusedDocs, batchSize);
+  skipped += unusedDocs.size();
+  // TRI_doc_mptr_copy_t is never freed
+  unusedDocs.clear();
+  return res;
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -100,15 +112,33 @@ LinearCollectionScanner::LinearCollectionScanner (triagens::arango::AqlTransacti
 
 int LinearCollectionScanner::scan (std::vector<TRI_doc_mptr_copy_t>& docs,
                                    size_t batchSize) {
+  uint64_t skip = 0;
   return trx->readIncremental(trxCollection,
                               docs,
                               position,
                               static_cast<uint64_t>(batchSize),
-                              0,
+                              skip,
                               UINT64_MAX,
                               totalCount);
 }
 
+int LinearCollectionScanner::forward (size_t batchSize, size_t& skipped) {
+  // Basic implementation, no gain
+  std::vector<TRI_doc_mptr_copy_t> unusedDocs;
+  uint64_t toSkip = static_cast<uint64_t>(batchSize);
+
+  int res = trx->readIncremental(trxCollection,
+                                 unusedDocs,
+                                 position,
+                                 0,
+                                 toSkip, // Will be modified. Will reach 0 if batchSize many docs have been skipped
+                                 UINT64_MAX,
+                                 totalCount);
+  uint64_t reallySkipped = static_cast<uint64_t>(batchSize) - toSkip;
+  skipped += static_cast<size_t>(reallySkipped);
+  TRI_ASSERT(unusedDocs.empty());
+  return res;
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
