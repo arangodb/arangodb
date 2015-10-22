@@ -57,7 +57,7 @@
 ### Flex
 
 * http://flex.sourceforge.net/
-* *only used to generate code, not part of the distribution*
+* only used to generate code, not part of the distribution
 * [free as-is license](http://flex.sourceforge.net/manual/Copyright.html#Copyright)
 
 ## Javascript, Node and NPM
