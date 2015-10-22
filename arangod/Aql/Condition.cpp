@@ -311,8 +311,8 @@ Condition* Condition::fromJson (ExecutionPlan* plan,
     condition->andCombine(node.get());
     node.release();
   }
+
   condition->_isNormalized = true;
-  // TODO
   condition->_isSorted = false;
 
   return condition.release();

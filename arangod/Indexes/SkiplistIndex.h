@@ -175,7 +175,7 @@ namespace triagens {
         bool findHelperIntervalValid (SkiplistIteratorInterval const& interval);
     };
 
-    class SkiplistIndexIterator : public IndexIterator {
+    class SkiplistIndexIterator final : public IndexIterator {
 
       public:
         
@@ -214,7 +214,7 @@ namespace triagens {
 // --SECTION--                                               class SkiplistIndex
 // -----------------------------------------------------------------------------
 
-    class SkiplistIndex : public PathBasedIndex {
+    class SkiplistIndex final : public PathBasedIndex {
 
       struct KeyElementComparator {
         int operator() (TRI_skiplist_index_key_t const* leftKey,

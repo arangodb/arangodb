@@ -90,7 +90,7 @@ struct TRI_index_element_t {
 /// @brief Set the pointer to the Document's masterpointer.
 ////////////////////////////////////////////////////////////////////////////////
 
-    void document (TRI_doc_mptr_t* doc) {
+    void document (TRI_doc_mptr_t* doc) noexcept {
       _document = doc;
     }
 

@@ -53,7 +53,7 @@ namespace triagens {
 
   namespace arango {
 
-    class PrimaryIndexIterator : public IndexIterator {
+    class PrimaryIndexIterator final : public IndexIterator {
  
       public:
 
@@ -79,7 +79,7 @@ namespace triagens {
 
     };
 
-    class PrimaryIndex : public Index {
+    class PrimaryIndex final : public Index {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors

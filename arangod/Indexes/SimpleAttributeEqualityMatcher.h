@@ -170,7 +170,7 @@ namespace triagens {
 /// @brief array of attributes used for comparisons
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::vector<triagens::basics::AttributeName>> _attributes;
+        std::vector<std::vector<triagens::basics::AttributeName>> const _attributes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an internal map to mark which condition parts were useful and 
