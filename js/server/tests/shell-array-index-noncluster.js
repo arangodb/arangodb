@@ -561,8 +561,7 @@ function arraySkiplistIndexSuite () {
 
       // But not like this
       res = collection.BY_EXAMPLE_SKIPLIST(idx, {a: null, b: 1}, 0, null).documents;
-      assertEqual(res.length, 1);
-      assertEqual(res[0]._id, id7);
+      assertEqual(res.length, 0);
     }
 
   };
