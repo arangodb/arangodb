@@ -295,9 +295,27 @@ function arrayHashIndexSuite () {
 
       // But not like this
       res = collection.BY_EXAMPLE_HASH(idx, {a: null, b: 1}, 0, null).documents;
+      assertEqual(res.length, 0);
+    },
+
+    /*
+    testInsertAndReadNestedElements: function () {
+      var idx = collection.ensureHashIndex("a[*].b").id;
+      var id1 = collection.save({a: [{b: 1}]})._id;
+      var id2 = collection.save({a: [{b: 1}, {b: 2}]})._id;
+      collection.save({a: [1,2,3]});
+      collection.save({b: [1,2,3]});
+
+      var res = collection.BY_EXAMPLE_HASH(idx, {a: {b: 1} }, 0, null).documents;
+      assertEqual(res.length, 2);
+      assertEqual(res[0]._id, id1);
+      assertEqual(res[0]._id, id2);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: {b: 2} }, 0, null).documents;
       assertEqual(res.length, 1);
-      assertEqual(res[0]._id, id7);
-    }
+      assertEqual(res[0]._id, id2);
+    },
+    */
 
   };
 }
