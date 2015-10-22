@@ -118,7 +118,6 @@ AM_CPPFLAGS = \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ \
 	@ICU_CPPFLAGS@ \
 	@ZLIB_CPPFLAGS@ \
 	@V8_CPPFLAGS@ 
@@ -131,7 +130,6 @@ AM_LDFLAGS = \
 	@LIBEV_LDFLAGS@ \
 	@MATH_LDFLAGS@ \
 	@OPENSSL_LDFLAGS@ \
-	@READLINE_LDFLAGS@ \
 	@ICU_LDFLAGS@ \
 	@ZLIB_LDFLAGS@ \
 	@V8_LDFLAGS@ 
@@ -147,8 +145,7 @@ LIBS = \
 	@MATH_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@ICU_LIBS@ \
-	@ZLIB_LIBS@ \
-	@READLINE_LIBS@ 
+	@ZLIB_LIBS@
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                              LIBRARIES & PROGRAMS
@@ -527,11 +524,6 @@ cmake-setup:
 		-D OPENSSL_LIB_PATH= \
 		-D OPENSSL_LIBS= \
 		-D OPENSSL_VERSION= \
-		\
-		-D READLINE_INCLUDE= \
-		-D READLINE_LIB_PATH= \
-		-D READLINE_LIBS= \
-		-D READLINE_VERSION= \
 		\
 		-D V8_INCLUDE= \
 		-D V8_LIB_PATH= \

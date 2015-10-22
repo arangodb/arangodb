@@ -33,8 +33,6 @@
 #include "LinenoiseShell.h"
 #elif defined TRI_HAVE_LINENOISE
 #include "LinenoiseShell.h"
-#elif defined TRI_HAVE_READLINE
-#include "ReadlineShell.h"
 #endif
 #include "DummyShell.h"
 
@@ -63,12 +61,9 @@ ShellImplementation* ShellImplFactory::buildShell (std::string const& history,
   }
 
 #ifdef _WIN32
-  // under Windows the readline is not compilable
   return new LinenoiseShell(history, completer);
 #elif defined TRI_HAVE_LINENOISE
   return new LinenoiseShell(history, completer);
-#elif defined TRI_HAVE_READLINE
-  return new ReadlineShell(history, completer);
 #else
   // last resort!
   return new DummyShell(history, completer);
@@ -85,12 +80,9 @@ bool ShellImplFactory::hasCtrlCHandler () {
   }
 
 #ifdef _WIN32
-  // under Windows the readline is not compilable
   return false;
 #elif defined TRI_HAVE_LINENOISE
   return false;
-#elif defined TRI_HAVE_READLINE
-  return true;
 #else
   return false;
 #endif

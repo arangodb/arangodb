@@ -79,10 +79,6 @@ void Version::initialize () {
   Values["maintainer-mode"] = "false";
 #endif
 
-#ifdef TRI_READLINE_VERSION
-  Values["readline-version"] = getReadlineVersion();
-#endif
-
 #ifdef TRI_HAVE_TCMALLOC
   Values["tcmalloc"] = "true";
 #else
@@ -182,19 +178,11 @@ std::string Version::getZLibVersion () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get readline version
+/// @brief get REPL version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Version::getReadlineVersion () {
-#ifdef TRI_READLINE_VERSION
-  std::string const value(TRI_READLINE_VERSION);
-
-  if (value.size() >= 2) {
-    return value;
-  }
-  // fallthrough
-#endif
-  return std::string("unknown version");
+std::string Version::getReplVersion () {
+  return std::string("dummy shell");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,9 +270,7 @@ std::string Version::getVerboseVersionString () {
 #endif
           << "ICU " << getICUVersion() << ", "
           << "V8 " << getV8Version() << ", "
-#ifdef TRI_READLINE_VERSION
-          << "Readline " << getReadlineVersion() << ", "
-#endif
+          << "REPL " << getReplVersion() << ", "
           << getOpenSSLVersion();
 
   return version.str();

@@ -1548,20 +1548,10 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
 #ifdef TRI_HAVE_LINENOISE
 
       // linenoise doesn't need escape sequences for escape sequences
+      // TODO: this should be a function defined in "console"
       goodPrompt = TRI_SHELL_COLOR_BOLD_GREEN + dynamicPrompt + TRI_SHELL_COLOR_RESET;
       badPrompt  = TRI_SHELL_COLOR_BOLD_RED   + dynamicPrompt + TRI_SHELL_COLOR_RESET;
 
-#else
-      // readline does...
-      goodPrompt = string()
-                 + ArangoClient::PROMPT_IGNORE_START + TRI_SHELL_COLOR_BOLD_GREEN + ArangoClient::PROMPT_IGNORE_END
-                 + dynamicPrompt
-                 + ArangoClient::PROMPT_IGNORE_START + TRI_SHELL_COLOR_RESET + ArangoClient::PROMPT_IGNORE_END;
-
-      badPrompt = string()
-                + ArangoClient::PROMPT_IGNORE_START + TRI_SHELL_COLOR_BOLD_RED + ArangoClient::PROMPT_IGNORE_END
-                + dynamicPrompt
-                + ArangoClient::PROMPT_IGNORE_START + TRI_SHELL_COLOR_RESET + ArangoClient::PROMPT_IGNORE_END;
 #endif
     }
     else {

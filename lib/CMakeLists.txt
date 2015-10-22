@@ -35,7 +35,6 @@ else ()
       Basics/terminal-utils-posix.cpp
       Basics/threads-posix.cpp
       Rest/EndpointUnixDomain.cpp
-      Utilities/ReadlineShell.cpp
   )
 endif ()
 
