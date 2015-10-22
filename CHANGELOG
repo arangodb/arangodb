@@ -1,6 +1,13 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* improved performance of skipping over many documents in an AQL query when no
+  indexes and no filters are used, e.g.
+
+      FOR doc IN collection
+        LIMIT 1000000, 10
+        RETURN doc
+
 * Added array indexes
 
   Hash indexes and skiplist indexes can now optionally be defined for array values 
