@@ -817,7 +817,13 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
 
   SimpleAttributeEqualityMatcher matcher(fields());
   size_t const n = _fields.size();
-  triagens::aql::AstNode* allVals = matcher.getAll(ast, this, node, reference);
+  triagens::aql::AstNode* allVals;
+  if (n == 1) {
+    allVals = matcher.getOne(ast, this, node, reference);
+  }
+  else {
+    allVals = matcher.getAll(ast, this, node, reference);
+  }
   TRI_ASSERT(allVals->numMembers() == n);
  
   // initialize permutations

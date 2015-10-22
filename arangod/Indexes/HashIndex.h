@@ -71,7 +71,7 @@ namespace triagens {
   }
   namespace arango {
 
-    class HashIndexIterator : public IndexIterator {
+    class HashIndexIterator final : public IndexIterator {
 
       public:
 
@@ -104,7 +104,7 @@ namespace triagens {
 
     };
 
-    class HashIndex : public PathBasedIndex {
+    class HashIndex final : public PathBasedIndex {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors

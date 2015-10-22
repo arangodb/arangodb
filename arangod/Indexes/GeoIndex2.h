@@ -46,7 +46,7 @@ class VocShaper;
 namespace triagens {
   namespace arango {
 
-    class GeoIndex2 : public Index {
+    class GeoIndex2 final : public Index {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors

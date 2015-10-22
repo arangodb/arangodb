@@ -190,10 +190,10 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::getOne (triagens::aql::A
 
       if (matches) {
         // we can use the index
-        std::unique_ptr<triagens::aql::AstNode> eqNode(ast->clone(op));
-        auto node = ast->createNodeNaryOperator(triagens::aql::NODE_TYPE_OPERATOR_NARY_AND, eqNode.get());
-        eqNode.release();
-        return node;
+        return ast->createNodeNaryOperator(triagens::aql::NODE_TYPE_OPERATOR_NARY_AND, op);
+        // TODO
+        auto eqNode = ast->clone(op);
+        return ast->createNodeNaryOperator(triagens::aql::NODE_TYPE_OPERATOR_NARY_AND, eqNode);
       }
     }
   }

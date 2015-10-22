@@ -42,7 +42,7 @@
 namespace triagens {
   namespace arango {
 
-    class CapConstraint : public Index {
+    class CapConstraint final : public Index {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors

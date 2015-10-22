@@ -159,6 +159,8 @@ int PathBasedIndex::fillElement (std::vector<TRI_index_element_t*>& elements,
         return TRI_ERROR_OUT_OF_MEMORY;
       }
       TRI_IF_FAILURE("FillElementOOM") {
+        // clean up manually
+        TRI_index_element_t::free(element);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
@@ -169,7 +171,17 @@ int PathBasedIndex::fillElement (std::vector<TRI_index_element_t*>& elements,
         TRI_FillShapedSub(&subObjects[i], &shapes[i], ptr);
       }
 
-      elements.emplace_back(element);
+      try {
+        TRI_IF_FAILURE("FillElementOOM2") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
+        elements.emplace_back(element);
+      }
+      catch (...) {
+        TRI_index_element_t::free(element);
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
     }
   }
   else {
@@ -191,6 +203,8 @@ int PathBasedIndex::fillElement (std::vector<TRI_index_element_t*>& elements,
           return TRI_ERROR_OUT_OF_MEMORY;
         }
         TRI_IF_FAILURE("FillElementOOM") {
+          // clean up manually
+          TRI_index_element_t::free(element);
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
@@ -200,7 +214,18 @@ int PathBasedIndex::fillElement (std::vector<TRI_index_element_t*>& elements,
         for (size_t j = 0; j < n; ++j) {
           TRI_FillShapedSub(&subObjects[j], &info[j], ptr);
         }
-        elements.emplace_back(element);
+      
+        try {
+          TRI_IF_FAILURE("FillElementOOM2") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+
+          elements.emplace_back(element);
+        }
+        catch (...) {
+          TRI_index_element_t::free(element);
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
       }
     }
   }
