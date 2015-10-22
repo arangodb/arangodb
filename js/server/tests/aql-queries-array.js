@@ -379,7 +379,49 @@ function arrayIndexCrazyQueriesSuite () {
       db._drop(cName);
     },
 
-    testLongChainediArrayHash : function () {
+    testLongChainedArrayHash : function () {
+      col.ensureHashIndex("the[*].quick.brown.foxx[*].jumps[*].over.the.lazy.dog[*]");
+      const buildDocument = function (dog1, dog2) {
+        dog2 = dog2 || dog1;
+        var doc = { the: [] };
+        var foxx = [];
+        var jumps = [];
+        jumps.push({over : { the: { lazy: { dog: dog1 } } } });
+        jumps.push({over : { the: { lazy: { dog: dog2 } } } });
+        foxx.push(jumps);
+        doc.the.push({ quick: { brown: { foxx } } });
+        return doc;
+      };
+      col.save(buildDocument([1], [42]));
+      col.save(buildDocument([1,3,4], [5,6,7]));
+      col.save(buildDocument([3,4], [5,6,7]));
+      col.save(buildDocument([3,4], [5,6,7]));
+
+      var checkIsOptimizedQuery = function (query, bindVars) {
+        var plan = AQL_EXPLAIN(query, bindVars).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+        require("internal").print(bindVars);
+        require("org/arangodb/aql/explainer").explain({query, bindVars});
+        assertEqual("SingletonNode", nodeTypes[0], query);
+        assertEqual(-1, nodeTypes.indexOf("EnumerateCollection"),
+                    "found EnumerateCollection node for:" + query);
+        var idxNodeId = nodeTypes.indexOf("IndexNode");
+        assertNotEqual(-1, idxNodeId, "no index used for: " + query);
+        var idxNode = plan.nodes[idxNodeId];
+        require("internal").print(idxNode);
+      };
+
+
+      const query = `FOR x IN ${cName} FILTER @tag
+                     IN x.the[*].quick.brown.foxx[*].jumps[*].over.the.lazy.dog[*]
+                     SORT x._key RETURN x._key`;
+      var bindVars = {};
+
+      bindVars.tag = 42;
+      checkIsOptimizedQuery(query, bindVars);
+
     }
 
 
