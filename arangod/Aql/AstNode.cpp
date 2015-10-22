@@ -157,7 +157,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_DISTINCT),                 "distinct" },
   { static_cast<int>(NODE_TYPE_TRAVERSAL),                "traversal" },
   { static_cast<int>(NODE_TYPE_DIRECTION),                "direction" },
-  { static_cast<int>(NODE_TYPE_COLLECTION_LIST),          "collection list" }
+  { static_cast<int>(NODE_TYPE_COLLECTION_LIST),          "collection list" },
   { static_cast<int>(NODE_TYPE_OPERATOR_NARY_AND),        "n-ary and" },
   { static_cast<int>(NODE_TYPE_OPERATOR_NARY_OR),         "n-ary or" }
 };

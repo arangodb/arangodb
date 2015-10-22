@@ -29,6 +29,7 @@
 #include "Aql/TraversalBlock.h"
 #include "Utils/ShapedJsonTransformer.h"
 #include "Utils/SingleCollectionReadOnlyTransaction.h"
+#include <iostream> /// TODO: remove me.
 
 using namespace std;
 using namespace triagens::basics;
@@ -238,7 +239,7 @@ AqlValue TraversalBlock::edgeToAqlValue (
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue TraversalBlock::pathToAqlValue (
-  const TraversalPath<EdgeInfo, VertexId>& p
+  const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& p
 ) {
   // This json is freed by the AqlValue. No unique_ptr here.
   Json* path = new Json(Json::Object, 2); 

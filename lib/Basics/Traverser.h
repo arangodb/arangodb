@@ -1235,7 +1235,7 @@ namespace triagens {
 // --SECTION--                                              struct TraversalPath
 // -----------------------------------------------------------------------------
 
-    template <typename edgeIdentifier, typename vertexIdentifier>
+    template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
     struct TraversalPath {
       std::vector<edgeIdentifier> edges;
       std::vector<vertexIdentifier> vertices;
@@ -1246,7 +1246,7 @@ namespace triagens {
 // --SECTION--                                                class PathIterator
 // -----------------------------------------------------------------------------
 
-    template <typename edgeIdentifier, typename vertexIdentifier>
+    template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
     class PathEnumerator {
 
 // -----------------------------------------------------------------------------
@@ -1262,14 +1262,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief List of the last path is used to 
 ////////////////////////////////////////////////////////////////////////////////
-        TraversalPath<edgeIdentifier, vertexIdentifier> _traversalPath;
+      TraversalPath<edgeIdentifier, vertexIdentifier, edgeItem> _traversalPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The pointers returned for edge indexes on this path. Used to continue
 ///        the search on respective levels.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::stack<void*> _lastEdges;
+        std::stack<edgeItem*> _lastEdges;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The boolean value indicating the direction for 'any' search
@@ -1290,7 +1290,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Function to get the next edge from index.
 ////////////////////////////////////////////////////////////////////////////////
-       std::function<void (vertexIdentifier&, std::vector<edgeIdentifier>&, void*&, size_t&, bool&)> _getEdge;
+       std::function<void (vertexIdentifier&, std::vector<edgeIdentifier>&, edgeItem*&, size_t&, bool&)> _getEdge;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1305,7 +1305,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
         PathEnumerator (
-          std::function<void(vertexIdentifier&, std::vector<edgeIdentifier>&, void*&, size_t&, bool&)> getEdge,
+          std::function<void(vertexIdentifier&, std::vector<edgeIdentifier>&, edgeItem*&, size_t&, bool&)> getEdge,
           std::function<vertexIdentifier (edgeIdentifier&, vertexIdentifier&)> getVertex,
           vertexIdentifier& startVertex
         ) : _getEdge(getEdge),
@@ -1329,7 +1329,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the next Path element from the traversal.
 ////////////////////////////////////////////////////////////////////////////////
-      const TraversalPath<edgeIdentifier, vertexIdentifier>& next () {
+      const TraversalPath<edgeIdentifier, vertexIdentifier, edgeItem>& next () {
         if (_lastEdges.size() == 0) {
           _traversalPath.edges.clear();
           _traversalPath.vertices.clear();

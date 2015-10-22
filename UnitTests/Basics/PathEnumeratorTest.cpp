@@ -51,7 +51,7 @@ static int internalCounter = 0;
 static int first = 0;
 static int second = 0;
 static int third = 0;
-auto integerEdgeEnumerator = [] (int& start, std::vector<int>& result, void*& next, size_t&, bool&) {
+auto integerEdgeEnumerator = [] (int& start, std::vector<int>& result, int*& next, size_t&, bool&) {
   if (result.size() >= 3) {
     next = nullptr;
   } else if (next == nullptr) {
@@ -125,23 +125,23 @@ BOOST_FIXTURE_TEST_SUITE (PathEnumeratorTest, PathEnumeratorSetup)
 
 BOOST_AUTO_TEST_CASE (test_fullPathEnumerator) {
   int startVertex = 1;
-  PathEnumerator<int, int> it(integerEdgeEnumerator, integerVertexEnumerator, startVertex);
-  TraversalPath<int, int> path;
+  PathEnumerator<int, int, int> it(integerEdgeEnumerator, integerVertexEnumerator, startVertex);
+  TraversalPath<int, int, int> path;
   for (int k = 1; k < 4; k++) {
     path = it.next();
-    BOOST_CHECK_EQUAL(path.edges.size(), 1);
-    BOOST_CHECK_EQUAL(path.vertices.size(), 2);
+    BOOST_CHECK_EQUAL(path.edges.size(), (size_t)1);
+    BOOST_CHECK_EQUAL(path.vertices.size(), (size_t)2);
     BOOST_CHECK_EQUAL(path.edges[0], k);
     for (int i = 1; i < 4; i++) {
       path = it.next();
-      BOOST_CHECK_EQUAL(path.edges.size(), 2);
-      BOOST_CHECK_EQUAL(path.vertices.size(), 3);
+      BOOST_CHECK_EQUAL(path.edges.size(), (size_t)2);
+      BOOST_CHECK_EQUAL(path.vertices.size(), (size_t)3);
       BOOST_CHECK_EQUAL(path.edges[0], k);
       BOOST_CHECK_EQUAL(path.edges[1], i);
       for (int j = 1; j < 4; j++) {
         path = it.next();
-        BOOST_CHECK_EQUAL(path.edges.size(), 3);
-        BOOST_CHECK_EQUAL(path.vertices.size(), 4);
+        BOOST_CHECK_EQUAL(path.edges.size(), (size_t)3);
+        BOOST_CHECK_EQUAL(path.vertices.size(), (size_t)4);
         BOOST_CHECK_EQUAL(path.edges[0], k);
         BOOST_CHECK_EQUAL(path.edges[1], i);
         BOOST_CHECK_EQUAL(path.edges[2], j);
@@ -149,7 +149,7 @@ BOOST_AUTO_TEST_CASE (test_fullPathEnumerator) {
     }
   }
   path = it.next();
-  BOOST_CHECK_EQUAL(path.edges.size(), 0); 
+  BOOST_CHECK_EQUAL(path.edges.size(), (size_t)0); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -32,17 +32,9 @@
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
 #include "Utils/CollectionNameResolver.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-utils.h"
-#include "V8Server/v8-vocbaseprivate.h"
-#include "V8Server/v8-wrapshapedjson.h"
-#include "V8Server/v8-vocindex.h"
-#include "V8Server/v8-collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"
-
-#include <v8.h>
 
 using namespace std;
 using namespace triagens::basics;
@@ -768,7 +760,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
   auto direction = _opts.direction;
   auto edgeCols = _edgeCols;
   if (direction == TRI_EDGE_ANY) {
-    _getEdge = [edgeCols] (VertexId& startVertex, std::vector<EdgeInfo>& edges, void*& last, size_t& eColIdx, bool& dir) {
+    _getEdge = [edgeCols] (VertexId& startVertex, std::vector<EdgeInfo>& edges, TRI_doc_mptr_copy_t*& last, size_t& eColIdx, bool& dir) {
       std::vector<TRI_doc_mptr_copy_t> tmp;
       TRI_ASSERT(eColIdx < edgeCols.size());
       // TODO fill Statistics
@@ -827,7 +819,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
       }
     };
   } else {
-    _getEdge = [edgeCols, direction] (VertexId& startVertex, std::vector<EdgeInfo>& edges, void*& last, size_t& eColIdx, bool&) {
+    _getEdge = [edgeCols, direction] (VertexId& startVertex, std::vector<EdgeInfo>& edges, TRI_doc_mptr_copy_t*& last, size_t& eColIdx, bool&) {
       std::vector<TRI_doc_mptr_copy_t> tmp;
       TRI_ASSERT(eColIdx < edgeCols.size());
       // Do not touch the bool parameter, as long as it is default the first encountered nullptr is final
@@ -858,13 +850,13 @@ void DepthFirstTraverser::_defInternalFunctions () {
 }
 
 void DepthFirstTraverser::setStartVertex (VertexId& v) {
-  _enumerator.reset(new PathEnumerator<EdgeInfo, VertexId>(_getEdge, _getVertex, v));
+  _enumerator.reset(new PathEnumerator<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>(_getEdge, _getVertex, v));
   _done = false;
 }
 
 size_t DepthFirstTraverser::skip (size_t amount) {
   size_t skipped = 0;
-  TraversalPath<EdgeInfo, VertexId> p;
+  TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t> p;
   for (size_t i = 0; i < amount; ++i) {
     p = next();
     if (p.edges.size() == 0) {
@@ -879,14 +871,14 @@ bool DepthFirstTraverser::hasMore () {
   return !_done;
 }
 
-const TraversalPath<EdgeInfo, VertexId>& DepthFirstTraverser::next () {
+const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& DepthFirstTraverser::next () {
   TRI_ASSERT(!_done);
   if (_pruneNext) {
     _pruneNext = false;
     _enumerator->prune();
   }
   TRI_ASSERT(!_pruneNext);
-  const TraversalPath<EdgeInfo, VertexId>& p = _enumerator->next();
+  const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& p = _enumerator->next();
   size_t countEdges = p.edges.size();
   if (countEdges == 0) {
     _done = true;

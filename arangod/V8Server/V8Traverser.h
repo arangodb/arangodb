@@ -262,7 +262,7 @@ namespace triagens {
       struct TraverserOptions {
 
         private:
-          std::function<bool (const TraversalPath<EdgeInfo, VertexId>& path)> pruningFunction;
+          std::function<bool (const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& path)> pruningFunction;
 
         public:
           TRI_edge_direction_e direction;
@@ -282,14 +282,14 @@ namespace triagens {
           { };
 
           void setPruningFunction (
-            std::function<bool (const TraversalPath<EdgeInfo, VertexId>& path)> callback
+               std::function<bool (const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& path)> callback
           ) {
             pruningFunction = callback;
             usesPrune = true;
           }
 
           bool shouldPrunePath (
-            const TraversalPath<EdgeInfo, VertexId>& path
+               const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& path
           ) {
             if (!usesPrune) {
               return false;
@@ -328,13 +328,16 @@ namespace triagens {
 /// @brief internal cursor to enumerate the paths of a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-          std::unique_ptr<PathEnumerator<EdgeInfo, VertexId>> _enumerator;
+          std::unique_ptr<PathEnumerator<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>> _enumerator;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to extract an edge
 ////////////////////////////////////////////////////////////////////////////////
 
-          std::function<void(VertexId&, std::vector<EdgeInfo>&, void*&, size_t&, bool&)> _getEdge;
+          std::function<void(VertexId&, std::vector<EdgeInfo>&,
+                             TRI_doc_mptr_copy_t*&,
+                             size_t&, bool&)>
+            _getEdge;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to extract vertex information
@@ -384,7 +387,7 @@ namespace triagens {
 /// @brief Get the next possible path in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-          const TraversalPath<EdgeInfo, VertexId>&  next ();
+          const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>&  next ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Prune the current path prefix. Do not evaluate it any further.

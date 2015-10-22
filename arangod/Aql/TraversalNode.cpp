@@ -26,6 +26,7 @@
 
 #include "Aql/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Ast.h"
 
 using namespace std;
 using namespace triagens::basics;

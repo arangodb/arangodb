@@ -272,7 +272,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlValue pathToAqlValue (
-          const basics::TraversalPath<EdgeInfo, VertexId>& p
+          const basics::TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& p
         );
 
     };

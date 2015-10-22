@@ -1990,6 +1990,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         case EN::REMOTE:
         case EN::ILLEGAL:
         case EN::LIMIT:                      // LIMIT is criterion to stop
+        case EN::TRAVERSAL:
           return true;  // abort.
 
         case EN::SORT:     // pulling two sorts together is done elsewhere.
@@ -2684,6 +2685,7 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
         case EN::SORT:
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
+        case EN::TRAVERSAL:
           //do break
           stopSearching = true;
           break;
@@ -2779,6 +2781,7 @@ int triagens::aql::distributeSortToClusterRule (Optimizer* opt,
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::INDEX:
+        case EN::TRAVERSAL:
         case EN::ENUMERATE_COLLECTION:
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -3050,8 +3053,9 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::ILLEGAL:
-        case EN::LIMIT:           
+        case EN::LIMIT:
         case EN::SORT:
+        case EN::TRAVERSAL:
         case EN::INDEX: {
           // if we meet any of the above, then we abort . . .
         }

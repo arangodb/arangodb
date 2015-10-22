@@ -87,6 +87,7 @@ GraphFactory* GraphFactory::factory () {
 }
 
 Graph const& GraphFactory::byName (TRI_vocbase_t* vocbase, std::string name) {
+  _cache.clear(); //// TODO: clear cache from js graph management.
   auto outit = _cache.find(vocbase->_id);
   if (outit == _cache.end()) {
     // database not yet found.

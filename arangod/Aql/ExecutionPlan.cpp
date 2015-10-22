@@ -44,6 +44,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/Exceptions.h"
+#include <iostream> /// TODO: remove me.
 
 using namespace triagens::aql;
 using namespace triagens::basics;
