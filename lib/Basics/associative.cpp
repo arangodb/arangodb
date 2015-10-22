@@ -514,14 +514,6 @@ void* TRI_RemoveKeyAssociativePointer (TRI_associative_pointer_t* array,
   return old;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of elements from the array
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_GetLengthAssociativePointer (const TRI_associative_pointer_t* const array) {
-  return array->_nrUsed;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

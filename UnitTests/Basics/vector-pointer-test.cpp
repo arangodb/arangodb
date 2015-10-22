@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE (tst_length_clear) {
   VECTOR_INIT
   VECTOR_DATA
 
-  BOOST_CHECK_EQUAL((size_t) 0, TRI_LengthVectorPointer(&v1));
+  BOOST_CHECK_EQUAL((size_t) 0, v1._length);
 
   TRI_PushBackVectorPointer(&v1, &p);
   TRI_PushBackVectorPointer(&v1, s);

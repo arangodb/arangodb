@@ -1033,33 +1033,6 @@ void TRI_FreeProgramOptions (TRI_program_options_t * options) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a double option
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddDoublePODescription (TRI_PO_section_t * desc,
-                                 const char * name,
-                                 char shortName,
-                                 const char* description,
-                                 double *variable) {
-  po_double_t * res;
-
-  TRI_ASSERT(name != nullptr);
-  TRI_ASSERT(variable != nullptr);
-
-  res = static_cast<po_double_t*>
-        (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_double_t), false));
-
-  res->base._type  = TRI_PO_DOUBLE;
-  res->base._name  = TRI_DuplicateString(name);
-  res->base._short = shortName;
-  res->base._desc  = (description != nullptr) ? TRI_DuplicateString(description) : nullptr;
-
-  res->_value = variable;
-
-  TRI_PushBackVectorPointer(&desc->_children, res);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a flag option
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1076,90 +1049,6 @@ void TRI_AddFlagPODescription (TRI_PO_section_t * desc,
                    (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_flag_t), false));
 
   res->base._type  = TRI_PO_FLAG;
-  res->base._name  = TRI_DuplicateString(name);
-  res->base._short = shortName;
-  res->base._desc  = (description != nullptr) ? TRI_DuplicateString(description) : nullptr;
-
-  res->_value = variable;
-
-  TRI_PushBackVectorPointer(&desc->_children, res);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a 16-bit integer option
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddInt16PODescription (TRI_PO_section_t * desc,
-                                const char * name,
-                                char shortName,
-                                const char * description,
-                                int16_t * variable) {
-
-  po_int16_t * res;
-
-  TRI_ASSERT(variable != nullptr);
-  TRI_ASSERT(name != nullptr);
-
-  res = static_cast<po_int16_t*>
-                   (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int16_t), false));
-
-  res->base._type  = TRI_PO_INT16;
-  res->base._name  = TRI_DuplicateString(name);
-  res->base._short = shortName;
-  res->base._desc  = (description != nullptr) ? TRI_DuplicateString(description) : nullptr;
-
-  res->_value = variable;
-
-  TRI_PushBackVectorPointer(&desc->_children, res);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a 32-bit integer option
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddInt32PODescription (TRI_PO_section_t * desc,
-                                const char * name,
-                                char shortName,
-                                const char * description,
-                                int32_t * variable) {
-
-  po_int32_t * res;
-
-  TRI_ASSERT(variable != nullptr);
-  TRI_ASSERT(name != nullptr);
-
-  res = static_cast<po_int32_t*>
-                   (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int32_t), false));
-
-  res->base._type  = TRI_PO_INT32;
-  res->base._name  = TRI_DuplicateString(name);
-  res->base._short = shortName;
-  res->base._desc  = (description != nullptr) ? TRI_DuplicateString(description) : nullptr;
-
-  res->_value = variable;
-
-  TRI_PushBackVectorPointer(&desc->_children, res);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a 64-bit integer option
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddInt64PODescription (TRI_PO_section_t * desc,
-                                const char * name,
-                                char shortName,
-                                const char * description,
-                                int64_t * variable) {
-
-  po_int64_t * res;
-
-  TRI_ASSERT(variable != nullptr);
-  TRI_ASSERT(name != nullptr);
-
-  res = static_cast<po_int64_t*>
-                   (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_int64_t), false));
-
-  res->base._type  = TRI_PO_INT64;
   res->base._name  = TRI_DuplicateString(name);
   res->base._short = shortName;
   res->base._desc  = (description != nullptr) ? TRI_DuplicateString(description) : nullptr;
@@ -1197,90 +1086,6 @@ void TRI_AddStringPODescription (TRI_PO_section_t * desc,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an unsigned 16-bit integer option
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddUInt16PODescription (TRI_PO_section_t * desc,
-                                 const char * name,
-                                 char shortName,
-                                 const char * description,
-                                 uint16_t * variable) {
-
-  po_uint16_t * res;
-
-  TRI_ASSERT(variable != nullptr);
-  TRI_ASSERT(name != nullptr);
-
-  res = static_cast<po_uint16_t*>
-              (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint16_t), false));
-
-  res->base._type  = TRI_PO_UINT16;
-  res->base._name  = TRI_DuplicateString(name);
-  res->base._short = shortName;
-  res->base._desc  = (description != nullptr) ? TRI_DuplicateString(description) : nullptr;
-
-  res->_value = variable;
-
-  TRI_PushBackVectorPointer(&desc->_children, res);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an unsigned 32-bit integer option
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddUInt32PODescription (TRI_PO_section_t * desc,
-                                 const char * name,
-                                 char shortName,
-                                 const char * description,
-                                 uint32_t * variable) {
-
-  po_uint32_t * res;
-
-  TRI_ASSERT(variable != nullptr);
-  TRI_ASSERT(name != nullptr);
-
-  res = static_cast<po_uint32_t*>
-              (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint32_t), false));
-
-  res->base._type  = TRI_PO_UINT32;
-  res->base._name  = TRI_DuplicateString(name);
-  res->base._short = shortName;
-  res->base._desc  = (description != nullptr) ? TRI_DuplicateString(description) : nullptr;
-
-  res->_value = variable;
-
-  TRI_PushBackVectorPointer(&desc->_children, res);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an unsigned 64-bit integer option
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddUInt64PODescription (TRI_PO_section_t * desc,
-                                 const char * name,
-                                 char shortName,
-                                 const char * description,
-                                 uint64_t * variable) {
-
-  po_uint64_t * res;
-
-  TRI_ASSERT(variable != nullptr);
-  TRI_ASSERT(name != nullptr);
-
-  res = static_cast<po_uint64_t*>
-              (TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(po_uint64_t), false));
-
-  res->base._type  = TRI_PO_UINT64;
-  res->base._name  = TRI_DuplicateString(name);
-  res->base._short = shortName;
-  res->base._desc  = (description != nullptr) ? TRI_DuplicateString(description) : nullptr;
-
-  res->_value = variable;
-
-  TRI_PushBackVectorPointer(&desc->_children, res);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a vector string option
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1306,17 +1111,6 @@ void TRI_AddVectorStringPODescription (TRI_PO_section_t * desc,
   res->_value = variable;
 
   TRI_PushBackVectorPointer(&desc->_children, res);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new section
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddOptionsPODescription (TRI_PO_section_t * parent, TRI_PO_section_t * child) {
-  TRI_ASSERT(parent != nullptr);
-  TRI_ASSERT(child != nullptr);
-
-  TRI_PushBackVectorPointer(&parent->_children, child);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
