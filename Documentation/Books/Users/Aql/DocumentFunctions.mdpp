@@ -52,6 +52,23 @@ AQL supports the following functions to operate on document values:
         { "users" : { "name" : "T" } }
       )
 
+  *MERGE* works with a single array parameter, too. This variant allows combining the 
+  attributes of multiple objects from the array into a single object, e.g.
+
+      RETURN MERGE([ 
+        { foo: 'bar' }, 
+        { quux: 'quetzalcoatl', ruled: true }, 
+        { bar: 'baz', foo: 'done' }
+      ])
+
+  This will now return:
+
+      {
+        "foo": "done",
+        "quux": "quetzalcoatl",
+        "ruled": true,
+        "bar": "baz"
+      }
 
   Please note that merging will only be done for top-level attributes. If you wish to
   merge sub-attributes, you should consider using *MERGE_RECURSIVE* instead.
@@ -68,6 +85,8 @@ AQL supports the following functions to operate on document values:
         { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA" } } }, 
         { "user-1" : { "age" : 42, "livesIn" : { "state" : "CA" } } }
       )
+
+  *MERGE_RECURSIVE* does not support the single array parameter variant that *MERGE* offers.
 
 
 - *TRANSLATE(value, lookup, defaultValue)*: Looks up the value *value* in the *lookup*
