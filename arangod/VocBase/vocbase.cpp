@@ -1148,7 +1148,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
       }
       usleep(COLLECTION_STATUS_POLL_INTERVAL);
 
-      TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+      TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
     }
 
     return LoadCollectionVocBase(vocbase, collection, status, false);
@@ -1170,7 +1170,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     document = TRI_OpenDocumentCollection(vocbase, collection, IGNORE_DATAFILE_ERRORS);
 
     // lock again the adjust the status
-    TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+    TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
     // no one else must have changed the status
     TRI_ASSERT(collection->_status == TRI_VOC_COL_STATUS_LOADING);
@@ -2012,7 +2012,7 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase,
       }
       usleep(COLLECTION_STATUS_POLL_INTERVAL);
 
-      TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+      TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
     }
     // if we get here, the status has changed
     return TRI_UnloadCollectionVocBase(vocbase, collection, force);
@@ -2151,7 +2151,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
       usleep(COLLECTION_STATUS_POLL_INTERVAL);
 
       TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
-      TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
+      TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
     }
 
     // try again with changed status
