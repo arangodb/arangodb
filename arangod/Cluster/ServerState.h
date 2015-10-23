@@ -399,6 +399,17 @@ namespace triagens {
 
         void setDisableDispatcherKickstarter (bool);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief redetermine the server role, we do this after a plan change.
+/// This is needed for automatic failover. This calls determineRole with 
+/// previous values of _info and _id. In particular, the _id will usually
+/// already be set. If the current role cannot be determined from the
+/// agency or is not unique, then the system keeps the old role.
+/// Returns true if there is a change and false otherwise.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool redetermineRole ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
