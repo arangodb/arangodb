@@ -604,21 +604,21 @@
       if (graph) {
         var i;
         for (i = 0; i <= this.counter; i++) {
-          $('#row_fromCollections' + i).hide();
-          $('#row_toCollections' + i).hide();
+          $('#row_fromCollections' + i).show();
+          $('#row_toCollections' + i).show();
         }
       }
 
     },
 
     showHideDefinition : function(e) {
-      e.stopPropagation();
+      /*e.stopPropagation();
       var id = $(e.currentTarget).attr("id"), number;
       if (id.indexOf("row_newEdgeDefinitions") !== -1 ) {
         number = id.split("row_newEdgeDefinitions")[1];
         $('#row_fromCollections' + number).toggle();
         $('#row_toCollections' + number).toggle();
-      }
+      }*/
     },
 
     addRemoveDefinition : function(e) {
