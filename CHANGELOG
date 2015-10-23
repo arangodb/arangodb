@@ -1,6 +1,8 @@
 v2.6.10 (XXXX-XX-XX)
 --------------------
 
+* fixed potential deadlock in collection status changing on Windows 
+
 * issue #1521: Can't dump/restore with user and password
 
 
