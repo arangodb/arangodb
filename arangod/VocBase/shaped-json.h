@@ -895,6 +895,10 @@ namespace std {
           return false;
         }
         if (a[i]._data.data == nullptr || b[i]._data.data == nullptr) {
+          if (a[i]._sid == b[i]._sid) {
+            // this should be a TRI_SHAPE_SID_NULL value
+            return true;
+          }
           // TODO FIXME
           return false;
         }
@@ -910,9 +914,6 @@ namespace std {
   };
 
 } //closes namespace std
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shaped json sub-object
