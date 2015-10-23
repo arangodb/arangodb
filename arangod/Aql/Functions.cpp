@@ -910,6 +910,40 @@ AqlValue Functions::Merge (triagens::aql::Query* query,
   // use the first argument as the preliminary result
   auto initial = ExtractFunctionParameter(trx, parameters, 0, true);
 
+  if (initial.isArray() && n == 1) {
+    // special case: a single array parameter
+    std::unique_ptr<TRI_json_t> array(initial.steal());
+    std::unique_ptr<TRI_json_t> result(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
+
+    if (result == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+  
+    // now merge in all other arguments
+    size_t const k = TRI_LengthArrayJson(array.get());
+
+    for (size_t i = 0; i < k; ++i) {
+      auto v = static_cast<TRI_json_t const*>(TRI_LookupArrayJson(array.get(), i));
+
+      if (! TRI_IsObjectJson(v)) {
+        RegisterInvalidArgumentWarning(query, "MERGE");
+        return AqlValue(new Json(Json::Null));
+      }
+
+      auto merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, result.get(), v, false, true);
+  
+      if (merged == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      result.reset(merged);
+    }
+     
+    auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
+    result.release();
+    return AqlValue(jr);
+  }
+
   if (! initial.isObject()) {
     RegisterInvalidArgumentWarning(query, "MERGE");
     return AqlValue(new Json(Json::Null));

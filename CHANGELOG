@@ -44,6 +44,25 @@ v2.8.0 (XXXX-XX-XX)
 v2.7.1 (XXXX-XX-XX)
 -------------------
 
+* make AQL function `MERGE()` work on a single array parameter, too.
+  This allows combining the attributes of multiple objects from an array into
+  a single object, e.g.
+
+      RETURN MERGE([ 
+        { foo: 'bar' }, 
+        { quux: 'quetzalcoatl', ruled: true }, 
+        { bar: 'baz', foo: 'done' }
+      ])
+
+  will now return:
+
+      {
+        "foo": "done",
+        "quux": "quetzalcoatl",
+        "ruled": true,
+        "bar": "baz"
+      }
+
 * fixed potential deadlock in collection status changing on Windows 
 
 * fixed hard-coded `incremental` parameter in shell implementation of

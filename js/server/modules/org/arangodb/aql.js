@@ -4353,10 +4353,31 @@ function AQL_MERGE () {
     }
   };
 
+  var i, element;
+
+  if (arguments.length === 1) {
+    element = arguments[0];
+    if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
+      WARN("MERGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return null;
+    }
+
+    for (i = 0; i < element.length; ++i) {
+      if (TYPEWEIGHT(element[i]) !== TYPEWEIGHT_OBJECT) {
+        WARN("MERGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
+      }
+
+      add(element[i]);
+    }
+
+    return result;
+  }
+
   var j = 0;
-  for (var i in arguments) {
+  for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
-      var element = arguments[i];
+      element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
         WARN("MERGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
