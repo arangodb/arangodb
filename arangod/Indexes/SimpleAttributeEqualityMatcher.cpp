@@ -266,7 +266,7 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll (triagens:
     for (size_t i = 0; i < _attributes.size(); ++i) {
       // This is always save due to
       auto it = _found.find(i);
-      TRI_ASSERT(it != _found.end()) // Found contains by def. 1 Element for each _attribute
+      TRI_ASSERT(it != _found.end()); // Found contains by def. 1 Element for each _attribute
       node->addMember(it->second);
     }
 
