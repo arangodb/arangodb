@@ -352,10 +352,9 @@ IndexIterator* PrimaryIndex::iteratorForCondition (IndexIteratorContext* context
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_KEY, false) } 
   });
 
-  triagens::aql::AstNode* allVals = matcher.getOne(ast, this, node, reference);
-  TRI_ASSERT(allVals->numMembers() == 1);
+  TRI_ASSERT(node->numMembers() == 1);
 
-  auto comp = allVals->getMember(0);
+  auto comp = node->getMember(0);
 
   // assume a.b == value
   auto attrNode = comp->getMember(0);

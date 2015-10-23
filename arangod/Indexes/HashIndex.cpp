@@ -817,14 +817,7 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
 
   SimpleAttributeEqualityMatcher matcher(fields());
   size_t const n = _fields.size();
-  triagens::aql::AstNode* allVals;
-  if (n == 1) {
-    allVals = matcher.getOne(ast, this, node, reference);
-  }
-  else {
-    allVals = matcher.getAll(ast, this, node, reference);
-  }
-  TRI_ASSERT(allVals->numMembers() == n);
+  TRI_ASSERT(node->numMembers() == n);
  
   // initialize permutations
   std::vector<PermutationState> permutationStates;
@@ -834,7 +827,7 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
   std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> paramPair;
 
   for (size_t i = 0; i < n; ++i) {
-    auto comp     = allVals->getMemberUnchecked(i);
+    auto comp     = node->getMemberUnchecked(i);
     auto attrNode = comp->getMember(0);
     auto valNode  = comp->getMember(1);
 
