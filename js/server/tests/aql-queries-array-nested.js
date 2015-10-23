@@ -178,61 +178,6 @@ function nestedArrayIndexSuite () {
       });
     }
  
-    /*
-    testNestedNestedSubSubAttribute : function () {
-      c.insert({ persons: [ { addresses: [ { country: { name: "DE" } }, { country: { name: "IT" } } ] } ] });
-      c.insert({ persons: [ { addresses: [ { country: { name: "FR" } }, { country: { name: "GB" } } ] } ] });
-      c.insert({ persons: [ ] });
-      c.insert({ persons: [ { addresses: [ ] } ] });
-      c.insert({ persons: [ { addresses: [ { country: { name: "BG" } } ] } ] });
-      c.insert({ persons: [ { addresses: [ { country: { name: "US" } } ] } ] });
-      c.insert({ persons: [ { addresses: [ { country: { } } ] } ] });
-      c.insert({ persons: [ { addresses: [ { country: { name: "RU" } } ] } ] });
-      c.insert({ persons: [ { addresses: [ { country: { name: "PL" } }, { country: { name: "CH" } } ] } ] });
-      c.insert({ persons: [ { addresses: [ { country: { name: "IT" } }, { country: { name: "US" } } ] } ] });
-      c.insert({ persons: [ { addresses: [ { country: { name: "DK" } }, { country: { name: "DE" } } ] } ] });
-      c.insert({ persons: [ { addresses: [ { country: { name: "NL" } }, { country: { name: "BE" } } ] } ] });
-      c.insert({ persons: [ { addresses: [ { country: { name: "GB" } }, { country: { name: "DK" } } ] } ] });
-      c.insert({ persons: [ { addresses: [ { country: { name: "DK" } }, { country: { name: "SE" } }, { country: { name: "SE" } } ] } ] });
-
-      var query = "FOR doc IN " + cn + " FILTER @value IN doc.persons[*].addresses[*].country.name RETURN doc";
-      var query = "FOR doc IN " + cn + " FILTER @value != 'hassan' RETURN doc.persons[*].addresses[*].country.name";
-      
-      var tests = [ 
-        [ "DE", 2 ], 
-        [ "IT", 2 ], 
-        [ "FR", 1 ], 
-        [ "GB", 2 ], 
-        [ "BG", 1 ], 
-        [ "US", 2 ], 
-        [ "RU", 1 ], 
-        [ "PL", 1 ], 
-        [ "CH", 1 ], 
-        [ "DK", 3 ],
-        [ "NL", 1 ],
-        [ "BE", 1 ],
-        [ "SE", 1 ],
-        [ "Quetzalcoatl", 0 ] 
-      ];
-
-      tests.forEach(function(value) {
-        var result = AQL_EXECUTE(query, { value: value[0] }).json;
-        require("internal").print(result, value);
-        assertEqual(value[1], result.length);
-        assertFalse(indexUsed(query, { value: value[0] }));
-      });
-
-      // now try again with an index
-      c.ensureIndex({ type: "hash", fields: [ "persons[*].addresses[*].country.name" ] });
-
-      tests.forEach(function(value) {
-        var result = AQL_EXECUTE(query, { value: value[0] }).json;
-        assertEqual(value[1], result.length);
-        assertTrue(indexUsed(query, { value: value[0] }));
-      });
-    }
-    */
-
   };
 
 }
