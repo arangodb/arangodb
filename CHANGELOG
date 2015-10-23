@@ -1,6 +1,8 @@
 v2.7.1 (XXXX-XX-XX)
 -------------------
 
+* fixed potential deadlock in collection status changing on Windows 
+
 * fixed hard-coded `incremental` parameter in shell implementation of
   `syncCollection` function in replication module
 
