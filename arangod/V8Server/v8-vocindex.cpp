@@ -139,7 +139,7 @@ static int ProcessIndexFields (v8::Isolate* isolate,
                                int numFields,
                                bool create) {
   v8::HandleScope scope(isolate);
-  set<string> fields;
+  std::set<string> fields;
 
   v8::Handle<v8::String> fieldsString = TRI_V8_ASCII_STRING("fields");
   if (obj->Has(fieldsString) && obj->Get(fieldsString)->IsArray()) {
@@ -549,7 +549,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  triagens::arango::Index::IndexType type = triagens::arango::Index::type(value->_value._string.data);
+  triagens::arango::Index::IndexType const type = triagens::arango::Index::type(value->_value._string.data);
 
   // extract unique flag
   bool unique = false;
@@ -583,11 +583,38 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     // copy all field names (attributes)
     size_t const n = TRI_LengthArrayJson(value);
+
     for (size_t i = 0; i < n; ++i) {
       auto v = static_cast<TRI_json_t const*>(TRI_AtVector(&value->_value._objects, i));
 
       if (TRI_IsStringJson(v)) {
         attributes.emplace_back(std::string(v->_value._string.data, v->_value._string.length - 1));
+
+        auto last = attributes.back();
+        if (last.find("[*]") != std::string::npos) {
+          if (type != triagens::arango::Index::TRI_IDX_TYPE_HASH_INDEX &&
+              type != triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+            // expansion used in index type that does not support it
+            TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "cannot use [*] expansion for this type of index");
+          }
+          else {
+            // expansion used in index type that supports it
+
+            // count number of [*] occurrences
+            size_t found = 0;
+            size_t offset = 0;
+
+            while ((offset = last.find("[*]", offset)) != std::string::npos) {
+              ++found;
+              offset += strlen("[*]");
+            }
+
+            // only one occurrence is allowed
+            if (found > 1) {
+              TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "cannot use multiple [*] expansions for a single index field");
+            }
+          }
+        }
       }
     }
   }
@@ -599,7 +626,6 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
 
   TRI_document_collection_t* document = trx.documentCollection();
   std::string const& collectionName = std::string(collection->_name);
