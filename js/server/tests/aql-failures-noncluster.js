@@ -587,12 +587,6 @@ function ahuacatlFailureSuite () {
       assertFailingQuery("FOR i IN " + c.name() + " FILTER 1 IN i.value[*] RETURN i");
     },
 
-    testSimpleAttributeMatcher1 : function () {
-      c.ensureHashIndex("value");
-      internal.debugSetFailAt("SimpleAttributeMatcher::getAllParts");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
-    },
-
     testSimpleAttributeMatcher2 : function () {
       c.ensureHashIndex("value");
       internal.debugSetFailAt("SimpleAttributeMatcher::specializeAllChildrenEQ");
