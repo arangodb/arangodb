@@ -91,24 +91,31 @@ var createRoutePlannerGraph = function() {
   return g;
 };
 
+var knownGraphs = {
+  "knows_graph" : createTraversalExample,
+  "routeplanner" : createRoutePlannerGraph,
+  "social" : createSocialGraph
+};
 
 var dropGraph = function(name) {
+  if (! knownGraphs.hasOwnProperty(name)) {
+    // trying to drop an unknown graph - better not do it
+    return false;
+  }
+
   if (Graph._exists(name)) {
     return Graph._drop(name, true);
   }
 };
 
 var loadGraph = function(name) {
-  dropGraph(name);
-  switch (name) {
-    case "knows_graph":
-      return createTraversalExample();
-    case "routeplanner":
-      return createRoutePlannerGraph();
-    case "social":
-      return createSocialGraph();
+  if (! knownGraphs.hasOwnProperty(name)) {
+    // trying to drop an unknown graph - better not do it
+    return false;
   }
 
+  dropGraph(name);
+  knownGraphs[name]();
 };
 
 exports.loadGraph = loadGraph;
