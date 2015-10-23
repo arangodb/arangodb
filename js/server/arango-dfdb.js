@@ -199,7 +199,7 @@ function PrintEntries (entries, amount) {
   }
 
   for (var i = start;  i < end;  ++i) {
-    var entry = entries[i];
+    var entry = entries[i], extra;
 
     var s = "unknown";
 
@@ -211,7 +211,14 @@ function PrintEntries (entries, amount) {
       case 5: s = "FAILED (crc mismatch)";  break;
     }
 
-    printf("  %d: status %s type %d size %d, tick %s\n", i, s, entry.type, entry.realSize, entry.tick);
+    if (entry.key) {
+      extra = " - key: " + entry.key;
+    }
+    else {
+      extra = "";
+    }
+
+    printf("  %d: status %s type %d (%s) size %d, tick %s%s\n", i, s, entry.type, entry.typeName, entry.realSize, entry.tick, extra);
   }
 }
 
@@ -421,8 +428,18 @@ function CheckDatafile (collection, type, datafile, issues, details) {
   if (details) {
     // print details
     printf("Entries\n");
-    PrintEntries(scan.entries, 10);
-    PrintEntries(scan.entries, -10);
+    if (details === "FULL") {
+      // print all markers
+      PrintEntries(scan.entries, scan.entries.length);
+    }
+    else {
+      // print an excerpt of the markers
+      PrintEntries(scan.entries, 10);
+      if (scan.entries.length > 20) {
+        printf("...\n");
+      }
+      PrintEntries(scan.entries, -10);
+    }
   }
 
   if (scan.status === 1 && scan.isSealed) {
@@ -493,6 +510,13 @@ function main (argv) {
   printf("%s\n", " / /_// (_| | || (_| |  _| | |  __/  / /_// \\/  \\/ /_\\\\ ");
   printf("%s\n", "/___,' \\__,_|\\__\\__,_|_| |_|_|\\___| /___,'\\_____/\\____/ ");
   printf("\n");
+  
+  var pad = function (s, l) {
+    if (s.length < l) {
+      s += Array(l - s.length).join(" ");
+    }
+    return s;
+  };
 
   if (databases.length == 0) {
     printf("No databases available. Exiting\n");
@@ -503,7 +527,7 @@ function main (argv) {
   printf("Available databases:\n");
 
   for (i = 0;  i < databases.length;  ++i) {
-    printf("  %d: %s\n", i, databases[i]);
+    printf("  %d: %s\n", i, pad(databases[i], 4));
   }
 
   var line;
@@ -544,7 +568,7 @@ function main (argv) {
   printf("Available collections:\n");
 
   for (i = 0;  i < collections.length;  ++i) {
-    printf("  %d: %s\n", i, collections[i].name());
+    printf("  %d: %s (%s)\n", pad(i, 4), pad(collections[i].name(), 40), collections[i]._id);
   }
 
   printf("  *: all\n");
@@ -583,7 +607,7 @@ function main (argv) {
   }
 
   printf("\n");
-  printf("Prints details (Y/N)? ");
+  printf("Prints details (Y/N/full)? ");
 
   var details = false;
 
@@ -595,8 +619,12 @@ function main (argv) {
       return;
     }
 
-    if (line === "yes" || line === "YES" || line === "y" || line === "Y") {
+    line = line.toUpperCase();
+    if (line === "Y" || line === "YES") {
       details = true;
+    }
+    else if (line === "F" || line == "FULL") {
+      details = "FULL";
     }
 
     break;

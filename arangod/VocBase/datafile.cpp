@@ -570,6 +570,8 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
     entry._type       = marker->_type;
     entry._status     = 1;
     entry._diagnosis  = nullptr;
+    entry._key        = nullptr;
+    entry._typeName   = TRI_NameMarkerDatafile(marker);
 
     if (marker->_size == 0 && marker->_crc == 0 && marker->_type == 0 && marker->_tick == 0) {
       entry._status = 2;
@@ -627,6 +629,19 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
       entry._diagnosis = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, diagnosis.c_str(), diagnosis.size());
       
       scan._status = 4;
+    }
+      
+    if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||  
+        marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+      char const* ptr = reinterpret_cast<char const*>(marker) + reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker)->_offsetKey;
+      entry._key = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
+    }
+    else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
+      char const* ptr = reinterpret_cast<char const*>(marker) + reinterpret_cast<TRI_doc_deletion_key_marker_t*>(marker)->_offsetKey;
+      entry._key = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
+    }
+    else {
+      entry._key = nullptr;
     }
 
     TRI_PushBackVector(&scan._entries, &entry);
@@ -1469,6 +1484,7 @@ char const* TRI_NameMarkerDatafile (TRI_df_marker_t const* marker) {
   switch (marker->_type) {
     // general markers
     case TRI_DF_MARKER_HEADER:
+      return "datafile header";
     case TRI_DF_MARKER_BLANK:
       return "blank marker (used when repairing datafiles)";
     case TRI_COL_MARKER_HEADER:
@@ -2196,8 +2212,13 @@ void TRI_DestroyDatafileScan (TRI_df_scan_t* scan) {
   for (size_t i = 0; i < n; ++i) {
     auto entry = static_cast<TRI_df_scan_entry_t*>(TRI_AtVector(&scan->_entries, i));
 
-    if (entry != nullptr && entry->_diagnosis != nullptr) {
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, entry->_diagnosis);
+    if (entry != nullptr) {
+      if (entry->_diagnosis != nullptr) {
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, entry->_diagnosis);
+      }
+      if (entry->_key != nullptr) {
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, entry->_key);
+      }
     }
   }
 
