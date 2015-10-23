@@ -61,7 +61,12 @@ describe("Foxx Manager", function() {
     var i, app, l = list.length;
     for (i = 0; i < l; ++i) {
       app = list[i];
-      if (app.name === "sessions-example-app") {
+      if (app.name === "sessions-example-app" ||
+          app.name === "demo-sessions" ||
+          app.name === "session-service" ||
+          app.name === "foxx-authentication" ||
+          app.name === "profile" ||
+          app.name === "marvel-universe") {
         // Requires oauth2 to be installed
         continue;
         /*
