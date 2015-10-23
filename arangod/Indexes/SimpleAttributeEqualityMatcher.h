@@ -100,18 +100,6 @@ namespace triagens {
                                         triagens::aql::Variable const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the condition parts that the index is responsible for
-/// this is used for the hash index
-/// requires that a previous matchAll() returned true
-/// the caller must not free the returned AstNode*, as it belongs to the ast
-////////////////////////////////////////////////////////////////////////////////
-        
-        triagens::aql::AstNode* getAll (triagens::aql::Ast*,
-                                        triagens::arango::Index const*,
-                                        triagens::aql::AstNode const*,
-                                        triagens::aql::Variable const*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specialize the condition for the index
 /// this is used for the primary index and the edge index
 /// requires that a previous matchOne() returned true
@@ -174,10 +162,10 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an internal map to mark which condition parts were useful and 
-/// covered by the index
+/// covered by the index. Also contains the matching Node
 ////////////////////////////////////////////////////////////////////////////////
           
-        std::unordered_set<size_t> _found;
+        std::unordered_map<size_t, triagens::aql::AstNode const*> _found;
 
     };
                
