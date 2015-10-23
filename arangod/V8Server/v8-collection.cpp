@@ -33,6 +33,7 @@
 #include "Basics/conversions.h"
 #include "Basics/json-utilities.h"
 #include "Cluster/ClusterMethods.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
 #include "Utils/V8TransactionContext.h"

@@ -523,24 +523,6 @@ char* TRI_IsContainedMemory (char const* full,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief duplicates a string, without using a memory zone
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_SystemDuplicateString (char const* value) {
-  size_t n;
-  char* result;
-
-  n = strlen(value) + 1;
-  result = (char*) TRI_SystemAllocate(n, false);
-
-  if (result) {
-    memcpy(result, value, n);
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief duplicates a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -944,74 +926,6 @@ char* TRI_SHA256String (char const* source, size_t sourceLen, size_t* dstLen) {
   SHA256((unsigned char const*) source, sourceLen, dst);
 
   return (char*) dst;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes constrol characters using C escapes
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength) {
-  char * buffer;
-  char * qtr;
-  char const * ptr;
-  char const * end;
-
-  buffer = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, 4 * inLength + 1, false));
-  qtr = buffer;
-
-  for (ptr = in, end = ptr + inLength;  ptr < end;  ptr++, qtr++) {
-    uint8_t n;
-
-    switch (*ptr) {
-      case '\n':
-        *qtr++ = '\\';
-        *qtr = 'n';
-        break;
-
-      case '\r':
-        *qtr++ = '\\';
-        *qtr = 'r';
-        break;
-
-      case '\t':
-        *qtr++ = '\\';
-        *qtr = 't';
-        break;
-
-      case '\'':
-      case '"':
-        *qtr++ = '\\';
-        *qtr = *ptr;
-        break;
-
-      default:
-        n = (uint8_t)(*ptr);
-
-        if (n < 32 || n > 127) {
-          uint8_t n1 = n >> 4;
-          uint8_t n2 = n & 0x0F;
-
-          *qtr++ = '\\';
-          *qtr++ = 'x';
-          *qtr++ = (n1 < 10) ? ('0' + n1) : ('A' + n1 - 10);
-          *qtr = (n2 < 10) ? ('0' + n2) : ('A' + n2 - 10);
-        }
-        else {
-          *qtr = *ptr;
-        }
-
-        break;
-    }
-  }
-
-  *qtr = '\0';
-  *outLength = (size_t) (qtr - buffer);
-
-  qtr = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, *outLength + 1, false));
-  memcpy(qtr, buffer, *outLength + 1);
-
-  TRI_Free(TRI_CORE_MEM_ZONE, buffer);
-  return qtr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

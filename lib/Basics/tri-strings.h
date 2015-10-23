@@ -102,15 +102,6 @@ char* TRI_IsContainedMemory (char const* full,
                              size_t partLength);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief duplicates a string, without using a memory zone
-///
-/// This function can be used when strings need to be returned to other system
-/// functions that do not use memory zones
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_SystemDuplicateString (char const* value);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief duplicates a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -242,15 +233,6 @@ char* TRI_EscapeControlsCString (TRI_memory_zone_t*,
                                  size_t inLength,
                                  size_t* outLength,
                                  bool appendNewline);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes special characters using C escapes
-///
-/// This method escapes a character string by replacing the unprintable
-/// characters by a C sequences.
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EscapeCString (char const* in, size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes special characters using unicode escapes

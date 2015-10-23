@@ -37,6 +37,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Indexes/Index.h"
+#include "Indexes/PrimaryIndex.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"

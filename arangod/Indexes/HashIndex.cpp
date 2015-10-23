@@ -31,6 +31,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
+#include "Basics/Exceptions.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
@@ -654,29 +655,35 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
     return res;
   }
 
-  auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
+  auto work = [this] (TRI_index_element_t*& element, bool isRollback) {
     TRI_IF_FAILURE("InsertHashIndex") {
-      return TRI_ERROR_DEBUG;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   
     TRI_index_element_t* found = _multiArray->_hashArray->insert(element, false, true);
 
-    if (found != nullptr) {   // bad, can only happen if we are in a rollback
-      if (isRollback) {       // in which case we silently ignore it
-        return TRI_ERROR_NO_ERROR;
-      }
-      // This is TRI_RESULT_ELEMENT_EXISTS, but this should not happen:
-      return TRI_ERROR_NO_ERROR;
+    if (found != nullptr) { 
+      // already got the exact same index entry. now free our local element...
+      FreeElement(element);
+      // we're not responsible for this element anymore
+      element = nullptr;
     }
-    
-    return TRI_ERROR_NO_ERROR;
   };
   
   size_t const n = elements.size();
 
   for (size_t i = 0; i < n; ++i) {
     auto hashElement = elements[i];
-    res = work(hashElement, isRollback);
+
+    try {
+      work(hashElement, isRollback);
+    }
+    catch (triagens::basics::Exception const& ex) {
+      res = ex.code(); 
+    }
+    catch (...) {
+      res = TRI_ERROR_OUT_OF_MEMORY;
+    }
 
     if (res != TRI_ERROR_NO_ERROR) {
       for (size_t j = i; j < n; ++j) {
@@ -685,12 +692,16 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
       }
       for (size_t j = 0; j < i; ++j) {
         // Remove all allready indexed elements and free them
-        removeMultiElement(elements[j], isRollback);
+        if (elements[j] != nullptr) {
+          removeMultiElement(elements[j], isRollback);
+        }
       }
+
       return res;
     }
   }
-  return res;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 int HashIndex::batchInsertMulti (std::vector<TRI_doc_mptr_t const*> const* documents, 

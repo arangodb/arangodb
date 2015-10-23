@@ -38,6 +38,7 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/memory-map.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"

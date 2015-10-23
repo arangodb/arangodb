@@ -531,7 +531,7 @@ IndexIterator* Index::iteratorForCondition (IndexIteratorContext*,
                                             triagens::aql::Ast*,
                                             triagens::aql::AstNode const*,
                                             triagens::aql::Variable const*,
-                                            bool const) const {
+                                            bool) const {
   // the super class index cannot create an iterator
   // the derived index classes have to manage this.
   return nullptr;

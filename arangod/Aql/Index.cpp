@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Index.h"
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
@@ -100,7 +101,7 @@ bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondi
 /// @brief get an iterator for the index
 ////////////////////////////////////////////////////////////////////////////////
       
-triagens::arango::IndexIterator* Index::getIterator (arango::IndexIteratorContext* context, 
+triagens::arango::IndexIterator* Index::getIterator (triagens::arango::IndexIteratorContext* context, 
                                                      triagens::aql::Ast* ast,
                                                      triagens::aql::AstNode const* condition,
                                                      triagens::aql::Variable const* reference,

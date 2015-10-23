@@ -31,12 +31,10 @@
 #define ARANGODB_UTILS_TRANSACTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/AssocUnique.h"
 #include "Basics/Exceptions.h"
-#include "Basics/logging.h"
-#include "Basics/random.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
 #include "Utils/TransactionContext.h"
@@ -400,67 +398,13 @@ namespace triagens {
 /// the documents without restarting the index scan at the begin
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readIncremental (TRI_transaction_collection_t* trxCollection,
-                             std::vector<TRI_doc_mptr_copy_t>& docs,
-                             triagens::basics::BucketPosition& internalSkip,
-                             uint64_t batchSize,
-                             uint64_t& skip,
-                             uint64_t limit,
-                             uint64_t& total) {
-
-          TRI_document_collection_t* document = documentCollection(trxCollection);
-
-          // READ-LOCK START
-          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
-
-          if (orderDitch(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-
-          uint64_t count = 0;
-
-          try {
-            if (batchSize > 2048) {
-              docs.reserve(2048);
-            }
-            else if (batchSize > 0) {
-              docs.reserve(batchSize);
-            }
-
-            auto primaryIndex = document->primaryIndex();
-
-            while (count < batchSize || skip > 0) {
-              TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(internalSkip, total);
-
-              if (mptr == nullptr) {
-                break;
-              }
-              if (skip > 0) {
-                --skip;
-              }
-              else {
-                docs.emplace_back(*mptr);
-
-                if (++count >= limit) {
-                  break;
-                }
-              }
-            }
-          }
-          catch (...) {
-            this->unlock(trxCollection, TRI_TRANSACTION_READ);
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-
-          this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          // READ-LOCK END
-
-          return TRI_ERROR_NO_ERROR;
-        }
+        int readIncremental (TRI_transaction_collection_t*,
+                             std::vector<TRI_doc_mptr_copy_t>&,
+                             triagens::basics::BucketPosition&,
+                             uint64_t,
+                             uint64_t&,
+                             uint64_t,
+                             uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read all master pointers, using skip and limit and an internal
@@ -468,40 +412,13 @@ namespace triagens {
 /// the documents without restarting the index scan at the begin
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readRandom (TRI_transaction_collection_t* trxCollection,
-                        std::vector<TRI_doc_mptr_copy_t>& docs,
-                        triagens::basics::BucketPosition& initialPosition,
-                        triagens::basics::BucketPosition& position,
-                        uint64_t batchSize,
-                        uint64_t& step,
-                        uint64_t& total) {
-          TRI_document_collection_t* document = documentCollection(trxCollection);
-          // READ-LOCK START
-          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
-          if (orderDitch(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-
-          uint64_t numRead = 0;
-          TRI_ASSERT(batchSize > 0);
-
-          while (numRead < batchSize) { 
-            auto mptr = document->primaryIndex()->lookupRandom(initialPosition, position, step, total);
-            if (mptr == nullptr) {
-              // Read all documents randomly
-              break;
-            }
-            docs.emplace_back(*mptr);
-            ++numRead;
-          }
-          this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          // READ-LOCK END
-          return TRI_ERROR_NO_ERROR;
-        }
+        int readRandom (TRI_transaction_collection_t*,
+                        std::vector<TRI_doc_mptr_copy_t>&,
+                        triagens::basics::BucketPosition&,
+                        triagens::basics::BucketPosition&,
+                        uint64_t,
+                        uint64_t&,
+                        uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a single document
@@ -805,81 +722,16 @@ namespace triagens {
 /// @brief read any (random) document
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readAny (TRI_transaction_collection_t* trxCollection,
-                     TRI_doc_mptr_copy_t* mptr) {
-
-          TRI_document_collection_t* document = documentCollection(trxCollection);
-
-          // READ-LOCK START
-          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
-          if (orderDitch(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-
-          auto idx = document->primaryIndex();
-          triagens::basics::BucketPosition intPos;
-          triagens::basics::BucketPosition pos;
-          uint64_t step = 0;
-          uint64_t total = 0;
-
-          TRI_doc_mptr_t* found = idx->lookupRandom(intPos, pos, step, total);
-          if (found != nullptr) {
-            *mptr = *found;
-          }
-          this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          return TRI_ERROR_NO_ERROR;
-        }
+        int readAny (TRI_transaction_collection_t*,
+                     TRI_doc_mptr_copy_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read all documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readAll (TRI_transaction_collection_t* trxCollection,
-                     std::vector<std::string>& ids,
-                     bool lock) {
-
-          TRI_document_collection_t* document = documentCollection(trxCollection);
-
-          if (lock) {
-            // READ-LOCK START
-            int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-            if (res != TRI_ERROR_NO_ERROR) {
-              return res;
-            }
-          }
-
-          if (orderDitch(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-          auto idx = document->primaryIndex();
-          size_t used = idx->size();
-
-          if (used > 0) {
-            triagens::basics::BucketPosition step;
-            uint64_t total = 0;
-
-            while (true) {
-              TRI_doc_mptr_t const* mptr = idx->lookupSequential(step, total);
-
-              if (mptr == nullptr) {
-                break;
-              }
-              ids.emplace_back(TRI_EXTRACT_MARKER_KEY(mptr));
-            }
-          }
-
-          if (lock) {
-            this->unlock(trxCollection, TRI_TRANSACTION_READ);
-            // READ-LOCK END
-          }
-
-          return TRI_ERROR_NO_ERROR;
-        }
+        int readAll (TRI_transaction_collection_t*,
+                     std::vector<std::string>&,
+                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read master pointers in order of insertion/update
@@ -949,124 +801,18 @@ namespace triagens {
 /// @brief read all master pointers, using skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readSlice (TRI_transaction_collection_t* trxCollection,
-                       std::vector<TRI_doc_mptr_copy_t>& docs,
-                       int64_t skip,
-                       uint64_t limit,
-                       uint64_t& total) {
-
-          TRI_document_collection_t* document = documentCollection(trxCollection);
-
-          if (limit == 0) {
-            // nothing to do
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          // READ-LOCK START
-          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
-
-          if (orderDitch(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-
-          uint64_t count = 0;
-          auto idx = document->primaryIndex();
-          TRI_doc_mptr_t const* mptr = nullptr; 
-
-          if (skip < 0) {
-            triagens::basics::BucketPosition position;
-            do {
-              mptr = idx->lookupSequentialReverse(position);
-              ++skip;
-            }
-            while (skip < 0 && mptr != nullptr);
-
-            if (mptr == nullptr) {
-              this->unlock(trxCollection, TRI_TRANSACTION_READ);
-              // To few elements, skipped all
-              return TRI_ERROR_NO_ERROR;
-            }
-
-            do {
-              mptr = idx->lookupSequentialReverse(position);
-
-              if (mptr == nullptr) {
-                break;
-              }
-              ++count;
-              docs.emplace_back(*mptr);
-            }
-            while (count < limit);
-
-            this->unlock(trxCollection, TRI_TRANSACTION_READ);
-            return TRI_ERROR_NO_ERROR;
-          }
-          triagens::basics::BucketPosition position;
-
-          while (skip > 0) {
-            mptr = idx->lookupSequential(position, total);
-            --skip;
-            if (mptr == nullptr) {
-              // To few elements, skipped all
-              this->unlock(trxCollection, TRI_TRANSACTION_READ);
-              return TRI_ERROR_NO_ERROR;
-            }
-          }
-
-          do {
-            mptr = idx->lookupSequential(position, total);
-            if (mptr == nullptr) {
-              break;
-            }
-            ++count;
-            docs.emplace_back(*mptr);
-          }
-          while (count < limit);
-
-          this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          return TRI_ERROR_NO_ERROR;
-        }
+        int readSlice (TRI_transaction_collection_t*,
+                       std::vector<TRI_doc_mptr_copy_t>&,
+                       int64_t,
+                       uint64_t,
+                       uint64_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read all master pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readSlice (TRI_transaction_collection_t* trxCollection,
-                       std::vector<TRI_doc_mptr_t const*>& docs) {
-          TRI_document_collection_t* document = documentCollection(trxCollection);
-          // READ-LOCK START
-          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
-
-          if (orderDitch(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-
-          triagens::basics::BucketPosition position;
-          uint64_t total = 0;
-          auto idx = document->primaryIndex();
-          docs.reserve(idx->size());
-
-          while (true) {
-            TRI_doc_mptr_t const* mptr = idx->lookupSequential(position, total);
-
-            if (mptr == nullptr) {
-              break;
-            }
-
-            docs.emplace_back(mptr);
-          }
-
-          this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          return TRI_ERROR_NO_ERROR;
-        }
+        int readSlice (TRI_transaction_collection_t*,
+                       std::vector<TRI_doc_mptr_t const*>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a single document, using shaped json
