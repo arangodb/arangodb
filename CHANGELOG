@@ -1,6 +1,8 @@
 v2.7.1 (XXXX-XX-XX)
 -------------------
 
+* removed duplicate target for some frontend JavaScript files from the Makefile
+
 * make AQL function `MERGE()` work on a single array parameter, too.
   This allows combining the attributes of multiple objects from an array into
   a single object, e.g.
