@@ -111,10 +111,6 @@ pack-dmg-cmake:
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
-		-D "READLINE_VERSION=${READLINE_VERSION}" \
-		-D "READLINE_INCLUDE=${READLINE_INCLUDE}" \
-		-D "READLINE_LIB_PATH=${READLINE_LIB_PATH}" \
-                -D "READLINE_LIBS=/usr/local/opt/readline/lib/libreadline.a;/usr/local/opt/readline/lib/libhistory.a;ncurses" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		..
@@ -163,10 +159,6 @@ pack-macosxcode-cmake:
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
-		-D "READLINE_VERSION=${READLINE_VERSION}" \
-		-D "READLINE_INCLUDE=${READLINE_INCLUDE}" \
-		-D "READLINE_LIB_PATH=${READLINE_LIB_PATH}" \
-                -D "READLINE_LIBS=/usr/local/opt/readline/lib/libreadline.a;/usr/local/opt/readline/lib/libhistory.a;ncurses" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		-G Xcode \
@@ -201,10 +193,6 @@ pack-macosx-cmake:
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
-		-D "READLINE_VERSION=${READLINE_VERSION}" \
-		-D "READLINE_INCLUDE=${READLINE_INCLUDE}" \
-		-D "READLINE_LIB_PATH=${READLINE_LIB_PATH}" \
-                -D "READLINE_LIBS=/usr/local/opt/readline/lib/libreadline.a;/usr/local/opt/readline/lib/libhistory.a;ncurses" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		$(MOREOPTS) \
@@ -258,7 +246,6 @@ pack-arm-cmake:
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "ETCDIR=${sysconfdir}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
-		-D "READLINE_VERSION=${READLINE_VERSION}" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "VARDIR=${localstatedir}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
@@ -287,7 +274,6 @@ pack-deb-cmake:
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "ETCDIR=${sysconfdir}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
-		-D "READLINE_VERSION=${READLINE_VERSION}" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "VARDIR=${localstatedir}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \

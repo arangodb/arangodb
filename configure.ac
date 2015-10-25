@@ -71,7 +71,7 @@ AC_SUBST(TRI_REPOSITORY_VERSION)
 AC_DEFINE_UNQUOTED(TRI_REPOSITORY_VERSION, "$TRI_REPOSITORY_VERSION", "" , [repository version])
 
 dnl ============================================================================
-dnl --SECTION--                                                          OPTIONS
+dnl --SECTION--                                         CHECKING THE ENVIRONMENT
 dnl ============================================================================
 
 dnl ----------------------------------------------------------------------------
@@ -90,163 +90,43 @@ else:
 fi
 
 dnl ----------------------------------------------------------------------------
-dnl etcd
+dnl checks for compiler and basic settings
 dnl ----------------------------------------------------------------------------
 
-AC_ARG_ENABLE(all-in-one-etcd,
-  AS_HELP_STRING([--enable-all-in-one-etcd], [use supplied etcd from 3rdParty directory (default: yes)]),
-  [tr_ALL_IN_ONE_ETCD="${enableval:-yes}"],
-  [tr_ALL_IN_ONE_ETCD=yes]
-)
+AC_MSG_NOTICE([................................................................................])
+AC_MSG_NOTICE([CHECKING C/C++ COMPILER AND LINKER])
+AC_MSG_NOTICE([................................................................................])
 
-AM_CONDITIONAL(ENABLE_ALL_IN_ONE_ETCD, test "x$tr_ALL_IN_ONE_ETCD" = xyes)
+case $target in
+  *-*-cygwin)
+    LDFLAGS="$LDFLAGS -Wl,--enable-auto-import"
+    enable_static="yes"
+    enable_shared="no"
 
-dnl ----------------------------------------------------------------------------
-dnl go
-dnl ----------------------------------------------------------------------------
+    list_cc="[gcc-4 gcc-3 gcc cc]"
+    list_cxx="[g++-4 g++-3 g++ cxx]"
 
-AC_ARG_ENABLE(internal-go,
-  AS_HELP_STRING([--enable-internal-go], [use go binaries from 3rdParty directory (default: no)]),
-  [tr_INTERNAL_GO="${enableval:-yes}"],
-  [tr_INTERNAL_GO=no]
-  GOPROG=x$tr_INTERNAL_GO
-)
+    ;;
 
-AM_CONDITIONAL(ENABLE_INTERNAL_GO, test "x$tr_INTERNAL_GO" = xyes)
+  *) 
+    list_cc="[${CC} gcc clang cc]"
+    list_cxx="[${CXX} g++ clang++ cxx]"
 
-if test "x$tr_INTERNAL_GO" = "xno"; then
-  AC_CHECK_PROG(GO, go, go)
-  if test "x$GO" = "x"; then
-    AC_MSG_WARN([no go executable found.])
-    BASIC_INFO="$BASIC_INFO|GO BINARY: not found"
-  else
-    BASIC_INFO="$BASIC_INFO|GO BINARY: $GO"
-  fi
-  GOPROG=$GO
-else
-  GOPROG=go
-fi
+    ;;
+esac
 
-AM_CONDITIONAL(GO_AVAILABLE, test "x$GOPROG" != x)
+AC_PROG_CXXCPP
+AC_PROG_CC($list_cc)
+AC_PROG_CXX($list_cxx)
+AC_PROG_CPP
+AM_PROG_CC_C_O
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+AC_PROG_RANLIB
 
-dnl ----------------------------------------------------------------------------
-dnl use relative path
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(relative,
-  AS_HELP_STRING([--enable-relative], [all path are relative to the binary (default: no)]),
-  [tr_RELATIVE="${enableval:-yes}"],
-  [tr_RELATIVE=no]
-)
-
-AM_CONDITIONAL(ENABLE_RELATIVE, test "x$tr_RELATIVE" = xyes)
-
-if test "x$tr_RELATIVE" != xno;  then
-  BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: enabled"
-else
-  BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: disabled"
-fi
-
-dnl ----------------------------------------------------------------------------
-dnl error & warnings && C/C++ standard
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(error-on-warning,
-  AS_HELP_STRING([--enable-error-on-warning], [treat warnings as errors (default: no)]),
-  [tr_WERROR="${enableval:-yes}"],
-  [tr_WERROR=no]
-)
-
-CFLAGS="$CFLAGS $RPM_OPT_FLAGS"
-CXXFLAGS="$CXXFLAGS $RPM_OPT_FLAGS"
-
-if test x$GCC == xyes;  then
-  WALL="-Wall -Winit-self -Wno-long-long -Wno-variadic-macros"
-
-  if test x$tr_WERROR == xyes;  then
-    WALL="${WALL} -Werror"
-  fi
-
-  if test x$tr_DARWIN == xyes;  then
-    WALL="${WALL} -Wno-deprecated-declarations"
-
-    TRI_TRY_CXX_OPTION([-stdlib=libc++],
-                       [tr_CXX_HAS_STDLIB="yes"],
-                       [tr_CXX_HAS_STDLIB="no"])
-  fi
-
-  WALLC="${WALL} -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement"
-  WALLCXX="${WALL} -Woverloaded-virtual"
-
-  TRI_TRY_CXX_OPTION([-Wstrict-null-sentinel],
-                     [WALLCXX="${WALLCXX} -Wstrict-null-sentinel"])
-  
-  # suppress warnings about unused compiler options. 
-  # this is useful for clang as it complains about -std=... in linking 
-  TRI_TRY_CXX_OPTION([-Qunused-arguments],
-                     [WALLCXX="${WALLCXX} -Qunused-arguments"])
-
-  # try to select the correct C standard: gnu90 is nice, because it warns about constructs
-  # the Visual Studio Compiler does not like
-
-  GCCSTD=""
-
-  TRI_TRY_CC_OPTION([-std=gnu90],
-	            [GCCSTD="-std=gnu90"],
-	            [TRI_TRY_CC_OPTION([-std=gnu89],
-                                       [GCCSTD="-std=gnu89"])])
-
-  GXXSTD=""
-
-  TRI_TRY_CXX_OPTION([-std=c++11],
-	             [GXXSTD="-std=c++11"])
-
-  CFLAGS="${GCCSTD} ${CFLAGS} ${WALLC}"
-  CXXFLAGS="${GXXSTD} ${CXXFLAGS} ${WALLCXX}"
-fi
-
-AM_CONDITIONAL(CXX_HAS_STDLIB, test "x$tr_CXX_HAS_STDLIB" = "yes")
-
-dnl ----------------------------------------------------------------------------
-dnl option for gnu style include
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(isystem,
-  AS_HELP_STRING([--enable-isystem], [enables the use of -isystem instead of -I for system headers (default: no)]),
-  [tr_ISYSTEM="${enableval:-yes}"],
-  [tr_ISYSTEM=no]
-)
-
-if test x$GCC == xyes;  then
-  INCPREFIX="-isystem " # note that the trailing blank is important
-else
-  INCPREFIX="-I"
-fi
-
-if test "x$tr_ISYSTEM" = "xno";  then
-  INCPREFIX="-I"
-fi
-
-dnl ----------------------------------------------------------------------------
-dnl use the gold linker
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(gold,
-  AS_HELP_STRING([--enable-gold], [use new gold linker (default: no)]),
-  [tr_GOLD="${enableval:-yes}"],
-  [tr_GOLD=no]
-)
-
-AM_CONDITIONAL(ENABLE_GOLD, test "x$tr_GOLD" = xyes)
-
-if test "x$tr_GOLD" = xyes;  then
-  CFLAGS="$CFLAGS -fuse-ld=gold"
-  CXXFLAGS="$CXXFLAGS -fuse-ld=gold"
-fi
-
-dnl ============================================================================
-dnl --SECTION--                                         CHECKING THE ENVIRONMENT
-dnl ============================================================================
+AX_CXX_COMPILE_STDCXX_11(noext, mandatory)
+AX_CXX_CHECK_UNORDERED_MAP_EMPLACE
 
 dnl ----------------------------------------------------------------------------
 dnl check for special OS like MacOS X or FreeBSD
@@ -311,47 +191,175 @@ AC_SUBST(TRI_BITS)
 CPPFLAGS="${CPPFLAGS} -DTRI_BITS=${TRI_BITS}"
 
 dnl ----------------------------------------------------------------------------
-dnl checks for compiler and basic settings
+dnl options C/C++ standard
 dnl ----------------------------------------------------------------------------
 
-AC_MSG_NOTICE([................................................................................])
-AC_MSG_NOTICE([CHECKING C/C++ COMPILER AND LINKER])
-AC_MSG_NOTICE([................................................................................])
+if test x$GCC == xyes;  then
+  # try to select the correct C standard: gnu90 is nice, because it warns about constructs
+  # the Visual Studio Compiler does not like
 
-case $target in
-  *-*-cygwin)
-    LDFLAGS="$LDFLAGS -Wl,--enable-auto-import"
-    enable_static="yes"
-    enable_shared="no"
+  GCCSTD=""
 
-    list_cc="[gcc-4 gcc-3 gcc cc]"
-    list_cxx="[g++-4 g++-3 g++ cxx]"
+  TRI_TRY_CC_OPTION([-std=gnu90],
+	            [GCCSTD="-std=gnu90"],
+	            [TRI_TRY_CC_OPTION([-std=gnu89],
+                                       [GCCSTD="-std=gnu89"])])
 
-    ;;
+  GXXSTD=""
 
-  *) 
-    list_cc="[${CC} gcc clang cc]"
-    list_cxx="[${CXX} g++ clang++ cxx]"
+  TRI_TRY_CXX_OPTION([-std=c++11],
+	             [GXXSTD="-std=c++11"])
 
-    ;;
-esac
+  CFLAGS="${GCCSTD} ${CFLAGS}"
+  CXXFLAGS="${GXXSTD} ${CXXFLAGS}"
+fi
 
-AC_PROG_CXXCPP
-AC_PROG_CC($list_cc)
-AC_PROG_CXX($list_cxx)
-AC_PROG_CPP
-AM_PROG_CC_C_O
-AC_PROG_INSTALL
-AC_PROG_LN_S
-AC_PROG_MAKE_SET
-AC_PROG_RANLIB
+if test x$tr_DARWIN == xyes;  then
+  TRI_TRY_CXX_OPTION([-stdlib=libc++],
+                     [tr_CXX_HAS_STDLIB="yes"],
+                     [tr_CXX_HAS_STDLIB="no"])
+fi
 
-AX_CXX_COMPILE_STDCXX_11(noext, mandatory)
-AX_CXX_CHECK_UNORDERED_MAP_EMPLACE
+AM_CONDITIONAL(CXX_HAS_STDLIB, test "x$tr_CXX_HAS_STDLIB" = "xyes")
+
+dnl ----------------------------------------------------------------------------
+dnl error & warnings && C/C++ standard
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(error-on-warning,
+  AS_HELP_STRING([--enable-error-on-warning], [treat warnings as errors (default: no)]),
+  [tr_WERROR="${enableval:-yes}"],
+  [tr_WERROR=no]
+)
+
+CFLAGS="$CFLAGS $RPM_OPT_FLAGS"
+CXXFLAGS="$CXXFLAGS $RPM_OPT_FLAGS"
+
+if test x$GCC == xyes;  then
+  WALL="-Wall -Winit-self -Wno-long-long -Wno-variadic-macros"
+
+  if test x$tr_WERROR == xyes;  then
+    WALL="${WALL} -Werror"
+  fi
+
+  if test x$tr_DARWIN == xyes;  then
+    WALL="${WALL} -Wno-deprecated-declarations"
+  fi
+
+  WALLC="${WALL} -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement"
+  WALLCXX="${WALL} -Woverloaded-virtual"
+
+  TRI_TRY_CXX_OPTION([-Wstrict-null-sentinel],
+                     [WALLCXX="${WALLCXX} -Wstrict-null-sentinel"])
+  
+  # suppress warnings about unused compiler options. 
+  # this is useful for clang as it complains about -std=... in linking 
+  TRI_TRY_CXX_OPTION([-Qunused-arguments],
+                     [WALLCXX="${WALLCXX} -Qunused-arguments"])
+
+
+  CFLAGS="${CFLAGS} ${WALLC}"
+  CXXFLAGS="${CXXFLAGS} ${WALLCXX}"
+fi
+
+dnl ----------------------------------------------------------------------------
+dnl option for gnu style include
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(isystem,
+  AS_HELP_STRING([--enable-isystem], [enables the use of -isystem instead of -I for system headers (default: no)]),
+  [tr_ISYSTEM="${enableval:-yes}"],
+  [tr_ISYSTEM=no]
+)
+
+if test x$GCC == xyes;  then
+  INCPREFIX="-isystem " # note that the trailing blank is important
+else
+  INCPREFIX="-I"
+fi
+
+if test "x$tr_ISYSTEM" = "xno";  then
+  INCPREFIX="-I"
+fi
+
+dnl ----------------------------------------------------------------------------
+dnl use the gold linker
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(gold,
+  AS_HELP_STRING([--enable-gold], [use new gold linker (default: no)]),
+  [tr_GOLD="${enableval:-yes}"],
+  [tr_GOLD=no]
+)
+
+AM_CONDITIONAL(ENABLE_GOLD, test "x$tr_GOLD" = xyes)
+
+if test "x$tr_GOLD" = xyes;  then
+  CFLAGS="$CFLAGS -fuse-ld=gold"
+  CXXFLAGS="$CXXFLAGS -fuse-ld=gold"
+fi
 
 dnl ============================================================================
 dnl --SECTION--                                                      SUB SYSTEMS
 dnl ============================================================================
+
+dnl ----------------------------------------------------------------------------
+dnl etcd
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(all-in-one-etcd,
+  AS_HELP_STRING([--enable-all-in-one-etcd], [use supplied etcd from 3rdParty directory (default: yes)]),
+  [tr_ALL_IN_ONE_ETCD="${enableval:-yes}"],
+  [tr_ALL_IN_ONE_ETCD=yes]
+)
+
+AM_CONDITIONAL(ENABLE_ALL_IN_ONE_ETCD, test "x$tr_ALL_IN_ONE_ETCD" = xyes)
+
+dnl ----------------------------------------------------------------------------
+dnl go
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(internal-go,
+  AS_HELP_STRING([--enable-internal-go], [use go binaries from 3rdParty directory (default: no)]),
+  [tr_INTERNAL_GO="${enableval:-yes}"],
+  [tr_INTERNAL_GO=no]
+  GOPROG=x$tr_INTERNAL_GO
+)
+
+AM_CONDITIONAL(ENABLE_INTERNAL_GO, test "x$tr_INTERNAL_GO" = xyes)
+
+if test "x$tr_INTERNAL_GO" = "xno"; then
+  AC_CHECK_PROG(GO, go, go)
+  if test "x$GO" = "x"; then
+    AC_MSG_WARN([no go executable found.])
+    BASIC_INFO="$BASIC_INFO|GO BINARY: not found"
+  else
+    BASIC_INFO="$BASIC_INFO|GO BINARY: $GO"
+  fi
+  GOPROG=$GO
+else
+  GOPROG=go
+fi
+
+AM_CONDITIONAL(GO_AVAILABLE, test "x$GOPROG" != x)
+
+dnl ----------------------------------------------------------------------------
+dnl use relative path
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(relative,
+  AS_HELP_STRING([--enable-relative], [all path are relative to the binary (default: no)]),
+  [tr_RELATIVE="${enableval:-yes}"],
+  [tr_RELATIVE=no]
+)
+
+AM_CONDITIONAL(ENABLE_RELATIVE, test "x$tr_RELATIVE" = xyes)
+
+if test "x$tr_RELATIVE" != xno;  then
+  BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: enabled"
+else
+  BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: disabled"
+fi
 
 dnl ----------------------------------------------------------------------------
 dnl rt
