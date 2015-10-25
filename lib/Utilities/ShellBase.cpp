@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief implementation of the base class ShellImplementation
+/// @brief implementation of the base class
 ///
 /// @file
 ///
@@ -27,20 +27,63 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ShellImplementation.h"
-
-#include <iostream>
+#include "ShellBase.h"
 
 #include "Basics/StringUtils.h"
+#include "Basics/files.h"
 #include "Utilities/Completer.h"
+#include "Utilities/DummyShell.h"
+
+#if defined(TRI_HAVE_LINENOISE)
+#include "Utilities/LinenoiseShell.h"
+#endif
 
 using namespace std;
 using namespace arangodb;
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         class ShellImplementation
+// --SECTION--                                                   class ShellBase
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a shell
+////////////////////////////////////////////////////////////////////////////////
+
+ShellBase* ShellBase::buildShell (std::string const& history,
+                                  Completer* completer) {
+
+  // no keyboard input. use low-level shell without fancy color codes 
+  // and with proper pipe handling
+
+  if (! isatty(STDIN_FILENO)) {
+    return new DummyShell(history, completer);
+  }
+  else {
+#if defined(TRI_HAVE_LINENOISE)
+    return new LinenoiseShell(history, completer);
+#else
+    return new DummyShell(history, completer); // last resort!
+#endif
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort the alternatives results vector
+////////////////////////////////////////////////////////////////////////////////
+
+void ShellBase::sortAlternatives (vector<string>& completions) {
+  std::sort(completions.begin(), completions.end(),
+    [](std::string const& l, std::string const& r) -> bool {
+      int res = strcasecmp(l.c_str(), r.c_str());
+      return (res < 0);
+    }
+  );
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -50,20 +93,36 @@ using namespace triagens::basics;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ShellImplementation::ShellImplementation (string const& history, 
-                                          Completer* completer)
+ShellBase::ShellBase (string const& history, Completer* completer)
   : _current(),
-    _historyFilename(history),
+    _historyFilename(),
     _state(STATE_NONE),
     _completer(completer) {
 
+  // construct the complete history path
+  string path;
+  char* p = TRI_HomeDirectory();
+
+  if (p != nullptr) {
+    path.append(p);
+    TRI_Free(TRI_CORE_MEM_ZONE, p);
+
+    if (! path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+      path.push_back(TRI_DIR_SEPARATOR_CHAR);
+    }
+  }
+
+  path.append(history);
+
+  _historyFilename = path;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ShellImplementation::~ShellImplementation () {
+ShellBase::~ShellBase () {
+  delete _completer;
 }
 
 // -----------------------------------------------------------------------------
@@ -74,7 +133,7 @@ ShellImplementation::~ShellImplementation () {
 /// @brief handle a signal
 ////////////////////////////////////////////////////////////////////////////////
 
-void ShellImplementation::signal () {
+void ShellBase::signal () {
   // do nothing special
 }
 
@@ -83,12 +142,12 @@ void ShellImplementation::signal () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor prompt
+/// @brief shell prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-string ShellImplementation::prompt (const string& prompt,
-				    const string& plain,
-				    bool& eof) {
+string ShellBase::prompt (const string& prompt,
+                          const string& plain,
+                          bool& eof) {
   size_t lineno = 0;
   string dotdot = "...> ";
   string p = prompt;
@@ -134,10 +193,10 @@ string ShellImplementation::prompt (const string& prompt,
       pos = line.find_first_not_of(" \t", pos + 1);
 
       if (pos != string::npos) {
-	line = line.substr(pos);
+        line = line.substr(pos);
       }
       else {
-	line.clear();
+        line.clear();
       }
     }
 

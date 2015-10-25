@@ -117,8 +117,7 @@ add_library(
     Utilities/DummyShell.cpp
     Utilities/LineEditor.cpp
     Utilities/ScriptLoader.cpp
-    Utilities/ShellImplementation.cpp
-    Utilities/ShellImplFactory.cpp
+    Utilities/ShellBase.cpp
     Zip/ioapi.cpp
     Zip/unzip.cpp
     Zip/zip.cpp

@@ -28,8 +28,8 @@
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_SHELL_IMPLEMENTATION_H
-#define ARANGODB_UTILITIES_SHELL_IMPLEMENTATION_H 1
+#ifndef ARANGODB_UTILITIES_SHELL_BASE_H
+#define ARANGODB_UTILITIES_SHELL_BASE_H 1
 
 #include "Basics/Common.h"
 
@@ -41,14 +41,14 @@ namespace arangodb {
   class Completer;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         class ShellImplementation
+// --SECTION--                                                   class ShellBase
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ShellImplementation
+/// @brief ShellBase
 ////////////////////////////////////////////////////////////////////////////////
 
-  class ShellImplementation {
+  class ShellBase {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   protected types
@@ -67,6 +67,24 @@ namespace arangodb {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+  public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a shell
+////////////////////////////////////////////////////////////////////////////////
+
+    static ShellBase* buildShell (std::string const& history, Completer*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort the alternatives results vector
+////////////////////////////////////////////////////////////////////////////////
+
+    static void sortAlternatives (std::vector<std::string>&);
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -76,13 +94,13 @@ namespace arangodb {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    ShellImplementation (std::string const& history, Completer*);
+    ShellBase (std::string const& history, Completer*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual ~ShellImplementation ();
+    virtual ~ShellBase ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -95,8 +113,8 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
     std::string prompt (const std::string& prompt,
-			const std::string& begin,
-			bool& eof);
+                        const std::string& begin,
+                        bool& eof);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            virtual public methods
@@ -123,15 +141,6 @@ namespace arangodb {
     virtual bool close () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the history file path
-///
-/// The path is "$HOME" plus _historyFilename, if $HOME is set. Else
-/// the local file _historyFilename.
-////////////////////////////////////////////////////////////////////////////////
-
-    virtual std::string historyPath () = 0;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -153,13 +162,9 @@ namespace arangodb {
 /// @brief whether or not the shell implementation supports colors
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual bool supportsColors () = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the shell supports a CTRL-C handler
-////////////////////////////////////////////////////////////////////////////////
-
-    virtual bool supportsCtrlCHandler () = 0;
+    virtual bool supportsColors () {
+      return false;
+    }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -190,7 +195,6 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
     Completer* _completer;
-
   };
 }
 

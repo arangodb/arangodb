@@ -9,7 +9,8 @@
 ################################################################################
 
 lib_libarango_a_CPPFLAGS = \
-	$(AM_CPPFLAGS) 
+	$(AM_CPPFLAGS) \
+	$(CONSOLE_CPPFLAGS)
 
 lib_libarango_a_SOURCES = \
 	lib/Basics/application-exit.cpp \
@@ -91,11 +92,19 @@ lib_libarango_a_SOURCES = \
 	lib/Utilities/DummyShell.cpp \
 	lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp \
-	lib/Utilities/ShellImplFactory.cpp \
-	lib/Utilities/ShellImplementation.cpp \
+	lib/Utilities/ShellBase.cpp \
 	lib/Zip/ioapi.cpp \
 	lib/Zip/unzip.cpp \
 	lib/Zip/zip.cpp
+
+if ENABLE_LINENOISE
+
+lib_libarango_a_SOURCES += \
+	3rdParty/linenoise/linenoise.c \
+	3rdParty/linenoise/utf8.c \
+	lib/Utilities/LinenoiseShell.cpp
+
+endif
 
 ################################################################################
 ### @brief library "libarango.a", client part

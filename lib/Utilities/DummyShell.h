@@ -29,7 +29,7 @@
 #ifndef ARANGODB_UTILITIES_DUMMY_SHELL_H
 #define ARANGODB_UTILITIES_DUMMY_SHELL_H 1
 
-#include "ShellImplementation.h"
+#include "ShellBase.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -46,7 +46,7 @@ namespace arangodb {
 /// @brief DummyShell
 ////////////////////////////////////////////////////////////////////////////////
 
-  class DummyShell : public ShellImplementation {
+  class DummyShell : public ShellBase {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -67,7 +67,7 @@ namespace arangodb {
       virtual ~DummyShell();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                       ShellImplementation methods
+// --SECTION--                                                 ShellBase methods
 // -----------------------------------------------------------------------------
 
     public:
@@ -88,12 +88,6 @@ namespace arangodb {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::string historyPath() override final;
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
       void addHistory (const std::string&) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,22 +101,6 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
       std::string getLine (const std::string& prompt, bool& eof) override final;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the shell implementation supports colors
-////////////////////////////////////////////////////////////////////////////////
-
-      bool supportsColors () override final {
-        return false;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the shell supports a CTRL-C handler
-////////////////////////////////////////////////////////////////////////////////
-
-      bool supportsCtrlCHandler () override final {
-        return false;
-      }
   };
 }
 

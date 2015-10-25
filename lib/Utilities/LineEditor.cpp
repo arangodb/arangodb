@@ -29,8 +29,7 @@
 
 #include "LineEditor.h"
 
-#include "Utilities/ShellImplementation.h"
-#include "Utilities/Completer.h"
+#include "Utilities/ShellBase.h"
 
 using namespace std;
 using namespace triagens;
@@ -48,9 +47,8 @@ using namespace arangodb;
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::LineEditor (std::string const& history)
-  : _history(history) {
-  _shellImpl = nullptr;
+LineEditor::LineEditor ()
+  : _shell(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,27 +56,10 @@ LineEditor::LineEditor (std::string const& history)
 ////////////////////////////////////////////////////////////////////////////////
 
 LineEditor::~LineEditor () {
-  if (_shellImpl) {
+  if (_shell != nullptr) {
     close();
-    delete _shellImpl;
+    delete _shell;
   }
- }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              static public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort the alternatives results vector
-////////////////////////////////////////////////////////////////////////////////
-
-void LineEditor::sortAlternatives (vector<string>& completions) {
-  std::sort(completions.begin(), completions.end(),
-    [](std::string const& l, std::string const& r) -> bool {
-      int res = strcasecmp(l.c_str(), r.c_str());
-      return (res < 0);
-    }
-  );
 }
 
 // -----------------------------------------------------------------------------
@@ -86,12 +67,19 @@ void LineEditor::sortAlternatives (vector<string>& completions) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell implementation supports colors
+////////////////////////////////////////////////////////////////////////////////
+
+bool LineEditor::supportsColors () const {
+  return _shell->supportsColors();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LineEditor::open (bool autoComplete) {
-  prepareShell();
-  return _shellImpl->open(autoComplete);
+  return _shell->open(autoComplete);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,8 +87,7 @@ bool LineEditor::open (bool autoComplete) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LineEditor::close () {
-  prepareShell();
-  return _shellImpl->close();
+  return _shell->close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,36 +95,17 @@ bool LineEditor::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 string LineEditor::prompt (const string& prompt,
-			   const string& begin,
-			   bool& eof) {
-  return _shellImpl->prompt(prompt, begin, eof);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the history file path
-////////////////////////////////////////////////////////////////////////////////
-
-string LineEditor::historyPath () {
-  prepareShell();
-  return _shellImpl->historyPath();
+                           const string& begin,
+                           bool& eof) {
+  return _shell->prompt(prompt, begin, eof);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::addHistory (const string& line) {
-  prepareShell();
-  return _shellImpl->addHistory(line);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save history
-////////////////////////////////////////////////////////////////////////////////
-
-bool LineEditor::writeHistory () {
-  prepareShell();
-  return _shellImpl->writeHistory();
+void LineEditor::addHistory (const std::string& line) {
+  return _shell->addHistory(line);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,19 +113,9 @@ bool LineEditor::writeHistory () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LineEditor::signal () {
-  _shellImpl->signal();
+  _shell->signal();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-
-void LineEditor::prepareShell () {
-  if (! _shellImpl) {
-    initializeShell();
-  }
-}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

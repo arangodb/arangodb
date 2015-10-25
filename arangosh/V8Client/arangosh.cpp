@@ -1609,12 +1609,13 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     // assume the command succeeds
     promptError = false;
 
-    console.isExecutingCommand(true);
+    console.setExecutingCommand(true);
 
     // execute command and register its result in __LAST__
-    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STRING(input.c_str()), name, true);
+    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(
+      isolate, context, TRI_V8_STRING(input.c_str()), name, true);
 
-    console.isExecutingCommand(false);
+    console.setExecutingCommand(false);
 
     if (v.IsEmpty()) {
       context->Global()->Set(TRI_V8_ASCII_STRING("_last"), v8::Undefined(isolate));

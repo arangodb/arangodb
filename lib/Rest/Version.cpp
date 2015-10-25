@@ -178,14 +178,6 @@ std::string Version::getZLibVersion () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get REPL version
-////////////////////////////////////////////////////////////////////////////////
-
-std::string Version::getReplVersion () {
-  return std::string("dummy shell");
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get ICU version
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -270,7 +262,6 @@ std::string Version::getVerboseVersionString () {
 #endif
           << "ICU " << getICUVersion() << ", "
           << "V8 " << getV8Version() << ", "
-          << "REPL " << getReplVersion() << ", "
           << getOpenSSLVersion();
 
   return version.str();
