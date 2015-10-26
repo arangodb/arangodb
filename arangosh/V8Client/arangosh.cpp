@@ -2423,9 +2423,11 @@ int main (int argc, char* args[]) {
 
       isolate->LowMemoryNotification();
 
-      // todo 1000 was the old V8-default, is this really good?
-      while (! isolate->IdleNotification(1000)) {
-      }
+      // spend at least 3 seconds in GC
+      LOG_DEBUG("entering final garbage collection");
+      TRI_RunGarbageCollectionV8(isolate, 3000);
+      LOG_DEBUG("final garbage collection completed");
+
       localContext->Exit();
       context.Reset();
     }
