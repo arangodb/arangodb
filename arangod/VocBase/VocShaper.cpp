@@ -44,6 +44,7 @@
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
+#include <iostream>
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -1369,12 +1370,23 @@ int TRI_CompareShapeTypes (char const* leftDocument,
 
   // get right shape and type
   if (leftShaper == rightShaper && left._sid == right._sid) {
+    if (left._sid == BasicShapes::TRI_SHAPE_SID_ILLEGAL) {
+      // Both sides have shape_sid illegal
+      return 0;
+    }
     // identical collection and shape
     rightShape = leftShape;
   }
   else {
     // different shapes
     rightShape = rightShaper->lookupShapeId(right._sid);
+  }
+
+  if (left._sid == BasicShapes::TRI_SHAPE_SID_ILLEGAL) {
+    return -1;
+  }
+  if (right._sid == BasicShapes::TRI_SHAPE_SID_ILLEGAL) {
+    return 1;
   }
 
   if (leftShape == nullptr || rightShape == nullptr) {

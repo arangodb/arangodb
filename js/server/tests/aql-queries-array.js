@@ -121,9 +121,12 @@ function arrayIndexSuite () {
     }
     actual = AQL_EXECUTE(query, bindVars);
     // We check if we found the Arrays with NULL in it
-    require("internal").print(actual.json);
     assertNotEqual(-1, actual.json.indexOf("0t"), "Did not find the null array");
     assertNotEqual(-1, actual.json.indexOf("50t"), "Did not find the null array");
+    assertEqual(-1, actual.json.indexOf("empty"), "Did find the empty document");
+    assertEqual(-1, actual.json.indexOf("emptyArray"), "Did find the empty array");
+    assertEqual(-1, actual.json.indexOf("noArray"), "Did find the document with no array");
+    assertEqual(-1, actual.json.indexOf("null"), "Did find the document set to null");
   };
 
   var validateResultsOr = function (query, sparse) {
@@ -158,7 +161,10 @@ function arrayIndexSuite () {
     // We check if we found the Arrays with NULL in it
     assertNotEqual(-1, actual.json.indexOf("0t"), "Did not find the null array");
     assertNotEqual(-1, actual.json.indexOf("50t"), "Did not find the null array");
-    assertNotEqual(-1, actual.json.indexOf("empty"), "Did not find the empty document");
+    assertEqual(-1, actual.json.indexOf("empty"), "Did find the empty document");
+    assertEqual(-1, actual.json.indexOf("emptyArray"), "Did find the empty array");
+    assertEqual(-1, actual.json.indexOf("noArray"), "Did find the document with no array");
+    assertEqual(-1, actual.json.indexOf("null"), "Did find the document set to null");
   };
 
   var validateCombinedResults = function (query) {
@@ -205,6 +211,9 @@ function arrayIndexSuite () {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
       col.save({_key: "empty"});
+      col.save({_key: "emptyArray", a: []});
+      col.save({_key: "noArray", a: "NoArray"});
+      col.save({_key: "null", a: null});
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
       validateResults(query);
       const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] || @tag2 IN x.a[*] SORT x._key RETURN x._key`;
@@ -217,6 +226,9 @@ function arrayIndexSuite () {
         col.save({ _key: i + "t", a: {b: buildTags(i)}});
       }
       col.save({_key: "empty"});
+      col.save({_key: "emptyArray", a: {b:[]}});
+      col.save({_key: "noArray", a: {b: "NoArray"}});
+      col.save({_key: "null", a: {b: null}});
       const query = `FOR x IN ${cName} FILTER @tag IN x.a.b[*] SORT x._key RETURN x._key`;
       validateResults(query);
       const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a.b[*] || @tag2 IN x.a.b[*] SORT x._key RETURN x._key`;
@@ -234,6 +246,9 @@ function arrayIndexSuite () {
         col.save({ _key: i + "t", a: obj});
       }
       col.save({_key: "empty"});
+      col.save({_key: "emptyArray", a: []});
+      col.save({_key: "noArray", a: "NoArray"});
+      col.save({_key: "null", a: null});
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*].b SORT x._key RETURN x._key`;
       validateResults(query);
       const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*].b || @tag2 IN x.a[*].b SORT x._key RETURN x._key`;
@@ -246,6 +261,9 @@ function arrayIndexSuite () {
         col.save({ _key: i + "t", a: buildTags(i), b: i});
       }
       col.save({_key: "empty"});
+      col.save({_key: "emptyArray", a: [], b: 1});
+      col.save({_key: "noArray", a: "NoArray", b: 1});
+      col.save({_key: "null", a: null, b: 1});
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] AND x.b IN @list SORT x._key RETURN x`;
       validateCombinedResults(query);
     },
@@ -256,6 +274,9 @@ function arrayIndexSuite () {
         col.save({ _key: i + "t", a: buildTags(i), b: buildTags(i)});
       }
       col.save({_key: "empty"});
+      col.save({_key: "emptyArray", a: [], b: []});
+      col.save({_key: "noArray", a: "NoArray", b: "NoArray"});
+      col.save({_key: "null", a: null, b: null});
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] AND @tag IN x.b[*] SORT x._key RETURN x._key`;
       validateResults(query);
       const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] && @tag1 IN x.b[*] || @tag2 IN x.a[*] && @tag2 IN x.b[*] SORT x._key RETURN x._key`;
@@ -267,7 +288,6 @@ function arrayIndexSuite () {
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
-      col.save({_key: "empty"});
       var operators = ["==", "<", ">", "<=", ">="];
       var elements = ["x.a", "x.a[*]"];
       operators.forEach(function(op) {
@@ -292,6 +312,9 @@ function arrayIndexSuite () {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
       col.save({_key: "empty"});
+      col.save({_key: "emptyArray", a: []});
+      col.save({_key: "noArray", a: "NoArray"});
+      col.save({_key: "null", a: null});
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
       validateResults(query, true);
       const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] || @tag2 IN x.a[*] SORT x._key RETURN x._key`;
@@ -304,6 +327,9 @@ function arrayIndexSuite () {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
       col.save({_key: "empty"});
+      col.save({_key: "emptyArray", a: []});
+      col.save({_key: "noArray", a: "NoArray"});
+      col.save({_key: "null", a: null});
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
       validateResults(query);
       const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] || @tag2 IN x.a[*] SORT x._key RETURN x._key`;
@@ -316,6 +342,9 @@ function arrayIndexSuite () {
         col.save({ _key: i + "t", a: {b: buildTags(i)}});
       }
       col.save({_key: "empty"});
+      col.save({_key: "emptyArray", a: {b:[]}});
+      col.save({_key: "noArray", a: {b: "NoArray"}});
+      col.save({_key: "null", a: {b: null}});
       const query = `FOR x IN ${cName} FILTER @tag IN x.a.b[*] SORT x._key RETURN x._key`;
       validateResults(query);
       const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a.b[*] || @tag2 IN x.a.b[*] SORT x._key RETURN x._key`;
@@ -333,6 +362,9 @@ function arrayIndexSuite () {
         col.save({ _key: i + "t", a: obj});
       }
       col.save({_key: "empty"});
+      col.save({_key: "emptyArray", a: []});
+      col.save({_key: "noArray", a: "NoArray"});
+      col.save({_key: "null", a: null});
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*].b SORT x._key RETURN x._key`;
       validateResults(query);
       const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*].b || @tag2 IN x.a[*].b SORT x._key RETURN x._key`;
@@ -345,6 +377,9 @@ function arrayIndexSuite () {
         col.save({ _key: i + "t", a: buildTags(i), b: i});
       }
       col.save({_key: "empty"});
+      col.save({_key: "emptyArray", a: [], b: 1});
+      col.save({_key: "noArray", a: "NoArray", b: 1});
+      col.save({_key: "null", a: null, b: 1});
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] AND x.b IN @list SORT x._key RETURN x`;
       validateCombinedResults(query);
     },
@@ -366,7 +401,6 @@ function arrayIndexSuite () {
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
-      col.save({_key: "empty"});
       var operators = ["==", "<", ">", "<=", ">="];
       var elements = ["x.a", "x.a[*]"];
       operators.forEach(function(op) {
@@ -391,6 +425,9 @@ function arrayIndexSuite () {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
       col.save({_key: "empty"});
+      col.save({_key: "emptyArray", a: []});
+      col.save({_key: "noArray", a: "NoArray"});
+      col.save({_key: "null", a: null});
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
       validateResults(query, true);
       const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] || @tag2 IN x.a[*] SORT x._key RETURN x._key`;
@@ -458,35 +495,40 @@ function arrayIndexNonArraySuite () {
     },
 
     testHashMultipleAttributeFirstArray : function () {
+      var inserted = 0;
       col.ensureHashIndex("a[*]", "b");
       col.save({}); // a is not set
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({b: 1}); // a is not set
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: "This is no array" });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: "This is no array", b: 1 });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: {b: [42] } });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: {b: [42] }, b: 1 });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: [] }); // Empty Array nothing to insert here
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: [], b: 1 }); // Empty Array nothing to insert here
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
 
       col.save({ a: [1, 2, 3, 3, 2, 1] });
-      checkElementsInIndex(0); // 1, 2, 3
+      inserted += 3;
+      checkElementsInIndex(inserted); // 1, 2, 3
 
       col.save({ a: [1, 2, 3, 3, 2, 1], b: 1 });
-      checkElementsInIndex(3); // 1, 2, 3 :: 1
+      inserted += 3;
+      checkElementsInIndex(inserted); // 1, 2, 3 :: 1
 
       col.save({a: [null, "a", "b", "c", "b", "a", null] });
-      checkElementsInIndex(3); // 1, 2, 3 :: 1
+      inserted += 4;
+      checkElementsInIndex(inserted); // 1, 2, 3 :: 1
 
       col.save({_key: "null", a: [null, "a", "b", "c", "b", "a", null], b: 1 });
-      checkElementsInIndex(7); // 1, 2, 3, a, b, c, null :: 1
+      inserted += 4;
+      checkElementsInIndex(inserted); // 1, 2, 3 :: 1
 
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] && 1 == x.b SORT x._key RETURN x._key`;
       var actual = AQL_EXECUTE(query, { tag : null }).json;
@@ -496,49 +538,54 @@ function arrayIndexNonArraySuite () {
     },
 
     testHashMultipleAttributeMiddleArray : function () {
+      var inserted = 0;
       col.ensureHashIndex("b", "a[*]", "c");
       col.save({}); // a is not set
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({b: 1}); // a is not set
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({b: 1, c: 1}); // a is not set
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: "This is no array" });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: "This is no array", b: 1 });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: "This is no array", b: 1, c: 1});
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: {b: [42] } });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: {b: [42] }, b: 1 });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: {b: [42] }, b: 1, c: 1 });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: [] }); // Empty Array nothing to insert here
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: [], b: 1 }); // Empty Array nothing to insert here
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: [], b: 1, c: 1 }); // Empty Array nothing to insert here
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
 
       col.save({ a: [1, 2, 3, 3, 2, 1] });
-      checkElementsInIndex(0); // 1, 2, 3
+      inserted += 3;
+      checkElementsInIndex(inserted); // 1, 2, 3
 
       col.save({ a: [1, 2, 3, 3, 2, 1], b: 1 });
-      checkElementsInIndex(3); // 1, 2, 3 :: 1
+      inserted += 3;
+      checkElementsInIndex(inserted); // 1, 2, 3 :: 1
 
-      col.save({a: [null, "a", "b", "c", "b", "a", null] });
-      checkElementsInIndex(3); // 1, 2, 3 :: 1
+      col.save({_key: "null1", a: [null, "a", "b", "c", "b", "a", null] });
+      inserted += 4;
+      checkElementsInIndex(inserted); // 1, 2, 3 :: 1
 
-      col.save({_key: "null", a: [null, "a", "b", "c", "b", "a", null], b: 1 });
-      checkElementsInIndex(7); // 1, 2, 3, a, b, c, null :: 1
+      col.save({_key: "null2", a: [null, "a", "b", "c", "b", "a", null], b: 1 });
+      inserted += 4;
+      checkElementsInIndex(inserted); // 1, 2, 3 :: 1
 
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] && 1 == x.b SORT x._key RETURN x._key`;
       var actual = AQL_EXECUTE(query, { tag : null }).json;
       // We expect that we can only find the Array that has stored exactly the null value
       assertEqual(actual.length, 1);
-      assertEqual(actual[0], "null");
+      assertEqual(actual[0], "null2");
     },
 
     testSkiplistSingleAttribute : function () {
@@ -566,35 +613,40 @@ function arrayIndexNonArraySuite () {
     },
 
     testSkiplistMultipleAttributeFirstArray : function () {
-      col.ensureHashIndex("a[*]", "b");
+      var inserted = 0;
+      col.ensureSkiplist("a[*]", "b");
       col.save({}); // a is not set
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({b: 1}); // a is not set
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: "This is no array" });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: "This is no array", b: 1 });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: {b: [42] } });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: {b: [42] }, b: 1 });
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: [] }); // Empty Array nothing to insert here
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
       col.save({ a: [], b: 1 }); // Empty Array nothing to insert here
-      checkElementsInIndex(0);
+      checkElementsInIndex(inserted);
 
       col.save({ a: [1, 2, 3, 3, 2, 1] });
-      checkElementsInIndex(0); // 1, 2, 3
+      inserted += 3;
+      checkElementsInIndex(inserted); // 1, 2, 3
 
       col.save({ a: [1, 2, 3, 3, 2, 1], b: 1 });
-      checkElementsInIndex(3); // 1, 2, 3 :: 1
+      inserted += 3;
+      checkElementsInIndex(inserted); // 1, 2, 3 :: 1
 
       col.save({a: [null, "a", "b", "c", "b", "a", null] });
-      checkElementsInIndex(3); // 1, 2, 3 :: 1
+      inserted += 4;
+      checkElementsInIndex(inserted); // 1, 2, 3 :: 1
 
       col.save({_key: "null", a: [null, "a", "b", "c", "b", "a", null], b: 1 });
-      checkElementsInIndex(7); // 1, 2, 3, a, b, c, null :: 1
+      inserted += 4;
+      checkElementsInIndex(inserted); // 1, 2, 3, a, b, c, null :: 1
 
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] && 1 == x.b SORT x._key RETURN x._key`;
       var actual = AQL_EXECUTE(query, { tag : null }).json;
@@ -605,72 +657,94 @@ function arrayIndexNonArraySuite () {
 
     testSkiplistMultipleAttributeMiddleArray : function () {
       var inserted = 0;
+      var insertedB = 0;
       col.ensureSkiplist("b", "a[*]", "c");
-      col.save({}); // a is not set
+      col.save({}); // a is not set, we index b: null
+      inserted += 1;
       checkElementsInIndex(inserted);
       col.save({b: 1}); // a is not set, but we can index b only
       inserted += 1;
+      insertedB += 1;
       checkElementsInIndex(inserted);
       col.save({b: 1, c: 1}); // a is not set, but we can index b only
       inserted += 1;
+      insertedB += 1;
       checkElementsInIndex(inserted);
-      col.save({ a: "This is no array" });
+      col.save({ a: "This is no array" }); // a is illegal. But we can index b only
+      inserted += 1;
       checkElementsInIndex(inserted);
       col.save({ a: "This is no array", b: 1 }); // We can index b only
       inserted += 1;
+      insertedB += 1;
       checkElementsInIndex(inserted);
       col.save({ a: "This is no array", b: 1, c: 1}); // We can index b only
       inserted += 1;
+      insertedB += 1;
       checkElementsInIndex(inserted);
       col.save({ a: {b: [42] } });
+      inserted += 1;
       checkElementsInIndex(inserted);
       col.save({ a: {b: [42] }, b: 1 }); // We can index b only
       inserted += 1;
+      insertedB += 1;
       checkElementsInIndex(inserted);
       col.save({ a: {b: [42] }, b: 1, c: 1 }); // We can index b only
       inserted += 1;
+      insertedB += 1;
       checkElementsInIndex(inserted);
-      col.save({ a: [] }); // Empty Array nothing to insert here
+      col.save({ a: [] }); // Empty Array. Nothing for a but index b
+      inserted += 1;
       checkElementsInIndex(inserted);
       col.save({ a: [], b: 1 }); // Empty Array. Nothing for a but index b
       inserted += 1;
+      insertedB += 1;
       checkElementsInIndex(inserted);
       col.save({ a: [], b: 1, c: 1 });  // Empty Array. Nothing for a but index b
       inserted += 1;
+      insertedB += 1;
       checkElementsInIndex(inserted);
 
       col.save({ a: [1, 2, 3, 3, 2, 1] });
-      checkElementsInIndex(inserted); // Nothing to index here
+      inserted += 3; // We index b: null a: 1,2,3 c: null
+      checkElementsInIndex(inserted);
 
-      col.save({ a: [1, 2, 3, 3, 2, 1], b: 1 }); // c is not indexed, but all others can be inserted
+      col.save({ a: [1, 2, 3, 3, 2, 1], b: 1 }); // b: 1 a: 1,2,3 c: null
       inserted += 3;
-      checkElementsInIndex(inserted); // 1, 2, 3 :: 1
+      insertedB += 3;
+      checkElementsInIndex(inserted);
 
       col.save({ a: [1, 2, 3, 3, 2, 1], b: 1, c: 1 });
       inserted += 3;
+      insertedB += 3;
       checkElementsInIndex(inserted); // 1, 2, 3 :: 1 :: 1
 
-      col.save({a: [null, "a", "b", "c", "b", "a", null] });
-      checkElementsInIndex(inserted); // 1, 2, 3 :: 1
-
-      col.save({_key: "null1", a: [null, "a", "b", "c", "b", "a", null], b: 1 });
+      col.save({_key: "null1", a: [null, "a", "b", "c", "b", "a", null] });
       inserted += 4;
+      checkElementsInIndex(inserted); // b: null a: "a", "b", "c", null c:null
+
+      col.save({_key: "null2", a: [null, "a", "b", "c", "b", "a", null], b: 1 });
+      inserted += 4;
+      insertedB += 4;
       checkElementsInIndex(inserted);
 
-      col.save({_key: "null2", a: [null, "a", "b", "c", "b", "a", null], b: 1, c: 1});
+      col.save({_key: "null3", a: [null, "a", "b", "c", "b", "a", null], b: 1, c: 1});
       inserted += 4;
+      insertedB += 4;
       checkElementsInIndex(inserted);
 
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] && 1 == x.b SORT x._key RETURN x._key`;
       var actual = AQL_EXECUTE(query, { tag : null }).json;
       // We expect that we can only find the Array that has stored exactly the null value
       assertEqual(actual.length, 2);
-      assertEqual(actual[0], "null1");
-      assertEqual(actual[1], "null2");
+      assertEqual(actual[0], "null2");
+      assertEqual(actual[1], "null3");
 
-      const query2 = `FOR x IN ${cName} FILTER 1 == x.b SORT x._key RETURN x._key`;
+      const query2 = `FOR x IN ${cName} FILTER 1 == x.b RETURN x._key`;
       actual = AQL_EXECUTE(query2).json;
-      assertEqual(actual.length, inserted);
+      assertEqual(actual.length, insertedB);
+      const query3 = `FOR x IN ${cName} FILTER null == x.b RETURN x._key`;
+      actual = AQL_EXECUTE(query3).json;
+      assertEqual(actual.length, inserted - insertedB);
     },
 
 

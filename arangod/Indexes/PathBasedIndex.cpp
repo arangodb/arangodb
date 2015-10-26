@@ -68,11 +68,13 @@ PathBasedIndex::PathBasedIndex (TRI_idx_iid_t iid,
                                 TRI_document_collection_t* collection,
                                 std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
                                 bool unique,
-                                bool sparse) 
+                                bool sparse,
+                                bool allowPartialIndex) 
   : Index(iid, collection, fields, unique, sparse),
     _shaper(_collection->getShaper()),
     _paths(fillPidPaths()),
-    _useExpansion(false) {
+    _useExpansion(false),
+    _allowPartialIndex(allowPartialIndex) {
 
   TRI_ASSERT(! fields.empty());
 
@@ -95,7 +97,8 @@ PathBasedIndex::PathBasedIndex (TRI_json_t const* json)
   : Index(json),
     _shaper(nullptr),
     _paths(),
-    _useExpansion(false) {
+    _useExpansion(false),
+    _allowPartialIndex(triagens::basics::JsonHelper::getBooleanValue(json, "allowPartialIndex", false)) {
 
   TRI_ASSERT(! _fields.empty());
 
@@ -188,7 +191,7 @@ int PathBasedIndex::fillElement (std::vector<TRI_index_element_t*>& elements,
     // other path for handling array elements, too
     std::unordered_set<std::vector<TRI_shaped_json_t>> toInsert;
 
-    buildIndexValues(&shapedJson, &shapedJson, 0, 0, toInsert, shapes);
+    buildIndexValues(&shapedJson, &shapedJson, 0, 0, toInsert, shapes, false);
 
     if (! toInsert.empty()) {
       char const* ptr = document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -281,99 +284,134 @@ void PathBasedIndex::buildIndexValues (TRI_shaped_json_t const* documentShape,
                                        size_t subShapeLevel,
                                        size_t level, 
                                        std::unordered_set<std::vector<TRI_shaped_json_t>>& toInsert,
-                                       std::vector<TRI_shaped_json_t>& shapes) {
+                                       std::vector<TRI_shaped_json_t>& shapes,
+                                       bool insertIllegals) {
   TRI_ASSERT(level < _paths.size());
   TRI_shaped_json_t currentShape = *subShape;
   TRI_shape_t const* shape = nullptr;
+  if (insertIllegals) {
+    TRI_ASSERT(_allowPartialIndex);
+    currentShape._sid = BasicShapes::TRI_SHAPE_SID_ILLEGAL;
+    currentShape._data.data = nullptr;
+    currentShape._data.length = 0;
+  }
+  else {
+    size_t const n = _paths[level].size();
+    size_t i = subShapeLevel;
 
-  size_t const n = _paths[level].size();
-  size_t i = subShapeLevel;
+    while (i < n) {
+      TRI_shaped_json_t shapedJson;
+      TRI_shape_pid_t pid = _paths[level][i].first;
 
-  while (i < n) {
-    TRI_shaped_json_t shapedJson;
-    TRI_shape_pid_t pid = _paths[level][i].first;
+      bool check = _shaper->extractShapedJson(subShape, 0, pid, &shapedJson, &shape);
 
-    bool check = _shaper->extractShapedJson(subShape, 0, pid, &shapedJson, &shape);
+      bool expand = _paths[level][i].second;
 
-    if (! check || shape == nullptr || shapedJson._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
-      // attribute not, found
-      if (_sparse) {
-        // If sparse we do not have to index
-        return;
-      }
-      
-      // If not sparse we insert null here
-      currentShape._sid = BasicShapes::TRI_SHAPE_SID_NULL;
-      currentShape._data.data = nullptr;
-      currentShape._data.length = 0;
-      break;
-    }
-
-    bool expand = _paths[level][i].second;
-
-    if (expand) {
-      size_t len = 0;
-      TRI_shaped_json_t shapedArrayElement;
-      bool ok = false;
-      switch (shape->_type) {
-        case TRI_SHAPE_LIST:
-          len = TRI_LengthListShapedJson((const TRI_list_shape_t*) shape, &shapedJson);
-          for (size_t index = 0; index < len; ++index) {
-            ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
-            if (ok) {
-              buildIndexValues(documentShape, &shapedArrayElement, i + 1, level, toInsert, shapes);
-            }
-            else {
-              TRI_ASSERT(false);
-            }
-          }
-          break;
-        case TRI_SHAPE_HOMOGENEOUS_LIST:
-          len = TRI_LengthHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, &shapedJson);
-          for (size_t index = 0; index < len; ++index) {
-            ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
-            if (ok) {
-              buildIndexValues(documentShape, &shapedArrayElement, i + 1, level, toInsert, shapes);
-            }
-            else {
-              TRI_ASSERT(false);
-            }
-          }
-          break;
-        case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-          len = TRI_LengthHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, &shapedJson);
-          for (size_t index = 0; index < len; ++index) {
-            ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
-            if (ok) {
-              buildIndexValues(documentShape, &shapedArrayElement, i + 1, level, toInsert, shapes);
-            }
-            else {
-              TRI_ASSERT(false);
-            }
-          }
-          break;
-
-        default:
-          // Non Array attribute cannot be expanded
-          if (_sparse) {
-            // If sparse we do not have to index
+      if (! check || shape == nullptr || shapedJson._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
+        // attribute not, found
+        if (expand) {
+          if (level == 0) {
+            // If we expand at the first position and this is not set we cannot index anything
             return;
           }
-           
-          // If not sparse we insert null here
-          currentShape._sid = BasicShapes::TRI_SHAPE_SID_NULL;
+          if (! _allowPartialIndex) {
+            // We do not allow partial Indexing. index nothing here
+            return;
+          }
+          // We allow partial indexing. First elements are ok,
+          // last will be stored as illegal
+          // We insert ILLEGAL_SHAPES for all the following elements
+          insertIllegals = true;
+          currentShape._sid = BasicShapes::TRI_SHAPE_SID_ILLEGAL;
           currentShape._data.data = nullptr;
           currentShape._data.length = 0;
           break;
+        }
+        if (_sparse) {
+          // If sparse we do not have to index
+          return;
+        }
+        
+        // If not sparse we insert null here
+        currentShape._sid = BasicShapes::TRI_SHAPE_SID_NULL;
+        currentShape._data.data = nullptr;
+        currentShape._data.length = 0;
+        break;
       }
 
-      // Leave the while loop here, it has been walked through in recursion
-      return;
+
+      if (expand) {
+        size_t len = 0;
+        TRI_shaped_json_t shapedArrayElement;
+        bool ok = false;
+        switch (shape->_type) {
+          case TRI_SHAPE_LIST:
+            len = TRI_LengthListShapedJson((const TRI_list_shape_t*) shape, &shapedJson);
+            if (len == 0) {
+              break;
+            }
+            for (size_t index = 0; index < len; ++index) {
+              ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
+              if (ok) {
+                buildIndexValues(documentShape, &shapedArrayElement, i + 1, level, toInsert, shapes, false);
+              }
+              else {
+                TRI_ASSERT(false);
+              }
+            }
+            // Leave the while loop here, it has been walked through in recursion
+            return;
+          case TRI_SHAPE_HOMOGENEOUS_LIST:
+            len = TRI_LengthHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, &shapedJson);
+            if (len == 0) {
+              break;
+            }
+            for (size_t index = 0; index < len; ++index) {
+              ok = TRI_AtHomogeneousListShapedJson((const TRI_homogeneous_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
+              if (ok) {
+                buildIndexValues(documentShape, &shapedArrayElement, i + 1, level, toInsert, shapes, false);
+              }
+              else {
+                TRI_ASSERT(false);
+              }
+            }
+            // Leave the while loop here, it has been walked through in recursion
+            return;
+          case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
+            len = TRI_LengthHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, &shapedJson);
+            if (len == 0) {
+              break;
+            }
+            for (size_t index = 0; index < len; ++index) {
+              ok = TRI_AtHomogeneousSizedListShapedJson((const TRI_homogeneous_sized_list_shape_t*) shape, &shapedJson, index, &shapedArrayElement);
+              if (ok) {
+                buildIndexValues(documentShape, &shapedArrayElement, i + 1, level, toInsert, shapes, false);
+              }
+              else {
+                TRI_ASSERT(false);
+              }
+            }
+            // Leave the while loop here, it has been walked through in recursion
+            return;
+        }
+        // Non Array attribute or empty array cannot be expanded
+        if (_allowPartialIndex && level > 0) {
+          // If we have a partial index we can index everything up to this level
+          insertIllegals = true;
+          currentShape._sid = BasicShapes::TRI_SHAPE_SID_ILLEGAL;
+          currentShape._data.data = nullptr;
+          currentShape._data.length = 0;
+          // We have to leave the loop here.
+          break;
+        }
+        // We cannot index anything. Return here
+        return;
+      }
+      else {
+        currentShape = shapedJson;
+      }
+      ++i;
     }
-    else {
-      currentShape = shapedJson;
-    }
-    ++i;
   }
 
   shapes.emplace_back(currentShape);
@@ -384,7 +422,7 @@ void PathBasedIndex::buildIndexValues (TRI_shaped_json_t const* documentShape,
     return;
   }
 
-  buildIndexValues(documentShape, documentShape, 0, level + 1, toInsert, shapes);
+  buildIndexValues(documentShape, documentShape, 0, level + 1, toInsert, shapes, insertIllegals);
   shapes.pop_back();
 }
 

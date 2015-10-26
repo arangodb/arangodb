@@ -44,6 +44,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 struct BasicShapes {
+  static TRI_shape_pid_t const   TRI_SHAPE_SID_ILLEGAL;
   static TRI_shape_pid_t const   TRI_SHAPE_SID_NULL;
   static TRI_shape_pid_t const   TRI_SHAPE_SID_BOOLEAN;
   static TRI_shape_pid_t const   TRI_SHAPE_SID_NUMBER;

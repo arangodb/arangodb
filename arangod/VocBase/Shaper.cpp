@@ -43,6 +43,7 @@
 // --SECTION--                                                       BasicShapes
 // -----------------------------------------------------------------------------
 
+TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_ILLEGAL       = 0;
 TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_NULL          = 1;
 TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_BOOLEAN       = 2;
 TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_NUMBER        = 3;

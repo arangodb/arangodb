@@ -895,12 +895,12 @@ namespace std {
           return false;
         }
         if (a[i]._data.data == nullptr || b[i]._data.data == nullptr) {
-          if (a[i]._sid == b[i]._sid) {
-            // this should be a TRI_SHAPE_SID_NULL value
-            return true;
+          if (a[i]._sid != b[i]._sid) {
+            // this should be a TRI_SHAPE_SID_NULL value or TRI_SHAPE_SID_ILLEGAL
+            return false;
           }
-          // TODO FIXME
-          return false;
+          // We cannot short circuit here. Fast forward to next i
+          continue;
         }
         if (a[i]._data.length != b[i]._data.length) {
           return false;

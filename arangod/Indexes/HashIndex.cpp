@@ -279,7 +279,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
                       std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
                       bool unique,
                       bool sparse) 
-  : PathBasedIndex(iid, collection, fields, unique, sparse),
+  : PathBasedIndex(iid, collection, fields, unique, sparse, false),
     _uniqueArray(nullptr) {
 
   uint32_t indexBuckets = 1;
@@ -395,7 +395,8 @@ triagens::basics::Json HashIndex::toJson (TRI_memory_zone_t* zone,
   auto json = Index::toJson(zone, withFigures);
 
   json("unique", triagens::basics::Json(zone, _unique))
-      ("sparse", triagens::basics::Json(zone, _sparse));
+      ("sparse", triagens::basics::Json(zone, _sparse))
+      ("allowPartialIndex", triagens::basics::Json(zone, _allowPartialIndex));
 
   return json;
 }
