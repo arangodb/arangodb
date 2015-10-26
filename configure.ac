@@ -593,7 +593,7 @@ AC_MSG_NOTICE([-----------------------------------------------------------------
 CONSOLE_CPPFLAGS=""
 
 AC_ARG_ENABLE(console,
-  AS_HELP_STRING([--enable-console], [enable console support (default: readline)]),
+  AS_HELP_STRING([--enable-console], [enable console support (default: linenoise)]),
   tr_CONSOLE="$enableval",
   tr_CONSOLE="linenoise"
 )
