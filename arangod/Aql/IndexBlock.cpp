@@ -172,8 +172,8 @@ int IndexBlock::initialize () {
 
     for (auto const& v : inVars) {
       inVarsCur.emplace_back(v);
-      auto it = getPlanNode()->getRegisterPlan()->varInfo.find(v->id);
-      TRI_ASSERT(it != getPlanNode()->getRegisterPlan()->varInfo.end());
+      auto it = en->getRegisterPlan()->varInfo.find(v->id);
+      TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
       inRegsCur.emplace_back(it->second.registerId);
     }
@@ -184,7 +184,7 @@ int IndexBlock::initialize () {
     return TRI_ERROR_NO_ERROR;
   }
   
-  auto outVariable = static_cast<IndexNode const*>(getPlanNode())->outVariable();
+  auto outVariable = en->outVariable();
 
   for (size_t i = 0; i < _condition->numMembers(); ++i) {
     auto andCond = _condition->getMemberUnchecked(i);
