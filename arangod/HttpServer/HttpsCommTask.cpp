@@ -32,10 +32,10 @@
 
 #include <openssl/err.h>
 
-#include "Basics/StringBuffer.h"
 #include "Basics/logging.h"
 #include "Basics/socket-utils.h"
 #include "Basics/ssl-helper.h"
+#include "Basics/StringBuffer.h"
 #include "HttpServer/HttpsServer.h"
 #include "Scheduler/Scheduler.h"
 
@@ -144,6 +144,8 @@ bool HttpsCommTask::handleEvent (EventToken token,
     if (! result) {
       // status is somehow invalid. we got here even though no accept was ever successful
       _clientClosed = true;
+      _server->handleCommunicationFailure(this);
+      _scheduler->destroyTask(this);
     }
 
     return result;
@@ -241,7 +243,7 @@ bool HttpsCommTask::trySSLAccept () {
   }
 
   // shutdown of connection
-  else if (res == 0) {
+  if (res == 0) {
     LOG_DEBUG("SSL_accept failed: %s", triagens::basics::lastSSLError().c_str());
 
     shutdownSsl(false);
@@ -249,22 +251,19 @@ bool HttpsCommTask::trySSLAccept () {
   }
 
   // maybe we need more data
-  else {
-    int err = SSL_get_error(_ssl, res);
+  int err = SSL_get_error(_ssl, res);
 
-    if (err == SSL_ERROR_WANT_READ) {
-      return true;
-    }
-    else if (err == SSL_ERROR_WANT_WRITE) {
-      return true;
-    }
-    else {
-      LOG_TRACE("error in SSL handshake: %s", triagens::basics::lastSSLError().c_str());
-
-      shutdownSsl(false);
-      return false;
-    }
+  if (err == SSL_ERROR_WANT_READ) {
+    return true;
   }
+  else if (err == SSL_ERROR_WANT_WRITE) {
+    return true;
+  }
+      
+  LOG_TRACE("error in SSL handshake: %s", triagens::basics::lastSSLError().c_str());
+
+  shutdownSsl(false);
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,7 +299,7 @@ again:
         return false;
 
       case SSL_ERROR_WANT_READ:
-        // we must retry with the EXCAT same parameters later
+        // we must retry with the EXACT same parameters later
         return true;
 
       case SSL_ERROR_WANT_WRITE:
@@ -368,6 +367,7 @@ bool HttpsCommTask::trySSLWrite () {
 
   if (0 < len) {
     ERR_clear_error();
+
     nr = SSL_write(_ssl, _writeBuffer->begin() + _writeLength, (int) len);
 
     if (nr <= 0) {
@@ -383,8 +383,8 @@ bool HttpsCommTask::trySSLWrite () {
           return false;
 
         case SSL_ERROR_WANT_CONNECT:
-            LOG_DEBUG("received SSL_ERROR_WANT_CONNECT");
-            break;
+          LOG_DEBUG("received SSL_ERROR_WANT_CONNECT");
+          break;
 
         case SSL_ERROR_WANT_ACCEPT:
           LOG_DEBUG("received SSL_ERROR_WANT_ACCEPT");
@@ -430,7 +430,8 @@ bool HttpsCommTask::trySSLWrite () {
 
     completedWriteBuffer();
   }
-  else {
+  else if (nr > 0) {
+    // nr might have been negative here
     _writeLength += nr;
   }
 
