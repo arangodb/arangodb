@@ -882,6 +882,12 @@ int SkiplistIndex::insert (TRI_doc_mptr_t const* doc,
   for (size_t i = 0; i < count; ++i) {
     res = _skiplistIndex->insert(elements[i]);
 
+    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
+        ! _unique) {
+      // We ignore unique_constraint violated if we are not unique
+      res = TRI_ERROR_NO_ERROR;
+    }
+
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_index_element_t::free(elements[i]);
       // Note: this element is freed already
