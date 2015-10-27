@@ -1,6 +1,9 @@
 v2.7.1 (XXXX-XX-XX)
 -------------------
 
+* fixed potential segfault in AQL `NEIGHBOURS` function implementation when C++ function
+  variant was used and collection names were passed as strings
+
 * removed duplicate target for some frontend JavaScript files from the Makefile
 
 * make AQL function `MERGE()` work on a single array parameter, too.
