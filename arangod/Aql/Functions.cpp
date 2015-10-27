@@ -1765,12 +1765,10 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
   return AqlValue(jr);
 }
 
-// TODO DELETE THESE HELPER FUNCTIONS.
-
-static inline Json TRI_ExpandShapedJson (VocShaper* shaper,
-                                         CollectionNameResolver const* resolver,
-                                         TRI_voc_cid_t const& cid,
-                                         TRI_doc_mptr_t const* mptr) {
+static inline Json ExpandShapedJson (VocShaper* shaper,
+                                     CollectionNameResolver const* resolver,
+                                     TRI_voc_cid_t const& cid,
+                                     TRI_doc_mptr_t const* mptr) {
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
 
   TRI_shaped_json_t shaped;
@@ -1806,8 +1804,8 @@ static inline Json TRI_ExpandShapedJson (VocShaper* shaper,
 static Json VertexIdToJson (triagens::arango::AqlTransaction* trx,
                             CollectionNameResolver const* resolver,
                             VertexId const& id) {
-  TRI_doc_mptr_copy_t mptr;
   auto collection = trx->trxCollection(id.cid);
+
   if (collection == nullptr) {
     int res = TRI_AddCollectionTransaction(trx->getInternals(), 
                                            id.cid,
@@ -1818,19 +1816,23 @@ static Json VertexIdToJson (triagens::arango::AqlTransaction* trx,
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
+
     TRI_EnsureCollectionsTransaction(trx->getInternals());
     collection = trx->trxCollection(id.cid);
+
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection is a nullptr");
     }
   }
+  
+  TRI_doc_mptr_copy_t mptr;
   int res = trx->readSingle(collection, &mptr, id.key); 
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return TRI_ExpandShapedJson(
+  return ExpandShapedJson(
     collection->_collection->_collection->getShaper(),
     resolver,
     id.cid,
@@ -1980,7 +1982,6 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
   }
 
-
   bool includeData = false;
 
   if (n > 5) {
@@ -1998,14 +1999,34 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     }
   }
 
-  std::unordered_set<VertexId> neighbors;
-
-
   TRI_voc_cid_t eCid = resolver->getCollectionId(eColName);
 
+  {
+    // ensure the collection is loaded
+    auto collection = trx->trxCollection(eCid);
+
+    if (collection == nullptr) {
+      int res = TRI_AddCollectionTransaction(trx->getInternals(), 
+                                             eCid,
+                                             TRI_TRANSACTION_READ,
+                                             trx->nestingLevel(),
+                                             true,
+                                             true);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+
+      TRI_EnsureCollectionsTransaction(trx->getInternals());
+      collection = trx->trxCollection(eCid);
+
+      if (collection == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection is a nullptr");
+      }
+    }
+  }
 
   // Function to return constant distance
-  auto wc = [](TRI_doc_mptr_copy_t& edge) -> double { return 1; };
+  auto wc = [](TRI_doc_mptr_copy_t&) -> double { return 1; };
 
   std::unique_ptr<EdgeCollectionInfo> eci(new EdgeCollectionInfo(
     eCid,
@@ -2016,7 +2037,6 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   
-
   if (n > 4) {
     auto edgeExamples = ExtractFunctionParameter(trx, parameters, 4, false);
     if (! (edgeExamples.isArray() && edgeExamples.size() == 0) ) {
@@ -2039,6 +2059,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  std::unordered_set<VertexId> neighbors;
   TRI_RunNeighborsSearch(
     edgeCollectionInfos,
     opts,
