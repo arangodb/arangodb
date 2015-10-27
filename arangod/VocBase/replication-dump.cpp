@@ -1623,6 +1623,11 @@ int TRI_DetermineOpenTransactionsReplication (TRI_replication_dump_t* dump,
           // LOG_INFO("marker too new. aborting logfile %d", (int) i);
           break;
         }
+        
+        // note the last tick we processed
+        if (foundTick > lastFoundTick) {
+          lastFoundTick = foundTick;
+        }
 
         if (! IsTransactionWalMarker(dump, marker)) {
           continue;
@@ -1646,10 +1651,6 @@ int TRI_DetermineOpenTransactionsReplication (TRI_replication_dump_t* dump,
           // LOG_INFO("found abort: %llu", m->_transactionId);
         }
 
-        // note the last tick we processed
-        if (foundTick > lastFoundTick) {
-          lastFoundTick = foundTick;
-        }
       }
     }
 
