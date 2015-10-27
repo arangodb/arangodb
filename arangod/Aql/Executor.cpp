@@ -200,8 +200,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, true, false, true, true) },
 
   // geo functions
-  { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", true, false, true, false, true) },
-  { "WITHIN",                      Function("WITHIN",                      "AQL_WITHIN", "h,n,n,n|s", true, false, true, false, true) },
+  { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", true, false, true, false, true, &Functions::Near, NotInCluster) },
+  { "WITHIN",                      Function("WITHIN",                      "AQL_WITHIN", "h,n,n,n|s", true, false, true, false, true, &Functions::Within, NotInCluster) },
   { "WITHIN_RECTANGLE",            Function("WITHIN_RECTANGLE",            "AQL_WITHIN_RECTANGLE", "h,d,d,d,d", true, false, true, false, true) },
   { "IS_IN_POLYGON",               Function("IS_IN_POLYGON",               "AQL_IS_IN_POLYGON", "l,ln|nb", true, true, false, true, true) },
 
@@ -348,15 +348,8 @@ V8Expression* Executor::generateExpression (AstNode const* node) {
   // data and will not return any special JavaScript types such as Date, RegExp or
   // Function
   // as we know that all built-in AQL functions are simple but do not know anything
-  // about user-defined functions, we use the following approximation:
-  // - all user-defined functions are marked as potentially throwing
-  // - some of the internal functions are marked as potentially throwing
-  // - if an expression is marked as potentially throwing, it may contain a user-
-  //   defined function (which may be non-simple) and is thus considered non-simple
-  // - if an expression is marked as not throwing, it will not contain a user-
-  //   defined function but only internal AQL functions (which are simple) so the
-  //   whole expression is considered simple
-  bool isSimple = (! node->canThrow());
+  // about user-defined functions, so we expect them to be non-simple
+  bool const isSimple = (! node->callsUserDefinedFunction());
 
   return new V8Expression(isolate, v8::Handle<v8::Function>::Cast(func), constantValues, isSimple);
 }

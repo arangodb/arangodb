@@ -37,6 +37,8 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
+#include "Indexes/Index.h"
+#include "Indexes/GeoIndex2.h"
 #include "Rest/SslInterface.h"
 #include "V8Server/V8Traverser.h"
 #include "VocBase/KeyGenerator.h"
@@ -2067,6 +2069,343 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   );
 
   return VertexIdsToAqlValue(trx, resolver, neighbors, includeData);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function NEAR
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Near (triagens::aql::Query* query,
+                          triagens::arango::AqlTransaction* trx,
+                          FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 3 || n > 5) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEAR", (int) 3, (int) 5);
+  }
+
+  auto resolver = trx->resolver();
+
+  Json collectionJson = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! collectionJson.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  }
+
+  std::string colName = basics::JsonHelper::getStringValue(collectionJson.json(), "");
+
+  Json latitude  = ExtractFunctionParameter(trx, parameters, 1, false);
+  Json longitude = ExtractFunctionParameter(trx, parameters, 2, false);
+
+  if (! latitude.isNumber() ||
+      ! longitude.isNumber()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  }
+
+  // extract limit 
+  int64_t limitValue = 100;
+
+  if (n > 3) { 
+    Json limit = ExtractFunctionParameter(trx, parameters, 3, false);
+
+    if (limit.isNumber()) {
+      limitValue = static_cast<int64_t>(limit.json()->_value._number);
+    }
+    else if (! limit.isNull()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    }
+  }
+
+  
+  std::string attributeName;
+  if (n > 4) {
+    // have a distance attribute
+    Json distanceAttribute = ExtractFunctionParameter(trx, parameters, 4, false);
+
+    if (! distanceAttribute.isNull() && ! distanceAttribute.isString()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    }
+
+    if (distanceAttribute.isString()) {
+      attributeName = std::string(distanceAttribute.json()->_value._string.data);
+    } 
+  }
+
+  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  auto collection = trx->trxCollection(cid);
+
+  // ensure the collection is loaded
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), 
+                                           cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(),
+                                           true,
+                                           true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+  }
+
+  auto document = trx->documentCollection(cid);
+
+  if (document == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  triagens::arango::Index* index = nullptr;
+
+  for (auto const& idx : document->allIndexes()) {
+    if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      index = idx;
+      break;
+    } 
+  }
+
+  if (index == nullptr) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING, colName.c_str());
+  }
+  
+  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(index)->nearQuery(
+    latitude.json()->_value._number, 
+    longitude.json()->_value._number, 
+    limitValue
+  );
+
+  if (cors == nullptr) {
+    Json array(Json::Array, 0);
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+  }
+
+  size_t const nCoords = cors->length;
+
+  if (nCoords == 0) {
+    GeoIndex_CoordinatesFree(cors);
+
+    Json array(Json::Array, 0);
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+  }
+
+  struct geo_coordinate_distance_t {
+    geo_coordinate_distance_t (double distance, TRI_doc_mptr_t const* mptr)
+      : _distance(distance),
+        _mptr(mptr) {
+    }
+
+    double                _distance;
+    TRI_doc_mptr_t const* _mptr;
+  };
+
+  std::vector<geo_coordinate_distance_t> distances;
+  try {
+    distances.reserve(nCoords);
+ 
+    for (size_t i = 0; i < nCoords; ++i) {
+      distances.emplace_back(geo_coordinate_distance_t(cors->distances[i], static_cast<TRI_doc_mptr_t const*>(cors->coordinates[i].data)));
+    }
+  }
+  catch (...) {
+    GeoIndex_CoordinatesFree(cors);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+    
+  GeoIndex_CoordinatesFree(cors);
+
+  // sort result by distance
+  std::sort(distances.begin(), distances.end(), [] (geo_coordinate_distance_t const& left, geo_coordinate_distance_t const& right) {
+    return left._distance < right._distance;
+  });
+  
+  auto shaper = collection->_collection->_collection->getShaper();
+  Json array(Json::Array, nCoords);
+
+  for (auto& it : distances) {
+    auto j = ExpandShapedJson(
+      shaper,
+      resolver,
+      cid,
+      it._mptr
+    );
+
+    if (! attributeName.empty()) {
+      j.unset(attributeName);
+      j.set(attributeName, Json(it._distance));  
+    }
+
+    array.add(j);
+  }
+
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function WITHIN
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Within (triagens::aql::Query* query,
+                            triagens::arango::AqlTransaction* trx,
+                            FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 4 || n > 5) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "WITHIN", (int) 4, (int) 5);
+  }
+
+  auto resolver = trx->resolver();
+
+  Json collectionJson = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! collectionJson.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+  }
+
+  std::string colName = basics::JsonHelper::getStringValue(collectionJson.json(), "");
+
+  Json latitude  = ExtractFunctionParameter(trx, parameters, 1, false);
+  Json longitude = ExtractFunctionParameter(trx, parameters, 2, false);
+  Json radius    = ExtractFunctionParameter(trx, parameters, 3, false);
+
+  if (! latitude.isNumber() ||
+      ! longitude.isNumber() ||
+      ! radius.isNumber()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+  }
+  
+  std::string attributeName;
+  if (n > 4) {
+    // have a distance attribute
+    Json distanceAttribute = ExtractFunctionParameter(trx, parameters, 4, false);
+
+    if (! distanceAttribute.isNull() && ! distanceAttribute.isString()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+    }
+
+    if (distanceAttribute.isString()) {
+      attributeName = std::string(distanceAttribute.json()->_value._string.data);
+    } 
+  } 
+
+  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  auto collection = trx->trxCollection(cid);
+
+  // ensure the collection is loaded
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), 
+                                           cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(),
+                                           true,
+                                           true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+  }
+
+  auto document = trx->documentCollection(cid);
+    
+  if (document == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  triagens::arango::Index* index = nullptr;
+
+  for (auto const& idx : document->allIndexes()) {
+    if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      index = idx;
+      break;
+    } 
+  }
+
+  if (index == nullptr) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING, colName.c_str());
+  }
+
+  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(index)->withinQuery(
+    latitude.json()->_value._number, 
+    longitude.json()->_value._number, 
+    radius.json()->_value._number
+  );
+
+  if (cors == nullptr) {
+    Json array(Json::Array, 0);
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+  }
+
+  size_t const nCoords = cors->length;
+
+  if (nCoords == 0) {
+    GeoIndex_CoordinatesFree(cors);
+
+    Json array(Json::Array, 0);
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+  }
+
+  struct geo_coordinate_distance_t {
+    geo_coordinate_distance_t (double distance, TRI_doc_mptr_t const* mptr)
+      : _distance(distance),
+        _mptr(mptr) {
+    }
+
+    double                _distance;
+    TRI_doc_mptr_t const* _mptr;
+  };
+
+  std::vector<geo_coordinate_distance_t> distances;
+  try {
+    distances.reserve(nCoords);
+ 
+    for (size_t i = 0; i < nCoords; ++i) {
+      distances.emplace_back(geo_coordinate_distance_t(cors->distances[i], static_cast<TRI_doc_mptr_t const*>(cors->coordinates[i].data)));
+    }
+  }
+  catch (...) {
+    GeoIndex_CoordinatesFree(cors);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+    
+  GeoIndex_CoordinatesFree(cors);
+
+  // sort result by distance
+  std::sort(distances.begin(), distances.end(), [] (geo_coordinate_distance_t const& left, geo_coordinate_distance_t const& right) {
+    return left._distance < right._distance;
+  });
+  
+  auto shaper = collection->_collection->_collection->getShaper();
+  Json array(Json::Array, nCoords);
+
+  for (auto& it : distances) {
+    auto j = ExpandShapedJson(
+      shaper,
+      resolver,
+      cid,
+      it._mptr
+    );
+
+    if (! attributeName.empty()) {
+      j.unset(attributeName);
+      j.set(attributeName, Json(it._distance));  
+    }
+
+    array.add(j);
+  }
+
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
 }
 
 // -----------------------------------------------------------------------------

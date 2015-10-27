@@ -1057,7 +1057,7 @@ function GeoShapedJsonSuite () {
         assertTrue(doc.hasOwnProperty("lat"));
         assertTrue(doc.hasOwnProperty("lon"));
         assertTrue(doc.hasOwnProperty("distance"));
-        assertTrue(doc.distance > 0);
+        assertTrue(doc.distance >= 0);
       }
     }
 
