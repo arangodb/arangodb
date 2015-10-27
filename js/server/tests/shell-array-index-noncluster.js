@@ -194,6 +194,7 @@ function arrayHashIndexSuite () {
 
     testInsertAndReadArrayCombinedSparse : function () {
       var idx = collection.ensureHashIndex("a[*]", "b[*]", {sparse: true}).id;
+      // Sparse does not have any effect on array attributes.
 
       var id = collection.save({a: [1, 2], b: ["a", "b"]})._id;
 
@@ -226,13 +227,13 @@ function arrayHashIndexSuite () {
       assertEqual(res, ids);
 
       res = collection.BY_EXAMPLE_HASH(idx, {a: "duplicate", b: null}, 0, null).documents;
-      assertEqual(res.length, 0);
+      assertEqual(res.length, 3);
 
       res = collection.BY_EXAMPLE_HASH(idx, {a: null, b: "duplicate"}, 0, null).documents;
-      assertEqual(res.length, 0);
+      assertEqual(res.length, 3);
 
       res = collection.BY_EXAMPLE_HASH(idx, {a: null, b: null}, 0, null).documents;
-      assertEqual(res.length, 0);
+      assertEqual(res.length, 3);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -427,9 +428,10 @@ function arrayHashIndexSuite () {
       assertEqual(res.length, 1);
       assertEqual(res[0]._id, id7);
 
-      // But not like this
+      // And this also
       res = collection.BY_EXAMPLE_HASH(idx, {a: null, b: 1}, 0, null).documents;
-      assertEqual(res.length, 0);
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id7);
     },
 
     /* TODO Decission required here
@@ -711,9 +713,10 @@ function arraySkiplistIndexSuite () {
       assertEqual(res.length, 1);
       assertEqual(res[0]._id, id7);
 
-      // But not like this
+      // And this also
       res = collection.BY_EXAMPLE_SKIPLIST(idx, {a: null, b: 1}, 0, null).documents;
-      assertEqual(res.length, 0);
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id7);
     }
 
   };
