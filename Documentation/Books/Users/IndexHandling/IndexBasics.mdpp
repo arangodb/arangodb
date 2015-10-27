@@ -307,6 +307,10 @@ The following query will then use the array index:
       FILTER 'foobar' IN doc.tags[*].name
       RETURN doc
 
+If you store a document having the array which does contain elements not having
+the subattributes this document will also be indexed with the value `null`, which
+in ArangoDB is equal to attribute not existing.
+
 ArangoDB supports creating array indexes with a single <i>[\*]</i> operator per index 
 attribute. For example, creating an index as follows is not supported:
 
