@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
+var isCluster = require("org/arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -442,15 +443,17 @@ function arrayIndexNonArraySuite () {
     var allIndexes = col.getIndexes(true);
     assertEqual(allIndexes.length, 2, "We have more than one index!");
     var idx = allIndexes[1];
-    switch (idx.type) {
-      case "hash":
-        assertEqual(idx.figures.totalUsed, count);
-        break;
-      case "skiplist":
-        assertEqual(idx.figures.nrUsed, count);
-        break;
-      default:
-        assertTrue(false, "Unexpected index type");
+    if (! isCluster) {
+      switch (idx.type) {
+        case "hash":
+          assertEqual(idx.figures.totalUsed, count);
+          break;
+        case "skiplist":
+          assertEqual(idx.figures.nrUsed, count);
+          break;
+        default:
+          assertTrue(false, "Unexpected index type");
+      }
     }
   };
 
