@@ -1958,7 +1958,6 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
                                              eCid,
                                              TRI_TRANSACTION_READ,
                                              trx->nestingLevel(),
-                                             true,
                                              true);
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
