@@ -148,12 +148,14 @@ bool LinenoiseShell::writeHistory () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string LinenoiseShell::getLine(const std::string& prompt, bool& eof) {
+std::string LinenoiseShell::getLine (std::string const& prompt, bool& eof) {
   char* line = linenoise(prompt.c_str());
 
   if (line != nullptr) {
     eof = false;
-    return line;
+    std::string const stringValue(line);
+    ::free(line);
+    return stringValue;
   }
 
   eof = true;
