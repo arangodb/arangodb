@@ -518,7 +518,7 @@ std::pair<bool, bool> Condition::findIndexForAndNode (size_t position,
       }
     }
 
-    // std::cout << "INDEX: " << idx << ", FILTER COST: " << filterCost << ", SORT COST: " << sortCost << "\n";
+    // std::cout << "INDEX: " << idx << ", SUPPORTS FILTER: " << supportsFilter << ", SUPPORTS SORT: " << supportsSort << ", FILTER COST: " << filterCost << ", SORT COST: " << sortCost << "\n";
 
     if (! supportsFilter && ! supportsSort) {
       continue;
