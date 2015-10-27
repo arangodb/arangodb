@@ -48,11 +48,18 @@
 * https://coreos.com/using-coreos/etcd/
 * [Apache 2 License](https://github.com/coreos/etcd/blob/master/LICENSE)
 
+### autotools
+
+* http://www.gnu.org/software/autoconf/autoconf.html
+* https://www.gnu.org/software/automake/
+* only used to generate code, not part of the distribution
+* parts generated are free as-is license
+
 ### Bison
 
 * https://www.gnu.org/software/bison/
 * only used to generate code, not part of the distribution
-* parts used see https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20
+* parts generated use see https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20
 
 ### Flex
 
