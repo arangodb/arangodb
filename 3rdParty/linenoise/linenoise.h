@@ -1,12 +1,14 @@
-/* linenoise.h -- guerrilla line editing library against the idea that a
- * line editing lib needs to be 20,000 lines of C code.
+/* linenoise.h -- VERSION 1.0
+ *
+ * Guerrilla line editing library against the idea that a line editing lib
+ * needs to be 20,000 lines of C code.
  *
  * See linenoise.c for more information.
  *
  * ------------------------------------------------------------------------
  *
- * Copyright (c) 2010, Salvatore Sanfilippo <antirez at gmail dot com>
- * Copyright (c) 2010, Pieter Noordhuis <pcnoordhuis at gmail dot com>
+ * Copyright (c) 2010-2014, Salvatore Sanfilippo <antirez at gmail dot com>
+ * Copyright (c) 2010-2013, Pieter Noordhuis <pcnoordhuis at gmail dot com>
  *
  * All rights reserved.
  *
@@ -37,26 +39,30 @@
 #ifndef __LINENOISE_H
 #define __LINENOISE_H
 
-#ifndef NO_COMPLETION
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct linenoiseCompletions {
   size_t len;
   char **cvec;
-  int multiLine;
 } linenoiseCompletions;
 
 typedef void(linenoiseCompletionCallback)(const char *, linenoiseCompletions *);
 void linenoiseSetCompletionCallback(linenoiseCompletionCallback *);
 void linenoiseAddCompletion(linenoiseCompletions *, const char *);
-#endif
 
 char *linenoise(const char *prompt);
 int linenoiseHistoryAdd(const char *line);
 int linenoiseHistorySetMaxLen(int len);
-int linenoiseHistoryGetMaxLen(void);
 int linenoiseHistorySave(const char *filename);
 int linenoiseHistoryLoad(const char *filename);
-void linenoiseHistoryFree(void);
-char **linenoiseHistory(int *len);
-int linenoiseColumns(void);
+void linenoiseClearScreen(void);
+void linenoiseSetMultiLine(int ml);
+void linenoisePrintKeyCodes(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __LINENOISE_H */

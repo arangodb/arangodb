@@ -63,8 +63,6 @@ static void LinenoiseCompletionGenerator (char const* text,
       linenoiseAddCompletion(lc, it.c_str());
     }
   }
-
-  lc->multiLine = 1;
 }
 
 // -----------------------------------------------------------------------------
@@ -83,6 +81,7 @@ LinenoiseShell::LinenoiseShell (std::string const& history,
                                 Completer* completer)
   : ShellBase(history, completer) {
   COMPLETER = completer;
+  linenoiseSetMultiLine(1);
   linenoiseSetCompletionCallback(LinenoiseCompletionGenerator);
 }
 
