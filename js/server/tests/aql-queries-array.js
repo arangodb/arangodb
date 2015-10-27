@@ -588,6 +588,85 @@ function arrayIndexNonArraySuite () {
       assertEqual(actual[0], "null2");
     },
 
+    testHashIndexMultipleAttributeMiddleArraySub : function () {
+      var inserted = 0;
+      col.ensureHashIndex("b", "a[*].d", "c");
+      col.save({}); // a is not set, no indexing
+      checkElementsInIndex(inserted);
+      col.save({b: 1}); // a is not set, no indexing
+      checkElementsInIndex(inserted);
+      col.save({b: 1, c: 1}); // a is not set, no indexing
+      checkElementsInIndex(inserted);
+      col.save({ a: "This is no array" }); // a is illegal, no indexing
+      checkElementsInIndex(inserted);
+      col.save({ a: "This is no array", b: 1 }); // no indexing
+      checkElementsInIndex(inserted);
+      col.save({ a: "This is no array", b: 1, c: 1}); // no indexing
+      checkElementsInIndex(inserted);
+      col.save({ a: {b: [42] } }); // no indexing
+      checkElementsInIndex(inserted);
+      col.save({ a: {b: [42] }, b: 1 }); // no indexing
+      checkElementsInIndex(inserted);
+      col.save({ a: {b: [42] }, b: 1, c: 1 }); // no indexing
+      checkElementsInIndex(inserted);
+      col.save({ a: [] }); // Empty Array. no indexing
+      checkElementsInIndex(inserted);
+      col.save({ a: [], b: 1 }); // Empty Array. no indexing
+      checkElementsInIndex(inserted);
+      col.save({ a: [], b: 1, c: 1 });  // Empty Array. no indexing
+      checkElementsInIndex(inserted);
+
+      col.save({ a: [1, 2, 3, 3, 2, 1] }); // a does not have any nested value. Handled equal to a: []
+      checkElementsInIndex(inserted);
+
+      col.save({ a: [1, 2, 3, 3, 2, 1], b: 1 }); // a does not have any nested value. Handled equal to a: []
+      checkElementsInIndex(inserted);
+
+      col.save({ a: [1, 2, 3, 3, 2, 1], b: 1, c: 1 }); // a does not have any nested value. Handled equal to a: []
+      checkElementsInIndex(inserted);
+
+      col.save({ a: [{d: 1}, {d: 2}, {d: 3}, {d: 3}, {d: 2}, {d: 1}] });
+      inserted += 3; // We index b: null and 3 values for a[*].d
+      checkElementsInIndex(inserted);
+
+      col.save({ a: [{d: 1}, {d: 2}, {d: 3}, {d: 3}, {d: 2}, {d: 1}], b: 1 });
+      inserted += 3; // We index b: 1 and 3 values for a[*].d
+      checkElementsInIndex(inserted);
+
+      col.save({ a: [{d: 1}, {d: 2}, {d: 3}, {d: 3}, {d: 2}, {d: 1}], b: 1, c: 1 });
+      inserted += 3; // We index b: 1, c: 1 and 3 values for a[*].d
+      checkElementsInIndex(inserted);
+
+      col.save({_key: "null1", a: [{d: null}, {d: "a"}, {d: "b"}, {d: "c"}, {d: "b"}, {d: "a"}, {d: null}] });
+      inserted += 4;
+      checkElementsInIndex(inserted); // b: null a: "a", "b", "c", null c:null
+
+      col.save({_key: "null2", a: [{d: null}, {d: "a"}, {d: "b"}, {d: "c"}, {d: "b"}, {d: "a"}, {d: null}], b: 1 });
+      inserted += 4;
+      checkElementsInIndex(inserted);
+
+      col.save({_key: "null3", a: [{d: null}, {d: "a"}, {d: "b"}, {d: "c"}, {d: "b"}, {d: "a"}, {d: null}], b: 1, c: 1 });
+      inserted += 4;
+      checkElementsInIndex(inserted);
+
+      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*].d && 1 == x.b && 1 == x.c SORT x._key RETURN x._key`;
+      var actual = AQL_EXECUTE(query, { tag : null }).json;
+      // We expect that we can only find the Array that has stored exactly the null value
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0], "null3");
+    },
+
+    testHashIndexSubAttributeArray : function () {
+      col.ensureHashIndex("b", "a.d[*]", "c");
+      col.save({b: 1, a:[ {d: [1, 2]}, {d: 3} ], c: 1});
+      checkElementsInIndex(0);
+
+      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*].d && 1 == x.b SORT x._key RETURN x._key`;
+      var actual = AQL_EXECUTE(query, { tag : null }).json;
+      assertEqual(actual.length, 0);
+      // Do not find anything
+    },
+
     testSkiplistSingleAttribute : function () {
       col.ensureSkiplist("a[*]");
       col.save({}); // a is not set
@@ -747,6 +826,123 @@ function arrayIndexNonArraySuite () {
       assertEqual(actual.length, inserted - insertedB);
     },
 
+    testSkiplistMultipleAttributeMiddleArraySub : function () {
+      var inserted = 0;
+      var insertedB = 0;
+      col.ensureSkiplist("b", "a[*].d", "c");
+      col.save({}); // a is not set, we index b: null
+      inserted += 1;
+      checkElementsInIndex(inserted);
+      col.save({b: 1}); // a is not set, but we can index b only
+      inserted += 1;
+      insertedB += 1;
+      checkElementsInIndex(inserted);
+      col.save({b: 1, c: 1}); // a is not set, but we can index b only
+      inserted += 1;
+      insertedB += 1;
+      checkElementsInIndex(inserted);
+      col.save({ a: "This is no array" }); // a is illegal. But we can index b only
+      inserted += 1;
+      checkElementsInIndex(inserted);
+      col.save({ a: "This is no array", b: 1 }); // We can index b only
+      inserted += 1;
+      insertedB += 1;
+      checkElementsInIndex(inserted);
+      col.save({ a: "This is no array", b: 1, c: 1}); // We can index b only
+      inserted += 1;
+      insertedB += 1;
+      checkElementsInIndex(inserted);
+      col.save({ a: {b: [42] } }); // We can index b only
+      inserted += 1;
+      checkElementsInIndex(inserted);
+      col.save({ a: {b: [42] }, b: 1 }); // We can index b only
+      inserted += 1;
+      insertedB += 1;
+      checkElementsInIndex(inserted);
+      col.save({ a: {b: [42] }, b: 1, c: 1 }); // We can index b only
+      inserted += 1;
+      insertedB += 1;
+      checkElementsInIndex(inserted);
+      col.save({ a: [] }); // Empty Array. Nothing for a but index b
+      inserted += 1;
+      checkElementsInIndex(inserted);
+      col.save({ a: [], b: 1 }); // Empty Array. Nothing for a but index b
+      inserted += 1;
+      insertedB += 1;
+      checkElementsInIndex(inserted);
+      col.save({ a: [], b: 1, c: 1 });  // Empty Array. Nothing for a but index b
+      inserted += 1;
+      insertedB += 1;
+      checkElementsInIndex(inserted);
+
+      col.save({ a: [1, 2, 3, 3, 2, 1] });
+      inserted += 1; // We index b: null But a does not have any nested value. Handled equal to a: []
+      checkElementsInIndex(inserted);
+
+      col.save({ a: [1, 2, 3, 3, 2, 1], b: 1 }); // b: 1 a: 1,2,3 c: null
+      inserted += 1; // We index b: 1 But a does not have any nested value. Handled equal to a: []
+      insertedB += 1;
+      checkElementsInIndex(inserted);
+
+      col.save({ a: [1, 2, 3, 3, 2, 1], b: 1, c: 1 });
+      inserted += 1; // We index b: 1, c: 1 But a does not have any nested value. Handled equal to a: []
+      insertedB += 1;
+      checkElementsInIndex(inserted);
+
+      col.save({ a: [{d: 1}, {d: 2}, {d: 3}, {d: 3}, {d: 2}, {d: 1}] });
+      inserted += 3; // We index b: null and 3 values for a[*].d
+      checkElementsInIndex(inserted);
+
+      col.save({ a: [{d: 1}, {d: 2}, {d: 3}, {d: 3}, {d: 2}, {d: 1}], b: 1 });
+      inserted += 3; // We index b: 1 and 3 values for a[*].d
+      insertedB += 3;
+      checkElementsInIndex(inserted);
+
+      col.save({ a: [{d: 1}, {d: 2}, {d: 3}, {d: 3}, {d: 2}, {d: 1}], b: 1, c: 1 });
+      inserted += 3; // We index b: 1, c: 1 and 3 values for a[*].d
+      insertedB += 3;
+      checkElementsInIndex(inserted);
+
+      col.save({_key: "null1", a: [{d: null}, {d: "a"}, {d: "b"}, {d: "c"}, {d: "b"}, {d: "a"}, {d: null}] });
+      inserted += 4;
+      checkElementsInIndex(inserted); // b: null a: "a", "b", "c", null c:null
+
+      col.save({_key: "null2", a: [{d: null}, {d: "a"}, {d: "b"}, {d: "c"}, {d: "b"}, {d: "a"}, {d: null}], b: 1 });
+      inserted += 4;
+      insertedB += 4;
+      checkElementsInIndex(inserted);
+
+      col.save({_key: "null3", a: [{d: null}, {d: "a"}, {d: "b"}, {d: "c"}, {d: "b"}, {d: "a"}, {d: null}], b: 1, c: 1 });
+      inserted += 4;
+      insertedB += 4;
+      checkElementsInIndex(inserted);
+
+      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*].d && 1 == x.b SORT x._key RETURN x._key`;
+      var actual = AQL_EXECUTE(query, { tag : null }).json;
+      // We expect that we can only find the Array that has stored exactly the null value
+      assertEqual(actual.length, 2);
+      assertEqual(actual[0], "null2");
+      assertEqual(actual[1], "null3");
+
+      const query2 = `FOR x IN ${cName} FILTER 1 == x.b RETURN x._key`;
+      actual = AQL_EXECUTE(query2).json;
+      assertEqual(actual.length, insertedB);
+      const query3 = `FOR x IN ${cName} FILTER null == x.b RETURN x._key`;
+      actual = AQL_EXECUTE(query3).json;
+      assertEqual(actual.length, inserted - insertedB);
+    },
+
+    testSkiplistIndexSubAttributeArray : function () {
+      col.ensureSkiplist("b", "a.d[*]", "c");
+      col.save({b: 1, a:[ {d: [1, 2]}, {d: 3} ], c: 1});
+      // We do only index b: 1 here
+      checkElementsInIndex(1);
+
+      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*].d && 1 == x.b SORT x._key RETURN x._key`;
+      var actual = AQL_EXECUTE(query, { tag : null }).json;
+      assertEqual(actual.length, 0);
+      // Do not find anything
+    }
 
   };
 
