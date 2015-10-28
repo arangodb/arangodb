@@ -1559,7 +1559,15 @@ function ahuacatlFunctionsTestSuite () {
     
     testMinus1 : function () {
       var expected = [ [ 'b', 'd' ] ];
+      // Opt
       var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c', 'd' ], [ 'c' ], [ 'a', 'c', 'e' ])");
+      assertEqual(expected, actual);
+      // No opt / No v8
+      actual = getQueryResults("RETURN NOOPT(MINUS([ 'a', 'b', 'c', 'd' ], [ 'c' ], [ 'a', 'c', 'e' ]))");
+      assertEqual(expected, actual);
+
+      // No opt / v8
+      actual = getQueryResults("RETURN NOOPT(V8(MINUS([ 'a', 'b', 'c', 'd' ], [ 'c' ], [ 'a', 'c', 'e' ])))");
       assertEqual(expected, actual);
     },
 
@@ -1569,7 +1577,16 @@ function ahuacatlFunctionsTestSuite () {
     
     testMinus2 : function () {
       var expected = [ [ 'a', 'b' ] ];
+      // Opt
       var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c' ], [ 'c', 'd', 'e' ])");
+      assertEqual(expected, actual);
+
+      // No Opt / No v8
+      actual = getQueryResults("RETURN NOOPT(MINUS([ 'a', 'b', 'c' ], [ 'c', 'd', 'e' ]))");
+      assertEqual(expected, actual);
+
+      // No Opt / v8
+      actual = getQueryResults("RETURN NOOPT(V8(MINUS([ 'a', 'b', 'c' ], [ 'c', 'd', 'e' ])))");
       assertEqual(expected, actual);
     },
 
@@ -1579,7 +1596,17 @@ function ahuacatlFunctionsTestSuite () {
     
     testMinus3 : function () {
       var expected = [ [ 'a', 'b', 'c' ] ];
+
+      // Opt
       var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ])");
+      assertEqual(expected, actual);
+
+      // No Opt / No v8
+      actual = getQueryResults("RETURN NOOPT(MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ]))");
+      assertEqual(expected, actual);
+
+      // No Opt / v8
+      actual = getQueryResults("RETURN NOOPT(V8(MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ])))");
       assertEqual(expected, actual);
     },
 
@@ -1589,7 +1616,17 @@ function ahuacatlFunctionsTestSuite () {
     
     testMinus4 : function () {
       var expected = [ [ 'a', 'b', 'c' ] ];
+
+      // Opt
       var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])");
+      assertEqual(expected, actual);
+
+      // No Opt / No v8
+      actual = getQueryResults("RETURN NOOPT(MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ]))");
+      assertEqual(expected, actual);
+
+      // No Opt / v8
+      actual = getQueryResults("RETURN NOOPT(V8(MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])))");
       assertEqual(expected, actual);
     },
 
@@ -1599,7 +1636,17 @@ function ahuacatlFunctionsTestSuite () {
     
     testMinus5 : function () {
       var expected = [ [ ] ];
+
+      // Opt
       var actual = getQueryResults("RETURN MINUS([ 2 ], [ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])");
+      assertEqual(expected, actual);
+
+      // No Opt / No v8
+      actual = getQueryResults("RETURN NOOPT(MINUS([ 2 ], [ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ]))");
+      assertEqual(expected, actual);
+
+      // No Opt / v8
+      actual = getQueryResults("RETURN NOOPT(V8(MINUS([ 2 ], [ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])))");
       assertEqual(expected, actual);
     },
 
@@ -1609,7 +1656,17 @@ function ahuacatlFunctionsTestSuite () {
     
     testMinus6 : function () {
       var expected = [ [ ] ];
+
+      // Opt
       var actual = getQueryResults("RETURN MINUS([ ], [ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])");
+      assertEqual(expected, actual);
+
+      // No Opt / No v8
+      actual = getQueryResults("RETURN NOOPT(MINUS([ ], [ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ]))");
+      assertEqual(expected, actual);
+
+      // No Opt / v8
+      actual = getQueryResults("RETURN NOOPT(V8(MINUS([ ], [ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])))");
       assertEqual(expected, actual);
     },
 
