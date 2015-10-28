@@ -2490,7 +2490,7 @@ AqlValue Functions::Zip (triagens::aql::Query* query,
   triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
   for (size_t i = 0; i < n; ++i) {
     buffer.reset();
-    AppendAsString(buffer, keysJson.at(i).copy().steal());
+    AppendAsString(buffer, keysJson.at(i).json());
     result.set(buffer.c_str(), valuesJson.at(i).copy().steal());
   }
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
