@@ -49,27 +49,41 @@ function ahuacatlMiscFunctionsTestSuite () {
     
     testParseIdentifier : function () {
       var actual;
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN PARSE_IDENTIFIER(${input})`;
+          case 1:
+            return `RETURN NOOPT(PARSE_IDENTIFIER(${input}))`;
+          case 2:
+          return `RETURN NOOPT(V8(PARSE_IDENTIFIER(${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
 
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER('foo/bar')");
-      assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
-      
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER('this-is-a-collection-name/and-this-is-an-id')");
-      assertEqual([ { collection: 'this-is-a-collection-name', key: 'and-this-is-an-id' } ], actual);
-      
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER('MY_COLLECTION/MY_DOC')");
-      assertEqual([ { collection: 'MY_COLLECTION', key: 'MY_DOC' } ], actual);
+      for (var i = 0; i < 3; ++i) {
+        actual = getQueryResults(buildQuery(i, "'foo/bar'"));
+        assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
+        
+        actual = getQueryResults(buildQuery(i, "'this-is-a-collection-name/and-this-is-an-id'"));
+        assertEqual([ { collection: 'this-is-a-collection-name', key: 'and-this-is-an-id' } ], actual);
+        
+        actual = getQueryResults(buildQuery(i, "'MY_COLLECTION/MY_DOC'"));
+        assertEqual([ { collection: 'MY_COLLECTION', key: 'MY_DOC' } ], actual);
 
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER('_users/AbC')");
-      assertEqual([ { collection: '_users', key: 'AbC' } ], actual);
-      
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER({ _id: 'foo/bar', value: 'baz' })");
-      assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
+        actual = getQueryResults(buildQuery(i, "'_users/AbC'"));
+        assertEqual([ { collection: '_users', key: 'AbC' } ], actual);
+        
+        actual = getQueryResults(buildQuery(i, "{ _id: 'foo/bar', value: 'baz' }"));
+        assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
 
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER({ ignore: true, _id: '_system/VALUE', value: 'baz' })");
-      assertEqual([ { collection: '_system', key: 'VALUE' } ], actual);
+        actual = getQueryResults(buildQuery(i, "{ ignore: true, _id: '_system/VALUE', value: 'baz' }"));
+        assertEqual([ { collection: '_system', key: 'VALUE' } ], actual);
 
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER({ value: 123, _id: 'Some-Odd-Collection/THIS_IS_THE_KEY' })");
-      assertEqual([ { collection: 'Some-Odd-Collection', key: 'THIS_IS_THE_KEY' } ], actual);
+        actual = getQueryResults(buildQuery(i ,"{ value: 123, _id: 'Some-Odd-Collection/THIS_IS_THE_KEY' }"));
+        assertEqual([ { collection: 'Some-Odd-Collection', key: 'THIS_IS_THE_KEY' } ], actual);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,26 +99,40 @@ function ahuacatlMiscFunctionsTestSuite () {
       cx.save({ "_key" : "so-this-is-it", "title" : "nada", "value" : 123 });
 
       var expected, actual;
-      
-      expected = [ { collection: cn, key: "foobar" } ];
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT(CONCAT(@cn, '/', @key)))", { cn: cn, key: "foobar" });
-      assertEqual(expected, actual);
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN PARSE_IDENTIFIER(${input})`;
+          case 1:
+            return `RETURN NOOPT(PARSE_IDENTIFIER(${input}))`;
+          case 2:
+          return `RETURN NOOPT(V8(PARSE_IDENTIFIER(${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
 
-      expected = [ { collection: cn, key: "foobar" } ];
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT(CONCAT(@cn, '/', @key)))", { cn: cn, key: "foobar" });
-      assertEqual(expected, actual);
+      for (var i = 0; i < 3; ++i) {
+        expected = [ { collection: cn, key: "foobar" } ];
+        actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', @key))"), { cn: cn, key: "foobar" });
+        assertEqual(expected, actual);
 
-      expected = [ { collection: cn, key: "foobar" } ];
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT(CONCAT(@cn, '/', 'foobar')))", { cn: cn });
-      assertEqual(expected, actual);
+        expected = [ { collection: cn, key: "foobar" } ];
+        actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', @key))"), { cn: cn, key: "foobar" });
+        assertEqual(expected, actual);
 
-      expected = [ { collection: cn, key: "foobar" } ];
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT([ @key ])[0])", { key: "UnitTestsAhuacatlFunctions/foobar" });
-      assertEqual(expected, actual);
+        expected = [ { collection: cn, key: "foobar" } ];
+        actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', 'foobar'))"), { cn: cn });
+        assertEqual(expected, actual);
 
-      expected = [ { collection: cn, key: "so-this-is-it" } ];
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT([ 'UnitTestsAhuacatlFunctions/so-this-is-it' ])[0])");
-      assertEqual(expected, actual);
+        expected = [ { collection: cn, key: "foobar" } ];
+        actual = getQueryResults(buildQuery(i, "DOCUMENT([ @key ])[0]"), { key: "UnitTestsAhuacatlFunctions/foobar" });
+        assertEqual(expected, actual);
+
+        expected = [ { collection: cn, key: "so-this-is-it" } ];
+        actual = getQueryResults(buildQuery(i, "DOCUMENT([ 'UnitTestsAhuacatlFunctions/so-this-is-it' ])[0]"));
+        assertEqual(expected, actual);
+      }
 
       internal.db._drop(cn);
     },
@@ -114,17 +142,32 @@ function ahuacatlMiscFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseIdentifierInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PARSE_IDENTIFIER()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PARSE_IDENTIFIER('foo', 'bar')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(null)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(false)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(3)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(\"foo\")"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER('foo bar')"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER('foo/bar/baz')"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER([ ])"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER({ })"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER({ foo: 'bar' })"); 
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN PARSE_IDENTIFIER(${input})`;
+          case 1:
+            return `RETURN NOOPT(PARSE_IDENTIFIER(${input}))`;
+          case 2:
+          return `RETURN NOOPT(V8(PARSE_IDENTIFIER(${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+
+      for (var i = 0; i < 3; ++i) {
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "'foo', 'bar'"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "null")); 
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "false")); 
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "3")); 
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "\"foo\"")); 
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "'foo bar'")); 
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "'foo/bar/baz'")); 
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ]")); 
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "{ }")); 
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "{ foo: 'bar' }")); 
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

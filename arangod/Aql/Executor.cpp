@@ -153,9 +153,9 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "RANGE",                       Function("RANGE",                       "AQL_RANGE", "n,n|n", true, true, false, true, true) },
   { "UNION",                       Function("UNION",                       "AQL_UNION", "l,l|+", true, true, false, true, true, &Functions::Union) },
   { "UNION_DISTINCT",              Function("UNION_DISTINCT",              "AQL_UNION_DISTINCT", "l,l|+", true, true, false, true, true, &Functions::UnionDistinct) },
-  { "MINUS",                       Function("MINUS",                       "AQL_MINUS", "l,l|+", true, true, false, true, true) },
+  { "MINUS",                       Function("MINUS",                       "AQL_MINUS", "l,l|+", true, true, false, true, true, &Functions::Minus) },
   { "INTERSECTION",                Function("INTERSECTION",                "AQL_INTERSECTION", "l,l|+", true, true, false, true, true, &Functions::Intersection) },
-  { "FLATTEN",                     Function("FLATTEN",                     "AQL_FLATTEN", "l|n", true, true, false, true, true) },
+  { "FLATTEN",                     Function("FLATTEN",                     "AQL_FLATTEN", "l|n", true, true, false, true, true, &Functions::Flatten) },
   { "LENGTH",                      Function("LENGTH",                      "AQL_LENGTH", "las", true, true, false, true, true, &Functions::Length) },
   { "MIN",                         Function("MIN",                         "AQL_MIN", "l", true, true, false, true, true, &Functions::Min) },
   { "MAX",                         Function("MAX",                         "AQL_MAX", "l", true, true, false, true, true, &Functions::Max) },
@@ -197,7 +197,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "UNSET",                       Function("UNSET",                       "AQL_UNSET", "a,sl|+", true, true, false, true, true, &Functions::Unset) },
   { "KEEP",                        Function("KEEP",                        "AQL_KEEP", "a,sl|+", true, true, false, true, true, &Functions::Keep) },
   { "TRANSLATE",                   Function("TRANSLATE",                   "AQL_TRANSLATE", ".,a|.", true, true, false, true, true) },
-  { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, true, false, true, true) },
+  { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, true, false, true, true, &Functions::Zip) },
 
   // geo functions
   { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", true, false, true, false, true, &Functions::Near, NotInCluster) },
@@ -270,7 +270,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, true, false, true, true) },
   { "FIRST_LIST",                  Function("FIRST_LIST",                  "AQL_FIRST_LIST", ".|+", true, true, false, true, true) },
   { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT",              "AQL_FIRST_DOCUMENT", ".|+", true, true, false, true, true) },
-  { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, true, false, true, true) },
+  { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, true, false, true, true, &Functions::ParseIdentifier) },
   { "CURRENT_USER",                Function("CURRENT_USER",                "AQL_CURRENT_USER", "", false, false, false, false, true) },
   { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false, false, true) }
 };
