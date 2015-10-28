@@ -3734,6 +3734,10 @@ static void JS_CollectionVocbase (const v8::FunctionCallbackInfo<v8::Value>& arg
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
+  if (TRI_IsDeletedVocBase(vocbase)) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
   // expecting one argument
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("_collection(<name>|<identifier>)");
