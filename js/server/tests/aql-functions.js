@@ -1558,17 +1558,17 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testMinus1 : function () {
-      var expected = [ [ 'b', 'd' ] ];
+      var expected = [ 'b', 'd' ].sort();
       // Opt
       var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c', 'd' ], [ 'c' ], [ 'a', 'c', 'e' ])");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
       // No opt / No v8
       actual = getQueryResults("RETURN NOOPT(MINUS([ 'a', 'b', 'c', 'd' ], [ 'c' ], [ 'a', 'c', 'e' ]))");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
 
       // No opt / v8
       actual = getQueryResults("RETURN NOOPT(V8(MINUS([ 'a', 'b', 'c', 'd' ], [ 'c' ], [ 'a', 'c', 'e' ])))");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1576,18 +1576,18 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testMinus2 : function () {
-      var expected = [ [ 'a', 'b' ] ];
+      var expected = [ 'a', 'b' ].sort();
       // Opt
       var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c' ], [ 'c', 'd', 'e' ])");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
 
       // No Opt / No v8
       actual = getQueryResults("RETURN NOOPT(MINUS([ 'a', 'b', 'c' ], [ 'c', 'd', 'e' ]))");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
 
       // No Opt / v8
       actual = getQueryResults("RETURN NOOPT(V8(MINUS([ 'a', 'b', 'c' ], [ 'c', 'd', 'e' ])))");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1595,19 +1595,19 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testMinus3 : function () {
-      var expected = [ [ 'a', 'b', 'c' ] ];
+      var expected = [ 'a', 'b', 'c' ].sort();
 
       // Opt
       var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ])");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
 
       // No Opt / No v8
       actual = getQueryResults("RETURN NOOPT(MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ]))");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
 
       // No Opt / v8
       actual = getQueryResults("RETURN NOOPT(V8(MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ])))");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1615,19 +1615,19 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testMinus4 : function () {
-      var expected = [ [ 'a', 'b', 'c' ] ];
+      var expected = [ 'a', 'b', 'c' ].sort();
 
       // Opt
       var actual = getQueryResults("RETURN MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
 
       // No Opt / No v8
       actual = getQueryResults("RETURN NOOPT(MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ]))");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
 
       // No Opt / v8
       actual = getQueryResults("RETURN NOOPT(V8(MINUS([ 'a', 'b', 'c' ], [ 1, 2, 3 ], [ 1, 2, 3 ])))");
-      assertEqual(expected, actual);
+      assertEqual(expected, actual[0].sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -2507,7 +2507,7 @@ AqlValue Functions::ParseIdentifier (triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "PARSE_IDENTIFIER", (int) 1, (int) 1);
   }
 
-  Json value  = ExtractFunctionParameter(trx, parameters, 0, false);
+  Json value = ExtractFunctionParameter(trx, parameters, 0, false);
   if (value.isObject() && value.has("_id")) {
     value = value.get("_id");
   }
@@ -2526,6 +2526,61 @@ AqlValue Functions::ParseIdentifier (triagens::aql::Query* query,
   RegisterWarning(query, "PARSE_IDENTIFIER", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(new Json(Json::Null));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function Minus
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Minus (triagens::aql::Query* query,
+                           triagens::arango::AqlTransaction* trx,
+                           FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 2) {
+    // The max number is arbitrary
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "MINUS", (int) 2, (int) 99999);
+  }
+
+  Json baseArray = ExtractFunctionParameter(trx, parameters, 0, false);
+  std::unordered_map<std::string, size_t> contains;
+  contains.reserve(n);
+
+  if (! baseArray.isArray()) {
+    RegisterWarning(query, "MINUS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  // Fill the original map
+  for (size_t i = 0; i < baseArray.size(); ++i) {
+    contains.emplace(baseArray.at(i).toString(), i);
+  }
+
+  // Iterate through all following parameters and delete found elements from the map
+  for (size_t k = 1; k < n; ++k) {
+    Json nextArray = ExtractFunctionParameter(trx, parameters, k, false);
+    if (! nextArray.isArray()) {
+      RegisterWarning(query, "MINUS", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return AqlValue(new Json(Json::Null));
+    }
+
+    for (size_t j = 0; j < nextArray.size(); ++j) {
+      std::string search = nextArray.at(j).toString();
+      auto find = contains.find(search);
+      if (find != contains.end()) {
+        contains.erase(find);
+      }
+    }
+  }
+
+  // We ommit the normalize part from js, cannot occur here
+  Json result(Json::Array, contains.size());
+  for (auto& it : contains) {
+    result.transfer(baseArray.at(it.second).json());
+  }
+
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
