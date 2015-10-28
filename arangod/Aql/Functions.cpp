@@ -2174,6 +2174,10 @@ AqlValue Functions::Near (triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING, colName.c_str());
   }
   
+  if (trx->orderDitch(collection) == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
   GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(index)->nearQuery(
     latitude.json()->_value._number, 
     longitude.json()->_value._number, 
@@ -2334,6 +2338,10 @@ AqlValue Functions::Within (triagens::aql::Query* query,
 
   if (index == nullptr) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING, colName.c_str());
+  }
+  
+  if (trx->orderDitch(collection) == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(index)->withinQuery(
