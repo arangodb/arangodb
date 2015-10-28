@@ -44,6 +44,7 @@ namespace triagens {
     class Ast;
     struct Collection;
     class ExecutionBlock;
+    class TraversalBlock;
     class ExecutionPlan;
     struct Index;
     class RedundantCalculationsReplacer;
@@ -66,6 +67,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         friend class ExecutionBlock;
+        friend class TraversalBlock;
 
       public:
 

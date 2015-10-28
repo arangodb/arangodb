@@ -36,6 +36,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/CollectionScanner.cpp \
 	arangod/Aql/Condition.cpp \
 	arangod/Aql/ConditionFinder.cpp \
+	arangod/Aql/TraversalConditionFinder.cpp \
 	arangod/Aql/EnumerateCollectionBlock.cpp \
 	arangod/Aql/EnumerateListBlock.cpp \
 	arangod/Aql/ExecutionBlock.cpp \

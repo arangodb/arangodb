@@ -191,6 +191,9 @@ namespace triagens {
         // try to find sort blocks which are superseeded by indexes
         useIndexForSortRule_pass6                     = 850,
 
+        // merge filters into graph traversals
+        mergeFilterIntoTraversal_pass6                = 860,
+
 //////////////////////////////////////////////////////////////////////////////
 /// Pass 9: push down calculations beyond FILTERs and LIMITs
 //////////////////////////////////////////////////////////////////////////////

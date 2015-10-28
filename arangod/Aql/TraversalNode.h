@@ -28,8 +28,9 @@
 #ifndef ARANGODB_AQL_TRAVERSAL_NODE_H
 #define ARANGODB_AQL_TRAVERSAL_NODE_H 1
 
-#include "Aql/ExecutionNode.h"
 #include "Basics/Traverser.h"
+#include "Aql/ExecutionNode.h"
+#include "Aql/Condition.h"
 #include "V8Server/V8Traverser.h"
 
 namespace triagens {
@@ -63,6 +64,11 @@ namespace triagens {
 
         TraversalNode (ExecutionPlan* plan,
                        triagens::basics::Json const& base);
+
+
+        ~TraversalNode () {
+          delete _condition;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Internal constructor to clone the node.
@@ -263,6 +269,44 @@ namespace triagens {
           return _edgeCids;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief id of the calculation node that executes a filter for this query:
+////////////////////////////////////////////////////////////////////////////////
+
+        void setCalculationNodeId(size_t const id) {
+          _CalculationNodeId = id;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief id of the calculation node that executes a filter for this query:
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t getCalculationNodeId() const {
+          return _CalculationNodeId;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remember the condition to execute for early traversal abortion.
+////////////////////////////////////////////////////////////////////////////////
+
+        void setCondition(Condition* condition) {
+          _condition = condition;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the condition for the node
+////////////////////////////////////////////////////////////////////////////////
+
+        Condition* condition () const {
+          return _condition;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief which variable? -1 none, 0 Edge, 1 Vertex, 2 path
+////////////////////////////////////////////////////////////////////////////////
+
+        int checkIsOutVariable(size_t variableId);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -334,6 +378,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<TRI_voc_cid_t> _edgeCids;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief id of the calculation node that executes a filter for this query:
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _CalculationNodeId;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief early abort traversal conditions:
+////////////////////////////////////////////////////////////////////////////////
+                   
+        Condition* _condition;
 
     };
 

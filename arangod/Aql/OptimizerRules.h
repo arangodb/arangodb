@@ -253,6 +253,12 @@ namespace triagens {
 
     int patchUpdateStatementsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merges filter nodes into graph traversal nodes
+////////////////////////////////////////////////////////////////////////////////
+
+    int mergeFilterIntoTraversal (Optimizer* opt, ExecutionPlan* plan, Optimizer::Rule const* rule);
+
   }  // namespace aql
 }  // namespace triagens
 

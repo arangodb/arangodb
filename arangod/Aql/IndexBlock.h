@@ -53,35 +53,6 @@ namespace triagens {
     class ExecutionEngine;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                          NodePath
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief struct to hold the member-indexes in the _condition node
-////////////////////////////////////////////////////////////////////////////////
-
-    struct NonConstExpression {
-      size_t const orMember;
-      size_t const andMember;
-      size_t const operatorMember;
-      Expression* expression;
-
-      NonConstExpression (size_t orM,
-                          size_t andM,
-                          size_t opM,
-                          Expression* exp)
-      : orMember(orM),
-        andMember(andM),
-        operatorMember(opM),
-        expression(exp) {
-      }
-
-      ~NonConstExpression () {
-        delete expression;
-      }
-    };
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                        IndexBlock
 // -----------------------------------------------------------------------------
 

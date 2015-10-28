@@ -42,7 +42,8 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _vocbase(vocbase),
     _vertexOutVariable(nullptr),
     _edgeOutVariable(nullptr),
-    _pathOutVariable(nullptr)
+    _pathOutVariable(nullptr),
+    _condition(nullptr)
 {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(direction != nullptr);
@@ -166,7 +167,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
                        TRI_edge_direction_e direction,
                        uint64_t minDepth,
                        uint64_t maxDepth)
-  : ExecutionNode(plan, id), 
+  : ExecutionNode(plan, id),
     _vocbase(vocbase),
     _vertexOutVariable(nullptr),
     _edgeOutVariable(nullptr),
@@ -175,12 +176,27 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _vertexId(vertexId),
     _minDepth(minDepth),
     _maxDepth(maxDepth),
-    _direction(direction)
+    _direction(direction),
+    _condition(nullptr)
 {
   for (auto& it : edgeCids) {
     _edgeCids.push_back(it);
   }
 }
+
+int TraversalNode::checkIsOutVariable(size_t variableId) {
+  if (_vertexOutVariable->id == variableId) {
+    return 0;
+  }
+  if (_edgeOutVariable->id == variableId) {
+    return 1;
+  }
+  if (_pathOutVariable->id == variableId) {
+    return 2;
+  }
+  return -1;
+}
+
 
 TraversalNode::TraversalNode (ExecutionPlan* plan,
                               triagens::basics::Json const& base)
@@ -189,7 +205,8 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _vertexOutVariable(nullptr),
     _edgeOutVariable(nullptr),
     _pathOutVariable(nullptr),
-    _inVariable(nullptr)
+    _inVariable(nullptr),
+    _condition(nullptr)
     {
 
   _minDepth = triagens::basics::JsonHelper::stringUInt64(base.json(), "minDepth");

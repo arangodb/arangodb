@@ -498,6 +498,12 @@ void Optimizer::setupRules () {
                moveFiltersUpRule,
                moveFiltersUpRule_pass4,
                true);
+
+  // merge filters into traversals
+  registerRule("merge-traversal-filter",
+               mergeFilterIntoTraversal,
+               mergeFilterIntoTraversal_pass6,
+               true);
   
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)

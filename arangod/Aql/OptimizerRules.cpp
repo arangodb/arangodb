@@ -31,6 +31,7 @@
 #include "Aql/AggregationOptions.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ConditionFinder.h"
+#include "Aql/TraversalConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
@@ -3656,6 +3657,59 @@ int triagens::aql::patchUpdateStatementsRule (Optimizer* opt,
   // always re-add the original plan, be it modified or not
   // only a flag in the plan will be modified
   opt->addPlan(plan, rule, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merges filter nodes into graph traversal nodes
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::mergeFilterIntoTraversal (Optimizer* opt, 
+                                             ExecutionPlan* plan, 
+                                             Optimizer::Rule const* rule) {
+
+  std::vector<ExecutionNode*>&& tNodes = plan->findNodesOfType(EN::TRAVERSAL, true);
+
+  if (tNodes.size() == 0) {
+    opt->addPlan(plan, rule, false);
+
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // These are all the FILTER nodes where we start
+  std::vector<ExecutionNode*>&& nodes = plan->findEndNodes(true);
+
+  std::unordered_map<size_t, ExecutionNode*> changes;
+
+  auto cleanupChanges = [&changes] () -> void {
+    for (auto& v : changes) {
+      delete v.second;
+    }
+    changes.clear();
+  };
+
+  TRI_DEFER(cleanupChanges());
+  bool hasEmptyResult = false; 
+  for (auto const& n : nodes) {
+    TraversalConditionFinder finder(plan, &changes, &hasEmptyResult);
+    n->walk(&finder);
+  }
+
+  if (! changes.empty()) {
+    for (auto& it : changes) {
+      plan->registerNode(it.second); 
+      plan->replaceNode(plan->getNodeById(it.first), it.second);
+
+      // prevent double deletion by cleanupChanges()
+      it.second = nullptr;
+    }
+    opt->addPlan(plan, rule, true);
+    plan->findVarUsage();
+  }
+  else {
+    opt->addPlan(plan, rule, hasEmptyResult);
+  }
 
   return TRI_ERROR_NO_ERROR;
 }

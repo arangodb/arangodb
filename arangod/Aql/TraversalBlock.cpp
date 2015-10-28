@@ -26,7 +26,10 @@
 /// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Ast.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/TraversalBlock.h"
+#include "Aql/ExecutionNode.h"
 #include "Utils/ShapedJsonTransformer.h"
 #include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include <iostream> /// TODO: remove me.
@@ -48,12 +51,27 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
     _usedConstant(false),
     _vertexReg(0),
     _edgeReg(0),
-    _pathReg(0) {
+    _pathReg(0),
+    _condition((ep->condition()) ? ep->condition()->root(): nullptr),
+    _hasV8Expression(false),
+    _AccessP(Json::Object, 1),
+    _currentJsonPath(Json::Array, 10)
+{
 
   basics::traverser::TraverserOptions opts;
   ep->fillTraversalOptions(opts);
   std::vector<TRI_document_collection_t*> edgeCollections;
   auto cids = ep->edgeCids();
+
+  Json theCurrentJsonPath(Json::Array, 10),
+    _currentPath(TRI_UNKNOWN_MEM_ZONE, theCurrentJsonPath.json(), Json::NOFREE);
+  _AccessP = Json(Json::Object, 1)
+    ("p", Json(Json::Object, 1)
+     ("edges", theCurrentJsonPath)
+     );
+    
+
+
   for (auto const& cid : cids) {
     edgeCollections.push_back(_trx->documentCollection(cid));
   }
@@ -88,7 +106,7 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
   if (ep->usesPathOutVariable()) {
     _pathVar = ep->pathOutVariable();
   }
-
+  _CalculationNodeId = ep->getCalculationNodeId();
   /*
   auto pruner = [] (const TraversalPath<TRI_doc_mptr_copy_t, VertexId>& path) -> bool {
     if (strcmp(path.vertices.back().key, "1") == 0) {
@@ -125,7 +143,8 @@ void TraversalBlock::freeCaches () {
 
 int TraversalBlock::initialize () {
   int res = ExecutionBlock::initialize();
-  
+  auto en = static_cast<TraversalNode const*>(getPlanNode());
+  auto ast = en->_plan->getAst();
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
   if (usesVertexOutput()) {
     auto it = varInfo.find(_vertexVar->id);
@@ -147,6 +166,43 @@ int TraversalBlock::initialize () {
   }
   
 
+  // instantiate expressions:
+  auto instantiateExpression = [&] (AstNode const* a) -> void {
+    // all new AstNodes are registered with the Ast in the Query
+    std::unique_ptr<Expression> e(new Expression(ast, a));
+
+    TRI_IF_FAILURE("TraversalBlock::initialize") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    _hasV8Expression |= e->isV8();
+    
+    std::unordered_set<Variable const*> inVars;
+    e->variables(inVars);
+    
+    std::unique_ptr<NonConstExpression> nce(new NonConstExpression(0, 0, 0, e.get()));
+    e.release();
+    _nonConstExpressions.push_back(nce.get());
+    nce.release();
+
+    // Prepare _inVars and _inRegs:
+    _inVars.emplace_back();
+    auto& inVarsCur = _inVars.back();
+    _inRegs.emplace_back();
+    auto& inRegsCur = _inRegs.back();
+
+    for (auto const& v : inVars) {
+      inVarsCur.emplace_back(v);
+      auto it = getPlanNode()->getRegisterPlan()->varInfo.find(v->id);
+      TRI_ASSERT(it != getPlanNode()->getRegisterPlan()->varInfo.end());
+      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+      inRegsCur.emplace_back(it->second.registerId);
+    }
+  };
+
+  if (_condition) {
+    instantiateExpression(_condition);
+  }
   return res;
 }
 
@@ -257,6 +313,29 @@ AqlValue TraversalBlock::pathToAqlValue (
   return AqlValue(path);
 }
 
+
+bool TraversalBlock::executeExpressions (AqlValue& pathValue) {
+  TRI_ASSERT(_condition != nullptr);
+
+
+  auto& toReplace = _nonConstExpressions[0];
+  auto exp = toReplace->expression;
+
+  TRI_document_collection_t const* myCollection = nullptr;
+
+  AqlItemBlock b(1, 3);
+  b.setValue(0, 2, pathValue);
+  AqlValue a = exp->execute(_trx, &b, 0, _inVars[0], _inRegs[0], &myCollection);
+  b.eraseValue(0, 2);
+
+  bool rc = a.isTrue();
+  a.destroy();
+
+  printf("x\n");
+  return rc;
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read more paths
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,12 +346,29 @@ bool TraversalBlock::morePaths (size_t hint) {
   if (!_traverser->hasMore()) {
     return false;
   }
+  auto en = static_cast<TraversalNode const*>(getPlanNode());
+
   for (size_t j = 0; j < hint; ++j) {
     auto p = _traverser->next();
     if (p.edges.size() == 0) {
       // There are no further paths available.
       break;
     }
+
+    _currentJsonPath.add(extractEdgeJson(p.edges.back()));
+    AqlValue pathValue;
+    
+    if (usesPathOutput() || (en->condition() != NULL)) {
+      pathValue = pathToAqlValue(p);
+    }
+
+    if ((en->condition() != NULL) && 
+        !executeExpressions(pathValue)) {
+      printf("SKIP\n");
+      _traverser->prune();
+      continue;
+    }
+
     if ( usesVertexOutput() ) {
       _vertices.push_back(vertexToAqlValue(p.vertices.back()));
     }
@@ -280,7 +376,7 @@ bool TraversalBlock::morePaths (size_t hint) {
       _edges.push_back(edgeToAqlValue(p.edges.back()));
     }
     if ( usesPathOutput() ) {
-      _paths.push_back(pathToAqlValue(p));
+      _paths.push_back(pathValue);
     }
   }
   // This is only save as long as _vertices is still build
