@@ -2447,18 +2447,52 @@ AqlValue Functions::Flatten (triagens::aql::Query* query,
   size_t maxDepth = 1;
   if (n == 2) {
     Json maxDepthJson = ExtractFunctionParameter(trx, parameters, 1, false);
-    if (! maxDepthJson.isNumber()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLATTEN");
-    }
-    maxDepth = static_cast<size_t>(basics::JsonHelper::stringUInt64(maxDepthJson.json()));
-    if (maxDepth == 0) {
+    bool isValid = true;
+    double tmpMaxDepth = ValueToNumber(maxDepthJson.json(), isValid);
+    if (! isValid || tmpMaxDepth < 1) {
       maxDepth = 1;
+    }
+    else {
+      maxDepth = static_cast<size_t>(tmpMaxDepth);
     }
   }
 
   Json result(Json::Array);
   FlattenList(listJson.copy(), maxDepth, 0, result);
 
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function ZIP
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Zip (triagens::aql::Query* query,
+                         triagens::arango::AqlTransaction* trx,
+                         FunctionParameters const& parameters) {
+  if (parameters.size() != 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ZIP", (int) 2, (int) 2);
+  }
+
+  Json keysJson  = ExtractFunctionParameter(trx, parameters, 0, false);
+  Json valuesJson  = ExtractFunctionParameter(trx, parameters, 1, false);
+  if (! keysJson.isArray() ||
+      ! valuesJson.isArray() ||
+      keysJson.size() != valuesJson.size()) {
+    RegisterWarning(query, "ZIP", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(new Json(Json::Null));
+  }
+  size_t const n = keysJson.size();
+
+  Json result(Json::Object, n);
+
+  // Buffer will temporarily hold the keys
+  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+  for (size_t i = 0; i < n; ++i) {
+    buffer.reset();
+    AppendAsString(buffer, keysJson.at(i).copy().steal());
+    result.set(buffer.c_str(), valuesJson.at(i).copy().steal());
+  }
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
 }
 

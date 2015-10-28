@@ -114,6 +114,7 @@ namespace triagens {
       static AqlValue Near          (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Within        (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Flatten       (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
+      static AqlValue Zip           (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
     };
 
   }

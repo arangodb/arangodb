@@ -197,7 +197,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "UNSET",                       Function("UNSET",                       "AQL_UNSET", "a,sl|+", true, true, false, true, true, &Functions::Unset) },
   { "KEEP",                        Function("KEEP",                        "AQL_KEEP", "a,sl|+", true, true, false, true, true, &Functions::Keep) },
   { "TRANSLATE",                   Function("TRANSLATE",                   "AQL_TRANSLATE", ".,a|.", true, true, false, true, true) },
-  { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, true, false, true, true) },
+  { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, true, false, true, true, &Functions::Zip) },
 
   // geo functions
   { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", true, false, true, false, true, &Functions::Near, NotInCluster) },

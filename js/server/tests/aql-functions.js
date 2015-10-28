@@ -2756,7 +2756,14 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       values.forEach(function (value) {
+        // Opt
         var actual = getQueryResults("RETURN ZIP(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ")");
+        assertEqual(value[0], actual[0], value);
+        // No opt / No v8
+        actual = getQueryResults("RETURN NOOPT(ZIP(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + "))");
+        assertEqual(value[0], actual[0], value);
+        // No opt / v8
+        actual = getQueryResults("RETURN NOOPT(V8(ZIP(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ")))");
         assertEqual(value[0], actual[0], value);
       });
     },
@@ -2766,28 +2773,42 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testZipInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ZIP()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ZIP([ ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ZIP([ ], [ ], [ ])");
-      
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], null)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], false)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], true)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], 0)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], 1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], \"\")");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], { })");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(null, [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(false, [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(true, [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(0, [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(1, [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(\"\", [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP({ }, [ ])");
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN ZIP(${input})`;
+          case 1:
+            return `RETURN NOOPT(ZIP(${input}))`;
+          case 2:
+            return `RETURN NOOPT(V8(ZIP(${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+      for (var i = 0; i < 3; ++i) {
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "[ ]"));
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "[ ], [ ], [ ]"));
+        
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], null"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], false"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], true"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], 0"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], 1"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], \"\""));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], { }"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "null, [ ]"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "false, [ ]"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "true, [ ]"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "0, [ ]"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "1, [ ]"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "\"\", [ ]"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "{ }, [ ]"));
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ 1 ], [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ 1 ], [ 1, 2 ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], [ 1, 2 ])");
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ 1 ], [ ]"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ 1 ], [ 1, 2 ]"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ], [ 1, 2 ]"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
