@@ -81,7 +81,9 @@ LinenoiseShell::LinenoiseShell (std::string const& history,
                                 Completer* completer)
   : ShellBase(history, completer) {
   COMPLETER = completer;
+#ifndef _WIN32
   linenoiseSetMultiLine(1);
+#endif
   linenoiseSetCompletionCallback(LinenoiseCompletionGenerator);
 }
 
