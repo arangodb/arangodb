@@ -1818,16 +1818,41 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testFlattenInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FLATTEN()");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FLATTEN([ ], 1, 1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN FLATTEN(1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN FLATTEN(null)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN FLATTEN(false)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN FLATTEN(1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN FLATTEN('foo')");
-      assertEqual([ [ ] ], getQueryResults("RETURN FLATTEN([ ], 'foo')"));
-      assertEqual([ [ ] ], getQueryResults("RETURN FLATTEN([ ], [ ])"));
-      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN FLATTEN({ })");
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            // Optimized
+            return `RETURN FLATTEN(${input})`;
+          case 1:
+            // No opt / No v8
+            return `RETURN NOOPT(FLATTEN(${input}))`;
+          case 2:
+            // No opt / v8
+            return `RETURN NOOPT(V8(FLATTEN(${input})))`;
+          default:
+            assertTrue(false, "Unreachable state");
+        }
+      };
+      for (var i = 0; i < 3; ++i) {
+        var q = buildQuery(i, "");
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, q);
+        q = buildQuery(i, "[], 1, 1");
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, q);
+        q = buildQuery(i, "1");
+        assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, q);
+        q = buildQuery(i, "null");
+        assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, q);
+        q = buildQuery(i, "false");
+        assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, q);
+        q = buildQuery(i, "'foo'");
+        assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, q);
+        q = buildQuery(i, "[ ], 'foo'");
+        assertEqual([ [ ] ], getQueryResults(q), q);
+        q = buildQuery(i, "[ ], [ ]");
+        assertEqual([ [ ] ], getQueryResults(q), q);
+        q = buildQuery(i, "{ }");
+        assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, q);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1836,10 +1861,25 @@ function ahuacatlFunctionsTestSuite () {
     
     testFlatten1 : function () {
       var input = [ [ 2, 4, 5 ], [ 1, 2, 3 ], [ ], [ "foo", "bar" ] ];
+      // Optimized
       var actual = getQueryResults("RETURN FLATTEN(@value)", { value: input });
       assertEqual([ [ 2, 4, 5, 1, 2, 3, "foo", "bar" ] ], actual);
       
       actual = getQueryResults("RETURN FLATTEN(@value, 1)", { value: input });
+      assertEqual([ [ 2, 4, 5, 1, 2, 3, "foo", "bar" ] ], actual);
+
+      // No opt / No v8
+      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value))", { value: input });
+      assertEqual([ [ 2, 4, 5, 1, 2, 3, "foo", "bar" ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value, 1))", { value: input });
+      assertEqual([ [ 2, 4, 5, 1, 2, 3, "foo", "bar" ] ], actual);
+
+      // No opt / v8
+      actual = getQueryResults("RETURN NOOPT(V8(FLATTEN(@value)))", { value: input });
+      assertEqual([ [ 2, 4, 5, 1, 2, 3, "foo", "bar" ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(V8(FLATTEN(@value, 1)))", { value: input });
       assertEqual([ [ 2, 4, 5, 1, 2, 3, "foo", "bar" ] ], actual);
     },
 
@@ -1849,6 +1889,7 @@ function ahuacatlFunctionsTestSuite () {
     
     testFlatten2 : function () {
       var input = [ [ 1, 1, 2, 2 ], [ 1, 1, 2, 2 ], [ null, null ], [ [ 1, 2 ], [ 3, 4 ] ] ];
+      // Optimized
       var actual = getQueryResults("RETURN FLATTEN(@value)", { value: input });
       assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, [ 1, 2 ], [ 3, 4 ] ] ], actual);
       
@@ -1856,6 +1897,26 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, [ 1, 2 ], [ 3, 4 ] ] ], actual);
       
       actual = getQueryResults("RETURN FLATTEN(@value, 2)", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, 1, 2, 3, 4 ] ], actual);
+
+      // No opt / No v8
+      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value))", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, [ 1, 2 ], [ 3, 4 ] ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value, 1))", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, [ 1, 2 ], [ 3, 4 ] ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value, 2))", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, 1, 2, 3, 4 ] ], actual);
+
+      // No opt / v8
+      actual = getQueryResults("RETURN NOOPT(V8(FLATTEN(@value)))", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, [ 1, 2 ], [ 3, 4 ] ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(V8(FLATTEN(@value, 1)))", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, [ 1, 2 ], [ 3, 4 ] ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(V8(FLATTEN(@value, 2)))", { value: input });
       assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, null, null, 1, 2, 3, 4 ] ], actual);
     },
 
@@ -1865,6 +1926,8 @@ function ahuacatlFunctionsTestSuite () {
     
     testFlatten3 : function () {
       var input = [ [ 1, 1, 2, 2 ], [ 1, 1, 2, 2 ], [ [ 1, 2 ], [ 3, 4 ], [ [ 5, 6 ], [ 7, 8 ] ], [ 9, 10, [ 11, 12 ] ] ] ];
+
+      // Optimized
       var actual = getQueryResults("RETURN FLATTEN(@value, 1)", { value: input });
       assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, [ 1, 2 ], [ 3, 4 ], [ [ 5, 6 ], [ 7, 8 ] ], [ 9, 10, [ 11, 12 ] ] ] ], actual);
 
@@ -1873,6 +1936,27 @@ function ahuacatlFunctionsTestSuite () {
       
       actual = getQueryResults("RETURN FLATTEN(@value, 3)", { value: input });
       assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ] ], actual);
+
+      // No opt / No v8
+      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value, 1))", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, [ 1, 2 ], [ 3, 4 ], [ [ 5, 6 ], [ 7, 8 ] ], [ 9, 10, [ 11, 12 ] ] ] ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value, 2))", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, 1, 2, 3, 4, [ 5, 6 ], [ 7, 8 ], 9, 10, [ 11, 12 ] ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(FLATTEN(@value, 3))", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ] ], actual);
+
+      // No opt / v8
+      actual = getQueryResults("RETURN NOOPT(V8(FLATTEN(@value, 1)))", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, [ 1, 2 ], [ 3, 4 ], [ [ 5, 6 ], [ 7, 8 ] ], [ 9, 10, [ 11, 12 ] ] ] ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(FLATTEN(@value, 2)))", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, 1, 2, 3, 4, [ 5, 6 ], [ 7, 8 ], 9, 10, [ 11, 12 ] ] ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(V8(FLATTEN(@value, 3)))", { value: input });
+      assertEqual([ [ 1, 1, 2, 2, 1, 1, 2, 2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ] ], actual);
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1881,29 +1965,52 @@ function ahuacatlFunctionsTestSuite () {
     
     testFlatten4 : function () {
       var input = [ 1, [ 2, [ 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ] ];
-      var actual = getQueryResults("RETURN FLATTEN(@value, 1)", { value: input });
-      assertEqual([ [ 1, 2, [ 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ] ], actual);
-      
-      actual = getQueryResults("RETURN FLATTEN(@value, 2)", { value: input });
-      assertEqual([ [ 1, 2, 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ], actual);
-      
-      actual = getQueryResults("RETURN FLATTEN(@value, 3)", { value: input });
-      assertEqual([ [ 1, 2, 3, 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ], actual);
-      
-      actual = getQueryResults("RETURN FLATTEN(@value, 4)", { value: input });
-      assertEqual([ [ 1, 2, 3, 4, 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ], actual);
-      
-      actual = getQueryResults("RETURN FLATTEN(@value, 5)", { value: input });
-      assertEqual([ [ 1, 2, 3, 4, 5, 6, [ 7, [ 8, [ 9 ] ] ] ] ], actual);
-      
-      actual = getQueryResults("RETURN FLATTEN(@value, 6)", { value: input });
-      assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, [ 8, [ 9 ] ] ] ], actual);
-      
-      actual = getQueryResults("RETURN FLATTEN(@value, 7)", { value: input });
-      assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, 8, [ 9 ] ] ], actual);
-      
-      actual = getQueryResults("RETURN FLATTEN(@value, 8)", { value: input });
-      assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ] ], actual);
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN FLATTEN(@value, ${input})`;
+          case 1:
+            return `RETURN NOOPT(FLATTEN(@value, ${input}))`;
+          case 2:
+            return `RETURN NOOPT(V8(FLATTEN(@value, ${input})))`;
+          default:
+          assertTrue(false, "Undefined state");
+        }
+      };
+
+      for (var i = 0; i < 3; ++i) {
+        var q = buildQuery(i, 1);
+        var actual = getQueryResults(q, { value: input });
+        assertEqual([ [ 1, 2, [ 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ] ], actual, q);
+
+        q = buildQuery(i, 2);
+        actual = getQueryResults(q, { value: input });
+        assertEqual([ [ 1, 2, 3, [ 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ] ], actual, q);
+
+        q = buildQuery(i, 3);
+        actual = getQueryResults(q, { value: input });
+        assertEqual([ [ 1, 2, 3, 4, [ 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ] ], actual);
+
+        q = buildQuery(i, 4);
+        actual = getQueryResults(q, { value: input });
+        assertEqual([ [ 1, 2, 3, 4, 5, [ 6, [ 7, [ 8, [ 9 ] ] ] ] ] ], actual);
+
+        q = buildQuery(i, 5);
+        actual = getQueryResults(q, { value: input });
+        assertEqual([ [ 1, 2, 3, 4, 5, 6, [ 7, [ 8, [ 9 ] ] ] ] ], actual);
+
+        q = buildQuery(i, 6);
+        actual = getQueryResults(q, { value: input });
+        assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, [ 8, [ 9 ] ] ] ], actual);
+
+        q = buildQuery(i, 7);
+        actual = getQueryResults(q, { value: input });
+        assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, 8, [ 9 ] ] ], actual);
+
+        q = buildQuery(i, 8);
+        actual = getQueryResults(q, { value: input });
+        assertEqual([ [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ] ], actual);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

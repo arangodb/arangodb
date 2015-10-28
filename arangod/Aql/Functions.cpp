@@ -2408,6 +2408,60 @@ AqlValue Functions::Within (triagens::aql::Query* query,
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal recursive flatten helper
+////////////////////////////////////////////////////////////////////////////////
+
+static void FlattenList (Json array, size_t maxDepth, size_t curDepth, Json& result) {
+  size_t elementCount = array.size();
+  for (size_t i = 0; i < elementCount; ++i) {
+    Json tmp = array.at(i);
+    if (tmp.isArray() && curDepth < maxDepth) {
+      FlattenList(tmp, maxDepth, curDepth + 1, result);
+    }
+    else {
+      // Transfer the content of tmp into the result
+      result.transfer(tmp.json());
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function FLATTEN
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Flatten (triagens::aql::Query* query,
+                             triagens::arango::AqlTransaction* trx,
+                             FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n == 0 || n > 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "FLATTEN", (int) 1, (int) 2);
+  }
+
+  Json listJson  = ExtractFunctionParameter(trx, parameters, 0, false);
+  if (! listJson.isArray()) {
+    RegisterWarning(query, "FLATTEN", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  size_t maxDepth = 1;
+  if (n == 2) {
+    Json maxDepthJson = ExtractFunctionParameter(trx, parameters, 1, false);
+    if (! maxDepthJson.isNumber()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLATTEN");
+    }
+    maxDepth = static_cast<size_t>(basics::JsonHelper::stringUInt64(maxDepthJson.json()));
+    if (maxDepth == 0) {
+      maxDepth = 1;
+    }
+  }
+
+  Json result(Json::Array);
+  FlattenList(listJson.copy(), maxDepth, 0, result);
+
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
