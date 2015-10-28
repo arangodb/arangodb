@@ -270,7 +270,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, true, false, true, true) },
   { "FIRST_LIST",                  Function("FIRST_LIST",                  "AQL_FIRST_LIST", ".|+", true, true, false, true, true) },
   { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT",              "AQL_FIRST_DOCUMENT", ".|+", true, true, false, true, true) },
-  { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, true, false, true, true) },
+  { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, true, false, true, true, &Functions::ParseIdentifier) },
   { "CURRENT_USER",                Function("CURRENT_USER",                "AQL_CURRENT_USER", "", false, false, false, false, true) },
   { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false, false, true) }
 };

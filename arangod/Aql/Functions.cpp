@@ -2496,6 +2496,36 @@ AqlValue Functions::Zip (triagens::aql::Query* query,
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function PARSE_IDENTIFIER
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::ParseIdentifier (triagens::aql::Query* query,
+                                     triagens::arango::AqlTransaction* trx,
+                                     FunctionParameters const& parameters) {
+  if (parameters.size() != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "PARSE_IDENTIFIER", (int) 1, (int) 1);
+  }
+
+  Json value  = ExtractFunctionParameter(trx, parameters, 0, false);
+  if (value.isObject() && value.has("_id")) {
+    value = value.get("_id");
+  }
+  if (value.isString()) {
+    std::string identifier(value.json()->_value._string.data, value.json()->_value._string.length - 1);
+    std::vector<std::string> parts = triagens::basics::StringUtils::split(identifier, "/");
+    if (parts.size() == 2) {
+      Json result(Json::Object, 2);
+      result.set("collection", Json(parts[0]));
+      result.set("key", Json(parts[1]));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+    }
+   
+  }
+
+  RegisterWarning(query, "PARSE_IDENTIFIER", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  return AqlValue(new Json(Json::Null));
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
