@@ -296,15 +296,15 @@ ArangoDatabase.prototype._truncate = function(name) {
 /// @startDocuBlock IndexVerify
 ///
 /// So you've created an index, and since its maintainance isn't for free,
-/// you definitely want to know whether your Query can utilize it.
+/// you definitely want to know whether your query can utilize it.
 ///
-/// You can use explain to verify whether **skiplist** or **hash indices** are used
-/// (if you ommit `colors: false` you will get nice colors in ArangoShell):
+/// You can use explain to verify whether **skiplists** or **hash indexes** are 
+/// used (if you omit `colors: false` you will get nice colors in ArangoShell):
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{IndexVerify}
 /// ~db._create("example");
 /// var explain = require("org/arangodb/aql/explainer").explain;
-/// db.example.ensureSkiplist("a", "b");
+/// db.example.ensureIndex({ type: "skiplist", fields: [ "a", "b" ] });
 /// explain("FOR doc IN example FILTER doc.a < 23 RETURN doc", {colors:false});
 /// ~db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -322,7 +322,7 @@ ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{IndexHandle}
 /// ~db._create("example");
-/// db.example.ensureSkiplist("a", "b");
+/// db.example.ensureIndex({ type: "skiplist", fields: [ "a", "b" ] });
 /// var indexInfo = db.example.getIndexes().map(function(x) { return x.id; });
 /// indexInfo;
 /// db._index(indexInfo[0])
@@ -385,7 +385,7 @@ ArangoDatabase.prototype._index = function(id) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{dropIndex}
 /// ~db._create("example");
-/// db.example.ensureSkiplist("a", "b");
+/// db.example.ensureIndex({ type: "skiplist", fields: [ "a", "b" ] });
 /// var indexInfo = db.example.getIndexes();
 /// indexInfo;
 /// db._dropIndex(indexInfo[0])

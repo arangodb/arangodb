@@ -30,7 +30,6 @@
 
 #include "shaped-json.h"
 
-#include "Basics/associative.h"
 #include "Basics/hashes.h"
 #include "Basics/logging.h"
 #include "Basics/string-buffer.h"
@@ -2050,32 +2049,6 @@ static bool StringifyJsonShapeData (T* shaper,
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief performs a deep copy of a shaped json object
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shaped_json_t* TRI_CopyShapedJson (VocShaper* shaper, TRI_shaped_json_t* oldShapedJson) {
-  if (oldShapedJson == nullptr) {
-    return nullptr;
-  }
-
-  TRI_shaped_json_t* newShapedJson = static_cast<TRI_shaped_json_t*>(TRI_Allocate(shaper->memoryZone(), sizeof(TRI_shaped_json_t), false));
-
-  if (newShapedJson == nullptr) {
-    return nullptr;;
-  }
-
-  newShapedJson->_sid = oldShapedJson->_sid;
-  int res = TRI_CopyToBlob(shaper->memoryZone(), &newShapedJson->_data, &oldShapedJson->_data);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(shaper->memoryZone(), newShapedJson);
-    return nullptr;
-  }
-
-  return newShapedJson;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object, but does not free the pointer

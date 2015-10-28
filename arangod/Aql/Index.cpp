@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Index.h"
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
@@ -81,6 +82,9 @@ bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
                                      size_t itemsInIndex,
                                      size_t& estimatedItems,
                                      double& estimatedCost) const {
+  if (! hasInternals() ) {
+    return false;
+  }
   return getInternals()->supportsFilterCondition(node, reference, itemsInIndex, estimatedItems, estimatedCost);
 }
 
@@ -93,6 +97,9 @@ bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondi
                                    triagens::aql::Variable const* reference,
                                    size_t itemsInIndex,
                                    double& estimatedCost) const {
+  if (! hasInternals() ) {
+    return false;
+  }
   return getInternals()->supportsSortCondition(sortCondition, reference, itemsInIndex, estimatedCost);
 }
 
@@ -100,11 +107,12 @@ bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondi
 /// @brief get an iterator for the index
 ////////////////////////////////////////////////////////////////////////////////
       
-triagens::arango::IndexIterator* Index::getIterator (arango::IndexIteratorContext* context, 
+triagens::arango::IndexIterator* Index::getIterator (triagens::arango::IndexIteratorContext* context, 
                                                      triagens::aql::Ast* ast,
                                                      triagens::aql::AstNode const* condition,
                                                      triagens::aql::Variable const* reference,
                                                      bool reverse) const {
+  TRI_ASSERT(hasInternals());
   return getInternals()->iteratorForCondition(context, ast, condition, reference, reverse);
 }
 
@@ -116,6 +124,7 @@ triagens::arango::IndexIterator* Index::getIterator (arango::IndexIteratorContex
 
 triagens::aql::AstNode* Index::specializeCondition (triagens::aql::AstNode* node,
                                                     triagens::aql::Variable const* reference) const {
+  TRI_ASSERT(hasInternals());
   return getInternals()->specializeCondition(node, reference);
 }
 

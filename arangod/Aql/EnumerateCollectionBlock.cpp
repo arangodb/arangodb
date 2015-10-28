@@ -82,6 +82,35 @@ void EnumerateCollectionBlock::initializeDocuments () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief skip instead of fetching
+////////////////////////////////////////////////////////////////////////////////
+
+bool EnumerateCollectionBlock::skipDocuments (size_t toSkip, size_t& skipped) {
+  throwIfKilled(); // check if we were aborted
+  size_t skippedHere = 0;
+
+  int res = _scanner->forward(toSkip, skippedHere);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  skipped += skippedHere;
+
+  _documents.clear();
+  _posInDocuments = 0;
+
+  _engine->_stats.scannedFull += static_cast<int64_t>(skippedHere);
+
+  if (skippedHere < toSkip) {
+    // We could not skip enough _scanner is exhausted
+    return false;
+  }
+  // _scanner might have more elements
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief continue fetching of documents
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -242,6 +271,27 @@ size_t EnumerateCollectionBlock::skipSome (size_t atLeast, size_t atMost) {
     return skipped;
   }
 
+  if (! _documents.empty()) {
+    if (_posInDocuments < _documents.size()) {
+      // We still have unread documents in the _documents buffer
+      // Just skip them
+      size_t couldSkip = _documents.size() - _posInDocuments;
+      if (atMost <= couldSkip) {
+        // More in buffer then to skip.
+        _posInDocuments += atMost;
+        return atMost;
+      }
+      // Skip entire buffer
+      _documents.clear();
+      _posInDocuments = 0;
+      skipped += couldSkip;
+    }
+  }
+
+  // No _documents buffer. But could Skip more
+  // Fastforward the _scanner
+  TRI_ASSERT(_documents.empty());
+
   while (skipped < atLeast) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize, atMost);
@@ -256,33 +306,17 @@ size_t EnumerateCollectionBlock::skipSome (size_t atLeast, size_t atMost) {
     // if we get here, then _buffer.front() exists
     AqlItemBlock* cur = _buffer.front();
 
-    // Get more documents from collection if _documents is empty:
-    if (_posInDocuments >= _documents.size()) {
-      if (! moreDocuments(atMost)) {
-        _done = true;
-        return skipped;
+    if (! skipDocuments(atMost - skipped, skipped)) {
+      // nothing more to read, re-initialize fetching of documents
+      initializeDocuments();
+      if (++_pos >= cur->size()) {
+        _buffer.pop_front();  // does not throw
+        delete cur;
+        _pos = 0;
       }
-    }
-
-    if (atMost >= skipped + _documents.size() - _posInDocuments) {
-      skipped += _documents.size() - _posInDocuments;
-
-      // fetch more documents into our buffer
-      if (! moreDocuments(atMost - skipped)) {
-        // nothing more to read, re-initialize fetching of documents
-        initializeDocuments();
-        if (++_pos >= cur->size()) {
-          _buffer.pop_front();  // does not throw
-          delete cur;
-          _pos = 0;
-        }
-      }
-    }
-    else {
-      _posInDocuments += atMost - skipped;
-      skipped = atMost;
     }
   }
+  // We skipped atLeast documents
   return skipped;
 }
 

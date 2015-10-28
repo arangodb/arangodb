@@ -175,7 +175,7 @@ namespace triagens {
         bool findHelperIntervalValid (SkiplistIteratorInterval const& interval);
     };
 
-    class SkiplistIndexIterator : public IndexIterator {
+    class SkiplistIndexIterator final : public IndexIterator {
 
       public:
         
@@ -214,7 +214,7 @@ namespace triagens {
 // --SECTION--                                               class SkiplistIndex
 // -----------------------------------------------------------------------------
 
-    class SkiplistIndex : public PathBasedIndex {
+    class SkiplistIndex final : public PathBasedIndex {
 
       struct KeyElementComparator {
         int operator() (TRI_skiplist_index_key_t const* leftKey,
@@ -319,7 +319,7 @@ namespace triagens {
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*,
-                                             bool const) const override;
+                                             bool) const override;
 
         triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
                                                      triagens::aql::Variable const*) const override;
@@ -344,12 +344,14 @@ namespace triagens {
                               triagens::aql::AstNode const*,
                               triagens::aql::AstNode const*,
                               triagens::aql::Variable const*,
-                              std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&) const;
+                              std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
+                              bool) const;
 
         void matchAttributes (triagens::aql::AstNode const*,
                               triagens::aql::Variable const*,
                               std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
-                              size_t&) const;
+                              size_t&,
+                              bool) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

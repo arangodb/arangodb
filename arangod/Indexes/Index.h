@@ -90,7 +90,7 @@ struct TRI_index_element_t {
 /// @brief Set the pointer to the Document's masterpointer.
 ////////////////////////////////////////////////////////////////////////////////
 
-    void document (TRI_doc_mptr_t* doc) {
+    void document (TRI_doc_mptr_t* doc) noexcept {
       _document = doc;
     }
 
@@ -362,7 +362,7 @@ namespace triagens {
                                                      triagens::aql::Ast*,
                                                      triagens::aql::AstNode const*,
                                                      triagens::aql::Variable const*,
-                                                     bool const) const;
+                                                     bool) const;
         
         virtual triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
                                                              triagens::aql::Variable const*) const;
@@ -370,7 +370,8 @@ namespace triagens {
         bool canUseConditionPart (triagens::aql::AstNode const* access,
                                   triagens::aql::AstNode const* other,
                                   triagens::aql::AstNode const* op,
-                                  triagens::aql::Variable const* reference) const;
+                                  triagens::aql::Variable const* reference,
+                                  bool) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables

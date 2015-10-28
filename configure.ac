@@ -1,19 +1,12 @@
 dnl ============================================================================
-dnl ArangoDB                                                  (c) triAGENS GmbH
+dnl ArangoDB                                                   (c) ArangoDB GmbH
 dnl ============================================================================
 
 dnl ============================================================================
-dnl --SECTION--                                  triAGENS GmbH Build Environment
+dnl --SECTION--                                  ArangoDB GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS ArangoDB], [2.7.0-devel], [info@arangodb.com], [arangodb], [https://www.arangodb.com])
-
-dnl ----------------------------------------------------------------------------
-dnl auxillary directory for install-sh and missing
-dnl ----------------------------------------------------------------------------
-
-AC_CONFIG_AUX_DIR([config])
-AC_CONFIG_MACRO_DIR([m4])
+AC_INIT([ArangoDB GmbH], [2.7.0-devel], [info@arangodb.com], [arangodb], [https://www.arangodb.com])
 
 CURRENT_DIR=`pwd`
 
@@ -25,16 +18,17 @@ AC_MSG_NOTICE([with CFLAGS='$CFLAGS'])
 AC_MSG_NOTICE([with CXXFLAGS='$CXXFLAGS'])
 AC_MSG_NOTICE([with LDFLAGS='$LDFLAGS'])
 
-if python -c '
-import sys
-if sys.version_info.major != 2:
-    exit(0)
-else:
-    exit(1)
-'; then
-   echo "Compiling V8 requires a python version 2; please adjust your " `which python`
-   exit 1
-fi
+AC_CONFIG_AUX_DIR([config])
+AC_CONFIG_MACRO_DIR([m4])
+
+AC_CANONICAL_BUILD
+AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
+
+AM_INIT_AUTOMAKE([foreign subdir-objects])
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES(yes)])
+
+m4_include([m4/configure.basics])
 
 dnl ----------------------------------------------------------------------------
 dnl grab the configure command, options and flags and store them in m4 variables
@@ -77,11 +71,240 @@ AC_SUBST(TRI_REPOSITORY_VERSION)
 AC_DEFINE_UNQUOTED(TRI_REPOSITORY_VERSION, "$TRI_REPOSITORY_VERSION", "" , [repository version])
 
 dnl ============================================================================
-dnl --SECTION--                                              3RD-PARTY LIBRARIES
+dnl --SECTION--                                         CHECKING THE ENVIRONMENT
 dnl ============================================================================
 
 dnl ----------------------------------------------------------------------------
-dnl ETCD
+dnl python
+dnl ----------------------------------------------------------------------------
+
+if python -c '
+import sys
+if sys.version_info.major != 2:
+    exit(0)
+else:
+    exit(1)
+'; then
+   echo "Compiling V8 requires a python version 2; please adjust your " `which python`
+   exit 1
+fi
+
+dnl ----------------------------------------------------------------------------
+dnl checks for compiler and basic settings
+dnl ----------------------------------------------------------------------------
+
+AC_MSG_NOTICE([................................................................................])
+AC_MSG_NOTICE([CHECKING C/C++ COMPILER AND LINKER])
+AC_MSG_NOTICE([................................................................................])
+
+case $target in
+  *-*-cygwin)
+    LDFLAGS="$LDFLAGS -Wl,--enable-auto-import"
+    enable_static="yes"
+    enable_shared="no"
+
+    list_cc="[gcc-4 gcc-3 gcc cc]"
+    list_cxx="[g++-4 g++-3 g++ cxx]"
+
+    ;;
+
+  *) 
+    list_cc="[${CC} gcc clang cc]"
+    list_cxx="[${CXX} g++ clang++ cxx]"
+
+    ;;
+esac
+
+AC_PROG_CXXCPP
+AC_PROG_CC($list_cc)
+AC_PROG_CXX($list_cxx)
+AC_PROG_CPP
+AM_PROG_CC_C_O
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+AC_PROG_RANLIB
+
+AX_CXX_COMPILE_STDCXX_11(noext, mandatory)
+AX_CXX_CHECK_UNORDERED_MAP_EMPLACE
+
+dnl ----------------------------------------------------------------------------
+dnl check for special OS like MacOS X or FreeBSD
+dnl ----------------------------------------------------------------------------
+
+tr_DARWIN="no"
+tr_FREEBSD="no"
+tr_ARM="no"
+
+case $target in
+  *-apple-darwin*)
+    tr_DARWIN="yes"
+    ;;
+
+  *-*-freebsd*)
+    tr_FREEBSD="yes"
+    ;;
+
+  armv7l-*-linux-gnueabihf)
+    tr_ARM="yes"
+    tr_ARM7="yes"
+    CFLAGS="$CFLAGS"
+    CXXFLAGS="$CXXFLAGS"
+    CPPFLAGS="$CPPFLAGS"
+    ;;
+
+  armv6l-*-linux-gnueabihf)
+    dnl ----------------------------------------------------------------------------
+    dnl special flags for Arm V6 (pi)
+    dnl ----------------------------------------------------------------------------
+    CPPFLAGS="${CPPFLAGS} -DUSE_EABI_HARDFLOAT -march=armv6 -mfloat-abi=hard"
+    tr_ARM="yes"
+    tr_ARM6="yes"
+    ;;
+esac
+
+AM_CONDITIONAL(ENABLE_DARWIN, test "x$tr_DARWIN" = xyes)
+AM_CONDITIONAL(ENABLE_FREEBSD, test "x$tr_FREEBSD" = xyes)
+AM_CONDITIONAL(ENABLE_ARM, test "x$tr_ARM" = xyes)
+AM_CONDITIONAL(ENABLE_ARMV6, test "x$tr_ARM6" = xyes)
+AM_CONDITIONAL(ENABLE_ARMV7, test "x$tr_ARM7" = xyes)
+
+dnl ----------------------------------------------------------------------------
+dnl bits
+dnl ----------------------------------------------------------------------------
+
+tr_BITS=32
+
+case $target_cpu in
+  amd64*)
+    tr_BITS=64
+    ;;
+
+  x86_64*)
+    tr_BITS=64
+    ;;
+esac
+
+TRI_BITS="$tr_BITS"
+AC_SUBST(TRI_BITS)
+
+CPPFLAGS="${CPPFLAGS} -DTRI_BITS=${TRI_BITS}"
+
+dnl ----------------------------------------------------------------------------
+dnl options C/C++ standard
+dnl ----------------------------------------------------------------------------
+
+if test x$GCC == xyes;  then
+  # try to select the correct C standard: gnu90 is nice, because it warns about constructs
+  # the Visual Studio Compiler does not like
+
+  GCCSTD=""
+
+  TRI_TRY_CC_OPTION([-std=gnu90],
+	            [GCCSTD="-std=gnu90"],
+	            [TRI_TRY_CC_OPTION([-std=gnu89],
+                                       [GCCSTD="-std=gnu89"])])
+
+  GXXSTD=""
+
+  TRI_TRY_CXX_OPTION([-std=c++11],
+	             [GXXSTD="-std=c++11"])
+
+  CFLAGS="${GCCSTD} ${CFLAGS}"
+  CXXFLAGS="${GXXSTD} ${CXXFLAGS}"
+fi
+
+if test x$tr_DARWIN == xyes;  then
+  TRI_TRY_CXX_OPTION([-stdlib=libc++],
+                     [tr_CXX_HAS_STDLIB="yes"],
+                     [tr_CXX_HAS_STDLIB="no"])
+fi
+
+AM_CONDITIONAL(CXX_HAS_STDLIB, test "x$tr_CXX_HAS_STDLIB" = "xyes")
+
+dnl ----------------------------------------------------------------------------
+dnl error & warnings && C/C++ standard
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(error-on-warning,
+  AS_HELP_STRING([--enable-error-on-warning], [treat warnings as errors (default: no)]),
+  [tr_WERROR="${enableval:-yes}"],
+  [tr_WERROR=no]
+)
+
+CFLAGS="$CFLAGS $RPM_OPT_FLAGS"
+CXXFLAGS="$CXXFLAGS $RPM_OPT_FLAGS"
+
+if test x$GCC == xyes;  then
+  WALL="-Wall -Winit-self -Wno-long-long -Wno-variadic-macros"
+
+  if test x$tr_WERROR == xyes;  then
+    WALL="${WALL} -Werror"
+  fi
+
+  if test x$tr_DARWIN == xyes;  then
+    WALL="${WALL} -Wno-deprecated-declarations"
+  fi
+
+  WALLC="${WALL} -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement"
+  WALLCXX="${WALL} -Woverloaded-virtual"
+
+  TRI_TRY_CXX_OPTION([-Wstrict-null-sentinel],
+                     [WALLCXX="${WALLCXX} -Wstrict-null-sentinel"])
+  
+  # suppress warnings about unused compiler options. 
+  # this is useful for clang as it complains about -std=... in linking 
+  TRI_TRY_CXX_OPTION([-Qunused-arguments],
+                     [WALLCXX="${WALLCXX} -Qunused-arguments"])
+
+
+  CFLAGS="${CFLAGS} ${WALLC}"
+  CXXFLAGS="${CXXFLAGS} ${WALLCXX}"
+fi
+
+dnl ----------------------------------------------------------------------------
+dnl option for gnu style include
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(isystem,
+  AS_HELP_STRING([--enable-isystem], [enables the use of -isystem instead of -I for system headers (default: no)]),
+  [tr_ISYSTEM="${enableval:-yes}"],
+  [tr_ISYSTEM=no]
+)
+
+if test x$GCC == xyes;  then
+  INCPREFIX="-isystem " # note that the trailing blank is important
+else
+  INCPREFIX="-I"
+fi
+
+if test "x$tr_ISYSTEM" = "xno";  then
+  INCPREFIX="-I"
+fi
+
+dnl ----------------------------------------------------------------------------
+dnl use the gold linker
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(gold,
+  AS_HELP_STRING([--enable-gold], [use new gold linker (default: no)]),
+  [tr_GOLD="${enableval:-yes}"],
+  [tr_GOLD=no]
+)
+
+AM_CONDITIONAL(ENABLE_GOLD, test "x$tr_GOLD" = xyes)
+
+if test "x$tr_GOLD" = xyes;  then
+  CFLAGS="$CFLAGS -fuse-ld=gold"
+  CXXFLAGS="$CXXFLAGS -fuse-ld=gold"
+fi
+
+dnl ============================================================================
+dnl --SECTION--                                                      SUB SYSTEMS
+dnl ============================================================================
+
+dnl ----------------------------------------------------------------------------
+dnl etcd
 dnl ----------------------------------------------------------------------------
 
 AC_ARG_ENABLE(all-in-one-etcd,
@@ -93,7 +316,7 @@ AC_ARG_ENABLE(all-in-one-etcd,
 AM_CONDITIONAL(ENABLE_ALL_IN_ONE_ETCD, test "x$tr_ALL_IN_ONE_ETCD" = xyes)
 
 dnl ----------------------------------------------------------------------------
-dnl GO
+dnl go
 dnl ----------------------------------------------------------------------------
 
 AC_ARG_ENABLE(internal-go,
@@ -120,12 +343,8 @@ fi
 
 AM_CONDITIONAL(GO_AVAILABLE, test "x$GOPROG" != x)
 
-dnl ============================================================================
-dnl --SECTION--                                                          OPTIONS
-dnl ============================================================================
-
 dnl ----------------------------------------------------------------------------
-dnl RELATIVE PATH
+dnl use relative path
 dnl ----------------------------------------------------------------------------
 
 AC_ARG_ENABLE(relative,
@@ -142,12 +361,46 @@ else
   BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: disabled"
 fi
 
-dnl ============================================================================
-dnl --SECTION--                                                    CONFIGURATION
-dnl ============================================================================
+dnl ----------------------------------------------------------------------------
+dnl rt
+dnl ----------------------------------------------------------------------------
 
-m4_include([m4/configure.basics])
-AC_PROG_RANLIB
+m4_include([m4/clock_gettime])
+AC_CLOCK()
+
+dnl ----------------------------------------------------------------------------
+dnl splice
+dnl ----------------------------------------------------------------------------
+
+AC_MSG_CHECKING([whether your system knows about splice()]) 
+AC_TRY_COMPILE([
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <fcntl.h>
+],
+[
+  ssize_t sent, pipesize;
+  int fd, SplicePipe[2];
+  pipesize = splice(fd, NULL, 
+                    SplicePipe[1], NULL, 
+                    1, 
+                    SPLICE_F_MORE | SPLICE_F_MOVE|SPLICE_F_NONBLOCK);
+],
+[
+  ok_splice=yes
+  AC_DEFINE_UNQUOTED(TRI_LINUX_SPLICE, 1, [true if we have the linux splice api])
+  AC_MSG_RESULT([yes])
+  AC_SUBST(TRI_LINUX_SPLICE)
+],
+[ 
+  ok_splice=no
+  AC_MSG_RESULT([no])
+]
+)
+
+dnl ----------------------------------------------------------------------------
+dnl load sub systems
+dnl ----------------------------------------------------------------------------
 
 m4_include([m4/configure.logging])
 m4_include([m4/configure.largefile])
@@ -163,220 +416,7 @@ dnl --SECTION--                                               EXTERNAL LIBRARIES
 dnl ============================================================================
 
 dnl ----------------------------------------------------------------------------
-dnl tcmalloc
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(tcmalloc,
-  AS_HELP_STRING([--enable-tcmalloc], [use system-installed tcmalloc library (default: no)]),
-  [tr_TCMALLOC="${enableval:-yes}"],
-  [tr_TCMALLOC=no]
-)
-
-if test "x$tr_TCMALLOC" = "xyes"; then
-  AC_MSG_CHECKING([tcmalloc])
-
-  AC_SEARCH_LIBS([tc_malloc], [tcmalloc tcmalloc_minimal tcmalloc_debug], [ ], [ AC_MSG_ERROR([unable to find the tc_malloc library function]) ])
-fi
-
-AM_CONDITIONAL(ENABLE_TCMALLOC, test "x$tr_TCMALLOC" = xyes)
-
-if test "x$tr_TCMALLOC" = "xyes"; then
-  TCMALLOC_LIBS="-ltcmalloc"
-fi
-AC_SUBST(TCMALLOC_LIBS)
-
-if test "x$tr_TCMALLOC" = "xyes";  then
-  AC_DEFINE_UNQUOTED(TRI_HAVE_TCMALLOC, 1, [true if tcmalloc is used])
-
-  BASIC_INFO="$BASIC_INFO|TCMALLOC support: enabled ($TCMALLOC_LIBS)"
-else
-  BASIC_INFO="$BASIC_INFO|TCMALLOC support: disabled"
-fi
-
-dnl ----------------------------------------------------------------------------
-dnl -lrt
-dnl ----------------------------------------------------------------------------
-
-m4_include([m4/clock_gettime])
-AC_CLOCK()
-
-dnl ----------------------------------------------------------------------------
-dnl MATH
-dnl ----------------------------------------------------------------------------
-
-m4_include([m4/external.math])
-
-dnl ----------------------------------------------------------------------------
-dnl READLINE
-dnl ----------------------------------------------------------------------------
-
-AC_MSG_NOTICE([--------------------------------------------------------------------------------])
-AC_MSG_NOTICE([CHECKING FOR READLINE])
-AC_MSG_NOTICE([--------------------------------------------------------------------------------])
-
-AC_LANG(C)
-
-AC_ARG_ENABLE(readline,
-  AS_HELP_STRING([--enable-readline], [enable readline support (default: yes)]),
-  tr_READLINE="$enableval",
-  tr_READLINE="maybe"
-)
-
-if test "x$tr_DARWIN" = xyes; then
-  READLINE=/usr/local/opt/readline
-  READLINE_CPPFLAGS="-I$READLINE/include"
-  READLINE_INCLUDE="$READLINE/include"
-  READLINE_LDFLAGS="-L$READLINE/lib"
-  READLINE_LIB_PATH="$READLINE/lib"
-fi
-
-AC_ARG_WITH(readline,
-  AS_HELP_STRING([--with-readline=DIR], [where the readline library and includes are located]),
-  [READLINE_CPPFLAGS="-I$withval/include"
-   READLINE_INCLUDE="$withval/include"
-   READLINE_LDFLAGS="-L$withval/lib"
-   READLINE_LIB_PATH="$withval/lib"
-   READLINE="$withval"]
-)
-
-AC_ARG_WITH(readline-lib,
-  AS_HELP_STRING([--with-readline-lib=DIR], [where the readline library is located]),
-  [READLINE_LDFLAGS="-L$withval"
-   READLINE_LIB_PATH="$withval"]
-)
-
-dnl checks for the READLINE library
-
-if test "x$READLINE_CPPFLAGS" != x;  then
-  TR_INCLUDE([READLINE_CPPFLAGS])
-fi
-
-dnl save flags
-
-SAVE_CPPFLAGS="$CPPFLAGS"
-CPPFLAGS="$CPPFLAGS $READLINE_CPPFLAGS"
-
-SAVE_LDFLAGS="$LDFLAGS"
-LDFLAGS="$LDFLAGS $READLINE_LDFLAGS"
-
-SAVE_LIBS="$LIBS"
-
-dnl check for header and library
-
-if test "x$tr_READLINE" = xyes -o "x$tr_READLINE" = xmaybe;  then
-  ch_READLINE="$tr_READLINE"
-
-  AC_CHECK_HEADERS(readline/readline.h, [tr_READLINE="yes"], [tr_READLINE="no"])
-
-  if test "x$tr_READLINE" = xyes;  then
-    AC_CHECK_LIB([readline], [readline], [READLINE_LIBS="-lreadline" tr_READLINE="yes"], [tr_READLINE="no"])
-  fi
-
-  AC_MSG_CHECKING([READLINE support])
-
-  if test "x$tr_READLINE" != xyes;  then
-    AC_MSG_RESULT([not found])
-
-    if test "x$ch_READLINE" = xyes;  then
-      AC_MSG_ERROR([Please install readline support])
-    fi
-  else
-    AC_MSG_RESULT([readline])
-  fi
-else
-  AC_MSG_CHECKING([READLINE support])
-  AC_MSG_RESULT([disabled])
-fi
-
-dnl grep readline version number
-
-if test "x$tr_READLINE" = xyes;  then
-
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <readline/readline.h>
-
-main () {
-#if defined(RL_VERSION_MAJOR) && defined(RL_VERSION_MINOR)
-  long sdnhg36ed = RL_VERSION_MAJOR RL_VERSION_MINOR ;
-#else
-  long sdnhg36ed = RL_READLINE_VERSION hex ;
-#endif
-}
-
-_ACEOF
-
-  AC_MSG_CHECKING([READLINE version])
-  eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 "." $5}' > conftest.output
-  READLINE_VERSION=`cat conftest.output`
-
-  if test -z "$READLINE_VERSION"; then
-    AC_MSG_ERROR([Readline support is not working. Please re-install readline support])
-  fi
-
-  AC_MSG_RESULT([$READLINE_VERSION])
-  rm -f conftest*
-
-  if test "x$tr_DARWIN" = xyes; then
-    case "$READLINE_VERSION" in
-      6.*|5.*)
-        ;;
-
-      *)
-        AC_MSG_ERROR([Please install readline 6 from brew. If you have a non-standard brew location, use "--with-readline".])
-        ;;
-    esac
-  fi
-fi
-
-dnl restore flags and set readline flags
-
-LIBS="$SAVE_LIBS"
-LDFLAGS="$SAVE_LDFLAGS"
-CPPFLAGS="$SAVE_CPPFLAGS"
-
-if test "x$tr_READLINE" = xyes;  then
-  CPPFLAGS="$CPPFLAGS -DHAVE_READLINE=1"
-  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_READLINE_VERSION='\"${READLINE_VERSION}\"'"
-fi
-
-AM_CONDITIONAL(ENABLE_READLINE, test "x$tr_READLINE" = xyes)
-
-if test "x$tr_READLINE" = xyes;  then
-  AC_DEFINE_UNQUOTED(TRI_HAVE_READLINE, 1, [true if readline is used])
-fi
-
-dnl add substitutions
-
-AC_SUBST(READLINE_VERSION)
-AC_SUBST(READLINE_CPPFLAGS)
-AC_SUBST(READLINE_INCLUDE)
-AC_SUBST(READLINE_LDFLAGS)
-AC_SUBST(READLINE_LIB_PATH)
-AC_SUBST(READLINE_LIBS)
-
-dnl informational output
-
-if test "x$tr_READLINE" = xyes;  then
-  LIB_INFO="$LIB_INFO|READLINE VERSION:  ${READLINE_VERSION}"
-
-  LIB_INFO="$LIB_INFO|READLINE_CPPFLAGS: ${READLINE_CPPFLAGS}"
-  LIB_INFO="$LIB_INFO|READLINE_LDFLAGS:  ${READLINE_LDFLAGS}"
-  LIB_INFO="$LIB_INFO|READLINE_LIBS:     ${READLINE_LIBS}"
-else
-  LIB_INFO="$LIB_INFO|READLINE VERSION: disabled"
-fi
-
-LIB_INFO="$LIB_INFO|."
-
-dnl ----------------------------------------------------------------------------
-dnl OPENSSL
-dnl ----------------------------------------------------------------------------
-
-m4_include([m4/external.openssl])
-
-dnl ----------------------------------------------------------------------------
-dnl BOOST
+dnl boost
 dnl ----------------------------------------------------------------------------
 
 BOOST_VERSION="1.58.0"
@@ -392,7 +432,7 @@ LIB_INFO="$LIB_INFO|BOOST_CPPFLAGS: ${BOOST_CPPFLAGS}"
 LIB_INFO="$LIB_INFO|."
 
 dnl ----------------------------------------------------------------------------
-dnl V8
+dnl v8
 dnl ----------------------------------------------------------------------------
 
 V8_VERSION="4.3.61"
@@ -481,7 +521,7 @@ LIB_INFO="$LIB_INFO|V8_LIBS:     ${V8_LIBS}"
 LIB_INFO="$LIB_INFO|."
 
 dnl ----------------------------------------------------------------------------
-dnl ICU
+dnl icu (after v8)
 dnl ----------------------------------------------------------------------------
 
 ICU_VERSION="52.2"
@@ -512,7 +552,7 @@ LIB_INFO="$LIB_INFO|ICU_LIBS:     ${ICU_LIBS}"
 LIB_INFO="$LIB_INFO|."
 
 dnl ----------------------------------------------------------------------------
-dnl LIBEV
+dnl libev
 dnl ----------------------------------------------------------------------------
 
 LIBEV_VERSION="4.11"
@@ -537,7 +577,80 @@ LIB_INFO="$LIB_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
 LIB_INFO="$LIB_INFO|."
 
 dnl ----------------------------------------------------------------------------
-dnl ZLIB
+dnl math
+dnl ----------------------------------------------------------------------------
+
+m4_include([m4/external.math])
+
+dnl ----------------------------------------------------------------------------
+dnl repl console
+dnl ----------------------------------------------------------------------------
+
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+AC_MSG_NOTICE([CHECKING FOR CONSOLE SUPPORT])
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+
+CONSOLE_CPPFLAGS=""
+
+AC_ARG_ENABLE(console,
+  AS_HELP_STRING([--enable-console], [enable console support (default: linenoise)]),
+  tr_CONSOLE="$enableval",
+  tr_CONSOLE="linenoise"
+)
+
+if test "$tr_CONSOLE" = "dummy"; then
+  LIB_INFO="$LIB_INFO|CONSOLE: dummy"
+elif test "$tr_CONSOLE" = "linenoise"; then
+  LIB_INFO="$LIB_INFO|CONSOLE: linenoise"
+  CONSOLE_CPPFLAGS="-I${srcdir}/3rdParty/linenoise -DTRI_HAVE_LINENOISE"
+fi
+
+LIB_INFO="$LIB_INFO|CONSOLE_CPPFLAGS: ${CONSOLE_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|."
+
+AC_SUBST(CONSOLE_CPPFLAGS)
+
+AM_CONDITIONAL(ENABLE_LINENOISE, test "x$tr_CONSOLE" = xlinenoise)
+
+dnl ----------------------------------------------------------------------------
+dnl tcmalloc
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(tcmalloc,
+  AS_HELP_STRING([--enable-tcmalloc], [use system-installed tcmalloc library (default: no)]),
+  [tr_TCMALLOC="${enableval:-yes}"],
+  [tr_TCMALLOC=no]
+)
+
+if test "x$tr_TCMALLOC" = "xyes"; then
+  AC_MSG_CHECKING([tcmalloc])
+
+  AC_SEARCH_LIBS([tc_malloc], [tcmalloc tcmalloc_minimal tcmalloc_debug], [ ], [ AC_MSG_ERROR([unable to find the tc_malloc library function]) ])
+fi
+
+AM_CONDITIONAL(ENABLE_TCMALLOC, test "x$tr_TCMALLOC" = xyes)
+
+if test "x$tr_TCMALLOC" = "xyes"; then
+  TCMALLOC_LIBS="-ltcmalloc"
+fi
+AC_SUBST(TCMALLOC_LIBS)
+
+if test "x$tr_TCMALLOC" = "xyes";  then
+  AC_DEFINE_UNQUOTED(TRI_HAVE_TCMALLOC, 1, [true if tcmalloc is used])
+
+  BASIC_INFO="$BASIC_INFO|TCMALLOC support: enabled ($TCMALLOC_LIBS)"
+else
+  BASIC_INFO="$BASIC_INFO|TCMALLOC support: disabled"
+fi
+
+dnl ----------------------------------------------------------------------------
+dnl openssl
+dnl ----------------------------------------------------------------------------
+
+m4_include([m4/external.openssl])
+
+dnl ----------------------------------------------------------------------------
+dnl zlib
 dnl ----------------------------------------------------------------------------
 
 ZLIB_VERSION="1.2.7"
@@ -558,37 +671,6 @@ LIB_INFO="$LIB_INFO|ZLIB_CPPFLAGS: ${ZLIB_CPPFLAGS}"
 LIB_INFO="$LIB_INFO|ZLIB_LDFLAGS:  ${ZLIB_LDFLAGS}"
 LIB_INFO="$LIB_INFO|ZLIB_LIBS:     ${ZLIB_LIBS}"
 
-dnl ----------------------------------------------------------------------------
-dnl SPLICE
-dnl ----------------------------------------------------------------------------
-
-AC_MSG_CHECKING([whether your system knows about splice()]) 
-AC_TRY_COMPILE([
-#define _GNU_SOURCE
-#include <unistd.h>
-#include <fcntl.h>
-],
-[
-  ssize_t sent, pipesize;
-  int fd, SplicePipe[2];
-  pipesize = splice(fd, NULL, 
-                    SplicePipe[1], NULL, 
-                    1, 
-                    SPLICE_F_MORE | SPLICE_F_MOVE|SPLICE_F_NONBLOCK);
-],
-[
-  ok_splice=yes
-  AC_DEFINE_UNQUOTED(TRI_LINUX_SPLICE, 1, [true if we have the linux splice api])
-  AC_MSG_RESULT([yes])
-  AC_SUBST(TRI_LINUX_SPLICE)
-],
-[ 
-  ok_splice=no
-  AC_MSG_RESULT([no])
-]
-)
-
-
 dnl ============================================================================
 dnl --SECTION--                                                   GENERATE FILES
 dnl ============================================================================
@@ -604,7 +686,64 @@ dnl ============================================================================
 dnl --SECTION--                                                    GENERATE INFO
 dnl ============================================================================
 
-m4_include([m4/configure.information])
+dnl ----------------------------------------------------------------------------
+dnl information
+dnl ----------------------------------------------------------------------------
+
+if test "x$BASIC_INFO" != "x";  then
+  AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+
+  echo $BASIC_INFO | tr "|" "\n" | sort | while read a; do
+    if test "x$a" != "x";  then
+      AC_MSG_NOTICE([$[]a])
+    fi
+  done
+fi
+
+if test "x$LIB_INFO" != "x";  then
+  AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+
+  echo $LIB_INFO | tr "|" "\n" | while read a; do
+    if test "x$a" != "x";  then
+      AC_MSG_NOTICE([$[]a])
+    fi
+  done
+fi
+
+if test "x$TOOL_INFO" != "x";  then
+  AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+
+  echo $TOOL_INFO | tr "|" "\n" | sort | while read a; do
+    if test "x$a" != "x";  then
+      AC_MSG_NOTICE([$[]a])
+    fi
+  done
+fi
+
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+
+AC_MSG_NOTICE([REPOSITORY VERSION: ${TRI_REPOSITORY_VERSION}])
+AC_MSG_NOTICE([BITS: ${TRI_BITS}])
+AC_MSG_NOTICE([CPPFLAGS: ${CPPFLAGS}])
+AC_MSG_NOTICE([CFLAGS: ${CFLAGS}])
+AC_MSG_NOTICE([CXXFLAGS: ${CXXFLAGS}])
+AC_MSG_NOTICE([LDFLAGS: ${LDFLAGS}])
+AC_MSG_NOTICE([LIBS: ${LIBS}])
+
+CC_VERSION=`${CC} --version 2>&1`
+AC_MSG_NOTICE([CC: ${CC}])
+AC_MSG_NOTICE([CC VERSION: ${CC_VERSION}])
+CXX_VERSION=`${CXX} --version 2>&1`
+AC_MSG_NOTICE([CXX: ${CXX}])
+AC_MSG_NOTICE([CXX VERSION: ${CXX_VERSION}])
+
+echo $FLAG_INFO | tr "|" "\n" | while read a; do
+  if test "x$a" != "x";  then
+    AC_MSG_NOTICE([$[]a])
+  fi
+done
+
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 
 dnl ============================================================================
 dnl --SECTION--                                                      END-OF-FILE

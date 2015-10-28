@@ -160,6 +160,141 @@ function arrayHashIndexSuite () {
       res = collection.BY_EXAMPLE_HASH(idx, {a: 2, b: "b"}, 0, null).documents;
       assertEqual(res.length, 1);
       assertEqual(res[0]._id, id);
+
+      // It should be possible to insert arbitarary null values
+      
+      var id1 = collection.save({a: ["duplicate", null, "duplicate"], b: ["duplicate", null, "duplicate"]})._id;
+      var id2 = collection.save({a: ["duplicate", null, "duplicate"], b: ["duplicate", null, "duplicate"]})._id;
+      var id3 = collection.save({a: ["duplicate", null, "duplicate"], b: ["duplicate", null, "duplicate"]})._id;
+      var ids = [id1, id2, id3].sort();
+      res = collection.BY_EXAMPLE_HASH(idx, {a: "duplicate", b: "duplicate"}, 0, null).documents;
+      res = res.map(function(r) { return r._id; }).sort();
+      assertEqual(res.length, 3);
+      assertEqual(res, ids);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: "duplicate", b: null}, 0, null).documents;
+      res = res.map(function(r) { return r._id; }).sort();
+      assertEqual(res.length, 3);
+      assertEqual(res, ids);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: null, b: "duplicate"}, 0, null).documents;
+      res = res.map(function(r) { return r._id; }).sort();
+      assertEqual(res.length, 3);
+      assertEqual(res, ids);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: null, b: null}, 0, null).documents;
+      res = res.map(function(r) { return r._id; }).sort();
+      assertEqual(res.length, 3);
+      assertEqual(res, ids);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Multiple identical elements in sparse array 
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertAndReadArrayCombinedSparse : function () {
+      var idx = collection.ensureHashIndex("a[*]", "b[*]", {sparse: true}).id;
+      // Sparse does not have any effect on array attributes.
+
+      var id = collection.save({a: [1, 2], b: ["a", "b"]})._id;
+
+      // All combinations should be in the index.
+      var res = collection.BY_EXAMPLE_HASH(idx, {a: 1, b: "a"}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: 2, b: "a"}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: 1, b: "b"}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: 2, b: "b"}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id);
+
+      // It should be possible to insert arbitarary null values
+      
+      var id1 = collection.save({a: ["duplicate", null, "duplicate"], b: ["duplicate", null, "duplicate"]})._id;
+      var id2 = collection.save({a: ["duplicate", null, "duplicate"], b: ["duplicate", null, "duplicate"]})._id;
+      var id3 = collection.save({a: ["duplicate", null, "duplicate"], b: ["duplicate", null, "duplicate"]})._id;
+      var ids = [id1, id2, id3].sort();
+      res = collection.BY_EXAMPLE_HASH(idx, {a: "duplicate", b: "duplicate"}, 0, null).documents;
+      res = res.map(function(r) { return r._id; }).sort();
+      assertEqual(res.length, 3);
+      assertEqual(res, ids);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: "duplicate", b: null}, 0, null).documents;
+      assertEqual(res.length, 3);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: null, b: "duplicate"}, 0, null).documents;
+      assertEqual(res.length, 3);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: null, b: null}, 0, null).documents;
+      assertEqual(res.length, 3);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: Multiple identical elements in unique array 
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertAndReadArrayCombinedUnique : function () {
+      var idx = collection.ensureHashIndex("a[*]", "b[*]", {unique: true}).id;
+
+      var id = collection.save({a: [1, 2], b: ["a", "b"]})._id;
+
+      // All combinations should be in the index.
+      var res = collection.BY_EXAMPLE_HASH(idx, {a: 1, b: "a"}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: 2, b: "a"}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: 1, b: "b"}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: 2, b: "b"}, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id);
+
+      // It should be possible to insert arbitarary null values
+      
+      // This should be insertable
+      var id1 = collection.save({a: ["duplicate", null, "duplicate"], b: ["duplicate", null, "duplicate"]})._id;
+
+      try {
+        // This should not be insertable we have the one before
+        collection.save({a: ["duplicate", null, "duplicate"], b: ["duplicate", null, "duplicate"]});
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
+      }
+
+      var ids = [id1];
+      res = collection.BY_EXAMPLE_HASH(idx, {a: "duplicate", b: "duplicate"}, 0, null).documents;
+      res = res.map(function(r) { return r._id; }).sort();
+      assertEqual(res.length, 1);
+      assertEqual(res, ids);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: "duplicate", b: null}, 0, null).documents;
+      res = res.map(function(r) { return r._id; }).sort();
+      assertEqual(res.length, 1);
+      assertEqual(res, ids);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: null, b: "duplicate"}, 0, null).documents;
+      res = res.map(function(r) { return r._id; }).sort();
+      assertEqual(res.length, 1);
+      assertEqual(res, ids);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: null, b: null}, 0, null).documents;
+      res = res.map(function(r) { return r._id; }).sort();
+      assertEqual(res.length, 1);
+      assertEqual(res, ids);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -293,11 +428,30 @@ function arrayHashIndexSuite () {
       assertEqual(res.length, 1);
       assertEqual(res[0]._id, id7);
 
-      // But not like this
+      // And this also
       res = collection.BY_EXAMPLE_HASH(idx, {a: null, b: 1}, 0, null).documents;
       assertEqual(res.length, 1);
       assertEqual(res[0]._id, id7);
-    }
+    },
+
+    /* TODO Decission required here
+    testInsertAndReadNestedElements: function () {
+      var idx = collection.ensureHashIndex("a[*].b").id;
+      var id1 = collection.save({a: [{b: 1}]})._id;
+      var id2 = collection.save({a: [{b: 1}, {b: 2}]})._id;
+      collection.save({a: [1,2,3]});
+      collection.save({b: [1,2,3]});
+
+      var res = collection.BY_EXAMPLE_HASH(idx, {a: {b: 1} }, 0, null).documents;
+      assertEqual(res.length, 2);
+      assertEqual(res[0]._id, id1);
+      assertEqual(res[0]._id, id2);
+
+      res = collection.BY_EXAMPLE_HASH(idx, {a: {b: 2} }, 0, null).documents;
+      assertEqual(res.length, 1);
+      assertEqual(res[0]._id, id2);
+    },
+    */
 
   };
 }
@@ -559,7 +713,7 @@ function arraySkiplistIndexSuite () {
       assertEqual(res.length, 1);
       assertEqual(res[0]._id, id7);
 
-      // But not like this
+      // And this also
       res = collection.BY_EXAMPLE_SKIPLIST(idx, {a: null, b: 1}, 0, null).documents;
       assertEqual(res.length, 1);
       assertEqual(res[0]._id, id7);

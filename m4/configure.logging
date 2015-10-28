@@ -25,15 +25,3 @@ if test "x$tr_LOGGER" = xyes;  then
 else
   BASIC_INFO="$BASIC_INFO|LOGGER: disabled"
 fi
-
-if test "x$tr_TIMING" = xyes;  then
-  BASIC_INFO="$BASIC_INFO|TIMING: enabled"
-else
-  BASIC_INFO="$BASIC_INFO|TIMING: disabled"
-fi
-
-if test "x$tr_FIGURES" = xyes;  then
-  BASIC_INFO="$BASIC_INFO|FIGURES: enabled"
-else
-  BASIC_INFO="$BASIC_INFO|FIGURES: disabled"
-fi

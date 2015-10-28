@@ -33,6 +33,7 @@
 #include "Basics/conversions.h"
 #include "Basics/json-utilities.h"
 #include "Cluster/ClusterMethods.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
 #include "Utils/V8TransactionContext.h"
@@ -4381,6 +4382,14 @@ static void JS_DatafileScanVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>
     o->Set(TRI_V8_ASCII_STRING("tick"),     V8TickId(isolate, entry->_tick));
     o->Set(TRI_V8_ASCII_STRING("type"),     v8::Number::New(isolate, (int) entry->_type));
     o->Set(TRI_V8_ASCII_STRING("status"),   v8::Number::New(isolate, (int) entry->_status));
+    
+    if (entry->_key != nullptr) {
+      o->Set(TRI_V8_ASCII_STRING("key"), TRI_V8_ASCII_STRING(entry->_key));
+    }
+    
+    if (entry->_typeName != nullptr) {
+      o->Set(TRI_V8_ASCII_STRING("typeName"), TRI_V8_ASCII_STRING(entry->_typeName));
+    }
 
     if (entry->_diagnosis != nullptr) {
       o->Set(TRI_V8_ASCII_STRING("diagnosis"), TRI_V8_ASCII_STRING(entry->_diagnosis));

@@ -710,24 +710,32 @@ var dropGraph = function(name, prefixed) {
   if (prefixed) {
     name = "UnitTest" + name;
   }
+
+var knownGraphs = {
+  "knows_graph" : createTraversalExample,
+  "routeplanner" : createRoutePlannerGraph,
+  "social" : createSocialGraph,
+  "movie" : createMoviesGraph
+};
+
+var dropGraph = function(name) {
+  if (! knownGraphs.hasOwnProperty(name)) {
+    // trying to drop an unknown graph - better not do it
+    return false;
+  }
   if (Graph._exists(name)) {
     return Graph._drop(name, true);
   }
 };
 
-
-var loadGraph = function(name, prefixed) {
-  dropGraph(name);
-  switch (name) {
-    case "knows_graph":
-      return createTraversalExample(prefixed);
-    case "routeplanner":
-      return createRoutePlannerGraph(prefixed);
-    case "social":
-      return createSocialGraph(prefixed);
-    case "movies":
-      return createMoviesGraph(prefixed);
+var loadGraph = function(name) {
+  if (! knownGraphs.hasOwnProperty(name)) {
+    // trying to drop an unknown graph - better not do it
+    return false;
   }
+
+  dropGraph(name);
+  knownGraphs[name]();
 };
 
 exports.loadGraph = loadGraph;

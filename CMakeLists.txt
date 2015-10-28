@@ -691,28 +691,26 @@ if (OPENSSL_LIB_PATH)
 endif ()
 
 ################################################################################
-### @brief READLINE or LINENOISE
+### @brief LINENOISE
 ################################################################################
 
 if (MSVC)
-  set(READLINE_LIBS linenoise CACHE string "LINENOISE libraries")
-  set(READLINE_VERSION "linenoise" CACHE string "LINENOISE version")
+  set(LINENOISE_LIBS linenoise CACHE string "LINENOISE libraries")
+  set(LINENOISE_VERSION "linenoise" CACHE string "LINENOISE version")
 else ()
-  set(READLINE_INCLUDE "" CACHE path "READLINE include path")
-  set(READLINE_LIB_PATH "" CACHE path "READLINE library path")
-  set(READLINE_LIBS readline CACHE string "READLINE libraries")
-  set(READLINE_VERSION "unknown" CACHE string "READLINE version")
+  set(LINENOISE_INCLUDE "" CACHE path "LINENOISE include path")
+  set(LINENOISE_LIB_PATH "" CACHE path "LINENOISE library path")
+  set(LINENOISE_LIBS readline CACHE string "LINENOISE libraries")
+  set(LINENOISE_VERSION "unknown" CACHE string "LINENOISE version")
 endif ()
 
-if (READLINE_INCLUDE)
-  include_directories(${READLINE_INCLUDE})
+if (LINENOISE_INCLUDE)
+  include_directories(${LINENOISE_INCLUDE})
 endif ()
 
-if (READLINE_LIB_PATH)
-  link_directories(${READLINE_LIB_PATH})
+if (LINENOISE_LIB_PATH)
+  link_directories(${LINENOISE_LIB_PATH})
 endif ()
-
-add_definitions("-DTRI_READLINE_VERSION=\"${READLINE_VERSION}\"")
 
 ################################################################################
 ### @brief V8

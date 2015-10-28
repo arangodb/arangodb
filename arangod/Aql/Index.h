@@ -35,9 +35,11 @@
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 
 namespace triagens {
   namespace aql {
+    class Ast;
     struct AstNode;
     class SortCondition;
     struct Variable;
@@ -183,11 +185,11 @@ namespace triagens {
 /// @brief get an iterator for the index
 ////////////////////////////////////////////////////////////////////////////////
 
-      arango::IndexIterator* getIterator (arango::IndexIteratorContext*, 
-                                          triagens::aql::Ast*,
-                                          triagens::aql::AstNode const*,
-                                          triagens::aql::Variable const*,
-                                          bool) const;
+      triagens::arango::IndexIterator* getIterator (triagens::arango::IndexIteratorContext*, 
+                                                    triagens::aql::Ast*,
+                                                    triagens::aql::AstNode const*,
+                                                    triagens::aql::Variable const*,
+                                                    bool) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief specialize the condition for the index

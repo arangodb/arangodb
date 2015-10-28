@@ -254,14 +254,6 @@ TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_memory_zone_t*,
                                              TRI_vector_pointer_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns length of vector
-////////////////////////////////////////////////////////////////////////////////
-
-static inline size_t TRI_LengthVectorPointer (TRI_vector_pointer_t const* vector) {
-  return vector->_length;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element at the end
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -341,14 +333,6 @@ void TRI_FreeVectorString (TRI_memory_zone_t*, TRI_vector_string_t*);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns length of vector
-////////////////////////////////////////////////////////////////////////////////
-
-static inline size_t TRI_LengthVectorString (TRI_vector_string_t const* vector) {
-  return vector->_length;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element at the end

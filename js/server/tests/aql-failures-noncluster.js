@@ -25,6 +25,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Michael Hackstein
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -44,7 +45,9 @@ var internal = require("internal");
 function ahuacatlFailureSuite () {
   'use strict';
   var cn = "UnitTestsAhuacatlFailures";
+  var en = "UnitTestsAhuacatlEdgeFailures";
   var c;
+  var e;
   var count = 5000;
         
   var assertFailingQuery = function (query) {
@@ -63,8 +66,13 @@ function ahuacatlFailureSuite () {
       internal.debugClearFailAt();
       db._drop(cn);
       c = db._create(cn);
+      db._drop(en);
+      e = db._createEdgeCollection(en);
       for (var i = 0; i < count; ++i) {
-        c.save({ value: i, value2: i % 10 });
+        c.save({ _key: String(i), value: i, value2: i % 10 });
+      }
+      for (var j = 0; j < count / 10; ++j) {
+        e.save(cn + "/" + j, cn + "/" + (j + 1), { });
       }
     },
 
@@ -72,6 +80,8 @@ function ahuacatlFailureSuite () {
       internal.debugClearFailAt();
       db._drop(cn);
       c = null;
+      db._drop(en);
+      e = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -501,6 +511,130 @@ function ahuacatlFailureSuite () {
       c.ensureSkiplist("value");
       internal.debugSetFailAt("SkiplistIndex::noSortIterator");
       assertFailingQuery("FOR i IN " + c.name() + " SORT i.value RETURN i");
+    },
+
+    testIndexNodeSkiplist2 : function () {
+      c.ensureSkiplist("value");
+      internal.debugSetFailAt("SkiplistIndex::noIterator");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
+    },
+
+    testIndexNodeSkiplist3 : function () {
+      c.ensureSkiplist("value");
+      internal.debugSetFailAt("SkiplistIndex::permutationEQ");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
+    },
+
+    testIndexNodeSkiplist4 : function () {
+      c.ensureSkiplist("value");
+      internal.debugSetFailAt("SkiplistIndex::permutationIN");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
+    },
+
+    testIndexNodeSkiplist5 : function () {
+      c.ensureSkiplist("value[*]");
+      internal.debugSetFailAt("SkiplistIndex::permutationArrayIN");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER 1 IN i.value[*] RETURN i");
+    },
+
+    testIndexNodeSkiplist6 : function () {
+      c.ensureSkiplist("value");
+      internal.debugSetFailAt("SkiplistIndex::onlyRangeOperator");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value < 4 RETURN i");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value > 4 RETURN i");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value < 4 && i.value >= 2 RETURN i");
+    },
+
+    testIndexNodeSkiplist7 : function () {
+      c.ensureSkiplist("value1", "value2");
+      internal.debugSetFailAt("SkiplistIndex::rangeOperatorNoTmp");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value1 == 1 && i.value2 < 3 RETURN i");
+    },
+
+    testIndexNodeSkiplist8 : function () {
+      c.ensureSkiplist("value1", "value2");
+      internal.debugSetFailAt("SkiplistIndex::rangeOperatorTmp");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value1 == 1 RETURN i");
+    },
+
+    testIndexNodeSkiplist9 : function () {
+      c.ensureSkiplist("value");
+      internal.debugSetFailAt("SkiplistIndex::accessFitsIndex");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
+    },
+
+    testIndexNodeHashIndex1 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("HashIndex::noIterator");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
+    },
+
+    testIndexNodeHashIndex2 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("HashIndex::permutationEQ");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
+    },
+
+    testIndexNodeHashIndex3 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("HashIndex::permutationIN");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
+    },
+
+    testIndexNodeHashIndex4 : function () {
+      c.ensureHashIndex("value[*]");
+      internal.debugSetFailAt("HashIndex::permutationArrayIN");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER 1 IN i.value[*] RETURN i");
+    },
+
+    testSimpleAttributeMatcher2 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("SimpleAttributeMatcher::specializeAllChildrenEQ");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
+    },
+
+    testSimpleAttributeMatcher3 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("SimpleAttributeMatcher::specializeAllChildrenIN");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
+    },
+
+    testSimpleAttributeMatcher4 : function () {
+      c.ensureHashIndex("value");
+      internal.debugSetFailAt("SimpleAttributeMatcher::accessFitsIndex");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
+    },
+
+    testIndexNodePrimaryIndex1 : function () {
+      internal.debugSetFailAt("PrimaryIndex::iteratorValNodes");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i._key IN ['1', '2'] RETURN i");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i._id IN ['" + c.name() + "/1', '" + c.name() + "/2'] RETURN i");
+    },
+
+    testIndexNodePrimaryIndex2 : function () {
+      internal.debugSetFailAt("PrimaryIndex::noIterator");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i._key == '1' RETURN i");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i._id == '" + c.name() + "/1' RETURN i");
+    },
+
+    testIndexNodeEdgeIndex1 : function () {
+      internal.debugSetFailAt("EdgeIndex::noIterator");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._from == '" + c.name() + "/1'  RETURN i");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._to == '" + c.name() + "/1'  RETURN i");
+    },
+
+    testIndexNodeEdgeIndex2 : function () {
+      internal.debugSetFailAt("EdgeIndex::collectKeys");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._from == '" + c.name() + "/1'  RETURN i");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._to == '" + c.name() + "/1'  RETURN i");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._from IN ['" + c.name() + "/1', '" + c.name() + "/2']  RETURN i");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._to IN ['" + c.name() + "/1', '" + c.name() + "/2']  RETURN i");
+    },
+
+    testIndexNodeEdgeIndex3 : function () {
+      internal.debugSetFailAt("EdgeIndex::iteratorValNodes");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._from IN ['" + c.name() + "/1', '" + c.name() + "/2']  RETURN i");
+      assertFailingQuery("FOR i IN " + e.name() + " FILTER i._to IN ['" + c.name() + "/1', '" + c.name() + "/2']  RETURN i");
     }
 
   };

@@ -282,7 +282,7 @@ target_link_libraries(
     ${ICU_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
-    ${READLINE_LIBS}
+    ${LINENOISE_LIBS}
     ${OPENSSL_LIBS}
     ${CMAKE_THREAD_LIBS_INIT}
     ${MSVC_LIBS}

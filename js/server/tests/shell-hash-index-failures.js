@@ -94,6 +94,22 @@ function UniqueHashIndexFailuresSuite () {
       }
       assertEqual(collection.count(), 0);
       assertEqual(collection.firstExample({a: 1}), null);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: unique hash index fill element oom, other position
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateIndexElementOOMOther : function () {
+      internal.debugSetFailAt("FillElementOOM2");
+      try {
+        collection.save({a: 1});
+        fail();
+      } catch (e) {
+        assertEqual(internal.errors.ERROR_INTERNAL.code, e.errorNum);
+      }
+      assertEqual(collection.count(), 0);
+      assertEqual(collection.firstExample({a: 1}), null);
     }
 
   };
@@ -151,6 +167,23 @@ function HashIndexMultiFailuresSuite () {
     testCreateIndexElementOOM : function () {
       collection.ensureUniqueConstraint("a");
       internal.debugSetFailAt("FillElementOOM");
+      try {
+        collection.save({a: 1});
+        fail();
+      } catch (e) {
+        assertEqual(internal.errors.ERROR_INTERNAL.code, e.errorNum);
+      }
+      assertEqual(collection.count(), 0);
+      assertEqual(collection.firstExample({a: 1}), null);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: hash index multi fill element oom, other position
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateIndexElementOOMOther : function () {
+      collection.ensureUniqueConstraint("a");
+      internal.debugSetFailAt("FillElementOOM2");
       try {
         collection.save({a: 1});
         fail();

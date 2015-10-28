@@ -1765,6 +1765,30 @@ bool AstNode::isCacheable () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node (and its subnodes) may contain a call to a
+/// user-defined function
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::callsUserDefinedFunction () const {
+  if (isConstant()) {
+    return true;
+  }
+
+  // check sub-nodes first
+  size_t const n = numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = getMemberUnchecked(i);
+
+    if (! member->callsUserDefinedFunction()) {
+      return false;
+    }
+  }
+
+  return (type == NODE_TYPE_FCALL_USER);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the object node contains dynamically named attributes
 /// on its first level
 ////////////////////////////////////////////////////////////////////////////////

@@ -53,7 +53,7 @@ namespace triagens {
 
   namespace arango {
 
-    class PrimaryIndexIterator : public IndexIterator {
+    class PrimaryIndexIterator final : public IndexIterator {
  
       public:
 
@@ -79,7 +79,7 @@ namespace triagens {
 
     };
 
-    class PrimaryIndex : public Index {
+    class PrimaryIndex final : public Index {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -212,7 +212,7 @@ namespace triagens {
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*,
-                                             bool const) const override;
+                                             bool) const override;
         
         triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
                                                      triagens::aql::Variable const*) const override;

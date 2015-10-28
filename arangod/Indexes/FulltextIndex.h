@@ -46,7 +46,7 @@ struct TRI_fulltext_wordlist_s;
 namespace triagens {
   namespace arango {
 
-    class FulltextIndex : public Index {
+    class FulltextIndex final : public Index {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors

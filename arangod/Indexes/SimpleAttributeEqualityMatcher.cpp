@@ -72,8 +72,8 @@ bool SimpleAttributeEqualityMatcher::matchOne (triagens::arango::Index const* in
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
       // EQ is symmetric
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference) ||
-          accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference)) {
+      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, false) ||
+          accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference, false)) {
         // we can use the index
         calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
         return true;
@@ -81,7 +81,7 @@ bool SimpleAttributeEqualityMatcher::matchOne (triagens::arango::Index const* in
     }
     else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference)) {
+      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, false)) {
         // we can use the index
         // use slightly different cost calculation for IN that for EQ
         calculateIndexCosts(index, itemsInIndex, estimatedItems, estimatedCost);
@@ -118,8 +118,8 @@ bool SimpleAttributeEqualityMatcher::matchAll (triagens::arango::Index const* in
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
 
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference) ||
-          accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference)) {
+      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, false) ||
+          accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference, false)) {
         if (_found.size() == _attributes.size()) {
           // got enough attributes
           break;
@@ -129,7 +129,7 @@ bool SimpleAttributeEqualityMatcher::matchAll (triagens::arango::Index const* in
     else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
 
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference)) {
+      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, false)) {
         auto m = op->getMember(1);
         if (m->type != triagens::aql::NODE_TYPE_EXPANSION && m->numMembers() > 1) {
           // attr IN [ a, b, c ]  =>  this will produce multiple items, so count them!
@@ -163,96 +163,6 @@ bool SimpleAttributeEqualityMatcher::matchAll (triagens::arango::Index const* in
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the condition parts that the index is responsible for
-/// this is used for the primary index and the edge index
-/// requires that a previous matchOne() returned true
-/// the caller must not free the returned AstNode*, as it belongs to the ast
-////////////////////////////////////////////////////////////////////////////////
-        
-triagens::aql::AstNode* SimpleAttributeEqualityMatcher::getOne (triagens::aql::Ast* ast,
-                                                                triagens::arango::Index const* index,
-                                                                triagens::aql::AstNode const* node,
-                                                                triagens::aql::Variable const* reference) {
-  _found.clear();
-            
-  for (size_t i = 0; i < node->numMembers(); ++i) {
-    auto op = node->getMember(i);
-
-    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-        op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      TRI_ASSERT(op->numMembers() == 2);
-      // note: accessFitsIndex will increase _found in case of a condition match
-      bool matches = accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference);
-
-      if (! matches && op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-        matches = accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference);
-      }
-
-      if (matches) {
-        // we can use the index
-        std::unique_ptr<triagens::aql::AstNode> eqNode(ast->clone(op));
-        auto node = ast->createNodeNaryOperator(triagens::aql::NODE_TYPE_OPERATOR_NARY_AND, eqNode.get());
-        eqNode.release();
-        return node;
-      }
-    }
-  }
-
-  TRI_ASSERT(false);
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the condition parts that the index is responsible for
-/// this is used for the hash index
-/// requires that a previous matchAll() returned true
-/// the caller must not free the returned AstNode*, as it belongs to the ast
-////////////////////////////////////////////////////////////////////////////////
-
-triagens::aql::AstNode* SimpleAttributeEqualityMatcher::getAll (triagens::aql::Ast* ast,
-                                                                triagens::arango::Index const* index,
-                                                                triagens::aql::AstNode const* node,
-                                                                triagens::aql::Variable const* reference) {
-  _found.clear();
-  std::vector<triagens::aql::AstNode const*> parts;
-
-  for (size_t i = 0; i < node->numMembers(); ++i) {
-    auto op = node->getMember(i);
-
-    if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-        op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      TRI_ASSERT(op->numMembers() == 2);
-      // note: accessFitsIndex will increase _found in case of a condition match
-      bool matches = accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference);
-
-      if (! matches && op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-        // EQ is symmetric
-        matches = accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference);
-      }
-
-      if (matches) {
-        parts.emplace_back(op);
-
-        if (_found.size() == _attributes.size()) {
-          // got enough matches
-          std::unique_ptr<triagens::aql::AstNode> node(ast->createNodeNaryOperator(triagens::aql::NODE_TYPE_OPERATOR_NARY_AND));
-
-          for (auto& it : parts) {
-            node->addMember(ast->clone(it));
-          }
-
-          // done
-          return node.release();
-        }
-      }
-    }
-  }
-
-  TRI_ASSERT(false);
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specialize the condition for the index
 /// this is used for the primary index and the edge index
 /// requires that a previous matchOne() returned true
@@ -271,8 +181,8 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne (triagens:
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
       // EQ is symmetric
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference) ||
-          accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference)) {
+      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, false) ||
+          accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference, false)) {
         // we can use the index
         // now return only the child node we need
         while (node->numMembers() > 0) {
@@ -286,7 +196,7 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne (triagens:
     else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
 
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference)) {
+      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, false)) {
         // we can use the index
         // now return only the child node we need
         while (node->numMembers() > 0) {
@@ -312,7 +222,6 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne (triagens:
 triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll (triagens::arango::Index const* index,
                                                                        triagens::aql::AstNode* node,
                                                                        triagens::aql::Variable const* reference) {
-  std::vector<triagens::aql::AstNode const*> children;
   _found.clear();
   
   size_t const n = node->numMembers();
@@ -322,9 +231,11 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll (triagens:
 
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference) ||
-          accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference)) {
-        children.emplace_back(op);
+      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, false) ||
+          accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference, false)) {
+        TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         if (_found.size() == _attributes.size()) {
           // got enough attributes
           break;
@@ -333,8 +244,10 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll (triagens:
     }
     else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference)) {
-        children.emplace_back(op);
+      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, false)) {
+        TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         if (_found.size() == _attributes.size()) {
           // got enough attributes
           break;
@@ -348,10 +261,13 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll (triagens:
     while (node->numMembers() > 0) {
       node->removeMemberUnchecked(0);
     }
-
-    // now re-add only those members we found in this method
-    for (auto& it : children) {
-      node->addMember(it);
+    // found contains all nodes required for this condition sorted by _attributes
+    // now re-add only those
+    for (size_t i = 0; i < _attributes.size(); ++i) {
+      // This is always save due to
+      auto it = _found.find(i);
+      TRI_ASSERT(it != _found.end()); // Found contains by def. 1 Element for each _attribute
+      node->addMember(it->second);
     }
 
     return node;
@@ -366,8 +282,10 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll (triagens:
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the costs of using this index
-/// costs returned are scaled from 0.0 to 1.0, with 0.0 being the lowest cost
+/// @brief determine the costs of using this index and the number of items
+/// that will return in average
+/// cost values have no special meaning, except that multiple cost values are 
+/// comparable, and lower values mean lower costs
 ////////////////////////////////////////////////////////////////////////////////
 
 void SimpleAttributeEqualityMatcher::calculateIndexCosts (triagens::arango::Index const* index,
@@ -422,8 +340,9 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex (triagens::arango::Index co
                                                       triagens::aql::AstNode const* access,
                                                       triagens::aql::AstNode const* other,
                                                       triagens::aql::AstNode const* op,
-                                                      triagens::aql::Variable const* reference) {
-  if (! index->canUseConditionPart(access, other, op, reference)) {
+                                                      triagens::aql::Variable const* reference,
+                                                      bool isExecution) {
+  if (! index->canUseConditionPart(access, other, op, reference, isExecution)) {
     return false;
   }
 
@@ -468,7 +387,10 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex (triagens::arango::Index co
 
     if (match) {
       // mark ith attribute as being covered
-      _found.emplace(i);
+      _found.emplace(i, op);
+      TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
       return true;
     }
   }

@@ -344,7 +344,7 @@ IndexIterator* PrimaryIndex::iteratorForCondition (IndexIteratorContext* context
                                                    triagens::aql::Ast* ast,
                                                    triagens::aql::AstNode const* node,
                                                    triagens::aql::Variable const* reference,
-                                                   bool const reverse) const {
+                                                   bool reverse) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   SimpleAttributeEqualityMatcher matcher({ 
@@ -352,10 +352,9 @@ IndexIterator* PrimaryIndex::iteratorForCondition (IndexIteratorContext* context
     { triagens::basics::AttributeName(TRI_VOC_ATTRIBUTE_KEY, false) } 
   });
 
-  triagens::aql::AstNode* allVals = matcher.getOne(ast, this, node, reference);
-  TRI_ASSERT(allVals->numMembers() == 1);
+  TRI_ASSERT(node->numMembers() == 1);
 
-  auto comp = allVals->getMember(0);
+  auto comp = node->getMember(0);
 
   // assume a.b == value
   auto attrNode = comp->getMember(0);
@@ -383,6 +382,9 @@ IndexIterator* PrimaryIndex::iteratorForCondition (IndexIteratorContext* context
     valNodes.reserve(n);
     for (size_t i = 0; i < n; ++i) {
       valNodes.emplace_back(valNode->getMemberUnchecked(i));
+      TRI_IF_FAILURE("PrimaryIndex::iteratorValNodes")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
     }
 
     return createIterator(context, attrNode, valNodes);
@@ -475,6 +477,9 @@ IndexIterator* PrimaryIndex::createIterator (IndexIteratorContext* context,
     return nullptr;
   }
 
+  TRI_IF_FAILURE("PrimaryIndex::noIterator")  {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   return new PrimaryIndexIterator(this, keys);
 }
 

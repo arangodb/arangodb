@@ -602,23 +602,31 @@
       );
 
       if (graph) {
+
+        $('.modal-body table').css('border-collapse', 'separate');
         var i;
+
+        $('.modal-body .spacer').remove();
         for (i = 0; i <= this.counter; i++) {
-          $('#row_fromCollections' + i).hide();
-          $('#row_toCollections' + i).hide();
+          $('#row_fromCollections' + i).show();
+          $('#row_toCollections' + i).show();
+          $('#row_newEdgeDefinitions' + i).addClass('first');
+          $('#row_fromCollections' + i).addClass('middle');
+          $('#row_toCollections' + i).addClass('last');
+          $('#row_toCollections' + i).after('<tr id="spacer'+ i +'" class="spacer"></tr>');
         }
       }
 
     },
 
     showHideDefinition : function(e) {
-      e.stopPropagation();
+      /*e.stopPropagation();
       var id = $(e.currentTarget).attr("id"), number;
       if (id.indexOf("row_newEdgeDefinitions") !== -1 ) {
         number = id.split("row_newEdgeDefinitions")[1];
         $('#row_fromCollections' + number).toggle();
         $('#row_toCollections' + number).toggle();
-      }
+      }*/
     },
 
     addRemoveDefinition : function(e) {
@@ -663,6 +671,17 @@
         });
         window.modalView.undelegateEvents();
         window.modalView.delegateEvents(this.events);
+        
+        var i;
+        $('.modal-body .spacer').remove();
+        for (i = 0; i <= this.counter; i++) {
+          $('#row_fromCollections' + i).show();
+          $('#row_toCollections' + i).show();
+          $('#row_newEdgeDefinitions' + i).addClass('first');
+          $('#row_fromCollections' + i).addClass('middle');
+          $('#row_toCollections' + i).addClass('last');
+          $('#row_toCollections' + i).after('<tr id="spacer'+ i +'" class="spacer"></tr>');
+        }
         return;
       }
       if (id.indexOf("remove_newEdgeDefinitions") !== -1 ) {
@@ -670,6 +689,7 @@
         $('#row_newEdgeDefinitions' + number).remove();
         $('#row_fromCollections' + number).remove();
         $('#row_toCollections' + number).remove();
+        $('#spacer' + number).remove();
       }
     },
 

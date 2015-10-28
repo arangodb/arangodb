@@ -37,6 +37,8 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
+#include "Indexes/Index.h"
+#include "Indexes/GeoIndex2.h"
 #include "Rest/SslInterface.h"
 #include "V8Server/V8Traverser.h"
 #include "VocBase/KeyGenerator.h"
@@ -910,6 +912,40 @@ AqlValue Functions::Merge (triagens::aql::Query* query,
   // use the first argument as the preliminary result
   auto initial = ExtractFunctionParameter(trx, parameters, 0, true);
 
+  if (initial.isArray() && n == 1) {
+    // special case: a single array parameter
+    std::unique_ptr<TRI_json_t> array(initial.steal());
+    std::unique_ptr<TRI_json_t> result(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
+
+    if (result == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+  
+    // now merge in all other arguments
+    size_t const k = TRI_LengthArrayJson(array.get());
+
+    for (size_t i = 0; i < k; ++i) {
+      auto v = static_cast<TRI_json_t const*>(TRI_LookupArrayJson(array.get(), i));
+
+      if (! TRI_IsObjectJson(v)) {
+        RegisterInvalidArgumentWarning(query, "MERGE");
+        return AqlValue(new Json(Json::Null));
+      }
+
+      auto merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, result.get(), v, false, true);
+  
+      if (merged == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      result.reset(merged);
+    }
+     
+    auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
+    result.release();
+    return AqlValue(jr);
+  }
+
   if (! initial.isObject()) {
     RegisterInvalidArgumentWarning(query, "MERGE");
     return AqlValue(new Json(Json::Null));
@@ -1731,12 +1767,10 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
   return AqlValue(jr);
 }
 
-// TODO DELETE THESE HELPER FUNCTIONS.
-
-static inline Json TRI_ExpandShapedJson (VocShaper* shaper,
-                                         CollectionNameResolver const* resolver,
-                                         TRI_voc_cid_t const& cid,
-                                         TRI_doc_mptr_t const* mptr) {
+static inline Json ExpandShapedJson (VocShaper* shaper,
+                                     CollectionNameResolver const* resolver,
+                                     TRI_voc_cid_t const& cid,
+                                     TRI_doc_mptr_t const* mptr) {
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
 
   TRI_shaped_json_t shaped;
@@ -1772,8 +1806,8 @@ static inline Json TRI_ExpandShapedJson (VocShaper* shaper,
 static Json VertexIdToJson (triagens::arango::AqlTransaction* trx,
                             CollectionNameResolver const* resolver,
                             VertexId const& id) {
-  TRI_doc_mptr_copy_t mptr;
   auto collection = trx->trxCollection(id.cid);
+
   if (collection == nullptr) {
     int res = TRI_AddCollectionTransaction(trx->getInternals(), 
                                            id.cid,
@@ -1784,19 +1818,23 @@ static Json VertexIdToJson (triagens::arango::AqlTransaction* trx,
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
+
     TRI_EnsureCollectionsTransaction(trx->getInternals());
     collection = trx->trxCollection(id.cid);
+
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection is a nullptr");
     }
   }
+  
+  TRI_doc_mptr_copy_t mptr;
   int res = trx->readSingle(collection, &mptr, id.key); 
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return TRI_ExpandShapedJson(
+  return ExpandShapedJson(
     collection->_collection->_collection->getShaper(),
     resolver,
     id.cid,
@@ -1946,7 +1984,6 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
   }
 
-
   bool includeData = false;
 
   if (n > 5) {
@@ -1964,14 +2001,34 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     }
   }
 
-  std::unordered_set<VertexId> neighbors;
-
-
   TRI_voc_cid_t eCid = resolver->getCollectionId(eColName);
 
+  {
+    // ensure the collection is loaded
+    auto collection = trx->trxCollection(eCid);
+
+    if (collection == nullptr) {
+      int res = TRI_AddCollectionTransaction(trx->getInternals(), 
+                                             eCid,
+                                             TRI_TRANSACTION_READ,
+                                             trx->nestingLevel(),
+                                             true,
+                                             true);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+
+      TRI_EnsureCollectionsTransaction(trx->getInternals());
+      collection = trx->trxCollection(eCid);
+
+      if (collection == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection is a nullptr");
+      }
+    }
+  }
 
   // Function to return constant distance
-  auto wc = [](TRI_doc_mptr_copy_t& edge) -> double { return 1; };
+  auto wc = [](TRI_doc_mptr_copy_t&) -> double { return 1; };
 
   std::unique_ptr<EdgeCollectionInfo> eci(new EdgeCollectionInfo(
     eCid,
@@ -1982,7 +2039,6 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   
-
   if (n > 4) {
     auto edgeExamples = ExtractFunctionParameter(trx, parameters, 4, false);
     if (! (edgeExamples.isArray() && edgeExamples.size() == 0) ) {
@@ -2005,6 +2061,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  std::unordered_set<VertexId> neighbors;
   TRI_RunNeighborsSearch(
     edgeCollectionInfos,
     opts,
@@ -2012,6 +2069,343 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   );
 
   return VertexIdsToAqlValue(trx, resolver, neighbors, includeData);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function NEAR
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Near (triagens::aql::Query* query,
+                          triagens::arango::AqlTransaction* trx,
+                          FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 3 || n > 5) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEAR", (int) 3, (int) 5);
+  }
+
+  auto resolver = trx->resolver();
+
+  Json collectionJson = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! collectionJson.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  }
+
+  std::string colName = basics::JsonHelper::getStringValue(collectionJson.json(), "");
+
+  Json latitude  = ExtractFunctionParameter(trx, parameters, 1, false);
+  Json longitude = ExtractFunctionParameter(trx, parameters, 2, false);
+
+  if (! latitude.isNumber() ||
+      ! longitude.isNumber()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  }
+
+  // extract limit 
+  int64_t limitValue = 100;
+
+  if (n > 3) { 
+    Json limit = ExtractFunctionParameter(trx, parameters, 3, false);
+
+    if (limit.isNumber()) {
+      limitValue = static_cast<int64_t>(limit.json()->_value._number);
+    }
+    else if (! limit.isNull()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    }
+  }
+
+  
+  std::string attributeName;
+  if (n > 4) {
+    // have a distance attribute
+    Json distanceAttribute = ExtractFunctionParameter(trx, parameters, 4, false);
+
+    if (! distanceAttribute.isNull() && ! distanceAttribute.isString()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    }
+
+    if (distanceAttribute.isString()) {
+      attributeName = std::string(distanceAttribute.json()->_value._string.data);
+    } 
+  }
+
+  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  auto collection = trx->trxCollection(cid);
+
+  // ensure the collection is loaded
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), 
+                                           cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(),
+                                           true,
+                                           true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+  }
+
+  auto document = trx->documentCollection(cid);
+
+  if (document == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  triagens::arango::Index* index = nullptr;
+
+  for (auto const& idx : document->allIndexes()) {
+    if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      index = idx;
+      break;
+    } 
+  }
+
+  if (index == nullptr) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING, colName.c_str());
+  }
+  
+  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(index)->nearQuery(
+    latitude.json()->_value._number, 
+    longitude.json()->_value._number, 
+    limitValue
+  );
+
+  if (cors == nullptr) {
+    Json array(Json::Array, 0);
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+  }
+
+  size_t const nCoords = cors->length;
+
+  if (nCoords == 0) {
+    GeoIndex_CoordinatesFree(cors);
+
+    Json array(Json::Array, 0);
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+  }
+
+  struct geo_coordinate_distance_t {
+    geo_coordinate_distance_t (double distance, TRI_doc_mptr_t const* mptr)
+      : _distance(distance),
+        _mptr(mptr) {
+    }
+
+    double                _distance;
+    TRI_doc_mptr_t const* _mptr;
+  };
+
+  std::vector<geo_coordinate_distance_t> distances;
+  try {
+    distances.reserve(nCoords);
+ 
+    for (size_t i = 0; i < nCoords; ++i) {
+      distances.emplace_back(geo_coordinate_distance_t(cors->distances[i], static_cast<TRI_doc_mptr_t const*>(cors->coordinates[i].data)));
+    }
+  }
+  catch (...) {
+    GeoIndex_CoordinatesFree(cors);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+    
+  GeoIndex_CoordinatesFree(cors);
+
+  // sort result by distance
+  std::sort(distances.begin(), distances.end(), [] (geo_coordinate_distance_t const& left, geo_coordinate_distance_t const& right) {
+    return left._distance < right._distance;
+  });
+  
+  auto shaper = collection->_collection->_collection->getShaper();
+  Json array(Json::Array, nCoords);
+
+  for (auto& it : distances) {
+    auto j = ExpandShapedJson(
+      shaper,
+      resolver,
+      cid,
+      it._mptr
+    );
+
+    if (! attributeName.empty()) {
+      j.unset(attributeName);
+      j.set(attributeName, Json(it._distance));  
+    }
+
+    array.add(j);
+  }
+
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function WITHIN
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Within (triagens::aql::Query* query,
+                            triagens::arango::AqlTransaction* trx,
+                            FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 4 || n > 5) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "WITHIN", (int) 4, (int) 5);
+  }
+
+  auto resolver = trx->resolver();
+
+  Json collectionJson = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! collectionJson.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+  }
+
+  std::string colName = basics::JsonHelper::getStringValue(collectionJson.json(), "");
+
+  Json latitude  = ExtractFunctionParameter(trx, parameters, 1, false);
+  Json longitude = ExtractFunctionParameter(trx, parameters, 2, false);
+  Json radius    = ExtractFunctionParameter(trx, parameters, 3, false);
+
+  if (! latitude.isNumber() ||
+      ! longitude.isNumber() ||
+      ! radius.isNumber()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+  }
+  
+  std::string attributeName;
+  if (n > 4) {
+    // have a distance attribute
+    Json distanceAttribute = ExtractFunctionParameter(trx, parameters, 4, false);
+
+    if (! distanceAttribute.isNull() && ! distanceAttribute.isString()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+    }
+
+    if (distanceAttribute.isString()) {
+      attributeName = std::string(distanceAttribute.json()->_value._string.data);
+    } 
+  } 
+
+  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  auto collection = trx->trxCollection(cid);
+
+  // ensure the collection is loaded
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), 
+                                           cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(),
+                                           true,
+                                           true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+  }
+
+  auto document = trx->documentCollection(cid);
+    
+  if (document == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  triagens::arango::Index* index = nullptr;
+
+  for (auto const& idx : document->allIndexes()) {
+    if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        idx->type() == triagens::arango::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+      index = idx;
+      break;
+    } 
+  }
+
+  if (index == nullptr) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING, colName.c_str());
+  }
+
+  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(index)->withinQuery(
+    latitude.json()->_value._number, 
+    longitude.json()->_value._number, 
+    radius.json()->_value._number
+  );
+
+  if (cors == nullptr) {
+    Json array(Json::Array, 0);
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+  }
+
+  size_t const nCoords = cors->length;
+
+  if (nCoords == 0) {
+    GeoIndex_CoordinatesFree(cors);
+
+    Json array(Json::Array, 0);
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+  }
+
+  struct geo_coordinate_distance_t {
+    geo_coordinate_distance_t (double distance, TRI_doc_mptr_t const* mptr)
+      : _distance(distance),
+        _mptr(mptr) {
+    }
+
+    double                _distance;
+    TRI_doc_mptr_t const* _mptr;
+  };
+
+  std::vector<geo_coordinate_distance_t> distances;
+  try {
+    distances.reserve(nCoords);
+ 
+    for (size_t i = 0; i < nCoords; ++i) {
+      distances.emplace_back(geo_coordinate_distance_t(cors->distances[i], static_cast<TRI_doc_mptr_t const*>(cors->coordinates[i].data)));
+    }
+  }
+  catch (...) {
+    GeoIndex_CoordinatesFree(cors);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+    
+  GeoIndex_CoordinatesFree(cors);
+
+  // sort result by distance
+  std::sort(distances.begin(), distances.end(), [] (geo_coordinate_distance_t const& left, geo_coordinate_distance_t const& right) {
+    return left._distance < right._distance;
+  });
+  
+  auto shaper = collection->_collection->_collection->getShaper();
+  Json array(Json::Array, nCoords);
+
+  for (auto& it : distances) {
+    auto j = ExpandShapedJson(
+      shaper,
+      resolver,
+      cid,
+      it._mptr
+    );
+
+    if (! attributeName.empty()) {
+      j.unset(attributeName);
+      j.set(attributeName, Json(it._distance));  
+    }
+
+    array.add(j);
+  }
+
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
 }
 
 // -----------------------------------------------------------------------------

@@ -311,8 +311,8 @@ Condition* Condition::fromJson (ExecutionPlan* plan,
     condition->andCombine(node.get());
     node.release();
   }
+
   condition->_isNormalized = true;
-  // TODO
   condition->_isSorted = false;
 
   return condition.release();
@@ -518,7 +518,7 @@ std::pair<bool, bool> Condition::findIndexForAndNode (size_t position,
       }
     }
 
-    // std::cout << "INDEX: " << idx << ", FILTER COST: " << filterCost << ", SORT COST: " << sortCost << "\n";
+    // std::cout << "INDEX: " << idx << ", SUPPORTS FILTER: " << supportsFilter << ", SUPPORTS SORT: " << supportsSort << ", FILTER COST: " << filterCost << ", SORT COST: " << sortCost << "\n";
 
     if (! supportsFilter && ! supportsSort) {
       continue;
@@ -847,9 +847,9 @@ bool Condition::sortOrs (Variable const* variable,
   for (size_t i = 0; i < n; ++i) {
     auto& p = parts[i];
 
-    if (p.operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
+    if (p.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+        p.valueNode->isArray()) {
       TRI_ASSERT(p.valueNode->isConstant());
-      TRI_ASSERT(p.valueNode->isArray());
 
       if (previousIn != SIZE_MAX) {
         // merge IN with IN
@@ -1170,14 +1170,18 @@ restartThisOrItem:
               goto fastForwardToNextOrItem;
             }
             case CompareResult::SELF_CONTAINED_IN_OTHER: {
+              TRI_ASSERT(! positions.empty());
               andNode->removeMemberUnchecked(positions.at(0).first);
               goto restartThisOrItem;
             }
             case CompareResult::OTHER_CONTAINED_IN_SELF: { 
+              TRI_ASSERT(j < positions.size());
               andNode->removeMemberUnchecked(positions.at(j).first);
               goto restartThisOrItem;
             }
             case CompareResult::CONVERT_EQUAL: { // both ok, now transform to a == x (== y)
+              TRI_ASSERT(! positions.empty());
+              TRI_ASSERT(j < positions.size());
               andNode->removeMemberUnchecked(positions.at(j).first);
               auto origNode = andNode->getMemberUnchecked(positions.at(0).first);
               auto newNode = plan->getAst()->createNode(NODE_TYPE_OPERATOR_BINARY_EQ);

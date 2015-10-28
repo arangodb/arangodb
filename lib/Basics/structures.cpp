@@ -49,17 +49,6 @@ void TRI_DestroyBlob (TRI_memory_zone_t* zone, TRI_blob_t* blob) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys the data of blob and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeBlob (TRI_memory_zone_t* zone, TRI_blob_t* blob) {
-  if (blob != nullptr) {
-    TRI_DestroyBlob(zone, blob);
-    TRI_Free(zone, blob);
-  }
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------

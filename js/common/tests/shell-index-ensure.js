@@ -647,6 +647,134 @@ function ensureIndexSuite() {
       catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ multiple expanded fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureHashExpandedSingle : function () {
+      var idx = collection.ensureIndex({ type: "hash", fields: [ "a[*]" ] });
+      assertEqual([ "a[*]" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ multiple expanded fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureHashExpandedMulti : function () {
+      var idx = collection.ensureIndex({ type: "hash", fields: [ "a[*]", "b[*]" ] });
+      assertEqual([ "a[*]", "b[*]" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ multiple expanded fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureHashExpandedMixed : function () {
+      var idx = collection.ensureIndex({ type: "hash", fields: [ "a[*]", "b" ] });
+      assertEqual([ "a[*]", "b" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ multiple expanded fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureHashExpandedMixed2 : function () {
+      var idx = collection.ensureIndex({ type: "hash", fields: [ "a", "b[*]" ] });
+      assertEqual([ "a", "b[*]" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ multiple expanded fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistExpandedSingle : function () {
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "a[*]" ] });
+      assertEqual([ "a[*]" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ multiple expanded fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistExpandedMulti : function () {
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "a[*]", "b[*]" ] });
+      assertEqual([ "a[*]", "b[*]" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ multiple expanded fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistExpandedMixed : function () {
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "a[*]", "b" ] });
+      assertEqual([ "a[*]", "b" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ multiple expanded fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistExpandedMixed2 : function () {
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "a", "b[*]" ] });
+      assertEqual([ "a", "b[*]" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ multiple expanded fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureHashExpandedTooMany : function () {
+      try {
+        collection.ensureIndex({ type: "hash", fields: [ "a[*].b[*]" ] });
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ multiple expanded fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistExpandedTooMany : function () {
+      try {
+        collection.ensureIndex({ type: "skiplist", fields: [ "a[*].b[*]" ] });
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ expanded fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureGeoExpanded : function () {
+      try {
+        collection.ensureIndex({ type: "geo2", fields: [ "a[*]" ] });
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ expanded fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureGeoExpandedMulti : function () {
+      try {
+        collection.ensureIndex({ type: "geo2", fields: [ "a[*]", "b[*]" ] });
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
     }
 
   };

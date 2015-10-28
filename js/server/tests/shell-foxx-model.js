@@ -430,7 +430,7 @@ function ModelAnnotationSpec () {
       var Model = FoxxModel.extend({});
       jsonSchema = toJSONSchema("myname", Model);
       assertEqual(jsonSchema.id, "myname");
-      assertEqual(jsonSchema.required, []);
+      assertEqual(jsonSchema.required, undefined);
       assertEqual(jsonSchema.properties, {});
     },
 
@@ -450,7 +450,7 @@ function ModelAnnotationSpec () {
 
       jsonSchema = toJSONSchema("myname", Model);
       assertEqual(jsonSchema.id, "myname");
-      assertEqual(jsonSchema.required, []);
+      assertEqual(jsonSchema.required, undefined);
       assertEqual(jsonSchema.properties.x.type, "string");
     },
 

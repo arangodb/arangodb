@@ -31,6 +31,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
+#include "Basics/Exceptions.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/transaction.h"
 #include "VocBase/VocShaper.h"
@@ -278,7 +279,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
                       std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
                       bool unique,
                       bool sparse) 
-  : PathBasedIndex(iid, collection, fields, unique, sparse),
+  : PathBasedIndex(iid, collection, fields, unique, sparse, false),
     _uniqueArray(nullptr) {
 
   uint32_t indexBuckets = 1;
@@ -394,7 +395,8 @@ triagens::basics::Json HashIndex::toJson (TRI_memory_zone_t* zone,
   auto json = Index::toJson(zone, withFigures);
 
   json("unique", triagens::basics::Json(zone, _unique))
-      ("sparse", triagens::basics::Json(zone, _sparse));
+      ("sparse", triagens::basics::Json(zone, _sparse))
+      ("allowPartialIndex", triagens::basics::Json(zone, _allowPartialIndex));
 
   return json;
 }
@@ -654,29 +656,35 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
     return res;
   }
 
-  auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
+  auto work = [this] (TRI_index_element_t*& element, bool isRollback) {
     TRI_IF_FAILURE("InsertHashIndex") {
-      return TRI_ERROR_DEBUG;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   
     TRI_index_element_t* found = _multiArray->_hashArray->insert(element, false, true);
 
-    if (found != nullptr) {   // bad, can only happen if we are in a rollback
-      if (isRollback) {       // in which case we silently ignore it
-        return TRI_ERROR_NO_ERROR;
-      }
-      // This is TRI_RESULT_ELEMENT_EXISTS, but this should not happen:
-      return TRI_ERROR_INTERNAL;
+    if (found != nullptr) { 
+      // already got the exact same index entry. now free our local element...
+      FreeElement(element);
+      // we're not responsible for this element anymore
+      element = nullptr;
     }
-    
-    return TRI_ERROR_NO_ERROR;
   };
   
   size_t const n = elements.size();
 
   for (size_t i = 0; i < n; ++i) {
     auto hashElement = elements[i];
-    res = work(hashElement, isRollback);
+
+    try {
+      work(hashElement, isRollback);
+    }
+    catch (triagens::basics::Exception const& ex) {
+      res = ex.code(); 
+    }
+    catch (...) {
+      res = TRI_ERROR_OUT_OF_MEMORY;
+    }
 
     if (res != TRI_ERROR_NO_ERROR) {
       for (size_t j = i; j < n; ++j) {
@@ -685,12 +693,16 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
       }
       for (size_t j = 0; j < i; ++j) {
         // Remove all allready indexed elements and free them
-        removeMultiElement(elements[j], isRollback);
+        if (elements[j] != nullptr) {
+          removeMultiElement(elements[j], isRollback);
+        }
       }
+
       return res;
     }
   }
-  return res;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 int HashIndex::batchInsertMulti (std::vector<TRI_doc_mptr_t const*> const* documents, 
@@ -812,24 +824,27 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
                                                 triagens::aql::Ast* ast,
                                                 triagens::aql::AstNode const* node,
                                                 triagens::aql::Variable const* reference,
-                                                bool const reverse) const {
+                                                bool reverse) const {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   SimpleAttributeEqualityMatcher matcher(fields());
   size_t const n = _fields.size();
-  triagens::aql::AstNode* allVals = matcher.getAll(ast, this, node, reference);
-  TRI_ASSERT(allVals->numMembers() == n);
+  TRI_ASSERT(node->numMembers() == n);
  
   // initialize permutations
   std::vector<PermutationState> permutationStates;
   permutationStates.reserve(n);
   size_t maxPermutations = 1;
+    
+  std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> paramPair;
 
   for (size_t i = 0; i < n; ++i) {
-    std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> paramPair;
-    auto comp     = allVals->getMemberUnchecked(i);
+    auto comp     = node->getMemberUnchecked(i);
     auto attrNode = comp->getMember(0);
     auto valNode  = comp->getMember(1);
+
+    paramPair.first = nullptr;
+    paramPair.second.clear();
 
     if (! attrNode->isAttributeAccessForVariable(paramPair) || paramPair.first != reference) {
       attrNode = comp->getMember(1);
@@ -857,17 +872,26 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
 
     if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 1));
+      TRI_IF_FAILURE("HashIndex::permutationEQ")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
     }
     else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       if (isAttributeExpanded(attributePosition)) {
         type = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
         permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, 1));
+        TRI_IF_FAILURE("HashIndex::permutationArrayIN")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
       }
       else {
         if (valNode->numMembers() == 0) {
           return nullptr;
         }
         permutationStates.emplace_back(PermutationState(type, valNode, attributePosition, valNode->numMembers()));
+        TRI_IF_FAILURE("HashIndex::permutationIN")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         maxPermutations *= valNode->numMembers();
       }
     }
@@ -937,6 +961,9 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
   TRI_ASSERT(searchValues.size() <= maxPermutations);
     
   // Create the iterator
+  TRI_IF_FAILURE("HashIndex::noIterator")  {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   return new HashIndexIterator(this, searchValues);
 }
 

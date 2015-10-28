@@ -895,8 +895,12 @@ namespace std {
           return false;
         }
         if (a[i]._data.data == nullptr || b[i]._data.data == nullptr) {
-          // TODO FIXME
-          return false;
+          if (a[i]._sid != b[i]._sid) {
+            // this should be a TRI_SHAPE_SID_NULL value or TRI_SHAPE_SID_ILLEGAL
+            return false;
+          }
+          // We cannot short circuit here. Fast forward to next i
+          continue;
         }
         if (a[i]._data.length != b[i]._data.length) {
           return false;
@@ -910,9 +914,6 @@ namespace std {
   };
 
 } //closes namespace std
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shaped json sub-object
@@ -962,12 +963,6 @@ TRI_shape_path_t;
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief performs a deep copy of a shaped json object
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shaped_json_t* TRI_CopyShapedJson (VocShaper*, TRI_shaped_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object, but does not free the pointer

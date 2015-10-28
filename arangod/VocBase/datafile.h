@@ -245,6 +245,8 @@ typedef struct TRI_df_scan_entry_s {
 
   uint32_t             _status;
   char*                _diagnosis;
+  char*                _key;
+  char const*          _typeName;
 }
 TRI_df_scan_entry_t;
 

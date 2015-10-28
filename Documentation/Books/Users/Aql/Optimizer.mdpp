@@ -7,9 +7,10 @@ single query. It will then calculate the costs for all plans and pick the plan w
 lowest total cost. This resulting plan is considered to be the *optimal plan*, which is
 then executed.
 
-The optimizer is designed to only perform optimization if they are *safe*, in the 
-meaning that an optimization does not modify the result of a query.
-
+The optimizer is designed to only perform optimizations if they are *safe*, in the 
+meaning that an optimization should not modify the result of a query. A notable exception
+to this is that the optimizer is allowed to change the order of results for queries that
+do not explicitly specify how results should be sorted.
 
 !SUBSECTION Execution plans
 
@@ -17,22 +18,40 @@ The `explain` command can be used to query the optimal executed plan or even all
 the optimizer has generated. Additionally, `explain` can reveal some more information
 about the optimizer's view of the query. 
 
-Here's an example that shows the execution plan for a simple query, using the `explain`
-method of `ArangoStatement`:
+!SUBSECTION Inspecting plans using the explain helper
 
-    @startDocuBlockInline AQLEXP_01_explainCreate
-    @EXAMPLE_ARANGOSH_OUTPUT{AQLEXP_01_explainCreate}
+The `explain` method of `ArangoStatement` as shown in the next chapters creates very verbose output. 
+You can work on the output programaticaly, or use this handsome tool that we created
+to generate a more human readable representation.
+
+You may use it like this: (we disable syntax highlighting here)
+
+    @startDocuBlockInline AQLEXP_01_axplainer
+    @EXAMPLE_ARANGOSH_OUTPUT{AQLEXP_01_axplainer}
     ~addIgnoreCollection("test")
     db._create("test"); 
     for (i = 0; i < 100; ++i) { db.test.save({ value: i }); }
-    db.test.ensureSkiplist("value");
+    db.test.ensureIndex({ type: "skiplist", fields: [ "value" ] });
+    var explain = require("org/arangodb/aql/explainer").explain;
+    explain("FOR i IN test FILTER i.value > 97 SORT i.value RETURN i.value", {colors:false});
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock AQLEXP_01_axplainer
+    
+
+!SUBSECTION Execution plans in detail
+
+Lets have a look at the raw json output of the same execution plan
+using the `explain` method of `ArangoStatement`:
+
+    @startDocuBlockInline AQLEXP_01_explainCreate
+    @EXAMPLE_ARANGOSH_OUTPUT{AQLEXP_01_explainCreate}
     stmt = db._createStatement("FOR i IN test FILTER i.value > 97 SORT i.value RETURN i.value");
     stmt.explain();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock AQLEXP_01_explainCreate
 
-The result details will be very verbose so they are not shown here in full. Instead,
-let's take a closer look at the results step by step.
+The as you can see, result details are very verbose so we will not shown them in full in the next
+sections. Instead, lets take a closer look at the results step by step.
 
 !SUBSUBSECTION Execution nodes
 
@@ -69,16 +88,16 @@ the evaluation of an expression. The filters expression result (`i.value > 97`)
 is calculated in the *CalculationNode* above the *FilterNode*.
 
 Finally, all of this needs to be done for documents of collection `test`. This is
-where the *IndexRangeNode* enters the game. It will use an index (thus its name)
+where the *IndexNode* enters the game. It will use an index (thus its name)
 to find certain documents in the collection and ship it down the pipeline in the
-order required by `SORT i.value`. The *IndexRangeNode* itself has a *SingletonNode*
+order required by `SORT i.value`. The *IndexNode* itself has a *SingletonNode*
 as its input. The sole purpose of a *SingletonNode* node is to provide a single empty
 document as input for other processing steps. It is always the end of the pipeline.
 
 Here's a summary:
-* SingletonNode: produces empty document as input for other processing steps.
-* IndexRangeNode: iterates over the index on attribute `value` in collection `test`
-  in the order required by  `SORT i.value`.
+* SingletonNode: produces an empty document as input for other processing steps.
+* IndexNode: iterates over the index on attribute `value` in collection `test`
+  in the order required by `SORT i.value`.
 * CalculationNode: evaluates the result of the calculation `i.value > 97` to `true` or `false`
 * FilterNode: only lets documents pass where above calculation returned `true`
 * CalculationNode: calculates return value `i.value`
@@ -88,9 +107,9 @@ Here's a summary:
 !SUBSUBSECTION Optimizer rules
 
 Note that in the example, the optimizer has optimized the `SORT` statement away.
-It can do it safely because there is a sorted index on `i.value`, which it has
-picked in the *IndexRangeNode*. As the index values are iterated in sorted order
-anyway, the extra *SortNode* would be redundant and was removed.
+It can do it safely because there is a sorted skiplist index on `i.value`, which it has
+picked in the *IndexNode*. As the index values are iterated over in sorted order
+anyway, the extra *SortNode* would have been redundant and was removed.
 
 Additionally, the optimizer has done more work to generate an execution plan that
 avoids as much expensive operations as possible. Here is the list of optimizer rules
@@ -115,7 +134,7 @@ Here is the meaning of these rules in context of this query:
 * `remove-unnecessary-calculations`: removes *CalculationNode*s whose result values are
   not used in the query. In the example this happens due to the `remove-redundant-calculations`
   rule having made some calculations unnecessary.
-* `use-index-range`: use an index to iterate over a collection instead of performing a
+* `use-index`: use an index to iterate over a collection instead of performing a
   full collection scan. In the example case this makes sense, as the index can be
   used for filtering and sorting.
 * `use-index-for-sort`: removes a `SORT` operation if it is already satisfied by 
@@ -268,8 +287,8 @@ The following execution node types will appear in the output of `explain`:
   exactly one *SingletonNode* as its top node.
 * *EnumerateCollectionNode*: enumeration over documents of a collection (given in
   its *collection* attribute) without using an index.
-* *IndexRangeNode*: enumeration over a specific index (given in its *index* attribute)
-  of a collection. The index range is specified in the *ranges* attribute of the node.
+* *IndexNode*: enumeration over one or many indexes (given in its *indexes* attribute)
+  of a collection. The index ranges are specified in the *condition* attribute of the node.
 * *EnumerateListNode*: enumeration over a list of (non-collection) values.
 * *FilterNode*: only lets values pass that satisfy a filter condition. Will appear once
   per *FILTER* statement.
@@ -291,6 +310,8 @@ The following execution node types will appear in the output of `explain`:
   attribute). Will appear exactly once in a query that contains a *REPLACE* statement.
 * *UpdateNode*: updates documents in a collection (given in its *collection* 
   attribute). Will appear exactly once in a query that contains an *UPDATE* statement.
+* *UpsertNode*: upserts documents in a collection (given in its *collection* 
+  attribute). Will appear exactly once in a query that contains an *UPSERT* statement.
 * *NoResultsNode*: will be inserted if *FILTER* statements turn out to be never
   satisfiable. The *NoResultsNode* will pass an empty result set into the processing
   pipeline. 
@@ -349,11 +370,11 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   on the same variable or attribute were replaced with an *IN* condition.
 * `remove-redundant-or`: will appear if multiple *OR* conditions for the same variable
   or attribute were combined into a single condition.
-* `use-index-range`: will appear if an index can be used to iterate over a collection.
+* `use-indexes`: will appear when an index is used to iterate over a collection.
   As a consequence, an *EnumerateCollectionNode* was replaced with an 
-  *IndexRangeNode* in the plan.
+  *IndexNode* in the plan.
 * `remove-filters-covered-by-index`: will appear if a *FilterNode* was removed or replaced
-  because the filter condition is already covered by an *IndexRangeNode*.
+  because the filter condition is already covered by an *IndexNode*.
 * `use-index-for-sort`: will appear if an index can be used to avoid a *SORT* 
   operation. If the rule was applied, a *SortNode* was removed from the plan.
 * `move-calculations-down`: will appear if a *CalculationNode* was moved down in a plan. 

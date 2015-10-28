@@ -665,6 +665,36 @@ void ServerState::setDisableDispatcherKickstarter (bool value) {
   _disableDispatcherKickstarter = value;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief redetermine the server role, we do this after a plan change.
+/// This is needed for automatic failover. This calls determineRole with 
+/// previous values of _info and _id. In particular, the _id will usually
+/// already be set. If the current role cannot be determined from the
+/// agency or is not unique, then the system keeps the old role.
+/// Returns true if there is a change and false otherwise.
+////////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::redetermineRole () {
+  std::string saveIdOfPrimary = _idOfPrimary;
+  RoleEnum role = determineRole(_localInfo, _id);
+  std::string roleString = roleToString(role);
+  LOG_INFO("Redetermined role from agency: %s", roleString.c_str());
+  if (role == ServerState::ROLE_UNDEFINED) {
+    return false;
+  }
+  RoleEnum oldRole = loadRole();
+  if (role != oldRole) {
+    LOG_INFO("Changed role to: %s", roleString.c_str());
+    storeRole(role);
+    return true;
+  }
+  if (_idOfPrimary != saveIdOfPrimary) {
+    LOG_INFO("The ID of our primary has changed!");
+    return true;
+  }
+  return false;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------

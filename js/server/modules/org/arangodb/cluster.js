@@ -830,12 +830,96 @@ function setupReplication () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief role change from secondary to primary
+////////////////////////////////////////////////////////////////////////////////
+
+function secondaryToPrimary () {
+  console.info("Switching role from secondary to primary...");
+  var db = require("internal").db;
+  var rep = require("org/arangodb/replication");
+  var dbs = db._listDatabases();
+  var i;
+  try {
+    for (i = 0; i < dbs.length; i++) {
+      var database = dbs[i];
+      console.info("Stopping asynchronous replication for db " +
+                   database + "...");
+      db._useDatabase(database);
+      var state = rep.applier.state();
+      if (state.state.running === true) {
+        try {
+          rep.applier.stop();
+        }
+        catch (err) {
+          console.info("Exception caught whilst stopping replication!");
+        }
+      }
+      rep.applier.forget();
+    }
+  }
+  finally {
+    db._useDatabase("_system");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief role change from primary to secondary
+////////////////////////////////////////////////////////////////////////////////
+
+function primaryToSecondary () {
+  console.info("Switching role from primary to secondary...");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief change handling trampoline function
 ////////////////////////////////////////////////////////////////////////////////
 
 function handleChanges (plan, current) {
-  handleDatabaseChanges(plan, current);
+  var changed = false;
   var role = ArangoServerState.role();
+  if (role === "PRIMARY" || role === "SECONDARY") {
+    // Need to check role change for automatic failover:
+    var myId = ArangoServerState.id();
+    if (role === "PRIMARY") {
+      if (! plan.hasOwnProperty("Plan/DBServers/"+myId)) {
+        // Ooops! We do not seem to be a primary any more!
+        changed = ArangoServerState.redetermineRole();
+      }
+    }
+    else { // role === "SECONDARY"
+      if (plan.hasOwnProperty("Plan/DBServers/"+myId)) {
+        // Ooops! We are now a primary!
+        changed = ArangoServerState.redetermineRole();
+      }
+      else {
+        var found = null;
+        var p;
+        for (p in plan) {
+          if (plan.hasOwnProperty(p) && plan[p] === myId) {
+            found = p;
+            break;
+          }
+        }
+        if (found !== ArangoServerState.idOfPrimary()) {
+          // Note this includes the case that we are not found at all!
+          changed = ArangoServerState.redetermineRole();
+        }
+      }
+    }
+  }
+  var oldRole = role;
+  if (changed) {
+    role = ArangoServerState.role();
+    console.log("Our role has changed to " + role);
+    if (oldRole === "SECONDARY" && role === "PRIMARY") {
+      secondaryToPrimary();
+    }
+    else if (oldRole === "PRIMARY" && role === "SECONDARY") {
+      primaryToSecondary();
+    }
+  }
+
+  handleDatabaseChanges(plan, current);
   if (role === "PRIMARY" || role === "COORDINATOR") {
     // Note: This is only ever called for DBservers (primary and secondary),
     // we keep the coordinator case here just in case...

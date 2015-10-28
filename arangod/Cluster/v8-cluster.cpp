@@ -1512,6 +1512,28 @@ static void JS_SetRoleServerState (const v8::FunctionCallbackInfo<v8::Value>& ar
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief redetermines the role from the agency
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_RedetermineRoleServerState (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("redetermineRole()");
+  }
+
+  bool changed = ServerState::instance()->redetermineRole();
+  if (changed) {
+    TRI_V8_RETURN_TRUE();
+  }
+  else {
+    TRI_V8_RETURN_FALSE();
+  }
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the server state
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2201,6 +2223,7 @@ void TRI_InitV8Cluster (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("setLocalInfo"), JS_SetLocalInfoServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("setId"), JS_SetIdServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("setRole"), JS_SetRoleServerState, true);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("redetermineRole"), JS_RedetermineRoleServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("status"), JS_StatusServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getClusterAuthentication"), JS_GetClusterAuthentication);
 

@@ -67,16 +67,18 @@ namespace triagens {
       DETERMINED_THROWS             = 8,       // node can throw an exception
       DETERMINED_NONDETERMINISTIC   = 16,      // node produces non-deterministic result (e.g. function call nodes)
       DETERMINED_RUNONDBSERVER      = 32,      // node can run on the DB server in a cluster setup
+      DETERMINED_USERDEFINED        = 64,      // node contains user-defined function calls
 
-      VALUE_SORTED                  = 64,      // node is a list and its members are sorted asc.
-      VALUE_CONSTANT                = 128,     // node value is constant (i.e. not dynamic)
-      VALUE_SIMPLE                  = 256,     // node value is simple (i.e. for use in a simple expression)
-      VALUE_THROWS                  = 512,     // node can throw an exception
-      VALUE_NONDETERMINISTIC        = 1024,    // node produces non-deterministic result (e.g. function call nodes)
-      VALUE_RUNONDBSERVER           = 2048,    // node can run on the DB server in a cluster setup
+      VALUE_SORTED                  = 128,     // node is a list and its members are sorted asc.
+      VALUE_CONSTANT                = 256,     // node value is constant (i.e. not dynamic)
+      VALUE_SIMPLE                  = 512,     // node value is simple (i.e. for use in a simple expression)
+      VALUE_THROWS                  = 1024,    // node can throw an exception
+      VALUE_NONDETERMINISTIC        = 2048,    // node produces non-deterministic result (e.g. function call nodes)
+      VALUE_RUNONDBSERVER           = 4096,    // node can run on the DB server in a cluster setup
+      VALUE_USERDEFINED             = 8192,    // node can run on the DB server in a cluster setup
 
-      FLAG_KEEP_VARIABLENAME        = 4096,    // node is a reference to a variable name, not the variable value (used in KEEP nodes)
-      FLAG_BIND_PARAMETER           = 8192     // node was created from a JSON bind parameter
+      FLAG_KEEP_VARIABLENAME        = 16384,   // node is a reference to a variable name, not the variable value (used in KEEP nodes)
+      FLAG_BIND_PARAMETER           = 32768    // node was created from a JSON bind parameter
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -610,6 +612,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isCacheable () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node (and its subnodes) may contain a call to a
+/// user-defined function
+////////////////////////////////////////////////////////////////////////////////
+
+        bool callsUserDefinedFunction () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the object node contains dynamically named attributes

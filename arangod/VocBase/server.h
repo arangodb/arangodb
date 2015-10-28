@@ -31,7 +31,6 @@
 #define ARANGODB_VOC_BASE_SERVER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/associative.h"
 #include "Basics/locks.h"
 #include "Basics/Mutex.h"
 #include "Basics/threads.h"

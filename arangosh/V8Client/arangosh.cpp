@@ -1548,20 +1548,10 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
 #ifdef TRI_HAVE_LINENOISE
 
       // linenoise doesn't need escape sequences for escape sequences
+      // TODO: this should be a function defined in "console"
       goodPrompt = TRI_SHELL_COLOR_BOLD_GREEN + dynamicPrompt + TRI_SHELL_COLOR_RESET;
       badPrompt  = TRI_SHELL_COLOR_BOLD_RED   + dynamicPrompt + TRI_SHELL_COLOR_RESET;
 
-#else
-      // readline does...
-      goodPrompt = string()
-                 + ArangoClient::PROMPT_IGNORE_START + TRI_SHELL_COLOR_BOLD_GREEN + ArangoClient::PROMPT_IGNORE_END
-                 + dynamicPrompt
-                 + ArangoClient::PROMPT_IGNORE_START + TRI_SHELL_COLOR_RESET + ArangoClient::PROMPT_IGNORE_END;
-
-      badPrompt = string()
-                + ArangoClient::PROMPT_IGNORE_START + TRI_SHELL_COLOR_BOLD_RED + ArangoClient::PROMPT_IGNORE_END
-                + dynamicPrompt
-                + ArangoClient::PROMPT_IGNORE_START + TRI_SHELL_COLOR_RESET + ArangoClient::PROMPT_IGNORE_END;
 #endif
     }
     else {
@@ -1619,12 +1609,13 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     // assume the command succeeds
     promptError = false;
 
-    console.isExecutingCommand(true);
+    console.setExecutingCommand(true);
 
     // execute command and register its result in __LAST__
-    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STRING(input.c_str()), name, true);
+    v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(
+      isolate, context, TRI_V8_STRING(input.c_str()), name, true);
 
-    console.isExecutingCommand(false);
+    console.setExecutingCommand(false);
 
     if (v.IsEmpty()) {
       context->Global()->Set(TRI_V8_ASCII_STRING("_last"), v8::Undefined(isolate));
@@ -2432,9 +2423,11 @@ int main (int argc, char* args[]) {
 
       isolate->LowMemoryNotification();
 
-      // todo 1000 was the old V8-default, is this really good?
-      while (! isolate->IdleNotification(1000)) {
-      }
+      // spend at least 3 seconds in GC
+      LOG_DEBUG("entering final garbage collection");
+      TRI_RunGarbageCollectionV8(isolate, 3000);
+      LOG_DEBUG("final garbage collection completed");
+
       localContext->Exit();
       context.Reset();
     }

@@ -557,7 +557,7 @@
           return false;
         }
 
-        users.ensureUniqueConstraint("user", { sparse: true });
+        users.ensureIndex({ type: "hash", fields: ["user"], unique: true, sparse: true });
 
         return true;
       }
@@ -984,7 +984,7 @@
           return false;
         }
 
-        aal.ensureUniqueConstraint("name", "version", { sparse: true });
+        aal.ensureIndex({ type: "hash", fields: ["name", "version"], unique: true, sparse: true });
 
         return true;
       }

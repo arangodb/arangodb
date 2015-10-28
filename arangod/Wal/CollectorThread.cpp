@@ -29,12 +29,13 @@
 
 #include "CollectorThread.h"
 
-#include "Basics/MutexLocker.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/Exceptions.h"
 #include "Basics/hashes.h"
 #include "Basics/logging.h"
 #include "Basics/memory-map.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/Exceptions.h"
+#include "Basics/MutexLocker.h"
+#include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/transactions.h"

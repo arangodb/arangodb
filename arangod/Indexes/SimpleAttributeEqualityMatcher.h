@@ -100,18 +100,6 @@ namespace triagens {
                                         triagens::aql::Variable const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the condition parts that the index is responsible for
-/// this is used for the hash index
-/// requires that a previous matchAll() returned true
-/// the caller must not free the returned AstNode*, as it belongs to the ast
-////////////////////////////////////////////////////////////////////////////////
-        
-        triagens::aql::AstNode* getAll (triagens::aql::Ast*,
-                                        triagens::arango::Index const*,
-                                        triagens::aql::AstNode const*,
-                                        triagens::aql::Variable const*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specialize the condition for the index
 /// this is used for the primary index and the edge index
 /// requires that a previous matchOne() returned true
@@ -138,8 +126,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the costs of using this index
-/// costs returned are scaled from 0.0 to 1.0, with 0.0 being the lowest cost
+/// @brief determine the costs of using this index and the number of items
+/// that will return in average
+/// cost values have no special meaning, except that multiple cost values are 
+/// comparable, and lower values mean lower costs
 ////////////////////////////////////////////////////////////////////////////////
 
         void calculateIndexCosts (triagens::arango::Index const*,
@@ -155,7 +145,8 @@ namespace triagens {
                               triagens::aql::AstNode const*,
                               triagens::aql::AstNode const*,
                               triagens::aql::AstNode const*,
-                              triagens::aql::Variable const*);
+                              triagens::aql::Variable const*,
+                              bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -167,14 +158,14 @@ namespace triagens {
 /// @brief array of attributes used for comparisons
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::vector<triagens::basics::AttributeName>> _attributes;
+        std::vector<std::vector<triagens::basics::AttributeName>> const _attributes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an internal map to mark which condition parts were useful and 
-/// covered by the index
+/// covered by the index. Also contains the matching Node
 ////////////////////////////////////////////////////////////////////////////////
           
-        std::unordered_set<size_t> _found;
+        std::unordered_map<size_t, triagens::aql::AstNode const*> _found;
 
     };
                

@@ -531,7 +531,7 @@ IndexIterator* Index::iteratorForCondition (IndexIteratorContext*,
                                             triagens::aql::Ast*,
                                             triagens::aql::AstNode const*,
                                             triagens::aql::Variable const*,
-                                            bool const) const {
+                                            bool) const {
   // the super class index cannot create an iterator
   // the derived index classes have to manage this.
   return nullptr;
@@ -553,7 +553,8 @@ triagens::aql::AstNode* Index::specializeCondition (triagens::aql::AstNode* node
 bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
                                  triagens::aql::AstNode const* other,
                                  triagens::aql::AstNode const* op,
-                                 triagens::aql::Variable const* reference) const {
+                                 triagens::aql::Variable const* reference,
+                                 bool isExecution) const {
 
   if (_sparse) {
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
@@ -567,9 +568,11 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
         return false;
       }
 
+      /* A sparse index will store null in Array
       if (access->isNullValue()) {
         return false;
       }
+      */
     }
     else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
              access->type == triagens::aql::NODE_TYPE_EXPANSION) {
@@ -578,9 +581,11 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
         return false;
       }
 
+      /* A sparse index will store null in Array
       if (other->isNullValue()) {
         return false;
       }
+      */
     }
     else if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       // a.b == value  OR  a.b IN values
@@ -612,6 +617,11 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
         }
       }
     }
+  }
+
+  if (isExecution) {
+    // in execution phase, we do not need to check the variable usage again
+    return true;
   }
 
   // test if the reference variable is contained on both side of the expression

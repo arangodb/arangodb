@@ -35,8 +35,8 @@ db.collection.document("<document-key>");
 db._document("<document-id>");
 ```
 
-As the primary index is a hash index, it cannot be used for non-equality range 
-queries or for sorting.
+As the primary index is an unsorted hash index, it cannot be used for non-equality 
+range queries or for sorting.
 
 The primary index of a collection cannot be dropped or changed, and there is no
 mechanism to create user-defined primary indexes.
@@ -64,11 +64,11 @@ db.collection.inEdges("<from-value>");
 db.collection.inEdges("<to-value>");
 ```
 
-The edges index is a hash index. It can be used for equality lookups only, but not for range
-queries or for sorting. As edges indexes are automatically created for edge collections, it
-is not possible to create user-defined edges indexes.
+Internally, the edges index is implemented as a hash index. It can be used for equality 
+lookups, but not for range queries or for sorting. As edges indexes are automatically 
+created for edge collections, it is not possible to create user-defined edges indexes.
 
-The edges index cannot be dropped or changed.
+An edges index cannot be dropped or changed.
 
 
 !SUBSECTION Hash Index
@@ -120,7 +120,7 @@ Non-unique hash indexes have an amortized complexity of O(1) for insert, update,
 removal operations. That means non-unique hash indexes can be used on attributes with 
 low cardinality. 
 
-If a hash index is created on an attribute that it is missing in all or many of the documents,
+If a hash index is created on an attribute that is missing in all or many of the documents,
 the behavior is as follows:
 
 * if the index is sparse, the documents missing the attribute will not be indexed and not
@@ -129,6 +129,9 @@ the behavior is as follows:
 
 * if the index is non-sparse, the documents missing the attribute will be contained in the
   index with a key value of `null`. 
+
+Hash indexes support indexing array values if the index attribute name is extended with
+a <i>[\*]</i>`. 
 
 
 !SUBSECTION Skiplist Index
@@ -217,6 +220,9 @@ The different types of skiplist indexes have the following characteristics:
 The operational amortized complexity for skiplist indexes is logarithmically correlated
 with the number of documents in the index.
 
+Skiplist indexes support indexing array values if the index attribute name is extended with
+a <i>[\*]</i>`. 
+
 
 !SUBSECTION Geo Index
 
@@ -231,8 +237,8 @@ Th geo index provides operations to find documents with coordinates nearest to a
 comparison coordinate, and to find documents with coordinates that are within a specifiable
 radius around a comparison coordinate.
 
-The geo index is used via dedicated functions in AQL or the simple queries, but will
-not enabled for other types of queries or conditions.
+The geo index is used via dedicated functions in AQL or the simple queries functions, 
+but will not be used for other types of queries or conditions.
 
 
 !SUBSECTION Fulltext Index
@@ -252,3 +258,114 @@ minimum length will be included in the index.
 
 The fulltext index is used via dedicated functions in AQL or the simple queries, but will
 not be enabled for other types of queries or conditions.
+
+
+!SUBSECTION Indexing array values
+
+If an index attribute contains an array, ArangoDB will store the entire array as the index value
+by default. Accessing individual members of the array via the index is not possible this
+way. 
+
+To make an index insert the individual array members into the index instead of the entire array
+value, a special array index needs to be created for the attribute. Array indexes can be set up 
+like regular hash or skiplist indexes using the `collection.ensureIndex()` function. To make a 
+hash or skiplist index an array index, the index attribute name needs to be extended with <i>[\*]</i>.
+
+The following example creates an array hash index on the `tags` attribute in a collection named
+`posts`:
+
+```js
+db.posts.ensureIndex({ type: "hash", fields: [ "tags[*]" ] });
+db.posts.insert({ tags: [ "foobar", "baz", "quux" ] });
+```
+
+This array index can then be used for looking up individual `tags` values from AQL queries via 
+the `IN` operator and the attribute name extension <i>[\*]</i>:
+
+    FOR doc IN posts
+      FILTER 'foobar' IN doc.tags[*]
+      RETURN doc
+    
+The following FILTER conditions will not use the array index:
+      
+    FILTER 'foobar' IN doc.tags
+    FILTER doc.tags IN 'foobar'
+    FILTER doc.tags == 'foobar'
+    FILTER 'foobar' == doc.tags
+
+It is also possible to create an index on subattributes of array values. This makes sense
+when the index attribute is an array of objects, e.g.
+
+```js
+db.posts.ensureIndex({ type: "hash", fields: [ "tags[*].name" ] });
+db.posts.insert({ tags: [ { name: "foobar" }, { name: "baz" }, { name: "quux" } ] });
+```
+
+The following query will then use the array index:
+
+    FOR doc IN posts
+      FILTER 'foobar' IN doc.tags[*].name
+      RETURN doc
+
+If you store a document having the array which does contain elements not having
+the subattributes this document will also be indexed with the value `null`, which
+in ArangoDB is equal to attribute not existing.
+
+ArangoDB supports creating array indexes with a single <i>[\*]</i> operator per index 
+attribute. For example, creating an index as follows is not supported:
+
+```js
+db.posts.ensureIndex({ type: "hash", fields: [ "tags[*].name[*].value" ] });
+```
+
+Array values will automatically be de-duplicated before being inserted into an array index.
+For example, if the following document is inserted into the collection, the duplicate array
+value `bar` will be inserted only once:
+
+```js
+db.posts.insert({ tags: [ "foobar", "bar", "bar" ] });
+```
+
+If an array index is declared **unique**, the de-duplication of array values will happen before 
+inserting the values into the index, so the above insert operation will not necessarily fail.
+It will fail if the index already contains an instance of the `bar` value, but will succeed 
+if the value `bar` is not already present in the index.
+
+If an array index is declared and you store documents that do not have an array at the specified attribute
+this document will not be inserted in the index. Hence the following objects will not be indexed:
+
+```js
+db.posts.ensureIndex({ type: "hash", fields: [ "tags[*]" ] });
+db.posts.insert({ something: "else" });
+db.posts.insert({ tags: null });
+db.posts.insert({ tags: "this is no array" });
+db.posts.insert({ tags: { content: [1, 2, 3] } });
+```
+
+An array index is able to index an explicit `null` value and when queried for it, it will only
+return those documents having explicitly `null` stored in the array, it will not return any
+documents that do not have the array at all.
+
+```js
+db.posts.ensureIndex({ type: "hash", fields: [ "tags[*]" ] });
+db.posts.insert({tags: null}) // Will not be indexed
+db.posts.insert({tags: []})  // Will not be indexed
+db.posts.insert({tags: [null]}); // Will be indexed for null
+db.posts.insert({tags: [null, 1, 2]}); // Will be indexed for null, 1 and 2
+```
+
+Declaring an array index as **sparse** does not have an effect on the array part of the index,
+this in particular means that explicit `null` values are also indexed in the **sparse** version.
+If an index is combined from an array and a normal attribute the sparsity will apply for the attribute e.g.:
+
+```js
+db.posts.ensureIndex({ type: "hash", fields: [ "tags[*]", "name" ], sparse: true });
+db.posts.insert({tags: null, name: "alice"}) // Will not be indexed
+db.posts.insert({tags: [], name: "alice"}) // Will not be indexed
+db.posts.insert({tags: [1, 2, 3]}) // Will not be indexed
+db.posts.insert({tags: [1, 2, 3], name: null}) // Will not be indexed
+db.posts.insert({tags: [1, 2, 3], name: "alice"})
+// Will be indexed for [1, "alice"], [2, "alice"], [3, "alice"]
+db.posts.insert({tags: [null], name: "bob"})
+// Will be indexed for [null, "bob"] 
+```

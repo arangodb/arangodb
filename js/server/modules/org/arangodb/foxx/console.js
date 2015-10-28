@@ -182,9 +182,9 @@ extend(Console.prototype, {
 
     if (!db._foxxlog) {
       db._create('_foxxlog', {isSystem: true});
-      db._foxxlog.ensureSkiplist('mount');
-      db._foxxlog.ensureSkiplist('mount', 'created');
-      db._foxxlog.ensureSkiplist('mount', 'created', 'levelNum');
+      db._foxxlog.ensureIndex({type: 'skiplist', fields: ['mount']});
+      db._foxxlog.ensureIndex({type: 'skiplist', fields: ['mount', 'created']});
+      db._foxxlog.ensureIndex({type: 'skiplist', fields: ['mount', 'created', 'levelNum']});
     }
 
     db._foxxlog.save(doc);

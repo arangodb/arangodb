@@ -645,6 +645,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-parse.js \
 			@top_srcdir@/js/server/tests/aql-primary-index-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-array.js \
+			@top_srcdir@/js/server/tests/aql-queries-array-nested.js \
 			@top_srcdir@/js/server/tests/aql-queries-collection.js \
 			@top_srcdir@/js/server/tests/aql-queries-fulltext.js \
 			@top_srcdir@/js/server/tests/aql-queries-geo.js \

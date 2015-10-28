@@ -61,6 +61,15 @@ namespace triagens {
       virtual int scan (std::vector<TRI_doc_mptr_copy_t>&, size_t) = 0;
 
       virtual void reset () = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief forwards the cursor n elements. Does not read the data.
+///        Will at most forward to the last element.
+///        In the second parameter we add how many elements are
+///        really skipped
+////////////////////////////////////////////////////////////////////////////////
+
+      virtual int forward (size_t, size_t&) = 0;
  
       triagens::arango::AqlTransaction* trx;
       TRI_transaction_collection_t* trxCollection;
@@ -86,6 +95,8 @@ namespace triagens {
 
       void reset () override;
 
+      int forward (size_t, size_t&) override;
+
       triagens::basics::BucketPosition initialPosition;
       uint64_t step;
     };
@@ -107,6 +118,8 @@ namespace triagens {
                 size_t) override;
       
       void reset () override;
+
+      int forward (size_t, size_t&) override;
     };
 
   }

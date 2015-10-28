@@ -48,7 +48,7 @@ target_link_libraries(
     ${ICU_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
-    ${READLINE_LIBS}
+    ${LINENOISE_LIBS}
     ${OPENSSL_LIBS}
     ${MSVC_LIBS}
 )
@@ -98,7 +98,7 @@ target_link_libraries(
     ${ICU_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
-    ${READLINE_LIBS}
+    ${LINENOISE_LIBS}
     ${OPENSSL_LIBS}
     ${MSVC_LIBS}
 )
@@ -149,7 +149,7 @@ target_link_libraries(
     ${ICU_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
-    ${READLINE_LIBS}
+    ${LINENOISE_LIBS}
     ${OPENSSL_LIBS}
     ${MSVC_LIBS}
 )
@@ -198,7 +198,7 @@ target_link_libraries(
     ${ICU_LIBS}
     ${BT_LIBS}
     ${ZLIB_LIBS}
-    ${READLINE_LIBS}
+    ${LINENOISE_LIBS}
     ${OPENSSL_LIBS}
     ${MSVC_LIBS}
 )
@@ -251,7 +251,7 @@ target_link_libraries(
     ${BT_LIBS}
     ${ICU_LIBS}
     ${ZLIB_LIBS}
-    ${READLINE_LIBS}
+    ${LINENOISE_LIBS}
     ${OPENSSL_LIBS}
     ${MSVC_LIBS}
 )

@@ -1,6 +1,6 @@
 !SECTION How ArangoDB uses Indexes
 
-In general, ArangoDB will use a single index per collection in a given query. AQL queries can
+In most cases ArangoDB will use a single index per collection in a given query. AQL queries can
 use more than one index per collection when multiple FILTER conditions are combined with a 
 logical `OR` and these can be covered by indexes. AQL queries will use a single index per
 collection when FILTER conditions are combined with logical `AND`.
@@ -23,11 +23,11 @@ multiple indexes the optimizer can choose from. The optimizer will then select a
 indexes with the lowest estimated total cost. In general, the optimizer will pick the indexes with
 the highest estimated selectivity.
 
-Sparse indexes do not contain `null` values. If the optimizer cannot safely determine whether a
-FILTER condition includes `null` values, it will not make use of a sparse index. The optimizer 
-policy is to produce correct results, regardless of whether or which index is used to satisfy 
-FILTER conditions. If it is unsure about whether using an index will violate the policy, it will 
-not make use of the index.
+Sparse indexes may or may not be picked by the optimizer in a query. As sparse indexes do not contain 
+`null` values, they will not be used for queries if the optimizer cannot safely determine whether a
+FILTER condition includes `null` values for the index attributes. The optimizer policy is to produce 
+correct results, regardless of whether or which index is used to satisfy FILTER conditions. If it is 
+unsure about whether using an index will violate the policy, it will not make use of the index.
 
 
 !SUBSECTION Troubleshooting
@@ -76,12 +76,15 @@ If any of the explain methods shows that a query is not using indexes, the follo
   In these cases the queries should be rewritten so that only the index attribute is present on one side of 
   the operator, or additional filters and indexes should be used to restrict the amount of documents otherwise.
 
-* the query optimizer will in general picking one index per collection in a query. It can pick more than
+* the query optimizer will in general pick one index per collection in a query. It can pick more than
   one index per collection if the FILTER condition contains multiple branches combined with logical `OR`.
-  For example, the following queries can use more than one index:
+  For example, the following queries can use indexes:
 
       FOR doc IN collection FILTER doc.value1 == 42 || doc.value1 == 23 RETURN doc
       FOR doc IN collection FILTER doc.value1 == 42 || doc.value2 == 23 RETURN doc
+      FOR doc IN collection FILTER doc.value1 < 42 || doc.value2 > 23 RETURN doc
 
-  In the latter case, the query optimizer can only use indexes if there are indexes present on both `value1` 
-  and `value2`.
+  The two `OR`s in the first query will be converted to an `IN` list, and if there is a suitable index on
+  `value1`, it will be used. The second query requires two separate indexes on `value1` and `value2` and
+  will use them if present. The third query can use the indexes on `value1` and `value2` when they are
+  sorted.

@@ -1,6 +1,13 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* improved performance of skipping over many documents in an AQL query when no
+  indexes and no filters are used, e.g.
+
+      FOR doc IN collection
+        LIMIT 1000000, 10
+        RETURN doc
+
 * Added array indexes
 
   Hash indexes and skiplist indexes can now optionally be defined for array values 
@@ -21,8 +28,14 @@ v2.8.0 (XXXX-XX-XX)
   tags array using the following AQL query:
     
       FOR doc IN colName 
-        FILTER "ArangoDB" IN doc.tags 
+        FILTER "ArangoDB" IN doc.tags[*] 
         RETURN doc
+
+* rewrote AQL query optimizer rule `use-index-range` and renamed it to `use-indexes`.
+  The name change affects rule names in the optimizer's output.
+
+* rewrote AQL execution node `IndexRangeNode` and renamed it to `IndexNode`. The name
+  change affects node names in the optimizer's explain output.
 
 * added convenience function `db._explain(query)` for human-readable explanation
   of AQL queries
@@ -30,6 +43,32 @@ v2.8.0 (XXXX-XX-XX)
 
 v2.7.1 (XXXX-XX-XX)
 -------------------
+
+* fixed potential segfault in AQL `NEIGHBOURS` function implementation when C++ function
+  variant was used and collection names were passed as strings
+
+* removed duplicate target for some frontend JavaScript files from the Makefile
+
+* make AQL function `MERGE()` work on a single array parameter, too.
+  This allows combining the attributes of multiple objects from an array into
+  a single object, e.g.
+
+      RETURN MERGE([ 
+        { foo: 'bar' }, 
+        { quux: 'quetzalcoatl', ruled: true }, 
+        { bar: 'baz', foo: 'done' }
+      ])
+
+  will now return:
+
+      {
+        "foo": "done",
+        "quux": "quetzalcoatl",
+        "ruled": true,
+        "bar": "baz"
+      }
+
+* fixed potential deadlock in collection status changing on Windows 
 
 * fixed hard-coded `incremental` parameter in shell implementation of
   `syncCollection` function in replication module

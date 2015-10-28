@@ -90,7 +90,8 @@ namespace triagens {
                         struct TRI_document_collection_t*,
                         std::vector<std::vector<triagens::basics::AttributeName>> const&,
                         bool unique,
-                        bool sparse);
+                        bool sparse,
+                        bool allowPartialIndex);
         
         explicit PathBasedIndex (struct TRI_json_t const*);
 
@@ -176,7 +177,8 @@ namespace triagens {
                                size_t,
                                size_t, 
                                std::unordered_set<std::vector<TRI_shaped_json_t>>&,
-                               std::vector<TRI_shaped_json_t>&);
+                               std::vector<TRI_shaped_json_t>&,
+                               bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -201,6 +203,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         bool _useExpansion;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not partial indexing is allowed
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool _allowPartialIndex;
     };
 
   }
