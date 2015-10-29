@@ -34,8 +34,8 @@
 
 ### linenoise
 
-* https://github.com/antirez/linenoise
-* [free as-is license](https://github.com/antirez/linenoise/blob/master/LICENSE)
+* Project Home: https://github.com/antirez/linenoise
+* License: [free as-is license](https://raw.githubusercontent.com/antirez/linenoise/master/LICENSE)
 
 ### fpconv_dtoa
 
