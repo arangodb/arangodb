@@ -364,7 +364,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
   // TRI_read_write_lock_t        _lock;
   triagens::basics::ReadWriteLockCPP11 _lock;
 
-
 private:
   VocShaper*                           _shaper;
 

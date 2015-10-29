@@ -63,8 +63,6 @@
 #include "Wal/Marker.h"
 #include "Wal/Slots.h"
 
-#include <iostream>
-
 using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +115,9 @@ void TRI_doc_mptr_copy_t::setDataPtr (void const* d) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_document_collection_t::TRI_document_collection_t () 
-  : _useSecondaryIndexes(true),
+  : _lock(),
+    _shaper(nullptr),
+    _useSecondaryIndexes(true),
     _capConstraint(nullptr),
     _ditches(this),
     _headersPtr(nullptr),
@@ -199,6 +199,14 @@ int TRI_document_collection_t::beginWrite () {
   // std::cout << "BeginWrite: " << document->_info._name << std::endl;
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
 
+  try {
+    _vocbase->_deadlockDetector.setWriterStarted(this);
+  }
+  catch (...) {
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -220,6 +228,12 @@ int TRI_document_collection_t::endWrite () {
   // LOCKING-DEBUG
   // std::cout << "EndWrite: " << document->_info._name << std::endl;
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+ 
+  try { 
+    _vocbase->_deadlockDetector.setWriterFinished(this);
+  }
+  catch (...) {
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -241,10 +255,45 @@ int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
     }
   }
   uint64_t waited = 0;
+  if (timeout == 0) {
+    // we don't allow looping forever. limit waiting to 15 minutes max.
+    timeout = 15 * 60 * 1000 * 1000;
+  }
 
   // LOCKING-DEBUG
   // std::cout << "BeginReadTimed: " << document->_info._name << std::endl;
+  int iterations = 0;
+  bool wasBlocked = false;
+
   while (! TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this)) {
+    try {
+      if (! wasBlocked) {
+        // insert reader
+        if (_vocbase->_deadlockDetector.setReaderBlocked(this)) {
+          // deadlock
+          return TRI_ERROR_DEADLOCK;
+        }
+        wasBlocked = true;
+      }
+      else if (++iterations >= 5) {
+        // periodically check for deadlocks
+        TRI_ASSERT(wasBlocked);
+        iterations = 0;
+        if (_vocbase->_deadlockDetector.isDeadlocked(this)) {
+          // deadlock
+          _vocbase->_deadlockDetector.setReaderUnblocked(this);
+          return TRI_ERROR_DEADLOCK;
+        }
+      }
+    }
+    catch (...) {
+      // clean up!
+      if (wasBlocked) {
+        _vocbase->_deadlockDetector.setReaderUnblocked(this);
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    }
+
 #ifdef _WIN32
     usleep((unsigned long) sleepPeriod);
 #else
@@ -254,8 +303,14 @@ int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
     waited += sleepPeriod;
 
     if (waited > timeout) {
+      _vocbase->_deadlockDetector.setReaderUnblocked(this);
       return TRI_ERROR_LOCK_TIMEOUT;
     }
+  }
+
+  // when we are here, we've got the read lock
+  if (wasBlocked) {      
+    _vocbase->_deadlockDetector.setReaderUnblocked(this);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -278,10 +333,45 @@ int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
     }
   }
   uint64_t waited = 0;
+  if (timeout == 0) {
+    // we don't allow looping forever. limit waiting to 15 minutes max.
+    timeout = 15 * 60 * 1000 * 1000;
+  }
 
   // LOCKING-DEBUG
   // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
+  int iterations = 0;
+  bool wasBlocked = false;
+
   while (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this)) {
+    try {
+      if (! wasBlocked) {
+        // insert writer (with method named "setReaderBlocked"..., but it works) 
+        if (_vocbase->_deadlockDetector.setReaderBlocked(this)) {
+          // deadlock
+          return TRI_ERROR_DEADLOCK;
+        }
+        wasBlocked = true;
+      }
+      else if (++iterations >= 5) {
+        // periodically check for deadlocks
+        TRI_ASSERT(wasBlocked);
+        iterations = 0;
+        if (_vocbase->_deadlockDetector.isDeadlocked(this)) {
+          // deadlock
+          _vocbase->_deadlockDetector.setReaderUnblocked(this);
+          return TRI_ERROR_DEADLOCK;
+        }
+      }
+    }
+    catch (...) {
+      // clean up!
+      if (wasBlocked) {
+        _vocbase->_deadlockDetector.setReaderUnblocked(this);
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    }
+
 #ifdef _WIN32
     usleep((unsigned long) sleepPeriod);
 #else
@@ -291,8 +381,22 @@ int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
     waited += sleepPeriod;
 
     if (waited > timeout) {
+      _vocbase->_deadlockDetector.setReaderUnblocked(this);
       return TRI_ERROR_LOCK_TIMEOUT;
     }
+  }
+  
+  // when we are here, we've got the write lock
+  if (wasBlocked) {      
+    _vocbase->_deadlockDetector.setReaderUnblocked(this);
+  }
+  
+  try {
+    _vocbase->_deadlockDetector.setWriterStarted(this);
+  }
+  catch (...) {
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   return TRI_ERROR_NO_ERROR;

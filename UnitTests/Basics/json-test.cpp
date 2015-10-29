@@ -436,16 +436,86 @@ BOOST_AUTO_TEST_CASE (tst_json_string_utf8_3) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test empty json list
 ////////////////////////////////////////////////////////////////////////////////
-
+   
 BOOST_AUTO_TEST_CASE (tst_json_list_empty) {
   INIT_BUFFER
-
+          
   TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-
+              
   STRINGIFY
   BOOST_CHECK_EQUAL("[]", STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove from array
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_remove_from_array_empty) {
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+ 
+  BOOST_CHECK_EQUAL(0ULL, TRI_LengthArrayJson(json));
+  BOOST_CHECK_EQUAL(false, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 0));
+  BOOST_CHECK_EQUAL(false, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 10));
+  BOOST_CHECK_EQUAL(false, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 5));
+  BOOST_CHECK_EQUAL(false, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 2));
+  BOOST_CHECK_EQUAL(false, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 1));
+  BOOST_CHECK_EQUAL(false, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 0));
+
+  FREE_JSON
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove from array
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_remove_from_array_nonempty1) {
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
+  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 3.5));
+ 
+  BOOST_CHECK_EQUAL(2ULL, TRI_LengthArrayJson(json));
+  BOOST_CHECK_EQUAL(false, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 10));
+  BOOST_CHECK_EQUAL(false, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 5));
+  BOOST_CHECK_EQUAL(false, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 2));
+  
+  BOOST_CHECK_EQUAL(true, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 1));
+  BOOST_CHECK_EQUAL(static_cast<TRI_json_t*>(0), TRI_LookupArrayJson(json, 1));
+  BOOST_CHECK_EQUAL(1ULL, TRI_LengthArrayJson(json));
+  BOOST_CHECK_EQUAL(true, TRI_IsNullJson(TRI_LookupArrayJson(json, 0)));
+
+  BOOST_CHECK_EQUAL(true, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 0));
+  BOOST_CHECK_EQUAL(0ULL, TRI_LengthArrayJson(json));
+  BOOST_CHECK_EQUAL(static_cast<TRI_json_t*>(0), TRI_LookupArrayJson(json, 0));
+
+  FREE_JSON
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove from array
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_remove_from_array_nonempty2) {
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
+  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 3.5));
+ 
+  BOOST_CHECK_EQUAL(2ULL, TRI_LengthArrayJson(json));
+  BOOST_CHECK_EQUAL(false, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 10));
+  BOOST_CHECK_EQUAL(false, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 5));
+  BOOST_CHECK_EQUAL(false, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 2));
+
+  BOOST_CHECK_EQUAL(true, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 0));
+  BOOST_CHECK_EQUAL(1ULL, TRI_LengthArrayJson(json));
+  BOOST_CHECK_EQUAL(static_cast<TRI_json_t*>(0), TRI_LookupArrayJson(json, 1));
+  BOOST_CHECK_EQUAL(true, TRI_IsNumberJson(TRI_LookupArrayJson(json, 0)));
+
+  BOOST_CHECK_EQUAL(true, TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, json, 0));
+  BOOST_CHECK_EQUAL(0ULL, TRI_LengthArrayJson(json));
+  BOOST_CHECK_EQUAL(static_cast<TRI_json_t*>(0), TRI_LookupArrayJson(json, 0));
+
+  FREE_JSON
 }
 
 ////////////////////////////////////////////////////////////////////////////////
