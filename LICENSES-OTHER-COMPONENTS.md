@@ -287,7 +287,7 @@
 #### jQuery Snippet 
 
 * Archived Project Home: https://web.archive.org/web/20150908173503/http://www.steamdev.com/snippet/
-* License: [MIT License](https://web.archive.org/web/20150817084109/http://steamdev.com/snippet/) in "section 5"
+* License: [MIT License](https://web.archive.org/web/20150817084109/http://steamdev.com/snippet/) in "Notes, section 5"
 
 #### jQuery Strftime
 
