@@ -268,6 +268,7 @@
 
 #### jq-console
 
+* Project Home: http://replit.github.io/jq-console/
 * GITHUB: https://github.com/replit/jq-console
 * License: [MIT License](https://github.com/replit/jq-console/blob/master/README.md)
 
@@ -290,7 +291,7 @@
 #### jQuery Hotkeys
 
 * GITHUB: https://github.com/jeresig/jquery.hotkeys
-* License: [MIT License](https://code.google.com/p/js-hotkeys/) under "Code license"
+* License: Dual License [MIT License](https://github.com/jeresig/jquery.hotkeys/blob/master/jquery.hotkeys.js)
 
 #### jQuery Snippet 
 
