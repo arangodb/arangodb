@@ -232,34 +232,34 @@
 
 ### Frontend libraries
 
-#### Swagger UI
-
-* Project Home: http://swagger.io
-* GITHUB: https://github.com/swagger-api/swagger-ui
-* License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE
-
 #### Backbone.js
 
 * Project Home: http://backbonejs.org
 * GITHUB: https://github.com/jashkenas/backbone
-* [MIT License](https://raw.githubusercontent.com/jashkenas/backbone/master/LICENSE)
+* License: [MIT License](https://github.com/jashkenas/backbone/blob/master/LICENSE)
 
 #### Bootstrap
 
 * Project Home: http://getbootstrap.com
+* GITHUB: https://github.com/twbs/bootstrap
 * License: [MIT License](https://github.com/twbs/bootstrap/blob/master/LICENSE)
+
+#### Crypto.js
+
+* GITHUB: https://github.com/brix/crypto-js
+* License: [MIT License](https://github.com/brix/crypto-js/blob/develop/README.md) under "License"
 
 #### D3js
 
 * Project Home: http://d3js.org
 * GITHUB: https://github.com/mbostock/d3
-* License: [BSD 3-Clause License](https://raw.githubusercontent.com/mbostock/d3/master/LICENSE)
+* License: [free as-is license](https://github.com/mbostock/d3/blob/master/LICENSE)
 
 #### dygraph
 
 * Project Home: http://dygraphs.com
 * GITHUB: https://github.com/danvk/dygraphs
-* License: [MIT License](https://raw.githubusercontent.com/danvk/dygraphs/master/LICENSE.txt)
+* License: [free as-is license](https://github.com/danvk/dygraphs/blob/master/LICENSE.txt)
 
 #### Embedded JS
 
@@ -274,65 +274,67 @@
 #### jQuery
 
 * Project Home: http://jquery.com
-* GITHUB: https://raw.githubusercontent.com/jquery/jquery/master/LICENSE.txt
-* License: [MIT License](https://raw.githubusercontent.com/jquery/jquery/master/LICENSE.txt)
-
-#### jQuery UI
-
-* http://jqueryui.com
-* [MIT License](https://raw.githubusercontent.com/jquery/jquery-ui/master/LICENSE.txt)
-
-#### jQuery Snippet 
-
-* http://steamdev.com/snippet
-* [MIT License](https://web.archive.org/web/20150817084109/http://steamdev.com/snippet/) in "section 5"
-
-#### jQuery Hotkeys
-
-* https://code.google.com/p/js-hotkeys/
-* [MIT License](https://code.google.com/p/js-hotkeys/) under "Code license"
+* GITHUB: https://github.com/jquery/jquery
+* License: [free as-is license](https://github.com/jquery/jquery/blob/master/LICENSE.txt)
 
 #### jQuery Contextmenu
 
-* https://github.com/swisnl/jQuery-contextMenu
-* [MIT License](https://github.com/swisnl/jQuery-contextMenu) under "License"
+* GITHUB: https://github.com/swisnl/jQuery-contextMenu
+* License: [MIT License](https://github.com/swisnl/jQuery-contextMenu/blob/master/README.md) under "License"
 
 #### jQuery Form
 
-* https://github.com/malsup/form/
-* [MIT License](https://github.com/malsup/form/) under "Copyright and License"
+* GITHUB: https://github.com/malsup/form/
+* License: [MIT License](https://github.com/malsup/form/blob/master/README.md) under "Copyright and License"
 
-#### jQuery UploadFile
+#### jQuery Hotkeys
 
-* https://github.com/hayageek/jquery-upload-file/
-* [MIT License](https://raw.githubusercontent.com/hayageek/jquery-upload-file/master/MIT-License.txt)
+* GITHUB: https://github.com/jeresig/jquery.hotkeys
+* License: [MIT License](https://code.google.com/p/js-hotkeys/) under "Code license"
 
-#### jQuery Textfill
+#### jQuery Snippet 
 
-* https://github.com/jquery-textfill/jquery-textfill
-* [MIT License](https://raw.githubusercontent.com/jquery-textfill/jquery-textfill/master/COPYING.md)
+* Archived Project Home: https://web.archive.org/web/20150908173503/http://www.steamdev.com/snippet/
+* License: [MIT License](https://web.archive.org/web/20150817084109/http://steamdev.com/snippet/) in "section 5"
 
 #### jQuery Strftime
 
-* https://github.com/samsonjs/strftime
-* [MIT License](https://github.com/samsonjs/strftime) under "License"
+* GITHUB: https://github.com/samsonjs/strftime
+* License: [MIT License](https://github.com/samsonjs/strftime/blob/master/Readme.md) under "License"
 
-#### nvd3
+#### jQuery Textfill
 
-* https://github.com/novus/nvd3
-* [Apache 2 License](https://github.com/novus/nvd3/blob/master/LICENSE.md) under "nvd3.js"
+* GITHUB: https://github.com/jquery-textfill/jquery-textfill
+* Licensd: [MIT License](https://github.com/jquery-textfill/jquery-textfill/blob/master/README.md)
+
+#### jQuery UI
+
+* Project Home: http://jqueryui.com
+* GITHUB: https://github.com/jquery/jquery-ui
+* License: [free as-is license](https://github.com/jquery/jquery-ui/blob/master/LICENSE.txt)
+
+#### jQuery UploadFile
+
+* GITHUB: https://github.com/hayageek/jquery-upload-file/
+* License: [MIT License](https://github.com/hayageek/jquery-upload-file/blob/master/MIT-License.txt)
 
 #### jsoneditor.js
 
-* https://github.com/josdejong/jsoneditor/
-* [Apache 2 License](https://raw.githubusercontent.com/josdejong/jsoneditor/master/LICENSE)
+* GITHUB: https://github.com/josdejong/jsoneditor/
+* [Apache 2 License](https://github.com/josdejong/jsoneditor/blob/master/LICENSE)
 
-#### Crypto.js
+#### nvd3
 
-* https://github.com/brix/crypto-js
-* [MIT License](https://github.com/brix/crypto-js) under "License"
+* GITHUB: https://github.com/novus/nvd3
+* License: [Apache 2 License](https://github.com/novus/nvd3/blob/master/LICENSE.md) under "nvd3.js"
+
+#### Swagger UI
+
+* Project Home: http://swagger.io
+* GITHUB: https://github.com/swagger-api/swagger-ui
+* License: [Apache 2 license](https://github.com/swagger-api/swagger-ui/blob/master/LICENSE)
 
 #### select2
 
-* https://github.com/select2/select2
-* [Apache 2 License](https://github.com/select2/select2)
+* GITHUB: https://github.com/select2/select2
+* License: [Apache 2 License](https://github.com/select2/select2/blob/master/LICENSE.md)
