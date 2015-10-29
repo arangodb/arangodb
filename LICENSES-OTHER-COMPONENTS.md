@@ -5,12 +5,23 @@
 ### Boost 1.58.0
 
 * Project Home: http://www.boost.org/
-* License: [boost software license](http://www.boost.org/LICENSE_1_0.txt), [free as-is license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/boost/1.58.0/boost/test/utils/runtime/cla/detail/argument_value_usage.hpp)
+* License: Boost [boost software license](http://www.boost.org/LICENSE_1_0.txt)
+* License: argument_value_usage.hpp [free as-is license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/boost/1.58.0/boost/test/utils/runtime/cla/detail/argument_value_usage.hpp)
 
 ### Google V8 4.3.61
 
 * Project Home: https://code.google.com/p/v8/
-* License: [v8-overview](https://raw.githubusercontent.com/v8/v8/4.3.61/LICENSE), [V8](https://raw.githubusercontent.com/v8/v8/4.3.61/LICENSE.v8), [strongtalk](https://raw.githubusercontent.com/v8/v8/4.3.61/LICENSE.strongtalk), [valgrind](https://raw.githubusercontent.com/v8/v8/4.3.61/LICENSE.valgrind), [vtune](https://raw.githubusercontent.com/v8/v8/4.3.61/src/third_party/vtune/v8-vtune.h), [gmock](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8-4.3.61/testing/gmock/LICENSE), [gtest](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8-4.3.61/testing/gtest/LICENSE), [fdlibm](https://raw.githubusercontent.com/v8/v8/4.3.61/src/third_party/fdlibm/LICENSE), [PCRE](https://raw.githubusercontent.com/v8/v8/master/test/mjsunit/third_party/regexp-pcre/LICENSE), [object-keys](https://raw.githubusercontent.com/v8/v8/master/test/mjsunit/third_party/object-keys/LICENSE) 
+* GITHUB: https://github.com/v8/v8
+* License Overview: [https://github.com/v8/v8/blob/4.3.61/LICENSE](https://github.com/v8/v8/blob/4.3.61/LICENSE)
+* License: V8 [free as-is license](https://github.com/v8/v8/blob/4.3.61/LICENSE.v8)
+* License: strongtalk [free as-is license](https://github.com/v8/v8/blob/4.3.61/LICENSE.strongtalk)
+* License: valgrind [BSD-style license](https://github.com/v8/v8/blob/4.3.61/LICENSE.valgrind)
+* License: vtune, Dual-License [BSD license](https://github.com/v8/v8/blob/4.3.61/src/third_party/vtune/v8-vtune.h)
+* License: gmock [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gmock/LICENSE)
+* License: gtest [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gtest/LICENSE)
+* License: fdlibm [free as-is license](https://github.com/v8/v8/blob/4.3.61/src/third_party/fdlibm/LICENSE)
+* License: PCRE [BSD license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/regexp-pcre.js)
+* License: object-keys [free as-is license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/object-keys.js) 
 
 ### ICU 54.1
 
@@ -19,13 +30,13 @@
 
 ### fpconv_dtoa
 
-* Project Home: https://github.com/night-shift/fpconv/
+* GITHUB: https://github.com/night-shift/fpconv/
 * License: [MIT License](https://raw.githubusercontent.com/night-shift/fpconv/master/license)
 
 ### libev 4.11
 
 * Project Home: http://software.schmorp.de/pkg/libev.html
-* License: Dual-License, including [free as-is license](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
+* License: Dual-License [free as-is license](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
 
 ### linenoise
 
