@@ -13,15 +13,15 @@
 * Project Home: https://code.google.com/p/v8/
 * GITHUB: https://github.com/v8/v8
 * License Overview: [https://github.com/v8/v8/blob/4.3.61/LICENSE](https://github.com/v8/v8/blob/4.3.61/LICENSE)
-* License: V8 [free as-is license](https://github.com/v8/v8/blob/4.3.61/LICENSE.v8)
-* License: strongtalk [free as-is license](https://github.com/v8/v8/blob/4.3.61/LICENSE.strongtalk)
-* License: valgrind [BSD-style license](https://github.com/v8/v8/blob/4.3.61/LICENSE.valgrind)
-* License: vtune, Dual-License [BSD license](https://github.com/v8/v8/blob/4.3.61/src/third_party/vtune/v8-vtune.h)
-* License: gmock [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gmock/LICENSE)
-* License: gtest [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gtest/LICENSE)
+* License: V8 [BSD 3-Clause License](https://github.com/v8/v8/blob/4.3.61/LICENSE.v8)
+* License: strongtalk [BSD 3-Clause License](https://github.com/v8/v8/blob/4.3.61/LICENSE.strongtalk)
+* License: valgrind [BSD 4-Clause license](https://github.com/v8/v8/blob/4.3.61/LICENSE.valgrind)
+* License: vtune, Dual-License [BSD 3-Clause License](https://github.com/v8/v8/blob/4.3.61/src/third_party/vtune/v8-vtune.h)
+* License: gmock [BSD 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gmock/LICENSE)
+* License: gtest [BSD 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gtest/LICENSE)
 * License: fdlibm [free as-is license](https://github.com/v8/v8/blob/4.3.61/src/third_party/fdlibm/LICENSE)
-* License: PCRE [BSD license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/regexp-pcre.js)
-* License: object-keys [free as-is license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/object-keys.js) 
+* License: PCRE [BSD 3-Clause license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/regexp-pcre.js)
+* License: object-keys [BSD 3-Clause license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/object-keys.js) 
 
 ### ICU 54.1
 
@@ -36,18 +36,18 @@
 ### libev 4.11
 
 * Project Home: http://software.schmorp.de/pkg/libev.html
-* License: Dual-License [free as-is license](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
+* License: Dual-License [BSD 2-Clause License](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
 
 ### linenoise
 
 * GITHUB: https://github.com/antirez/linenoise
-* License: [free as-is license](https://github.com/antirez/linenoise/blob/master/LICENSE)
+* License: [BSD 2-Clause License](https://github.com/antirez/linenoise/blob/master/LICENSE)
 
 ### Valgrind
 
 * Project Home: http://valgrind.org/
 * uses valgrind.h header file only, none of the other files
-* License: [BSD-style license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/valgrind/valgrind.h)
+* License: [BSD 4-Clause license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/valgrind/valgrind.h)
 
 ### zlib 1.2.7
 
@@ -126,7 +126,7 @@
 
 * Project Home: http://coffeescript.org
 * GIUTHUB: https://github.com/jashkenas/coffeescript
-* License: [free as-is license](https://github.com/jashkenas/coffeescript/blob/master/LICENSE)
+* License: [MT-style License](https://github.com/jashkenas/coffeescript/blob/master/LICENSE)
 
 #### expect.js
 
@@ -147,7 +147,7 @@
 
 * Project Home: https://highlightjs.org
 * GITHUB: https://github.com/isagalaev/highlight.js
-* License: [free as-is license](https://github.com/isagalaev/highlight.js/blob/master/LICENSE)
+* License: [BSD 3-Clause License](https://github.com/isagalaev/highlight.js/blob/master/LICENSE)
 
 #### http-errors
 
@@ -157,7 +157,7 @@
 #### inflect
 
 * GITHUB: https://github.com/pksunkara/inflect
-* License: [free as-is license](https://github.com/pksunkara/inflect/blob/master/LICENSE)
+* License: [MIT-style License](https://github.com/pksunkara/inflect/blob/master/LICENSE)
 
 #### Jasmine
 
@@ -168,13 +168,13 @@
 #### Joi
 
 * GITHUB: https://github.com/hapijs/joi
-* License: [free as-is license](https://github.com/hapijs/joi/blob/master/LICENSE)
+* License: [BSD-style 3-Clause License](https://github.com/hapijs/joi/blob/master/LICENSE)
 
 #### JSHint
 
 * Project Home: http://jshint.com
 * GITHUB: https://github.com/jshint/jshint
-* License: [free as-is license](https://github.com/jshint/jshint/blob/master/LICENSE)
+* License: [MIT-style License](https://github.com/jshint/jshint/blob/master/LICENSE)
 
 #### JSUnity
 
@@ -195,7 +195,7 @@
 #### qs
 
 * GITHUB: https://github.com/hapijs/qs
-* License: [free as-is license](https://github.com/hapijs/qs/blob/master/LICENSE)
+* License: [BSD-style 3-Clause License](https://github.com/hapijs/qs/blob/master/LICENSE)
 
 #### Ramda
 
@@ -224,7 +224,7 @@
 
 * Project Home: http://underscorejs.org
 * GITHUB: https://github.com/jashkenas/underscore
-* License: [free as-is license](https://github.com/jashkenas/underscore/blob/master/LICENSE)
+* License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
 
 #### YAML
 
@@ -237,7 +237,7 @@
 
 * Project Home: http://backbonejs.org
 * GITHUB: https://github.com/jashkenas/backbone
-* License: [free as-is license](https://github.com/jashkenas/backbone/blob/master/LICENSE)
+* License: [MIT-style License](https://github.com/jashkenas/backbone/blob/master/LICENSE)
 
 #### Bootstrap
 
@@ -254,13 +254,13 @@
 
 * Project Home: http://d3js.org
 * GITHUB: https://github.com/mbostock/d3
-* License: [free as-is license](https://github.com/mbostock/d3/blob/master/LICENSE)
+* License: [BSD-style 3-Clause License](https://github.com/mbostock/d3/blob/master/LICENSE)
 
 #### dygraph
 
 * Project Home: http://dygraphs.com
 * GITHUB: https://github.com/danvk/dygraphs
-* License: [free as-is license](https://github.com/danvk/dygraphs/blob/master/LICENSE.txt)
+* License: [MIT-style License](https://github.com/danvk/dygraphs/blob/master/LICENSE.txt)
 
 #### Embedded JS
 
@@ -277,7 +277,7 @@
 
 * Project Home: http://jquery.com
 * GITHUB: https://github.com/jquery/jquery
-* License: [free as-is license](https://github.com/jquery/jquery/blob/master/LICENSE.txt)
+* License: [MIT-style License](https://github.com/jquery/jquery/blob/master/LICENSE.txt)
 
 #### jQuery Contextmenu
 
@@ -313,7 +313,7 @@
 
 * Project Home: http://jqueryui.com
 * GITHUB: https://github.com/jquery/jquery-ui
-* License: [free as-is license](https://github.com/jquery/jquery-ui/blob/master/LICENSE.txt)
+* License: [MIT-style License](https://github.com/jquery/jquery-ui/blob/master/LICENSE.txt)
 
 #### jQuery UploadFile
 
