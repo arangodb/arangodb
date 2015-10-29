@@ -203,7 +203,6 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
         }
         else {
           // no attribute path found. this means the result will be empty
-          ExampleMatcher::cleanup();
           THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
         }
       }
@@ -213,7 +212,6 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
         auto value = TRI_ShapedJsonJson(_shaper, jsonValue, false);
 
         if (value == nullptr) {
-          ExampleMatcher::cleanup();
           THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
         }
 
@@ -313,12 +311,21 @@ ExampleMatcher::ExampleMatcher (TRI_json_t const* example,
       ExampleDefinition def;
       try { 
         ExampleMatcher::fillExampleDefinition(TRI_LookupArrayJson(example, i), resolver, def);
+        definitions.emplace_back(move(def)); 
       } 
-      catch (...) {
-        ExampleMatcher::cleanup();
-        throw;
+      catch (triagens::basics::Exception& e) {
+        if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
+          ExampleMatcher::cleanup();
+          throw;
+        }
+        // Result not found might happen. Ignore here because all other elemens
+        // might be matched.
       }
-      definitions.emplace_back(move(def)); 
+    }
+    if (definitions.size() == 0) {
+      // None of the given examples could ever match.
+      // Throw result not found so client can short circuit.
+      THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
     }
   }
 }

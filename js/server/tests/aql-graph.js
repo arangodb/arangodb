@@ -67,7 +67,7 @@ function ahuacatlQueryEdgesTestSuite () {
       vertex.save({ _key: "v7", name: "v7" });
 
       function makeEdge (from, to) {
-        edge.save("UnitTestsAhuacatlVertex/" + from, "UnitTestsAhuacatlVertex/" + to, { what: from + "->" + to });
+        edge.save("UnitTestsAhuacatlVertex/" + from, "UnitTestsAhuacatlVertex/" + to, { _key: from + "" + to, what: from + "->" + to });
       }
 
       makeEdge("v1", "v2");
@@ -323,7 +323,44 @@ function ahuacatlQueryEdgesTestSuite () {
       });
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES()
+////////////////////////////////////////////////////////////////////////////////
 
+    testEdgesFilterExample : function () {
+      var queries = [
+        "FOR e IN EDGES(UnitTestsAhuacatlEdge, @start, 'any', @examples) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(EDGES(UnitTestsAhuacatlEdge, @start, 'any', @examples)) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'any', @examples))) SORT e.what RETURN e.what"
+      ];
+     
+      queries.forEach(function (q) {
+        var actual;
+        actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v3", examples: {what: "v1->v3"} });
+        assertEqual(actual, [ "v1->v3" ]);
+
+        actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v3", examples: [{what: "v1->v3"}, {what: "v3->v6"}] });
+        assertEqual(actual, [ "v1->v3", "v3->v6"]);
+
+        actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v3", examples: [] });
+        assertEqual(actual, [ "v1->v3", "v2->v3", "v3->v4", "v3->v6", "v3->v7", "v6->v3", "v7->v3" ]);
+
+        actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v3", examples: null });
+        assertEqual(actual, [ "v1->v3", "v2->v3", "v3->v4", "v3->v6", "v3->v7", "v6->v3", "v7->v3" ]);
+
+        actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v3", examples: {non: "matchable"} });
+        assertEqual(actual, [ ]);
+
+        actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v3", examples: [{what: "v1->v3"}, {non: "matchable"}] });
+        assertEqual(actual, [ "v1->v3" ]);
+
+        actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v3", examples: [{what: "v1->v3"}, {non: "matchable"}] });
+        assertEqual(actual, [ "v1->v3" ]);
+
+        actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v3", examples: ["UnitTestsAhuacatlEdge/v1v3", {what: "v3->v6" } ] });
+        assertEqual(actual, [ "v3->v6" ]);
+      });
+    }
 
   };
 }

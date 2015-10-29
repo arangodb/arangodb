@@ -118,6 +118,7 @@ namespace triagens {
       static AqlValue ParseIdentifier (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Minus           (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Document        (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
+      static AqlValue Edges           (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
     };
 
   }
