@@ -287,7 +287,7 @@
 #### jQuery Form
 
 * GITHUB: https://github.com/malsup/form/
-* License: [MIT License](https://github.com/malsup/form/blob/master/README.md) under "Copyright and License"
+* License: Dual License [MIT License](https://github.com/malsup/form/blob/master/README.md) under "Copyright and License"
 
 #### jQuery Hotkeys
 
