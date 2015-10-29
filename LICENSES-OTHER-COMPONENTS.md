@@ -12,10 +12,10 @@
 * Project Home: http://site.icu-project.org/
 * License: [ICU License](http://source.icu-project.org/repos/icu/icu/trunk/license.html)
 
-### libev
+### libev 4.11
 
-* http://software.schmorp.de/pkg/libev.html
-* [free as-is license](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
+* Project Home: http://software.schmorp.de/pkg/libev.html
+* License: Dual-License, including [free as-is license](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
 
 ### zlib
 
