@@ -91,17 +91,17 @@
 
 * Project Home: http://nodejs.org
 * GITHUB: https://github.com/nodejs/node
-* License: _stream_duplex.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/_stream_duplex.js)
-* License: _stream_passthrough.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/_stream_passthrough.js)
-* License: _stream_readable.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/_stream_readable.js)
-* License: _stream_transform.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/_stream_transform.js)
-* License: _stream_writable.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/_stream_writable.js)
-* License: event.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/events.js)
-* License: querystring.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/querystring.js)
-* License: stream.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/stream.js)
-* License: string_decoder.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/string_decoder.js)
-* License: url.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/url.js)
-* License: punycode.js [MIT License](http://opensource.org/licenses/mit-license.php)
+* License: _stream_duplex.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/_stream_duplex.js)
+* License: _stream_passthrough.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/_stream_passthrough.js)
+* License: _stream_readable.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/_stream_readable.js)
+* License: _stream_transform.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/_stream_transform.js)
+* License: _stream_writable.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/_stream_writable.js)
+* License: event.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/events.js)
+* License: querystring.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/querystring.js)
+* License: stream.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/stream.js)
+* License: string_decoder.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/string_decoder.js)
+* License: url.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/url.js)
+* License: punycode.js [MIT License](https://github.com/bestiejs/punycode.js/blob/master/LICENSE-MIT.txt)
 
 ### Bundled NPM modules
 
