@@ -39,8 +39,8 @@
 
 ### fpconv_dtoa
 
-* https://github.com/night-shift/fpconv/
-* [MIT License](https://raw.githubusercontent.com/night-shift/fpconv/master/license)
+* Project Home: https://github.com/night-shift/fpconv/
+* License: [MIT License](https://raw.githubusercontent.com/night-shift/fpconv/master/license)
 
 ## Programs
 
