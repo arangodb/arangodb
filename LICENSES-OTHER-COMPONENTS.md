@@ -17,7 +17,6 @@
 
 * Project Home: https://code.google.com/p/v8/
 * GITHUB: https://github.com/v8/v8
-* License Overview: [https://github.com/v8/v8/blob/4.3.61/LICENSE](https://github.com/v8/v8/blob/4.3.61/LICENSE)
 * License: V8 [BSD-style 3-Clause License](https://github.com/v8/v8/blob/4.3.61/LICENSE.v8)
 * License: strongtalk [BSD-style 3-Clause License](https://github.com/v8/v8/blob/4.3.61/LICENSE.strongtalk)
 * License: valgrind [BSD-style 4-Clause license](https://github.com/v8/v8/blob/4.3.61/LICENSE.valgrind)
