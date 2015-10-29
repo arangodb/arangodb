@@ -31,7 +31,7 @@
 ### fpconv_dtoa
 
 * GITHUB: https://github.com/night-shift/fpconv/
-* License: [MIT License](https://raw.githubusercontent.com/night-shift/fpconv/master/license)
+* License: [MIT License](https://github.com/night-shift/fpconv/blob/master/license)
 
 ### libev 4.11
 
