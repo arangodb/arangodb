@@ -59,7 +59,7 @@
 
 * Project Home: https://www.gnu.org/software/bison/
 * only used to generate code, not part of the distribution; for details about using Bison in this way see http://www.gnu.org/software/bison/manual/bison.html#Conditions
-* License: (grammar.cpp)[https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20]
+* License: [grammar.cpp](https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20)
 
 ### Flex
 
