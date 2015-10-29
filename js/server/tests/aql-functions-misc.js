@@ -184,50 +184,66 @@ function ahuacatlMiscFunctionsTestSuite () {
 
       var expected, actual;
 
-      // test with two parameters
-      expected = [ { title: "123", value : 456 } ];
-      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d1._id + "\")");
-      assertEqual(expected, actual);
-      
-      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d1._key + "\")");
-      assertEqual(expected, actual);
-      
-      expected = [ { title: "nada", value : 123 } ];
-      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d2._id + "\")");
-      assertEqual(expected, actual);
-      
-      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d2._key + "\")");
-      assertEqual(expected, actual);
-      
-      // test with one parameter
-      expected = [ { title: "nada", value : 123 } ];
-      actual = getQueryResults("RETURN DOCUMENT(\"" + d2._id + "\")");
-      assertEqual(expected, actual);
-      
-      // test with function result parameter
-      actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"foo\", \"bar\"))");
-      assertEqual([ null ], actual);
-      actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"bart\"))");
-      assertEqual([ null ], actual);
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN DOCUMENT(${input})`;
+          case 1:
+            return `RETURN NOOPT(DOCUMENT(${input}))`;
+          case 2:
+            return `RETURN NOOPT(V8(DOCUMENT(${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
 
-      cx.save({ _key: "foo", value: "bar" });
-      expected = [ { value: "bar" } ];
-      actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"foo\"))");
-      assertEqual([ null ], actual);
-      actual = getQueryResults("RETURN DOCUMENT(CONCAT(@c, \"/\", @k))", { c: cn, k: "foo" });
-      assertEqual(expected, actual);
-      actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"/\", @k))", { k: "foo" });
-      assertEqual(expected, actual);
-      
-      // test with bind parameter
-      expected = [ { title: "nada", value : 123 } ];
-      actual = getQueryResults("RETURN DOCUMENT(@id)", { id: d2._id });
-      assertEqual(expected, actual);
-      
-      // test dynamic parameter
-      expected = [ { title: "nada", value : 123 }, { title: "123", value: 456 }, { value: "bar" } ];
-      actual = getQueryResults("FOR d IN @@cn SORT d.value RETURN DOCUMENT(d._id)", { "@cn" : cn });
-      assertEqual(expected, actual);
+      for (var i = 0; i < 3; ++i) {
+        // test with two parameters
+        expected = [ { title: "123", value : 456 } ];
+        actual = getQueryResults(buildQuery(i, cn + ", \"" + d1._id + "\""));
+        assertEqual(expected, actual);
+        
+        actual = getQueryResults(buildQuery(i, cn + ", \"" + d1._key + "\""));
+        assertEqual(expected, actual);
+        
+        expected = [ { title: "nada", value : 123 } ];
+        actual = getQueryResults(buildQuery(i, cn + ", \"" + d2._id + "\""));
+        assertEqual(expected, actual);
+        
+        actual = getQueryResults(buildQuery(i, cn + ", \"" + d2._key + "\""));
+        assertEqual(expected, actual);
+        
+        // test with one parameter
+        expected = [ { title: "nada", value : 123 } ];
+        actual = getQueryResults(buildQuery(i, "\"" + d2._id + "\""));
+        assertEqual(expected, actual);
+        
+        // test with function result parameter
+        actual = getQueryResults(buildQuery(i, "CONCAT(\"foo\", \"bar\")"));
+        assertEqual([ null ], actual);
+        actual = getQueryResults(buildQuery(i, "CONCAT(\"" + cn + "\", \"bart\")"));
+        assertEqual([ null ], actual);
+
+        cx.save({ _key: "foo", value: "bar" });
+        expected = [ { value: "bar" } ];
+        actual = getQueryResults(buildQuery(i, "CONCAT(\"" + cn + "\", \"foo\")"));
+        assertEqual([ null ], actual);
+        actual = getQueryResults(buildQuery(i, "CONCAT(@c, \"/\", @k)"), { c: cn, k: "foo" });
+        assertEqual(expected, actual);
+        actual = getQueryResults(buildQuery(i, "CONCAT(\"" + cn + "\", \"/\", @k)"), { k: "foo" });
+        assertEqual(expected, actual);
+        
+        // test with bind parameter
+        expected = [ { title: "nada", value : 123 } ];
+        actual = getQueryResults(buildQuery(i, "@id"), { id: d2._id });
+        assertEqual(expected, actual);
+        
+        // test dynamic parameter
+        expected = [ { title: "nada", value : 123 }, { title: "123", value: 456 }, { value: "bar" } ];
+        actual = getQueryResults("FOR d IN @@cn SORT d.value " + buildQuery(i, "d._id"), { "@cn" : cn });
+        assertEqual(expected, actual);
+        cx.remove("foo");
+      }
       
       internal.db._drop(cn);
     },

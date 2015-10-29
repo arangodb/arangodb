@@ -217,7 +217,7 @@ static double ValueToNumber (TRI_json_t const* json,
     case TRI_JSON_STRING: 
     case TRI_JSON_STRING_REFERENCE: {
       try {
-        std::string const str(json->_value._string.data, json->_value._string.length - 1);
+        std::string const str = triagens::basics::JsonHelper::getStringValue(json, "");
         size_t behind = 0;
         double value = std::stod(str, &behind);
         while (behind < str.size()) {
@@ -321,7 +321,7 @@ static void ExtractKeys (std::unordered_set<std::string>& names,
 
     if (param.isString()) {
       TRI_json_t const* json = param.json();
-      names.emplace(std::string(json->_value._string.data, json->_value._string.length - 1));
+      names.emplace(triagens::basics::JsonHelper::getStringValue(json, ""));
     }
     else if (param.isNumber()) {
       TRI_json_t const* json = param.json();
@@ -343,7 +343,7 @@ static void ExtractKeys (std::unordered_set<std::string>& names,
       for (size_t j = 0; j < n2; ++j) {
         auto v = static_cast<TRI_json_t const*>(TRI_AtVector(&p->_value._objects, j));
         if (TRI_IsStringJson(v)) {
-          names.emplace(std::string(v->_value._string.data, v->_value._string.length - 1));
+          names.emplace(triagens::basics::JsonHelper::getStringValue(v, ""));
         }
         else {
           RegisterInvalidArgumentWarning(query, functionName);
@@ -382,7 +382,7 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
     }
     case TRI_JSON_STRING:
     case TRI_JSON_STRING_REFERENCE: {
-      buffer.appendText(json->_value._string.data, json->_value._string.length - 1);
+      buffer.appendText(triagens::basics::JsonHelper::getStringValue(json, ""));
       break;
     }
     case TRI_JSON_ARRAY: {
@@ -1085,7 +1085,7 @@ AqlValue Functions::Attributes (triagens::aql::Query* query,
   for (auto const& it : sortPositions) {
     auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&valueJson->_value._objects, it.second));
 
-    result.add(Json(std::string(key->_value._string.data, key->_value._string.length - 1)));
+    result.add(Json(triagens::basics::JsonHelper::getStringValue(key, "")));
   } 
 
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
@@ -2512,7 +2512,7 @@ AqlValue Functions::ParseIdentifier (triagens::aql::Query* query,
     value = value.get("_id");
   }
   if (value.isString()) {
-    std::string identifier(value.json()->_value._string.data, value.json()->_value._string.length - 1);
+    std::string identifier = triagens::basics::JsonHelper::getStringValue(value.json(), "");
     std::vector<std::string> parts = triagens::basics::StringUtils::split(identifier, "/");
     if (parts.size() == 2) {
       Json result(Json::Object, 2);
@@ -2581,6 +2581,197 @@ AqlValue Functions::Minus (triagens::aql::Query* query,
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
 }
 
+static void RegisterCollectionInTransaction (triagens::arango::AqlTransaction* trx,
+                                             std::string const& collectionName,
+                                             TRI_voc_cid_t& cid,
+                                             TRI_transaction_collection_t*& collection) {
+  TRI_ASSERT(collection == nullptr);
+  cid = trx->resolver()->getCollectionId(collectionName);
+  if (cid == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  // ensure the collection is loaded
+  collection = trx->trxCollection(cid);
+
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), 
+                                           cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(),
+                                           true,
+                                           true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(cid);
+
+    if (collection == nullptr) {
+      // This case should never occur
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not load collection");
+    }
+  }
+  TRI_ASSERT(collection != nullptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper function to get a document by it's identifier
+///        The collection has to be locked by the transaction before
+////////////////////////////////////////////////////////////////////////////////
+
+static Json getDocumentByIdentifier (triagens::arango::AqlTransaction* trx,
+                                     CollectionNameResolver const* resolver,
+                                     TRI_transaction_collection_t* collection,
+                                     TRI_voc_cid_t const& cid,
+                                     std::string const& collectionName,
+                                     std::string const& identifier) {
+  std::vector<std::string> parts = triagens::basics::StringUtils::split(identifier, "/");
+  TRI_doc_mptr_copy_t mptr;
+  if (parts.size() == 1) {
+    int res = trx->readSingle(collection, &mptr, parts[0]);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return Json(Json::Null);
+    }
+  }
+  else if (parts.size() == 2) {
+    if (parts[0] != collectionName) {
+      // Reqesting an _id that cannot be stored in this collection
+      return Json(Json::Null);
+    }
+    int res = trx->readSingle(collection, &mptr, parts[1]);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return Json(Json::Null);
+    }
+  }
+  else {
+    return Json(Json::Null);
+  }
+
+  return ExpandShapedJson(
+    collection->_collection->_collection->getShaper(),
+    resolver,
+    cid,
+    &mptr
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper function to get a document by it's _id
+///        This function will lazy read-lock the collection.
+////////////////////////////////////////////////////////////////////////////////
+
+static Json getDocumentByIdentifier (triagens::arango::AqlTransaction* trx,
+                                     CollectionNameResolver const* resolver,
+                                     std::string& identifier) {
+  std::vector<std::string> parts = triagens::basics::StringUtils::split(identifier, "/");
+  if (parts.size() != 2) {
+    return Json(Json::Null);
+  }
+  std::string collectionName = parts[0];
+  TRI_transaction_collection_t* collection = nullptr;
+  TRI_voc_cid_t cid = 0;
+  RegisterCollectionInTransaction(trx, collectionName, cid, collection);
+
+  TRI_doc_mptr_copy_t mptr;
+  int res = trx->readSingle(collection, &mptr, parts[1]);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return Json(Json::Null);
+  }
+
+  return ExpandShapedJson(
+    collection->_collection->_collection->getShaper(),
+    resolver,
+    cid,
+    &mptr
+  );
+};
+ 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function Document
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Document (triagens::aql::Query* query,
+                              triagens::arango::AqlTransaction* trx,
+                              FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 1 || 2 < n) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "DOCUMENT", (int) 1, (int) 2);
+  }
+
+  auto resolver = trx->resolver();
+
+   if (n == 1) {
+    Json id = ExtractFunctionParameter(trx, parameters, 0, false);
+
+   if (id.isString()) {
+      std::string identifier = triagens::basics::JsonHelper::getStringValue(id.json(), "");
+      Json result = getDocumentByIdentifier(trx, resolver, identifier);
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+    }
+    else if (id.isArray()) {
+      size_t const n = id.size();
+      Json result(Json::Array, n);
+      for (size_t i = 0; i < n; ++i) {
+        Json next = id.at(i);
+        try {
+          if (next.isString()) {
+            std::string identifier = triagens::basics::JsonHelper::getStringValue(next.json(), "");
+            Json tmp = getDocumentByIdentifier(trx, resolver, identifier);
+            if (! tmp.isNull()) {
+              result.add(tmp);
+            }
+          }
+        }
+        catch (triagens::basics::Exception& e) {
+          // Ignore all ArangoDB exceptions here
+        }
+      }
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+    }
+    return AqlValue(new Json(Json::Null));
+  }
+
+  Json collectionJson = ExtractFunctionParameter(trx, parameters, 0, false);
+  if (! collectionJson.isString()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  std::string collectionName = triagens::basics::JsonHelper::getStringValue(collectionJson.json(), "");
+
+  TRI_transaction_collection_t* collection = nullptr;
+  TRI_voc_cid_t cid;
+  RegisterCollectionInTransaction(trx, collectionName, cid, collection);
+
+  Json id = ExtractFunctionParameter(trx, parameters, 1, false);
+  if (id.isString()) {
+    std::string identifier = triagens::basics::JsonHelper::getStringValue(id.json(), "");
+    Json result = getDocumentByIdentifier(trx, resolver, collection, cid, collectionName, identifier);
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+  }
+  else if (id.isArray()) {
+    size_t const n = id.size();
+    Json result(Json::Array, n);
+    for (size_t i = 0; i < n; ++i) {
+      Json next = id.at(i);
+      try {
+        if (next.isString()) {
+          std::string identifier = triagens::basics::JsonHelper::getStringValue(next.json(), "");
+          Json tmp = getDocumentByIdentifier(trx, resolver, collection, cid, collectionName, identifier);
+          if (! tmp.isNull()) {
+            result.add(tmp);
+          }
+        }
+      }
+      catch (triagens::basics::Exception& e) {
+        // Ignore all ArangoDB exceptions here
+      }
+    }
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+  }
+  // Id has invalid format
+  return AqlValue(new Json(Json::Null));
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
