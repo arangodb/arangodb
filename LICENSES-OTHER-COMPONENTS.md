@@ -36,7 +36,7 @@
 ### libev 4.11
 
 * Project Home: http://software.schmorp.de/pkg/libev.html
-* License: Dual-License, including [free as-is license](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
+* License: Dual-License [free as-is license](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
 
 ### linenoise
 
