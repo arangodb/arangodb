@@ -13,15 +13,15 @@
 * Project Home: https://code.google.com/p/v8/
 * GITHUB: https://github.com/v8/v8
 * License Overview: [https://github.com/v8/v8/blob/4.3.61/LICENSE](https://github.com/v8/v8/blob/4.3.61/LICENSE)
-* License: V8 [BSD 3-Clause License](https://github.com/v8/v8/blob/4.3.61/LICENSE.v8)
-* License: strongtalk [BSD 3-Clause License](https://github.com/v8/v8/blob/4.3.61/LICENSE.strongtalk)
-* License: valgrind [BSD 4-Clause license](https://github.com/v8/v8/blob/4.3.61/LICENSE.valgrind)
+* License: V8 [BSD-style 3-Clause License](https://github.com/v8/v8/blob/4.3.61/LICENSE.v8)
+* License: strongtalk [BSD-style 3-Clause License](https://github.com/v8/v8/blob/4.3.61/LICENSE.strongtalk)
+* License: valgrind [BSD-style 4-Clause license](https://github.com/v8/v8/blob/4.3.61/LICENSE.valgrind)
 * License: vtune, Dual-License [BSD 3-Clause License](https://github.com/v8/v8/blob/4.3.61/src/third_party/vtune/v8-vtune.h)
-* License: gmock [BSD 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gmock/LICENSE)
-* License: gtest [BSD 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gtest/LICENSE)
+* License: gmock [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gmock/LICENSE)
+* License: gtest [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gtest/LICENSE)
 * License: fdlibm [free as-is license](https://github.com/v8/v8/blob/4.3.61/src/third_party/fdlibm/LICENSE)
 * License: PCRE [BSD 3-Clause license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/regexp-pcre.js)
-* License: object-keys [BSD 3-Clause license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/object-keys.js) 
+* License: object-keys [BSD-style 3-Clause license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/object-keys.js) 
 
 ### ICU 54.1
 
@@ -36,18 +36,18 @@
 ### libev 4.11
 
 * Project Home: http://software.schmorp.de/pkg/libev.html
-* License: Dual-License [BSD 2-Clause License](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
+* License: Dual-License [BSD-style 2-Clause License](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
 
 ### linenoise
 
 * GITHUB: https://github.com/antirez/linenoise
-* License: [BSD 2-Clause License](https://github.com/antirez/linenoise/blob/master/LICENSE)
+* License: [BSD-style 2-Clause License](https://github.com/antirez/linenoise/blob/master/LICENSE)
 
 ### Valgrind
 
 * Project Home: http://valgrind.org/
 * uses valgrind.h header file only, none of the other files
-* License: [BSD 4-Clause license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/valgrind/valgrind.h)
+* License: [BSD-style 4-Clause license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/valgrind/valgrind.h)
 
 ### zlib 1.2.7
 
@@ -109,7 +109,7 @@
 #### Ace
 
 * GITHUB: https://github.com/ajaxorg/ace
-* License: [BSD 3-Clause License](https://github.com/ajaxorg/ace/blob/master/LICENSE)
+* License: [BSD-style 3-Clause License](https://github.com/ajaxorg/ace/blob/master/LICENSE)
 
 #### ArangoDB Query Builder
 
@@ -147,7 +147,7 @@
 
 * Project Home: https://highlightjs.org
 * GITHUB: https://github.com/isagalaev/highlight.js
-* License: [BSD 3-Clause License](https://github.com/isagalaev/highlight.js/blob/master/LICENSE)
+* License: [BSD-style 3-Clause License](https://github.com/isagalaev/highlight.js/blob/master/LICENSE)
 
 #### http-errors
 
