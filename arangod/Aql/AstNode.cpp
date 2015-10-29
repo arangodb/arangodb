@@ -1983,19 +1983,19 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     buffer->appendChar(',');
 
     auto filterNode = getMember(2);
-    if (filterNode != nullptr) {
+    if (filterNode != nullptr && filterNode != Ast::getNodeNop()) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" FILTER "));
       filterNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
     auto limitNode = getMember(3);
-    if (limitNode != nullptr) {
+    if (limitNode != nullptr && filterNode != Ast::getNodeNop()) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" LIMIT "));
       limitNode->getMember(0)->stringify(buffer, verbose, failIfLong);
       buffer->appendChar(',');
       limitNode->getMember(1)->stringify(buffer, verbose, failIfLong);
     }
     auto returnNode = getMember(4);
-    if (returnNode != nullptr) {
+    if (returnNode != nullptr && filterNode != Ast::getNodeNop()) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" RETURN "));
       returnNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
