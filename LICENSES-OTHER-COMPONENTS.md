@@ -55,13 +55,13 @@
 * only used to generate code, not part of the distribution
 * License: [configure](https://github.com/arangodb/arangodb/blob/master/configure#L11), [Makefile.in](https://raw.githubusercontent.com/arangodb/arangodb/master/Makefile.in), [ax_cxx_compile_stdcxx_11.m4](https://github.com/arangodb/arangodb/blob/master/m4/ax_cxx_compile_stdcxx_11.m4#L25)
 
-### Bison
+### Bison 3.0
 
 * Project Home: https://www.gnu.org/software/bison/
 * only used to generate code, not part of the distribution; for details about using Bison in this way see http://www.gnu.org/software/bison/manual/bison.html#Conditions
 * License: [grammar.cpp](https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20)
 
-### Flex
+### Flex 2.5
 
 * http://flex.sourceforge.net/
 * only used to generate code, not part of the distribution
