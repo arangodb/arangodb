@@ -320,13 +320,13 @@
 * GITHUB: https://github.com/novus/nvd3
 * License: [Apache 2 License](https://github.com/novus/nvd3/blob/master/LICENSE.md) under "nvd3.js"
 
+#### select2
+
+* GITHUB: https://github.com/select2/select2
+* License: [MIT License](https://github.com/select2/select2/blob/master/LICENSE.md)
+
 #### Swagger UI
 
 * Project Home: http://swagger.io
 * GITHUB: https://github.com/swagger-api/swagger-ui
 * License: [Apache 2 license](https://github.com/swagger-api/swagger-ui/blob/master/LICENSE)
-
-#### select2
-
-* GITHUB: https://github.com/select2/select2
-* License: [Apache 2 License](https://github.com/select2/select2/blob/master/LICENSE.md)
