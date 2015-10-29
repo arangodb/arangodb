@@ -40,8 +40,8 @@
 
 ### linenoise
 
-* Project Home: https://github.com/antirez/linenoise
-* License: [free as-is license](https://raw.githubusercontent.com/antirez/linenoise/master/LICENSE)
+* GITHUB: https://github.com/antirez/linenoise
+* License: [free as-is license](https://github.com/antirez/linenoise/blob/master/LICENSE)
 
 ### Valgrind
 
@@ -51,7 +51,8 @@
 
 ### zlib 1.2.7
 
-* License: [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/zlib-1.2.7/README#L85)
+* Project Home: http://www.zlib.net/
+* License: [free as-is license](http://www.zlib.net/zlib_license.html)
 
 ## Programs
 
@@ -59,19 +60,20 @@
 
 * Project Home: http://www.gnu.org/software/autoconf/autoconf.html
 * only used to generate code, not part of the distribution
-* License: [configure](https://github.com/arangodb/arangodb/blob/master/configure#L11) [ax_cxx_compile_stdcxx_11.m4](https://github.com/arangodb/arangodb/blob/master/m4/ax_cxx_compile_stdcxx_11.m4#L25)
+* License: configure [free as-is license](https://github.com/arangodb/arangodb/blob/master/configure#L11)
+* License: ax_cxx_compile_stdcxx_11.m4 [free as-is license](https://github.com/arangodb/arangodb/blob/master/m4/ax_cxx_compile_stdcxx_11.m4#L25)
 
 ### automake
 
-* Project  https://www.gnu.org/software/automake/
+* Project Home: https://www.gnu.org/software/automake/
 * only used to generate code, not part of the distribution
-* License: [Makefile.in](https://raw.githubusercontent.com/arangodb/arangodb/master/Makefile.in)
+* License: Makefile.in [free as-is license](https://raw.githubusercontent.com/arangodb/arangodb/master/Makefile.in)
 
 ### Bison 3.0
 
 * Project Home: https://www.gnu.org/software/bison/
 * only used to generate code, not part of the distribution; for details about using Bison in this way see http://www.gnu.org/software/bison/manual/bison.html#Conditions
-* License: [grammar.cpp](https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20)
+* License: grammar.cpp [Special License](https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20)
 
 ### CoreOS etcd
 
@@ -89,68 +91,82 @@
 ### Node core modules
 
 * Project Home: http://nodejs.org
-* License: Node MIT License [_stream_duplex.js,_stream_passthrough.js,_stream_readable.js,_stream_transform.js,_stream_writable.js,events.js,querystring.js,stream.js,string_decoder.js,url.js](https://raw.githubusercontent.com/joyent/node/v0.10.33/LICENSE), MIT [punycode.js](https://raw.githubusercontent.com/joyent/node/v0.10.33/LICENSE)
+* GITHUB: https://github.com/nodejs/node
+* License: MIT-style License [_stream_duplex.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
+* License: MIT-style License [_stream_passthrough.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
+* License: MIT-style License [_stream_readable.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
+* License: MIT-style License [_stream_transform.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
+* License: MIT-style License [_stream_writable.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
+* License: MIT-style License [querystring.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
+* License: MIT-style License [stream.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
+* License: MIT-style License [string_decoder.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
+* License: MIT-style License [url.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
+* License: punycode.js [MIT License](http://opensource.org/licenses/mit-license.php)
 
 ### Bundled NPM modules
 
 #### Ace
 
-* Project Home: https://github.com/ajaxorg/ace
-* License: [BSD 3-Clause License](https://raw.githubusercontent.com/ajaxorg/ace/master/LICENSE)
+* GITHUB: https://github.com/ajaxorg/ace
+* License: [BSD 3-Clause License](https://github.com/ajaxorg/ace/blob/master/LICENSE)
 
 #### ArangoDB Query Builder
 
 * Project Home: https://github.com/arangodb/aqbjs
-* License: [Apache 2](https://raw.githubusercontent.com/arangodb/aqbjs/master/LICENSE)
+* License: [Apache 2](https://github.com/arangodb/aqbjs/blob/master/LICENSE)
 
 #### Chai
 
 * Project Home: http://chaijs.com
+* GITHUB: https://github.com/chaijs/chai
 * License: [MIT License](https://github.com/chaijs/chai/blob/master/README.md)
 
 #### CoffeeScript
 
 * Project Home: http://coffeescript.org
-* License: [MIT License](https://www.npmjs.com/package/coffee-script)
+* GIUTHUB: https://github.com/jashkenas/coffeescript
+* License: [free as-is license](https://github.com/jashkenas/coffeescript/blob/master/LICENSE)
 
 #### expect.js
 
-* Project Home: https://github.com/Automattic/expect.js
+* GITHUB: https://github.com/Automattic/expect.js
 * License: [MIT License](https://github.com/Automattic/expect.js/blob/master/README.md)
 
 #### extendible
 
-* Project Home: https://github.com/3rd-Eden/extendible
+* GITHUB: https://github.com/3rd-Eden/extendible
 * License: [MIT License](https://github.com/bigpipe/extendible/blob/master/README.md)
 
 #### Foxx Generator
 
-* Project Home: https://github.com/moonglum/foxx_generator
-* License: [Apache 2 License](https://raw.githubusercontent.com/moonglum/foxx_generator/master/LICENSE)
+* GITHUB: https://github.com/moonglum/foxx_generator
+* License: [Apache 2 License](https://github.com/moonglum/foxx_generator/blob/master/LICENSE)
 
 #### highlight.js
 
 * Project Home: https://highlightjs.org
-* License: [BSD 3-Clause License](https://raw.githubusercontent.com/isagalaev/highlight.js/master/LICENSE)
+* GITHUB: https://github.com/isagalaev/highlight.js
+* License: [free as-is license](https://github.com/isagalaev/highlight.js/blob/master/LICENSE)
 
 #### http-errors
 
-* Project Home: https://github.com/jshttp/http-errors
-* License: [MIT License](https://raw.githubusercontent.com/jshttp/http-errors/master/LICENSE)
+* GITHUB: https://github.com/jshttp/http-errors
+* License: [MIT License](https://github.com/jshttp/http-errors/blob/master/LICENSE)
 
 #### inflect
 
-* Project Home: https://github.com/pksunkara/inflect
-* License: [MIT License](https://raw.githubusercontent.com/pksunkara/inflect/master/LICENSE)
+* GITHUB: https://github.com/pksunkara/inflect
+* License: [free as-is license](https://github.com/pksunkara/inflect/blob/master/LICENSE)
 
 #### Jasmine
 
 * Project Home: https://jasmine.github.io
-* License: [MIT License](https://raw.githubusercontent.com/jasmine/jasmine/master/MIT.LICENSE)
+* GITHUB: https://github.com/jasmine/jasmine
+* License: [MIT License](https://github.com/jasmine/jasmine/blob/master/MIT.LICENSE)
 
 #### Joi
 
-* Project Home: https://github.com/hapijs/joi
+* GITHUB: https://github.com/hapijs/joi
 * License: [BSD 3-Clause License](https://raw.githubusercontent.com/hapijs/joi/master/LICENSE)
 
 #### JSHint
