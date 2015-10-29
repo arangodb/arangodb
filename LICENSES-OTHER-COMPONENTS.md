@@ -323,7 +323,7 @@
 #### jsoneditor.js
 
 * GITHUB: https://github.com/josdejong/jsoneditor/
-* [Apache 2 License](https://github.com/josdejong/jsoneditor/blob/master/LICENSE)
+* License: [Apache 2 License](https://github.com/josdejong/jsoneditor/blob/master/LICENSE)
 
 #### nvd3
 
