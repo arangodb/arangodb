@@ -187,6 +187,11 @@
 * GITHUB: https://github.com/mochajs/mocha
 * License: [MIT License](https://github.com/mochajs/mocha/blob/master/LICENSE)
 
+#### node-semver
+
+* GITHUB: https://github.com/npm/node-semver
+* License: [ISC License](https://github.com/npm/node-semver/blob/master/LICENSE)
+
 #### qs
 
 * GITHUB: https://github.com/hapijs/qs
@@ -197,11 +202,6 @@
 * Project Home: http://ramdajs.com
 * GITHUB: https://github.com/ramda/ramda
 * License: [MIT License](https://github.com/ramda/ramda/blob/master/LICENSE.txt)
-
-#### semver
-
-* GITHUB: https://github.com/npm/node-semver
-* License: [ISC License](https://github.com/npm/node-semver/blob/master/LICENSE)
 
 #### Sinon.JS
 
