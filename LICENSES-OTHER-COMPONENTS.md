@@ -215,18 +215,20 @@
 
 #### stacktrace.js
 
-* Project Home: http://www.stacktracejs.com/
-* License: [The Unlicense](http://unlicense.org)
+* Project Home: 
+* GITHUB: https://github.com/stacktracejs/stacktrace.js
+* License: [The Unlicense](https://github.com/stacktracejs/stacktrace.js/blob/master/LICENSE), see http://unlicense.org
 
 #### underscore
 
 * Project Home: http://underscorejs.org
-* License: [MIT License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
+* GITHUB: https://github.com/jashkenas/underscore
+* License: [free as-is license](https://github.com/jashkenas/underscore/blob/master/LICENSE)
 
 #### YAML
 
-* https://github.com/nodeca/js-yaml
-* [MIT License](https://raw.githubusercontent.com/nodeca/js-yaml/master/LICENSE)
+* GITHUB: https://github.com/nodeca/js-yaml
+* License: [MIT License](https://github.com/nodeca/js-yaml/blob/master/LICENSE)
 
 ### Frontend libraries
 
