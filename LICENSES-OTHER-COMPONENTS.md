@@ -199,45 +199,50 @@
 
 ### Frontend libraries
 
-#### swagger
+#### Swagger UI
 
-* http://swagger.io
-* [Apache 2 License](https://raw.githubusercontent.com/swagger-api/swagger-js/master/LICENSE)
+* Project Home: http://swagger.io
+* GITHUB: https://github.com/swagger-api/swagger-ui
+* License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE
 
 #### Backbone.js
 
-* http://backbonejs.org
+* Project Home: http://backbonejs.org
+* GITHUB: https://github.com/jashkenas/backbone
 * [MIT License](https://raw.githubusercontent.com/jashkenas/backbone/master/LICENSE)
 
 #### Bootstrap
 
-* http://getbootstrap.com
-* [MIT License](https://github.com/twbs/bootstrap/blob/master/LICENSE)
+* Project Home: http://getbootstrap.com
+* License: [MIT License](https://github.com/twbs/bootstrap/blob/master/LICENSE)
 
 #### D3js
 
-* http://d3js.org
-* [BSD 3-Clause License](https://raw.githubusercontent.com/mbostock/d3/master/LICENSE)
+* Project Home: http://d3js.org
+* GITHUB: https://github.com/mbostock/d3
+* License: [BSD 3-Clause License](https://raw.githubusercontent.com/mbostock/d3/master/LICENSE)
 
 #### dygraph
 
-* http://dygraphs.com
-* [MIT License](https://www.npmjs.com/package/dygraphs)
+* Project Home: http://dygraphs.com
+* GITHUB: https://github.com/danvk/dygraphs
+* License: [MIT License](https://raw.githubusercontent.com/danvk/dygraphs/master/LICENSE.txt)
 
-#### EJS
+#### Embedded JS
 
-* http://www.embeddedjs.com
-* [MIT License](http://www.embeddedjs.com/) under Highlights
+* Project Home: http://www.embeddedjs.com
+* License: [MIT License](http://www.embeddedjs.com/) under Highlights
 
-#### jqconsole
+#### jq-console
 
-* https://github.com/replit/jq-console
-* [MIT License](https://github.com/replit/jq-console/blob/master/README.md)
+* GITHUB: https://github.com/replit/jq-console
+* License: [MIT License](https://github.com/replit/jq-console/blob/master/README.md)
 
 #### jQuery
 
-* http://jquery.com
-* [MIT License](https://raw.githubusercontent.com/jquery/jquery/master/LICENSE.txt)
+* Project Home: http://jquery.com
+* GITHUB: https://raw.githubusercontent.com/jquery/jquery/master/LICENSE.txt
+* License: [MIT License](https://raw.githubusercontent.com/jquery/jquery/master/LICENSE.txt)
 
 #### jQuery UI
 
