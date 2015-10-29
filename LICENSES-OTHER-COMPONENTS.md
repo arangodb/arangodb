@@ -2,12 +2,12 @@
 
 ## C/C++ Libraries
 
-### Google V8
+### Google V8 4.3.61
 
 * Project Home: https://code.google.com/p/v8/
 * License: [v8-overview](https://raw.githubusercontent.com/v8/v8/4.3.61/LICENSE), [V8](https://raw.githubusercontent.com/v8/v8/4.3.61/LICENSE.v8), [strongtalk](https://raw.githubusercontent.com/v8/v8/4.3.61/LICENSE.strongtalk), [valgrind](https://raw.githubusercontent.com/v8/v8/4.3.61/LICENSE.valgrind), [vtune](https://raw.githubusercontent.com/v8/v8/4.3.61/src/third_party/vtune/v8-vtune.h), [gmock](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8-4.3.61/testing/gmock/LICENSE), [gtest](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8-4.3.61/testing/gtest/LICENSE), [fdlibm](https://raw.githubusercontent.com/v8/v8/4.3.61/src/third_party/fdlibm/LICENSE), [PCRE](https://raw.githubusercontent.com/v8/v8/master/test/mjsunit/third_party/regexp-pcre/LICENSE), [object-keys](https://raw.githubusercontent.com/v8/v8/master/test/mjsunit/third_party/object-keys/LICENSE) 
 
-### icu
+### ICU 54.1
 
 * http://site.icu-project.org/
 * [ICU License](http://source.icu-project.org/repos/icu/icu/trunk/license.html)
