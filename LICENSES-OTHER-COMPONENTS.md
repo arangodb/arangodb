@@ -237,7 +237,7 @@
 
 * Project Home: http://backbonejs.org
 * GITHUB: https://github.com/jashkenas/backbone
-* License: [MIT License](https://github.com/jashkenas/backbone/blob/master/LICENSE)
+* License: [free as-is license](https://github.com/jashkenas/backbone/blob/master/LICENSE)
 
 #### Bootstrap
 
