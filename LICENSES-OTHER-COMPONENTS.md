@@ -160,6 +160,11 @@
 * GITHUB: https://github.com/hapijs/joi
 * License: [BSD-style 3-Clause License](https://github.com/hapijs/joi/blob/master/LICENSE)
 
+#### JS-YAML
+
+* GITHUB: https://github.com/nodeca/js-yaml
+* License: [MIT License](https://github.com/nodeca/js-yaml/blob/master/LICENSE)
+
 #### JSHint
 
 * Project Home: http://jshint.com
@@ -215,11 +220,6 @@
 * Project Home: http://underscorejs.org
 * GITHUB: https://github.com/jashkenas/underscore
 * License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
-
-#### YAML
-
-* GITHUB: https://github.com/nodeca/js-yaml
-* License: [MIT License](https://github.com/nodeca/js-yaml/blob/master/LICENSE)
 
 ### Frontend libraries
 
