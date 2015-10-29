@@ -91,16 +91,7 @@
 
 * Project Home: http://nodejs.org
 * GITHUB: https://github.com/nodejs/node
-* License: _stream_duplex.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/_stream_duplex.js)
-* License: _stream_passthrough.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/_stream_passthrough.js)
-* License: _stream_readable.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/_stream_readable.js)
-* License: _stream_transform.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/_stream_transform.js)
-* License: _stream_writable.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/_stream_writable.js)
-* License: event.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/events.js)
-* License: querystring.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/querystring.js)
-* License: stream.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/stream.js)
-* License: string_decoder.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/string_decoder.js)
-* License: url.js [MIT-style License](https://github.com/nodejs/node/tree/v4.1.1/lib/url.js)
+* License: [MIT-style License](https://github.com/nodejs/node/blob/master/LICENSE) for the files _stream_duplex.js, _stream_passthrough.js, _stream_readable.js, _stream_transform.js, _stream_writable.js, event.js, querystring.js, stream.js, string_decoder.js, url.js
 * License: punycode.js [MIT License](https://github.com/bestiejs/punycode.js/blob/master/LICENSE-MIT.txt)
 
 ### Bundled NPM modules
