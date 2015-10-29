@@ -5,10 +5,7 @@
 ### Google V8
 
 * https://code.google.com/p/v8/
-* [overview](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/LICENSE)
-* [V8](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/LICENSE.v8)
-* [strongtalk](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/LICENSE.strongtalk)
-* [valgrind](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/LICENSE.valgrind)
+* [overview](https://github.com/v8/v8/blob/4.3.61/LICENSE), [V8](https://github.com/v8/v8/blob/4.3.61/LICENSE.v8), [strongtalk](https://github.com/v8/v8/blob/4.3.61/LICENSE.strongtalk), [valgrind](https://github.com/v8/v8/blob/4.3.61/LICENSE.valgrind), [vtune](https://github.com/v8/v8/blob/4.3.61/src/third_party/vtune/v8-vtune.h), [gmock](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gmock/LICENSE), [fdlibm](https://raw.githubusercontent.com/v8/v8/4.3.61/src/third_party/fdlibm/LICENSE)
 
 ### icu
 
@@ -134,7 +131,7 @@
 * https://github.com/jshttp/http-errors
 * [MIT License](https://raw.githubusercontent.com/jshttp/http-errors/master/LICENSE)
 
-#### i
+#### inflect
 
 * https://github.com/pksunkara/inflect
 * [MIT License](https://raw.githubusercontent.com/pksunkara/inflect/master/LICENSE)
