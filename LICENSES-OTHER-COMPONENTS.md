@@ -168,7 +168,7 @@
 #### Joi
 
 * GITHUB: https://github.com/hapijs/joi
-* License: [BSD 3-Clause License](https://raw.githubusercontent.com/hapijs/joi/master/LICENSE)
+* License: [free as-is license](https://github.com/hapijs/joi/blob/master/LICENSE)
 
 #### JSHint
 
