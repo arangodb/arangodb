@@ -68,6 +68,8 @@
 ///   Will be raised when a file already exists.
 /// - 28: @LIT{locked}
 ///   Will be raised when a resource or an operation is locked.
+/// - 29: @LIT{deadlock detected}
+///   Will be raised when a deadlock is detected when accessing collections.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -965,6 +967,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_LOCKED                                                  (28)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 29: ERROR_DEADLOCK
+///
+/// deadlock detected
+///
+/// Will be raised when a deadlock is detected when accessing collections.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_DEADLOCK                                                (29)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER

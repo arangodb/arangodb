@@ -670,6 +670,27 @@ TRI_json_t* TRI_LookupArrayJson (TRI_json_t const* array, size_t pos) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes an element from a json array
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_DeleteArrayJson (TRI_memory_zone_t* zone, TRI_json_t* array, size_t index) {
+  TRI_ASSERT(TRI_IsArrayJson(array));
+
+  size_t const n = TRI_LengthArrayJson(array);
+
+  if (index >= n) {
+    return false;
+  }
+  
+  TRI_json_t* element = static_cast<TRI_json_t*>(TRI_AtVector(&array->_value._objects, index));
+  TRI_ASSERT(element != nullptr);
+  TRI_DestroyJson(zone, element);
+  TRI_RemoveVector(&array->_value._objects, index);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new attribute to an object, using copy
 ////////////////////////////////////////////////////////////////////////////////
 
