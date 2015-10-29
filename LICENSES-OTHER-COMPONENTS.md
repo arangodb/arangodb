@@ -5,7 +5,10 @@
 ### Google V8
 
 * https://code.google.com/p/v8/
-* [BSD 3-Clause License](http://opensource.org/licenses/BSD-3-Clause)
+* [overview](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/LICENSE)
+* [V8](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/LICENSE.v8)
+* [strongtalk](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/LICENSE.strongtalk)
+* [valgrind](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/LICENSE.valgrind)
 
 ### icu
 
