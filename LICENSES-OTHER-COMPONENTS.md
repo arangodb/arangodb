@@ -46,7 +46,7 @@
 ### Valgrind
 
 * Project Home: http://valgrind.org/
-* uses only valgrind.h header file only, none of the other files
+* uses valgrind.h header file only, none of the other files
 * License: [BSD-style license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/valgrind/valgrind.h)
 
 ### zlib 1.2.7
