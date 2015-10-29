@@ -23,8 +23,9 @@
 
 ### Valgrind
 
+* Project Home: http://valgrind.org/
 * valgrind.h header file only
-* [BSD-style license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/valgrind/valgrind.h)
+* License: [BSD-style license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/valgrind/valgrind.h)
 
 ### boost
 
