@@ -146,13 +146,20 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testRand : function () {
-      var actual = getQueryResults("FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN RAND()");
-      for (var i in actual) {
-        if (actual.hasOwnProperty(i)) {
-          var value = actual[i];
-          assertTrue(value >= 0.0 && value < 1.0);
+      var queries = [
+        "FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN RAND()",
+        "FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN NOOPT(RAND())",
+        "FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN NOOPT(V8(RAND()))"
+      ];
+      queries.forEach(function(query) {
+        var actual = getQueryResults(query);
+        for (var i in actual) {
+          if (actual.hasOwnProperty(i)) {
+            var value = actual[i];
+            assertTrue(value >= 0.0 && value < 1.0);
+          }
         }
-      }
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,8 +167,14 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRandInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RAND(1)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RAND(2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RAND(1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RAND(2)");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RAND(1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RAND(2))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(RAND(1)))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(RAND(2)))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
