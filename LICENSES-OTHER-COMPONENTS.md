@@ -27,10 +27,10 @@
 * valgrind.h header file only
 * License: [BSD-style license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/valgrind/valgrind.h)
 
-### boost
+### Boost 1.58.0
 
-* http://www.boost.org/
-* [boost software license](http://www.boost.org/LICENSE_1_0.txt)
+* Project Home: http://www.boost.org/
+* License: [boost software license](http://www.boost.org/LICENSE_1_0.txt), [free as-is license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/boost/1.58.0/boost/test/utils/runtime/cla/detail/argument_value_usage.hpp)
 
 ### linenoise
 
