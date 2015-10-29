@@ -63,16 +63,16 @@
 
 ### Flex 2.5
 
-* http://flex.sourceforge.net/
+* Project Home: http://flex.sourceforge.net/
 * only used to generate code, not part of the distribution
-* [free as-is license](http://flex.sourceforge.net/manual/Copyright.html#Copyright)
+* License: [free as-is license](http://flex.sourceforge.net/manual/Copyright.html#Copyright)
 
 ## Javascript, Node and NPM
 
 ### Node core modules
 
-* http://nodejs.org
-* [MIT License](https://raw.githubusercontent.com/joyent/node/v0.10.33/LICENSE)
+* Project Home: http://nodejs.org
+* License: Node MIT License [_stream_duplex.js,_stream_passthrough.js,_stream_readable.js,_stream_transform.js,_stream_writable.js,events.js,querystring.js,stream.js,string_decoder.js,url.js](https://raw.githubusercontent.com/joyent/node/v0.10.33/LICENSE), MIT [punycode.js](https://raw.githubusercontent.com/joyent/node/v0.10.33/LICENSE)
 
 ### Bundled NPM modules
 
