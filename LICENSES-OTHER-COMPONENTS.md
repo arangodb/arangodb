@@ -8,6 +8,11 @@
 * License: Boost [boost software license](http://www.boost.org/LICENSE_1_0.txt)
 * License: argument_value_usage.hpp [free as-is license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/boost/1.58.0/boost/test/utils/runtime/cla/detail/argument_value_usage.hpp)
 
+### fpconv_dtoa
+
+* GITHUB: https://github.com/night-shift/fpconv/
+* License: [MIT License](https://github.com/night-shift/fpconv/blob/master/license)
+
 ### Google V8 4.3.61
 
 * Project Home: https://code.google.com/p/v8/
@@ -27,11 +32,6 @@
 
 * Project Home: http://site.icu-project.org/
 * License: [ICU License](http://source.icu-project.org/repos/icu/icu/trunk/license.html)
-
-### fpconv_dtoa
-
-* GITHUB: https://github.com/night-shift/fpconv/
-* License: [MIT License](https://github.com/night-shift/fpconv/blob/master/license)
 
 ### libev 4.11
 
