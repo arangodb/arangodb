@@ -2155,16 +2155,15 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
       getMember(1)->findVariableAccess(currentPath, paths, findme);
       auto filterNode = getMember(2);
       if (filterNode != nullptr) {
-        filterNode->getMember(0)->findVariableAccess(currentPath, paths, findme);
+        filterNode->findVariableAccess(currentPath, paths, findme);
       }
       auto limitNode = getMember(3);
       if (limitNode != nullptr) {
-        limitNode->getMember(0)->findVariableAccess(currentPath, paths, findme);
-        limitNode->getMember(1)->findVariableAccess(currentPath, paths, findme);
+        limitNode->findVariableAccess(currentPath, paths, findme);
       }
       auto returnNode = getMember(4);
       if (returnNode != nullptr) {
-        returnNode->getMember(0)->findVariableAccess(currentPath, paths, findme);
+        returnNode->findVariableAccess(currentPath, paths, findme);
       }
     }
       break;
