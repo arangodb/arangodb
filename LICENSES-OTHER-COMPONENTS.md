@@ -17,7 +17,7 @@
 * Project Home: http://software.schmorp.de/pkg/libev.html
 * License: Dual-License, including [free as-is license](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
 
-### zlib
+### zlib 1.2.7
 
 * [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/zlib-1.2.7/README#L85)
 
