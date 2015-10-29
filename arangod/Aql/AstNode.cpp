@@ -2083,6 +2083,287 @@ std::string AstNode::toString () const {
    return std::string(buffer.c_str(), buffer.length());
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locate a variable including the direct path vector leading to it.
+////////////////////////////////////////////////////////////////////////////////
+
+void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
+                                 std::vector<std::vector<AstNode const*>>& paths,
+                                 Variable const* findme) const
+{
+  currentPath.push_back(this);
+  switch (type) {
+  case NODE_TYPE_VARIABLE:
+  case NODE_TYPE_REFERENCE: {
+    
+    auto variable = static_cast<Variable*>(getData());
+    TRI_ASSERT(variable != nullptr);
+    if (variable->id == findme->id) {
+      paths.emplace_back(currentPath);
+    }
+  }
+    break;
+
+    case NODE_TYPE_OBJECT: // yes, keys can't be vars, but... 
+    case NODE_TYPE_ARRAY: {
+      size_t const n = numMembers();
+      for (size_t i = 0; (i < n); ++i) {
+        AstNode* member = getMember(i);
+        if (member != nullptr) {
+          member->findVariableAccess(currentPath, paths, findme);
+        }
+      }
+    }
+      break;
+
+      // One subnode:
+    case NODE_TYPE_FCALL:
+    case NODE_TYPE_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_OPERATOR_UNARY_PLUS:
+    case NODE_TYPE_OPERATOR_UNARY_MINUS:
+    case NODE_TYPE_OPERATOR_UNARY_NOT:
+      getMember(0)->findVariableAccess(currentPath, paths, findme);
+      break;
+
+      // two subnodes to inspect:
+    case NODE_TYPE_RANGE:
+    case NODE_TYPE_ITERATOR:
+    case NODE_TYPE_ARRAY_LIMIT:
+    case NODE_TYPE_INDEXED_ACCESS: 
+    case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_OPERATOR_BINARY_AND:
+    case NODE_TYPE_OPERATOR_BINARY_OR:
+    case NODE_TYPE_OPERATOR_BINARY_PLUS:
+    case NODE_TYPE_OPERATOR_BINARY_MINUS:
+    case NODE_TYPE_OPERATOR_BINARY_TIMES:
+    case NODE_TYPE_OPERATOR_BINARY_DIV:
+    case NODE_TYPE_OPERATOR_BINARY_MOD:
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
+      getMember(0)->findVariableAccess(currentPath, paths, findme);
+      getMember(1)->findVariableAccess(currentPath, paths, findme);
+      break;
+
+    case NODE_TYPE_EXPANSION: {
+      getMember(0)->findVariableAccess(currentPath, paths, findme);
+      getMember(1)->findVariableAccess(currentPath, paths, findme);
+      auto filterNode = getMember(2);
+      if (filterNode != nullptr) {
+        filterNode->getMember(0)->findVariableAccess(currentPath, paths, findme);
+      }
+      auto limitNode = getMember(3);
+      if (limitNode != nullptr) {
+        limitNode->getMember(0)->findVariableAccess(currentPath, paths, findme);
+        limitNode->getMember(1)->findVariableAccess(currentPath, paths, findme);
+      }
+      auto returnNode = getMember(4);
+      if (returnNode != nullptr) {
+        returnNode->getMember(0)->findVariableAccess(currentPath, paths, findme);
+      }
+    }
+      break;
+      // no sub nodes, not a variable:
+    case NODE_TYPE_OPERATOR_TERNARY:
+    case NODE_TYPE_SUBQUERY:
+    case NODE_TYPE_VALUE:
+    case NODE_TYPE_ROOT:
+    case NODE_TYPE_FOR:
+    case NODE_TYPE_LET:
+    case NODE_TYPE_FILTER:
+    case NODE_TYPE_RETURN:
+    case NODE_TYPE_REMOVE:
+    case NODE_TYPE_INSERT:
+    case NODE_TYPE_UPDATE:
+    case NODE_TYPE_REPLACE:
+    case NODE_TYPE_COLLECT:
+    case NODE_TYPE_SORT:
+    case NODE_TYPE_SORT_ELEMENT:
+    case NODE_TYPE_LIMIT:
+    case NODE_TYPE_ASSIGN:
+    case NODE_TYPE_OBJECT_ELEMENT:
+    case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_FCALL_USER:
+    case NODE_TYPE_NOP:
+    case NODE_TYPE_COLLECT_COUNT:
+    case NODE_TYPE_COLLECT_EXPRESSION:
+    case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
+    case NODE_TYPE_UPSERT:
+    case NODE_TYPE_EXAMPLE:
+    case NODE_TYPE_PASSTHRU:
+    case NODE_TYPE_DISTINCT:
+    case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_COLLECTION_LIST:
+    case NODE_TYPE_DIRECTION:
+    case NODE_TYPE_OPERATOR_NARY_AND:
+    case NODE_TYPE_OPERATOR_NARY_OR:
+      break;
+  }
+
+  currentPath.pop_back();
+}
+
+AstNode const* AstNode::findReference(AstNode const* findme) const
+{
+  if (this == findme) {
+    return this;
+  }
+
+  const AstNode* ret = nullptr;
+  switch (type) {
+
+  case NODE_TYPE_OBJECT: // yes, keys can't be vars, but... 
+  case NODE_TYPE_ARRAY: {
+    size_t const n = numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      AstNode* member = getMember(i);
+      if (member == findme) {
+        return this;
+      }
+      if (member != nullptr) {
+        ret = member->findReference(findme);
+        if (ret != nullptr)
+          return ret;
+      }
+    }
+  }
+    break;
+
+    // One subnode:
+  case NODE_TYPE_FCALL:
+  case NODE_TYPE_ATTRIBUTE_ACCESS:
+  case NODE_TYPE_OPERATOR_UNARY_PLUS:
+  case NODE_TYPE_OPERATOR_UNARY_MINUS:
+  case NODE_TYPE_OPERATOR_UNARY_NOT:
+    if (getMember(0) == findme)
+      return this;
+    return getMember(0)->findReference(findme);
+
+    // two subnodes to inspect:
+  case NODE_TYPE_RANGE:
+  case NODE_TYPE_ITERATOR:
+  case NODE_TYPE_ARRAY_LIMIT:
+  case NODE_TYPE_INDEXED_ACCESS: 
+  case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
+  case NODE_TYPE_OPERATOR_BINARY_AND:
+  case NODE_TYPE_OPERATOR_BINARY_OR:
+  case NODE_TYPE_OPERATOR_BINARY_PLUS:
+  case NODE_TYPE_OPERATOR_BINARY_MINUS:
+  case NODE_TYPE_OPERATOR_BINARY_TIMES:
+  case NODE_TYPE_OPERATOR_BINARY_DIV:
+  case NODE_TYPE_OPERATOR_BINARY_MOD:
+  case NODE_TYPE_OPERATOR_BINARY_EQ:
+  case NODE_TYPE_OPERATOR_BINARY_NE:
+  case NODE_TYPE_OPERATOR_BINARY_LT:
+  case NODE_TYPE_OPERATOR_BINARY_LE:
+  case NODE_TYPE_OPERATOR_BINARY_GT:
+  case NODE_TYPE_OPERATOR_BINARY_GE:
+  case NODE_TYPE_OPERATOR_BINARY_IN:
+  case NODE_TYPE_OPERATOR_BINARY_NIN:
+    if (getMember(0) == findme)
+      return this;
+    ret = getMember(0)->findReference(findme);
+    if (ret != nullptr) {
+      return ret;
+    }
+    if (getMember(1) == findme)
+      return this;
+    ret = getMember(1)->findReference(findme);
+    break;
+
+  case NODE_TYPE_EXPANSION: {
+    if (getMember(0) == findme)
+      return this;
+    ret = getMember(0)->findReference(findme);
+    if (ret != nullptr) {
+      return ret;
+    }
+    if (getMember(1) == findme)
+      return this;
+    ret = getMember(1)->findReference(findme);
+    if (ret != nullptr) {
+      return ret;
+    }
+    auto filterNode = getMember(2);
+    if (filterNode != nullptr) {
+      if (filterNode->getMember(0) == findme)
+        return this;
+
+      ret = filterNode->getMember(0)->findReference(findme);
+      if (ret != nullptr) {
+        return ret;
+      }
+    }
+    auto limitNode = getMember(3);
+    if (limitNode != nullptr) {
+      if (limitNode->getMember(0) == findme)
+        return this;
+      ret = limitNode->getMember(0)->findReference(findme);
+      if (ret != nullptr) {
+        return ret;
+      }
+      ret = limitNode->getMember(1)->findReference(findme);
+      if (ret != nullptr) {
+        return ret;
+      }
+    }
+    auto returnNode = getMember(4);
+    if (returnNode != nullptr) {
+      if (returnNode->getMember(0) == findme)
+        return this;
+      ret = returnNode->getMember(0)->findReference(findme);
+    }
+  }
+    break;
+
+    // no subnodes here:
+  case NODE_TYPE_OPERATOR_TERNARY:
+  case NODE_TYPE_SUBQUERY:
+  case NODE_TYPE_VALUE:
+  case NODE_TYPE_ROOT:
+  case NODE_TYPE_FOR:
+  case NODE_TYPE_LET:
+  case NODE_TYPE_FILTER:
+  case NODE_TYPE_RETURN:
+  case NODE_TYPE_REMOVE:
+  case NODE_TYPE_INSERT:
+  case NODE_TYPE_UPDATE:
+  case NODE_TYPE_REPLACE:
+  case NODE_TYPE_COLLECT:
+  case NODE_TYPE_SORT:
+  case NODE_TYPE_SORT_ELEMENT:
+  case NODE_TYPE_LIMIT:
+  case NODE_TYPE_ASSIGN:
+  case NODE_TYPE_VARIABLE:
+  case NODE_TYPE_REFERENCE:
+  case NODE_TYPE_OBJECT_ELEMENT:
+  case NODE_TYPE_COLLECTION:
+  case NODE_TYPE_PARAMETER:
+  case NODE_TYPE_FCALL_USER:
+  case NODE_TYPE_NOP:
+  case NODE_TYPE_COLLECT_COUNT:
+  case NODE_TYPE_COLLECT_EXPRESSION:
+  case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
+  case NODE_TYPE_UPSERT:
+  case NODE_TYPE_EXAMPLE:
+  case NODE_TYPE_PASSTHRU:
+  case NODE_TYPE_DISTINCT:
+  case NODE_TYPE_TRAVERSAL:
+  case NODE_TYPE_COLLECTION_LIST:
+  case NODE_TYPE_DIRECTION:
+  case NODE_TYPE_OPERATOR_NARY_AND:
+  case NODE_TYPE_OPERATOR_NARY_OR:
+    break;
+  }
+  return ret;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------

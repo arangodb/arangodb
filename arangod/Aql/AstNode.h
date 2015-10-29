@@ -560,6 +560,22 @@ namespace triagens {
 
         bool isAttributeAccessForVariable (std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>&) const;
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locate a variable including the direct path vector leading to it.
+////////////////////////////////////////////////////////////////////////////////
+
+      void findVariableAccess(std::vector<AstNode const*>& currentPath,
+                              std::vector<std::vector<AstNode const*>>& paths,
+                              Variable const* findme) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dig through the tree and return a reference to the astnode referencing 
+/// findme, nullptr otherwise.
+////////////////////////////////////////////////////////////////////////////////
+
+      AstNode const* findReference(AstNode const* findme) const;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is simple enough to be used in a simple
 /// expression
