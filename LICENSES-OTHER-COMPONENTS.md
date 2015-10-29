@@ -19,7 +19,7 @@
 
 ### zlib 1.2.7
 
-* [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/zlib-1.2.7/README#L85)
+* License: [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/zlib-1.2.7/README#L85)
 
 ### Valgrind
 
