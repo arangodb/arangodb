@@ -31,6 +31,54 @@
 
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
+
+bool checkPathVariableAccessFeasible(CalculationNode const* cn, Variable const* var) {
+  auto node = cn->expression()->node();
+  std::vector<AstNode const*> currentPath;
+  std::vector<std::vector<AstNode const*>> paths;
+                                 
+  node->findVariableAccess(currentPath, paths, var);
+
+  for (auto onePath : paths) {
+    size_t len = onePath.size();
+
+    if ((onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) &&
+        strcmp(onePath[len - 2]->getStringValue(),    "edges") &&
+        strcmp(onePath[len - 2]->getStringValue(), "vertices")) {
+
+      std::string message("TRAVERSAL: path only knows 'edges' and 'vertices', not ");
+      message += onePath[len - 2]->getStringValue();
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, message);
+    }
+
+      // we now need to check for p.edges[n] whether n is >= 0
+    if (onePath[len - 3]->type == NODE_TYPE_INDEXED_ACCESS) {
+      auto indexAccessNode = onePath[len - 3]->getMember(1);
+      if ((indexAccessNode->type != NODE_TYPE_VALUE) ||
+          (indexAccessNode->value.type != VALUE_TYPE_INT) ||
+          (indexAccessNode->value.value._int < 0)) {
+        return false;
+      }
+    }
+    else if ((onePath[len - 3]->type == NODE_TYPE_INDEXED_ACCESS) &&
+             (onePath[len - 4]->type == NODE_TYPE_EXPANSION)){
+      // we now need to check for p.edges[*] which becomes a fancy structure
+
+    }
+    else {
+      return false;
+    }
+
+    // OR? don't know howto continue.
+    for (auto oneNode : onePath) {
+      if (oneNode->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+        return false; 
+      }
+    }
+  }
+
+  return true;
+}
     
 bool TraversalConditionFinder::before (ExecutionNode* en) {
   if (! _variableDefinitions.empty() && en->canThrow()) {
@@ -121,7 +169,7 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
               // check whether its one of those we emit 
               int variableType = node->checkIsOutVariable(var->id);
               if (variableType >= 0) {
-                if (variableType == 2) {
+                if ((variableType == 2) && checkPathVariableAccessFeasible(cn, var)) {
                   condition->andCombine(it.second->expression()->node());
                   foundCondition = true;
                   node->setCalculationNodeId(cn->id());
