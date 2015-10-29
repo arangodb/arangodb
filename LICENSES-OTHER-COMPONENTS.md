@@ -46,21 +46,20 @@
 
 ### CoreOS etcd
 
-* https://coreos.com/using-coreos/etcd/
-* [Apache 2 License](https://github.com/coreos/etcd/blob/master/LICENSE)
+* Project Home: https://coreos.com/using-coreos/etcd/
+* License: [Apache 2 License](https://github.com/coreos/etcd/blob/master/LICENSE)
 
 ### autotools
 
-* http://www.gnu.org/software/autoconf/autoconf.html
-* https://www.gnu.org/software/automake/
+* Project Home: http://www.gnu.org/software/autoconf/autoconf.html, https://www.gnu.org/software/automake/
 * only used to generate code, not part of the distribution
-* parts generated are free as-is license
+* License: [configure](https://github.com/arangodb/arangodb/blob/master/configure#L11), [Makefile.in](https://raw.githubusercontent.com/arangodb/arangodb/master/Makefile.in), [ax_cxx_compile_stdcxx_11.m4](https://github.com/arangodb/arangodb/blob/master/m4/ax_cxx_compile_stdcxx_11.m4#L25)
 
 ### Bison
 
-* https://www.gnu.org/software/bison/
+* Project Home: https://www.gnu.org/software/bison/
 * only used to generate code, not part of the distribution; for details about using Bison in this way see http://www.gnu.org/software/bison/manual/bison.html#Conditions
-* parts generated use see https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20
+* License: (grammar.cpp)[https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20]
 
 ### Flex
 
