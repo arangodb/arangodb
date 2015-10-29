@@ -172,42 +172,46 @@
 #### JSHint
 
 * Project Home: http://jshint.com
-* License: [MIT License](https://raw.githubusercontent.com/jshint/jshint/master/LICENSE)
+* GITHUB: https://github.com/jshint/jshint
+* License: [free as-is license](https://github.com/jshint/jshint/blob/master/LICENSE)
 
 #### JSUnity
 
-* Project Home: https://github.com/atesgoral/jsunity
-* License: [MIT License](http://www.opensource.org/licenses/mit-license.php)
+* GITHUB: https://github.com/atesgoral/jsunity
+* License: [MIT License](https://github.com/atesgoral/jsunity/blob/master/LICENSE.txt)
 
 #### minimatch
 
-* Project Home: https://github.com/isaacs/minimatch
-* License: [MIT License](https://raw.githubusercontent.com/isaacs/minimatch/master/LICENSE)
+* GITHUB: https://github.com/isaacs/minimatch
+* License: [ISC License](https://github.com/isaacs/minimatch/blob/master/LICENSE)
 
 #### mocha
 
 * Project Home: http://mochajs.org
-* License: [MIT License](https://raw.githubusercontent.com/mochajs/mocha/master/LICENSE)
+* GITHUB: https://github.com/mochajs/mocha
+* License: [MIT License](https://github.com/mochajs/mocha/blob/master/LICENSE)
 
 #### qs
 
-* Project Home: https://github.com/hapijs/qs
-* License: [BSD 3-Clause License](https://raw.githubusercontent.com/hapijs/hapi/master/LICENSE)
+* GITHUB: https://github.com/hapijs/qs
+* License: [free as-is license](https://github.com/hapijs/qs/blob/master/LICENSE)
 
 #### Ramda
 
 * Project Home: http://ramdajs.com
-* License: [MIT License](https://raw.githubusercontent.com/ramda/ramda/master/LICENSE.txt)
+* GITHUB: https://github.com/ramda/ramda
+* License: [MIT License](https://github.com/ramda/ramda/blob/master/LICENSE.txt)
 
 #### semver
 
-* Project Home: https://github.com/npm/node-semver
-* License: [BSD 2-Clause License](http://opensource.org/licenses/BSD-2-Clause)
+* GITHUB: https://github.com/npm/node-semver
+* License: [ISC License](https://github.com/npm/node-semver/blob/master/LICENSE)
 
 #### Sinon.JS
 
 * Project Home: http://sinonjs.org
-* License: [BSD 3-Clause License](https://www.npmjs.com/package/sinon)
+* GITHUB: https://github.com/sinonjs/sinon
+* License: [BSD 3-Clause License](https://github.com/sinonjs/sinon/blob/master/LICENSE)
 
 #### stacktrace.js
 
