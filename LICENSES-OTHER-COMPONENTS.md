@@ -92,15 +92,16 @@
 
 * Project Home: http://nodejs.org
 * GITHUB: https://github.com/nodejs/node
-* License: MIT-style License [_stream_duplex.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
-* License: MIT-style License [_stream_passthrough.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
-* License: MIT-style License [_stream_readable.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
-* License: MIT-style License [_stream_transform.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
-* License: MIT-style License [_stream_writable.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
-* License: MIT-style License [querystring.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
-* License: MIT-style License [stream.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
-* License: MIT-style License [string_decoder.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
-* License: MIT-style License [url.js](https://github.com/nodejs/node/blob/v4.1.1/LICENSE)
+* License: _stream_duplex.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/_stream_duplex.js)
+* License: _stream_passthrough.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/_stream_passthrough.js)
+* License: _stream_readable.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/_stream_readable.js)
+* License: _stream_transform.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/_stream_transform.js)
+* License: _stream_writable.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/_stream_writable.js)
+* License: event.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/events.js)
+* License: querystring.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/querystring.js)
+* License: stream.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/stream.js)
+* License: string_decoder.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/string_decoder.js)
+* License: url.js [MIT-style License](https://github.com/arangodb/arangodb/blob/devel/js/node/url.js)
 * License: punycode.js [MIT License](http://opensource.org/licenses/mit-license.php)
 
 ### Bundled NPM modules
