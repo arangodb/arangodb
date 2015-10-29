@@ -114,7 +114,7 @@
 #### ArangoDB Query Builder
 
 * Project Home: https://github.com/arangodb/aqbjs
-* License: [Apache 2](https://github.com/arangodb/aqbjs/blob/master/LICENSE)
+* License: [Apache 2 License](https://github.com/arangodb/aqbjs/blob/master/LICENSE)
 
 #### Chai
 
