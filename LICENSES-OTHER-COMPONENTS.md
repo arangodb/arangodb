@@ -9,8 +9,8 @@
 
 ### ICU 54.1
 
-* http://site.icu-project.org/
-* [ICU License](http://source.icu-project.org/repos/icu/icu/trunk/license.html)
+* Project Home: http://site.icu-project.org/
+* License: [ICU License](http://source.icu-project.org/repos/icu/icu/trunk/license.html)
 
 ### libev
 
