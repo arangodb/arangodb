@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/associative.h"
+#include "Basics/DeadlockDetector.h"
 #include "Basics/locks.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/threads.h"
@@ -273,6 +274,8 @@ struct TRI_vocbase_t {
 
   TRI_server_t*                           _server;
   TRI_vocbase_defaults_t                  _settings;
+
+  triagens::basics::DeadlockDetector<TRI_document_collection_t> _deadlockDetector;
 
   triagens::basics::ReadWriteLock         _collectionsLock;    // collection iterator lock
   std::vector<struct TRI_vocbase_col_s*>  _collections;        // pointers to ALL collections
