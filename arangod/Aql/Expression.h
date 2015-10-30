@@ -341,6 +341,79 @@ namespace triagens {
                                           std::vector<RegisterId> const&,
                                           bool);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionAttributeAccess (AstNode const*,
+                                                         triagens::arango::AqlTransaction*,
+                                                         AqlItemBlock const*,
+                                                         size_t,
+                                                         std::vector<Variable const*> const&,
+                                                         std::vector<RegisterId> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with INDEXED ACCESS
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionIndexedAccess (AstNode const*,
+                                                       triagens::arango::AqlTransaction*,
+                                                       AqlItemBlock const*,
+                                                       size_t,
+                                                       std::vector<Variable const*> const&,
+                                                       std::vector<RegisterId> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with ARRAY
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionArray (AstNode const*,
+                                               triagens::arango::AqlTransaction*,
+                                               AqlItemBlock const*,
+                                               size_t,
+                                               std::vector<Variable const*> const&,
+                                               std::vector<RegisterId> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with OBJECT
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionObject (AstNode const*,
+                                                triagens::arango::AqlTransaction*,
+                                                AqlItemBlock const*,
+                                                size_t,
+                                                std::vector<Variable const*> const&,
+                                                std::vector<RegisterId> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with VALUE
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionValue (AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with REFERENCE
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionReference (AstNode const*,
+                                                   TRI_document_collection_t const**, 
+                                                   AqlItemBlock const*,
+                                                   size_t,
+                                                   std::vector<Variable const*> const&,
+                                                   std::vector<RegisterId> const&,
+                                                   bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with FCALL
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionFCall (AstNode const*,
+                                               triagens::arango::AqlTransaction*,
+                                               AqlItemBlock const*,
+                                               size_t,
+                                               std::vector<Variable const*> const&,
+                                               std::vector<RegisterId> const&);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
