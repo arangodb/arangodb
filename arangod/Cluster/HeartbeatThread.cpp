@@ -241,6 +241,7 @@ void HeartbeatThread::run () {
 
           if (planVersion > lastPlanVersion) {
             if (handlePlanChangeDBServer(planVersion, lastPlanVersion)) {
+              shouldSleep = false;
               changed = true;
             }
           }
