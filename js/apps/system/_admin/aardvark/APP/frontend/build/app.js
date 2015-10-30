@@ -10416,11 +10416,11 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     },
 
     arangoNotification: function (title, content, info) {
-      window.App.notificationList.add({title:title, content: content, info: info});
+      window.App.notificationList.add({title:title, content: content, info: info, type: 'success'});
     },
 
     arangoError: function (title, content, info) {
-      window.App.notificationList.add({title:title, content: content, info: info});
+      window.App.notificationList.add({title:title, content: content, info: info, type: 'error'});
     },
 
     getRandomToken: function () {
@@ -22543,6 +22543,8 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       var self = this;
 
+      console.log(this.model.get("path"));
+
       $(this.el).html(this.template.render({
         app: this.model,
         db: arangoHelper.currentDatabase(),
@@ -24847,7 +24849,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #confirmDeleteDocument" : "deleteDocument",
       "click #document-from" : "navigateToDocument",
       "click #document-to" : "navigateToDocument",
-      "keydown .ace_editor" : "keyPress",
+      "keydown #documentEditor .ace_editor" : "keyPress",
       "keyup .jsoneditor .search input" : "checkSearchBox"
     },
 
@@ -25009,7 +25011,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           model = this.editor.get();
         }
         catch (e) {
-          this.errorConfirmation();
+          this.errorConfirmation(e);
           this.disableSaveButton();
           return;
         }
@@ -25039,6 +25041,9 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     successConfirmation: function () {
+
+      arangoHelper.arangoNotification('Document saved.');
+
       $('#documentEditor .tree').animate({backgroundColor: '#C6FFB0'}, 500);
       $('#documentEditor .tree').animate({backgroundColor: '#FFFFF'}, 500);
 
@@ -25046,7 +25051,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       $('#documentEditor .ace_content').animate({backgroundColor: '#FFFFF'}, 500);
     },
 
-    errorConfirmation: function () {
+    errorConfirmation: function (e) {
+      arangoHelper.arangoError("Document editor: ", e);
+
       $('#documentEditor .tree').animate({backgroundColor: '#FFB0B0'}, 500);
       $('#documentEditor .tree').animate({backgroundColor: '#FFFFF'}, 500);
 
@@ -27461,23 +27468,31 @@ window.ArangoUsers = Backbone.Collection.extend({
       );
 
       if (graph) {
+
+        $('.modal-body table').css('border-collapse', 'separate');
         var i;
+
+        $('.modal-body .spacer').remove();
         for (i = 0; i <= this.counter; i++) {
-          $('#row_fromCollections' + i).hide();
-          $('#row_toCollections' + i).hide();
+          $('#row_fromCollections' + i).show();
+          $('#row_toCollections' + i).show();
+          $('#row_newEdgeDefinitions' + i).addClass('first');
+          $('#row_fromCollections' + i).addClass('middle');
+          $('#row_toCollections' + i).addClass('last');
+          $('#row_toCollections' + i).after('<tr id="spacer'+ i +'" class="spacer"></tr>');
         }
       }
 
     },
 
     showHideDefinition : function(e) {
-      e.stopPropagation();
+      /*e.stopPropagation();
       var id = $(e.currentTarget).attr("id"), number;
       if (id.indexOf("row_newEdgeDefinitions") !== -1 ) {
         number = id.split("row_newEdgeDefinitions")[1];
         $('#row_fromCollections' + number).toggle();
         $('#row_toCollections' + number).toggle();
-      }
+      }*/
     },
 
     addRemoveDefinition : function(e) {
@@ -27522,6 +27537,17 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
         window.modalView.undelegateEvents();
         window.modalView.delegateEvents(this.events);
+        
+        var i;
+        $('.modal-body .spacer').remove();
+        for (i = 0; i <= this.counter; i++) {
+          $('#row_fromCollections' + i).show();
+          $('#row_toCollections' + i).show();
+          $('#row_newEdgeDefinitions' + i).addClass('first');
+          $('#row_fromCollections' + i).addClass('middle');
+          $('#row_toCollections' + i).addClass('last');
+          $('#row_toCollections' + i).after('<tr id="spacer'+ i +'" class="spacer"></tr>');
+        }
         return;
       }
       if (id.indexOf("remove_newEdgeDefinitions") !== -1 ) {
@@ -27529,6 +27555,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         $('#row_newEdgeDefinitions' + number).remove();
         $('#row_fromCollections' + number).remove();
         $('#row_toCollections' + number).remove();
+        $('#spacer' + number).remove();
       }
     },
 
@@ -28316,7 +28343,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, templateEngine, $, window*/
+/*global Backbone, templateEngine, $, window, noty */
 (function () {
   "use strict";
 
@@ -28348,6 +28375,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     removeAllNotifications: function () {
+      $.noty.clearQueue();
+      $.noty.closeAll();
       this.collection.reset();
       $('#notification_menu').hide();
     },
@@ -28357,7 +28386,53 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.collection.get(cid).destroy();
     },
 
-    renderNotifications: function() {
+    renderNotifications: function(a, b, event) {
+
+      if (event) {
+        if (event.add) {
+          var latestModel = this.collection.at(this.collection.length - 1),
+          message = latestModel.get('title'),
+          time = 3000;
+
+          if (latestModel.get('content')) {
+            message = message + ": " + latestModel.get('content');
+          }
+
+          if (latestModel.get('type') === 'error') {
+            time = false;
+          }
+          else {
+            $.noty.clearQueue();
+            $.noty.closeAll();
+          }
+
+          noty({
+            theme: 'relax',
+            text: message,
+            template: 
+              '<div class="noty_message arango_message">' + 
+              '<div><i class="fa fa-close"></i></div><span class="noty_text arango_text"></span>' + 
+              '<div class="noty_close arango_close"></div></div>',
+            maxVisible: 1,
+            closeWith: ['click'],
+            type: latestModel.get('type'),
+            layout: 'bottom',
+            timeout: time,
+            animation: {
+              open: {height: 'show'},
+              close: {height: 'hide'},
+              easing: 'swing',
+              speed: 200
+            }
+          });
+
+          if (latestModel.get('type') === 'success') {
+            latestModel.destroy();
+            return;
+          }
+        }
+      }
+
       $('#stat_hd_counter').text(this.collection.length);
       if (this.collection.length === 0) {
         $('#stat_hd').removeClass('fullNotification');

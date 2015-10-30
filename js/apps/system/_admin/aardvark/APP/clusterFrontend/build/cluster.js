@@ -220,11 +220,11 @@
     },
 
     arangoNotification: function (title, content, info) {
-      window.App.notificationList.add({title:title, content: content, info: info});
+      window.App.notificationList.add({title:title, content: content, info: info, type: 'success'});
     },
 
     arangoError: function (title, content, info) {
-      window.App.notificationList.add({title:title, content: content, info: info});
+      window.App.notificationList.add({title:title, content: content, info: info, type: 'error'});
     },
 
     getRandomToken: function () {

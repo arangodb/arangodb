@@ -2365,14 +2365,14 @@ if (list.length > 0) {
 <% notifications.forEach(function(n) { %>
   <li class="dropdown-item">
     <div class="notificationItem">
-      <a class="notificationItemTitle"><%=n.get("title")%></a>
-      <div class="notificationItemContent"><%=n.get("content")%></div>
-
       <% if (n.get("info")) { %>
       <i title="<%=n.get("info")%>" class="notificationInfoIcon fa fa-info-circle"></i>
       <% } %>
 
       <i id="<%=n.cid%>" class="fa fa-times-circle-o"></i>
+      <a class="notificationItemTitle"><%=n.get("title")%></a>
+      <div class="notificationItemContent"><%=n.get("content")%></div>
+
     </div>
   </li>
 <%  }); %>
@@ -2385,7 +2385,7 @@ if (list.length > 0) {
     <div id="stat_hd" class="notificationButton"><p id="stat_hd_counter">0</p></div>
   </div>
 
-  <li class="dropdown no-left-margin">
+  <li class="dropdown no-left-margin" style="border: 0">
     <ul class="user-dropdown-menu fixedDropdown" id="notification_menu">
       <li class="dropdown-header"><a>Notifications</a></li>
       <ul class="innerDropdownInnerUL"></ul>
@@ -2859,9 +2859,9 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="sharedLibs.js?version=1445617511824"></script>
-<script src="libs.js?version=1445617511824"></script>
-<script src="app.js?version=1445617511824"></script>
+<script src="sharedLibs.js?version=1445958308377"></script>
+<script src="libs.js?version=1445958308377"></script>
+<script src="app.js?version=1445958308377"></script>
 
   </body>
 </html>
