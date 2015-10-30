@@ -330,3 +330,8 @@
 * Project Home: http://swagger.io
 * GITHUB: https://github.com/swagger-api/swagger-ui
 * License: [Apache 2 license](https://github.com/swagger-api/swagger-ui/blob/master/LICENSE)
+
+#### Noty
+
+* https://github.com/needim/noty/
+* [MIT License](https://github.com/needim/noty) under "License"
