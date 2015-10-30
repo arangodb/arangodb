@@ -1707,7 +1707,10 @@
       setResponse(res, "edge", g[collection].save(from, to, body.forDB(), options), options.code);
     } catch(e) {
       if (e.errorNum === errors.ERROR_GRAPH_INVALID_EDGE.code) {
-        throw new Error();
+        console.log(e);
+        var customError = new Error();
+        customError._internal_info = e;
+        throw customError;
       }
       throw e;
     }
@@ -1731,7 +1734,15 @@
     }
   )
   .errorResponse(
-    Error, actions.HTTP_BAD, "Edge is invalid.", function() {
+    Error, actions.HTTP_BAD, "Edge is invalid.", function(e) {
+      if (e.hasOwnProperty("_internal_info")) {
+        e = e._internal_info;
+        return buildError({
+          errorNum: e.errorNum,
+          errorMessage: e.errorMessage
+        }, actions.HTTP_BAD);
+      }
+      console.log(errors.ERROR_GRAPH_INVALID_EDGE);
       return buildError({
         errorNum: errors.ERROR_GRAPH_INVALID_EDGE.code,
         errorMessage: errors.ERROR_GRAPH_INVALID_EDGE.message
