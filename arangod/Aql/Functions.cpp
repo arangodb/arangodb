@@ -2917,19 +2917,23 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
       if (exampleJson.isArray()) {
         size_t exampleCount = exampleJson.size();
         // We only support objects here so validate
-        for (size_t k = 0; k < exampleCount; ++k) {
-          if (! exampleJson.at(k).isObject()) {
-            RegisterWarning(query, "EDGES", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-            if (TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, exampleJson.json(), k)) {
-              --k;
-              --exampleCount;
-            }
-            else {
-              // Should never occur.
-              // If it occurs in production it will simply fall through
-              // it can only retern more results than expected and not do any harm.
-              TRI_ASSERT(false);
-            }
+        for (size_t k = 0; k < exampleCount; /* nothing */) {
+          if (exampleJson.at(k).isObject()) {
+            ++k;
+            continue;
+          }
+
+          RegisterWarning(query, "EDGES", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+          if (TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, exampleJson.json(), k)) {
+            // don't modify count
+            --exampleCount;
+          }
+          else {
+            // Should never occur.
+            // If it occurs in production it will simply fall through
+            // it can only return more results than expected and not do any harm.
+            TRI_ASSERT(false);
+            ++k;
           }
         }
         if (exampleCount > 0) {
@@ -2946,17 +2950,19 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
       if (buildMatcher) {
         try {
           triagens::arango::ExampleMatcher matcher(exampleJson.json(), shaper, resolver);
-          for (size_t i = 0; i < resultCount; ++i) {
+          for (size_t i = 0; i < resultCount; /* nothing */) {
             if (! matcher.matches(cid, &edges[i])) {
               edges.erase(edges.begin() + i);
-              --i;
               --resultCount;
+            }
+            else {
+              ++i;
             }
           }
         }
-        catch (triagens::basics::Exception& e) {
+        catch (triagens::basics::Exception const& e) {
           if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
-            throw e;
+            throw;
           }
           // Illegal match, we cannot filter anything
           edges.clear();
