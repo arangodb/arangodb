@@ -1640,7 +1640,7 @@ log_appender_syslog_t::log_appender_syslog_t (char const* contentFilter,
     value = atoi(facility);
   }
   else {
-    CODE* ptr = (CODE*) TRI_facilitynames;
+    CODE* ptr = reinterpret_cast<CODE*>(TRI_facilitynames);
 
     while (ptr->c_name != 0) {
       if (strcmp(ptr->c_name, facility) == 0) {
