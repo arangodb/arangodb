@@ -58,12 +58,13 @@ void TRI_DestroyBlob (TRI_memory_zone_t* zone, TRI_blob_t* blob) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CopyToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* src) {
+  dst->length = src->length;
+
   if (src->length == 0 || src->data == nullptr) {
     dst->length = 0;
     dst->data = nullptr;
   }
   else {
-    dst->length = src->length;
     dst->data = static_cast<char*>(TRI_Allocate(zone, dst->length, false));
 
     if (dst->data == nullptr) {

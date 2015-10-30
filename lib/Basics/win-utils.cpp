@@ -47,7 +47,7 @@ using namespace std;
 using namespace triagens::basics;
 
 // .............................................................................
-// Some global variables which may be required throughout the lifetime of the
+// Some global variables which may be required throughtout the lifetime of the
 // server
 // .............................................................................
 

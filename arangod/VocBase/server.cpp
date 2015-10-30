@@ -1862,17 +1862,17 @@ int TRI_StartServer (TRI_server_t* server,
 
     long systemError;
     std::string errorMessage;
-    int res = TRI_CreateRecursiveDirectory(server->_appPath, systemError, errorMessage);
+    bool res = TRI_CreateRecursiveDirectory(server->_appPath, systemError, errorMessage);
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (res) {
+      LOG_INFO("created --javascript.app-path directory '%s'.",
+               server->_appPath);
+    }
+    else {
       LOG_ERROR("unable to create --javascript.app-path directory '%s': %s",
                 server->_appPath,
                 errorMessage.c_str());
-      return res;
-    }
-    else {
-        LOG_INFO("created --javascript.app-path directory '%s'.",
-                 server->_appPath);
+      return TRI_ERROR_SYS_ERROR;
     }
   }
 

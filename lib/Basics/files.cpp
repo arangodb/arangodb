@@ -523,9 +523,9 @@ int TRI_MTimeFile (char const* path, int64_t* mtime) {
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateRecursiveDirectory (char const* path,
-                                  long &systemError,
-                                  std::string &systemErrorStr) {
+bool TRI_CreateRecursiveDirectory (char const* path,
+                                   long &systemError,
+                                   std::string &systemErrorStr) {
   char* copy;
   char* p;
   char* s;
@@ -572,7 +572,7 @@ int TRI_CreateRecursiveDirectory (char const* path,
 
   TRI_Free(TRI_CORE_MEM_ZONE, copy);
 
-  return res;
+  return res == TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1319,6 +1319,7 @@ int TRI_VerifyLockFile (char const* filename) {
   }
 
   char buffer[128];
+  memset(buffer, 0, sizeof(buffer));   // not really necessary, but this shuts up valgrind
   ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
 
   TRI_CLOSE(fd);
@@ -1327,13 +1328,15 @@ int TRI_VerifyLockFile (char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  // file empty or pid too long
-  if (n == 0 || n == sizeof(buffer)) {
+  // pid too long
+  if (n == sizeof(buffer)) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  // 0-terminate buffer
-  buffer[n] = '\0';
+  // file empty
+  if (n == 0) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   uint32_t fc = TRI_UInt32String(buffer);
   int res = TRI_errno();
@@ -1698,10 +1701,11 @@ string TRI_LocateBinaryPath (char const* argv0) {
 
   // contains a path
   if (*p) {
-    binaryPath = TRI_Dirname(argv0);
+    char* dir = TRI_Dirname(argv0);
 
-    if (binaryPath == nullptr) {
+    if (dir == nullptr) {
       binaryPath = TRI_DuplicateString("");
+      TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
     }
   }
 
@@ -1709,10 +1713,7 @@ string TRI_LocateBinaryPath (char const* argv0) {
   else {
     p = getenv("PATH");
 
-    if (p == nullptr) {
-      binaryPath = TRI_DuplicateString("");
-    }
-    else {
+    if (p != nullptr) {
       TRI_vector_string_t files;
       size_t i;
 
@@ -1740,16 +1741,15 @@ string TRI_LocateBinaryPath (char const* argv0) {
         TRI_FreeString(TRI_CORE_MEM_ZONE, full);
       }
 
-      if (binaryPath == nullptr) {
-        binaryPath = TRI_DuplicateString(".");
-      }
-
       TRI_DestroyVectorString(&files);
     }
   }
 
-  string result = binaryPath;
-  TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
+  string result = (binaryPath == nullptr) ? "" : binaryPath;
+
+  if (binaryPath != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
+  }
 
   return result;
 }
@@ -2236,7 +2236,6 @@ int TRI_GetTempName (char const* directory,
                      std::string &errorMessage) {
   char* dir;
   int tries;
-  int res;
 
   char* temp = TRI_GetUserTempPath();
 
@@ -2252,12 +2251,13 @@ int TRI_GetTempName (char const* directory,
   // remove trailing PATH_SEPARATOR
   RemoveTrailingSeparator(dir);
 
-  res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
-  if ((res != TRI_ERROR_FILE_EXISTS) &&
-      (res != TRI_ERROR_NO_ERROR)) {
+  bool res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
+
+  if (! res) {
     TRI_Free(TRI_CORE_MEM_ZONE, dir);
-    return res;
+    return TRI_ERROR_SYS_ERROR;
   }
+
   if (! TRI_IsDirectory(dir)) {
     errorMessage = std::string(dir) + " exists and is not a directory!";
     TRI_Free(TRI_CORE_MEM_ZONE, dir);

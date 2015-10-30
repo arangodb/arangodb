@@ -1553,9 +1553,9 @@ static void JS_MakeDirectoryRecursive (const v8::FunctionCallbackInfo<v8::Value>
   }
   long systemError = 0;
   std::string systemErrorStr;
-  int res = TRI_CreateRecursiveDirectory(*name, systemError, systemErrorStr);
+  bool res = TRI_CreateRecursiveDirectory(*name, systemError, systemErrorStr);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (! res) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, systemErrorStr);
   }
 
@@ -2181,9 +2181,9 @@ static void JS_CopyRecursive (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
   std::string systemErrorStr;
   long errorNo;
+  bool res = TRI_CreateRecursiveDirectory(destination.c_str(), errorNo, systemErrorStr);
 
-  int res = TRI_CreateRecursiveDirectory(destination.c_str(), errorNo, systemErrorStr);
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (! res) {
     std::string errMsg = "cannot copy file [" +
       source +
       "] to [" +
@@ -2192,7 +2192,7 @@ static void JS_CopyRecursive (const v8::FunctionCallbackInfo<v8::Value>& args) {
       std::to_string(errorNo) + 
       " - Unable to create target directory: " + 
       systemErrorStr;
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, errMsg);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, errMsg);
   }
 
   if (!FileUtils::copyRecursive(source, destination, systemErrorStr)) {

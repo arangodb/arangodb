@@ -102,9 +102,9 @@ int TRI_MTimeFile (char const* path, int64_t* mtime);
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateRecursiveDirectory (char const* path,
-                                  long &systemError,
-                                  std::string &systemErrorStr);
+bool TRI_CreateRecursiveDirectory (char const* path,
+                                   long &systemError,
+                                   std::string &systemErrorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory
