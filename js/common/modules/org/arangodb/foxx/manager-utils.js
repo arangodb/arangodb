@@ -35,7 +35,7 @@ var fs = require("fs");
 var _ = require('underscore');
 var arangodb = require("org/arangodb");
 var db = arangodb.db;
-var download = require("internal").download;
+var internal = require('internal');
 
 var throwFileNotFound = arangodb.throwFileNotFound;
 var throwDownloadError = arangodb.throwDownloadError;
@@ -245,7 +245,7 @@ function processGithubRepository (source) {
   var tempFile = fs.getTempFile("downloads", false);
 
   try {
-    var result = download(url, "", {
+    var result = internal.download(url, "", {
       method: "get",
       followRedirects: true,
       timeout: 30
@@ -298,7 +298,7 @@ function listJson (showPrefix, onlyDevelopment) {
       contributors: doc.manifest.contributors || false,
       license: doc.manifest.license,
       version: doc.version,
-      path: fs.join(fs.makeAbsolute(doc.root), doc.path),
+      path: fs.join(fs.makeAbsolute(doc.root || internal.appPath), doc.path),
       config: getConfiguration(doc.manifest.configuration, doc.options.configuration),
       deps: getDependencies(doc.manifest.dependencies, doc.options.dependencies),
       scripts: getScripts(doc.manifest.scripts),

@@ -31,6 +31,7 @@ ERROR_IP_ADDRESS_INVALID,25,"IP address is invalid","Will be raised when the str
 ERROR_LEGEND_NOT_IN_WAL_FILE,26,"internal error if a legend for a marker does not yet exist in the same WAL file","Will be raised internally, then fixed internally, and never come out to the user."
 ERROR_FILE_EXISTS,27,"file exists","Will be raised when a file already exists."
 ERROR_LOCKED,28,"locked","Will be raised when a resource or an operation is locked."
+ERROR_DEADLOCK,29,"deadlock detected","Will be raised when a deadlock is detected when accessing collections."
 
 ################################################################################
 ## HTTP standard errors

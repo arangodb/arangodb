@@ -666,21 +666,20 @@ static int StoreGeoResult (v8::Isolate* isolate,
                            GeoCoordinates* cors,
                            v8::Handle<v8::Array>& documents,
                            v8::Handle<v8::Array>& distances) {
-  geo_coordinate_distance_t* tmp;
-
   if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     GeoIndex_CoordinatesFree(cors);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // sort the result
-  size_t n = cors->length;
+  size_t const n = cors->length;
 
   if (n == 0) {
     GeoIndex_CoordinatesFree(cors);
     return TRI_ERROR_NO_ERROR;
   }
 
+  geo_coordinate_distance_t* tmp;
   geo_coordinate_distance_t* gtr = (tmp = (geo_coordinate_distance_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(geo_coordinate_distance_t) * n, false));
 
   if (gtr == nullptr) {

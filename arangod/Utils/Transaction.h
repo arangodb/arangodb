@@ -374,6 +374,7 @@ namespace triagens {
 
          triagens::arango::DocumentDitch* orderDitch (TRI_transaction_collection_t* trxCollection) {
            TRI_ASSERT(_trx != nullptr);
+           TRI_ASSERT(trxCollection != nullptr);
            TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
            TRI_ASSERT(trxCollection->_collection != nullptr);
 

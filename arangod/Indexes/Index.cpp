@@ -568,9 +568,11 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
         return false;
       }
 
+      /* A sparse index will store null in Array
       if (access->isNullValue()) {
         return false;
       }
+      */
     }
     else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
              access->type == triagens::aql::NODE_TYPE_EXPANSION) {
@@ -579,9 +581,11 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
         return false;
       }
 
+      /* A sparse index will store null in Array
       if (other->isNullValue()) {
         return false;
       }
+      */
     }
     else if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       // a.b == value  OR  a.b IN values

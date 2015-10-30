@@ -3140,6 +3140,10 @@ static void JS_UseDatabase (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
+  if (TRI_IsDeletedVocBase(vocbase)) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
   if (TRI_EqualString(name.c_str(), vocbase->_name)) {
     // same database. nothing to do
     TRI_V8_RETURN(WrapVocBase(isolate, vocbase));

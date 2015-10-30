@@ -834,6 +834,20 @@ namespace triagens {
           return *this;
         }
 
+        bool unset (char const* name) {
+          if (! TRI_IsObjectJson(_json)) {
+            throw JsonException("Json is no object");
+          }
+          return TRI_DeleteObjectJson(TRI_MemoryZone(_zone), _json, name);
+        }
+
+        bool unset (std::string const& name) {
+          if (! TRI_IsObjectJson(_json)) {
+            throw JsonException("Json is no object");
+          }
+          return TRI_DeleteObjectJson(TRI_MemoryZone(_zone), _json, name.c_str());
+        }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set an attribute value in an object, an exception is thrown if
 /// *this is not a Json object. The pointer sub is integrated into the

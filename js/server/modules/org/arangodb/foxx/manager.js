@@ -570,7 +570,6 @@ function uploadToPeerCoordinators(appInfo, coordinators) {
     coordTransactionID: ArangoClusterInfo.uniqid()
   };
   let req = fs.readBuffer(fs.join(fs.getTempPath(), appInfo));
-  console.log(appInfo, req);
   let httpOptions = {};
   let mapping = {};
   for (let i = 0; i < coordinators.length; ++i) {
@@ -732,7 +731,6 @@ function installAppFromRemote(url, targetPath) {
 
   var urlObj = parseUrl(url);
   if (urlObj.auth) {
-    require('console').log('old path', url);
     auth = urlObj.auth.split(':');
     auth = {
       username: decodeURIComponent(auth[0]),
@@ -740,7 +738,6 @@ function installAppFromRemote(url, targetPath) {
     };
     delete urlObj.auth;
     url = formatUrl(urlObj);
-    require('console').log('new path', url);
   }
 
   try {

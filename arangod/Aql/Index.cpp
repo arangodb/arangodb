@@ -82,6 +82,9 @@ bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
                                      size_t itemsInIndex,
                                      size_t& estimatedItems,
                                      double& estimatedCost) const {
+  if (! hasInternals() ) {
+    return false;
+  }
   return getInternals()->supportsFilterCondition(node, reference, itemsInIndex, estimatedItems, estimatedCost);
 }
 
@@ -94,6 +97,9 @@ bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondi
                                    triagens::aql::Variable const* reference,
                                    size_t itemsInIndex,
                                    double& estimatedCost) const {
+  if (! hasInternals() ) {
+    return false;
+  }
   return getInternals()->supportsSortCondition(sortCondition, reference, itemsInIndex, estimatedCost);
 }
 
@@ -106,6 +112,7 @@ triagens::arango::IndexIterator* Index::getIterator (triagens::arango::IndexIter
                                                      triagens::aql::AstNode const* condition,
                                                      triagens::aql::Variable const* reference,
                                                      bool reverse) const {
+  TRI_ASSERT(hasInternals());
   return getInternals()->iteratorForCondition(context, ast, condition, reference, reverse);
 }
 
@@ -117,6 +124,7 @@ triagens::arango::IndexIterator* Index::getIterator (triagens::arango::IndexIter
 
 triagens::aql::AstNode* Index::specializeCondition (triagens::aql::AstNode* node,
                                                     triagens::aql::Variable const* reference) const {
+  TRI_ASSERT(hasInternals());
   return getInternals()->specializeCondition(node, reference);
 }
 

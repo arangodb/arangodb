@@ -153,9 +153,9 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "RANGE",                       Function("RANGE",                       "AQL_RANGE", "n,n|n", true, true, false, true, true) },
   { "UNION",                       Function("UNION",                       "AQL_UNION", "l,l|+", true, true, false, true, true, &Functions::Union) },
   { "UNION_DISTINCT",              Function("UNION_DISTINCT",              "AQL_UNION_DISTINCT", "l,l|+", true, true, false, true, true, &Functions::UnionDistinct) },
-  { "MINUS",                       Function("MINUS",                       "AQL_MINUS", "l,l|+", true, true, false, true, true) },
+  { "MINUS",                       Function("MINUS",                       "AQL_MINUS", "l,l|+", true, true, false, true, true, &Functions::Minus) },
   { "INTERSECTION",                Function("INTERSECTION",                "AQL_INTERSECTION", "l,l|+", true, true, false, true, true, &Functions::Intersection) },
-  { "FLATTEN",                     Function("FLATTEN",                     "AQL_FLATTEN", "l|n", true, true, false, true, true) },
+  { "FLATTEN",                     Function("FLATTEN",                     "AQL_FLATTEN", "l|n", true, true, false, true, true, &Functions::Flatten) },
   { "LENGTH",                      Function("LENGTH",                      "AQL_LENGTH", "las", true, true, false, true, true, &Functions::Length) },
   { "MIN",                         Function("MIN",                         "AQL_MIN", "l", true, true, false, true, true, &Functions::Min) },
   { "MAX",                         Function("MAX",                         "AQL_MAX", "l", true, true, false, true, true, &Functions::Max) },
@@ -192,16 +192,16 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "VALUES",                      Function("VALUES",                      "AQL_VALUES", "a|b", true, true, false, true, true, &Functions::Values) },
   { "MERGE",                       Function("MERGE",                       "AQL_MERGE", "la|+", true, true, false, true, true, &Functions::Merge) },
   { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE",             "AQL_MERGE_RECURSIVE", "a,a|+", true, true, false, true, true) },
-  { "DOCUMENT",                    Function("DOCUMENT",                    "AQL_DOCUMENT", "h.|.", false, false, true, false, true) },
+  { "DOCUMENT",                    Function("DOCUMENT",                    "AQL_DOCUMENT", "h.|.", false, false, true, false, true, &Functions::Document, NotInCluster) },
   { "MATCHES",                     Function("MATCHES",                     "AQL_MATCHES", ".,l|b", true, true, false, true, true) },
   { "UNSET",                       Function("UNSET",                       "AQL_UNSET", "a,sl|+", true, true, false, true, true, &Functions::Unset) },
   { "KEEP",                        Function("KEEP",                        "AQL_KEEP", "a,sl|+", true, true, false, true, true, &Functions::Keep) },
   { "TRANSLATE",                   Function("TRANSLATE",                   "AQL_TRANSLATE", ".,a|.", true, true, false, true, true) },
-  { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, true, false, true, true) },
+  { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, true, false, true, true, &Functions::Zip) },
 
   // geo functions
-  { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", true, false, true, false, true) },
-  { "WITHIN",                      Function("WITHIN",                      "AQL_WITHIN", "h,n,n,n|s", true, false, true, false, true) },
+  { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", true, false, true, false, true, &Functions::Near, NotInCluster) },
+  { "WITHIN",                      Function("WITHIN",                      "AQL_WITHIN", "h,n,n,n|s", true, false, true, false, true, &Functions::Within, NotInCluster) },
   { "WITHIN_RECTANGLE",            Function("WITHIN_RECTANGLE",            "AQL_WITHIN_RECTANGLE", "h,d,d,d,d", true, false, true, false, true) },
   { "IS_IN_POLYGON",               Function("IS_IN_POLYGON",               "AQL_IS_IN_POLYGON", "l,ln|nb", true, true, false, true, true) },
 
@@ -218,7 +218,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "GRAPH_TRAVERSAL",             Function("GRAPH_TRAVERSAL",             "AQL_GRAPH_TRAVERSAL", "s,als,s|a", false, false, true, false, false) },
   { "TRAVERSAL_TREE",              Function("TRAVERSAL_TREE",              "AQL_TRAVERSAL_TREE", "h,h,s,s,s|a", false, false, true, false, false) },
   { "GRAPH_TRAVERSAL_TREE",        Function("GRAPH_TRAVERSAL_TREE",        "AQL_GRAPH_TRAVERSAL_TREE", "s,als,s,s|a", false, false, true, false, false) },
-  { "EDGES",                       Function("EDGES",                       "AQL_EDGES", "h,s,s|l,o", true, false, true, false, false) },
+  { "EDGES",                       Function("EDGES",                       "AQL_EDGES", "h,s,s|l,o", true, false, true, false, false, &Functions::Edges, NotInCluster) },
   { "GRAPH_EDGES",                 Function("GRAPH_EDGES",                 "AQL_GRAPH_EDGES", "s,als|a", false, false, true, false, false) },
   { "GRAPH_VERTICES",              Function("GRAPH_VERTICES",              "AQL_GRAPH_VERTICES", "s,als|a", false, false, true, false, false) },
   { "NEIGHBORS",                   Function("NEIGHBORS",                   "AQL_NEIGHBORS", "h,h,s,s|l,a", true, false, true, false, false, &Functions::Neighbors, NotInCluster) },
@@ -270,7 +270,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, true, false, true, true) },
   { "FIRST_LIST",                  Function("FIRST_LIST",                  "AQL_FIRST_LIST", ".|+", true, true, false, true, true) },
   { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT",              "AQL_FIRST_DOCUMENT", ".|+", true, true, false, true, true) },
-  { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, true, false, true, true) },
+  { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, true, false, true, true, &Functions::ParseIdentifier) },
   { "CURRENT_USER",                Function("CURRENT_USER",                "AQL_CURRENT_USER", "", false, false, false, false, true) },
   { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false, false, true) }
 };
@@ -348,15 +348,8 @@ V8Expression* Executor::generateExpression (AstNode const* node) {
   // data and will not return any special JavaScript types such as Date, RegExp or
   // Function
   // as we know that all built-in AQL functions are simple but do not know anything
-  // about user-defined functions, we use the following approximation:
-  // - all user-defined functions are marked as potentially throwing
-  // - some of the internal functions are marked as potentially throwing
-  // - if an expression is marked as potentially throwing, it may contain a user-
-  //   defined function (which may be non-simple) and is thus considered non-simple
-  // - if an expression is marked as not throwing, it will not contain a user-
-  //   defined function but only internal AQL functions (which are simple) so the
-  //   whole expression is considered simple
-  bool isSimple = (! node->canThrow());
+  // about user-defined functions, so we expect them to be non-simple
+  bool const isSimple = (! node->callsUserDefinedFunction());
 
   return new V8Expression(isolate, v8::Handle<v8::Function>::Cast(func), constantValues, isSimple);
 }

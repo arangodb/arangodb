@@ -54,9 +54,9 @@ TRI_vocbase_t* GetContextVocBase (v8::Isolate* isolate) {
 
 v8::Handle<v8::Value> V8TickId (v8::Isolate* isolate, TRI_voc_tick_t tick) {
   char buffer[21];
-  size_t len = TRI_StringUInt64InPlace((uint64_t) tick, (char*) &buffer);
+  size_t len = TRI_StringUInt64InPlace(static_cast<uint64_t>(tick), &buffer[0]);
 
-  return TRI_V8_PAIR_STRING((char const*) buffer, (int) len);
+  return TRI_V8_PAIR_STRING(&buffer[0], static_cast<int>(len));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,9 +65,9 @@ v8::Handle<v8::Value> V8TickId (v8::Isolate* isolate, TRI_voc_tick_t tick) {
 
 v8::Handle<v8::Value> V8RevisionId (v8::Isolate* isolate, TRI_voc_rid_t rid) {
   char buffer[21];
-  size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
+  size_t len = TRI_StringUInt64InPlace(static_cast<uint64_t>(rid), &buffer[0]);
 
-  return TRI_V8_PAIR_STRING((char const*) buffer, (int) len);
+  return TRI_V8_PAIR_STRING(&buffer[0], static_cast<int>(len));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,9 +75,9 @@ v8::Handle<v8::Value> V8RevisionId (v8::Isolate* isolate, TRI_voc_rid_t rid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> V8DocumentId (v8::Isolate* isolate,
-                                    string const& collectionName,
-                                    string const& key) {
-  string const&& id = DocumentHelper::assembleDocumentId(collectionName, key);
+                                    std::string const& collectionName,
+                                    std::string const& key) {
+  std::string const&& id = DocumentHelper::assembleDocumentId(collectionName, key);
 
   return TRI_V8_STD_STRING(id);
 }
@@ -87,7 +87,7 @@ v8::Handle<v8::Value> V8DocumentId (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
-                                 string& collectionName,
+                                 std::string& collectionName,
                                  std::unique_ptr<char[]>& key) {
   TRI_ASSERT(collectionName.empty());
 

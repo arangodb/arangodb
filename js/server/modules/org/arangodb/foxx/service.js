@@ -272,6 +272,7 @@ class FoxxService {
       path: this.path,
       options: this.options,
       mount: this.mount,
+      root: this.root,
       isSystem: this.isSystem,
       isDevelopment: this.isDevelopment
     };

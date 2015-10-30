@@ -35,14 +35,6 @@ using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
     
 bool ConditionFinder::before (ExecutionNode* en) {
-  if (! _variableDefinitions.empty() && en->canThrow()) {
-    // we already found a FILTER and
-    // something that can throw is not safe to optimize
-    _filters.clear();
-    _sorts.clear();
-    return true;
-  }
-
   switch (en->getType()) {
     case EN::ENUMERATE_LIST:
     case EN::AGGREGATE:
@@ -149,6 +141,11 @@ bool ConditionFinder::before (ExecutionNode* en) {
       if (condition->removeInvalidVariables(varsValid)) {
         // removing left a previously non-empty OR block empty...
         // this means we can't use the index to restrict the results
+        break;
+      }
+  
+      if (condition->root() && condition->root()->canThrow()) {
+        // something that can throw is not safe to optimize
         break;
       }
     

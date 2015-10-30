@@ -93,12 +93,12 @@ PathBasedIndex::PathBasedIndex (TRI_idx_iid_t iid,
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-PathBasedIndex::PathBasedIndex (TRI_json_t const* json)
+PathBasedIndex::PathBasedIndex (TRI_json_t const* json, bool allowPartialIndex)
   : Index(json),
     _shaper(nullptr),
     _paths(),
     _useExpansion(false),
-    _allowPartialIndex(triagens::basics::JsonHelper::getBooleanValue(json, "allowPartialIndex", false)) {
+    _allowPartialIndex(allowPartialIndex) {
 
   TRI_ASSERT(! _fields.empty());
 
@@ -310,13 +310,14 @@ void PathBasedIndex::buildIndexValues (TRI_shaped_json_t const* documentShape,
       if (! check || shape == nullptr || shapedJson._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
         // attribute not, found
         bool expandAnywhere = false;
-        for (size_t k = 0; k < n; ++k) {
+        size_t k = 0;
+        for (; k < n; ++k) {
           if (_paths[level][k].second) {
             expandAnywhere = true;
             break;
           }
         }
-        if (expandAnywhere && (i < n - 1 || ! check || shape == nullptr ) ) {
+        if (expandAnywhere && i <= k) {
           // We have an array index and we are not evaluating the indexed attribute.
           // Do not index this attribute at all
           if (level == 0) {

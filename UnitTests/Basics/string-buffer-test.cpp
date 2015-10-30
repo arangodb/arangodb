@@ -480,8 +480,6 @@ BOOST_AUTO_TEST_CASE (tst_clear) {
   const char* ptr = TRI_BeginStringBuffer(&sb);
   TRI_ClearStringBuffer(&sb);
   BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
-  // clang 5.1 failes without the cast
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) TRI_LastCharStringBuffer(&sb));
 
   // buffer should still point to ptr
   BOOST_CHECK_EQUAL((void*) ptr, (void*) TRI_BeginStringBuffer(&sb));
@@ -531,9 +529,6 @@ BOOST_AUTO_TEST_CASE (tst_last_char) {
 
   TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
 
-  // clang 5.1 failes without the cast
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) TRI_LastCharStringBuffer(&sb));
-
   TRI_AppendStringStringBuffer(&sb, "f");
   BOOST_CHECK_EQUAL((unsigned int) 'f', (unsigned int) TRI_LastCharStringBuffer(&sb));
 
@@ -544,7 +539,7 @@ BOOST_AUTO_TEST_CASE (tst_last_char) {
   BOOST_CHECK_EQUAL((unsigned int) '\n', (unsigned int) TRI_LastCharStringBuffer(&sb));
 
   TRI_ClearStringBuffer(&sb);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) TRI_LastCharStringBuffer(&sb));
+  BOOST_CHECK_EQUAL(0, (int) TRI_LengthStringBuffer(&sb));
   
   for (size_t i = 0; i < 100; ++i) {
     TRI_AppendStringStringBuffer(&sb, "the quick brown fox jumped over the lazy dog");
@@ -554,7 +549,6 @@ BOOST_AUTO_TEST_CASE (tst_last_char) {
   BOOST_CHECK_EQUAL((unsigned int) '.', (unsigned int) TRI_LastCharStringBuffer(&sb));
   
   TRI_AnnihilateStringBuffer(&sb);
-  BOOST_CHECK_EQUAL((unsigned int) '\0', (unsigned int) TRI_LastCharStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }

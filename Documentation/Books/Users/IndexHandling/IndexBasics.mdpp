@@ -307,6 +307,10 @@ The following query will then use the array index:
       FILTER 'foobar' IN doc.tags[*].name
       RETURN doc
 
+If you store a document having the array which does contain elements not having
+the subattributes this document will also be indexed with the value `null`, which
+in ArangoDB is equal to attribute not existing.
+
 ArangoDB supports creating array indexes with a single <i>[\*]</i> operator per index 
 attribute. For example, creating an index as follows is not supported:
 
@@ -322,8 +326,46 @@ value `bar` will be inserted only once:
 db.posts.insert({ tags: [ "foobar", "bar", "bar" ] });
 ```
 
-If an array index is declared unique, the de-duplication of array values will happen before 
+If an array index is declared **unique**, the de-duplication of array values will happen before 
 inserting the values into the index, so the above insert operation will not necessarily fail.
 It will fail if the index already contains an instance of the `bar` value, but will succeed 
 if the value `bar` is not already present in the index.
 
+If an array index is declared and you store documents that do not have an array at the specified attribute
+this document will not be inserted in the index. Hence the following objects will not be indexed:
+
+```js
+db.posts.ensureIndex({ type: "hash", fields: [ "tags[*]" ] });
+db.posts.insert({ something: "else" });
+db.posts.insert({ tags: null });
+db.posts.insert({ tags: "this is no array" });
+db.posts.insert({ tags: { content: [1, 2, 3] } });
+```
+
+An array index is able to index an explicit `null` value and when queried for it, it will only
+return those documents having explicitly `null` stored in the array, it will not return any
+documents that do not have the array at all.
+
+```js
+db.posts.ensureIndex({ type: "hash", fields: [ "tags[*]" ] });
+db.posts.insert({tags: null}) // Will not be indexed
+db.posts.insert({tags: []})  // Will not be indexed
+db.posts.insert({tags: [null]}); // Will be indexed for null
+db.posts.insert({tags: [null, 1, 2]}); // Will be indexed for null, 1 and 2
+```
+
+Declaring an array index as **sparse** does not have an effect on the array part of the index,
+this in particular means that explicit `null` values are also indexed in the **sparse** version.
+If an index is combined from an array and a normal attribute the sparsity will apply for the attribute e.g.:
+
+```js
+db.posts.ensureIndex({ type: "hash", fields: [ "tags[*]", "name" ], sparse: true });
+db.posts.insert({tags: null, name: "alice"}) // Will not be indexed
+db.posts.insert({tags: [], name: "alice"}) // Will not be indexed
+db.posts.insert({tags: [1, 2, 3]}) // Will not be indexed
+db.posts.insert({tags: [1, 2, 3], name: null}) // Will not be indexed
+db.posts.insert({tags: [1, 2, 3], name: "alice"})
+// Will be indexed for [1, "alice"], [2, "alice"], [3, "alice"]
+db.posts.insert({tags: [null], name: "bob"})
+// Will be indexed for [null, "bob"] 
+```
