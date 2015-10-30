@@ -3027,6 +3027,106 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function ROUND
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Round (triagens::aql::Query* query,
+                          triagens::arango::AqlTransaction* trx,
+                          FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int) 1, (int) 1);
+  }
+
+  Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  double input = TRI_ToDoubleJson(inputJson.json());
+  input = round(input);
+  return AqlValue(new Json(input));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function ABS
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Abs (triagens::aql::Query* query,
+                         triagens::arango::AqlTransaction* trx,
+                         FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int) 1, (int) 1);
+  }
+
+  Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  double input = TRI_ToDoubleJson(inputJson.json());
+  input = std::abs(input);
+  return AqlValue(new Json(input));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function ABS
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Ceil (triagens::aql::Query* query,
+                          triagens::arango::AqlTransaction* trx,
+                          FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int) 1, (int) 1);
+  }
+
+  Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  double input = TRI_ToDoubleJson(inputJson.json());
+  input = ceil(input);
+  return AqlValue(new Json(input));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function ABS
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Floor (triagens::aql::Query* query,
+                          triagens::arango::AqlTransaction* trx,
+                          FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int) 1, (int) 1);
+  }
+
+  Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  double input = TRI_ToDoubleJson(inputJson.json());
+  input = floor(input);
+  return AqlValue(new Json(input));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function ABS
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Sqrt (triagens::aql::Query* query,
+                          triagens::arango::AqlTransaction* trx,
+                          FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int) 1, (int) 1);
+  }
+
+  Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  double input = TRI_ToDoubleJson(inputJson.json());
+  input = sqrt(input);
+  return AqlValue(new Json(input));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
