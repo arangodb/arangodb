@@ -144,9 +144,9 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   // numeric functions
   { "FLOOR",                       Function("FLOOR",                       "AQL_FLOOR", "n", true, true, false, true, true, &Functions::Floor) },
   { "CEIL",                        Function("CEIL",                        "AQL_CEIL", "n", true, true, false, true, true, &Functions::Ceil) },
-  { "ROUND",                       Function("ROUND",                       "AQL_ROUND", "n", true, true, false, true, true) },
+  { "ROUND",                       Function("ROUND",                       "AQL_ROUND", "n", true, true, false, true, true, &Functions::Round) },
   { "ABS",                         Function("ABS",                         "AQL_ABS", "n", true, true, false, true, true, &Functions::Abs) },
-  { "RAND",                        Function("RAND",                        "AQL_RAND", "", false, false, false, true, true) },
+  { "RAND",                        Function("RAND",                        "AQL_RAND", "", false, false, false, true, true, &Functions::Rand) },
   { "SQRT",                        Function("SQRT",                        "AQL_SQRT", "n", true, true, false, true, true, &Functions::Sqrt) },
   
   // list functions

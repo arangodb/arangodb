@@ -3043,7 +3043,7 @@ AqlValue Functions::Round (triagens::aql::Query* query,
   Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
 
   double input = TRI_ToDoubleJson(inputJson.json());
-  input = round(input);
+  input = floor(input + 0.5); // Rounds down for < x.4999 and up for > x.50000
   return AqlValue(new Json(input));
 }
 
@@ -3057,7 +3057,7 @@ AqlValue Functions::Abs (triagens::aql::Query* query,
   size_t const n = parameters.size();
 
   if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int) 1, (int) 1);
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ABS", (int) 1, (int) 1);
   }
 
   Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
@@ -3068,7 +3068,7 @@ AqlValue Functions::Abs (triagens::aql::Query* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function ABS
+/// @brief function CEIL
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Ceil (triagens::aql::Query* query,
@@ -3077,7 +3077,7 @@ AqlValue Functions::Ceil (triagens::aql::Query* query,
   size_t const n = parameters.size();
 
   if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int) 1, (int) 1);
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "CEIL", (int) 1, (int) 1);
   }
 
   Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
@@ -3088,7 +3088,7 @@ AqlValue Functions::Ceil (triagens::aql::Query* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function ABS
+/// @brief function FLOOR
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Floor (triagens::aql::Query* query,
@@ -3097,7 +3097,7 @@ AqlValue Functions::Floor (triagens::aql::Query* query,
   size_t const n = parameters.size();
 
   if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int) 1, (int) 1);
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "FLOOR", (int) 1, (int) 1);
   }
 
   Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
@@ -3108,7 +3108,7 @@ AqlValue Functions::Floor (triagens::aql::Query* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function ABS
+/// @brief function SQRT
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Sqrt (triagens::aql::Query* query,
@@ -3117,7 +3117,7 @@ AqlValue Functions::Sqrt (triagens::aql::Query* query,
   size_t const n = parameters.size();
 
   if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int) 1, (int) 1);
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "SQRT", (int) 1, (int) 1);
   }
 
   Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
@@ -3125,6 +3125,24 @@ AqlValue Functions::Sqrt (triagens::aql::Query* query,
   double input = TRI_ToDoubleJson(inputJson.json());
   input = sqrt(input);
   return AqlValue(new Json(input));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function RAND
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Rand (triagens::aql::Query* query,
+                          triagens::arango::AqlTransaction* trx,
+                          FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 0) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "RAND", (int) 0, (int) 0);
+  }
+
+  // This Random functionality is not too good yet...
+  double output = static_cast<double>(std::rand()) / RAND_MAX;
+  return AqlValue(new Json(output));
 }
 
 // -----------------------------------------------------------------------------
