@@ -55,7 +55,6 @@ config/stamp-h1
 configure
 core
 TAGS
-tags
 
 CMakeCache.txt
 CMakeFiles/
