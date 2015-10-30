@@ -8,50 +8,50 @@
 * License: Boost [boost software license](http://www.boost.org/LICENSE_1_0.txt)
 * License: argument_value_usage.hpp [free as-is license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/boost/1.58.0/boost/test/utils/runtime/cla/detail/argument_value_usage.hpp)
 
+### fpconv_dtoa
+
+* GITHUB: https://github.com/night-shift/fpconv/
+* License: [MIT License](https://github.com/night-shift/fpconv/blob/master/license)
+
 ### Google V8 4.3.61
 
 * Project Home: https://code.google.com/p/v8/
 * GITHUB: https://github.com/v8/v8
-* License Overview: [https://github.com/v8/v8/blob/4.3.61/LICENSE](https://github.com/v8/v8/blob/4.3.61/LICENSE)
-* License: V8 [free as-is license](https://github.com/v8/v8/blob/4.3.61/LICENSE.v8)
-* License: strongtalk [free as-is license](https://github.com/v8/v8/blob/4.3.61/LICENSE.strongtalk)
-* License: valgrind [BSD-style license](https://github.com/v8/v8/blob/4.3.61/LICENSE.valgrind)
-* License: vtune, Dual-License [BSD license](https://github.com/v8/v8/blob/4.3.61/src/third_party/vtune/v8-vtune.h)
-* License: gmock [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gmock/LICENSE)
-* License: gtest [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gtest/LICENSE)
+* License: V8 [BSD-style 3-Clause License](https://github.com/v8/v8/blob/4.3.61/LICENSE.v8)
+* License: strongtalk [BSD-style 3-Clause License](https://github.com/v8/v8/blob/4.3.61/LICENSE.strongtalk)
+* License: valgrind [BSD-style 4-Clause license](https://github.com/v8/v8/blob/4.3.61/LICENSE.valgrind)
+* License: vtune, Dual-License [BSD 3-Clause License](https://github.com/v8/v8/blob/4.3.61/src/third_party/vtune/v8-vtune.h)
+* License: gmock [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gmock/LICENSE)
+* License: gtest [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8-4.3.61/testing/gtest/LICENSE)
 * License: fdlibm [free as-is license](https://github.com/v8/v8/blob/4.3.61/src/third_party/fdlibm/LICENSE)
-* License: PCRE [BSD license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/regexp-pcre.js)
-* License: object-keys [free as-is license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/object-keys.js) 
+* License: PCRE [BSD 3-Clause license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/regexp-pcre.js)
+* License: object-keys [BSD-style 3-Clause license](https://github.com/v8/v8/blob/4.3.61/test/mjsunit/third_party/object-keys.js) 
 
 ### ICU 54.1
 
 * Project Home: http://site.icu-project.org/
 * License: [ICU License](http://source.icu-project.org/repos/icu/icu/trunk/license.html)
 
-### fpconv_dtoa
-
-* GITHUB: https://github.com/night-shift/fpconv/
-* License: [MIT License](https://raw.githubusercontent.com/night-shift/fpconv/master/license)
-
 ### libev 4.11
 
 * Project Home: http://software.schmorp.de/pkg/libev.html
-* License: Dual-License [free as-is license](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
+* License: Dual-License [BSD-style 2-Clause License](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
 
 ### linenoise
 
-* Project Home: https://github.com/antirez/linenoise
-* License: [free as-is license](https://raw.githubusercontent.com/antirez/linenoise/master/LICENSE)
+* GITHUB: https://github.com/antirez/linenoise
+* License: [BSD-style 2-Clause License](https://github.com/antirez/linenoise/blob/master/LICENSE)
 
 ### Valgrind
 
 * Project Home: http://valgrind.org/
-* valgrind.h header file only
-* License: [BSD-style license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/valgrind/valgrind.h)
+* uses valgrind.h header file only, none of the other files
+* License: [BSD-style 4-Clause license](https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/valgrind/valgrind.h)
 
 ### zlib 1.2.7
 
-* License: [free as-is license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/zlib-1.2.7/README#L85)
+* Project Home: http://www.zlib.net/
+* License: [free as-is license](http://www.zlib.net/zlib_license.html)
 
 ## Programs
 
@@ -59,19 +59,20 @@
 
 * Project Home: http://www.gnu.org/software/autoconf/autoconf.html
 * only used to generate code, not part of the distribution
-* License: [configure](https://github.com/arangodb/arangodb/blob/master/configure#L11) [ax_cxx_compile_stdcxx_11.m4](https://github.com/arangodb/arangodb/blob/master/m4/ax_cxx_compile_stdcxx_11.m4#L25)
+* License: configure [free as-is license](https://github.com/arangodb/arangodb/blob/master/configure#L11)
+* License: ax_cxx_compile_stdcxx_11.m4 [free as-is license](https://github.com/arangodb/arangodb/blob/master/m4/ax_cxx_compile_stdcxx_11.m4#L25)
 
 ### automake
 
-* Project  https://www.gnu.org/software/automake/
+* Project Home: https://www.gnu.org/software/automake/
 * only used to generate code, not part of the distribution
-* License: [Makefile.in](https://raw.githubusercontent.com/arangodb/arangodb/master/Makefile.in)
+* License: Makefile.in [free as-is license](https://raw.githubusercontent.com/arangodb/arangodb/master/Makefile.in)
 
 ### Bison 3.0
 
 * Project Home: https://www.gnu.org/software/bison/
 * only used to generate code, not part of the distribution; for details about using Bison in this way see http://www.gnu.org/software/bison/manual/bison.html#Conditions
-* License: [grammar.cpp](https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20)
+* License: grammar.cpp [Special License](https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20)
 
 ### CoreOS etcd
 
@@ -89,155 +90,167 @@
 ### Node core modules
 
 * Project Home: http://nodejs.org
-* License: Node MIT License [_stream_duplex.js,_stream_passthrough.js,_stream_readable.js,_stream_transform.js,_stream_writable.js,events.js,querystring.js,stream.js,string_decoder.js,url.js](https://raw.githubusercontent.com/joyent/node/v0.10.33/LICENSE), MIT [punycode.js](https://raw.githubusercontent.com/joyent/node/v0.10.33/LICENSE)
+* GITHUB: https://github.com/nodejs/node
+* License: [MIT-style License](https://github.com/nodejs/node/blob/master/LICENSE) for the files _stream_duplex.js, _stream_passthrough.js, _stream_readable.js, _stream_transform.js, _stream_writable.js, event.js, querystring.js, stream.js, string_decoder.js, url.js
+* License: punycode.js [MIT License](https://github.com/bestiejs/punycode.js/blob/master/LICENSE-MIT.txt)
 
 ### Bundled NPM modules
 
 #### Ace
 
-* Project Home: https://github.com/ajaxorg/ace
-* License: [BSD 3-Clause License](https://raw.githubusercontent.com/ajaxorg/ace/master/LICENSE)
+* GITHUB: https://github.com/ajaxorg/ace
+* License: [BSD-style 3-Clause License](https://github.com/ajaxorg/ace/blob/master/LICENSE)
 
 #### ArangoDB Query Builder
 
 * Project Home: https://github.com/arangodb/aqbjs
-* License: [Apache 2](https://raw.githubusercontent.com/arangodb/aqbjs/master/LICENSE)
+* License: [Apache 2 License](https://github.com/arangodb/aqbjs/blob/master/LICENSE)
 
 #### Chai
 
 * Project Home: http://chaijs.com
+* GITHUB: https://github.com/chaijs/chai
 * License: [MIT License](https://github.com/chaijs/chai/blob/master/README.md)
 
 #### CoffeeScript
 
 * Project Home: http://coffeescript.org
-* License: [MIT License](https://www.npmjs.com/package/coffee-script)
+* GIUTHUB: https://github.com/jashkenas/coffeescript
+* License: [MT-style License](https://github.com/jashkenas/coffeescript/blob/master/LICENSE)
 
 #### expect.js
 
-* Project Home: https://github.com/Automattic/expect.js
+* GITHUB: https://github.com/Automattic/expect.js
 * License: [MIT License](https://github.com/Automattic/expect.js/blob/master/README.md)
 
 #### extendible
 
-* Project Home: https://github.com/3rd-Eden/extendible
+* GITHUB: https://github.com/3rd-Eden/extendible
 * License: [MIT License](https://github.com/bigpipe/extendible/blob/master/README.md)
 
 #### Foxx Generator
 
-* Project Home: https://github.com/moonglum/foxx_generator
-* License: [Apache 2 License](https://raw.githubusercontent.com/moonglum/foxx_generator/master/LICENSE)
+* GITHUB: https://github.com/moonglum/foxx_generator
+* License: [Apache 2 License](https://github.com/moonglum/foxx_generator/blob/master/LICENSE)
 
 #### highlight.js
 
 * Project Home: https://highlightjs.org
-* License: [BSD 3-Clause License](https://raw.githubusercontent.com/isagalaev/highlight.js/master/LICENSE)
+* GITHUB: https://github.com/isagalaev/highlight.js
+* License: [BSD-style 3-Clause License](https://github.com/isagalaev/highlight.js/blob/master/LICENSE)
 
 #### http-errors
 
-* Project Home: https://github.com/jshttp/http-errors
-* License: [MIT License](https://raw.githubusercontent.com/jshttp/http-errors/master/LICENSE)
+* GITHUB: https://github.com/jshttp/http-errors
+* License: [MIT License](https://github.com/jshttp/http-errors/blob/master/LICENSE)
 
 #### inflect
 
-* Project Home: https://github.com/pksunkara/inflect
-* License: [MIT License](https://raw.githubusercontent.com/pksunkara/inflect/master/LICENSE)
+* GITHUB: https://github.com/pksunkara/inflect
+* License: [MIT-style License](https://github.com/pksunkara/inflect/blob/master/LICENSE)
 
 #### Jasmine
 
 * Project Home: https://jasmine.github.io
-* License: [MIT License](https://raw.githubusercontent.com/jasmine/jasmine/master/MIT.LICENSE)
+* GITHUB: https://github.com/jasmine/jasmine
+* License: [MIT License](https://github.com/jasmine/jasmine/blob/master/MIT.LICENSE)
 
 #### Joi
 
-* Project Home: https://github.com/hapijs/joi
-* License: [BSD 3-Clause License](https://raw.githubusercontent.com/hapijs/joi/master/LICENSE)
+* GITHUB: https://github.com/hapijs/joi
+* License: [BSD-style 3-Clause License](https://github.com/hapijs/joi/blob/master/LICENSE)
+
+#### JS-YAML
+
+* GITHUB: https://github.com/nodeca/js-yaml
+* License: [MIT License](https://github.com/nodeca/js-yaml/blob/master/LICENSE)
 
 #### JSHint
 
 * Project Home: http://jshint.com
-* License: [MIT License](https://raw.githubusercontent.com/jshint/jshint/master/LICENSE)
+* GITHUB: https://github.com/jshint/jshint
+* License: [MIT-style License](https://github.com/jshint/jshint/blob/master/LICENSE)
 
 #### JSUnity
 
-* Project Home: https://github.com/atesgoral/jsunity
-* License: [MIT License](http://www.opensource.org/licenses/mit-license.php)
+* GITHUB: https://github.com/atesgoral/jsunity
+* License: [MIT License](https://github.com/atesgoral/jsunity/blob/master/LICENSE.txt)
 
 #### minimatch
 
-* Project Home: https://github.com/isaacs/minimatch
-* License: [MIT License](https://raw.githubusercontent.com/isaacs/minimatch/master/LICENSE)
+* GITHUB: https://github.com/isaacs/minimatch
+* License: [ISC License](https://github.com/isaacs/minimatch/blob/master/LICENSE)
 
 #### mocha
 
 * Project Home: http://mochajs.org
-* License: [MIT License](https://raw.githubusercontent.com/mochajs/mocha/master/LICENSE)
+* GITHUB: https://github.com/mochajs/mocha
+* License: [MIT License](https://github.com/mochajs/mocha/blob/master/LICENSE)
+
+#### node-semver
+
+* GITHUB: https://github.com/npm/node-semver
+* License: [ISC License](https://github.com/npm/node-semver/blob/master/LICENSE)
 
 #### qs
 
-* Project Home: https://github.com/hapijs/qs
-* License: [BSD 3-Clause License](https://raw.githubusercontent.com/hapijs/hapi/master/LICENSE)
+* GITHUB: https://github.com/hapijs/qs
+* License: [BSD-style 3-Clause License](https://github.com/hapijs/qs/blob/master/LICENSE)
 
 #### Ramda
 
 * Project Home: http://ramdajs.com
-* License: [MIT License](https://raw.githubusercontent.com/ramda/ramda/master/LICENSE.txt)
-
-#### semver
-
-* Project Home: https://github.com/npm/node-semver
-* License: [BSD 2-Clause License](http://opensource.org/licenses/BSD-2-Clause)
+* GITHUB: https://github.com/ramda/ramda
+* License: [MIT License](https://github.com/ramda/ramda/blob/master/LICENSE.txt)
 
 #### Sinon.JS
 
 * Project Home: http://sinonjs.org
-* License: [BSD 3-Clause License](https://www.npmjs.com/package/sinon)
+* GITHUB: https://github.com/sinonjs/sinon
+* License: [BSD 3-Clause License](https://github.com/sinonjs/sinon/blob/master/LICENSE)
 
 #### stacktrace.js
 
-* Project Home: http://www.stacktracejs.com/
-* License: [The Unlicense](http://unlicense.org)
+* Project Home: 
+* GITHUB: https://github.com/stacktracejs/stacktrace.js
+* License: [The Unlicense](https://github.com/stacktracejs/stacktrace.js/blob/master/LICENSE), see http://unlicense.org
 
 #### underscore
 
 * Project Home: http://underscorejs.org
-* License: [MIT License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
-
-#### YAML
-
-* https://github.com/nodeca/js-yaml
-* [MIT License](https://raw.githubusercontent.com/nodeca/js-yaml/master/LICENSE)
+* GITHUB: https://github.com/jashkenas/underscore
+* License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
 
 ### Frontend libraries
-
-#### Swagger UI
-
-* Project Home: http://swagger.io
-* GITHUB: https://github.com/swagger-api/swagger-ui
-* License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE
 
 #### Backbone.js
 
 * Project Home: http://backbonejs.org
 * GITHUB: https://github.com/jashkenas/backbone
-* [MIT License](https://raw.githubusercontent.com/jashkenas/backbone/master/LICENSE)
+* License: [MIT-style License](https://github.com/jashkenas/backbone/blob/master/LICENSE)
 
 #### Bootstrap
 
 * Project Home: http://getbootstrap.com
+* GITHUB: https://github.com/twbs/bootstrap
 * License: [MIT License](https://github.com/twbs/bootstrap/blob/master/LICENSE)
+
+#### Crypto.js
+
+* GITHUB: https://github.com/brix/crypto-js
+* License: [MIT License](https://github.com/brix/crypto-js/blob/develop/README.md) under "License"
 
 #### D3js
 
 * Project Home: http://d3js.org
 * GITHUB: https://github.com/mbostock/d3
-* License: [BSD 3-Clause License](https://raw.githubusercontent.com/mbostock/d3/master/LICENSE)
+* License: [BSD-style 3-Clause License](https://github.com/mbostock/d3/blob/master/LICENSE)
 
 #### dygraph
 
 * Project Home: http://dygraphs.com
 * GITHUB: https://github.com/danvk/dygraphs
-* License: [MIT License](https://raw.githubusercontent.com/danvk/dygraphs/master/LICENSE.txt)
+* License: [MIT-style License](https://github.com/danvk/dygraphs/blob/master/LICENSE.txt)
 
 #### Embedded JS
 
@@ -246,71 +259,74 @@
 
 #### jq-console
 
+* Project Home: http://replit.github.io/jq-console/
 * GITHUB: https://github.com/replit/jq-console
 * License: [MIT License](https://github.com/replit/jq-console/blob/master/README.md)
 
 #### jQuery
 
 * Project Home: http://jquery.com
-* GITHUB: https://raw.githubusercontent.com/jquery/jquery/master/LICENSE.txt
-* License: [MIT License](https://raw.githubusercontent.com/jquery/jquery/master/LICENSE.txt)
-
-#### jQuery UI
-
-* http://jqueryui.com
-* [MIT License](https://raw.githubusercontent.com/jquery/jquery-ui/master/LICENSE.txt)
-
-#### jQuery Snippet 
-
-* http://steamdev.com/snippet
-* [MIT License](https://web.archive.org/web/20150817084109/http://steamdev.com/snippet/) in "section 5"
-
-#### jQuery Hotkeys
-
-* https://code.google.com/p/js-hotkeys/
-* [MIT License](https://code.google.com/p/js-hotkeys/) under "Code license"
+* GITHUB: https://github.com/jquery/jquery
+* License: [MIT-style License](https://github.com/jquery/jquery/blob/master/LICENSE.txt)
 
 #### jQuery Contextmenu
 
-* https://github.com/swisnl/jQuery-contextMenu
-* [MIT License](https://github.com/swisnl/jQuery-contextMenu) under "License"
+* GITHUB: https://github.com/swisnl/jQuery-contextMenu
+* License: [MIT License](https://github.com/swisnl/jQuery-contextMenu/blob/master/README.md) under "License"
 
 #### jQuery Form
 
-* https://github.com/malsup/form/
-* [MIT License](https://github.com/malsup/form/) under "Copyright and License"
+* GITHUB: https://github.com/malsup/form/
+* License: Dual License [MIT License](https://github.com/malsup/form/blob/master/README.md) under "Copyright and License"
 
-#### jQuery UploadFile
+#### jQuery Hotkeys
 
-* https://github.com/hayageek/jquery-upload-file/
-* [MIT License](https://raw.githubusercontent.com/hayageek/jquery-upload-file/master/MIT-License.txt)
+* GITHUB: https://github.com/jeresig/jquery.hotkeys
+* License: Dual License [MIT License](https://github.com/jeresig/jquery.hotkeys/blob/master/jquery.hotkeys.js)
 
-#### jQuery Textfill
+#### jQuery Snippet 
 
-* https://github.com/jquery-textfill/jquery-textfill
-* [MIT License](https://raw.githubusercontent.com/jquery-textfill/jquery-textfill/master/COPYING.md)
+* Archived Project Home: https://web.archive.org/web/20150908173503/http://www.steamdev.com/snippet/
+* License: [MIT License](https://web.archive.org/web/20150817084109/http://steamdev.com/snippet/) in "Notes, section 5"
 
 #### jQuery Strftime
 
-* https://github.com/samsonjs/strftime
-* [MIT License](https://github.com/samsonjs/strftime) under "License"
+* GITHUB: https://github.com/samsonjs/strftime
+* License: [MIT License](https://github.com/samsonjs/strftime/blob/master/Readme.md) under "License"
 
-#### nvd3
+#### jQuery Textfill
 
-* https://github.com/novus/nvd3
-* [Apache 2 License](https://github.com/novus/nvd3/blob/master/LICENSE.md) under "nvd3.js"
+* GITHUB: https://github.com/jquery-textfill/jquery-textfill
+* Licensd: [MIT License](https://github.com/jquery-textfill/jquery-textfill/blob/master/README.md)
+
+#### jQuery UI
+
+* Project Home: http://jqueryui.com
+* GITHUB: https://github.com/jquery/jquery-ui
+* License: [MIT-style License](https://github.com/jquery/jquery-ui/blob/master/LICENSE.txt)
+
+#### jQuery UploadFile
+
+* GITHUB: https://github.com/hayageek/jquery-upload-file/
+* License: [MIT License](https://github.com/hayageek/jquery-upload-file/blob/master/MIT-License.txt)
 
 #### jsoneditor.js
 
-* https://github.com/josdejong/jsoneditor/
-* [Apache 2 License](https://raw.githubusercontent.com/josdejong/jsoneditor/master/LICENSE)
+* GITHUB: https://github.com/josdejong/jsoneditor/
+* License: [Apache 2 License](https://github.com/josdejong/jsoneditor/blob/master/LICENSE)
 
-#### Crypto.js
+#### nvd3
 
-* https://github.com/brix/crypto-js
-* [MIT License](https://github.com/brix/crypto-js) under "License"
+* GITHUB: https://github.com/novus/nvd3
+* License: [Apache 2 License](https://github.com/novus/nvd3/blob/master/LICENSE.md) under "nvd3.js"
 
 #### select2
 
-* https://github.com/select2/select2
-* [Apache 2 License](https://github.com/select2/select2)
+* GITHUB: https://github.com/select2/select2
+* License: [MIT License](https://github.com/select2/select2/blob/master/LICENSE.md)
+
+#### Swagger UI
+
+* Project Home: http://swagger.io
+* GITHUB: https://github.com/swagger-api/swagger-ui
+* License: [Apache 2 license](https://github.com/swagger-api/swagger-ui/blob/master/LICENSE)
