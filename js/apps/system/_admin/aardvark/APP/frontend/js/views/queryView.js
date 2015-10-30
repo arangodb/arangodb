@@ -459,7 +459,6 @@
 
         var inputEditor = ace.edit("aqlEditor");
         var saveName = $('#new-query-name').val();
-        var isUpdate = $('#modalButton1').text() === 'Update';
 
         if ($('#new-query-name').hasClass('invalid-input')) {
           return;
@@ -476,7 +475,7 @@
         $.each(this.customQueries, function (k, v) {
           if (v.name === saveName) {
             v.value = content;
-            quit = !isUpdate;
+            quit = true;
             return;
           }
         });
@@ -487,16 +486,10 @@
           return;
         }
 
-        if (! isUpdate) {
-          this.collection.add({
-            name: saveName,
-            value: content
-          });
-        }
-        else {
-          var toModifiy = this.collection.findWhere({name: saveName});
-          toModifiy.set("value", content);
-        }
+        this.collection.add({
+          name: saveName,
+          value: content
+        });
         this.collection.saveCollectionQueries();
 
         window.modalView.hide();
