@@ -335,3 +335,8 @@
 
 * https://github.com/needim/noty/
 * [MIT License](https://github.com/needim/noty) under "License"
+
+#### Animate.css
+
+* https://github.com/daneden/animate.css
+* [MIT License](https://github.com/daneden/animate.css) under "License"
