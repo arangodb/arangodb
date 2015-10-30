@@ -188,6 +188,8 @@
 
       var self = this;
 
+      console.log(this.model.get("path"));
+
       $(this.el).html(this.template.render({
         app: this.model,
         db: arangoHelper.currentDatabase(),

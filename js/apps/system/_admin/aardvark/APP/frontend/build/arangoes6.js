@@ -1986,6 +1986,7 @@ return exports;
     "ERROR_LEGEND_NOT_IN_WAL_FILE" : { "code" : 26, "message" : "internal error if a legend for a marker does not yet exist in the same WAL file" },
     "ERROR_FILE_EXISTS"            : { "code" : 27, "message" : "file exists" },
     "ERROR_LOCKED"                 : { "code" : 28, "message" : "locked" },
+    "ERROR_DEADLOCK"               : { "code" : 29, "message" : "deadlock detected" },
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" },
     "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" },
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" },
@@ -3597,8 +3598,8 @@ var helpArangoCollection = arangosh.createHelpHeadline("ArangoCollection help") 
   '  truncate()                            delete all documents              ' + "\n" +
   '  properties()                          show collection properties        ' + "\n" +
   '  drop()                                delete a collection               ' + "\n" +
-  '  load()                                load a collection into memory     ' + "\n" +
-  '  unload()                              unload a collection from memory   ' + "\n" +
+  '  load()                                load a collection                 ' + "\n" +
+  '  unload()                              unload a collection               ' + "\n" +
   '  rename(<new-name>)                    renames a collection              ' + "\n" +
   '  getIndexes()                          return defined indexes            ' + "\n" +
   '  refresh()                             refreshes the status and name     ' + "\n" +
