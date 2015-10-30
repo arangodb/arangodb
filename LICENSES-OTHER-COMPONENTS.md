@@ -283,6 +283,11 @@
 * https://github.com/josdejong/jsoneditor/
 * [Apache 2 License](https://raw.githubusercontent.com/josdejong/jsoneditor/master/LICENSE)
 
+#### Noty
+
+* https://github.com/needim/noty/
+* [MIT License](https://github.com/needim/noty) under "License"
+
 #### Crypto.js
 
 * https://github.com/brix/crypto-js

@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, templateEngine, $, window*/
+/*global Backbone, templateEngine, $, window, noty */
 (function () {
   "use strict";
 
@@ -32,6 +32,8 @@
     },
 
     removeAllNotifications: function () {
+      $.noty.clearQueue();
+      $.noty.closeAll();
       this.collection.reset();
       $('#notification_menu').hide();
     },
@@ -41,7 +43,53 @@
       this.collection.get(cid).destroy();
     },
 
-    renderNotifications: function() {
+    renderNotifications: function(a, b, event) {
+
+      if (event) {
+        if (event.add) {
+          var latestModel = this.collection.at(this.collection.length - 1),
+          message = latestModel.get('title'),
+          time = 3000;
+
+          if (latestModel.get('content')) {
+            message = message + ": " + latestModel.get('content');
+          }
+
+          if (latestModel.get('type') === 'error') {
+            time = false;
+          }
+          else {
+            $.noty.clearQueue();
+            $.noty.closeAll();
+          }
+
+          noty({
+            theme: 'relax',
+            text: message,
+            template: 
+              '<div class="noty_message arango_message">' + 
+              '<div><i class="fa fa-close"></i></div><span class="noty_text arango_text"></span>' + 
+              '<div class="noty_close arango_close"></div></div>',
+            maxVisible: 1,
+            closeWith: ['click'],
+            type: latestModel.get('type'),
+            layout: 'bottom',
+            timeout: time,
+            animation: {
+              open: {height: 'show'},
+              close: {height: 'hide'},
+              easing: 'swing',
+              speed: 200
+            }
+          });
+
+          if (latestModel.get('type') === 'success') {
+            latestModel.destroy();
+            return;
+          }
+        }
+      }
+
       $('#stat_hd_counter').text(this.collection.length);
       if (this.collection.length === 0) {
         $('#stat_hd').removeClass('fullNotification');

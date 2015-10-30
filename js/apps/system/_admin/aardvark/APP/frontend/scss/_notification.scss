@@ -1,3 +1,28 @@
+#notification_menu {
+  .innerDropdownInnerUL {
+    margin-left: 0;
+  }
+}
+
+#noty_bottom_layout_container {
+  li {
+    border: 0 !important;
+  }
+}
+
+.noty_bar {
+
+  .arango_message {
+    font-weight: 500 !important;
+
+    div {
+      float: right;
+      width: 20px;
+    }
+  }
+
+}
+
 .fixedDropdown {
   background: $c-white !important;
   border-color: $c-content-border !important;
@@ -30,12 +55,13 @@
 
   .notificationItemContent {
     @extend %pull-left;
+    font-size: .9em;
     font-weight: 300;
     margin-left: 15px;
-    max-width: 155px;
+    max-width: 180px;
     min-height: 15px;
     white-space: normal;
-    width: 155px;
+    width: 180px;
     word-wrap: break-word;
   }
 
@@ -63,13 +89,13 @@
     }
 
     i {
-      @extend %pull-left;
+      @extend %pull-right;
       @extend %clickable;
       color: $c-semi-transp;
       font-size: 20px;
+      padding-left: 5px;
       position: relative;
-      right: 4px;
-      top: -9px;
+      right: 2px;
 
       &:hover {
         color: $c-black;
