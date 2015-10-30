@@ -414,6 +414,83 @@ namespace triagens {
                                                std::vector<Variable const*> const&,
                                                std::vector<RegisterId> const&);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with RANGE
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionRange (AstNode const*,
+                                               triagens::arango::AqlTransaction*,
+                                               AqlItemBlock const*,
+                                               size_t,
+                                               std::vector<Variable const*> const&,
+                                               std::vector<RegisterId> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with NOT
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionNot (AstNode const*,
+                                             triagens::arango::AqlTransaction*,
+                                             AqlItemBlock const*,
+                                             size_t,
+                                             std::vector<Variable const*> const&,
+                                             std::vector<RegisterId> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with AND or OR
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionAndOr (AstNode const*,
+                                               triagens::arango::AqlTransaction*,
+                                               AqlItemBlock const*,
+                                               size_t,
+                                               std::vector<Variable const*> const&,
+                                               std::vector<RegisterId> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with COMPARISON
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionComparison (AstNode const*,
+                                                    triagens::arango::AqlTransaction*,
+                                                    AqlItemBlock const*,
+                                                    size_t,
+                                                    std::vector<Variable const*> const&,
+                                                    std::vector<RegisterId> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with TERNARY
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionTernary (AstNode const*,
+                                                 triagens::arango::AqlTransaction*,
+                                                 AqlItemBlock const*,
+                                                 size_t,
+                                                 std::vector<Variable const*> const&,
+                                                 std::vector<RegisterId> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with EXPANSION
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionExpansion (AstNode const*,
+                                                   triagens::arango::AqlTransaction*,
+                                                   AqlItemBlock const*,
+                                                   size_t,
+                                                   std::vector<Variable const*> const&,
+                                                   std::vector<RegisterId> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with EXPANSION
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpressionIterator (AstNode const*,
+                                                  triagens::arango::AqlTransaction*,
+                                                  AqlItemBlock const*,
+                                                  size_t,
+                                                  std::vector<Variable const*> const&,
+                                                  std::vector<RegisterId> const&);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
