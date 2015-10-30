@@ -244,11 +244,17 @@ void Collection::fillIndexes () const {
   // must have a collection  
   TRI_ASSERT(collection != nullptr);
 
+  // On a DBserver it is not necessary to consult the agency, therefore
+  // we rather look at the local indexes. 
+  // FIXME: Remove fillIndexesDBServer later, when it is clear that we
+  // will never have to do this.
+#if 0
   if (triagens::arango::ServerState::instance()->isDBServer(role) && 
       documentCollection()->_info._planId > 0) {
     fillIndexesDBServer();
     return;
   }
+#endif
 
   fillIndexesLocal();
 }

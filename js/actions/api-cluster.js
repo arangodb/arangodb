@@ -1,6 +1,6 @@
 /*jshint strict: false, unused: false */
 /*global AQL_EXECUTE, SYS_CLUSTER_TEST, UPGRADE_ARGS: true,
-  ArangoServerState, ArangoClusterComm, ArangoClusterInfo */
+  ArangoServerState, ArangoClusterComm, ArangoClusterInfo, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster actions
@@ -889,6 +889,472 @@ actions.defineHttp({
   }
 });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_getSecondary
+/// (intentionally not in manual)
+/// @brief gets the secondary of a primary DBserver
+///
+/// @RESTHEADER{GET /_admin/cluster/getSecondary, Get secondary of a primary DBServer}
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTDESCRIPTION Gets the configuration in the agency of the secondary
+/// replicating a primary.
+///
+/// @RESTQUERYPARAMETERS
+///
+/// @RESTQUERYPARAM{primary,string,required}
+/// is the ID of the primary whose secondary we would like to get.
+///
+/// @RESTQUERYPARAM{timeout,number,optional}
+/// the timeout to use in HTTP requests to the agency, default is 60.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200} is returned when everything went well.
+///
+/// @RESTRETURNCODE{400} the primary was not given as URL parameter.
+///
+/// @RESTRETURNCODE{403} server is not a coordinator or method was not GET.
+///
+/// @RESTRETURNCODE{404} the given primary name is not configured in Agency.
+///
+/// @RESTRETURNCODE{408} there was a timeout in the Agency communication.
+///
+/// @RESTRETURNCODE{500} the get operation did not work.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/getSecondary",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (req.requestType !== actions.GET ||
+        !require("org/arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only GET requests are allowed and only to coordinators");
+      return;
+    }
+    if (! req.parameters.hasOwnProperty("primary")) {
+      actions.resultError(req, res, actions.HTTP_BAD, 0,
+                          '"primary" is not given as parameter');
+      return;
+    }
+    var primary = req.parameters.primary;
+
+    var timeout = 60.0;
+
+    try {
+      if (req.parameters.hasOwnProperty("timeout")) {
+        timeout = Number(req.parameters.timeout);
+      }
+    }
+    catch (e) {
+    }
+
+    // Now get to work, first get the write lock on the Plan in the Agency:
+    var success = ArangoAgency.lockRead("Plan", timeout);
+    if (! success) {
+      actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
+                          "could not get a read lock on Plan in Agency");
+      return;
+    }
+
+    try {
+      var oldValue;
+      try {
+        oldValue = ArangoAgency.get("Plan/DBServers/" + primary, false, false);
+      }
+      catch (e1) {
+        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+                  "Primary with the given ID is not configured in Agency.");
+        return;
+      }
+       
+      oldValue = oldValue["Plan/DBServers/" + primary];
+
+      actions.resultOk(req, res, actions.HTTP_OK, { primary: primary,
+                                                    secondary: oldValue } );
+    }
+    finally {
+      ArangoAgency.unlockRead("Plan", timeout);
+    }
+  }
+});
+
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_replaceSecondary
+/// (intentionally not in manual)
+/// @brief exchanges the secondary of a primary DBserver
+///
+/// @RESTHEADER{PUT /_admin/cluster/replaceSecondary, Replace secondary of a primary DBServer}
+///
+/// @RESTDESCRIPTION Replaces the configuration in the agency of the secondary
+/// replicating a primary. Use with care, because the old secondary will
+/// relatively quickly delete its data. For security reasons and to avoid
+/// races, the ID of the old secondary must be given as well.
+///
+/// @RESTBODYPARAM{primary,string,required,string}
+/// is the ID of the primary whose secondary is to be changed.
+///
+/// @RESTBODYPARAM{oldSecondary,string,required,string}
+/// is the old ID of the secondary.
+///
+/// @RESTBODYPARAM{newSecondary,string,required,string}
+/// is the new ID of the secondary.
+///
+/// @RESTBODYPARAM{ttl,number,optional,number}
+/// the time to live in seconds for the write lock, default is 60.
+///
+/// @RESTBODYPARAM{timeout,number,optional,number}
+/// the timeout to use in HTTP requests to the agency, default is 60.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200} is returned when everything went well.
+///
+/// @RESTRETURNCODE{400} either one of the required body parameters was
+/// not given or no server with this ID exists.
+///
+/// @RESTRETURNCODE{403} server is not a coordinator or method was not PUT.
+///
+/// @RESTRETURNCODE{404} the given primary name is not configured in Agency.
+///
+/// @RESTRETURNCODE{408} there was a timeout in the Agency communication.
+///
+/// @RESTRETURNCODE{412} the given oldSecondary was not the current secondary
+/// of the given primary.
+///
+/// @RESTRETURNCODE{500} the change operation did not work.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/replaceSecondary",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (req.requestType !== actions.PUT ||
+        !require("org/arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only PUT requests are allowed and only to coordinators");
+      return;
+    }
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
+    if (! body.hasOwnProperty("primary") ||
+        typeof(body.primary) !== "string" ||
+        ! body.hasOwnProperty("oldSecondary") ||
+        typeof(body.oldSecondary) !== "string" ||
+        ! body.hasOwnProperty("newSecondary") ||
+        typeof(body.newSecondary) !== "string") {
+      actions.resultError(req, res, actions.HTTP_BAD, 0,
+                          'not all three of "primary", "oldSecondary" and '+
+                          '"newSecondary" are given in body and are strings');
+      return;
+    }
+
+    var ttl = 60.0;
+    var timeout = 60.0;
+
+    if (body.hasOwnProperty("ttl") && typeof body.ttl === "number") {
+      ttl = body.ttl;
+    }
+    if (body.hasOwnProperty("timeout") && typeof body.timeout === "number") {
+      timeout = body.timeout;
+    }
+
+    // Now get to work, first get the write lock on the Plan in the Agency:
+    var success = ArangoAgency.lockWrite("Plan", ttl, timeout);
+    if (! success) {
+      actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
+                          "could not get a write lock on Plan in Agency");
+      return;
+    }
+
+    try {
+      var oldValue;
+      try {
+        oldValue = ArangoAgency.get("Plan/DBServers/" + body.primary, false,
+                                    false);
+      }
+      catch (e1) {
+        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+                  "Primary with the given ID is not configured in Agency.");
+        return;
+      }
+      oldValue = oldValue["Plan/DBServers/"+body.primary];
+      if (oldValue !== body.oldSecondary) {
+        actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
+                            "Primary does not have the given oldSecondary as "+
+                            "its secondary, current value: " + oldValue);
+        return;
+      }
+      try {
+        ArangoAgency.set("Plan/DBServers/" + body.primary, body.newSecondary,
+                         0);
+      }
+      catch (e2) {
+        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
+                            "Cannot change secondary of given primary.");
+        return;
+      }
+        
+      try {
+        ArangoAgency.increaseVersion("Plan/Version");
+      }
+      catch (e3) {
+        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
+                            "Cannot increase Plan/Version.");
+        return;
+      }
+      
+      actions.resultOk(req, res, actions.HTTP_OK, body);
+    }
+    finally {
+      ArangoAgency.unlockWrite("Plan", timeout);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief changes responsibility for all shards from oldServer to newServer.
+/// This needs to be done atomically!
+////////////////////////////////////////////////////////////////////////////////
+
+function changeAllShardReponsibilities (oldServer, newServer) {
+  // This is only called when we have the write lock and we "only" have to
+  // make sure that either all or none of the shards are moved.
+  var l = ArangoAgency.get("Plan/Collections", true, false);
+  var ll = Object.keys(l);
+
+  var i = 0;
+  var c;
+  var oldShards = [];
+  var shards;
+  var names;
+  var j;
+  try {
+    while (i < ll.length) {
+      c = l[ll[i]];   // A collection entry
+      shards = c.shards;
+      names = Object.keys(shards);
+      // Poor man's deep copy:
+      oldShards.push(JSON.parse(JSON.stringify(shards)));
+      for (j = 0; j < names.length; j++) {
+        if (shards[names[j]] === oldServer) {
+          shards[names[j]] = newServer;
+        }
+      }
+      ArangoAgency.set(ll[i], c, 0);
+      i += 1;
+    }
+  }
+  catch (e) {
+    i -= 1;
+    while (i >= 0) {
+      c = l[ll[i]];
+      c.shards = oldShards[i];
+      try {
+        ArangoAgency.set(ll[i], c, 0);
+      }
+      catch (e2) {
+      }
+      i -= 1;
+    }
+    throw e;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @start Docu Block JSF_swapPrimaryAndSecondary
+/// (intentionally not in manual)
+/// @brief swaps the roles of a primary and secondary pair
+///
+/// @RESTHEADER{PUT /_admin/cluster/swapPrimaryAndSecondary, Swaps the roles of a primary and secondary pair.}
+///
+/// @RESTDESCRIPTION Swaps the roles of a primary and replicating secondary 
+/// pair. This includes changing the entry for all shards for which the 
+/// primary was responsible to the name of the secondary. All changes happen
+/// in a single write transaction (using a write lock) and the Plan/Version 
+/// is increased. Use with care, because currently replication in the cluster
+/// is asynchronous and the old secondary might not yet have all the data.
+/// For security reasons and to avoid races, the ID of the old secondary
+/// must be given as well.
+///
+/// @RESTBODYPARAM{primary,string,required,string}
+/// is the ID of the primary whose secondary is to be changed.
+///
+/// @RESTBODYPARAM{secondary,string,required,string}
+/// is the ID of the secondary, which must be the secondary of this primay.
+///
+/// @RESTBODYPARAM{ttl,number,optional,number}
+/// the time to live in seconds for the write lock, default is 60.
+///
+/// @RESTBODYPARAM{timeout,number,optional,number}
+/// the timeout to use in HTTP requests to the agency, default is 60.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200} is returned when everything went well.
+///
+/// @RESTRETURNCODE{400} either one of the required body parameters was
+/// not given or no server with this ID exists.
+///
+/// @RESTRETURNCODE{403} server is not a coordinator or method was not PUT.
+///
+/// @RESTRETURNCODE{404} the given primary name is not configured in Agency.
+///
+/// @RESTRETURNCODE{408} there was a timeout in the Agency communication.
+///
+/// @RESTRETURNCODE{412} the given secondary was not the current secondary
+/// of the given primary.
+///
+/// @RESTRETURNCODE{500} the change operation did not work.
+///
+/// @end Docu Block
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/swapPrimaryAndSecondary",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (req.requestType !== actions.PUT ||
+        !require("org/arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                    "only PUT requests are allowed and only to coordinators");
+      return;
+    }
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
+    require("console").log("FUXX: " + JSON.stringify(body));
+    if (! body.hasOwnProperty("primary") ||
+        typeof(body.primary) !== "string" ||
+        ! body.hasOwnProperty("secondary") ||
+        typeof(body.secondary) !== "string") {
+      actions.resultError(req, res, actions.HTTP_BAD, 0,
+                          'not both "primary" and "secondary" '+
+                          'are given in body and are strings');
+      return;
+    }
+
+    var ttl = 60.0;
+    var timeout = 60.0;
+
+    if (body.hasOwnProperty("ttl") && typeof body.ttl === "number") {
+      ttl = body.ttl;
+    }
+    if (body.hasOwnProperty("timeout") && typeof body.timeout === "number") {
+      timeout = body.timeout;
+    }
+
+    // Now get to work, first get the write lock on the Plan in the Agency:
+    var success = ArangoAgency.lockWrite("Plan", ttl, timeout);
+    if (! success) {
+      actions.resultError(req, res, actions.HTTP_REQUEST_TIMEOUT, 0,
+                          "could not get a write lock on Plan in Agency");
+      return;
+    }
+
+    try {
+      var oldValue;
+      try {
+        oldValue = ArangoAgency.get("Plan/DBServers/" + body.primary, false,
+                                    false);
+      }
+      catch (e1) {
+        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+                  "Primary with the given ID is not configured in Agency.");
+        return;
+      }
+      oldValue = oldValue["Plan/DBServers/"+body.primary];
+      if (oldValue !== body.secondary) {
+        actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
+                            "Primary does not have the given secondary as "+
+                            "its secondary, current value: " + oldValue);
+        return;
+      }
+      try {
+        ArangoAgency.remove("Plan/DBServers/" + body.primary, false);
+      }
+      catch (e2) {
+        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
+                            "Cannot remove old primary entry.");
+        return;
+      }
+      try {
+        ArangoAgency.set("Plan/DBServers/" + body.secondary,
+                         body.primary, 0);
+      }
+      catch (e3) {
+        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
+                            "Cannot set secondary as primary.");
+        // Try to reset the old primary:
+        try {
+          ArangoAgency.set("Plan/DBServers/" + body.primary, 
+                           body.secondary, 0);
+        }
+        catch (e4) {
+          actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
+                              "Cannot set secondary as primary, could not "+
+                              "even reset the old value!");
+        }
+        return;
+      }
+
+      try {
+        // Now change all responsibilities for shards to the "new" primary
+        // body.secondary:
+        changeAllShardReponsibilities(body.primary, body.secondary);
+      }
+      catch (e5) {
+        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
+                            "Could not change responsibilities for shards.");
+        // Try to reset the old primary:
+        try {
+          ArangoAgency.set("Plan/DBServers/" + body.primary, 
+                           body.secondary, 0);
+          ArangoAgency.remove("Plan/DBServers/" + body.secondary);
+        }
+        catch (e4) {
+          actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
+                              "Cannot change responsibility for shards and "+
+                              "could not even reset the old value!");
+        }
+        return;
+      }
+        
+      try {
+        ArangoAgency.increaseVersion("Plan/Version");
+      }
+      catch (e3) {
+        actions.resultError(req, res, actions.HTTP_SERVER_ERROR, 0,
+                            "Cannot increase Plan/Version.");
+        return;
+      }
+      
+      actions.resultOk(req, res, actions.HTTP_OK, {primary: body.secondary,
+                                                   secondary: body.primary});
+    }
+    finally {
+      ArangoAgency.unlockWrite("Plan", timeout);
+    }
+  }
+});
+
+    
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

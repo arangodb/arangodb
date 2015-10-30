@@ -80,6 +80,8 @@ HeartbeatThread::HeartbeatThread (TRI_server_t* server,
     _maxFailsBeforeWarning(maxFailsBeforeWarning),
     _numFails(0),
     _numDispatchedJobs(0),
+    _lastDispatchedJobResult(false),
+    _versionThatTriggeredLastJob(0),
     _ready(false),
     _stop(0) {
 
@@ -111,24 +113,186 @@ HeartbeatThread::~HeartbeatThread () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::run () {
-  LOG_TRACE("starting heartbeat thread");
+  if (ServerState::instance()->isCoordinator()) {
+    runCoordinator();
+  }
+  else {
+    runDBServer();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief heartbeat main loop, dbserver version
+////////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::runDBServer () {
+  LOG_TRACE("starting heartbeat thread (DBServer version)");
+
+  // convert timeout to seconds
+  const double interval = (double) _interval / 1000.0 / 1000.0;
+
+  // last value of plan which we have noticed:
+  uint64_t lastPlanVersionNoticed = 0;
+
+  // last value of plan for which a job was successfully completed
+  // on a coordinator, only this is used and not lastPlanVersionJobScheduled
+  uint64_t lastPlanVersionJobSuccess = 0;
+
+  // value of Sync/Commands/my-id at startup
+  uint64_t lastCommandIndex = getLastCommandIndex();
+
+  uint64_t agencyIndex = 0;
+
+  while (! _stop) {
+    LOG_TRACE("sending heartbeat to agency");
+
+    const double start = TRI_microtime();
+    double remain;
+
+    // send our state to the agency.
+    // we don't care if this fails
+    sendState();
+
+    if (_stop) {
+      break;
+    }
+
+    {
+      // send an initial GET request to Sync/Commands/my-id
+      AgencyCommResult result = _agency.getValues("Sync/Commands/" + _myId, false);
+
+      if (result.successful()) {
+        handleStateChange(result, lastCommandIndex);
+      }
+    }
+
+    if (_stop) {
+      break;
+    }
+
+    // The following loop will run until the interval has passed, at which
+    // time a break will be called.
+    while (true) {
+      remain = interval - (TRI_microtime() - start);
+      if (remain <= 0.0) {
+        break;
+      }
+
+      // First see whether a previously scheduled job has done some good:
+      double timeout = remain;
+      {
+        MUTEX_LOCKER(_statusLock);
+        if (_numDispatchedJobs == -1) {
+          if (_lastDispatchedJobResult) {
+            lastPlanVersionJobSuccess = _versionThatTriggeredLastJob;
+            LOG_INFO("Found result of successful handleChangesDBServer job, "
+                     "have now version %llu.", 
+                     (unsigned long long) lastPlanVersionJobSuccess);
+          }
+          _numDispatchedJobs = 0;
+        }
+        else if (_numDispatchedJobs > 0) {
+          timeout = (std::min)(0.1, remain);  
+                          // Only wait for at most this much, because
+                          // we want to see the result of the running job
+                          // in time
+        }
+      }
+
+      // get the current version of the Plan, or watch for a change:
+      AgencyCommResult result;
+      result.clear();
+
+      if (agencyIndex != 0) {
+        // If a job is scheduled and is still running, the timeout is at most
+        // 0.1s, otherwise we wait up to the remainder of the interval:
+        result = _agency.watchValue("Plan/Version",
+                                    agencyIndex + 1,
+                                    timeout,
+                                    false);
+      }
+      else {
+        result = _agency.getValues("Plan/Version", false);
+      }
+
+      if (result.successful()) {
+        agencyIndex = result.index();
+        result.parse("", false);
+
+        std::map<std::string, AgencyCommResultEntry>::iterator it 
+            = result._values.begin();
+
+        if (it != result._values.end()) {
+          // there is a plan version
+          uint64_t planVersion
+              = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+
+          if (planVersion > lastPlanVersionNoticed) {
+            lastPlanVersionNoticed = planVersion;
+          }
+        }
+      }
+      else {
+        agencyIndex = 0;
+      }
+
+      if (lastPlanVersionNoticed > lastPlanVersionJobSuccess && 
+          ! hasPendingJob()) {
+        handlePlanChangeDBServer(lastPlanVersionNoticed);
+      }
+
+      if (_stop) {
+        break;
+      }
+
+    }
+  }
+
+  // another thread is waiting for this value to appear in order to shut down properly
+  _stop = 2;
+
+  // Wait until any pending job is finished
+  int count = 0;
+  while (count++ < 10000) {
+    {
+      MUTEX_LOCKER(_statusLock);
+      if (_numDispatchedJobs <= 0) {
+        break;
+      }
+    }
+    usleep(1000);
+  }
+  LOG_TRACE("stopped heartbeat thread (DBServer version)");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a job is still running or does not have reported yet
+////////////////////////////////////////////////////////////////////////////////
+
+bool HeartbeatThread::hasPendingJob () {
+  MUTEX_LOCKER(_statusLock);
+  return _numDispatchedJobs != 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief heartbeat main loop, coordinator version
+////////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::runCoordinator () {
+  LOG_TRACE("starting heartbeat thread (coordinator version)");
 
   uint64_t oldUserVersion = 0;
 
   // convert timeout to seconds
   const double interval = (double) _interval / 1000.0 / 1000.0;
 
-  // last value of plan that we fetched
-  uint64_t lastPlanVersion = 0;
+  // last value of plan which we have noticed:
+  uint64_t lastPlanVersionNoticed = 0;
 
   // value of Sync/Commands/my-id at startup
   uint64_t lastCommandIndex = getLastCommandIndex();
-  const bool isCoordinator = ServerState::instance()->isCoordinator();
 
-  if (isCoordinator) {
-    setReady();
-  }
-
+  setReady();
 
   while (! _stop) {
     LOG_TRACE("sending heartbeat to agency");
@@ -158,126 +322,62 @@ void HeartbeatThread::run () {
 
     bool shouldSleep = true;
 
-    if (isCoordinator) {
-      // isCoordinator
-      // --------------------
+    // get the current version of the Plan
+    AgencyCommResult result = _agency.getValues("Plan/Version", false);
 
-      // get the current version of the Plan
-      AgencyCommResult result = _agency.getValues("Plan/Version", false);
+    if (result.successful()) {
+      result.parse("", false);
 
-      if (result.successful()) {
-        result.parse("", false);
+      std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
-        std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
+      if (it != result._values.end()) {
+        // there is a plan version
+        uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
 
-        if (it != result._values.end()) {
-          // there is a plan version
-          uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
-
-          if (planVersion > lastPlanVersion) {
-            handlePlanChangeCoordinator(planVersion, lastPlanVersion);
-          }
-        }
-      }
-
-      result.clear();
-
-      result = _agency.getValues("Sync/UserVersion", false);
-      if (result.successful()) {
-        result.parse("", false);
-        std::map<std::string, AgencyCommResultEntry>::iterator it
-            = result._values.begin();
-        if (it != result._values.end()) {
-          // there is a UserVersion
-          uint64_t userVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
-          if (userVersion != oldUserVersion) {
-            // reload user cache for all databases
-            std::vector<DatabaseID> dbs
-                = ClusterInfo::instance()->listDatabases(true);
-            std::vector<DatabaseID>::iterator i;
-            bool allOK = true;
-            for (i = dbs.begin(); i != dbs.end(); ++i) {
-              TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(_server,
-                                                    i->c_str());
-
-              if (vocbase != nullptr) {
-                LOG_INFO("Reloading users for database %s.",vocbase->_name);
-
-                if (! fetchUsers(vocbase)) {
-                  // something is wrong... probably the database server
-                  // with the _users collection is not yet available
-                  TRI_InsertInitialAuthInfo(vocbase);
-                  allOK = false;
-                  // we will not set oldUserVersion such that we will try this
-                  // very same exercise again in the next heartbeat
-                }
-                TRI_ReleaseVocBase(vocbase);
-              }
-            }
-            if (allOK) {
-              oldUserVersion = userVersion;
-            }
+        if (planVersion > lastPlanVersionNoticed) {
+          if (handlePlanChangeCoordinator(planVersion)) {
+            lastPlanVersionNoticed = planVersion;
           }
         }
       }
     }
-    else {
-      // ! isCoordinator
-      // --------------------
 
-      // get the current version of the Plan
-      AgencyCommResult result = _agency.getValues("Plan/Version", false);
+    result.clear();
 
-      if (result.successful()) {
-        const uint64_t agencyIndex = result.index();
-        result.parse("", false);
-        bool changed = false;
+    result = _agency.getValues("Sync/UserVersion", false);
+    if (result.successful()) {
+      result.parse("", false);
+      std::map<std::string, AgencyCommResultEntry>::iterator it
+          = result._values.begin();
+      if (it != result._values.end()) {
+        // there is a UserVersion
+        uint64_t userVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
+        if (userVersion != oldUserVersion) {
+          // reload user cache for all databases
+          std::vector<DatabaseID> dbs
+              = ClusterInfo::instance()->listDatabases(true);
+          std::vector<DatabaseID>::iterator i;
+          bool allOK = true;
+          for (i = dbs.begin(); i != dbs.end(); ++i) {
+            TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(_server,
+                                                  i->c_str());
 
-        std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
+            if (vocbase != nullptr) {
+              LOG_INFO("Reloading users for database %s.",vocbase->_name);
 
-        if (it != result._values.end()) {
-          // there is a plan version
-          uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
-
-          if (planVersion > lastPlanVersion) {
-            if (handlePlanChangeDBServer(planVersion, lastPlanVersion)) {
-              shouldSleep = false;
-              changed = true;
+              if (! fetchUsers(vocbase)) {
+                // something is wrong... probably the database server
+                // with the _users collection is not yet available
+                TRI_InsertInitialAuthInfo(vocbase);
+                allOK = false;
+                // we will not set oldUserVersion such that we will try this
+                // very same exercise again in the next heartbeat
+              }
+              TRI_ReleaseVocBase(vocbase);
             }
           }
-        }
-
-        if (_stop) {
-          break;
-        }
-
-        if (! changed) {
-          const double remain = interval - (TRI_microtime() - start);
-
-          if (remain > 0.0) {
-            // watch Plan/Version for changes
-            result.clear();
-
-            result = _agency.watchValue("Plan/Version",
-                                        agencyIndex + 1,
-                                        remain,
-                                        false);
-
-            if (result.successful()) {
-              result.parse("", false);
-              it = result._values.begin();
-
-              if (it != result._values.end()) {
-                // there is a plan version
-                uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
-
-                if (planVersion > lastPlanVersion) {
-                  if (handlePlanChangeDBServer(planVersion, lastPlanVersion)) {
-                    shouldSleep = false;
-                  }
-                }
-              }
-            }
+          if (allOK) {
+            oldUserVersion = userVersion;
           }
         }
       }
@@ -340,10 +440,11 @@ void HeartbeatThread::setReady () {
 /// @brief decrement the counter for dispatched jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-void HeartbeatThread::removeDispatchedJob () {
+void HeartbeatThread::removeDispatchedJob (bool success) {
   MUTEX_LOCKER(_statusLock);
   TRI_ASSERT(_numDispatchedJobs > 0);
-  --_numDispatchedJobs;
+  _numDispatchedJobs = -1;
+  _lastDispatchedJobResult = success;
 }
 
 // -----------------------------------------------------------------------------
@@ -398,14 +499,10 @@ static bool myDBnamesComparer (std::string const& a, std::string const& b) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static const std::string prefixPlanChangeCoordinator = "Plan/Databases";
-bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
-                                                   uint64_t& remotePlanVersion) {
+bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion) {
 
   bool fetchingUsersFailed = false;
   LOG_TRACE("found a plan update");
-
-  // invalidate our local cache
-  ClusterInfo::instance()->flush();
 
   AgencyCommResult result;
 
@@ -473,8 +570,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
           if (! fetchUsers(vocbase)) {
             TRI_ReleaseVocBase(vocbase);
             return false;  // We give up, we will try again in the
-                           // next heartbeat, because we did not
-                           // touch remotePlanVersion
+                           // next heartbeat
           }
         }
       }
@@ -513,8 +609,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
     return false;
   }
 
-
-  remotePlanVersion = currentPlanVersion;
+  // invalidate our local cache
+  ClusterInfo::instance()->flush();
 
   // turn on error logging now
   if (! ClusterComm::instance()->enableConnectionErrorLogging(true)) {
@@ -529,12 +625,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
 /// this is triggered if the heartbeat thread finds a new plan version number
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HeartbeatThread::handlePlanChangeDBServer (uint64_t currentPlanVersion,
-                                                uint64_t& remotePlanVersion) {
+bool HeartbeatThread::handlePlanChangeDBServer (uint64_t currentPlanVersion) {
   LOG_TRACE("found a plan update");
-
-  // invalidate our local cache
-  ClusterInfo::instance()->flush();
 
   MUTEX_LOCKER(_statusLock);
   if (_numDispatchedJobs > 0) {
@@ -550,7 +642,7 @@ bool HeartbeatThread::handlePlanChangeDBServer (uint64_t currentPlanVersion,
     job.release();
 
     ++_numDispatchedJobs;
-    remotePlanVersion = currentPlanVersion;
+    _versionThatTriggeredLastJob = currentPlanVersion;
 
     LOG_TRACE("scheduled plan update handler");
     return true;
