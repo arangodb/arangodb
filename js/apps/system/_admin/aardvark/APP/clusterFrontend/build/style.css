@@ -5439,6 +5439,32 @@ div.headerBar {
       box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(234, 23, 23, 0.6); }
   .modal-body input[type='file'] {
     line-height: 17px; }
+  .modal-body tr.spacer {
+    height: 10px; }
+  .modal-body tr.first {
+    background-color: #f5f8f0; }
+    .modal-body tr.first th:first-child {
+      border-top-left-radius: 3px; }
+    .modal-body tr.first th:last-child {
+      border-top-right-radius: 3px; }
+  .modal-body tr.middle {
+    background-color: #f5f8f0;
+    padding-left: 10px;
+    padding-right: 10px; }
+  .modal-body tr.last {
+    background-color: #f5f8f0; }
+    .modal-body tr.last th:first-child {
+      border-bottom-left-radius: 3px; }
+    .modal-body tr.last th:last-child {
+      border-bottom-right-radius: 3px; }
+  .modal-body tr.first th:first-child,
+  .modal-body tr.middle th:first-child,
+  .modal-body tr.last th:first-child {
+    padding-left: 10px; }
+  .modal-body tr.first th:last-child,
+  .modal-body tr.middle th:last-child,
+  .modal-body tr.last th:last-child {
+    padding-right: 10px; }
   .modal-body th th.actionCell, .modal-body th th.keyCell, .modal-body th .valueCell {
     text-align: center; }
   .modal-body th.actionCell {
@@ -5524,7 +5550,8 @@ div.headerBar {
 .modal {
   border: 0 !important;
   border-radius: 3px !important;
-  box-shadow: 0; }
+  box-shadow: 0;
+  width: 580px; }
   .modal .fade.in {
     top: 12.1% !important; }
   .modal table tr:last-child {
