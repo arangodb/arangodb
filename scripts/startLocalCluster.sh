@@ -43,6 +43,8 @@ start() {
                 --server.endpoint tcp://127.0.0.1:$PORT \
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --log.file cluster/$PORT.log \
+                --server.disable-statistics true \
+                --server.foxx-queues false \
                 > cluster/$PORT.stdout 2>&1 &
 }
 
@@ -57,6 +59,8 @@ startTerminal() {
                 --server.endpoint tcp://127.0.0.1:$PORT \
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --log.file cluster/$PORT.log \
+                --server.disable-statistics true \
+                --server.foxx-queues false \
                 --console &
 }
 
