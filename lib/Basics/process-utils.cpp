@@ -29,13 +29,7 @@
 
 #include "process-utils.h"
 
-#ifndef BSD
-#ifdef __FreeBSD__
-#define BSD
-#endif
-#endif
-
-#if (defined(BSD) || defined(TRI_HAVE_MACOS_MEM_STATS))
+#if defined(TRI_HAVE_MACOS_MEM_STATS)
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #endif
@@ -1313,7 +1307,7 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
 /// @brief gets the physical memory
 ////////////////////////////////////////////////////////////////////////////////
 
-#if (defined(BSD) || defined(TRI_HAVE_MACOS_MEM_STATS))
+#if defined(TRI_HAVE_MACOS_MEM_STATS)
 
 static uint64_t GetPhysicalMemory () {
   int mib[2];
