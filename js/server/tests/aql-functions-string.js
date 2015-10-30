@@ -1190,6 +1190,12 @@ function ahuacatlStringFunctionsTestSuite () {
       var expected = [ "the" ];
       var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', 0, 3)");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(SUBSTRING('the quick brown fox', 0, 3))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(V8(SUBSTRING('the quick brown fox', 0, 3)))");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1199,6 +1205,12 @@ function ahuacatlStringFunctionsTestSuite () {
     testSubstring2 : function () {
       var expected = [ "quick" ];
       var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', 4, 5)");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(SUBSTRING('the quick brown fox', 4, 5))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(V8(SUBSTRING('the quick brown fox', 4, 5)))");
       assertEqual(expected, actual);
     },
 
@@ -1210,6 +1222,12 @@ function ahuacatlStringFunctionsTestSuite () {
       var expected = [ "fox" ];
       var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', -3)");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(SUBSTRING('the quick brown fox', -3))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(V8(SUBSTRING('the quick brown fox', -3)))");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1217,23 +1235,37 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubstringInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUBSTRING()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUBSTRING(\"yes\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUBSTRING(\"yes\", 0, 2, \"yes\")"); 
-      assertEqual([ "null" ], getQueryResults("RETURN SUBSTRING(null, 0)"));
-      assertEqual([ "true" ], getQueryResults("RETURN SUBSTRING(true, 0)"));
-      assertEqual([ "3" ], getQueryResults("RETURN SUBSTRING(3, 0)"));
-      assertEqual([ "" ], getQueryResults("RETURN SUBSTRING([ ], 0)"));
-      assertEqual([ "[object Object]" ], getQueryResults("RETURN SUBSTRING({ }, 0)"));
-      assertEqual([ "" ], getQueryResults("RETURN SUBSTRING(\"yes\", null, 0)"));
-      assertEqual([ "" ], getQueryResults("RETURN SUBSTRING(\"yes\", true, 0)"));
-      assertEqual([ "" ], getQueryResults("RETURN SUBSTRING(\"yes\", \"yes\", 0)"));
-      assertEqual([ "" ], getQueryResults("RETURN SUBSTRING(\"yes\", [ ], 0)"));
-      assertEqual([ "" ], getQueryResults("RETURN SUBSTRING(\"yes\", { }, 0)"));
-      assertEqual([ "" ], getQueryResults("RETURN SUBSTRING(\"yes\", \"yes\", null)"));
-      assertEqual([ "y" ], getQueryResults("RETURN SUBSTRING(\"yes\", \"yes\", true)"));
-      assertEqual([ "" ], getQueryResults("RETURN SUBSTRING(\"yes\", \"yes\", [ ])"));
-      assertEqual([ "" ], getQueryResults("RETURN SUBSTRING(\"yes\", \"yes\", { })"));
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN SUBSTRING(${input})`; 
+          case 1:
+            return `RETURN NOOPT(SUBSTRING(${input}))`; 
+          case 2:
+            return `RETURN NOOPT(V8(SUBSTRING(${input})))`; 
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+      for (var i = 0; i < 3; ++i) {
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "\"yes\"")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "\"yes\", 0, 2, \"yes\""));
+        assertEqual([ "null" ], getQueryResults(buildQuery(i, "null, 0")));
+        assertEqual([ "true" ], getQueryResults(buildQuery(i, "true, 0")));
+        assertEqual([ "3" ], getQueryResults(buildQuery(i, "3, 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "[ ], 0")));
+        assertEqual([ "[object Object]" ], getQueryResults(buildQuery(i, "{ }, 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", null, 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", true, 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", [ ], 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", { }, 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", null")));
+        assertEqual([ "y" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", true")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", [ ]")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", { }")));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
