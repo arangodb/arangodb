@@ -331,7 +331,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
 ////////////////////////////////////////////////////////////////////////////////
 
 HashIndex::HashIndex (TRI_json_t const* json)
-  : PathBasedIndex(json),
+  : PathBasedIndex(json, false),
     _uniqueArray(nullptr) {
 
 }
@@ -395,8 +395,7 @@ triagens::basics::Json HashIndex::toJson (TRI_memory_zone_t* zone,
   auto json = Index::toJson(zone, withFigures);
 
   json("unique", triagens::basics::Json(zone, _unique))
-      ("sparse", triagens::basics::Json(zone, _sparse))
-      ("allowPartialIndex", triagens::basics::Json(zone, _allowPartialIndex));
+      ("sparse", triagens::basics::Json(zone, _sparse));
 
   return json;
 }

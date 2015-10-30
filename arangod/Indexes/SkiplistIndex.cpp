@@ -805,7 +805,7 @@ SkiplistIndex::SkiplistIndex (TRI_idx_iid_t iid,
 ////////////////////////////////////////////////////////////////////////////////
 
 SkiplistIndex::SkiplistIndex (TRI_json_t const* json)
-  : PathBasedIndex(json),
+  : PathBasedIndex(json, true),
     CmpElmElm(this),
     CmpKeyElm(this),
     _skiplistIndex(nullptr) {
@@ -838,8 +838,7 @@ triagens::basics::Json SkiplistIndex::toJson (TRI_memory_zone_t* zone,
   auto json = Index::toJson(zone, withFigures);
 
   json("unique", triagens::basics::Json(zone, _unique))
-      ("sparse", triagens::basics::Json(zone, _sparse))
-      ("allowPartialIndex", triagens::basics::Json(zone, _allowPartialIndex));
+      ("sparse", triagens::basics::Json(zone, _sparse));
 
   return json;
 }
