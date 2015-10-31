@@ -653,6 +653,105 @@ AqlValue Functions::Length (triagens::aql::Query*,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief function FIRST
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::First (triagens::aql::Query* query,
+                           triagens::arango::AqlTransaction* trx,
+                           FunctionParameters const& parameters) {
+  if (parameters.size() < 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "FIRST", (int) 1, (int) 1);
+  }
+
+  auto value = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! value.isArray()) {
+    // not an array
+    RegisterWarning(query, "FIRST", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+ 
+  if (value.size() == 0) {
+    return AqlValue(new Json(Json::Null));
+  }
+
+  auto j = new Json(TRI_UNKNOWN_MEM_ZONE, value.at(0).copy().steal(), Json::AUTOFREE);
+  return AqlValue(j);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function LAST
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Last (triagens::aql::Query* query,
+                          triagens::arango::AqlTransaction* trx,
+                          FunctionParameters const& parameters) {
+  if (parameters.size() < 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LAST", (int) 1, (int) 1);
+  }
+
+  auto value = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! value.isArray()) {
+    // not an array
+    RegisterWarning(query, "LAST", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  size_t const n = value.size(); 
+
+  if (n == 0) {
+    return AqlValue(new Json(Json::Null));
+  }
+
+  auto j = new Json(TRI_UNKNOWN_MEM_ZONE, value.at(n - 1).copy().steal(), Json::AUTOFREE);
+  return AqlValue(j);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function NTH
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Nth (triagens::aql::Query* query,
+                         triagens::arango::AqlTransaction* trx,
+                         FunctionParameters const& parameters) {
+  if (parameters.size() < 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LAST", (int) 2, (int) 2);
+  }
+
+  auto value = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! value.isArray()) {
+    // not an array
+    RegisterWarning(query, "NTH", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  size_t const n = value.size(); 
+
+  if (n == 0) {
+    return AqlValue(new Json(Json::Null));
+  }
+
+  Json indexJson = ExtractFunctionParameter(trx, parameters, 1, false);
+  bool isValid = true;
+  double numValue = ValueToNumber(indexJson.json(), isValid);
+
+  if (! isValid || numValue < 0.0) {
+    return AqlValue(new Json(Json::Null));
+  }
+
+  size_t index = static_cast<size_t>(numValue);
+
+  if (index < 0 || index >= n) {
+    return AqlValue(new Json(Json::Null));
+  }
+
+  auto j = new Json(TRI_UNKNOWN_MEM_ZONE, value.at(index).copy().steal(), Json::AUTOFREE);
+  return AqlValue(j);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief function CONCAT
 ////////////////////////////////////////////////////////////////////////////////
 
