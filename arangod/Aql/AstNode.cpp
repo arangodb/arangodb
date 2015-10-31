@@ -1448,6 +1448,15 @@ bool AstNode::isSimple () const {
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }
+
+  if (type == NODE_TYPE_OPERATOR_BINARY_PLUS) {
+    if (! getMember(0)->isSimple() || ! getMember(1)->isSimple()) {
+      setFlag(DETERMINED_SIMPLE);
+      return false;
+    }
+    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+    return true;
+  }
   
   if (type == NODE_TYPE_OPERATOR_BINARY_AND ||
       type == NODE_TYPE_OPERATOR_BINARY_OR ||

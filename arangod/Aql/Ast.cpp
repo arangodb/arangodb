@@ -1524,6 +1524,7 @@ void Ast::validateAndOptimize () {
         node->type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
         node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
         node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
+
       return this->optimizeBinaryOperatorArithmetic(node);
     }
       

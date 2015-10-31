@@ -502,6 +502,9 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       return executeSimpleExpressionExpansion(node, trx, argv, startPos, vars, regs);
     case NODE_TYPE_ITERATOR:
       return executeSimpleExpressionIterator(node, trx, argv, startPos, vars, regs);
+    case NODE_TYPE_OPERATOR_BINARY_PLUS:
+      return executeSimpleExpressionPlus(node, trx, argv, startPos, vars, regs);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "WUHU!");
     default:
       std::string msg("unhandled type '");
       msg.append(node->getTypeString()); 
@@ -1267,6 +1270,45 @@ AqlValue Expression::executeSimpleExpressionIterator (AstNode const* node,
   // intentionally do not stringify node 0
   TRI_document_collection_t const* myCollection = nullptr;
   return executeSimpleExpression(node->getMember(1), &myCollection, trx, argv, startPos, vars, regs, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE with BINARY_PLUS
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Expression::executeSimpleExpressionPlus (AstNode const* node,
+                                                  triagens::arango::AqlTransaction* trx,
+                                                  AqlItemBlock const* argv,
+                                                  size_t startPos,
+                                                  std::vector<Variable const*> const& vars,
+                                                  std::vector<RegisterId> const& regs) {
+  TRI_document_collection_t const* leftCollection = nullptr;
+  AqlValue lhs  = executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv, startPos, vars, regs, true);
+  TRI_document_collection_t const* rightCollection = nullptr;
+  AqlValue rhs = executeSimpleExpression(node->getMember(1), &rightCollection, trx, argv, startPos, vars, regs, true);
+
+  if (lhs.isObject() ||
+      rhs.isObject()){
+    return AqlValue(new Json(Json::Null));
+  }
+
+  // TODO Optimize. Right now we always use double precission
+  bool failed = false;
+  double l = lhs.toNumber(failed);
+  if (failed) {
+    if (lhs.isString() && lhs.toString() != "") {
+      // This value is not reasonably convertable to double
+      return AqlValue(new Json(Json::Null));
+    }
+  }
+  double r = rhs.toNumber(failed);
+  if (failed) {
+    if (rhs.isString() && rhs.toString() != "") {
+      // This value is not reasonably convertable to double
+      return AqlValue(new Json(Json::Null));
+    }
+  }
+  return AqlValue(new Json(l + r));
 }
 
 // -----------------------------------------------------------------------------

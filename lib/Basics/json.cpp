@@ -1179,7 +1179,8 @@ int64_t TRI_ToInt64Json (TRI_json_t const* json) {
 /// @brief converts a json object into a number
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_ToDoubleJson (TRI_json_t const* json) {
+double TRI_ToDoubleJson (TRI_json_t const* json, bool& failed) {
+  failed = false;
   switch (json->_type) {
     case TRI_JSON_UNUSED:
     case TRI_JSON_NULL:
@@ -1206,7 +1207,7 @@ double TRI_ToDoubleJson (TRI_json_t const* json) {
         return 0.0;
       }
       else if (n == 1) {
-        return TRI_ToDoubleJson(TRI_LookupArrayJson(json, 0));
+        return TRI_ToDoubleJson(TRI_LookupArrayJson(json, 0), failed);
       }
       break;
     }
@@ -1214,6 +1215,7 @@ double TRI_ToDoubleJson (TRI_json_t const* json) {
       break;
   }
 
+  failed = true;
   // TODO: must convert to null here
   return 0.0;
 }

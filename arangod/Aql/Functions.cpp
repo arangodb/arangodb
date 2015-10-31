@@ -3048,7 +3048,8 @@ AqlValue Functions::Round (triagens::aql::Query* query,
 
   Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
 
-  double input = TRI_ToDoubleJson(inputJson.json());
+  bool unused = false;
+  double input = TRI_ToDoubleJson(inputJson.json(), unused);
   input = floor(input + 0.5); // Rounds down for < x.4999 and up for > x.50000
   return AqlValue(new Json(input));
 }
@@ -3068,7 +3069,8 @@ AqlValue Functions::Abs (triagens::aql::Query* query,
 
   Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
 
-  double input = TRI_ToDoubleJson(inputJson.json());
+  bool unused = false;
+  double input = TRI_ToDoubleJson(inputJson.json(), unused);
   input = std::abs(input);
   return AqlValue(new Json(input));
 }
@@ -3088,7 +3090,8 @@ AqlValue Functions::Ceil (triagens::aql::Query* query,
 
   Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
 
-  double input = TRI_ToDoubleJson(inputJson.json());
+  bool unused = false;
+  double input = TRI_ToDoubleJson(inputJson.json(), unused);
   input = ceil(input);
   return AqlValue(new Json(input));
 }
@@ -3108,7 +3111,8 @@ AqlValue Functions::Floor (triagens::aql::Query* query,
 
   Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
 
-  double input = TRI_ToDoubleJson(inputJson.json());
+  bool unused = false;
+  double input = TRI_ToDoubleJson(inputJson.json(), unused);
   input = floor(input);
   return AqlValue(new Json(input));
 }
@@ -3128,7 +3132,8 @@ AqlValue Functions::Sqrt (triagens::aql::Query* query,
 
   Json inputJson = ExtractFunctionParameter(trx, parameters, 0, false);
 
-  double input = TRI_ToDoubleJson(inputJson.json());
+  bool unused = false;
+  double input = TRI_ToDoubleJson(inputJson.json(), unused);
   input = sqrt(input);
   return AqlValue(new Json(input));
 }

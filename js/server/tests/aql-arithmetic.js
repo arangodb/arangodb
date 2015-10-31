@@ -236,11 +236,10 @@ function ahuacatlArithmeticTestSuite () {
       var actual = getQueryResults("RETURN 1 + 42.5");
       assertEqual(expected, actual);
 
-      actual = getQueryResults("RETURN NOOPT(1 + 42.5)");
+      // Force the + to be executed at runtime
+      actual = getQueryResults("RETURN NOOPT(FLOOR(1)) + 42.5");
       assertEqual(expected, actual);
 
-      actual = getQueryResults("RETURN NOOPT(V8(1 + 42.5))");
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,10 +251,7 @@ function ahuacatlArithmeticTestSuite () {
       var actual = getQueryResults("RETURN -1 + -42.5");
       assertEqual(expected, actual);
 
-      actual = getQueryResults("RETURN NOOPT(-1 + -42.5)");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(-1 + -42.5))");
+      actual = getQueryResults("RETURN NOOPT(FLOOR(-1)) + -42.5");
       assertEqual(expected, actual);
     },
 
@@ -268,10 +264,7 @@ function ahuacatlArithmeticTestSuite () {
       var actual = getQueryResults("RETURN -1 + +42.5");
       assertEqual(expected, actual);
 
-      actual = getQueryResults("RETURN NOOPT(-1 + +42.5)");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(-1 + +42.5))");
+      actual = getQueryResults("RETURN NOOPT(FLOOR(-1)) + +42.5");
       assertEqual(expected, actual);
     },
 
@@ -284,10 +277,7 @@ function ahuacatlArithmeticTestSuite () {
       var actual = getQueryResults("RETURN -1 + +42.5 == +42.5 + -1");
       assertEqual(expected, actual);
 
-      actual = getQueryResults("RETURN NOOPT(-1 + +42.5 == +42.5 + -1)");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(-1 + +42.5 == +42.5 + -1))");
+      actual = getQueryResults("RETURN NOOPT(FLOOR(-1)) + +42.5 == +42.5 + NOOPT(FLOOR(-1))");
       assertEqual(expected, actual);
     },
 
@@ -301,14 +291,12 @@ function ahuacatlArithmeticTestSuite () {
           case 0:
             return `RETURN ${left} + ${right}`;
           case 1:
-            return `RETURN NOOPT(${left} + ${right})`;
-          case 2:
-            return `RETURN NOOPT(V8(${left} + ${right}))`;
+          return `RETURN NOOPT(${left}) + ${right}`;
           default:
             assertTrue(false, "Undefined state");
         }
       };
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "null")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "false")));
         assertEqual([ 2 ], getQueryResults(buildQuery(i, "1", "true")));
