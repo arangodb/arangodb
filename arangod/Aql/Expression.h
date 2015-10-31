@@ -492,15 +492,15 @@ namespace triagens {
                                                   std::vector<RegisterId> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with BINARY_PLUS
+/// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlValue executeSimpleExpressionPlus (AstNode const*,
-                                              triagens::arango::AqlTransaction*,
-                                              AqlItemBlock const*,
-                                              size_t,
-                                              std::vector<Variable const*> const&,
-                                              std::vector<RegisterId> const&);
+        AqlValue executeSimpleExpressionArithmetic (AstNode const*,
+                                                    triagens::arango::AqlTransaction*,
+                                                    AqlItemBlock const*,
+                                                    size_t,
+                                                    std::vector<Variable const*> const&,
+                                                    std::vector<RegisterId> const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

@@ -503,8 +503,8 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     case NODE_TYPE_ITERATOR:
       return executeSimpleExpressionIterator(node, trx, argv, startPos, vars, regs);
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
-      return executeSimpleExpressionPlus(node, trx, argv, startPos, vars, regs);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "WUHU!");
+    case NODE_TYPE_OPERATOR_BINARY_MINUS:
+      return executeSimpleExpressionArithmetic(node, trx, argv, startPos, vars, regs);
     default:
       std::string msg("unhandled type '");
       msg.append(node->getTypeString()); 
@@ -1273,15 +1273,15 @@ AqlValue Expression::executeSimpleExpressionIterator (AstNode const* node,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with BINARY_PLUS
+/// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::executeSimpleExpressionPlus (AstNode const* node,
-                                                  triagens::arango::AqlTransaction* trx,
-                                                  AqlItemBlock const* argv,
-                                                  size_t startPos,
-                                                  std::vector<Variable const*> const& vars,
-                                                  std::vector<RegisterId> const& regs) {
+AqlValue Expression::executeSimpleExpressionArithmetic (AstNode const* node,
+                                                        triagens::arango::AqlTransaction* trx,
+                                                        AqlItemBlock const* argv,
+                                                        size_t startPos,
+                                                        std::vector<Variable const*> const& vars,
+                                                        std::vector<RegisterId> const& regs) {
   TRI_document_collection_t const* leftCollection = nullptr;
   AqlValue lhs  = executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv, startPos, vars, regs, true);
   TRI_document_collection_t const* rightCollection = nullptr;
@@ -1308,7 +1308,14 @@ AqlValue Expression::executeSimpleExpressionPlus (AstNode const* node,
       return AqlValue(new Json(Json::Null));
     }
   }
-  return AqlValue(new Json(l + r));
+  switch (node->type) {
+    case NODE_TYPE_OPERATOR_BINARY_PLUS:
+      return AqlValue(new Json(l + r));
+    case NODE_TYPE_OPERATOR_BINARY_MINUS:
+      return AqlValue(new Json(l - r));
+    default:
+      return AqlValue(new Json(Json::Null));
+  }
 }
 
 // -----------------------------------------------------------------------------

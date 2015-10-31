@@ -339,10 +339,7 @@ function ahuacatlArithmeticTestSuite () {
       var actual = getQueryResults("RETURN -1 - -1");
       assertEqual(expected, actual);
 
-      actual = getQueryResults("RETURN NOOPT(-1 - -1)");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(-1 - -1))");
+      actual = getQueryResults("RETURN NOOPT(-1) - -1");
       assertEqual(expected, actual);
     },
 
@@ -355,10 +352,7 @@ function ahuacatlArithmeticTestSuite () {
       var actual = getQueryResults("RETURN -2.25 - 3.25");
       assertEqual(expected, actual);
 
-      actual = getQueryResults("RETURN NOOPT(-2.25 - 3.25)");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(-2.25 - 3.25))");
+      actual = getQueryResults("RETURN NOOPT(-2.25) - 3.25");
       assertEqual(expected, actual);
     },
 
@@ -371,10 +365,7 @@ function ahuacatlArithmeticTestSuite () {
       var actual = getQueryResults("RETURN 2.25 - 3.25");
       assertEqual(expected, actual);
 
-      actual = getQueryResults("RETURN NOOPT(2.25 - 3.25)");
-      assertEqual(expected, actual);
-
-      actual = getQueryResults("RETURN NOOPT(V8(2.25 - 3.25))");
+      actual = getQueryResults("RETURN NOOPT(2.25) - 3.25");
       assertEqual(expected, actual);
     },
 
@@ -388,14 +379,12 @@ function ahuacatlArithmeticTestSuite () {
           case 0:
             return `RETURN ${left} - ${right}`;
           case 1:
-            return `RETURN NOOPT(${left} - ${right})`;
-          case 2:
-            return `RETURN NOOPT(V8(${left} - ${right}))`;
+            return `RETURN NOOPT(${left}) - ${right}`;
           default:
             assertTrue(false, "Undefined state");
         }
       };
-      for (var i = 0; i < 3; ++i) {
+      for (var i = 0; i < 2; ++i) {
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "null")));
         assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "false")));
         assertEqual([ 0 ], getQueryResults(buildQuery(i, "1", "true")));
