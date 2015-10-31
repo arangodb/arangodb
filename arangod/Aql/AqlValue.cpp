@@ -497,29 +497,6 @@ std::string AqlValue::toString () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a string representation of the AqlValue
-////////////////////////////////////////////////////////////////////////////////
-
-char const* AqlValue::toChar () const {
-  switch (_type) {
-    case JSON: {
-      TRI_json_t const* json = _json->json();
-      TRI_ASSERT(TRI_IsStringJson(json));
-      return json->_value._string.data;
-    }
-
-    case SHAPED: 
-    case DOCVEC: 
-    case RANGE: 
-    case EMPTY: {
-      // cannot convert these types 
-    }
-  }
-
-  return "";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a V8 value as input for the expression execution in V8
 /// only construct those attributes that are needed in the expression
 ////////////////////////////////////////////////////////////////////////////////
