@@ -35,6 +35,26 @@ var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
 var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
+var sortObj = function (obj) {
+  var result = { };
+  Object.keys(obj).sort().forEach(function(k) {
+    if (obj[k] !== null && typeof obj[k] === 'object' && ! Array.isArray(obj[k])) {
+      result[k] = sortObj(obj[k]);
+    }
+    else {
+      result[k] = obj[k]; 
+    }
+  });
+  return result;
+};
+
+var assertEqualObj = function (expected, actual) {
+  expected = sortObj(expected);
+  actual   = sortObj(actual);
+
+  assertEqual(expected, actual);
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -880,6 +900,88 @@ function ahuacatlFunctionsTestSuite () {
       
       actual = getQueryResults("FOR i IN [ { foo: 1, bar: 2, moo: 3, goof: 4, bang: 5, meow: 6 }, { foo: 0, goof: 1, meow: 2 }, { foo: null }, { foo: true }, { goof: null } ] RETURN NOOPT(UNSET(i, 'foo', 'bar', 'baz', 'meow'))");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unset_recursive function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnsetRecursiveInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSET_RECURSIVE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSET_RECURSIVE({ })"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE(null, 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE(false, 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE(1, 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE(1, 'foo')"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE('bar', 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE('foo', 'bar')"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE([ ], 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE('foo', 'foo')"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unset_recursive function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnsetRecursive : function () {
+      var actual, expected;
+
+      expected = { foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 };
+      actual = getQueryResults("RETURN UNSET_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'moo')");
+      assertEqualObj(expected, actual[0]);
+ 
+      expected = { baz: 3 };
+      actual = getQueryResults("RETURN UNSET_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'foo')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { baz: 2}, baz: 3 };
+      actual = getQueryResults("RETURN UNSET_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'bar')");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { bar: { } } };
+      actual = getQueryResults("RETURN UNSET_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'baz')");
+      assertEqualObj(expected, actual[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unset_recursive function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnsetRecursiveCxxInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSET_RECURSIVE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSET_RECURSIVE({ })"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE(null, 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE(false, 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE(1, 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE(1, 'foo')"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE('bar', 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE('foo', 'bar')"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE([ ], 1)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET_RECURSIVE('foo', 'foo')"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unset_recursive function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testUnsetRecursiveCxx : function () {
+      var actual, expected;
+
+      expected = { foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 };
+      actual = getQueryResults("RETURN NOOPT(UNSET_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'moo'))");
+      assertEqualObj(expected, actual[0]);
+      
+      expected = { baz: 3 };
+      actual = getQueryResults("RETURN NOOPT(UNSET_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'foo'))");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { baz: 2 }, baz: 3 };
+      actual = getQueryResults("RETURN NOOPT(UNSET_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'bar'))");
+      assertEqualObj(expected, actual[0]);
+
+      expected = { foo: { bar: { } } };
+      actual = getQueryResults("RETURN NOOPT(UNSET_RECURSIVE({ foo: { bar: { baz: 1 }, baz: 2 }, baz: 3 }, 'baz'))");
+      assertEqualObj(expected, actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

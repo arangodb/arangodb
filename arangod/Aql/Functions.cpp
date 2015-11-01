@@ -946,6 +946,74 @@ AqlValue Functions::Unset (triagens::aql::Query* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief function UNSET_RECURSIVE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::UnsetRecursive (triagens::aql::Query* query,
+                                    triagens::arango::AqlTransaction* trx,
+                                    FunctionParameters const& parameters) {
+  auto value = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! value.isObject()) {
+    RegisterInvalidArgumentWarning(query, "UNSET_RECURSIVE");
+    return AqlValue(new Json(Json::Null));
+  }
+ 
+  std::unordered_set<std::string> names;
+  ExtractKeys(names, query, trx, parameters, 1, "UNSET_RECURSIVE");
+
+  std::function<TRI_json_t*(TRI_json_t const*, std::unordered_set<std::string> const&)> func;
+
+  func = [&func](TRI_json_t const* value, std::unordered_set<std::string> const& names) -> TRI_json_t* {
+    TRI_ASSERT(TRI_IsObjectJson(value));
+
+    size_t const n = TRI_LengthVector(&value->_value._objects);
+    size_t size;
+    if (names.size() >= n / 2) {
+      size = 4; 
+    }
+    else {
+      size = (n / 2) - names.size(); 
+    }
+
+    std::unique_ptr<TRI_json_t> j(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, size));
+
+    if (j == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    for (size_t i = 0; i < n; i += 2) {
+      auto k = static_cast<TRI_json_t const*>(TRI_AtVector(&value->_value._objects, i));
+      auto v = static_cast<TRI_json_t const*>(TRI_AtVector(&value->_value._objects, i + 1));
+
+      if (TRI_IsStringJson(k) && 
+          names.find(k->_value._string.data) == names.end()) {
+        TRI_json_t* copy = nullptr;
+
+        if (TRI_IsObjectJson(v)) {
+          copy = func(v, names);     
+        }
+        else {
+          copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, v);
+        }
+
+        if (copy == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        } 
+
+        TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, j.get(), k->_value._string.data, copy);
+      }
+    }
+
+    return j.release();
+  };
+
+  TRI_json_t* result = func(value.json(), names);
+  auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result);
+  return AqlValue(jr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief function KEEP
 ////////////////////////////////////////////////////////////////////////////////
 

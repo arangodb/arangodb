@@ -195,6 +195,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "DOCUMENT",                    Function("DOCUMENT",                    "AQL_DOCUMENT", "h.|.", false, false, true, false, true, &Functions::Document, NotInCluster) },
   { "MATCHES",                     Function("MATCHES",                     "AQL_MATCHES", ".,l|b", true, true, false, true, true) },
   { "UNSET",                       Function("UNSET",                       "AQL_UNSET", "a,sl|+", true, true, false, true, true, &Functions::Unset) },
+  { "UNSET_RECURSIVE",             Function("UNSET_RECURSIVE",             "AQL_UNSET_RECURSIVE", "a,sl|+", true, true, false, true, true, &Functions::UnsetRecursive) },
   { "KEEP",                        Function("KEEP",                        "AQL_KEEP", "a,sl|+", true, true, false, true, true, &Functions::Keep) },
   { "TRANSLATE",                   Function("TRANSLATE",                   "AQL_TRANSLATE", ".,a|.", true, true, false, true, true) },
   { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, true, false, true, true, &Functions::Zip) },

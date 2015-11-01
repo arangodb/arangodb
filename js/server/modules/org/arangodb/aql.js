@@ -4313,6 +4313,39 @@ function AQL_UNSET (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief unset specific attributes from a document, recursively
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_UNSET_RECURSIVE (value) {
+  'use strict';
+
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_OBJECT) {
+    WARN("UNSET", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var keys = EXTRACT_KEYS(arguments, 1, "UNSET");
+  // copy over all that is left
+
+  var func = function (value) {
+    var result = { };
+    for (var k in value) {
+      if (value.hasOwnProperty(k) && ! keys.hasOwnProperty(k)) {
+        if (TYPEWEIGHT(value[k]) === TYPEWEIGHT_OBJECT) {
+          result[k] = func(value[k], keys);
+        }
+        else {
+          result[k] = CLONE(value[k]);
+        }
+      }
+    }
+    return result;
+  };
+ 
+  return func(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief keep specific attributes from a document
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -9182,6 +9215,7 @@ exports.AQL_ATTRIBUTES = AQL_ATTRIBUTES;
 exports.AQL_VALUES = AQL_VALUES;
 exports.AQL_ZIP = AQL_ZIP;
 exports.AQL_UNSET = AQL_UNSET;
+exports.AQL_UNSET_RECURSIVE = AQL_UNSET_RECURSIVE;
 exports.AQL_KEEP = AQL_KEEP;
 exports.AQL_MERGE = AQL_MERGE;
 exports.AQL_MERGE_RECURSIVE = AQL_MERGE_RECURSIVE;
