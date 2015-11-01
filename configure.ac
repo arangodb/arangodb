@@ -602,7 +602,7 @@ if test "$tr_CONSOLE" = "dummy"; then
   LIB_INFO="$LIB_INFO|CONSOLE: dummy"
 elif test "$tr_CONSOLE" = "linenoise"; then
   LIB_INFO="$LIB_INFO|CONSOLE: linenoise"
-  CONSOLE_CPPFLAGS="-I${srcdir}/3rdParty/linenoise -DTRI_HAVE_LINENOISE"
+  CONSOLE_CPPFLAGS="-I${srcdir}/3rdParty/linenoise-ng/include -I${srcdir}/3rdParty/linenoise-ng/src -DTRI_HAVE_LINENOISE"
 fi
 
 LIB_INFO="$LIB_INFO|CONSOLE_CPPFLAGS: ${CONSOLE_CPPFLAGS}"
