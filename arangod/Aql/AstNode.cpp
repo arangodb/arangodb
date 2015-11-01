@@ -1452,8 +1452,8 @@ bool AstNode::isSimple () const {
   if (type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
       type == NODE_TYPE_OPERATOR_BINARY_MINUS ||
       type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
-      type == NODE_TYPE_OPERATOR_BINARY_DIV ||
-      type == NODE_TYPE_OPERATOR_BINARY_MOD) {
+      type == NODE_TYPE_OPERATOR_BINARY_DIV) {
+      // type == NODE_TYPE_OPERATOR_BINARY_MOD) {
     if (! getMember(0)->isSimple() || ! getMember(1)->isSimple()) {
       setFlag(DETERMINED_SIMPLE);
       return false;
