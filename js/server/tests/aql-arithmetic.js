@@ -567,6 +567,9 @@ function ahuacatlArithmeticTestSuite () {
       var expected = [ 0 ];
       var actual = getQueryResults("RETURN 0 / 1");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(0) / 1");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -576,6 +579,9 @@ function ahuacatlArithmeticTestSuite () {
     testBinaryDivision2 : function () {
       var expected = [ 1 ];
       var actual = getQueryResults("RETURN 1 / 1");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(1) / 1");
       assertEqual(expected, actual);
     },
 
@@ -587,6 +593,9 @@ function ahuacatlArithmeticTestSuite () {
       var expected = [ 1 ];
       var actual = getQueryResults("RETURN 1.25 / 1.25");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(1.25) / 1.25");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -596,6 +605,9 @@ function ahuacatlArithmeticTestSuite () {
     testBinaryDivision4 : function () {
       var expected = [ 12 ];
       var actual = getQueryResults("RETURN 144 / 12");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(144) / 12");
       assertEqual(expected, actual);
     },
 
@@ -607,6 +619,9 @@ function ahuacatlArithmeticTestSuite () {
       var expected = [ -12 ];
       var actual = getQueryResults("RETURN -144 / 12");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(-144) / 12");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -616,6 +631,9 @@ function ahuacatlArithmeticTestSuite () {
     testBinaryDivision6 : function () {
       var expected = [ -12 ];
       var actual = getQueryResults("RETURN 144 / -12");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(144) / -12");
       assertEqual(expected, actual);
     },
 
@@ -627,6 +645,9 @@ function ahuacatlArithmeticTestSuite () {
       var expected = [ 12 ];
       var actual = getQueryResults("RETURN -144 / -12");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(-144) / -12");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -637,6 +658,9 @@ function ahuacatlArithmeticTestSuite () {
       var expected = [ 1 ];
       var actual = getQueryResults("RETURN 1 / 0.5 / 2");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(1) / NOOPT(0.5) / 2");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -644,44 +668,56 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryDivisionNonNumeric : function () {
-      assertEqual([ null ], getQueryResults("RETURN 1 / (1 - 1)"));
-      assertEqual([ null ], getQueryResults("RETURN 1 / 0"));
-      assertEqual([ null ], getQueryResults("RETURN 1 / 0.0"));
-      assertEqual([ null ], getQueryResults("RETURN 1 / (1 / 0)"));
-      assertEqual([ null ], getQueryResults("RETURN 1 / null"));
-      assertEqual([ null ], getQueryResults("RETURN 1 / false"));
-      assertEqual([ 1 ], getQueryResults("RETURN 1 / true"));
-      assertEqual([ 37 ], getQueryResults("RETURN 37 / true"));
-      assertEqual([ null ], getQueryResults("RETURN 1 / \"0\""));
-      assertEqual([ 0.25 ], getQueryResults("RETURN 1 / \"4\""));
-      assertEqual([ -2 ], getQueryResults("RETURN 34 / \"-17\""));
-      assertEqual([ null ], getQueryResults("RETURN 1 / [ ]"));
-      assertEqual([ null ], getQueryResults("RETURN 1 / [ 0 ]"));
-      assertEqual([ 0.25 ], getQueryResults("RETURN 1 / [ 4 ]"));
-      assertEqual([ -0.25 ], getQueryResults("RETURN 1 / [ -4 ]"));
-      assertEqual([ null ], getQueryResults("RETURN 1 / { }"));
-      assertEqual([ 0 ], getQueryResults("RETURN null / 1"));
-      assertEqual([ 0 ], getQueryResults("RETURN false / 1"));
-      assertEqual([ 1 ], getQueryResults("RETURN true / 1"));
-      assertEqual([ 0 ], getQueryResults("RETURN \"0\" / 1"));
-      assertEqual([ 0 ], getQueryResults("RETURN \"0\" / \"1\""));
-      assertEqual([ 23 ], getQueryResults("RETURN \"23\" / 1"));
-      assertEqual([ -9 ], getQueryResults("RETURN \"-9\" / 1"));
-      assertEqual([ null ], getQueryResults("RETURN \"abc\" / \"abc\""));
-      assertEqual([ null ], getQueryResults("RETURN 1 / \"abc\""));
-      assertEqual([ 0 ], getQueryResults("RETURN [ ] / 1"));
-      assertEqual([ 0 ], getQueryResults("RETURN [ 0 ] / 1"));
-      assertEqual([ 4 ], getQueryResults("RETURN [ 4 ] / 1"));
-      assertEqual([ -4 ], getQueryResults("RETURN [ -4 ] / 1"));
-      assertEqual([ null ], getQueryResults("RETURN [ -4, -3 ] / 1"));
-      assertEqual([ null ], getQueryResults("RETURN [ \"abc\" ] / 1"));
-      assertEqual([ 2 ], getQueryResults("RETURN [ \"2\" ] / 1"));
-      assertEqual([ 3 ], getQueryResults("RETURN [ \"12\" ] / 4"));
-      assertEqual([ 3 ], getQueryResults("RETURN \"12\" / 4"));
-      assertEqual([ 3 ], getQueryResults("RETURN \"12\" / \"4\""));
-      assertEqual([ null ], getQueryResults("RETURN { } / 1"));
-      assertEqual([ null ], getQueryResults("RETURN { } / \"1\""));
-      assertEqual([ null ], getQueryResults("RETURN 1 / 0"));
+      var buildQuery = function(nr, left, right) {
+        switch (nr) {
+          case 0:
+            return `RETURN ${left} / ${right}`;
+          case 1:
+          return `RETURN NOOPT(${left}) / ${right}`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+      for (var i = 0; i < 2; ++i) {
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "(1 - 1)")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "0")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1","0.0")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "(1 / 0)")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "null")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "false")));
+        assertEqual([ 1 ], getQueryResults(buildQuery(i, "1", "true")));
+        assertEqual([ 37 ], getQueryResults(buildQuery(i, "37", "true")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "\"0\"")));
+        assertEqual([ 0.25 ], getQueryResults(buildQuery(i, "1", "\"4\"")));
+        assertEqual([ -2 ], getQueryResults(buildQuery(i, "34", "\"-17\"")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "[ ]")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "[ 0 ]")));
+        assertEqual([ 0.25 ], getQueryResults(buildQuery(i, "1", "[ 4 ]")));
+        assertEqual([ -0.25 ], getQueryResults(buildQuery(i, "1", "[ -4 ]")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "{ }")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "null", "1")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "false", "1")));
+        assertEqual([ 1 ], getQueryResults(buildQuery(i, "true", "1")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"0\"", "1")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"0\"", "\"1\"")));
+        assertEqual([ 23 ], getQueryResults(buildQuery(i, "\"23\"", "1")));
+        assertEqual([ -9 ], getQueryResults(buildQuery(i, "\"-9\"", "1")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "\"abc\"", "\"abc\"")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "\"abc\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ ]", "1")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ 0 ]", "1")));
+        assertEqual([ 4 ], getQueryResults(buildQuery(i, "[ 4 ]", "1")));
+        assertEqual([ -4 ], getQueryResults(buildQuery(i, "[ -4 ]", "1")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "[ -4, -3 ]", "1")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "[ \"abc\" ]", "1")));
+        assertEqual([ 2 ], getQueryResults(buildQuery(i, "[ \"2\" ]", "1")));
+        assertEqual([ 3 ], getQueryResults(buildQuery(i, "[ \"12\" ]", "4")));
+        assertEqual([ 3 ], getQueryResults(buildQuery(i, "\"12\"", "4")));
+        assertEqual([ 3 ], getQueryResults(buildQuery(i, "\"12\"", "\"4\"")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "{ }", "1")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "{ }", "\"1\"")));
+        assertEqual([ null ], getQueryResults(buildQuery(i, "1", "0")));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

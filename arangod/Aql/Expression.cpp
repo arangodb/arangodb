@@ -1299,17 +1299,11 @@ AqlValue Expression::executeSimpleExpressionArithmetic (AstNode const* node,
   bool failed = false;
   double l = lhs.toNumber(failed);
   if (failed) {
-    if (lhs.isString() && lhs.toString() != "") {
-      // This value is not reasonably convertable to double
-      return AqlValue(new Json(Json::Null));
-    }
+    return AqlValue(new Json(Json::Null));
   }
   double r = rhs.toNumber(failed);
   if (failed) {
-    if (rhs.isString() && rhs.toString() != "") {
-      // This value is not reasonably convertable to double
-      return AqlValue(new Json(Json::Null));
-    }
+    return AqlValue(new Json(Json::Null));
   }
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
@@ -1318,6 +1312,11 @@ AqlValue Expression::executeSimpleExpressionArithmetic (AstNode const* node,
       return AqlValue(new Json(l - r));
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
       return AqlValue(new Json(l * r));
+    case NODE_TYPE_OPERATOR_BINARY_DIV:
+      if (r == 0) {
+        return AqlValue(new Json(Json::Null));
+      }
+      return AqlValue(new Json(l / r));
     default:
       return AqlValue(new Json(Json::Null));
   }

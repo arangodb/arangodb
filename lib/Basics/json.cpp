@@ -1197,6 +1197,9 @@ double TRI_ToDoubleJson (TRI_json_t const* json, bool& failed) {
         return v;
       }
       catch (...) {
+        if (strlen(json->_value._string.data) == 0) {
+          return 0.0;
+        }
         // conversion failed
       }
       break;
