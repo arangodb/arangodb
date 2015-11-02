@@ -317,8 +317,10 @@ uint64_t TRI_UInt64String2 (char const* str, size_t length) {
 size_t TRI_StringInt8InPlace (int8_t attr, char* buffer) {
   if (attr == INT8_MIN) {
     static const char v[] = "-128\0";
-    memcpy(buffer, v, sizeof(v));
-    return sizeof(v) - 1;
+    static_assert(sizeof(v) == 6, "invalid size of char array"); 
+
+    memcpy(buffer, v, sizeof(v) - 1);
+    return sizeof(v) - 2;
   }
 
   char* p = buffer;
