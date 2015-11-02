@@ -3397,6 +3397,37 @@ AqlValue Functions::Push (triagens::aql::Query* query,
   return AqlValue(new Json(Json::Null));
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function POP
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Pop (triagens::aql::Query* query,
+                         triagens::arango::AqlTransaction* trx,
+                         FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "POP", (int) 1, (int) 1);
+  }
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (list.isNull()) {
+    return AqlValue(new Json(Json::Null));
+  }
+  if (list.isArray()) {
+    if (list.size() > 0) {
+      if (! TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, list.json(), list.size() - 1)) {
+        // This should never happen
+        TRI_ASSERT(false);
+      }
+    }
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
+  }
+
+  RegisterWarning(query, "POP", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  return AqlValue(new Json(Json::Null));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

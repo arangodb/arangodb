@@ -298,6 +298,12 @@ function ahuacatlListTestSuite () {
       data.forEach(function (d) {
         var actual = getQueryResults("RETURN POP(" + JSON.stringify(d[1]) + ")");
         assertEqual(d[0], actual[0], d);
+
+        actual = getQueryResults("RETURN NOOPT(POP(" + JSON.stringify(d[1]) + "))");
+        assertEqual(d[0], actual[0], d);
+
+        actual = getQueryResults("RETURN NOOPT(V8(POP(" + JSON.stringify(d[1]) + ")))");
+        assertEqual(d[0], actual[0], d);
       });
     },
 
@@ -319,6 +325,26 @@ function ahuacatlListTestSuite () {
       l.pop();
       assertEqual(l, actual[0]);
       assertEqual(998, actual[0].length);
+
+      actual = getQueryResults("RETURN NOOPT(POP(" + JSON.stringify(l) + "))");
+      l.pop();
+      assertEqual(l, actual[0]);
+      assertEqual(997, actual[0].length);
+
+      actual = getQueryResults("RETURN NOOPT(POP(" + JSON.stringify(l) + "))");
+      l.pop();
+      assertEqual(l, actual[0]);
+      assertEqual(996, actual[0].length);
+
+      actual = getQueryResults("RETURN NOOPT(V8(POP(" + JSON.stringify(l) + ")))");
+      l.pop();
+      assertEqual(l, actual[0]);
+      assertEqual(995, actual[0].length);
+
+      actual = getQueryResults("RETURN NOOPT(V8(POP(" + JSON.stringify(l) + ")))");
+      l.pop();
+      assertEqual(l, actual[0]);
+      assertEqual(994, actual[0].length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,9 +352,17 @@ function ahuacatlListTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPopInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN POP()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN POP([ ], 1)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN POP([ ], 1, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN POP()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN POP([ ], 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN POP([ ], 1, 2)");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(POP())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(POP([ ], 1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(POP([ ], 1, 2))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(POP()))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(POP([ ], 1)))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(POP([ ], 1, 2)))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

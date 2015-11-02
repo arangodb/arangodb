@@ -179,7 +179,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "APPLY",                       Function("APPLY",                       "AQL_APPLY", "s|l", false, false, true, false, false) },
   { "PUSH",                        Function("PUSH",                        "AQL_PUSH", "l,.|b", true, true, false, true, false, &Functions::Push) },
   { "APPEND",                      Function("APPEND",                      "AQL_APPEND", "l,lz|b", true, true, false, true, true) },
-  { "POP",                         Function("POP",                         "AQL_POP", "l", true, true, false, true, true) },
+  { "POP",                         Function("POP",                         "AQL_POP", "l", true, true, false, true, true, &Functions::Pop) },
   { "SHIFT",                       Function("SHIFT",                       "AQL_SHIFT", "l", true, true, false, true, true) },
   { "UNSHIFT",                     Function("UNSHIFT",                     "AQL_UNSHIFT", "l,.|b", true, true, false, true, true) },
   { "REMOVE_VALUE",                Function("REMOVE_VALUE",                "AQL_REMOVE_VALUE", "l,.|n", true, true, false, true, true) },
