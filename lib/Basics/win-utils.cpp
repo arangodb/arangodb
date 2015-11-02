@@ -47,18 +47,19 @@ using namespace std;
 using namespace triagens::basics;
 
 // .............................................................................
-// Some global variables which may be required throughtout the lifetime of the
-// server
+// Some global variables which may be required later
 // .............................................................................
 
 _invalid_parameter_handler oldInvalidHandleHandler;
 _invalid_parameter_handler newInvalidHandleHandler;
 
+// Windows variant for unistd.h's ftruncate()
 int ftruncate (int fd, long newSize) {
   int result = _chsize(fd, newSize);
   return result;
 }
 
+// Windows variant for getpagesize()
 int getpagesize (void) {
   static int pageSize = 0; // only define it once
 
