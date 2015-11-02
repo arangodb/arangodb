@@ -3357,6 +3357,45 @@ AqlValue Functions::FirstList (triagens::aql::Query* query,
   return AqlValue(new Json(Json::Null));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function PUSH
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Push (triagens::aql::Query* query,
+                          triagens::arango::AqlTransaction* trx,
+                          FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "PUSH", (int) 2, (int) 3);
+  }
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+  Json toPush = ExtractFunctionParameter(trx, parameters, 1, false);
+
+  if (list.isNull()) {
+    Json array(Json::Array, 1);
+    array.add(toPush.copy());
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.copy().steal()));
+  }
+  if (list.isArray()) {
+    if (n == 3) {
+      Json unique = ExtractFunctionParameter(trx, parameters, 2, false);
+      if (ValueToBoolean(unique.json())) {
+        for (size_t i = 0; i < list.size(); ++i) {
+          if (TRI_CheckSameValueJson(toPush.json(), list.at(i).json())) {
+            // We found the element in the list.
+            // Do not Insert it.
+            return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
+          }
+        }
+      }
+    }
+    list.add(toPush.copy());
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
+  }
+
+  RegisterWarning(query, "PUSH", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  return AqlValue(new Json(Json::Null));
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
