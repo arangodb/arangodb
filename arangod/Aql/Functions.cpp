@@ -3323,6 +3323,41 @@ AqlValue Functions::Rand (triagens::aql::Query* query,
   return AqlValue(new Json(output));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function FIRST_DOCUMENT
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::FirstDocument (triagens::aql::Query* query,
+                                   triagens::arango::AqlTransaction* trx,
+                                   FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  for (size_t i = 0; i < n; ++i) {
+    Json element = ExtractFunctionParameter(trx, parameters, i, false);
+    if (element.isObject()) {
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, element.copy().steal(), Json::AUTOFREE));
+    }
+  }
+  return AqlValue(new Json(Json::Null));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function FIRST_LIST
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::FirstList (triagens::aql::Query* query,
+                               triagens::arango::AqlTransaction* trx,
+                               FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  for (size_t i = 0; i < n; ++i) {
+    Json element = ExtractFunctionParameter(trx, parameters, i, false);
+    if (element.isArray()) {
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, element.copy().steal(), Json::AUTOFREE));
+    }
+  }
+  return AqlValue(new Json(Json::Null));
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
