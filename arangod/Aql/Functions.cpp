@@ -2944,7 +2944,7 @@ AqlValue Functions::Document (triagens::aql::Query* query,
             }
           }
         }
-        catch (triagens::basics::Exception& e) {
+        catch (triagens::basics::Exception const&) {
           // Ignore all ArangoDB exceptions here
         }
       }
@@ -2983,7 +2983,7 @@ AqlValue Functions::Document (triagens::aql::Query* query,
           }
         }
       }
-      catch (triagens::basics::Exception& e) {
+      catch (triagens::basics::Exception const&) {
         // Ignore all ArangoDB exceptions here
       }
     }
