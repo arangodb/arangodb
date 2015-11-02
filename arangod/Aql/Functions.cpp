@@ -743,7 +743,7 @@ AqlValue Functions::Nth (triagens::aql::Query* query,
 
   size_t index = static_cast<size_t>(numValue);
 
-  if (index < 0 || index >= n) {
+  if (index >= n) {
     return AqlValue(new Json(Json::Null));
   }
 
