@@ -399,7 +399,6 @@ function ahuacatlQueryCacheTestSuite () {
 /// @brief test queries w/ warnings
 ////////////////////////////////////////////////////////////////////////////////
 
-/* Temporarily Disabled.
     testWarnings : function () {
       var query = "FOR i IN 1..3 RETURN i / 0";
       var result;
@@ -415,7 +414,6 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ null, null, null ], result.json);
       assertEqual(3, result.warnings.length);
     },
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test non-deterministic queries

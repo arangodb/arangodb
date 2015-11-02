@@ -72,6 +72,34 @@ TRI_json_t const Expression::TrueJson  = { TRI_JSON_BOOLEAN, { true } };
 TRI_json_t const Expression::FalseJson = { TRI_JSON_BOOLEAN, { false } };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                            static helper function
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register warning
+////////////////////////////////////////////////////////////////////////////////
+            
+static void RegisterWarning (triagens::aql::Ast const* ast,
+                             char const* functionName,
+                             int code) {
+  std::string msg;
+
+  if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
+    msg = triagens::basics::Exception::FillExceptionString(code, functionName);
+  }
+  else {
+    msg.append("in function '");
+    msg.append(functionName);
+    msg.append("()': ");
+    msg.append(TRI_errno_string(code));
+  }
+
+  ast->query()->registerWarning(code, msg.c_str());
+}
+
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -1314,6 +1342,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic (AstNode const* node,
       return AqlValue(new Json(l * r));
     case NODE_TYPE_OPERATOR_BINARY_DIV:
       if (r == 0) {
+        RegisterWarning(_ast, "/", TRI_ERROR_QUERY_DIVISION_BY_ZERO);
         return AqlValue(new Json(Json::Null));
       }
       return AqlValue(new Json(l / r));
