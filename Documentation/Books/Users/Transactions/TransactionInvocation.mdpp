@@ -287,7 +287,6 @@ db.c1.save({ _key: "key2" });
 db.c1.save({ _key: "key3" });
 
 // this will push out key1 
-// we now have these keys: [ "key2", "key3", "key4" ] 
 db.c1.save({ _key: "key4" });
 
 
@@ -297,7 +296,7 @@ db._executeTransaction({
   },
   action: function () {
     var db = require("internal").db;
-    // this will push out key2. we now have keys [ "key3", "key4", "key5" ] 
+    // this will push out key2
     db.c1.save({ _key: "key5" }); 
     // will abort the transaction 
     throw "doh!"
