@@ -534,7 +534,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     case NODE_TYPE_OPERATOR_BINARY_MINUS:
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
     case NODE_TYPE_OPERATOR_BINARY_DIV:
-    // case NODE_TYPE_OPERATOR_BINARY_MOD:
+    case NODE_TYPE_OPERATOR_BINARY_MOD:
       return executeSimpleExpressionArithmetic(node, trx, argv, startPos, vars, regs);
     default:
       std::string msg("unhandled type '");
@@ -1346,11 +1346,8 @@ AqlValue Expression::executeSimpleExpressionArithmetic (AstNode const* node,
         return AqlValue(new Json(Json::Null));
       }
       return AqlValue(new Json(l / r));
-      /*
     case NODE_TYPE_OPERATOR_BINARY_MOD:
-      size_t mod = (size_t) l % (size_t) r;
-      return AqlValue(new Json(mod));
-      */
+      return AqlValue(new Json(fmod(l, r)));
     default:
       return AqlValue(new Json(Json::Null));
   }
