@@ -323,12 +323,12 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
 
         // file is a journal
         if (TRI_EqualString2("journal", first, firstLen)) {
-          TRI_PushBackVectorString(&structure._journals, strdup(filename.c_str()));
+          TRI_PushBackVectorString(&structure._journals, TRI_DuplicateString(filename.c_str()));
         }
 
         // file is a datafile
         else if (TRI_EqualString2("datafile", first, firstLen)) {
-          TRI_PushBackVectorString(&structure._datafiles, strdup(filename.c_str()));
+          TRI_PushBackVectorString(&structure._datafiles, TRI_DuplicateString(filename.c_str()));
         }
 
         // file is a left-over compaction file. rename it back
