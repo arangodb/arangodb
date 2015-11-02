@@ -41,12 +41,14 @@ else ()
   )
 
   SET(LIB_ARANGO_CONSOLE
-      ../3rdParty/linenoise/linenoise.c
-      ../3rdParty/linenoise/utf8.c
+      ../3rdParty/linenoise-ng/src/ConvertUTF.cpp
+      ../3rdParty/linenoise-ng/src/linenoise.cpp
+      ../3rdParty/linenoise-ng/src/wcwidth.cpp
       Utilities/LinenoiseShell.cpp
   )
 
-  include_directories(../3rdParty/linenoise)
+  include_directories(../3rdParty/linenoise-ng/include)
+  include_directories(../3rdParty/linenoise-ng/src)
   add_definitions("-DTRI_HAVE_LINENOISE")
 endif ()
 
