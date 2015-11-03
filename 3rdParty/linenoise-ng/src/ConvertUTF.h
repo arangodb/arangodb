@@ -94,6 +94,7 @@ typedef unsigned char  UTF8;  /* typically 8 bits */
 #endif
 
 #include <stdint.h>
+#include <string>
 
 namespace linenoise_ng {
 
