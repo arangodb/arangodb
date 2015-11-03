@@ -694,23 +694,7 @@ endif ()
 ### @brief LINENOISE
 ################################################################################
 
-if (MSVC)
-  set(LINENOISE_LIBS linenoise CACHE string "LINENOISE libraries")
-  set(LINENOISE_VERSION "linenoise" CACHE string "LINENOISE version")
-else ()
-  set(LINENOISE_INCLUDE "" CACHE path "LINENOISE include path")
-  set(LINENOISE_LIB_PATH "" CACHE path "LINENOISE library path")
-  set(LINENOISE_LIBS readline CACHE string "LINENOISE libraries")
-  set(LINENOISE_VERSION "unknown" CACHE string "LINENOISE version")
-endif ()
-
-if (LINENOISE_INCLUDE)
-  include_directories(${LINENOISE_INCLUDE})
-endif ()
-
-if (LINENOISE_LIB_PATH)
-  link_directories(${LINENOISE_LIB_PATH})
-endif ()
+set(LINENOISE_VERSION "unknown" CACHE string "LINENOISE version")
 
 ################################################################################
 ### @brief V8
