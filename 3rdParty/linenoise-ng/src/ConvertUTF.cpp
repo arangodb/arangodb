@@ -61,10 +61,10 @@ static const UTF32 halfMask = 0x3FFUL;
 
 ConversionResult ConvertUTF32toUTF16 (
         const UTF32** sourceStart, const UTF32* sourceEnd, 
-        UTF16** targetStart, UTF16* targetEnd, ConversionFlags flags) {
+        char16_t** targetStart, char16_t* targetEnd, ConversionFlags flags) {
     ConversionResult result = conversionOK;
     const UTF32* source = *sourceStart;
-    UTF16* target = *targetStart;
+    char16_t* target = *targetStart;
     while (source < sourceEnd) {
         UTF32 ch;
         if (target >= targetEnd) {

@@ -148,7 +148,7 @@ ConversionResult ConvertUTF16toUTF32 (
 
 ConversionResult ConvertUTF32toUTF16 (
                 const UTF32** sourceStart, const UTF32* sourceEnd, 
-                UTF16** targetStart, UTF16* targetEnd, ConversionFlags flags);
+                char16_t** targetStart, char16_t* targetEnd, ConversionFlags flags);
 
 Boolean isLegalUTF8Sequence(const UTF8 *source, const UTF8 *sourceEnd);
 
