@@ -538,6 +538,12 @@ function ahuacatlListTestSuite () {
       data.forEach(function (d) {
         var actual = getQueryResults("RETURN APPEND(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")");
         assertEqual(d[0], actual[0], d);
+
+        actual = getQueryResults("RETURN NOOPT(APPEND(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + "))");
+        assertEqual(d[0], actual[0], d);
+
+        actual = getQueryResults("RETURN NOOPT(V8(APPEND(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")))");
+        assertEqual(d[0], actual[0], d);
       });
     },
 
@@ -564,6 +570,34 @@ function ahuacatlListTestSuite () {
       actual = getQueryResults("RETURN APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + ", true)");
       assertEqual(l, actual[0]);
       assertEqual(1500, actual[0].length);
+
+      actual = getQueryResults("RETURN NOOPT(APPEND(" + JSON.stringify(l1) + ", " + JSON.stringify(l2) + "))");
+      l = l1.concat(l2);
+      assertEqual(l, actual[0]);
+      assertEqual(1000, actual[0].length);
+
+      actual = getQueryResults("RETURN NOOPT(APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + "))");
+      l = l.concat(l1);
+      assertEqual(l, actual[0]);
+      assertEqual(1500, actual[0].length);
+
+      actual = getQueryResults("RETURN NOOPT(APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + ", true))");
+      assertEqual(l, actual[0]);
+      assertEqual(1500, actual[0].length);
+
+      actual = getQueryResults("RETURN NOOPT(V8(APPEND(" + JSON.stringify(l1) + ", " + JSON.stringify(l2) + ")))");
+      l = l1.concat(l2);
+      assertEqual(l, actual[0]);
+      assertEqual(1000, actual[0].length);
+
+      actual = getQueryResults("RETURN NOOPT(V8(APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + ")))");
+      l = l.concat(l1);
+      assertEqual(l, actual[0]);
+      assertEqual(1500, actual[0].length);
+
+      actual = getQueryResults("RETURN NOOPT(V8(APPEND(" + JSON.stringify(l) + ", " + JSON.stringify(l1) + ", true)))");
+      assertEqual(l, actual[0]);
+      assertEqual(1500, actual[0].length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -574,6 +608,14 @@ function ahuacatlListTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPEND()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPEND([ ])"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPEND([ ], [ ], false, [ ])"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(APPEND())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(APPEND([ ]))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(APPEND([ ], [ ], false, [ ]))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(APPEND()))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(APPEND([ ])))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(APPEND([ ], [ ], false, [ ])))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

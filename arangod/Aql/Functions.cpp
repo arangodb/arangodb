@@ -402,6 +402,16 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
   }
 }
 
+static bool ListContainsElement (Json const& list, Json const& testee) {
+  for (size_t i = 0; i < list.size(); ++i) {
+    if (TRI_CheckSameValueJson(testee.json(), list.at(i).json())) {
+      // We found the element in the list.
+      return true;
+    }
+  }
+  return false;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      AQL functions public helpers
 // -----------------------------------------------------------------------------
@@ -3379,14 +3389,9 @@ AqlValue Functions::Push (triagens::aql::Query* query,
   if (list.isArray()) {
     if (n == 3) {
       Json unique = ExtractFunctionParameter(trx, parameters, 2, false);
-      if (ValueToBoolean(unique.json())) {
-        for (size_t i = 0; i < list.size(); ++i) {
-          if (TRI_CheckSameValueJson(toPush.json(), list.at(i).json())) {
-            // We found the element in the list.
-            // Do not Insert it.
-            return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
-          }
-        }
+      if (ValueToBoolean(unique.json()) &&
+          ListContainsElement(list, toPush)) {
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
       }
     }
     list.add(toPush.copy());
@@ -3428,6 +3433,55 @@ AqlValue Functions::Pop (triagens::aql::Query* query,
   return AqlValue(new Json(Json::Null));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function APPEND
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Append (triagens::aql::Query* query,
+                            triagens::arango::AqlTransaction* trx,
+                            FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "APPEND", (int) 2, (int) 3);
+  }
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+  Json toAppend = ExtractFunctionParameter(trx, parameters, 1, false);
+
+  if (toAppend.isNull()) {
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
+  }
+  bool unique = false;
+  if (n == 3) {
+      Json uniqueJson = ExtractFunctionParameter(trx, parameters, 2, false);
+      unique = ValueToBoolean(uniqueJson.json());
+  }
+  if (list.isNull()) {
+    // Create a JSON array instead.
+    list = Json(Json::Array, 0);
+  }
+
+  if (! toAppend.isArray()) {
+    if (unique && ListContainsElement(list, toAppend)) {
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
+    }
+    list.reserve(1);
+    list.add(toAppend.copy());
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
+  }
+
+  size_t const expectedInserts = toAppend.size();
+
+  list.reserve(expectedInserts);
+
+  for (size_t i = 0; i < expectedInserts; ++i) {
+    auto toPush = toAppend.at(i);
+    if (unique && ListContainsElement(list, toPush)) {
+      continue;
+    }
+    list.add(toPush.copy());
+  }
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
