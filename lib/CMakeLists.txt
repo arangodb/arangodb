@@ -27,10 +27,6 @@ if (MSVC)
       Basics/win-utils.cpp
       Zip/iowin32.cpp
   )
-
-  SET(LIB_ARANGO_CONSOLE
-      Utilities/LinenoiseShell.cpp
-  )
 else ()
   SET(LIB_ARANGO_POSIX
       Basics/locks-posix.cpp
@@ -40,17 +36,19 @@ else ()
       Rest/EndpointUnixDomain.cpp
   )
 
-  SET(LIB_ARANGO_CONSOLE
-      ../3rdParty/linenoise-ng/src/ConvertUTF.cpp
-      ../3rdParty/linenoise-ng/src/linenoise.cpp
-      ../3rdParty/linenoise-ng/src/wcwidth.cpp
-      Utilities/LinenoiseShell.cpp
-  )
-
-  include_directories(../3rdParty/linenoise-ng/include)
-  include_directories(../3rdParty/linenoise-ng/src)
-  add_definitions("-DTRI_HAVE_LINENOISE")
 endif ()
+
+include_directories(../3rdParty/linenoise-ng/include)
+include_directories(../3rdParty/linenoise-ng/src)
+add_definitions("-DTRI_HAVE_LINENOISE")
+
+SET(LIB_ARANGO_CONSOLE
+  ../3rdParty/linenoise-ng/src/ConvertUTF.cpp
+  ../3rdParty/linenoise-ng/src/linenoise.cpp
+  ../3rdParty/linenoise-ng/src/wcwidth.cpp
+  Utilities/LinenoiseShell.cpp
+)
+
 
 add_library(
     ${LIB_ARANGO}
