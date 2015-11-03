@@ -3482,6 +3482,54 @@ AqlValue Functions::Append (triagens::aql::Query* query,
   }
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function UNSHIFT
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Unshift (triagens::aql::Query* query,
+                             triagens::arango::AqlTransaction* trx,
+                             FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNSHIFT", (int) 2, (int) 3);
+  }
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+  Json toAppend = ExtractFunctionParameter(trx, parameters, 1, false);
+
+  if (list.isNull()) {
+    Json result(Json::Array, 1);
+    result.add(toAppend.copy());
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+  }
+
+  if (list.isArray()) {
+    bool unique = false;
+    if (n == 3) {
+        Json uniqueJson = ExtractFunctionParameter(trx, parameters, 2, false);
+        unique = ValueToBoolean(uniqueJson.json());
+    }
+    if (unique && ListContainsElement(list, toAppend)) {
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
+    }
+    Json copy = list.copy();
+    TRI_json_t* toAppendCopy = toAppend.copy().steal();
+
+    int res = TRI_InsertVector(&(copy.json()->_value._objects), toAppendCopy, 0);
+    // free the pointer, but not the contents
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, toAppendCopy);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, copy.steal()));
+  }
+
+  RegisterInvalidArgumentWarning(query, "UNSHIFT");
+  return AqlValue(new Json(Json::Null));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
