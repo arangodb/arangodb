@@ -490,24 +490,30 @@ function ahuacatlListTestSuite () {
         l.push(i);
       }
       var actual = getQueryResults("RETURN SHIFT(" + JSON.stringify(l) + ")");
-      l.shift();
+      var first = l.shift();
       assertEqual(l, actual[0]);
       assertEqual(999, actual[0].length);
 
       actual = getQueryResults("RETURN SHIFT(" + JSON.stringify(l) + ")");
-      l.shift();
+      var second = l.shift();
       assertEqual(l, actual[0]);
       assertEqual(998, actual[0].length);
 
+      l.unshift(second);
+      l.unshift(first);
+
       actual = getQueryResults("RETURN NOOPT(SHIFT(" + JSON.stringify(l) + "))");
-      l.shift();
+      first = l.shift();
       assertEqual(l, actual[0]);
       assertEqual(999, actual[0].length);
 
       actual = getQueryResults("RETURN NOOPT(SHIFT(" + JSON.stringify(l) + "))");
-      l.shift();
+      second = l.shift();
       assertEqual(l, actual[0]);
       assertEqual(998, actual[0].length);
+
+      l.unshift(second);
+      l.unshift(first);
 
       actual = getQueryResults("RETURN NOOPT(V8(SHIFT(" + JSON.stringify(l) + ")))");
       l.shift();
