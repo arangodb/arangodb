@@ -54,9 +54,9 @@ and performance of transactions, but will introduce the risk of losing the last
 committed transactions in the case of a crash.
 
 In contrast, transactions that modify data in more than one collection are 
-automatically synchronized to disk. This comes at the cost of several disk sync
+automatically synchronized to disk. This comes at the cost of several disk sync.
 For a multi-collection transaction, the call to the *_executeTransaction* function 
-will only return only after the data of all modified collections has been synchronized 
+will only return after the data of all modified collections has been synchronized 
 to disk and the transaction has been made fully durable. This not only reduces the
 risk of losing data in case of a crash but also ensures consistency after a
 restart.
