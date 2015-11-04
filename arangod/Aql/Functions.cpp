@@ -3422,8 +3422,7 @@ AqlValue Functions::Pop (triagens::aql::Query* query,
   if (list.isArray()) {
     if (list.size() > 0) {
       if (! TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, list.json(), list.size() - 1)) {
-        // This should never happen
-        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
     }
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
@@ -3551,13 +3550,104 @@ AqlValue Functions::Shift (triagens::aql::Query* query,
     if (list.size() == 0) {
       return AqlValue(new Json(Json::Array, 0));
     }
-    if (!TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, list.json(), 0)) {
+    if (! TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, list.json(), 0)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
   }
 
   RegisterInvalidArgumentWarning(query, "SHIFT");
+  return AqlValue(new Json(Json::Null));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function REMOVE_VALUE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::RemoveValue (triagens::aql::Query* query,
+                                 triagens::arango::AqlTransaction* trx,
+                                 FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "REMOVE_VALUE", (int) 2, (int) 3);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (list.isNull()) {
+    return AqlValue(new Json(Json::Array, 0));
+  }
+  if (list.isArray()) {
+    bool useLimit = false;
+    Json result = list.copy();
+    size_t limit = result.size();
+    Json toRemove = ExtractFunctionParameter(trx, parameters, 1, false);
+    if (n == 3) {
+      Json limitJson = ExtractFunctionParameter(trx, parameters, 2, false);
+      if (! limitJson.isNull()) {
+        bool unused = false;
+        limit = static_cast<size_t>(ValueToNumber(limitJson.json(), unused));
+        useLimit = true;
+      }
+    }
+    for (size_t i = 0; i < result.size(); /* No increase */) {
+      if (useLimit && limit == 0) {
+        break;
+      }
+      if (TRI_CheckSameValueJson(toRemove.json(), result.at(i).json())) {
+        if (! TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, result.json(), i)) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+        --limit;
+      }
+      else {
+        ++i;
+      }
+    }
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+  }
+
+  RegisterInvalidArgumentWarning(query, "REMOVE_VALUE");
+  return AqlValue(new Json(Json::Null));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function REMOVE_NTH
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::RemoveNth (triagens::aql::Query* query,
+                               triagens::arango::AqlTransaction* trx,
+                               FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "REMOVE_NTH", (int) 2, (int) 2);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (list.isNull()) {
+    return AqlValue(new Json(Json::Array, 0));
+  }
+
+  if (list.isArray()) {
+    double const count = static_cast<double>(list.size());
+    Json position = ExtractFunctionParameter(trx, parameters, 1, false);
+    bool unused = false;
+    double p = TRI_ToDoubleJson(position.json(), unused);
+    if (p >= count || p < - count) {
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
+    }
+    if (p < 0) {
+      p += count;
+    }
+    Json result = list.copy();
+    if (! TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, result.json(), static_cast<size_t>(p))) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+  }
+
+  RegisterInvalidArgumentWarning(query, "REMOVE_NTH");
   return AqlValue(new Json(Json::Null));
 }
 

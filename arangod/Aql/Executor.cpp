@@ -182,9 +182,9 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "POP",                         Function("POP",                         "AQL_POP", "l", true, true, false, true, true, &Functions::Pop) },
   { "SHIFT",                       Function("SHIFT",                       "AQL_SHIFT", "l", true, true, false, true, true, &Functions::Shift) },
   { "UNSHIFT",                     Function("UNSHIFT",                     "AQL_UNSHIFT", "l,.|b", true, true, false, true, true, &Functions::Unshift) },
-  { "REMOVE_VALUE",                Function("REMOVE_VALUE",                "AQL_REMOVE_VALUE", "l,.|n", true, true, false, true, true) },
+  { "REMOVE_VALUE",                Function("REMOVE_VALUE",                "AQL_REMOVE_VALUE", "l,.|n", true, true, false, true, true, &Functions::RemoveValue) },
   { "REMOVE_VALUES",               Function("REMOVE_VALUES",               "AQL_REMOVE_VALUES", "l,lz", true, true, false, true, true) },
-  { "REMOVE_NTH",                  Function("REMOVE_NTH",                  "AQL_REMOVE_NTH", "l,n", true, true, false, true, true) },
+  { "REMOVE_NTH",                  Function("REMOVE_NTH",                  "AQL_REMOVE_NTH", "l,n", true, true, false, true, true, &Functions::RemoveNth) },
 
   // document functions
   { "HAS",                         Function("HAS",                         "AQL_HAS", "az,s", true, true, false, true, true, &Functions::Has) },

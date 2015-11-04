@@ -801,6 +801,12 @@ function ahuacatlListTestSuite () {
       data.forEach(function (d) {
         var actual = getQueryResults("RETURN REMOVE_VALUE(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")");
         assertEqual(d[0], actual[0], d);
+
+        actual = getQueryResults("RETURN NOOPT(REMOVE_VALUE(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + "))");
+        assertEqual(d[0], actual[0], d);
+
+        actual = getQueryResults("RETURN NOOPT(V8(REMOVE_VALUE(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")))");
+        assertEqual(d[0], actual[0], d);
       });
     },
 
@@ -812,6 +818,14 @@ function ahuacatlListTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUE()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUE([ ])"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUE([ ], [ ], true, true)"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUE())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUE([ ]))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_VALUE([ ], [ ], true, true))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(REMOVE_VALUE()))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(REMOVE_VALUE([ ])))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(REMOVE_VALUE([ ], [ ], true, true)))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -834,12 +848,16 @@ function ahuacatlListTestSuite () {
         [ [ "1b", "1c", "2a", "2b", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], 0 ] ],
         [ [ "1a", "1c", "2a", "2b", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], 1 ] ],
         [ [ "1a", "1b", "2a", "2b", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], 2 ] ],
+        [ [ "1a", "1b", "2a", "2b", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], 2.2 ] ],
+        [ [ "1a", "1b", "2a", "2b", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], 2.8 ] ],
         [ [ "1a", "1b", "1c", "2b", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], 3 ] ],
         [ [ "1a", "1b", "1c", "2a", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], 4 ] ],
         [ [ "1a", "1b", "1c", "2a", "2b" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], 5 ] ],
         [ [ "1a", "1b", "1c", "2a", "2b", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], 6 ] ],
         [ [ "1a", "1b", "1c", "2a", "2b" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], -1 ] ],
         [ [ "1a", "1b", "1c", "2a", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], -2 ] ],
+        [ [ "1a", "1b", "1c", "2b", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], -2.2 ] ],
+        [ [ "1a", "1b", "1c", "2b", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], -2.8 ] ],
         [ [ "1a", "1b", "1c", "2b", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], -3 ] ],
         [ [ "1a", "1b", "2a", "2b", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], -4 ] ],
         [ [ "1a", "1c", "2a", "2b", "3" ], [ [ "1a", "1b", "1c", "2a", "2b", "3" ], -5 ] ],
@@ -849,6 +867,12 @@ function ahuacatlListTestSuite () {
 
       data.forEach(function (d) {
         var actual = getQueryResults("RETURN REMOVE_NTH(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")");
+        assertEqual(d[0], actual[0], d);
+
+        actual = getQueryResults("RETURN NOOPT(REMOVE_NTH(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + "))");
+        assertEqual(d[0], actual[0], d);
+
+        actual = getQueryResults("RETURN NOOPT(V8(REMOVE_NTH(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")))");
         assertEqual(d[0], actual[0], d);
       });
     },
@@ -861,6 +885,14 @@ function ahuacatlListTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_NTH()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_NTH([ ])"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_NTH([ ], 1, true)"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_NTH())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_NTH([ ]))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REMOVE_NTH([ ], 1, true))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(REMOVE_NTH()))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(REMOVE_NTH([ ])))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(REMOVE_NTH([ ], 1, true)))");
     }
 
   };
