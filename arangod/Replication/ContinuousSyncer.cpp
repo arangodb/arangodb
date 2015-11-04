@@ -75,7 +75,8 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
     _includeSystem(configuration->_includeSystem),
     _requireFromPresent(configuration->_requireFromPresent),
     _verbose(configuration->_verbose),
-    _masterIs27OrHigher(false) {
+    _masterIs27OrHigher(false),
+    _hasWrittenState(false) {
 
   uint64_t c = configuration->_chunkSize;
   if (c == 0) {
@@ -1316,8 +1317,25 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
       _applier->_state._totalEvents += processedMarkers;
 
       if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
+        _hasWrittenState = true;
         saveApplierState();
       }
+    }
+
+    if (! _hasWrittenState && _useTick) {
+      // write state at least once so the start tick gets saved
+      _hasWrittenState = true;
+
+      WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+
+      _applier->_state._lastAppliedContinuousTick = firstRegularTick;
+      _applier->_state._lastProcessedContinuousTick = firstRegularTick;
+
+      if (_ongoingTransactions.empty() && _applier->_state._safeResumeTick == 0) {
+        _applier->_state._safeResumeTick = firstRegularTick;
+      }
+
+      saveApplierState();
     }
   }
 
