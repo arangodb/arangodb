@@ -268,7 +268,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
 #endif
   { "SLEEP",                       Function("SLEEP",                       "AQL_SLEEP", "n", false, false, true, true, true) },
   { "COLLECTIONS",                 Function("COLLECTIONS",                 "AQL_COLLECTIONS", "", false, false, true, false, true) },
-  { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, true, false, true, true) },
+  { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, true, false, true, true, &Functions::NotNull ) },
   { "FIRST_LIST",                  Function("FIRST_LIST",                  "AQL_FIRST_LIST", ".|+", true, true, false, true, true, &Functions::FirstList) },
   { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT",              "AQL_FIRST_DOCUMENT", ".|+", true, true, false, true, true, &Functions::FirstDocument) },
   { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, true, false, true, true, &Functions::ParseIdentifier) },
