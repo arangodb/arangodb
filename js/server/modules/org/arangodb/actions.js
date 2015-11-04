@@ -1752,23 +1752,11 @@ function resultUnsupported (req, res, headers) {
 
 function handleRedirect (req, res, options, headers) {
   var destination;
-  var url;
+  var url = '';
 
   destination = options.destination;
 
   if (destination.substr(0,5) !== "http:" && destination.substr(0,6) !== "https:") {
-    url = req.protocol + "://";
-
-    if (req.headers.hasOwnProperty('host')) {
-      url += req.headers.host;
-      if (req.headers.host.indexOf(':') === -1) {
-        // append port number if not present in "host" header
-        url += ":" + req.server.port;
-      }
-    }
-    else {
-      url += req.server.address + ":" + req.server.port;
-    }
 
     if (options.relative) {
       var u = req.url;
