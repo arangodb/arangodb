@@ -18,9 +18,12 @@ other transactions. Additionally, reads inside a transaction are repeatable.
 Note that the above is true only for all collections that are declared in the 
 *collections* attribute of the transaction.
 
+!SUBSECTION Lazily adding collections
+
 There might be situations when declaring all collections a priori is not possible,
 for example, because further collections are determined by a dynamic AQL query 
-inside the transaction.
+inside the transaction, for example a query using AQL graph functions.
+
 In this case, it would be impossible to know beforehand which collection to lock, and
 thus it is legal to not declare collections that will be accessed in the transaction in
 read-only mode. Accessing a non-declared collection in read-only mode during a 
@@ -52,21 +55,6 @@ This automatic lazy addition of collections to a transaction also introduces the
 possibility of deadlocks. Deadlocks may occur if there are concurrent transactions 
 that try to acquire locks on the same collections lazily.
 
-To recover from a deadlock state, ArangoDB will give up waiting for a collection
-after a configurable amount of time. The wait time can be specified per transaction 
-using the optional *lockTimeout* attribute. If no value is specified, some default
-value will be applied.
-
-If ArangoDB was waited at least *lockTimeout* seconds during lock acquisition, it
-will give up and rollback the transaction. Note that the *lockTimeout* is used per
-lock acquisition in a transaction, and not just once per transaction. There will be 
-at least as many lock acquisition attempts as there are collections used in the 
-transaction. The total lock wait time may thus be much higher than the value of
-*lockTimeout*.
-
-To avoid both deadlocks and non-repeatable reads, all collections used in a 
-transaction should always be specified if known in advance.
-
 In order to make a transaction fail when a non-declared collection is used inside
 a transaction for reading, the optional *allowImplicit* sub-attribute of *collections* 
 can be set to *false*:
@@ -92,4 +80,81 @@ db._executeTransaction({
 The default value for *allowImplicit* is *true*. Write-accessing collections that
 have not been declared in the *collections* array is never possible, regardless of
 the value of *allowImplicit*.
+
+!SUBSECTION Deadlocks and Deadlock detection
+
+A deadlock is a situation in which two or more concurrent operations (user transactions
+or AQL queries) try to access the same resources (collections, documents) and need to 
+wait for the others to finish, but none of them can make any progress.
+
+A good example for a deadlock is two concurrently executing transactions T1 and T2 that
+try to access the same collections but that need to wait for each other. In this example,
+transaction T1 will write to collection `c1`, but will also read documents from
+collection `c2` without announcing it:
+
+```js
+db._executeTransaction({
+  collections: { 
+    write: "c1"
+  },
+  action: function () {
+    var db = require("org/arangodb").db;
+
+    // write into c1 (announced)
+    db.c1.insert({ foo: "bar" });
+
+    // some operation here that takes long to execute...
+
+    // read from c2 (unannounced)
+    db.c2.toArray();
+  }
+});
+```
+
+Transaction T2 announces to write into collection `c2`, but will also read 
+documents from collection `c1` without announcing it:
+
+```js
+db._executeTransaction({
+  collections: { 
+    write: "c2"
+  },
+  action: function () {
+    var db = require("org/arangodb").db;
+
+    // write into c2 (announced)
+    db.c2.insert({ bar: "baz" });
+    
+    // some operation here that takes long to execute...
+    
+    // read from c1 (unannounced)
+    db.c1.toArray();
+  }
+});
+```
+
+In the above example, a deadlock will occur if transaction T1 and T2 have both
+acquired their write locks (T1 for collection `c1` and T2 for collection `c2`) and
+are then trying to read from the other other (T1 will read from `c2`, T2 will read
+from `c1`). T1 will then try to acquire the read lock on collection `c2`, which
+is prevented by transaction T2. T2 however will wait for the read lock on 
+collection `c1`, which is prevented by transaction T1. 
+
+In case of such deadlock, there would be no progress for any of the involved 
+transactions, and none of the involved transactions could ever complete. This is
+completely undesirable, so the automatic deadlock detection mechanism in ArangoDB
+will automatically abort one of the transactions involved in such deadlock. Aborting
+means that all changes done by the transaction will be rolled back and error 29 
+(`deadlock detected`) will be thrown. 
+
+Client code (AQL queries, user transactions) that access more than one collection 
+should be aware of the potential of deadlocks and should handle the error 29 
+(`deadlock detected`) properly, either by passing the exception to the caller or 
+retrying the operation.
+
+To avoid both deadlocks and non-repeatable reads, all collections used in a 
+transaction should be specified in the `collections` attribute when known in advance.
+In case this is not possible because collections are added dynamically inside the
+transaction, deadlocks may occur and the deadlock detection may kick in and abort
+the transaction. 
 
