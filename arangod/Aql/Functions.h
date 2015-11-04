@@ -137,6 +137,7 @@ namespace triagens {
       static AqlValue Unshift         (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Shift           (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue RemoveValue     (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
+      static AqlValue RemoveValues    (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue RemoveNth       (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue NotNull         (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
     };
