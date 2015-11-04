@@ -49,6 +49,12 @@ function ahuacatlNumericFunctionsTestSuite () {
       var expected = [ -100, -3, -3, -3, -2, -2, -2, -2, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 99 ];
       var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return FLOOR(r)");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(FLOOR(r))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(V8(FLOOR(r)))");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,14 +62,28 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFloorInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FLOOR()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FLOOR(1, 2)"); 
-      assertEqual([ 0 ], getQueryResults("RETURN FLOOR(null)"));
-      assertEqual([ 1 ], getQueryResults("RETURN FLOOR(true)"));
-      assertEqual([ 0 ], getQueryResults("RETURN FLOOR(\"yes\")"));
-      assertEqual([ 0 ], getQueryResults("RETURN FLOOR([ ])"));
-      assertEqual([ 2 ], getQueryResults("RETURN FLOOR([ 2 ])"));
-      assertEqual([ 0 ], getQueryResults("RETURN FLOOR({ })"));
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN FLOOR(${input})`;
+          case 1:
+            return `RETURN NOOPT(FLOOR(${input}))`;
+          case 2:
+            return `RETURN NOOPT(V8(FLOOR(${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+      for (var i = 0; i < 3; ++i) {
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "1, 2")); 
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "null")));
+        assertEqual([ 1 ], getQueryResults(buildQuery(i, "true")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"yes\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ ]")));
+        assertEqual([ 2 ], getQueryResults(buildQuery(i, "[ 2 ]")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "{ }")));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,6 +94,12 @@ function ahuacatlNumericFunctionsTestSuite () {
       var expected = [ -99, -3, -2, -2, -2, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 100 ];
       var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return CEIL(r)");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(CEIL(r))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(V8(CEIL(r)))");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,14 +107,28 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCeilInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CEIL()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CEIL(1,2)"); 
-      assertEqual([ 0 ], getQueryResults("RETURN CEIL(null)"));
-      assertEqual([ 1 ], getQueryResults("RETURN CEIL(true)"));
-      assertEqual([ 0 ], getQueryResults("RETURN CEIL(\"yes\")"));
-      assertEqual([ 0 ], getQueryResults("RETURN CEIL([ ])"));
-      assertEqual([ 2 ], getQueryResults("RETURN CEIL([ 2 ])"));
-      assertEqual([ 0 ], getQueryResults("RETURN CEIL({ })"));
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN CEIL(${input})`;
+          case 1:
+            return `RETURN NOOPT(CEIL(${input}))`;
+          case 2:
+            return `RETURN NOOPT(V8(CEIL(${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+      for (var i = 0; i < 3; ++i) {
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "1, 2")); 
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "null")));
+        assertEqual([ 1 ], getQueryResults(buildQuery(i, "true")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"yes\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ ]")));
+        assertEqual([ 2 ], getQueryResults(buildQuery(i, "[ 2 ]")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "{ }")));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,6 +139,12 @@ function ahuacatlNumericFunctionsTestSuite () {
       var expected = [ 99.999, 3, 2.1, 2.01, 2, 1.99, 1.1, 1.01, 1, 0.9, 0.6, 0.5, 0.4, 0.1, 0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ];
       var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return ABS(r)");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(ABS(r))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(V8(ABS(r)))");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,14 +152,28 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testAbsInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ABS()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ABS(1,2)"); 
-      assertEqual([ 0 ], getQueryResults("RETURN ABS(null)"));
-      assertEqual([ 1 ], getQueryResults("RETURN ABS(true)"));
-      assertEqual([ 0 ], getQueryResults("RETURN ABS(\"yes\")"));
-      assertEqual([ 0 ], getQueryResults("RETURN ABS([ ])"));
-      assertEqual([ 37 ], getQueryResults("RETURN ABS([ -37 ])"));
-      assertEqual([ 0 ], getQueryResults("RETURN ABS({ })"));
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN ABS(${input})`;
+          case 1:
+            return `RETURN NOOPT(ABS(${input}))`;
+          case 2:
+            return `RETURN NOOPT(V8(ABS(${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+      for (var i = 0; i < 3; ++i) {
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "1,2")); 
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "null")));
+        assertEqual([ 1 ], getQueryResults(buildQuery(i, "true")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"yes\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ ]")));
+        assertEqual([ 37 ], getQueryResults(buildQuery(i, "[ -37 ]")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "{ }")));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,6 +184,12 @@ function ahuacatlNumericFunctionsTestSuite () {
       var expected = [ -100, -3, -2, -2, -2, -2, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 100 ];
       var actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return ROUND(r)");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(ROUND(r))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("FOR r IN [ -99.999, -3, -2.1, -2.01, -2, -1.99, -1.1, -1.01, -1, -0.9, -0.6, -0.5, -0.4, -0.1, -0.01, 0, 0.01, 0.1, 0.4, 0.5, 0.6, 0.9, 1, 1.01, 1.1, 1.99, 2, 2.01, 2.1, 3, 99.999 ] return NOOPT(V8(ROUND(r)))");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,14 +197,29 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRoundInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ROUND()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ROUND(1,2)"); 
-      assertEqual([ 0 ], getQueryResults("RETURN ROUND(null)"));
-      assertEqual([ 1 ], getQueryResults("RETURN ROUND(true)"));
-      assertEqual([ 0 ], getQueryResults("RETURN ROUND(\"yes\")"));
-      assertEqual([ 0 ], getQueryResults("RETURN ROUND([ ])"));
-      assertEqual([ -37 ], getQueryResults("RETURN ROUND([ -37 ])"));
-      assertEqual([ 0 ], getQueryResults("RETURN ROUND({ })"));
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN ROUND(${input})`;
+          case 1:
+            return `RETURN NOOPT(ROUND(${input}))`;
+          case 2:
+            return `RETURN NOOPT(V8(ROUND(${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+
+      };
+      for (var i = 0; i < 3; ++i) {
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "1,2")); 
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "null")));
+        assertEqual([ 1 ], getQueryResults(buildQuery(i, "true")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "\"yes\"")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ ]")));
+        assertEqual([ -37 ], getQueryResults(buildQuery(i, "[ -37 ]")));
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "{ }")));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,13 +227,20 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testRand : function () {
-      var actual = getQueryResults("FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN RAND()");
-      for (var i in actual) {
-        if (actual.hasOwnProperty(i)) {
-          var value = actual[i];
-          assertTrue(value >= 0.0 && value < 1.0);
+      var queries = [
+        "FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN RAND()",
+        "FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN NOOPT(RAND())",
+        "FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN NOOPT(V8(RAND()))"
+      ];
+      queries.forEach(function(query) {
+        var actual = getQueryResults(query);
+        for (var i in actual) {
+          if (actual.hasOwnProperty(i)) {
+            var value = actual[i];
+            assertTrue(value >= 0.0 && value < 1.0);
+          }
         }
-      }
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,8 +248,14 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRandInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RAND(1)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RAND(2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RAND(1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RAND(2)");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RAND(1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RAND(2))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(RAND(1)))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(RAND(2)))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,6 +320,20 @@ function ahuacatlNumericFunctionsTestSuite () {
         else {
           assertEqual(value[1].toFixed(4), actual[0].toFixed(4));
         }
+        actual = getQueryResults("RETURN NOOPT(SQRT(" + JSON.stringify(value[0]) + "))");
+        if (value[1] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[1].toFixed(4), actual[0].toFixed(4));
+        }
+        actual = getQueryResults("RETURN NOOPT(V8(SQRT(" + JSON.stringify(value[0]) + ")))");
+        if (value[1] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[1].toFixed(4), actual[0].toFixed(4));
+        }
       });
     },
 
@@ -234,16 +342,29 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSqrtInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SQRT()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SQRT(2, 2)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SQRT(2, 2, 3)"); 
-      assertEqual([ 0 ], getQueryResults("RETURN SQRT(false)")); 
-      assertEqual([ 1 ], getQueryResults("RETURN SQRT(true)")); 
-      assertEqual([ 0 ], getQueryResults("RETURN SQRT('foo')")); 
-      assertEqual([ 0 ], getQueryResults("RETURN SQRT([ ])")); 
-      assertEqual([ 0 ], getQueryResults("RETURN SQRT({ })")); 
+      var buildQuery = function (nr, input) {
+        switch (nr) {
+          case 0:
+            return `RETURN SQRT(${input})`;
+          case 1:
+            return `RETURN NOOPT(SQRT(${input}))`;
+          case 2:
+            return `RETURN NOOPT(V8(SQRT(${input})))`;
+          default:
+            assertTrue(false, "Undefined state");
+        }
+      };
+      for (var i = 0; i < 3; ++i) {
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "2, 2")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "2, 2, 3")); 
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "false"))); 
+        assertEqual([ 1 ], getQueryResults(buildQuery(i, "true"))); 
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "'foo'"))); 
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "[ ]"))); 
+        assertEqual([ 0 ], getQueryResults(buildQuery(i, "{ }"))); 
+      }
     }
-
   };
 }
 

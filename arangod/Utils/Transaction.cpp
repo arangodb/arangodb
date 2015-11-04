@@ -86,8 +86,6 @@ int Transaction::readIncremental (TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  uint64_t count = 0;
-
   try {
     if (batchSize > 2048) {
       docs.reserve(2048);
@@ -97,6 +95,7 @@ int Transaction::readIncremental (TRI_transaction_collection_t* trxCollection,
     }
 
     auto primaryIndex = document->primaryIndex();
+    uint64_t count = 0;
 
     while (count < batchSize || skip > 0) {
       TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(internalSkip, total);

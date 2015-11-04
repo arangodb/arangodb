@@ -453,10 +453,10 @@ int64_t AqlValue::toInt64 () const {
 /// @brief get the numeric value of an AqlValue
 ////////////////////////////////////////////////////////////////////////////////
 
-double AqlValue::toNumber () const {
+double AqlValue::toNumber (bool& failed) const {
   switch (_type) {
     case JSON: 
-      return TRI_ToDoubleJson(_json->json());
+      return TRI_ToDoubleJson(_json->json(), failed);
     case RANGE: {
       size_t rangeSize = _range->size();
       if (rangeSize == 1) {  
@@ -495,29 +495,6 @@ std::string AqlValue::toString () const {
   }
 
   return std::string("");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a string representation of the AqlValue
-////////////////////////////////////////////////////////////////////////////////
-
-char const* AqlValue::toChar () const {
-  switch (_type) {
-    case JSON: {
-      TRI_json_t const* json = _json->json();
-      TRI_ASSERT(TRI_IsStringJson(json));
-      return json->_value._string.data;
-    }
-
-    case SHAPED: 
-    case DOCVEC: 
-    case RANGE: 
-    case EMPTY: {
-      // cannot convert these types 
-    }
-  }
-
-  return "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

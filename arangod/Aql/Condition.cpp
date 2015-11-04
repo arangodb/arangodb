@@ -597,7 +597,9 @@ AstNode const* Condition::removeIndexCondition (Variable const* variable,
   for (size_t i = 0; i < n; ++i) {
     auto operand = andNode->getMemberUnchecked(i);
 
-    if (operand->isComparisonOperator()) {
+    if (operand->isComparisonOperator() && 
+        operand->type != NODE_TYPE_OPERATOR_BINARY_NE &&
+        operand->type != NODE_TYPE_OPERATOR_BINARY_NIN) {
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
 
@@ -605,12 +607,7 @@ AstNode const* Condition::removeIndexCondition (Variable const* variable,
         std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
           
         if (lhs->isAttributeAccessForVariable(result) &&
-            rhs->isConstant()) {
-          if (result.first != variable) {
-            // attribute access for different variable
-            continue;
-          }
-        
+            result.first == variable) {
           ConditionPart current(variable, result.second, operand, ATTRIBUTE_LEFT, nullptr);
 
           if (canRemove(current, other)) {
@@ -624,12 +621,7 @@ AstNode const* Condition::removeIndexCondition (Variable const* variable,
         std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
           
         if (rhs->isAttributeAccessForVariable(result) &&
-            lhs->isConstant()) {
-          if (result.first != variable) {
-            // attribute access for different variable
-            continue;
-          }
-          
+            result.first == variable) {
           ConditionPart current(variable, result.second, operand, ATTRIBUTE_RIGHT, nullptr);
 
           if (canRemove(current, other)) {
@@ -1314,12 +1306,16 @@ bool Condition::canRemove (ConditionPart const& me,
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
           
-        if (lhs->isAttributeAccessForVariable(result) &&
-            rhs->isConstant()) {
+        if (lhs->isAttributeAccessForVariable(result)) {
+          if (rhs->isConstant()) {
+            ConditionPart indexCondition(result.first, result.second, operand, ATTRIBUTE_LEFT, nullptr);
 
-          ConditionPart indexCondition(result.first, result.second, operand, ATTRIBUTE_LEFT, nullptr);
-
-          if (me.isCoveredBy(indexCondition)) {
+            if (me.isCoveredBy(indexCondition)) {
+              return true;
+            }
+          }
+          // non-constant condition
+          else if (me.operatorType == operand->type && me.valueNode->toString() == rhs->toString()) {
             return true;
           }
         }
@@ -1329,12 +1325,16 @@ bool Condition::canRemove (ConditionPart const& me,
           rhs->type == NODE_TYPE_EXPANSION) {
         std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
           
-        if (rhs->isAttributeAccessForVariable(result) &&
-            lhs->isConstant()) {
+        if (rhs->isAttributeAccessForVariable(result)) {
+          if (lhs->isConstant()) {
+            ConditionPart indexCondition(result.first, result.second, operand, ATTRIBUTE_RIGHT, nullptr);
 
-          ConditionPart indexCondition(result.first, result.second, operand, ATTRIBUTE_RIGHT, nullptr);
-
-          if (me.isCoveredBy(indexCondition)) {
+            if (me.isCoveredBy(indexCondition)) {
+              return true;
+            }
+          }
+          // non-constant condition
+          else if (me.operatorType == operand->type && me.valueNode->toString() == lhs->toString()) {
             return true;
           }
         }

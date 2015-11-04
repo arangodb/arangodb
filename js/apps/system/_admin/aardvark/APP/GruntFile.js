@@ -45,6 +45,7 @@
             "frontend/js/lib/jquery.form.min.js",
             "frontend/js/lib/jquery.uploadfile.min.js",
             "frontend/js/lib/jquery.textfill.min.js",
+            "frontend/js/lib/jquery.noty.packaged.min.js",
             "frontend/js/lib/select2.min.js",
             "frontend/js/lib/jsoneditor-min.js",
             "frontend/js/lib/strftime-min.js",

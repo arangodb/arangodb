@@ -1,5 +1,7 @@
 scss_files: '*.scss'
 
+exclude: '_animate.scss'
+
 linters:
 
   SelectorFormat:

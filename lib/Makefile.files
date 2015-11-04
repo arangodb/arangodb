@@ -100,8 +100,9 @@ lib_libarango_a_SOURCES = \
 if ENABLE_LINENOISE
 
 lib_libarango_a_SOURCES += \
-	3rdParty/linenoise/linenoise.c \
-	3rdParty/linenoise/utf8.c \
+	3rdParty/linenoise-ng/src/linenoise.cpp \
+	3rdParty/linenoise-ng/src/ConvertUTF.cpp \
+	3rdParty/linenoise-ng/src/wcwidth.cpp \
 	lib/Utilities/LinenoiseShell.cpp
 
 endif

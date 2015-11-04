@@ -127,8 +127,17 @@ AQL supports the following functions to operate on document values:
   Multiple attribute names can be specified by either passing multiple individual string argument 
   names, or by passing an array of attribute names:
 
-      UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
+      UNSET(doc, '_id', '_key', 'foo', 'bar')
       UNSET(doc, [ '_id', '_key', 'foo', 'bar' ])
+
+- *UNSET_RECURSIVE(document, attributename, ...)*: Recursively removes the attributes 
+  *attributename* (can be one or many) from *document* and its sub-documents. All other 
+  attributes will be preserved.
+  Multiple attribute names can be specified by either passing multiple individual string argument 
+  names, or by passing an array of attribute names:
+
+      UNSET_RECURSIVE(doc, '_id', '_key', 'foo', 'bar')
+      UNSET_RECURSIVE(doc, [ '_id', '_key', 'foo', 'bar' ])
 
 - *KEEP(document, attributename, ...)*: Keeps only the attributes *attributename*
   (can be one or many) from *document*. All other attributes will be removed from the result.

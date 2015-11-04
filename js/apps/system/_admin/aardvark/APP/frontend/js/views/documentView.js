@@ -27,7 +27,7 @@
       "click #confirmDeleteDocument" : "deleteDocument",
       "click #document-from" : "navigateToDocument",
       "click #document-to" : "navigateToDocument",
-      "keydown .ace_editor" : "keyPress",
+      "keydown #documentEditor .ace_editor" : "keyPress",
       "keyup .jsoneditor .search input" : "checkSearchBox"
     },
 
@@ -189,7 +189,7 @@
           model = this.editor.get();
         }
         catch (e) {
-          this.errorConfirmation();
+          this.errorConfirmation(e);
           this.disableSaveButton();
           return;
         }
@@ -219,6 +219,9 @@
     },
 
     successConfirmation: function () {
+
+      arangoHelper.arangoNotification('Document saved.');
+
       $('#documentEditor .tree').animate({backgroundColor: '#C6FFB0'}, 500);
       $('#documentEditor .tree').animate({backgroundColor: '#FFFFF'}, 500);
 
@@ -226,7 +229,9 @@
       $('#documentEditor .ace_content').animate({backgroundColor: '#FFFFF'}, 500);
     },
 
-    errorConfirmation: function () {
+    errorConfirmation: function (e) {
+      arangoHelper.arangoError("Document editor: ", e);
+
       $('#documentEditor .tree').animate({backgroundColor: '#FFB0B0'}, 500);
       $('#documentEditor .tree').animate({backgroundColor: '#FFFFF'}, 500);
 

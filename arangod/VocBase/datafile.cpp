@@ -41,6 +41,8 @@
 #include "VocBase/server.h"
 
 // #define DEBUG_DATAFILE 1
+
+using namespace std;
   
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -382,7 +384,6 @@ static void InitDatafile (TRI_datafile_t* datafile,
 static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
                                     TRI_voc_size_t vocSize) {
   TRI_ERRORBUF;
-  char* oldname;
   void* data;
   void* mmHandle;
 
@@ -399,14 +400,15 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   }
 
   // open the file
-  char* filename = TRI_Concatenate2String(datafile->_filename, ".new");
+  char* ptr = TRI_Concatenate2String(datafile->_filename, ".new");
+  string filename = ptr;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, ptr);
 
-  int fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  int fd = TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
     TRI_SYSTEM_ERROR();
-    LOG_ERROR("cannot create new datafile '%s': %s", filename, TRI_GET_ERRORBUF);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    LOG_ERROR("cannot create new datafile '%s': %s", filename.c_str(), TRI_GET_ERRORBUF);
 
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
@@ -420,10 +422,9 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
     TRI_CLOSE(fd);
 
     // remove empty file
-    TRI_UnlinkFile(filename);
+    TRI_UnlinkFile(filename.c_str());
 
-    LOG_ERROR("cannot seek in new datafile '%s': %s", filename, TRI_GET_ERRORBUF);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    LOG_ERROR("cannot seek in new datafile '%s': %s", filename.c_str(), TRI_GET_ERRORBUF);
 
     return TRI_ERROR_SYS_ERROR;
   }
@@ -437,10 +438,9 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
     TRI_CLOSE(fd);
 
     // remove empty file
-    TRI_UnlinkFile(filename);
+    TRI_UnlinkFile(filename.c_str());
 
-    LOG_ERROR("cannot create datafile '%s': %s", filename, TRI_GET_ERRORBUF);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    LOG_ERROR("cannot create datafile '%s': %s", filename.c_str(), TRI_GET_ERRORBUF);
 
     return TRI_ERROR_SYS_ERROR;
   }
@@ -454,10 +454,9 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
     TRI_CLOSE(fd);
 
     // remove empty file
-    TRI_UnlinkFile(filename);
+    TRI_UnlinkFile(filename.c_str());
 
-    LOG_ERROR("cannot memory map file '%s': %s", filename, TRI_GET_ERRORBUF);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    LOG_ERROR("cannot memory map file '%s': %s", filename.c_str(), TRI_GET_ERRORBUF);
 
     return TRI_errno();
   }
@@ -470,8 +469,6 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
 
   if (res < 0) {
     TRI_CLOSE(datafile->_fd);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
     LOG_ERROR("munmap failed with: %d", res);
     return res;
   }
@@ -497,28 +494,21 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   datafile->_written = datafile->_next;
 
   // rename files
-  oldname = TRI_Concatenate2String(datafile->_filename, ".corrupted");
+  ptr = TRI_Concatenate2String(datafile->_filename, ".corrupted");
+  string oldname = ptr;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, ptr);
 
-  res = TRI_RenameFile(datafile->_filename, oldname);
+  res = TRI_RenameFile(datafile->_filename, oldname.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, oldname);
-
     return res;
   }
 
-  res = TRI_RenameFile(filename, datafile->_filename);
+  res = TRI_RenameFile(filename.c_str(), datafile->_filename);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, oldname);
-
     return res;
   }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, oldname);
 
   // need to reset the datafile state here to write, otherwise the following call will return an error
   datafile->_state = TRI_DF_STATE_WRITE;
@@ -631,6 +621,8 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
       scan._status = 4;
     }
       
+    entry._key = nullptr;
+
     if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||  
         marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
       char const* ptr = reinterpret_cast<char const*>(marker) + reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker)->_offsetKey;
@@ -640,8 +632,18 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
       char const* ptr = reinterpret_cast<char const*>(marker) + reinterpret_cast<TRI_doc_deletion_key_marker_t*>(marker)->_offsetKey;
       entry._key = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, ptr, strlen(ptr));
     }
-    else {
-      entry._key = nullptr;
+    else if (marker->_type == TRI_DF_MARKER_SHAPE) {
+      char* p = ((char*) marker) + sizeof(TRI_df_shape_marker_t);
+      TRI_shape_t* l = (TRI_shape_t*) p;
+      std::string tmp("shape #");
+      tmp.append(std::to_string(l->_sid));
+      entry._key = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, tmp.c_str(), tmp.size());
+    }
+    else if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
+      TRI_shape_aid_t aid = reinterpret_cast<TRI_df_attribute_marker_t const*>(marker)->_aid;
+      std::string tmp("attribute #");
+      tmp.append(std::to_string(aid));
+      entry._key = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, tmp.c_str(), tmp.size());
     }
 
     TRI_PushBackVector(&scan._entries, &entry);

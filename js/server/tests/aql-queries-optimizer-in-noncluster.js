@@ -956,7 +956,7 @@ function ahuacatlQueryOptimizerInTestSuite () {
       var query = "FOR j IN [1,2,3] FOR i IN " + cn + " FILTER i.value == j || i.value == j + 1 || i.value == j + 2 RETURN i.value";
       var expected = [ 1, 2, 3, 2, 3, 4, 3, 4 ];
       var actual = getQueryResults(query);
-      assertEqual(expected, actual);
+      assertEqual(expected.sort(), actual.sort());
       ruleIsUsed(query);
     },
 

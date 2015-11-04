@@ -93,7 +93,7 @@ namespace triagens {
                         bool sparse,
                         bool allowPartialIndex);
         
-        explicit PathBasedIndex (struct TRI_json_t const*);
+        explicit PathBasedIndex (struct TRI_json_t const*, bool);
 
         ~PathBasedIndex ();
 

@@ -150,6 +150,7 @@ var help = function () {
     "available"       : "lists all Foxx applications available in the local repository",
     "configuration"   : "request the configuration information for the given mountpoint",
     "configure"       : "sets the configuration for the given mountpoint",
+    "updateDeps"      : "links the dependencies in manifest to a mountpoint",
     "dependencies"    : "request the dependencies information for the given mountpoint",
     "development"     : "activates development mode for the given mountpoint",
     "help"            : "shows this help",
@@ -477,7 +478,28 @@ var configuration = function(mount) {
   arangosh.checkRequestResult(res);
   return res;
 };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Link Dependencies to the installed mountpoint the app at the mountpoint
+////////////////////////////////////////////////////////////////////////////////
 
+var updateDeps = function(mount, options) {
+  checkParameter(
+    "update(<mount>)",
+    [ [ "Mount path", "string" ] ],
+    [ mount ] );
+  utils.validateMount(mount);
+  var req = {
+    mount: mount,
+    options: options
+  };
+  var res = arango.POST("/_admin/foxx/updateDeps", JSON.stringify(req));
+  arangosh.checkRequestResult(res);
+  return {
+    name: res.name,
+    version: res.version,
+    mount: res.mount
+  };
+};
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Configure the dependencies of the app at the mountpoint
 ////////////////////////////////////////////////////////////////////////////////
@@ -667,6 +689,14 @@ var run = function (args) {
       case "configuration":
         res = configuration(args[1]);
         printf("Configuration options:\n%s\n", JSON.stringify(res, undefined, 2));
+        break;
+      case "updateDeps":
+        options = extractOptions(args).configuration || {};
+        res = updateDeps(args[1], options);
+        printf("Reconfigured Application %s version %s on mount point %s\n",
+           res.name,
+           res.version,
+           res.mount);
         break;
       case "set-dependencies":
         options = extractOptions(args).configuration || {};

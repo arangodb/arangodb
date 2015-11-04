@@ -42,6 +42,8 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
+using namespace std;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              COLLECTION MIGRATION
 // -----------------------------------------------------------------------------
@@ -317,18 +319,16 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
       // .............................................................................
 
       else if (TRI_EqualString2("db", third, thirdLen)) {
-        char* filename;
-
-        filename = TRI_Concatenate2File(path, file);
+        string filename = TRI_Concatenate2File(path, file);
 
         // file is a journal
         if (TRI_EqualString2("journal", first, firstLen)) {
-          TRI_PushBackVectorString(&structure._journals, filename);
+          TRI_PushBackVectorString(&structure._journals, TRI_DuplicateString(filename.c_str()));
         }
 
         // file is a datafile
         else if (TRI_EqualString2("datafile", first, firstLen)) {
-          TRI_PushBackVectorString(&structure._datafiles, filename);
+          TRI_PushBackVectorString(&structure._datafiles, TRI_DuplicateString(filename.c_str()));
         }
 
         // file is a left-over compaction file. rename it back
@@ -342,12 +342,11 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
 
           if (TRI_ExistsFile(newName)) {
             // we have a compaction-xxxx and a datafile-xxxx file. we'll keep the datafile
-            TRI_UnlinkFile(filename);
+            TRI_UnlinkFile(filename.c_str());
 
-            LOG_WARNING("removing left-over compaction file '%s'", filename);
+            LOG_WARNING("removing left-over compaction file '%s'", filename.c_str());
 
             TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
-            TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
             continue;
           }
           else {
@@ -357,35 +356,29 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
             TRI_UnlinkFile(newName);
 
             // rename the compactor to a datafile
-            res = TRI_RenameFile(filename, newName);
+            res = TRI_RenameFile(filename.c_str(), newName);
 
             if (res != TRI_ERROR_NO_ERROR) {
-              LOG_ERROR("unable to rename compaction file '%s'", filename);
+              LOG_ERROR("unable to rename compaction file '%s'", filename.c_str());
 
               TRI_FreeString(TRI_CORE_MEM_ZONE, newName);
-              TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
               continue;
             }
           }
 
-          TRI_Free(TRI_CORE_MEM_ZONE, filename);
-
-          filename = newName;
-          TRI_PushBackVectorString(&structure._datafiles, filename);
+          TRI_PushBackVectorString(&structure._datafiles, newName);
         }
 
         // temporary file, we can delete it!
         else if (TRI_EqualString2("temp", first, firstLen)) {
-          LOG_WARNING("found temporary file '%s', which is probably a left-over. deleting it", filename);
-          TRI_UnlinkFile(filename);
-          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+          LOG_WARNING("found temporary file '%s', which is probably a left-over. deleting it", filename.c_str());
+          TRI_UnlinkFile(filename.c_str());
         }
 
         // ups, what kind of file is that
         else {
           LOG_ERROR("unknown datafile type '%s'", file);
-          TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
         }
       }
       else {

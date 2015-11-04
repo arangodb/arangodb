@@ -62,6 +62,8 @@
 #include "V8Server/v8-user-structures.h"
 #include "Wal/LogfileManager.h"
 
+using namespace std;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
@@ -840,22 +842,24 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       continue;
     }
 
-    char* file = TRI_Concatenate2File(path, name);
+    char* filePtr = TRI_Concatenate2File(path, name);
 
-    if (file == nullptr) {
+    if (filePtr == nullptr) {
       LOG_FATAL_AND_EXIT("out of memory");
     }
 
-    if (TRI_IsDirectory(file)) {
+    string file = filePtr;
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filePtr);
+
+    if (TRI_IsDirectory(file.c_str())) {
       TRI_col_info_t info;
 
-      if (! TRI_IsWritable(file)) {
+      if (! TRI_IsWritable(file.c_str())) {
         // the collection directory we found is not writable for the current user
         // this can cause serious trouble so we will abort the server start if we
         // encounter this situation
-        LOG_ERROR("database subdirectory '%s' is not writable for current user", file);
+        LOG_ERROR("database subdirectory '%s' is not writable for current user", file.c_str());
 
-        TRI_FreeString(TRI_CORE_MEM_ZONE, file);
         TRI_DestroyVectorString(&files);
         regfree(&re);
 
@@ -863,21 +867,20 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       }
 
       // no need to lock as we are scanning
-      res = TRI_LoadCollectionInfo(file, &info, true);
+      res = TRI_LoadCollectionInfo(file.c_str(), &info, true);
 
       if (res == TRI_ERROR_NO_ERROR) {
         TRI_UpdateTickServer(info._cid);
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        char* tmpfile = TRI_Concatenate2File(file, ".tmp");
+        char* tmpfile = TRI_Concatenate2File(file.c_str(), ".tmp");
 
         if (TRI_ExistsFile(tmpfile)) {
           LOG_TRACE("ignoring temporary directory '%s'", tmpfile);
           TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
           // temp file still exists. this means the collection was not created fully
           // and needs to be ignored
-          TRI_FreeString(TRI_CORE_MEM_ZONE, file);
           TRI_FreeCollectionInfoOptions(&info);
 
           continue; // ignore this directory
@@ -885,8 +888,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
         
         TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
 
-        LOG_ERROR("cannot read collection info file in directory '%s': %s", file, TRI_errno_string(res));
-        TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+        LOG_ERROR("cannot read collection info file in directory '%s': %s", file.c_str(), TRI_errno_string(res));
         TRI_DestroyVectorString(&files);
         TRI_FreeCollectionInfoOptions(&info);
         regfree(&re);
@@ -897,7 +899,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
         // deleted collections should be removed on startup. this is the default
         LOG_DEBUG("collection '%s' was deleted, wiping it", name);
 
-        res = TRI_RemoveDirectory(file);
+        res = TRI_RemoveDirectory(file.c_str());
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_WARNING("cannot wipe deleted collection: %s", TRI_last_error());
@@ -915,7 +917,6 @@ static int ScanPath (TRI_vocbase_t* vocbase,
             LOG_ERROR("collection '%s' has a too old version. Please start the server with the --upgrade option.",
                       info._name);
 
-            TRI_FreeString(TRI_CORE_MEM_ZONE, file);
             TRI_DestroyVectorString(&files);
             TRI_FreeCollectionInfoOptions(&info);
             regfree(&re);
@@ -933,13 +934,12 @@ static int ScanPath (TRI_vocbase_t* vocbase,
             }
 
             if (res == TRI_ERROR_NO_ERROR && info._version < TRI_COL_VERSION_20) {
-              res = TRI_UpgradeCollection20(vocbase, file, &info);
+              res = TRI_UpgradeCollection20(vocbase, file.c_str(), &info);
             }
 
             if (res != TRI_ERROR_NO_ERROR) {
               LOG_ERROR("upgrading collection '%s' failed.", info._name);
 
-              TRI_FreeString(TRI_CORE_MEM_ZONE, file);
               TRI_DestroyVectorString(&files);
               TRI_FreeCollectionInfoOptions(&info);
               regfree(&re);
@@ -949,12 +949,11 @@ static int ScanPath (TRI_vocbase_t* vocbase,
           }
         }
 
-        c = AddCollection(vocbase, type, info._name, info._cid, file);
+        c = AddCollection(vocbase, type, info._name, info._cid, file.c_str());
 
         if (c == nullptr) {
-          LOG_ERROR("failed to add document collection from '%s'", file);
+          LOG_ERROR("failed to add document collection from '%s'", file.c_str());
 
-          TRI_FreeString(TRI_CORE_MEM_ZONE, file);
           TRI_DestroyVectorString(&files);
           TRI_FreeCollectionInfoOptions(&info);
           regfree(&re);
@@ -969,20 +968,18 @@ static int ScanPath (TRI_vocbase_t* vocbase,
           // iterating markers may be time-consuming. we'll only do it if
           // we have to
           TRI_voc_tick_t tick;
-          TRI_IterateTicksCollection(file, StartupTickIterator, &tick);
+          TRI_IterateTicksCollection(file.c_str(), StartupTickIterator, &tick);
 
           TRI_UpdateTickServer(tick);
         }
 
-        LOG_DEBUG("added document collection from '%s'", file);
+        LOG_DEBUG("added document collection from '%s'", file.c_str());
       }
       TRI_FreeCollectionInfoOptions(&info);
     }
     else {
-      LOG_DEBUG("ignoring non-directory '%s'", file);
+      LOG_DEBUG("ignoring non-directory '%s'", file.c_str());
     }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
   }
 
   regfree(&re);

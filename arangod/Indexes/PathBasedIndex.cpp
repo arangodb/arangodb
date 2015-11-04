@@ -93,12 +93,12 @@ PathBasedIndex::PathBasedIndex (TRI_idx_iid_t iid,
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-PathBasedIndex::PathBasedIndex (TRI_json_t const* json)
+PathBasedIndex::PathBasedIndex (TRI_json_t const* json, bool allowPartialIndex)
   : Index(json),
     _shaper(nullptr),
     _paths(),
     _useExpansion(false),
-    _allowPartialIndex(triagens::basics::JsonHelper::getBooleanValue(json, "allowPartialIndex", false)) {
+    _allowPartialIndex(allowPartialIndex) {
 
   TRI_ASSERT(! _fields.empty());
 

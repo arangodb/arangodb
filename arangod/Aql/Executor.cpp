@@ -142,12 +142,12 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "RANDOM_TOKEN",                Function("RANDOM_TOKEN",                "AQL_RANDOM_TOKEN", "n", false, false, true, true, true) },
 
   // numeric functions
-  { "FLOOR",                       Function("FLOOR",                       "AQL_FLOOR", "n", true, true, false, true, true) },
-  { "CEIL",                        Function("CEIL",                        "AQL_CEIL", "n", true, true, false, true, true) },
-  { "ROUND",                       Function("ROUND",                       "AQL_ROUND", "n", true, true, false, true, true) },
-  { "ABS",                         Function("ABS",                         "AQL_ABS", "n", true, true, false, true, true) },
-  { "RAND",                        Function("RAND",                        "AQL_RAND", "", false, false, false, true, true) },
-  { "SQRT",                        Function("SQRT",                        "AQL_SQRT", "n", true, true, false, true, true) },
+  { "FLOOR",                       Function("FLOOR",                       "AQL_FLOOR", "n", true, true, false, true, true, &Functions::Floor) },
+  { "CEIL",                        Function("CEIL",                        "AQL_CEIL", "n", true, true, false, true, true, &Functions::Ceil) },
+  { "ROUND",                       Function("ROUND",                       "AQL_ROUND", "n", true, true, false, true, true, &Functions::Round) },
+  { "ABS",                         Function("ABS",                         "AQL_ABS", "n", true, true, false, true, true, &Functions::Abs) },
+  { "RAND",                        Function("RAND",                        "AQL_RAND", "", false, false, false, true, true, &Functions::Rand) },
+  { "SQRT",                        Function("SQRT",                        "AQL_SQRT", "n", true, true, false, true, true, &Functions::Sqrt) },
   
   // list functions
   { "RANGE",                       Function("RANGE",                       "AQL_RANGE", "n,n|n", true, true, false, true, true) },
@@ -163,28 +163,28 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "MEDIAN",                      Function("MEDIAN",                      "AQL_MEDIAN", "l", true, true, false, true, true) }, 
   { "PERCENTILE",                  Function("PERCENTILE",                  "AQL_PERCENTILE", "l,n|s", true, true, false, true, true) }, 
   { "AVERAGE",                     Function("AVERAGE",                     "AQL_AVERAGE", "l", true, true, false, true, true, &Functions::Average) },
-  { "VARIANCE_SAMPLE",             Function("VARIANCE_SAMPLE",             "AQL_VARIANCE_SAMPLE", "l", true, true, false, true, true) },
-  { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "AQL_VARIANCE_POPULATION", "l", true, true, false, true, true) },
+  { "VARIANCE_SAMPLE",             Function("VARIANCE_SAMPLE",             "AQL_VARIANCE_SAMPLE", "l", true, true, false, true, true, &Functions::VarianceSample) },
+  { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "AQL_VARIANCE_POPULATION", "l", true, true, false, true, true, &Functions::VariancePopulation) },
   { "STDDEV_SAMPLE",               Function("STDDEV_SAMPLE",               "AQL_STDDEV_SAMPLE", "l", true, true, false, true, true) },
   { "STDDEV_POPULATION",           Function("STDDEV_POPULATION",           "AQL_STDDEV_POPULATION", "l", true, true, false, true, true) },
   { "UNIQUE",                      Function("UNIQUE",                      "AQL_UNIQUE", "l", true, true, false, true, true, &Functions::Unique) },
   { "SORTED_UNIQUE",               Function("SORTED_UNIQUE",               "AQL_SORTED_UNIQUE", "l", true, true, false, true, true, &Functions::SortedUnique) },
   { "SLICE",                       Function("SLICE",                       "AQL_SLICE", "l,n|n", true, true, false, true, true) },
   { "REVERSE",                     Function("REVERSE",                     "AQL_REVERSE", "ls", true, true, false, true, true) },    // note: REVERSE() can be applied on strings, too
-  { "FIRST",                       Function("FIRST",                       "AQL_FIRST", "l", true, true, false, true, true) },
-  { "LAST",                        Function("LAST",                        "AQL_LAST", "l", true, true, false, true, true) },
-  { "NTH",                         Function("NTH",                         "AQL_NTH", "l,n", true, true, false, true, true) },
+  { "FIRST",                       Function("FIRST",                       "AQL_FIRST", "l", true, true, false, true, true, &Functions::First) },
+  { "LAST",                        Function("LAST",                        "AQL_LAST", "l", true, true, false, true, true, &Functions::Last) },
+  { "NTH",                         Function("NTH",                         "AQL_NTH", "l,n", true, true, false, true, true, &Functions::Nth) },
   { "POSITION",                    Function("POSITION",                    "AQL_POSITION", "l,.|b", true, true, false, true, true) },
   { "CALL",                        Function("CALL",                        "AQL_CALL", "s|.+", false, false, true, false, true) },
   { "APPLY",                       Function("APPLY",                       "AQL_APPLY", "s|l", false, false, true, false, false) },
-  { "PUSH",                        Function("PUSH",                        "AQL_PUSH", "l,.|b", true, true, false, true, false) },
-  { "APPEND",                      Function("APPEND",                      "AQL_APPEND", "l,lz|b", true, true, false, true, true) },
-  { "POP",                         Function("POP",                         "AQL_POP", "l", true, true, false, true, true) },
-  { "SHIFT",                       Function("SHIFT",                       "AQL_SHIFT", "l", true, true, false, true, true) },
-  { "UNSHIFT",                     Function("UNSHIFT",                     "AQL_UNSHIFT", "l,.|b", true, true, false, true, true) },
-  { "REMOVE_VALUE",                Function("REMOVE_VALUE",                "AQL_REMOVE_VALUE", "l,.|n", true, true, false, true, true) },
-  { "REMOVE_VALUES",               Function("REMOVE_VALUES",               "AQL_REMOVE_VALUES", "l,lz", true, true, false, true, true) },
-  { "REMOVE_NTH",                  Function("REMOVE_NTH",                  "AQL_REMOVE_NTH", "l,n", true, true, false, true, true) },
+  { "PUSH",                        Function("PUSH",                        "AQL_PUSH", "l,.|b", true, true, false, true, false, &Functions::Push) },
+  { "APPEND",                      Function("APPEND",                      "AQL_APPEND", "l,lz|b", true, true, false, true, true, &Functions::Append) },
+  { "POP",                         Function("POP",                         "AQL_POP", "l", true, true, false, true, true, &Functions::Pop) },
+  { "SHIFT",                       Function("SHIFT",                       "AQL_SHIFT", "l", true, true, false, true, true, &Functions::Shift) },
+  { "UNSHIFT",                     Function("UNSHIFT",                     "AQL_UNSHIFT", "l,.|b", true, true, false, true, true, &Functions::Unshift) },
+  { "REMOVE_VALUE",                Function("REMOVE_VALUE",                "AQL_REMOVE_VALUE", "l,.|n", true, true, false, true, true, &Functions::RemoveValue) },
+  { "REMOVE_VALUES",               Function("REMOVE_VALUES",               "AQL_REMOVE_VALUES", "l,lz", true, true, false, true, true, &Functions::RemoveValues) },
+  { "REMOVE_NTH",                  Function("REMOVE_NTH",                  "AQL_REMOVE_NTH", "l,n", true, true, false, true, true, &Functions::RemoveNth) },
 
   // document functions
   { "HAS",                         Function("HAS",                         "AQL_HAS", "az,s", true, true, false, true, true, &Functions::Has) },
@@ -195,6 +195,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "DOCUMENT",                    Function("DOCUMENT",                    "AQL_DOCUMENT", "h.|.", false, false, true, false, true, &Functions::Document, NotInCluster) },
   { "MATCHES",                     Function("MATCHES",                     "AQL_MATCHES", ".,l|b", true, true, false, true, true) },
   { "UNSET",                       Function("UNSET",                       "AQL_UNSET", "a,sl|+", true, true, false, true, true, &Functions::Unset) },
+  { "UNSET_RECURSIVE",             Function("UNSET_RECURSIVE",             "AQL_UNSET_RECURSIVE", "a,sl|+", true, true, false, true, true, &Functions::UnsetRecursive) },
   { "KEEP",                        Function("KEEP",                        "AQL_KEEP", "a,sl|+", true, true, false, true, true, &Functions::Keep) },
   { "TRANSLATE",                   Function("TRANSLATE",                   "AQL_TRANSLATE", ".,a|.", true, true, false, true, true) },
   { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, true, false, true, true, &Functions::Zip) },
@@ -267,12 +268,12 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
 #endif
   { "SLEEP",                       Function("SLEEP",                       "AQL_SLEEP", "n", false, false, true, true, true) },
   { "COLLECTIONS",                 Function("COLLECTIONS",                 "AQL_COLLECTIONS", "", false, false, true, false, true) },
-  { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, true, false, true, true) },
-  { "FIRST_LIST",                  Function("FIRST_LIST",                  "AQL_FIRST_LIST", ".|+", true, true, false, true, true) },
-  { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT",              "AQL_FIRST_DOCUMENT", ".|+", true, true, false, true, true) },
+  { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, true, false, true, true, &Functions::NotNull ) },
+  { "FIRST_LIST",                  Function("FIRST_LIST",                  "AQL_FIRST_LIST", ".|+", true, true, false, true, true, &Functions::FirstList) },
+  { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT",              "AQL_FIRST_DOCUMENT", ".|+", true, true, false, true, true, &Functions::FirstDocument) },
   { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, true, false, true, true, &Functions::ParseIdentifier) },
   { "CURRENT_USER",                Function("CURRENT_USER",                "AQL_CURRENT_USER", "", false, false, false, false, true) },
-  { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false, false, true) }
+  { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false, false, true, &Functions::CurrentDatabase) }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

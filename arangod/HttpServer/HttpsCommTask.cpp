@@ -144,7 +144,10 @@ bool HttpsCommTask::handleEvent (EventToken token,
     if (! result) {
       // status is somehow invalid. we got here even though no accept was ever successful
       _clientClosed = true;
+      // this will remove the corresponding chunkedTask from the global list
+      // if we would leave it in there, then the server may crash on shutdown
       _server->handleCommunicationFailure(this);
+
       _scheduler->destroyTask(this);
     }
 

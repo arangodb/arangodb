@@ -786,9 +786,19 @@ function cleanupCurrentCollections (plannedCollections) {
 function handleCollectionChanges (plan) {
   var plannedCollections = getByPrefix3d(plan, "Plan/Collections/");
 
-  createLocalCollections(plannedCollections);
-  dropLocalCollections(plannedCollections);
-  cleanupCurrentCollections(plannedCollections);
+  var ok = true;
+
+  try {
+    createLocalCollections(plannedCollections);
+    dropLocalCollections(plannedCollections);
+    cleanupCurrentCollections(plannedCollections);
+  }
+  catch (err) {
+    console.error("Caught error in handleCollectionChanges: " + 
+                  JSON.stringify(err));
+    ok = false; 
+  }
+  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -802,8 +812,9 @@ function setupReplication () {
   var rep = require("org/arangodb/replication");
   var dbs = db._listDatabases();
   var i;
-  try {
-    for (i = 0; i < dbs.length; i++) {
+  var ok = true;
+  for (i = 0; i < dbs.length; i++) {
+    try {
       var database = dbs[i];
       console.debug("Checking replication of database "+database);
       db._useDatabase(database);
@@ -812,21 +823,25 @@ function setupReplication () {
       if (state.state.running === false) {
         var endpoint = ArangoClusterInfo.getServerEndpoint(
                               ArangoServerState.idOfPrimary());
-        var config = { "endpoint": endpoint, "includeSystem": false };
-        rep.applier.properties(config);
+        var config = { "endpoint": endpoint, "includeSystem": false,
+                       "incremental": false, "autoStart": true,
+                       "requireFromPresent": true};
         console.info("Starting synchronization...");
         var res = rep.sync(config);
         console.info("Last log tick: "+res.lastLogTick+
                     ", starting replication...");
+        rep.applier.properties(config);
         var res2 = rep.applier.start(res.lastLogTick);
         console.info("Result of replication start: "+res2);
       }
     }
-  }
-  catch (err) {
-    db._useDatabase("_system");
+    catch (err) {
+      console.error("Could not set up replication for database ", database);
+      ok = false;
+    }
   }
   db._useDatabase("_system");
+  return ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -920,14 +935,17 @@ function handleChanges (plan, current) {
   }
 
   handleDatabaseChanges(plan, current);
+  var success;
   if (role === "PRIMARY" || role === "COORDINATOR") {
     // Note: This is only ever called for DBservers (primary and secondary),
     // we keep the coordinator case here just in case...
-    handleCollectionChanges(plan, current);
+    success = handleCollectionChanges(plan, current);
   }
   else {
-    setupReplication();
+    success = setupReplication();
   }
+
+  return success;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

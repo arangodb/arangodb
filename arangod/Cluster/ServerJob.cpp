@@ -32,6 +32,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/logging.h"
 #include "Cluster/HeartbeatThread.h"
+#include "Cluster/ClusterInfo.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
@@ -103,7 +104,7 @@ Job::status_t ServerJob::work () {
     result = execute();
   }
     
-  _heartbeat->removeDispatchedJob();
+  _heartbeat->removeDispatchedJob(result);
 
   if (result) {
     // tell the heartbeat thread that the server job was
@@ -155,6 +156,7 @@ bool ServerJob::execute () {
     return false;
   }
 
+  bool ok = true;
   auto isolate = context->isolate;
   try {
     v8::HandleScope scope(isolate);
@@ -162,7 +164,13 @@ bool ServerJob::execute () {
     // execute script inside the context
     auto file = TRI_V8_ASCII_STRING("handle-plan-change");
     auto content = TRI_V8_ASCII_STRING("require('org/arangodb/cluster').handlePlanChange();");
-    TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(), content, file, false);
+    v8::Handle<v8::Value> res = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(), content, file, false);
+    if (res->IsBoolean() && res->IsTrue()) {
+      LOG_ERROR("An error occurred whilst executing the handlePlanChange in JavaScript.");
+      ok = false;   // The heartbeat thread will notice this!
+    }
+    // invalidate our local cache, even if an error occurred
+    ClusterInfo::instance()->flush();
   }
   catch (...) {
   }
@@ -175,7 +183,7 @@ bool ServerJob::execute () {
   _applicationV8->exitContext(context);
   TRI_ReleaseDatabaseServer(_server, static_cast<TRI_vocbase_t*>(orig));
 
-  return true;
+  return ok;
 }
 
 // -----------------------------------------------------------------------------

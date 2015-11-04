@@ -1,5 +1,5 @@
 /*global $, d3, _, console, document*/
-/*global AbstractAdapter*/
+/*global AbstractAdapter, arangoHelper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -456,7 +456,14 @@ function GharialAdapter(nodes, edges, viewer, config) {
         }
       },
       error: function(data) {
-        throw data.statusText;
+        var text = "";
+        try {
+          text = JSON.parse(data.responseText).errorMessage + ' (' + JSON.parse(data.responseText).errorNum + ')';
+          arangoHelper.arangoError(data.statusText, text);
+        }
+        catch (e) {
+          throw data.statusText;
+        }
       }
     });
   };
@@ -476,7 +483,14 @@ function GharialAdapter(nodes, edges, viewer, config) {
         }
       },
       error: function(data) {
-        throw data.statusText;
+        var text = "";
+        try {
+          text = JSON.parse(data.responseText).errorMessage + ' (' + JSON.parse(data.responseText).errorNum + ')';
+          arangoHelper.arangoError(data.statusText, text);
+        }
+        catch (e) {
+          throw data.statusText;
+        }
       }
     });
 
@@ -496,7 +510,14 @@ function GharialAdapter(nodes, edges, viewer, config) {
         callback();
       },
       error: function(data) {
-        throw data.statusText;
+        var text = "";
+        try {
+          text = JSON.parse(data.responseText).errorMessage + ' (' + JSON.parse(data.responseText).errorNum + ')';
+          arangoHelper.arangoError(data.statusText, text);
+        }
+        catch (e) {
+          throw data.statusText;
+        }
       }
     });
   };
@@ -520,7 +541,14 @@ function GharialAdapter(nodes, edges, viewer, config) {
         }
       },
       error: function(data) {
-        throw data.statusText;
+        var text = "";
+        try {
+          text = JSON.parse(data.responseText).errorMessage + ' (' + JSON.parse(data.responseText).errorNum + ')';
+          arangoHelper.arangoError(data.statusText, text);
+        }
+        catch (e) {
+          throw data.statusText;
+        }
       }
     });
   };
@@ -541,7 +569,14 @@ function GharialAdapter(nodes, edges, viewer, config) {
         }
       },
       error: function(data) {
-        throw data.statusText;
+        var text = "";
+        try {
+          text = JSON.parse(data.responseText).errorMessage + ' (' + JSON.parse(data.responseText).errorNum + ')';
+          arangoHelper.arangoError(data.statusText, text);
+        }
+        catch (e) {
+          throw data.statusText;
+        }
       }
     });
   };

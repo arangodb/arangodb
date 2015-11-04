@@ -56,8 +56,6 @@ var uiComponentsHelper = uiComponentsHelper || {};
         $(btn).toggleClass("active", false);
       });
 
-      console.log(button.id);
-
       if (button.id === "control_event_new_node") {
         $('.node').css('cursor', 'pointer');
         $('.gv-background').css('cursor', 'copy');

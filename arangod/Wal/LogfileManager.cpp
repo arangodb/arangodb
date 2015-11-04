@@ -276,14 +276,15 @@ bool LogfileManager::prepare () {
       std::string systemErrorStr;
       long errorNo;
 
-      int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo, systemErrorStr);
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_FATAL_AND_EXIT("unable to create database directory: %s",
-                           systemErrorStr.c_str());
-      }
-      else {
+      bool res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo, systemErrorStr);
+
+      if (res) {
         LOG_INFO("created database directory '%s'.",
                            _directory.c_str());
+      }
+      else {
+        LOG_FATAL_AND_EXIT("unable to create database directory: %s",
+                           systemErrorStr.c_str());
       }
     }
 

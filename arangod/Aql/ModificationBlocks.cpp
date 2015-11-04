@@ -329,7 +329,7 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
       }
       else if (a.isString()) {
         // value is a string
-        key = a.toChar();
+        key = a.toString();
       }
       else {
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;

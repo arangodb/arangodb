@@ -414,10 +414,12 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t*, char const* path, char** error);
 int64_t TRI_ToInt64Json (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a json object into a number
+/// @brief converts a json object into a number, the second parameter
+///        indicates if the conversion was successful. If not it will
+///        return 0.0 and caller can react to fail or not.
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_ToDoubleJson (TRI_json_t const*);
+double TRI_ToDoubleJson (TRI_json_t const*, bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default deleter for TRI_json_t
