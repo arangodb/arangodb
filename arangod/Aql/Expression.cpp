@@ -1314,25 +1314,39 @@ AqlValue Expression::executeSimpleExpressionArithmetic (AstNode const* node,
                                                         std::vector<Variable const*> const& vars,
                                                         std::vector<RegisterId> const& regs) {
   TRI_document_collection_t const* leftCollection = nullptr;
-  AqlValue lhs  = executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv, startPos, vars, regs, true);
+  AqlValue lhs = executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv, startPos, vars, regs, true);
+
+  if (lhs.isObject()) {
+    lhs.destroy();
+    return AqlValue(new Json(Json::Null));
+  }
+
   TRI_document_collection_t const* rightCollection = nullptr;
   AqlValue rhs = executeSimpleExpression(node->getMember(1), &rightCollection, trx, argv, startPos, vars, regs, true);
 
-  if (lhs.isObject() ||
-      rhs.isObject()){
+  if (rhs.isObject()) {
+    lhs.destroy();
+    rhs.destroy();
     return AqlValue(new Json(Json::Null));
   }
 
   // TODO Optimize. Right now we always use double precission
   bool failed = false;
   double l = lhs.toNumber(failed);
+  lhs.destroy();
+
   if (failed) {
+    rhs.destroy();
     return AqlValue(new Json(Json::Null));
   }
+
   double r = rhs.toNumber(failed);
+  rhs.destroy();
+
   if (failed) {
     return AqlValue(new Json(Json::Null));
   }
+
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
       return AqlValue(new Json(l + r));
