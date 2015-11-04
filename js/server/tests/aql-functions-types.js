@@ -81,6 +81,12 @@ function ahuacatlTypesFunctionsTestSuite () {
       var expected = [ 6 ];
       var actual = getQueryResults("RETURN NOT_NULL(null, 2 + 4)");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(NOT_NULL(null, 2 + 4))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(null, 2 + 4)))");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,6 +96,12 @@ function ahuacatlTypesFunctionsTestSuite () {
     testNotNull2 : function () {
       var expected = [ 6 ];
       var actual = getQueryResults("RETURN NOT_NULL(2 + 4, 2 + 5)");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(NOT_NULL(2 + 4, 2 + 5))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(2 + 4, 2 + 5)))");
       assertEqual(expected, actual);
     },
 
@@ -101,6 +113,12 @@ function ahuacatlTypesFunctionsTestSuite () {
       var expected = [ null ];
       var actual = getQueryResults("RETURN NOT_NULL(null, null)");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(NOT_NULL(null, null))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(null, null)))");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,6 +128,12 @@ function ahuacatlTypesFunctionsTestSuite () {
     testNotNull4 : function () {
       var expected = [ 2 ];
       var actual = getQueryResults("RETURN NOT_NULL(2, null)");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(NOT_NULL(2, null))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(2, null)))");
       assertEqual(expected, actual);
     },
 
@@ -121,6 +145,12 @@ function ahuacatlTypesFunctionsTestSuite () {
       var expected = [ false ];
       var actual = getQueryResults("RETURN NOT_NULL(false, true)");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(NOT_NULL(false, true))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(false, true)))");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,6 +160,12 @@ function ahuacatlTypesFunctionsTestSuite () {
     testNotNull6 : function () {
       var expected = [ null ];
       var actual = getQueryResults("RETURN NOT_NULL(null, null, null, null)");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(NOT_NULL(null, null, null, null))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(null, null, null, null)))");
       assertEqual(expected, actual);
     },
 
@@ -141,6 +177,12 @@ function ahuacatlTypesFunctionsTestSuite () {
       var expected = [ -6 ];
       var actual = getQueryResults("RETURN NOT_NULL(null, null, null, null, -6, -7)");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(NOT_NULL(null, null, null, null, -6, -7))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(null, null, null, null, -6, -7)))");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,6 +192,12 @@ function ahuacatlTypesFunctionsTestSuite () {
     testNotNull8 : function () {
       var expected = [ 12 ];
       var actual = getQueryResults("RETURN NOT_NULL(null, null, null, null, 12, null)");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(NOT_NULL(null, null, null, null, 12, null))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(null, null, null, null, 12, null)))");
       assertEqual(expected, actual);
     },
 
@@ -161,6 +209,12 @@ function ahuacatlTypesFunctionsTestSuite () {
       var expected = [ null ];
       var actual = getQueryResults("RETURN NOT_NULL(null)");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(NOT_NULL(null))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(null)))");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,6 +224,12 @@ function ahuacatlTypesFunctionsTestSuite () {
     testNotNull10 : function () {
       var expected = [ 23 ];
       var actual = getQueryResults("RETURN NOT_NULL(23)");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(NOT_NULL(23))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(NOT_NULL(23)))");
       assertEqual(expected, actual);
     },
 

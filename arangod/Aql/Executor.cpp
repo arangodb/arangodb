@@ -163,8 +163,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "MEDIAN",                      Function("MEDIAN",                      "AQL_MEDIAN", "l", true, true, false, true, true) }, 
   { "PERCENTILE",                  Function("PERCENTILE",                  "AQL_PERCENTILE", "l,n|s", true, true, false, true, true) }, 
   { "AVERAGE",                     Function("AVERAGE",                     "AQL_AVERAGE", "l", true, true, false, true, true, &Functions::Average) },
-  { "VARIANCE_SAMPLE",             Function("VARIANCE_SAMPLE",             "AQL_VARIANCE_SAMPLE", "l", true, true, false, true, true) },
-  { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "AQL_VARIANCE_POPULATION", "l", true, true, false, true, true) },
+  { "VARIANCE_SAMPLE",             Function("VARIANCE_SAMPLE",             "AQL_VARIANCE_SAMPLE", "l", true, true, false, true, true, &Functions::VarianceSample) },
+  { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "AQL_VARIANCE_POPULATION", "l", true, true, false, true, true, &Functions::VariancePopulation) },
   { "STDDEV_SAMPLE",               Function("STDDEV_SAMPLE",               "AQL_STDDEV_SAMPLE", "l", true, true, false, true, true) },
   { "STDDEV_POPULATION",           Function("STDDEV_POPULATION",           "AQL_STDDEV_POPULATION", "l", true, true, false, true, true) },
   { "UNIQUE",                      Function("UNIQUE",                      "AQL_UNIQUE", "l", true, true, false, true, true, &Functions::Unique) },
@@ -183,7 +183,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "SHIFT",                       Function("SHIFT",                       "AQL_SHIFT", "l", true, true, false, true, true, &Functions::Shift) },
   { "UNSHIFT",                     Function("UNSHIFT",                     "AQL_UNSHIFT", "l,.|b", true, true, false, true, true, &Functions::Unshift) },
   { "REMOVE_VALUE",                Function("REMOVE_VALUE",                "AQL_REMOVE_VALUE", "l,.|n", true, true, false, true, true, &Functions::RemoveValue) },
-  { "REMOVE_VALUES",               Function("REMOVE_VALUES",               "AQL_REMOVE_VALUES", "l,lz", true, true, false, true, true) },
+  { "REMOVE_VALUES",               Function("REMOVE_VALUES",               "AQL_REMOVE_VALUES", "l,lz", true, true, false, true, true, &Functions::RemoveValues) },
   { "REMOVE_NTH",                  Function("REMOVE_NTH",                  "AQL_REMOVE_NTH", "l,n", true, true, false, true, true, &Functions::RemoveNth) },
 
   // document functions
@@ -268,12 +268,12 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
 #endif
   { "SLEEP",                       Function("SLEEP",                       "AQL_SLEEP", "n", false, false, true, true, true) },
   { "COLLECTIONS",                 Function("COLLECTIONS",                 "AQL_COLLECTIONS", "", false, false, true, false, true) },
-  { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, true, false, true, true) },
+  { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, true, false, true, true, &Functions::NotNull ) },
   { "FIRST_LIST",                  Function("FIRST_LIST",                  "AQL_FIRST_LIST", ".|+", true, true, false, true, true, &Functions::FirstList) },
   { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT",              "AQL_FIRST_DOCUMENT", ".|+", true, true, false, true, true, &Functions::FirstDocument) },
   { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, true, false, true, true, &Functions::ParseIdentifier) },
   { "CURRENT_USER",                Function("CURRENT_USER",                "AQL_CURRENT_USER", "", false, false, false, false, true) },
-  { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false, false, true) }
+  { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false, false, true, &Functions::CurrentDatabase) }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

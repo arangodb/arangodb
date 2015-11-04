@@ -402,6 +402,10 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if the given list contains the element
+////////////////////////////////////////////////////////////////////////////////
+
 static bool ListContainsElement (Json const& list, Json const& testee) {
   for (size_t i = 0; i < list.size(); ++i) {
     if (TRI_CheckSameValueJson(testee.json(), list.at(i).json())) {
@@ -410,6 +414,38 @@ static bool ListContainsElement (Json const& list, Json const& testee) {
     }
   }
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Computes the Variance of the given list.
+///        If successful value will contain the variance and count
+///        will contain the number of elements.
+///        If not successful value and count contain garbage.
+////////////////////////////////////////////////////////////////////////////////
+
+static bool Variance (Json const& values, double& value, size_t& count) {
+  TRI_ASSERT(values.isArray());
+  value = 0.0;
+  count = 0;
+  bool unused = false;
+  double mean = 0;
+  double delta = 0;
+  double current = 0;
+  for (size_t i = 0; i < values.size(); ++i) {
+    Json element = values.at(i);
+    if (! element.isNull()) {
+      if (! element.isNumber()) {
+        return false;
+      }
+      current = ValueToNumber(element.json(), unused);
+      count++;
+      delta = current - mean;
+      mean += delta / count;
+      value += delta * (current - mean);
+    }
+  }
+
+  return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -3278,8 +3314,8 @@ AqlValue Functions::Ceil (triagens::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Floor (triagens::aql::Query* query,
-                          triagens::arango::AqlTransaction* trx,
-                          FunctionParameters const& parameters) {
+                           triagens::arango::AqlTransaction* trx,
+                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
   if (n != 1) {
@@ -3612,6 +3648,47 @@ AqlValue Functions::RemoveValue (triagens::aql::Query* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief function REMOVE_VALUES
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::RemoveValues (triagens::aql::Query* query,
+                                  triagens::arango::AqlTransaction* trx,
+                                  FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "REMOVE_VALUES", (int) 2, (int) 2);
+  }
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+  Json values = ExtractFunctionParameter(trx, parameters, 1, false);
+
+  if (values.isNull()) {
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list.copy().steal()));
+  }
+
+  if (list.isNull()) {
+    return AqlValue(new Json(Json::Array, 0));
+  }
+
+  if (list.isArray() && values.isArray()) {
+    Json result = list.copy();
+    for (size_t i = 0; i < result.size(); /* No advance */) {
+      if (ListContainsElement(values, result.at(i))) {
+        if (! TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, result.json(), i)) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+      }
+      else {
+        ++i;
+      }
+    }
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+  }
+
+  RegisterInvalidArgumentWarning(query, "REMOVE_VALUES");
+  return AqlValue(new Json(Json::Null));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief function REMOVE_NTH
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3650,6 +3727,106 @@ AqlValue Functions::RemoveNth (triagens::aql::Query* query,
   RegisterInvalidArgumentWarning(query, "REMOVE_NTH");
   return AqlValue(new Json(Json::Null));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function NOT_NULL
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::NotNull (triagens::aql::Query* query,
+                             triagens::arango::AqlTransaction* trx,
+                             FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  for (size_t i = 0; i < n; ++i) {
+    Json element = ExtractFunctionParameter(trx, parameters, i, false);
+    if (! element.isNull()) {
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, element.copy().steal()));
+    }
+  }
+  return AqlValue(new Json(Json::Null));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function CURRENT_DATABASE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::CurrentDatabase (triagens::aql::Query* query,
+                                     triagens::arango::AqlTransaction* trx,
+                                     FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 0) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "CURRENT_DATABASE", (int) 0, (int) 0);
+  }
+  return AqlValue(new Json(query->vocbase()->_name));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function VARIANCE_SAMPLE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::VarianceSample (triagens::aql::Query* query,
+                                    triagens::arango::AqlTransaction* trx,
+                                    FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "VARIANCE_SAMPLE", (int) 1, (int) 1);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "VARIANCE_SAMPLE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  double value = 0.0;
+  size_t count = 0;
+
+  if (! Variance(list, value, count)) {
+    RegisterWarning(query, "VARIANCE_SAMPLE", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  if (count < 2) {
+    return AqlValue(new Json(Json::Null));
+  }
+
+  return AqlValue(new Json(value / (count - 1)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function VARIANCE_POPULATION
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::VariancePopulation (triagens::aql::Query* query,
+                                        triagens::arango::AqlTransaction* trx,
+                                        FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "VARIANCE_POPULATION", (int) 1, (int) 1);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "VARIANCE_POPULATION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  double value = 0.0;
+  size_t count = 0;
+
+  if (! Variance(list, value, count)) {
+    RegisterWarning(query, "VARIANCE_POPULATION", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  if (count < 1) {
+    return AqlValue(new Json(Json::Null));
+  }
+
+  return AqlValue(new Json(value / count));
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

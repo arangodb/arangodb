@@ -397,6 +397,12 @@ function ahuacatlMiscFunctionsTestSuite () {
     testCurrentDatabase : function () {
       var actual = getQueryResults("RETURN CURRENT_DATABASE()");
       assertEqual([ "_system" ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(CURRENT_DATABASE())");
+      assertEqual([ "_system" ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(CURRENT_DATABASE()))");
+      assertEqual([ "_system" ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
