@@ -862,6 +862,7 @@ int VocShaper::insertShape (TRI_df_marker_t const* marker,
     }
   }
 
+  // no lock is necessary here as we are the only users of the shaper at this time (opening the collection)
   if (_nextSid <= l->_sid) {
     _nextSid = l->_sid + 1;
   }
@@ -933,7 +934,7 @@ int VocShaper::insertAttribute (TRI_df_marker_t const* marker,
     }
   }
 
-  // no lock is necessary here as we are the only users of the shaper at this time
+  // no lock is necessary here as we are the only users of the shaper at this time (opening the collection)
   if (_nextAid <= aid) {
     _nextAid = aid + 1;
   }
