@@ -915,6 +915,7 @@ int ArangoServer::startupServer () {
 
   if (_applicationServer->programOptions().has("no-server")) {
     startServer = false;
+    _disableReplicationApplier = true;
   }
 
   // check version
