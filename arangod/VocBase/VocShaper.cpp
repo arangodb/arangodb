@@ -828,12 +828,17 @@ int VocShaper::insertShape (TRI_df_marker_t const* marker,
 
   if (warnIfDuplicate && f != nullptr) {
     char const* name = _collection->_info._name;
+    bool const isIdentical = EqualElementShape(nullptr, f, l); 
+    if (isIdentical) {
+      // duplicate shape, but with identical content. simply ignore it
+      LOG_TRACE("found duplicate shape markers for id %llu in collection '%s' in shape dictionary", (unsigned long long) l->_sid, name);
+    }
+    else {
+      LOG_ERROR("found heterogenous shape markers for id %llu in collection '%s' in shape dictionary", (unsigned long long) l->_sid, name);
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_ERROR("found duplicate shape in collection '%s'", name);
-    TRI_ASSERT(false);
-#else
-    LOG_TRACE("found duplicate shape in collection '%s'", name);
+      TRI_ASSERT(false);
 #endif
+    }
   }
 
   {
@@ -843,13 +848,18 @@ int VocShaper::insertShape (TRI_df_marker_t const* marker,
 
   if (warnIfDuplicate && f != nullptr) {
     char const* name = _collection->_info._name;
+    bool const isIdentical = EqualElementShape(nullptr, f, l); 
 
+    if (isIdentical) {
+      // duplicate shape, but with identical content. simply ignore it
+      LOG_TRACE("found duplicate shape markers for id %llu in collection '%s' in shape ids table", (unsigned long long) l->_sid, name);
+    }
+    else {
+      LOG_ERROR("found heterogenous shape markers for id %llu in collection '%s' in shape ids table", (unsigned long long) l->_sid, name);
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_ERROR("found duplicate shape in collection '%s'", name);
-    TRI_ASSERT(false);
-#else
-    LOG_TRACE("found duplicate shape in collection '%s'", name);
+      TRI_ASSERT(false);
 #endif
+    }
   }
 
   if (_nextSid <= l->_sid) {
@@ -894,12 +904,15 @@ int VocShaper::insertAttribute (TRI_df_marker_t const* marker,
 
   if (warnIfDuplicate && found != nullptr) {
     char const* cname = _collection->_info._name;
+    bool const isIdentical = (TRI_EqualString(name, GetAttributeName(found)) && aid == GetAttributeId(found));
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_ERROR("found duplicate attribute name '%s' in collection '%s'", name, cname);
-#else
-    LOG_TRACE("found duplicate attribute name '%s' in collection '%s'", name, cname);
-#endif
+    if (isIdentical) {
+      // duplicate attribute, but with identical content. simply ignore it
+      LOG_TRACE("found duplicate attribute name '%s' in collection '%s'", name, cname);
+    }
+    else {
+      LOG_ERROR("found heterogenous attribute name '%s' in collection '%s'", name, cname);
+    }
   }
 
   {
@@ -909,12 +922,15 @@ int VocShaper::insertAttribute (TRI_df_marker_t const* marker,
 
   if (warnIfDuplicate && found != nullptr) {
     char const* cname = _collection->_info._name;
+    bool const isIdentical = TRI_EqualString(name, GetAttributeName(found));
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_ERROR("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname);
-#else
-    LOG_TRACE("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname);
-#endif
+    if (isIdentical) {
+      // duplicate attribute, but with identical content. simply ignore it
+      LOG_TRACE("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname);
+    }
+    else {
+      LOG_ERROR("found heterogenous attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname);
+    }
   }
 
   // no lock is necessary here as we are the only users of the shaper at this time
