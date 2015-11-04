@@ -3709,6 +3709,20 @@ AqlValue Functions::NotNull (triagens::aql::Query* query,
   return AqlValue(new Json(Json::Null));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function CURRENT_DATABASE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::CurrentDatabase (triagens::aql::Query* query,
+                                     triagens::arango::AqlTransaction* trx,
+                                     FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 0) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "CURRENT_DATABASE", (int) 0, (int) 0);
+  }
+  return AqlValue(new Json(query->vocbase()->_name));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
