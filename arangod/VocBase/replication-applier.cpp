@@ -1156,7 +1156,15 @@ int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
 
   syncer.release();
 
-  LOG_INFO("started replication applier for database '%s'", _databaseName.c_str());
+  if (useTick) {
+    LOG_INFO("started replication applier for database '%s' from tick %llu", 
+             _databaseName.c_str(),
+             (unsigned long long) initialTick);
+  }
+  else {
+    LOG_INFO("re-started replication applier for database '%s'",
+              _databaseName.c_str());
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
