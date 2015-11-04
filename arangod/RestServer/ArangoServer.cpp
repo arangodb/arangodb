@@ -821,6 +821,8 @@ int ArangoServer::startupServer () {
   if (_applicationServer->programOptions().has("no-server")) {
     startServer = false;
     TRI_ENABLE_STATISTICS = false;
+    // --no-server disables all replication appliers
+    _disableReplicationApplier = true;
   }
 
   // check version
@@ -828,7 +830,7 @@ int ArangoServer::startupServer () {
 
   if (_applicationServer->programOptions().has("check-version")) {
     checkVersion = true;
-    // version check disables all replication appliers
+    // --check-version disables all replication appliers
     _disableReplicationApplier = true;
   }
 
@@ -837,7 +839,7 @@ int ArangoServer::startupServer () {
 
   if (_applicationServer->programOptions().has("upgrade")) {
     performUpgrade = true;
-    // upgrade operation disables all replication appliers
+    // --upgrade disables all replication appliers
     _disableReplicationApplier = true;
   }
 
