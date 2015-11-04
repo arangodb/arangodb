@@ -3270,6 +3270,22 @@ function ahuacatlFunctionsTestSuite () {
         else {
           assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
         }
+
+        actual = getQueryResults("RETURN NOOPT(VARIANCE_SAMPLE(" + JSON.stringify(value[1]) + "))");
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+
+        actual = getQueryResults("RETURN NOOPT(V8(VARIANCE_SAMPLE(" + JSON.stringify(value[1]) + ")))");
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
       });
     },
 
@@ -3285,6 +3301,22 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN VARIANCE_SAMPLE(3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN VARIANCE_SAMPLE(\"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN VARIANCE_SAMPLE({ })"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(VARIANCE_SAMPLE())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(VARIANCE_SAMPLE([ ], 2))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_SAMPLE(null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_SAMPLE(false))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_SAMPLE(3))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_SAMPLE(\"yes\"))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(VARIANCE_SAMPLE({ }))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(VARIANCE_SAMPLE()))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(VARIANCE_SAMPLE([ ], 2)))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(VARIANCE_SAMPLE(null)))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(VARIANCE_SAMPLE(false)))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(VARIANCE_SAMPLE(3)))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(VARIANCE_SAMPLE(\"yes\")))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(VARIANCE_SAMPLE({ })))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
