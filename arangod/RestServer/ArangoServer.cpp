@@ -838,6 +838,8 @@ int ArangoServer::startupServer () {
 
   if (_applicationServer->programOptions().has("check-version")) {
     checkVersion = true;
+    // version check disables all replication appliers
+    _disableReplicationApplier = true;
   }
 
   // run upgrade script
@@ -845,6 +847,8 @@ int ArangoServer::startupServer () {
 
   if (_applicationServer->programOptions().has("upgrade")) {
     performUpgrade = true;
+    // upgrade operation disables all replication appliers
+    _disableReplicationApplier = true;
   }
 
   // skip an upgrade even if VERSION is missing
