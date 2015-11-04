@@ -60,7 +60,7 @@ global.aqlQuery = function () {
   for (i = 1; i < arguments.length; i++) {
     value = arguments[i];
     name = 'value' + (i - 1);
-    if (value.constructor && value.constructor.name === 'ArangoCollection') {
+    if (value && value.constructor && value.constructor.name === 'ArangoCollection') {
       name = '@' + name;
       value = value.name();
     }
