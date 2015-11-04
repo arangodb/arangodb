@@ -1,6 +1,12 @@
 v2.7.1 (XXXX-XX-XX)
 -------------------
 
+* fixed "no start tick" issue in replication applier
+        
+  This error could occur after restarting a slave server after a shutdown
+  when no data was ever transferred from the master to the slave via the
+  continuous replication
+
 * fixed problem during SSL client connection abort that led to scheduler thread 
   staying at 100% CPU saturation
 
