@@ -3793,6 +3793,41 @@ AqlValue Functions::VarianceSample (triagens::aql::Query* query,
   return AqlValue(new Json(value / (count - 1)));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function VARIANCE_POPULATION
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::VariancePopulation (triagens::aql::Query* query,
+                                        triagens::arango::AqlTransaction* trx,
+                                        FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "VARIANCE_POPULATION", (int) 1, (int) 1);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "VARIANCE_POPULATION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  double value = 0.0;
+  size_t count = 0;
+
+  if (! Variance(list, value, count)) {
+    RegisterWarning(query, "VARIANCE_POPULATION", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  if (count < 1) {
+    return AqlValue(new Json(Json::Null));
+  }
+
+  return AqlValue(new Json(value / count));
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

@@ -164,7 +164,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "PERCENTILE",                  Function("PERCENTILE",                  "AQL_PERCENTILE", "l,n|s", true, true, false, true, true) }, 
   { "AVERAGE",                     Function("AVERAGE",                     "AQL_AVERAGE", "l", true, true, false, true, true, &Functions::Average) },
   { "VARIANCE_SAMPLE",             Function("VARIANCE_SAMPLE",             "AQL_VARIANCE_SAMPLE", "l", true, true, false, true, true, &Functions::VarianceSample) },
-  { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "AQL_VARIANCE_POPULATION", "l", true, true, false, true, true) },
+  { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "AQL_VARIANCE_POPULATION", "l", true, true, false, true, true, &Functions::VariancePopulation) },
   { "STDDEV_SAMPLE",               Function("STDDEV_SAMPLE",               "AQL_STDDEV_SAMPLE", "l", true, true, false, true, true) },
   { "STDDEV_POPULATION",           Function("STDDEV_POPULATION",           "AQL_STDDEV_POPULATION", "l", true, true, false, true, true) },
   { "UNIQUE",                      Function("UNIQUE",                      "AQL_UNIQUE", "l", true, true, false, true, true, &Functions::Unique) },

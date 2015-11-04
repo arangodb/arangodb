@@ -142,6 +142,7 @@ namespace triagens {
       static AqlValue NotNull             (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue CurrentDatabase     (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue VarianceSample      (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
+      static AqlValue VariancePopulation  (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
     };
 
   }
