@@ -3396,6 +3396,22 @@ function ahuacatlFunctionsTestSuite () {
         else {
           assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
         }
+
+        actual = getQueryResults("RETURN NOOPT(STDDEV_POPULATION(" + JSON.stringify(value[1]) + "))");
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+
+        actual = getQueryResults("RETURN NOOPT(V8(STDDEV_POPULATION(" + JSON.stringify(value[1]) + ")))");
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
       });
     },
 
@@ -3411,6 +3427,116 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_POPULATION(3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_POPULATION(\"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_POPULATION({ })"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(STDDEV_POPULATION())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(STDDEV_POPULATION([ ], 2))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION(null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION(false))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION(3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION(\"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION({ }))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(STDDEV_POPULATION()))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(STDDEV_POPULATION([ ], 2)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_POPULATION(null)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_POPULATION(false)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_POPULATION(3)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_POPULATION(\"yes\")))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_POPULATION({ })))"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev function
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSample : function () {
+      var data = [
+        [ null, [ null ] ],
+        [ null, [ null, null, null ] ],
+        [ null, [ ] ],
+        [ null, [ 0 ] ],
+        [ null, [ null, 0 ] ],
+        [ null, [ 0.00001 ] ],
+        [ null, [ 1 ] ],
+        [ null, [ 100 ] ],
+        [ null, [ -1 ] ],
+        [ null, [ -10000000 ] ],
+        [ null, [ -100 ] ],
+        [ null, [ null, null, null, -100 ] ],
+        [ 1.5811, [ 1, 2, 3, 4, 5 ] ],
+        [ 1.5811, [ null, 1, null, 2, 3, null, null, 4, null, 5 ] ],
+        [ 0.89443, [ 1, 3, 1, 3, 2, 2, 2, 1, 3, 1, 3 ] ],
+        [ 0.94281, [ 1, 3, 1, 3, 2, 2, 1, 3, 1, 3 ] ],
+        [ 1.0, [ 1, 3, 1, 3, 2, 1, 3, 1, 3 ] ],
+        [ 0.86603, [ 1, 1, 1, 2, 2, 2, 3, 3, 3] ],
+        [ 420.994418 , [ 12,96, 13, 143, 999 ] ],
+        [ 420.994418, [ 12,96, 13, 143, null, 999 ] ],
+        [ 24.2894, [ 18, -4, 6, 35.2, 63.66, 12.4 ] ],
+        [ 54.74486277, [ 1, 10, 100 ] ],
+        [ 547.4486277, [ 10, 100, 1000 ] ],
+        [ 4835.7031548, [ 10, 100, 1000, 10000 ] ],
+        [ 4470895.7806, [ 10, 100, 1000, 10000, 10000000 ] ],
+        [ 4835.7031548, [ -10, -100, -1000, -10000 ] ],
+        [ 54.74486277, [ -1, -10, -100 ] ],
+        [ 0.001, [ 0.001, 0.002, 0.003 ] ],
+        [ 7.72686, [ -0.1, 2.4, -0.004, 12.054, 12.53, -7.35 ] ]
+      ];
+
+      data.forEach(function (value) {
+        var actual = getQueryResults("RETURN STDDEV_SAMPLE(" + JSON.stringify(value[1]) + ")");
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+
+        actual = getQueryResults("RETURN NOOPT(STDDEV_SAMPLE(" + JSON.stringify(value[1]) + "))");
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+
+        actual = getQueryResults("RETURN NOOPT(V8(STDDEV_SAMPLE(" + JSON.stringify(value[1]) + ")))");
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev function
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN STDDEV_SAMPLE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN STDDEV_SAMPLE([ ], 2)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE(null)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE(false)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE(3)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE(\"yes\")"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE({ })"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(STDDEV_SAMPLE())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(STDDEV_SAMPLE([ ], 2))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE(null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE(false))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE(3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE(\"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE({ }))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(STDDEV_SAMPLE()))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(STDDEV_SAMPLE([ ], 2)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_SAMPLE(null)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_SAMPLE(false)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_SAMPLE(3)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_SAMPLE(\"yes\")))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_SAMPLE({ })))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

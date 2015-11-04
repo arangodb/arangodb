@@ -3827,6 +3827,75 @@ AqlValue Functions::VariancePopulation (triagens::aql::Query* query,
   return AqlValue(new Json(value / count));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function STDDEV_SAMPLE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::StdDevSample (triagens::aql::Query* query,
+                                  triagens::arango::AqlTransaction* trx,
+                                  FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "STDDEV_SAMPLE", (int) 1, (int) 1);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "STDDEV_SAMPLE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  double value = 0.0;
+  size_t count = 0;
+
+  if (! Variance(list, value, count)) {
+    RegisterWarning(query, "STDDEV_SAMPLE", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  if (count < 2) {
+    return AqlValue(new Json(Json::Null));
+  }
+
+  return AqlValue(new Json(sqrt(value / (count - 1))));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function STDDEV_POPULATION
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::StdDevPopulation (triagens::aql::Query* query,
+                                      triagens::arango::AqlTransaction* trx,
+                                      FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "STDDEV_POPULATION", (int) 1, (int) 1);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "STDDEV_POPULATION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  double value = 0.0;
+  size_t count = 0;
+
+  if (! Variance(list, value, count)) {
+    RegisterWarning(query, "STDDEV_POPULATION", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  if (count < 1) {
+    return AqlValue(new Json(Json::Null));
+  }
+
+  return AqlValue(new Json(sqrt(value / count)));
+}
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
