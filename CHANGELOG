@@ -1,6 +1,12 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* fixed "no start tick" issue in replication applier
+        
+  This error could occur after restarting a slave server after a shutdown
+  when no data was ever transferred from the master to the slave via the
+  continuous replication
+
 * switched command-line editor to linenoise-ng
 
 * added automatic deadlock detection for transactions
