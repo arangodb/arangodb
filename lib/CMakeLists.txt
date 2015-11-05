@@ -49,7 +49,6 @@ SET(LIB_ARANGO_CONSOLE
   Utilities/LinenoiseShell.cpp
 )
 
-
 add_library(
     ${LIB_ARANGO}
     STATIC
