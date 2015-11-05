@@ -4245,6 +4245,8 @@ void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
   if (availableTime >= 10.0) {
     idleTimeInMs = 10000;
   }
+  
+  TRI_ClearObjectCacheV8(isolate);
     
   double const until = TRI_microtime() + availableTime;
 
@@ -4275,6 +4277,25 @@ void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
     }
 
     usleep(100);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear the instance-local cache of wrapped objects
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ClearObjectCacheV8 (v8::Isolate* isolate) {
+  auto globals = isolate->GetCurrentContext()->Global();
+
+  if (globals->Has(TRI_V8_ASCII_STRING("__dbcache__"))) {
+    v8::Handle<v8::Object> cacheObject = globals->Get(TRI_V8_ASCII_STRING("__dbcache__"))->ToObject();
+    if (! cacheObject.IsEmpty()) {
+      v8::Handle<v8::Array> props = cacheObject->GetPropertyNames();
+      for (uint32_t i = 0; i < props->Length(); i++) {
+        v8::Handle<v8::Value> key = props->Get(i);
+        cacheObject->Delete(key);
+      }
+    }
   }
 }
 

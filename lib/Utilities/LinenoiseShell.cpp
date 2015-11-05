@@ -118,7 +118,9 @@ bool LinenoiseShell::close () {
   }
 
   _state = STATE_CLOSED;
-  return writeHistory();
+  auto result = writeHistory();
+  linenoiseHistoryFree();
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
