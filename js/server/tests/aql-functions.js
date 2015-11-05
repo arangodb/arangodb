@@ -2742,6 +2742,22 @@ function ahuacatlFunctionsTestSuite () {
         else {
           assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
         }
+
+        actual = getQueryResults("RETURN NOOPT(MEDIAN(" + JSON.stringify(value[1]) + "))");
+        if (actual[0] === null) {
+          assertNull(value[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+
+        actual = getQueryResults("RETURN NOOPT(V8(MEDIAN(" + JSON.stringify(value[1]) + ")))");
+        if (actual[0] === null) {
+          assertNull(value[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
       });
     },
 
@@ -2757,6 +2773,22 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN MEDIAN(3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN MEDIAN(\"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN MEDIAN({ })"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MEDIAN())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MEDIAN([ ], 2))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN(null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN(false))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN(3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN(\"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN({ }))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(MEDIAN()))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(MEDIAN([ ], 2)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(MEDIAN(null)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(MEDIAN(false)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(MEDIAN(3)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(MEDIAN(\"yes\")))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(MEDIAN({ })))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2792,6 +2824,22 @@ function ahuacatlFunctionsTestSuite () {
 
       data.forEach(function (value) {
         var actual = getQueryResults("RETURN PERCENTILE(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ", " + JSON.stringify(value[3]) + ")");
+        if (actual[0] === null) {
+          assertNull(value[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4), value);
+        }
+
+        actual = getQueryResults("RETURN NOOPT(PERCENTILE(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ", " + JSON.stringify(value[3]) + "))");
+        if (actual[0] === null) {
+          assertNull(value[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4), value);
+        }
+
+        actual = getQueryResults("RETURN NOOPT(V8(PERCENTILE(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ", " + JSON.stringify(value[3]) + ")))");
         if (actual[0] === null) {
           assertNull(value[0]);
         }
