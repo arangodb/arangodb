@@ -24,31 +24,57 @@ should therefore support HTTP version 1.1.
 Clients are required to include the *Content-Length* HTTP header with the 
 correct content length in every request that can have a body (e.g. *POST*, 
 *PUT* or *PATCH*) request. ArangoDB will not process requests without a
-*Content-Length* header.
+*Content-Length* header - thus chunked transfer encoding for POST-documents
+is not supported.
 
-!SECTION Blocking vs. Non-blocking Requests
+!SECTION HTTP Keep-Alive
 
-ArangoDB supports both blocking and non-blocking requests.
+ArangoDB supports HTTP keep-alive. If the client does not send a *Connection*
+header in its request, and the client uses HTTP version 1.1, ArangoDB will assume 
+the client wants to keep alive the connection. 
+If clients do not wish to use the keep-alive feature, they should
+explicitly indicate that by sending a *Connection: Close* HTTP header in 
+the request.
+
+ArangoDB will close connections automatically for clients that send requests
+using HTTP 1.0, except if they send an *Connection: Keep-Alive* header.
+
+The default Keep-Alive timeout can be specified at server start using the
+*--server.keep-alive-timeout* parameter.
+
+Establishing TCP connections is expensive, since it takes several ping pongs
+between the communication parties. Therefore you can use connection keepalive
+to send several HTTP request over one TCP-connection;
+Each request is treated independently by definition. You can use this feature
+to build up a so called *connection pool* with several established
+connections in your client application, and dynamically re-use
+one of those then idle connections for subsequent requests.
+
+!SECTION Blocking vs. Non-blocking HTTP Requests
+
+ArangoDB supports both blocking and non-blocking HTTP requests.
 
 ArangoDB is a multi-threaded server, allowing the processing of multiple 
 client requests at the same time. Request/response handling and the actual 
 work are performed on the server in parallel by multiple worker threads.
 
-Still, clients need to wait for their requests to be processed by the server. 
+Still, clients need to wait for their requests to be processed by the server,
+and thus keep one connection of a pool occupied.
 By default, the server will fully process an incoming request and then return 
 the result to the client when the operation is finished. The client must 
-wait for the server's response before it can send additional requests over 
+wait for the server's HTTP response before it can send additional requests over 
 the same connection. For clients that are single-threaded and/or are 
 blocking on I/O themselves, waiting idle for the server response may be 
 non-optimal.
 
-To reduce blocking on the client side, ArangoDB since version 1.4 offers 
-a generic mechanism for non-blocking, asynchronous execution: clients can 
-add the HTTP header *x-arango-async: true* to any of their requests, marking 
+To reduce blocking on the client side, ArangoDB offers a generic mechanism for
+non-blocking, asynchronous execution: clients can add the
+HTTP header *x-arango-async: true* to any of their requests, marking 
 them as to be executed asynchronously on the server. ArangoDB will put such 
 requests into an in-memory task queue and return an *HTTP 202* (accepted) 
-response to the client instantly. The server will execute the tasks from the 
-queue asynchronously as fast as possible, while clients can continue to work.
+response to the client instantly and thus finish this HTTP-request.
+The server will execute the tasks from the queue asynchronously as fast
+as possible, while clients can continue to do other work.
 If the server queue is full (i.e. contains as many tasks as specified by the
 option ["--scheduler.maximal-queue-size"](../ConfigureArango/Communication.md),
 then the request will be rejected instantly with an *HTTP 500* (internal
@@ -73,21 +99,6 @@ case of a crash. Clients should therefore not use the asynchronous feature
 when they have strict durability requirements or if they rely on the immediate 
 result of the request they send.
 
-!SECTION HTTP Keep-Alive
-
-ArangoDB supports HTTP keep-alive. If the client does not send a *Connection*
-header in its request, and the client uses HTTP version 1.1, ArangoDB will assume 
-the client wants to keep alive the connection. 
-If clients do not wish to use the keep-alive feature, they should
-explicitly indicate that by sending a *Connection: Close* HTTP header in 
-the request.
-
-ArangoDB will close connections automatically for clients that send requests
-using HTTP 1.0, except if they send an *Connection: Keep-Alive* header.
-
-The default Keep-Alive timeout can be specified at server start using the
-*--server.keep-alive-timeout* parameter.
-
 !SECTION Authentication
 
 Client authentication can be achieved by using the *Authorization* HTTP header in
@@ -104,7 +115,7 @@ will be generic and not expose any private data.
 Please note that when authentication is turned on in ArangoDB, it will by
 default affect all incoming requests. 
 
-Since ArangoDB 1.4, there is an additional option [-server.authenticate-system-only](../ConfigureArango/Arangod.md)
+There is an additional option [-server.authenticate-system-only](../ConfigureArango/Arangod.md)
 "--server.authenticate-system-only" to restrict authentication to requests to the ArangoDB 
 internal APIs and the admin interface. 
 This option can be used to expose a public API built with ArangoDB to the outside
@@ -139,6 +150,8 @@ HTTP layer:
   *HTTP/1.1* will get an *HTTP 505* (HTTP version not supported) error in return.
 * ArangoDB will reject client requests with a negative value in the
   *Content-Length* request header with *HTTP 411* (Length Required).
+* Arangodb doesn't support POST with *transfer-encoding: chunked* which forbids
+  the *Content-Length* header above.
 * the maximum URL length accepted by ArangoDB is 16K. Incoming requests with
   longer URLs will be rejected with an *HTTP 414* (Request-URI too long) error.
 * if the client sends a *Content-Length* header with a value bigger than 0 for
@@ -151,15 +164,15 @@ HTTP layer:
   body of the request, ArangoDB will wait for about 90 seconds for the client to
   complete its request. If the client does not send the remaining body data
   within this time, ArangoDB will close the connection. Clients should avoid
-  sending such malformed requests as they will make ArangoDB block waiting for
-  more data to arrive.
+  sending such malformed requests as this will block one tcp connection,
+  and may lead to a temporary filedescriptor leak.
 * when clients send a body or a *Content-Length* value bigger than the maximum
   allowed value (512 MB), ArangoDB will respond with *HTTP 413* (Request Entity
   Too Large).
 * if the overall length of the HTTP headers a client sends for one request
   exceeds the maximum allowed size (1 MB), the server will fail with *HTTP 431*
   (Request Header Fields Too Large).
-* if clients request a HTTP method that is not supported by the server, ArangoDB
+* if clients request an HTTP method that is not supported by the server, ArangoDB
   will return with *HTTP 405* (Method Not Allowed). ArangoDB offers general
   support for the following HTTP methods:
   * GET
@@ -175,7 +188,7 @@ HTTP layer:
   in the manual.
 
   Requests using any other HTTP method (such as for example CONNECT, TRACE etc.)
-  will be rejected by ArangoDB.
+  will be rejected by ArangoDB as mentioned before.
 
 !SECTION Cross Origin Resource Sharing (CORS) requests
 
@@ -218,7 +231,7 @@ credentials.
 
 !SECTION HTTP method overriding
 
-Since version 1.4, ArangoDB provides a startup option *--server.allow-method-override*.
+ArangoDB provides a startup option *--server.allow-method-override*.
 This option can be set to allow overriding the HTTP request method (e.g. GET, POST,
 PUT, DELETE, PATCH) of a request using one of the following custom HTTP headers:
 
