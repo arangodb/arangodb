@@ -1544,15 +1544,9 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
 #else
 
     if (BaseClient.colors() && console.supportsColors()) {
-
-#ifdef TRI_HAVE_LINENOISE
-
-      // linenoise doesn't need escape sequences for escape sequences
       // TODO: this should be a function defined in "console"
       goodPrompt = TRI_SHELL_COLOR_BOLD_GREEN + dynamicPrompt + TRI_SHELL_COLOR_RESET;
       badPrompt  = TRI_SHELL_COLOR_BOLD_RED   + dynamicPrompt + TRI_SHELL_COLOR_RESET;
-
-#endif
     }
     else {
       goodPrompt = badPrompt = dynamicPrompt;
@@ -1564,10 +1558,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     if (++nrCommands >= GcInterval) {
       nrCommands = 0;
 
-      isolate->LowMemoryNotification();
-      //   todo 1000 was the old V8-default, is this really good?
-      while (! isolate->IdleNotification(1000)) {
-      }
+      TRI_RunGarbageCollectionV8(isolate, 500.0); 
     }
 
 #ifdef __APPLE__

@@ -111,7 +111,6 @@ bool LinenoiseShell::open (bool) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LinenoiseShell::close () {
-
   // avoid duplicate saving of history
   if (_state != STATE_OPENED) {
     return true;
