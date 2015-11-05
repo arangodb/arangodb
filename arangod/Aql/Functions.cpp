@@ -406,14 +406,20 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
 /// @brief Checks if the given list contains the element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ListContainsElement (Json const& list, Json const& testee) {
+static bool ListContainsElement (Json const& list, Json const& testee, size_t& index) {
   for (size_t i = 0; i < list.size(); ++i) {
     if (TRI_CheckSameValueJson(testee.json(), list.at(i).json())) {
       // We found the element in the list.
+      index = i;
       return true;
     }
   }
   return false;
+}
+
+static bool ListContainsElement (Json const& list, Json const& testee) {
+  size_t unused;
+  return ListContainsElement(list, testee, unused);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4085,6 +4091,50 @@ AqlValue Functions::Range (triagens::aql::Query* query,
     }
   }
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function POSITION
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Position (triagens::aql::Query* query,
+                              triagens::arango::AqlTransaction* trx,
+                              FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "POSITION", (int) 2, (int) 3);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "POSITION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  bool returnIndex = false;
+  if (n == 3) {
+    Json returnIndexJson = ExtractFunctionParameter(trx, parameters, 2, false);
+    returnIndex = ValueToBoolean(returnIndexJson.json());
+  }
+
+  if (list.size() > 0) {
+    Json searchValue = ExtractFunctionParameter(trx, parameters, 1, false);
+
+    size_t index;
+    if (ListContainsElement(list, searchValue, index)) {
+      if (returnIndex) {
+        return AqlValue(new Json(static_cast<double>(index)));
+      }
+      return AqlValue(new Json(true));
+    }
+  }
+
+  if (returnIndex) {
+    return AqlValue(new Json(-1));
+  }
+  return AqlValue(new Json(false));
+
 }
 
 // -----------------------------------------------------------------------------
