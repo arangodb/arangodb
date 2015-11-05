@@ -2879,9 +2879,19 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
       }
     }
   }
+  
+  auto globals = isolate->GetCurrentContext()->Global();
+  
+  v8::Handle<v8::Object> cacheObject;
+  if (globals->Has(TRI_V8_ASCII_STRING("__dbcache__"))) {
+    cacheObject = globals->Get(TRI_V8_ASCII_STRING("__dbcache__"))->ToObject();
+  }
+  else {
+    cacheObject = v8::Object::New(isolate);
+  }
 
-  if (holder->HasRealNamedProperty(cacheName)) {
-    v8::Handle<v8::Object> value = holder->GetRealNamedProperty(cacheName)->ToObject();
+  if (! cacheObject.IsEmpty() && cacheObject->HasRealNamedProperty(cacheName)) {
+    v8::Handle<v8::Object> value = cacheObject->GetRealNamedProperty(cacheName)->ToObject();
 
     collection = TRI_UnwrapClass<TRI_vocbase_col_t>(value, WRP_VOCBASE_COL_TYPE);
 
@@ -2917,7 +2927,7 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
     }
 
     // cache miss
-    holder->Delete(cacheName);
+    cacheObject->Delete(cacheName);
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -2959,7 +2969,9 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
 
   // TODO: caching the result makes subsequent results much faster, but
   // prevents physical removal of the collection or database
-  holder->ForceSet(cacheName, result, v8::DontEnum);
+  if (! cacheObject.IsEmpty()) {
+    cacheObject->ForceSet(cacheName, result); //, v8::DontEnum);
+  }
 
   TRI_V8_RETURN(result);
 }
@@ -3681,6 +3693,9 @@ static void JS_DropDatabase (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (! TRI_IsSystemVocBase(vocbase)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
+  
+  // clear collections in cache object
+  TRI_ClearObjectCacheV8(isolate);
 
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
@@ -4021,6 +4036,9 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   else {
     TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("db"), v);
   }
+ 
+  // add collections cache object
+  context->Global()->ForceSet(TRI_V8_ASCII_STRING("__dbcache__"), v8::Object::New(isolate), v8::DontEnum);
   
   // current thread number
   context->Global()->ForceSet(TRI_V8_ASCII_STRING("THREAD_NUMBER"), v8::Number::New(isolate, (double) threadNumber), v8::ReadOnly);
