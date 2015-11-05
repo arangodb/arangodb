@@ -1,3 +1,4 @@
+
 # Summary
 * [Installing](Installing/README.md)
   * [Linux](Installing/Linux.md)
@@ -160,6 +161,7 @@
   * [Authentication](ConfigureArango/Authentication.md)
   * [Emergency Console](ConfigureArango/EmergencyConsole.md)
 * [HTTP API](HttpApi/README.md)
+  * [General HTTP Handling](GeneralHttp/README.md)
   * [Databases](HttpDatabase/README.md)
     * [To-Endpoint](HttpDatabase/DatabaseEndpoint.md)
     * [Management](HttpDatabase/DatabaseManagement.md)
@@ -207,7 +209,6 @@
   * [Endpoints](HttpEndpoints/README.md)
   * [Sharding](HttpShardingInterface/README.md)
   * [Miscellaneous functions](HttpMiscellaneousFunctions/README.md)
-  * [General Handling](GeneralHttp/README.md)
 * [Bulk Import / Export](HttpBulkImports/README.md)
   * [JSON Documents HTTP-API](HttpBulkImports/ImportingSelfContained.md)
   * [Headers & Values HTTP-API](HttpBulkImports/ImportingHeadersAndValues.md)
