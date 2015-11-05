@@ -130,10 +130,10 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code,
   char const* message = TRI_errno_string(errorCode);
 
   if (message) {
-    generateError(code, errorCode, string(message));
+    generateError(code, errorCode, std::string(message));
   }
   else {
-    generateError(code, errorCode, string("unknown error"));
+    generateError(code, errorCode, std::string("unknown error"));
   }
 }
 
@@ -141,12 +141,20 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code,
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int errorCode, string const& message) {
+void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int errorCode, std::string const& message) {
+
   _response = createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
 
   _response->body().appendText("{\"error\":true,\"errorMessage\":\"");
-  _response->body().appendText(StringUtils::escapeUnicode(message));
+  if (message.empty()) {
+    // prevent empty error messages
+    _response->body().appendText(TRI_errno_string(errorCode));
+  }
+  else {
+    _response->body().appendText(StringUtils::escapeUnicode(message));
+  }
+
   _response->body().appendText("\",\"code\":");
   _response->body().appendInteger(code);
   _response->body().appendText(",\"errorNum\":");
