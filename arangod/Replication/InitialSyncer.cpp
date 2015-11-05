@@ -470,6 +470,7 @@ int InitialSyncer::sendFinishBatch () {
 
 int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollection,
                                         SimpleHttpResult* response,
+                                        uint64_t& markersProcessed,
                                         string& errorMsg) {
 
   const string invalidMsg = "received invalid JSON data for collection " +
@@ -559,6 +560,7 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
+    ++markersProcessed;
     int res = applyCollectionDumpMarker(trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -599,6 +601,8 @@ int InitialSyncer::handleCollectionDump (string const& cid,
 
   TRI_voc_tick_t fromTick = 0;
   int batch = 1;
+  uint64_t bytesReceived = 0;
+  uint64_t markersProcessed = 0;
 
   while (true) {
     sendExtendBatch();
@@ -616,7 +620,9 @@ int InitialSyncer::handleCollectionDump (string const& cid,
 
     // send request
     string const progress = "fetching master collection dump for collection '" + collectionName +
-                            "', type: " + typeString + ", id " + cid + ", batch " + StringUtils::itoa(batch);
+                            "', type: " + typeString + ", id " + cid + ", batch " + StringUtils::itoa(batch) +
+                            ", markers processed: " + StringUtils::itoa(markersProcessed) + 
+                            ", bytes received: " + StringUtils::itoa(bytesReceived);
 
     setProgress(progress.c_str());
 
@@ -630,6 +636,10 @@ int InitialSyncer::handleCollectionDump (string const& cid,
                  ": " + _client->getErrorMessage();
 
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    }
+
+    if (response->hasContentLength()) {
+      bytesReceived += response->getContentLength();
     }
 
     TRI_ASSERT(response != nullptr);
@@ -675,7 +685,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = applyCollectionDump(trxCollection, response.get(), errorMsg);
+      res = applyCollectionDump(trxCollection, response.get(), markersProcessed, errorMsg);
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
