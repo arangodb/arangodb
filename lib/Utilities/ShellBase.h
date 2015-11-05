@@ -162,7 +162,7 @@ namespace arangodb {
 /// @brief whether or not the shell implementation supports colors
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual bool supportsColors () {
+    virtual bool supportsColors () const {
       return false;
     }
 
