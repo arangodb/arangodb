@@ -448,6 +448,29 @@ static bool Variance (Json const& values, double& value, size_t& count) {
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Sorts the given list of Numbers in ASC order.
+///        Removes all null entries.
+///        Returns false if the list contains non-number values.
+////////////////////////////////////////////////////////////////////////////////
+
+static bool SortNumberList (Json const& values, std::vector<double>& result) {
+  TRI_ASSERT(values.isArray());
+  TRI_ASSERT(result.empty());
+  bool unused;
+  for (size_t i = 0; i < values.size(); ++i) {
+    Json element = values.at(i);
+    if (! element.isNull()) {
+      if (! element.isNumber()) {
+        return false;
+      }
+      result.emplace_back(ValueToNumber(element.json(), unused));
+    }
+  }
+  std::sort(result.begin(), result.end());
+  return true;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      AQL functions public helpers
 // -----------------------------------------------------------------------------
@@ -3895,6 +3918,129 @@ AqlValue Functions::StdDevPopulation (triagens::aql::Query* query,
   return AqlValue(new Json(sqrt(value / count)));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function MEDIAN
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Median (triagens::aql::Query* query,
+                            triagens::arango::AqlTransaction* trx,
+                            FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "MEDIAN", (int) 1, (int) 1);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "MEDIAN", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  std::vector<double> values;
+  if (! SortNumberList(list, values)) {
+    RegisterWarning(query, "MEDIAN", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  if (values.empty()) {
+    return AqlValue(new Json(Json::Null));
+  }
+  size_t const l = values.size();
+  size_t midpoint = l / 2;
+
+  if (l % 2 == 0) {
+    return AqlValue(new Json((values[midpoint - 1] + values[midpoint]) / 2));
+  }
+  return AqlValue(new Json(values[midpoint]));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function PERCENTILE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Percentile (triagens::aql::Query* query,
+                                triagens::arango::AqlTransaction* trx,
+                                FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "PERCENTILE", (int) 2, (int) 3);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  Json border = ExtractFunctionParameter(trx, parameters, 1, false);
+
+  if (! border.isNumber()) {
+    RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  bool unused = false;
+  double p = ValueToNumber(border.json(), unused);
+  if (p <= 0 || p > 100) {
+    RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  bool useInterpolation = false;
+
+  if (n == 3) {
+    Json methodJson = ExtractFunctionParameter(trx, parameters, 2, false);
+    if (! methodJson.isString()) {
+      RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return AqlValue(new Json(Json::Null));
+    }
+    std::string method = triagens::basics::JsonHelper::getStringValue(methodJson.json(), "");
+    if (method == "interpolation") {
+      useInterpolation = true;
+    }
+    else if (method == "rank") {
+      useInterpolation = false;
+    }
+    else {
+      RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return AqlValue(new Json(Json::Null));
+    }
+  }
+
+  std::vector<double> values;
+  if (! SortNumberList(list, values)) {
+    RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  if (values.empty()) {
+    return AqlValue(new Json(Json::Null));
+  }
+  size_t l = values.size();
+  if (l == 1) {
+    return AqlValue(new Json(values[0]));
+  }
+
+  if (useInterpolation) {
+    double idx = p * (l + 1) / 100;
+    double pos = floor(idx);
+
+    if (pos >= l) {
+      return AqlValue(new Json(values[l - 1]));
+    }
+
+    double delta = idx - pos;
+    return AqlValue(new Json(delta * (values[pos] - values[pos - 1]) + values[pos - 1]));
+  }
+  double idx = p * l / 100;
+  double pos = ceil(idx);
+  if (pos >= l) {
+    return AqlValue(new Json(values[l - 1]));
+  }
+  return AqlValue(new Json(values[pos - 1]));
+}
 
 
 // -----------------------------------------------------------------------------
