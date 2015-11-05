@@ -69,18 +69,10 @@ namespace triagens {
 
           std::vector<TRI_tid_t> stack;
 
-          TRI_tid_t writerTid;
+          TRI_tid_t writerTid = value->getCurrentWriterThread();
 
-          {
-            MUTEX_LOCKER(_writersLock);
-            // find responsible writer
-            auto it = _writers.find(value); 
-
-            if (it == _writers.end()) {
-              return false;
-            }
-
-            writerTid = (*it).second;
+          if (writerTid == 0) {
+            return false;
           }
             
           stack.push_back(writerTid);
@@ -121,18 +113,10 @@ namespace triagens {
 
           std::vector<TRI_tid_t> stack;
 
-          TRI_tid_t writerTid;
+          TRI_tid_t writerTid = value->getCurrentWriterThread();
 
-          {
-            MUTEX_LOCKER(_writersLock);
-            // find responsible writer
-            auto it = _writers.find(value); 
-
-            if (it == _writers.end()) {
-              return false;
-            }
-
-            writerTid = (*it).second;
+          if (writerTid == 0) {
+            return false;
           }
             
           stack.push_back(writerTid);
@@ -186,47 +170,11 @@ namespace triagens {
           }
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a writer into the list of writers
-////////////////////////////////////////////////////////////////////////////////
-
-        void setWriterStarted (T const* value) {
-          auto tid = TRI_CurrentThreadId();
-
-          MUTEX_LOCKER(_writersLock);
-          _writers.emplace(value, tid);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a writers from the list of writers
-////////////////////////////////////////////////////////////////////////////////
-
-        void setWriterFinished (T const* value) noexcept {
-          try {
-            MUTEX_LOCKER(_writersLock);
-            _writers.erase(value);
-          }
-          catch (...) {
-          }
-        }
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
       private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lock for managing the writers
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::basics::Mutex _writersLock;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief all operating writers
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_map<T const*, TRI_tid_t> _writers;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for managing the readers
