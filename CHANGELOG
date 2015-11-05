@@ -1,6 +1,9 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* added new AQL function `UNSET_RECURSIVE` to recursively unset attritutes from 
+  objects/documents
+
 * fixed "no start tick" issue in replication applier
         
   This error could occur after restarting a slave server after a shutdown
@@ -25,20 +28,38 @@ v2.8.0 (XXXX-XX-XX)
   - APPEND
   - COLLECTIONS
   - CONTAINS
+  - CURRENT_DATABASE
   - DOCUMENT
   - EDGES
   - FIRST_DOCUMENT
   - FIRST_LIST
   - FLATTEN
   - FLOOR
+  - LAST
+  - MEDIAN
   - MINUS
+  - NEAR
+  - NOT_NULL
   - NTH
   - PARSE_IDENTIFIER
+  - PERCENTILE
   - POP
+  - POSITION
   - PUSH
   - RAND
+  - RANGE
+  - REMOVE_NTH
+  - REMOVE_VALUE
+  - REMOVE_VALUES
   - ROUND
+  - SHIFT
   - SQRT
+  - STDDEV_POPULATION
+  - STDDEV_SAMPLE
+  - UNSHIFT
+  - VARIANCE_POPULATION
+  - VARIANCE_SAMPLE
+  - WITHIN
   - ZIP 
 
 * improved performance of skipping over many documents in an AQL query when no
