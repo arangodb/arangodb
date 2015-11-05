@@ -321,6 +321,30 @@ function ahuacatlFunctionsTestSuite () {
         // look up the element using the position
         actual = getQueryResults("RETURN NTH(@list, @position)", { list: list, position: actual[0] });
         assertEqual(search, actual[0]);
+
+        // find if element is contained in list (should be true)
+        actual = getQueryResults("RETURN NOOPT(POSITION(@list, @search, false))", { list: list, search: search });
+        assertTrue(actual[0]);
+
+        // find position of element in list
+        actual = getQueryResults("RETURN NOOPT(POSITION(@list, @search, true))", { list: list, search: search });
+        assertEqual(expected, actual[0]);
+        
+        // look up the element using the position
+        actual = getQueryResults("RETURN NOOPT(NTH(@list, @position))", { list: list, position: actual[0] });
+        assertEqual(search, actual[0]);
+
+        // find if element is contained in list (should be true)
+        actual = getQueryResults("RETURN NOOPT(V8(POSITION(@list, @search, false)))", { list: list, search: search });
+        assertTrue(actual[0]);
+
+        // find position of element in list
+        actual = getQueryResults("RETURN NOOPT(V8(POSITION(@list, @search, true)))", { list: list, search: search });
+        assertEqual(expected, actual[0]);
+        
+        // look up the element using the position
+        actual = getQueryResults("RETURN NOOPT(V8(NTH(@list, @position)))", { list: list, position: actual[0] });
+        assertEqual(search, actual[0]);
       });
     },
 
@@ -339,6 +363,18 @@ function ahuacatlFunctionsTestSuite () {
 
         actual = getQueryResults("RETURN POSITION(@list, @search, true)", { list: list, search: d });
         assertEqual(-1, actual[0]);
+
+        actual = getQueryResults("RETURN NOOPT(POSITION(@list, @search, false))", { list: list, search: d });
+        assertFalse(actual[0]);
+
+        actual = getQueryResults("RETURN NOOPT(POSITION(@list, @search, true))", { list: list, search: d });
+        assertEqual(-1, actual[0]);
+
+        actual = getQueryResults("RETURN NOOPT(V8(POSITION(@list, @search, false)))", { list: list, search: d });
+        assertFalse(actual[0]);
+
+        actual = getQueryResults("RETURN NOOPT(V8(POSITION(@list, @search, true)))", { list: list, search: d });
+        assertEqual(-1, actual[0]);
       });
     },
 
@@ -354,6 +390,22 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN POSITION(4, 'foo')"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN POSITION(\"yes\", 'foo')"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN POSITION({ }, 'foo')"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(POSITION())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(POSITION([ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION(null, 'foo'))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION(true, 'foo'))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION(4, 'foo'))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION(\"yes\", 'foo'))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION({ }, 'foo'))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(POSITION()))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(POSITION([ ])))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(POSITION(null, 'foo')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(POSITION(true, 'foo')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(POSITION(4, 'foo')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(POSITION(\"yes\", 'foo')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(POSITION({ }, 'foo')))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

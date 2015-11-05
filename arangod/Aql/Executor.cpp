@@ -174,7 +174,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "FIRST",                       Function("FIRST",                       "AQL_FIRST", "l", true, true, false, true, true, &Functions::First) },
   { "LAST",                        Function("LAST",                        "AQL_LAST", "l", true, true, false, true, true, &Functions::Last) },
   { "NTH",                         Function("NTH",                         "AQL_NTH", "l,n", true, true, false, true, true, &Functions::Nth) },
-  { "POSITION",                    Function("POSITION",                    "AQL_POSITION", "l,.|b", true, true, false, true, true) },
+  { "POSITION",                    Function("POSITION",                    "AQL_POSITION", "l,.|b", true, true, false, true, true, &Functions::Position) },
   { "CALL",                        Function("CALL",                        "AQL_CALL", "s|.+", false, false, true, false, true) },
   { "APPLY",                       Function("APPLY",                       "AQL_APPLY", "s|l", false, false, true, false, false) },
   { "PUSH",                        Function("PUSH",                        "AQL_PUSH", "l,.|b", true, true, false, true, false, &Functions::Push) },
