@@ -4042,6 +4042,50 @@ AqlValue Functions::Percentile (triagens::aql::Query* query,
   return AqlValue(new Json(values[pos - 1]));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function RANGE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Range (triagens::aql::Query* query,
+                           triagens::arango::AqlTransaction* trx,
+                           FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "RANGE", (int) 2, (int) 3);
+  }
+
+  auto const leftJson = ExtractFunctionParameter(trx, parameters, 0, false);
+  auto const rightJson = ExtractFunctionParameter(trx, parameters, 1, false);
+
+  bool unused = true;
+  double from = ValueToNumber(leftJson.json(), unused);
+  double to = ValueToNumber(rightJson.json(), unused);
+
+  double step = 0;
+  if (n == 3) {
+    auto const stepJson = ExtractFunctionParameter(trx, parameters, 2, false);
+    step = ValueToNumber(stepJson.json(), unused);
+  }
+  if ( step == 0 ||
+      (from < to && step < 0) ||
+      (from > to && step > 0)) {
+    RegisterWarning(query, "RANGE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(new Json(Json::Null));
+  }
+  Json result(Json::Array);
+  if (from < to) {
+    for (; from <= to; from += step) {
+      result.add(Json(from));
+    }
+  }
+  else {
+    for (; from >= to; from += step) {
+      result.add(Json(from));
+    }
+  }
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
