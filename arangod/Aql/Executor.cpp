@@ -191,7 +191,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "ATTRIBUTES",                  Function("ATTRIBUTES",                  "AQL_ATTRIBUTES", "a|b,b", true, true, false, true, true, &Functions::Attributes) },
   { "VALUES",                      Function("VALUES",                      "AQL_VALUES", "a|b", true, true, false, true, true, &Functions::Values) },
   { "MERGE",                       Function("MERGE",                       "AQL_MERGE", "la|+", true, true, false, true, true, &Functions::Merge) },
-  { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE",             "AQL_MERGE_RECURSIVE", "a,a|+", true, true, false, true, true) },
+  { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE",             "AQL_MERGE_RECURSIVE", "a,a|+", true, true, false, true, true, &Functions::MergeRecursive) },
   { "DOCUMENT",                    Function("DOCUMENT",                    "AQL_DOCUMENT", "h.|.", false, false, true, false, true, &Functions::Document, NotInCluster) },
   { "MATCHES",                     Function("MATCHES",                     "AQL_MATCHES", ".,l|b", true, true, false, true, true) },
   { "UNSET",                       Function("UNSET",                       "AQL_UNSET", "a,sl|+", true, true, false, true, true, &Functions::Unset) },
