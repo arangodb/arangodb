@@ -651,16 +651,11 @@ BOOST_VERSION
 OPENSSL_LIBS
 OPENSSL_LDFLAGS
 OPENSSL_CPPFLAGS
-READLINE_LIBS
-READLINE_LIB_PATH
-READLINE_LDFLAGS
-READLINE_INCLUDE
-READLINE_CPPFLAGS
-READLINE_VERSION
-ENABLE_READLINE_FALSE
-ENABLE_READLINE_TRUE
 EGREP
 GREP
+ENABLE_LINENOISE_FALSE
+ENABLE_LINENOISE_TRUE
+CONSOLE_CPPFLAGS
 MATH_LIBS
 MATH_LDFLAGS
 MATH_CPPFLAGS
@@ -850,9 +845,7 @@ enable_failure_tests
 with_bison
 with_backtrace
 enable_tcmalloc
-enable_readline
-with_readline
-with_readline_lib
+enable_console
 with_openssl_inc
 with_openssl_lib
 enable_v8_debug
@@ -1515,7 +1508,7 @@ Optional Features:
                           sometimes confusing) to the casual installer
   --enable-failure-tests  enable failure testing (default: no)
   --enable-tcmalloc       use system-installed tcmalloc library (default: no)
-  --enable-readline       enable readline support (default: yes)
+  --enable-console        enable console support (default: linenoise)
   --enable-v8-debug       build debug version of V8 (default: no)
 
 Optional Packages:
@@ -1523,8 +1516,6 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-bison=EXECUTABLE path of the bison executable
   --with-backtrace        enable backtrace dumps
-  --with-readline=DIR     where the readline library and includes are located
-  --with-readline-lib=DIR where the readline library is located
   --with-openssl-inc=DIR  where the OpenSSL header files are located
   --with-openssl-lib=DIR  where the OpenSSL library files are located
 
@@ -2862,9 +2853,6 @@ case $target in
   armv7l-*-linux-gnueabihf)
     tr_ARM="yes"
     tr_ARM7="yes"
-    CFLAGS="$CFLAGS"
-    CXXFLAGS="$CXXFLAGS"
-    CPPFLAGS="$CPPFLAGS"
     ;;
 
   armv6l-*-linux-gnueabihf)
@@ -7626,8 +7614,67 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
 $as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
-{ $as_echo "$as_me:${as_lineno-$LINENO}: CHECKING FOR READLINE" >&5
-$as_echo "$as_me: CHECKING FOR READLINE" >&6;}
+{ $as_echo "$as_me:${as_lineno-$LINENO}: CHECKING FOR CONSOLE SUPPORT" >&5
+$as_echo "$as_me: CHECKING FOR CONSOLE SUPPORT" >&6;}
+{ $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
+$as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
+
+CONSOLE_CPPFLAGS=""
+
+# Check whether --enable-console was given.
+if test "${enable_console+set}" = set; then :
+  enableval=$enable_console; tr_CONSOLE="$enableval"
+else
+  tr_CONSOLE="linenoise"
+
+fi
+
+
+if test "$tr_CONSOLE" = "dummy"; then
+  LIB_INFO="$LIB_INFO|CONSOLE: dummy"
+elif test "$tr_CONSOLE" = "linenoise"; then
+  LIB_INFO="$LIB_INFO|CONSOLE: linenoise"
+  CONSOLE_CPPFLAGS="-I${srcdir}/3rdParty/linenoise-ng/include -I${srcdir}/3rdParty/linenoise-ng/src -DTRI_HAVE_LINENOISE"
+fi
+
+LIB_INFO="$LIB_INFO|CONSOLE_CPPFLAGS: ${CONSOLE_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|."
+
+
+
+ if test "x$tr_CONSOLE" = xlinenoise; then
+  ENABLE_LINENOISE_TRUE=
+  ENABLE_LINENOISE_FALSE='#'
+else
+  ENABLE_LINENOISE_TRUE='#'
+  ENABLE_LINENOISE_FALSE=
+fi
+
+
+
+
+
+
+# Check whether --with-openssl-inc was given.
+if test "${with_openssl_inc+set}" = set; then :
+  withval=$with_openssl_inc; OPENSSL_CPPFLAGS="-I$withval"
+
+fi
+
+
+
+# Check whether --with-openssl-lib was given.
+if test "${with_openssl_lib+set}" = set; then :
+  withval=$with_openssl_lib; OPENSSL_LDFLAGS="-L$withval"
+
+fi
+
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
+$as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
+{ $as_echo "$as_me:${as_lineno-$LINENO}: CHECKING FOR OPENSSL" >&5
+$as_echo "$as_me: CHECKING FOR OPENSSL" >&6;}
 { $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
 $as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
 
@@ -7638,67 +7685,15 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-# Check whether --enable-readline was given.
-if test "${enable_readline+set}" = set; then :
-  enableval=$enable_readline; tr_READLINE="$enableval"
-else
-  tr_READLINE="maybe"
-
-fi
-
-
-if test "x$tr_DARWIN" = xyes; then
-  READLINE=/usr/local/opt/readline
-  READLINE_CPPFLAGS="-I$READLINE/include"
-  READLINE_INCLUDE="$READLINE/include"
-  READLINE_LDFLAGS="-L$READLINE/lib"
-  READLINE_LIB_PATH="$READLINE/lib"
-fi
-
-
-# Check whether --with-readline was given.
-if test "${with_readline+set}" = set; then :
-  withval=$with_readline; READLINE_CPPFLAGS="-I$withval/include"
-   READLINE_INCLUDE="$withval/include"
-   READLINE_LDFLAGS="-L$withval/lib"
-   READLINE_LIB_PATH="$withval/lib"
-   READLINE="$withval"
-
-fi
-
-
-
-# Check whether --with-readline-lib was given.
-if test "${with_readline_lib+set}" = set; then :
-  withval=$with_readline_lib; READLINE_LDFLAGS="-L$withval"
-   READLINE_LIB_PATH="$withval"
-
-fi
-
-
-
-if test "x$READLINE_CPPFLAGS" != x;  then
-
-  if test "xREADLINE_CPPFLAGS" != "x";  then
-    if test "x$INCPREFIX" != "x-I";  then
-      READLINE_CPPFLAGS=`echo $READLINE_CPPFLAGS | sed -e "s:-I:$INCPREFIX:g"`
-    fi
-  fi
-
-fi
-
 
 SAVE_CPPFLAGS="$CPPFLAGS"
-CPPFLAGS="$CPPFLAGS $READLINE_CPPFLAGS"
+CPPFLAGS="$CPPFLAGS $OPENSSL_CPPFLAGS"
 
 SAVE_LDFLAGS="$LDFLAGS"
-LDFLAGS="$LDFLAGS $READLINE_LDFLAGS"
+LDFLAGS="$LDFLAGS $OPENSSL_LDFLAGS"
 
 SAVE_LIBS="$LIBS"
 
-
-if test "x$tr_READLINE" = xyes -o "x$tr_READLINE" = xmaybe;  then
-  ch_READLINE="$tr_READLINE"
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for grep that handles long lines and -e" >&5
@@ -7960,221 +7955,6 @@ fi
 done
 
 
-for ac_header in readline/readline.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "readline/readline.h" "ac_cv_header_readline_readline_h" "$ac_includes_default"
-if test "x$ac_cv_header_readline_readline_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_READLINE_READLINE_H 1
-_ACEOF
- tr_READLINE="yes"
-else
-  tr_READLINE="no"
-fi
-
-done
-
-
-  if test "x$tr_READLINE" = xyes;  then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for readline in -lreadline" >&5
-$as_echo_n "checking for readline in -lreadline... " >&6; }
-if ${ac_cv_lib_readline_readline+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lreadline  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char readline ();
-int
-main ()
-{
-return readline ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_readline_readline=yes
-else
-  ac_cv_lib_readline_readline=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_readline_readline" >&5
-$as_echo "$ac_cv_lib_readline_readline" >&6; }
-if test "x$ac_cv_lib_readline_readline" = xyes; then :
-  READLINE_LIBS="-lreadline" tr_READLINE="yes"
-else
-  tr_READLINE="no"
-fi
-
-  fi
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking READLINE support" >&5
-$as_echo_n "checking READLINE support... " >&6; }
-
-  if test "x$tr_READLINE" != xyes;  then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
-$as_echo "not found" >&6; }
-
-    if test "x$ch_READLINE" = xyes;  then
-      as_fn_error $? "Please install readline support" "$LINENO" 5
-    fi
-  else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: readline" >&5
-$as_echo "readline" >&6; }
-  fi
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking READLINE support" >&5
-$as_echo_n "checking READLINE support... " >&6; }
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: disabled" >&5
-$as_echo "disabled" >&6; }
-fi
-
-
-if test "x$tr_READLINE" = xyes;  then
-
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <readline/readline.h>
-
-main () {
-#if defined(RL_VERSION_MAJOR) && defined(RL_VERSION_MINOR)
-  long sdnhg36ed = RL_VERSION_MAJOR RL_VERSION_MINOR ;
-#else
-  long sdnhg36ed = RL_READLINE_VERSION hex ;
-#endif
-}
-
-_ACEOF
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking READLINE version" >&5
-$as_echo_n "checking READLINE version... " >&6; }
-  eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 "." $5}' > conftest.output
-  READLINE_VERSION=`cat conftest.output`
-
-  if test -z "$READLINE_VERSION"; then
-    as_fn_error $? "Readline support is not working. Please re-install readline support" "$LINENO" 5
-  fi
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $READLINE_VERSION" >&5
-$as_echo "$READLINE_VERSION" >&6; }
-  rm -f conftest*
-
-  if test "x$tr_DARWIN" = xyes; then
-    case "$READLINE_VERSION" in
-      6.*|5.*)
-        ;;
-
-      *)
-        as_fn_error $? "Please install readline 6 from brew. If you have a non-standard brew location, use \"--with-readline\"." "$LINENO" 5
-        ;;
-    esac
-  fi
-fi
-
-
-LIBS="$SAVE_LIBS"
-LDFLAGS="$SAVE_LDFLAGS"
-CPPFLAGS="$SAVE_CPPFLAGS"
-
-if test "x$tr_READLINE" = xyes;  then
-  CPPFLAGS="$CPPFLAGS -DHAVE_READLINE=1"
-  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_READLINE_VERSION='\"${READLINE_VERSION}\"'"
-fi
-
- if test "x$tr_READLINE" = xyes; then
-  ENABLE_READLINE_TRUE=
-  ENABLE_READLINE_FALSE='#'
-else
-  ENABLE_READLINE_TRUE='#'
-  ENABLE_READLINE_FALSE=
-fi
-
-
-if test "x$tr_READLINE" = xyes;  then
-
-cat >>confdefs.h <<_ACEOF
-#define TRI_HAVE_READLINE 1
-_ACEOF
-
-fi
-
-
-
-
-
-
-
-
-
-
-if test "x$tr_READLINE" = xyes;  then
-  LIB_INFO="$LIB_INFO|READLINE VERSION:  ${READLINE_VERSION}"
-
-  LIB_INFO="$LIB_INFO|READLINE_CPPFLAGS: ${READLINE_CPPFLAGS}"
-  LIB_INFO="$LIB_INFO|READLINE_LDFLAGS:  ${READLINE_LDFLAGS}"
-  LIB_INFO="$LIB_INFO|READLINE_LIBS:     ${READLINE_LIBS}"
-else
-  LIB_INFO="$LIB_INFO|READLINE VERSION: disabled"
-fi
-
-LIB_INFO="$LIB_INFO|."
-
-
-
-
-
-# Check whether --with-openssl-inc was given.
-if test "${with_openssl_inc+set}" = set; then :
-  withval=$with_openssl_inc; OPENSSL_CPPFLAGS="-I$withval"
-
-fi
-
-
-
-# Check whether --with-openssl-lib was given.
-if test "${with_openssl_lib+set}" = set; then :
-  withval=$with_openssl_lib; OPENSSL_LDFLAGS="-L$withval"
-
-fi
-
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
-$as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
-{ $as_echo "$as_me:${as_lineno-$LINENO}: CHECKING FOR OPENSSL" >&5
-$as_echo "$as_me: CHECKING FOR OPENSSL" >&6;}
-{ $as_echo "$as_me:${as_lineno-$LINENO}: --------------------------------------------------------------------------------" >&5
-$as_echo "$as_me: --------------------------------------------------------------------------------" >&6;}
-
-ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
-
-
-SAVE_CPPFLAGS="$CPPFLAGS"
-CPPFLAGS="$CPPFLAGS $OPENSSL_CPPFLAGS"
-
-SAVE_LDFLAGS="$LDFLAGS"
-LDFLAGS="$LDFLAGS $OPENSSL_LDFLAGS"
-
-SAVE_LIBS="$LIBS"
-
-
 for ac_header in openssl/ssl.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "openssl/ssl.h" "ac_cv_header_openssl_ssl_h" "$ac_includes_default"
@@ -8183,6 +7963,8 @@ if test "x$ac_cv_header_openssl_ssl_h" = xyes; then :
 #define HAVE_OPENSSL_SSL_H 1
 _ACEOF
 
+else
+  as_fn_error $? "please install the OpenSSL library" "$LINENO" 5
 fi
 
 done
@@ -8879,8 +8661,8 @@ if test -z "${ENABLE_TCMALLOC_TRUE}" && test -z "${ENABLE_TCMALLOC_FALSE}"; then
   as_fn_error $? "conditional \"ENABLE_TCMALLOC\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${ENABLE_READLINE_TRUE}" && test -z "${ENABLE_READLINE_FALSE}"; then
-  as_fn_error $? "conditional \"ENABLE_READLINE\" was never defined.
+if test -z "${ENABLE_LINENOISE_TRUE}" && test -z "${ENABLE_LINENOISE_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_LINENOISE\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${ENABLE_V8_DEBUG_TRUE}" && test -z "${ENABLE_V8_DEBUG_FALSE}"; then

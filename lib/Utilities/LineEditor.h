@@ -33,7 +33,7 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
-  class ShellImplementation;
+  class ShellBase;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class LineEditor
@@ -44,8 +44,8 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
   class LineEditor {
-      LineEditor(LineEditor const&) = delete;
-      LineEditor& operator= (LineEditor const&) = delete;
+    LineEditor(LineEditor const&) = delete;
+    LineEditor& operator= (LineEditor const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -69,7 +69,7 @@ namespace arangodb {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      LineEditor (std::string const& history);
+      LineEditor ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -78,20 +78,16 @@ namespace arangodb {
       virtual ~LineEditor ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              static public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort the alternatives results vector
-////////////////////////////////////////////////////////////////////////////////
-
-      static void sortAlternatives (std::vector<std::string>&);
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
     public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell implementation supports colors
+////////////////////////////////////////////////////////////////////////////////
+
+      bool supportsColors () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
@@ -110,59 +106,20 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
       std::string prompt (const std::string& prompt,
-			  const std::string& begin,
-			  bool& eof);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the history file path
-///
-/// The path is "$HOME" plus _historyFilename, if $HOME is set. Else
-/// the local file _historyFilename.
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string historyPath ();
+                          const std::string& begin,
+                          bool& eof);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-      void addHistory (const std::string&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save the history
-////////////////////////////////////////////////////////////////////////////////
-
-      bool writeHistory ();
+      void addHistory (const std::string& line);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send a signal to the shell implementation
 ////////////////////////////////////////////////////////////////////////////////
 
       void signal ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-    protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief arranges for the correct creation of the the ShellImplementation
-////////////////////////////////////////////////////////////////////////////////
-
-      void prepareShell ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         virtual protected methods
-// -----------------------------------------------------------------------------
-
-    protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a concrete Shell with the correct parameter
-////////////////////////////////////////////////////////////////////////////////
-
-      virtual void initializeShell () = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -174,14 +131,7 @@ namespace arangodb {
 /// @brief the shell implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-      ShellImplementation* _shellImpl;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief path to the history file
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string _history;
-
+      ShellBase* _shell;
   };
 }
 

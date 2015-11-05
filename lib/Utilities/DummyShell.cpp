@@ -31,7 +31,6 @@
 #include <iostream>
 
 #include "Basics/tri-strings.h"
-#include "Basics/files.h"
 
 using namespace std;
 using namespace triagens;
@@ -50,7 +49,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 DummyShell::DummyShell (std::string const& history, Completer* completer)
-  : ShellImplementation(history, completer) {
+  : ShellBase(history, completer) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,7 +61,7 @@ DummyShell::~DummyShell () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                       ShellImplementation methods
+// --SECTION--                                                 ShellBase methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,14 +80,6 @@ bool DummyShell::open (bool) {
 bool DummyShell::close () {
   _state = STATE_CLOSED;
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-string DummyShell::historyPath () {
-  return "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,8 +118,3 @@ string DummyShell::getLine (const std::string& prompt, bool& eof) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

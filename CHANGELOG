@@ -1,6 +1,8 @@
 v2.7.1 (XXXX-XX-XX)
 -------------------
 
+* switch to linenoise next generation
+
 * fixed "no start tick" issue in replication applier
         
   This error could occur after restarting a slave server after a shutdown

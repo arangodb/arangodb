@@ -9,7 +9,8 @@
 ################################################################################
 
 lib_libarango_a_CPPFLAGS = \
-	$(AM_CPPFLAGS) 
+	$(AM_CPPFLAGS) \
+	$(CONSOLE_CPPFLAGS)
 
 lib_libarango_a_SOURCES = \
 	lib/Basics/application-exit.cpp \
@@ -91,16 +92,18 @@ lib_libarango_a_SOURCES = \
 	lib/Utilities/DummyShell.cpp \
 	lib/Utilities/LineEditor.cpp \
 	lib/Utilities/ScriptLoader.cpp \
-	lib/Utilities/ShellImplFactory.cpp \
-	lib/Utilities/ShellImplementation.cpp \
+	lib/Utilities/ShellBase.cpp \
 	lib/Zip/ioapi.cpp \
 	lib/Zip/unzip.cpp \
 	lib/Zip/zip.cpp
 
-if ENABLE_READLINE
+if ENABLE_LINENOISE
 
 lib_libarango_a_SOURCES += \
-	lib/Utilities/ReadlineShell.cpp
+	3rdParty/linenoise-ng/src/linenoise.cpp \
+	3rdParty/linenoise-ng/src/ConvertUTF.cpp \
+	3rdParty/linenoise-ng/src/wcwidth.cpp \
+	lib/Utilities/LinenoiseShell.cpp
 
 endif
 

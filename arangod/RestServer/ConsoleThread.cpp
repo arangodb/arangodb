@@ -76,7 +76,7 @@ Mutex ConsoleThread::serverConsoleMutex;
 ////////////////////////////////////////////////////////////////////////////////
 
 ConsoleThread::ConsoleThread (ApplicationServer* applicationServer,
-			      ApplicationV8* applicationV8,
+                              ApplicationV8* applicationV8,
                               TRI_vocbase_t* vocbase)
   : Thread("console"),
     _applicationServer(applicationServer),
@@ -238,9 +238,9 @@ start_pretty_print();
         v8::TryCatch tryCatch;
         v8::HandleScope scope(isolate);
 
-        console.isExecutingCommand(true);
+        console.setExecutingCommand(true);
         TRI_ExecuteJavaScriptString(isolate, localContext, TRI_V8_STRING(input.c_str()), name, true);
-        console.isExecutingCommand(false);
+        console.setExecutingCommand(false);
 
         if (_userAborted) {
           std::cout << "command aborted" << std::endl;

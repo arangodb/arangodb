@@ -165,8 +165,11 @@ sbin_PROGRAMS = bin/arangod$(EXEEXT)
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_1 = bin/etcd-arango$(PROGRAM_SUFFIX)
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_2 = bin/etcd-arango$(PROGRAM_SUFFIX)
 noinst_PROGRAMS = $(am__EXEEXT_1)
-@ENABLE_READLINE_TRUE@am__append_3 = \
-@ENABLE_READLINE_TRUE@	lib/Utilities/ReadlineShell.cpp
+@ENABLE_LINENOISE_TRUE@am__append_3 = \
+@ENABLE_LINENOISE_TRUE@	3rdParty/linenoise-ng/src/linenoise.cpp \
+@ENABLE_LINENOISE_TRUE@	3rdParty/linenoise-ng/src/ConvertUTF.cpp \
+@ENABLE_LINENOISE_TRUE@	3rdParty/linenoise-ng/src/wcwidth.cpp \
+@ENABLE_LINENOISE_TRUE@	lib/Utilities/LinenoiseShell.cpp
 
 @ENABLE_MAINTAINER_MODE_TRUE@am__append_4 = \
 @ENABLE_MAINTAINER_MODE_TRUE@	arangod/Aql/grammar.h \
@@ -509,11 +512,16 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/application-exit.cpp \
 	lib/Rest/InitializeRest.cpp lib/Rest/SslInterface.cpp \
 	lib/Rest/Version.cpp lib/Utilities/DummyShell.cpp \
 	lib/Utilities/LineEditor.cpp lib/Utilities/ScriptLoader.cpp \
-	lib/Utilities/ShellImplFactory.cpp \
-	lib/Utilities/ShellImplementation.cpp lib/Zip/ioapi.cpp \
+	lib/Utilities/ShellBase.cpp lib/Zip/ioapi.cpp \
 	lib/Zip/unzip.cpp lib/Zip/zip.cpp \
-	lib/Utilities/ReadlineShell.cpp
-@ENABLE_READLINE_TRUE@am__objects_1 = lib/Utilities/lib_libarango_a-ReadlineShell.$(OBJEXT)
+	3rdParty/linenoise-ng/src/linenoise.cpp \
+	3rdParty/linenoise-ng/src/ConvertUTF.cpp \
+	3rdParty/linenoise-ng/src/wcwidth.cpp \
+	lib/Utilities/LinenoiseShell.cpp
+@ENABLE_LINENOISE_TRUE@am__objects_1 = 3rdParty/linenoise-ng/src/lib_libarango_a-linenoise.$(OBJEXT) \
+@ENABLE_LINENOISE_TRUE@	3rdParty/linenoise-ng/src/lib_libarango_a-ConvertUTF.$(OBJEXT) \
+@ENABLE_LINENOISE_TRUE@	3rdParty/linenoise-ng/src/lib_libarango_a-wcwidth.$(OBJEXT) \
+@ENABLE_LINENOISE_TRUE@	lib/Utilities/lib_libarango_a-LinenoiseShell.$(OBJEXT)
 am_lib_libarango_a_OBJECTS =  \
 	lib/Basics/lib_libarango_a-application-exit.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-associative.$(OBJEXT) \
@@ -594,8 +602,7 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/Utilities/lib_libarango_a-DummyShell.$(OBJEXT) \
 	lib/Utilities/lib_libarango_a-LineEditor.$(OBJEXT) \
 	lib/Utilities/lib_libarango_a-ScriptLoader.$(OBJEXT) \
-	lib/Utilities/lib_libarango_a-ShellImplFactory.$(OBJEXT) \
-	lib/Utilities/lib_libarango_a-ShellImplementation.$(OBJEXT) \
+	lib/Utilities/lib_libarango_a-ShellBase.$(OBJEXT) \
 	lib/Zip/lib_libarango_a-ioapi.$(OBJEXT) \
 	lib/Zip/lib_libarango_a-unzip.$(OBJEXT) \
 	lib/Zip/lib_libarango_a-zip.$(OBJEXT) $(am__objects_1)
@@ -893,6 +900,7 @@ BUILD_H = @BUILD_H@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
+CONSOLE_CPPFLAGS = @CONSOLE_CPPFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
@@ -943,8 +951,7 @@ LIBS = \
 	@MATH_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@ICU_LIBS@ \
-	@ZLIB_LIBS@ \
-	@READLINE_LIBS@ 
+	@ZLIB_LIBS@
 
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
@@ -971,12 +978,6 @@ PTHREAD_CC = @PTHREAD_CC@
 PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
 PTHREAD_LIBS = @PTHREAD_LIBS@
 RANLIB = @RANLIB@
-READLINE_CPPFLAGS = @READLINE_CPPFLAGS@
-READLINE_INCLUDE = @READLINE_INCLUDE@
-READLINE_LDFLAGS = @READLINE_LDFLAGS@
-READLINE_LIBS = @READLINE_LIBS@
-READLINE_LIB_PATH = @READLINE_LIB_PATH@
-READLINE_VERSION = @READLINE_VERSION@
 RT_LIBS = @RT_LIBS@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -1196,7 +1197,6 @@ AM_CPPFLAGS = \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ \
-	@READLINE_CPPFLAGS@ \
 	@ICU_CPPFLAGS@ \
 	@ZLIB_CPPFLAGS@ \
 	@V8_CPPFLAGS@ 
@@ -1209,7 +1209,6 @@ AM_LDFLAGS = \
 	@LIBEV_LDFLAGS@ \
 	@MATH_LDFLAGS@ \
 	@OPENSSL_LDFLAGS@ \
-	@READLINE_LDFLAGS@ \
 	@ICU_LDFLAGS@ \
 	@ZLIB_LDFLAGS@ \
 	@V8_LDFLAGS@ 
@@ -1272,7 +1271,8 @@ nobase_pkgdataJS09_DATA = $(wordlist 8001,   9000, $(JS_FILE_LIST))
 nobase_pkgdataJS10_DATA = $(wordlist 9001, 100000, $(JS_FILE_LIST))
 nobase_pkgdata_DATA = 
 lib_libarango_a_CPPFLAGS = \
-	$(AM_CPPFLAGS) 
+	$(AM_CPPFLAGS) \
+	$(CONSOLE_CPPFLAGS)
 
 lib_libarango_a_SOURCES = lib/Basics/application-exit.cpp \
 	lib/Basics/associative.cpp lib/Basics/AttributeNameParser.cpp \
@@ -1315,8 +1315,7 @@ lib_libarango_a_SOURCES = lib/Basics/application-exit.cpp \
 	lib/Rest/InitializeRest.cpp lib/Rest/SslInterface.cpp \
 	lib/Rest/Version.cpp lib/Utilities/DummyShell.cpp \
 	lib/Utilities/LineEditor.cpp lib/Utilities/ScriptLoader.cpp \
-	lib/Utilities/ShellImplFactory.cpp \
-	lib/Utilities/ShellImplementation.cpp lib/Zip/ioapi.cpp \
+	lib/Utilities/ShellBase.cpp lib/Zip/ioapi.cpp \
 	lib/Zip/unzip.cpp lib/Zip/zip.cpp $(am__append_3)
 
 ################################################################################
@@ -1974,30 +1973,30 @@ UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 ################################################################################
 GTAGS_FILES = $(sort $(abspath $(SOURCES) $(HEADERS)))
 JAVASCRIPT_BROWSER = \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/arango-collection.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/arango-database.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/arango-query-cursor.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/arango-statement.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/arangosh.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/general-graph.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/graph.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/graph-blueprint.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/is.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/simple-query.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/tutorial.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/arango-collection.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/arango-database.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/arango-query-cursor.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/arango-statement.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/arangosh.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/general-graph.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/graph.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/graph-blueprint.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/is.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/simple-query.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/tutorial.js \
 	\
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb-common.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/arango-collection-common.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/arango-statement-common.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/graph-common.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/graph/traversal.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/aql/explainer.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/aql/functions.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/aql/queries.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/mimetypes.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/replication.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/simple-query-common.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb-common.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/arango-collection-common.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/arango-statement-common.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/graph-common.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/graph/traversal.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/aql/explainer.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/aql/functions.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/aql/queries.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/mimetypes.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/replication.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/simple-query-common.js \
 	\
 	js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap/errors.js \
 	js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap/monkeypatches.js \
@@ -3118,10 +3117,7 @@ lib/Utilities/lib_libarango_a-LineEditor.$(OBJEXT):  \
 lib/Utilities/lib_libarango_a-ScriptLoader.$(OBJEXT):  \
 	lib/Utilities/$(am__dirstamp) \
 	lib/Utilities/$(DEPDIR)/$(am__dirstamp)
-lib/Utilities/lib_libarango_a-ShellImplFactory.$(OBJEXT):  \
-	lib/Utilities/$(am__dirstamp) \
-	lib/Utilities/$(DEPDIR)/$(am__dirstamp)
-lib/Utilities/lib_libarango_a-ShellImplementation.$(OBJEXT):  \
+lib/Utilities/lib_libarango_a-ShellBase.$(OBJEXT):  \
 	lib/Utilities/$(am__dirstamp) \
 	lib/Utilities/$(DEPDIR)/$(am__dirstamp)
 lib/Zip/$(am__dirstamp):
@@ -3136,7 +3132,22 @@ lib/Zip/lib_libarango_a-unzip.$(OBJEXT): lib/Zip/$(am__dirstamp) \
 	lib/Zip/$(DEPDIR)/$(am__dirstamp)
 lib/Zip/lib_libarango_a-zip.$(OBJEXT): lib/Zip/$(am__dirstamp) \
 	lib/Zip/$(DEPDIR)/$(am__dirstamp)
-lib/Utilities/lib_libarango_a-ReadlineShell.$(OBJEXT):  \
+3rdParty/linenoise-ng/src/$(am__dirstamp):
+	@$(MKDIR_P) 3rdParty/linenoise-ng/src
+	@: > 3rdParty/linenoise-ng/src/$(am__dirstamp)
+3rdParty/linenoise-ng/src/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) 3rdParty/linenoise-ng/src/$(DEPDIR)
+	@: > 3rdParty/linenoise-ng/src/$(DEPDIR)/$(am__dirstamp)
+3rdParty/linenoise-ng/src/lib_libarango_a-linenoise.$(OBJEXT):  \
+	3rdParty/linenoise-ng/src/$(am__dirstamp) \
+	3rdParty/linenoise-ng/src/$(DEPDIR)/$(am__dirstamp)
+3rdParty/linenoise-ng/src/lib_libarango_a-ConvertUTF.$(OBJEXT):  \
+	3rdParty/linenoise-ng/src/$(am__dirstamp) \
+	3rdParty/linenoise-ng/src/$(DEPDIR)/$(am__dirstamp)
+3rdParty/linenoise-ng/src/lib_libarango_a-wcwidth.$(OBJEXT):  \
+	3rdParty/linenoise-ng/src/$(am__dirstamp) \
+	3rdParty/linenoise-ng/src/$(DEPDIR)/$(am__dirstamp)
+lib/Utilities/lib_libarango_a-LinenoiseShell.$(OBJEXT):  \
 	lib/Utilities/$(am__dirstamp) \
 	lib/Utilities/$(DEPDIR)/$(am__dirstamp)
 lib/$(am__dirstamp):
@@ -3556,6 +3567,7 @@ uninstall-pkglibexecSCRIPTS:
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f 3rdParty/linenoise-ng/src/*.$(OBJEXT)
 	-rm -f UnitTests/Basics/*.$(OBJEXT)
 	-rm -f UnitTests/Geo/*.$(OBJEXT)
 	-rm -f arangod/Actions/*.$(OBJEXT)
@@ -3594,6 +3606,9 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-ConvertUTF.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-linenoise.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-wcwidth.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-AttributeNameParserTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-EndpointTest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-Runner.Po@am__quote@
@@ -3921,10 +3936,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/SimpleHttpClient/$(DEPDIR)/SslClientConnection.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-DummyShell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-LineEditor.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-ReadlineShell.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-ScriptLoader.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplFactory.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplementation.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellBase.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/V8LineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-buffer.Po@am__quote@
@@ -7888,33 +7902,19 @@ lib/Utilities/lib_libarango_a-ScriptLoader.obj: lib/Utilities/ScriptLoader.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-ScriptLoader.obj `if test -f 'lib/Utilities/ScriptLoader.cpp'; then $(CYGPATH_W) 'lib/Utilities/ScriptLoader.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/ScriptLoader.cpp'; fi`
 
-lib/Utilities/lib_libarango_a-ShellImplFactory.o: lib/Utilities/ShellImplFactory.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-ShellImplFactory.o -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplFactory.Tpo -c -o lib/Utilities/lib_libarango_a-ShellImplFactory.o `test -f 'lib/Utilities/ShellImplFactory.cpp' || echo '$(srcdir)/'`lib/Utilities/ShellImplFactory.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplFactory.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplFactory.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/ShellImplFactory.cpp' object='lib/Utilities/lib_libarango_a-ShellImplFactory.o' libtool=no @AMDEPBACKSLASH@
+lib/Utilities/lib_libarango_a-ShellBase.o: lib/Utilities/ShellBase.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-ShellBase.o -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellBase.Tpo -c -o lib/Utilities/lib_libarango_a-ShellBase.o `test -f 'lib/Utilities/ShellBase.cpp' || echo '$(srcdir)/'`lib/Utilities/ShellBase.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellBase.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellBase.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/ShellBase.cpp' object='lib/Utilities/lib_libarango_a-ShellBase.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-ShellImplFactory.o `test -f 'lib/Utilities/ShellImplFactory.cpp' || echo '$(srcdir)/'`lib/Utilities/ShellImplFactory.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-ShellBase.o `test -f 'lib/Utilities/ShellBase.cpp' || echo '$(srcdir)/'`lib/Utilities/ShellBase.cpp
 
-lib/Utilities/lib_libarango_a-ShellImplFactory.obj: lib/Utilities/ShellImplFactory.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-ShellImplFactory.obj -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplFactory.Tpo -c -o lib/Utilities/lib_libarango_a-ShellImplFactory.obj `if test -f 'lib/Utilities/ShellImplFactory.cpp'; then $(CYGPATH_W) 'lib/Utilities/ShellImplFactory.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/ShellImplFactory.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplFactory.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplFactory.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/ShellImplFactory.cpp' object='lib/Utilities/lib_libarango_a-ShellImplFactory.obj' libtool=no @AMDEPBACKSLASH@
+lib/Utilities/lib_libarango_a-ShellBase.obj: lib/Utilities/ShellBase.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-ShellBase.obj -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellBase.Tpo -c -o lib/Utilities/lib_libarango_a-ShellBase.obj `if test -f 'lib/Utilities/ShellBase.cpp'; then $(CYGPATH_W) 'lib/Utilities/ShellBase.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/ShellBase.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellBase.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellBase.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/ShellBase.cpp' object='lib/Utilities/lib_libarango_a-ShellBase.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-ShellImplFactory.obj `if test -f 'lib/Utilities/ShellImplFactory.cpp'; then $(CYGPATH_W) 'lib/Utilities/ShellImplFactory.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/ShellImplFactory.cpp'; fi`
-
-lib/Utilities/lib_libarango_a-ShellImplementation.o: lib/Utilities/ShellImplementation.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-ShellImplementation.o -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplementation.Tpo -c -o lib/Utilities/lib_libarango_a-ShellImplementation.o `test -f 'lib/Utilities/ShellImplementation.cpp' || echo '$(srcdir)/'`lib/Utilities/ShellImplementation.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplementation.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplementation.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/ShellImplementation.cpp' object='lib/Utilities/lib_libarango_a-ShellImplementation.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-ShellImplementation.o `test -f 'lib/Utilities/ShellImplementation.cpp' || echo '$(srcdir)/'`lib/Utilities/ShellImplementation.cpp
-
-lib/Utilities/lib_libarango_a-ShellImplementation.obj: lib/Utilities/ShellImplementation.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-ShellImplementation.obj -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplementation.Tpo -c -o lib/Utilities/lib_libarango_a-ShellImplementation.obj `if test -f 'lib/Utilities/ShellImplementation.cpp'; then $(CYGPATH_W) 'lib/Utilities/ShellImplementation.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/ShellImplementation.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplementation.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplementation.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/ShellImplementation.cpp' object='lib/Utilities/lib_libarango_a-ShellImplementation.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-ShellImplementation.obj `if test -f 'lib/Utilities/ShellImplementation.cpp'; then $(CYGPATH_W) 'lib/Utilities/ShellImplementation.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/ShellImplementation.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-ShellBase.obj `if test -f 'lib/Utilities/ShellBase.cpp'; then $(CYGPATH_W) 'lib/Utilities/ShellBase.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/ShellBase.cpp'; fi`
 
 lib/Zip/lib_libarango_a-ioapi.o: lib/Zip/ioapi.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Zip/lib_libarango_a-ioapi.o -MD -MP -MF lib/Zip/$(DEPDIR)/lib_libarango_a-ioapi.Tpo -c -o lib/Zip/lib_libarango_a-ioapi.o `test -f 'lib/Zip/ioapi.cpp' || echo '$(srcdir)/'`lib/Zip/ioapi.cpp
@@ -7958,19 +7958,61 @@ lib/Zip/lib_libarango_a-zip.obj: lib/Zip/zip.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Zip/lib_libarango_a-zip.obj `if test -f 'lib/Zip/zip.cpp'; then $(CYGPATH_W) 'lib/Zip/zip.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Zip/zip.cpp'; fi`
 
-lib/Utilities/lib_libarango_a-ReadlineShell.o: lib/Utilities/ReadlineShell.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-ReadlineShell.o -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-ReadlineShell.Tpo -c -o lib/Utilities/lib_libarango_a-ReadlineShell.o `test -f 'lib/Utilities/ReadlineShell.cpp' || echo '$(srcdir)/'`lib/Utilities/ReadlineShell.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-ReadlineShell.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-ReadlineShell.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/ReadlineShell.cpp' object='lib/Utilities/lib_libarango_a-ReadlineShell.o' libtool=no @AMDEPBACKSLASH@
+3rdParty/linenoise-ng/src/lib_libarango_a-linenoise.o: 3rdParty/linenoise-ng/src/linenoise.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT 3rdParty/linenoise-ng/src/lib_libarango_a-linenoise.o -MD -MP -MF 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-linenoise.Tpo -c -o 3rdParty/linenoise-ng/src/lib_libarango_a-linenoise.o `test -f '3rdParty/linenoise-ng/src/linenoise.cpp' || echo '$(srcdir)/'`3rdParty/linenoise-ng/src/linenoise.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-linenoise.Tpo 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-linenoise.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='3rdParty/linenoise-ng/src/linenoise.cpp' object='3rdParty/linenoise-ng/src/lib_libarango_a-linenoise.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-ReadlineShell.o `test -f 'lib/Utilities/ReadlineShell.cpp' || echo '$(srcdir)/'`lib/Utilities/ReadlineShell.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o 3rdParty/linenoise-ng/src/lib_libarango_a-linenoise.o `test -f '3rdParty/linenoise-ng/src/linenoise.cpp' || echo '$(srcdir)/'`3rdParty/linenoise-ng/src/linenoise.cpp
 
-lib/Utilities/lib_libarango_a-ReadlineShell.obj: lib/Utilities/ReadlineShell.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-ReadlineShell.obj -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-ReadlineShell.Tpo -c -o lib/Utilities/lib_libarango_a-ReadlineShell.obj `if test -f 'lib/Utilities/ReadlineShell.cpp'; then $(CYGPATH_W) 'lib/Utilities/ReadlineShell.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/ReadlineShell.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-ReadlineShell.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-ReadlineShell.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/ReadlineShell.cpp' object='lib/Utilities/lib_libarango_a-ReadlineShell.obj' libtool=no @AMDEPBACKSLASH@
+3rdParty/linenoise-ng/src/lib_libarango_a-linenoise.obj: 3rdParty/linenoise-ng/src/linenoise.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT 3rdParty/linenoise-ng/src/lib_libarango_a-linenoise.obj -MD -MP -MF 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-linenoise.Tpo -c -o 3rdParty/linenoise-ng/src/lib_libarango_a-linenoise.obj `if test -f '3rdParty/linenoise-ng/src/linenoise.cpp'; then $(CYGPATH_W) '3rdParty/linenoise-ng/src/linenoise.cpp'; else $(CYGPATH_W) '$(srcdir)/3rdParty/linenoise-ng/src/linenoise.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-linenoise.Tpo 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-linenoise.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='3rdParty/linenoise-ng/src/linenoise.cpp' object='3rdParty/linenoise-ng/src/lib_libarango_a-linenoise.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-ReadlineShell.obj `if test -f 'lib/Utilities/ReadlineShell.cpp'; then $(CYGPATH_W) 'lib/Utilities/ReadlineShell.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/ReadlineShell.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o 3rdParty/linenoise-ng/src/lib_libarango_a-linenoise.obj `if test -f '3rdParty/linenoise-ng/src/linenoise.cpp'; then $(CYGPATH_W) '3rdParty/linenoise-ng/src/linenoise.cpp'; else $(CYGPATH_W) '$(srcdir)/3rdParty/linenoise-ng/src/linenoise.cpp'; fi`
+
+3rdParty/linenoise-ng/src/lib_libarango_a-ConvertUTF.o: 3rdParty/linenoise-ng/src/ConvertUTF.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT 3rdParty/linenoise-ng/src/lib_libarango_a-ConvertUTF.o -MD -MP -MF 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-ConvertUTF.Tpo -c -o 3rdParty/linenoise-ng/src/lib_libarango_a-ConvertUTF.o `test -f '3rdParty/linenoise-ng/src/ConvertUTF.cpp' || echo '$(srcdir)/'`3rdParty/linenoise-ng/src/ConvertUTF.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-ConvertUTF.Tpo 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-ConvertUTF.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='3rdParty/linenoise-ng/src/ConvertUTF.cpp' object='3rdParty/linenoise-ng/src/lib_libarango_a-ConvertUTF.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o 3rdParty/linenoise-ng/src/lib_libarango_a-ConvertUTF.o `test -f '3rdParty/linenoise-ng/src/ConvertUTF.cpp' || echo '$(srcdir)/'`3rdParty/linenoise-ng/src/ConvertUTF.cpp
+
+3rdParty/linenoise-ng/src/lib_libarango_a-ConvertUTF.obj: 3rdParty/linenoise-ng/src/ConvertUTF.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT 3rdParty/linenoise-ng/src/lib_libarango_a-ConvertUTF.obj -MD -MP -MF 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-ConvertUTF.Tpo -c -o 3rdParty/linenoise-ng/src/lib_libarango_a-ConvertUTF.obj `if test -f '3rdParty/linenoise-ng/src/ConvertUTF.cpp'; then $(CYGPATH_W) '3rdParty/linenoise-ng/src/ConvertUTF.cpp'; else $(CYGPATH_W) '$(srcdir)/3rdParty/linenoise-ng/src/ConvertUTF.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-ConvertUTF.Tpo 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-ConvertUTF.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='3rdParty/linenoise-ng/src/ConvertUTF.cpp' object='3rdParty/linenoise-ng/src/lib_libarango_a-ConvertUTF.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o 3rdParty/linenoise-ng/src/lib_libarango_a-ConvertUTF.obj `if test -f '3rdParty/linenoise-ng/src/ConvertUTF.cpp'; then $(CYGPATH_W) '3rdParty/linenoise-ng/src/ConvertUTF.cpp'; else $(CYGPATH_W) '$(srcdir)/3rdParty/linenoise-ng/src/ConvertUTF.cpp'; fi`
+
+3rdParty/linenoise-ng/src/lib_libarango_a-wcwidth.o: 3rdParty/linenoise-ng/src/wcwidth.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT 3rdParty/linenoise-ng/src/lib_libarango_a-wcwidth.o -MD -MP -MF 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-wcwidth.Tpo -c -o 3rdParty/linenoise-ng/src/lib_libarango_a-wcwidth.o `test -f '3rdParty/linenoise-ng/src/wcwidth.cpp' || echo '$(srcdir)/'`3rdParty/linenoise-ng/src/wcwidth.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-wcwidth.Tpo 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-wcwidth.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='3rdParty/linenoise-ng/src/wcwidth.cpp' object='3rdParty/linenoise-ng/src/lib_libarango_a-wcwidth.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o 3rdParty/linenoise-ng/src/lib_libarango_a-wcwidth.o `test -f '3rdParty/linenoise-ng/src/wcwidth.cpp' || echo '$(srcdir)/'`3rdParty/linenoise-ng/src/wcwidth.cpp
+
+3rdParty/linenoise-ng/src/lib_libarango_a-wcwidth.obj: 3rdParty/linenoise-ng/src/wcwidth.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT 3rdParty/linenoise-ng/src/lib_libarango_a-wcwidth.obj -MD -MP -MF 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-wcwidth.Tpo -c -o 3rdParty/linenoise-ng/src/lib_libarango_a-wcwidth.obj `if test -f '3rdParty/linenoise-ng/src/wcwidth.cpp'; then $(CYGPATH_W) '3rdParty/linenoise-ng/src/wcwidth.cpp'; else $(CYGPATH_W) '$(srcdir)/3rdParty/linenoise-ng/src/wcwidth.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-wcwidth.Tpo 3rdParty/linenoise-ng/src/$(DEPDIR)/lib_libarango_a-wcwidth.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='3rdParty/linenoise-ng/src/wcwidth.cpp' object='3rdParty/linenoise-ng/src/lib_libarango_a-wcwidth.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o 3rdParty/linenoise-ng/src/lib_libarango_a-wcwidth.obj `if test -f '3rdParty/linenoise-ng/src/wcwidth.cpp'; then $(CYGPATH_W) '3rdParty/linenoise-ng/src/wcwidth.cpp'; else $(CYGPATH_W) '$(srcdir)/3rdParty/linenoise-ng/src/wcwidth.cpp'; fi`
+
+lib/Utilities/lib_libarango_a-LinenoiseShell.o: lib/Utilities/LinenoiseShell.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-LinenoiseShell.o -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Tpo -c -o lib/Utilities/lib_libarango_a-LinenoiseShell.o `test -f 'lib/Utilities/LinenoiseShell.cpp' || echo '$(srcdir)/'`lib/Utilities/LinenoiseShell.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/LinenoiseShell.cpp' object='lib/Utilities/lib_libarango_a-LinenoiseShell.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-LinenoiseShell.o `test -f 'lib/Utilities/LinenoiseShell.cpp' || echo '$(srcdir)/'`lib/Utilities/LinenoiseShell.cpp
+
+lib/Utilities/lib_libarango_a-LinenoiseShell.obj: lib/Utilities/LinenoiseShell.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Utilities/lib_libarango_a-LinenoiseShell.obj -MD -MP -MF lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Tpo -c -o lib/Utilities/lib_libarango_a-LinenoiseShell.obj `if test -f 'lib/Utilities/LinenoiseShell.cpp'; then $(CYGPATH_W) 'lib/Utilities/LinenoiseShell.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/LinenoiseShell.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Tpo lib/Utilities/$(DEPDIR)/lib_libarango_a-LinenoiseShell.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Utilities/LinenoiseShell.cpp' object='lib/Utilities/lib_libarango_a-LinenoiseShell.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Utilities/lib_libarango_a-LinenoiseShell.obj `if test -f 'lib/Utilities/LinenoiseShell.cpp'; then $(CYGPATH_W) 'lib/Utilities/LinenoiseShell.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Utilities/LinenoiseShell.cpp'; fi`
 
 UnitTests/Basics/UnitTests_basics_suite-Runner.o: UnitTests/Basics/Runner.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Basics/UnitTests_basics_suite-Runner.o -MD -MP -MF UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-Runner.Tpo -c -o UnitTests/Basics/UnitTests_basics_suite-Runner.o `test -f 'UnitTests/Basics/Runner.cpp' || echo '$(srcdir)/'`UnitTests/Basics/Runner.cpp
@@ -9169,6 +9211,8 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f 3rdParty/linenoise-ng/src/$(DEPDIR)/$(am__dirstamp)
+	-rm -f 3rdParty/linenoise-ng/src/$(am__dirstamp)
 	-rm -f UnitTests/$(am__dirstamp)
 	-rm -f UnitTests/Basics/$(DEPDIR)/$(am__dirstamp)
 	-rm -f UnitTests/Basics/$(am__dirstamp)
@@ -9254,7 +9298,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Admin/$(DEPDIR) arangod/ApplicationServer/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/Dispatcher/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HttpServer/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Indexes/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/Rest/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/Scheduler/$(DEPDIR) arangod/Statistics/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Basics/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
+	-rm -rf 3rdParty/linenoise-ng/src/$(DEPDIR) UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Admin/$(DEPDIR) arangod/ApplicationServer/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/Dispatcher/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HttpServer/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Indexes/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/Rest/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/Scheduler/$(DEPDIR) arangod/Statistics/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Basics/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-local distclean-tags
@@ -9310,7 +9354,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Admin/$(DEPDIR) arangod/ApplicationServer/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/Dispatcher/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HttpServer/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Indexes/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/Rest/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/Scheduler/$(DEPDIR) arangod/Statistics/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Basics/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
+	-rm -rf 3rdParty/linenoise-ng/src/$(DEPDIR) UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Admin/$(DEPDIR) arangod/ApplicationServer/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/Dispatcher/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HttpServer/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Indexes/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/Rest/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/Scheduler/$(DEPDIR) arangod/Statistics/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Basics/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -10461,8 +10505,9 @@ gitjslint:
 	 done
 
 @builddir@/.setup-js-directories:
-	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/graph || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/graph
-	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/aql || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/modules/org/arangodb/aql
+	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/graph || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/graph
+	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/common/arangodb/aql || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/aql
+	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/aql || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/aql
 	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap
 	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/client/bootstrap || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/client/bootstrap
 	@touch $@
@@ -10484,10 +10529,10 @@ js/apps/system/_admin/aardvark/APP/frontend/js/client/%.js: @srcdir@/js/client/%
 ### @brief converts JavaScript files to header files
 ################################################################################
 
-js/apps/system/_admin/aardvark/APP/frontend/js/modules/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
+js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/%.js: @srcdir@/js/common/modules/%.js .setup-js-directories
 	(echo "module.define(\"$(patsubst js/common/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
 
-js/apps/system/_admin/aardvark/APP/frontend/js/modules/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
+js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
 	(echo "module.define(\"$(patsubst js/client/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
 
 js/apps/system/_admin/aardvark/APP/frontend/js/modules/underscore.js: @srcdir@/js/node/node_modules/underscore/underscore.js
@@ -10797,11 +10842,6 @@ cmake-setup:
 		-D OPENSSL_LIB_PATH= \
 		-D OPENSSL_LIBS= \
 		-D OPENSSL_VERSION= \
-		\
-		-D READLINE_INCLUDE= \
-		-D READLINE_LIB_PATH= \
-		-D READLINE_LIBS= \
-		-D READLINE_VERSION= \
 		\
 		-D V8_INCLUDE= \
 		-D V8_LIB_PATH= \
