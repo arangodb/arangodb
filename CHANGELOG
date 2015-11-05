@@ -37,6 +37,7 @@ v2.8.0 (XXXX-XX-XX)
   - FLOOR
   - LAST
   - MEDIAN
+  - MERGE_RECURSIVE
   - MINUS
   - NEAR
   - NOT_NULL
