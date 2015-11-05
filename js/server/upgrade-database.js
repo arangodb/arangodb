@@ -941,56 +941,6 @@
     });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief setupAal
-///
-/// set up the collection _aal
-////////////////////////////////////////////////////////////////////////////////
-
-    addTask({
-      name:        "setupAal",
-      description: "setup _aal collection",
-
-      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
-      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
-
-      task: function () {
-        return createSystemCollection("_aal", {
-          waitForSync : false,
-          shardKeys: [ "name", "version" ],
-          journalSize: 4 * 1024 * 1024
-        });
-      }
-    });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief createAalIndex
-///
-/// create a unique index on collection attribute in _aal
-////////////////////////////////////////////////////////////////////////////////
-
-    addTask({
-      name:        "createAalIndex",
-      description: "create index on collection attribute in _aal collection",
-
-      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
-      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
-
-      task: function () {
-        var aal = getCollection("_aal");
-
-        if (! aal) {
-          return false;
-        }
-
-        aal.ensureIndex({ type: "hash", fields: ["name", "version"], unique: true, sparse: true });
-
-        return true;
-      }
-    });
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief setupAqlFunctions
 ///
 /// set up the collection _aqlfunctions
@@ -1144,7 +1094,12 @@
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
-        var aal = db._collection("_aal");
+        var aal = getCollection();
+        if (!aal) {
+          // collection does not exist. good, then there's no work to do for us
+          return true;
+        }
+
         var didWork = true;
 
         aal.byExample(
@@ -1301,7 +1256,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
     addTask({
-      name: "moveFoxxApps",
+      name:        "moveFoxxApps",
       description: "move foxx applications from name-based to mount-based folder.",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
@@ -1311,8 +1266,10 @@
       task: function () {
         var aal = getCollection("_aal");
         if (!aal) {
+          // collection does not exist. good, then there's no work to do for us
           return true;
         }
+
         var mapAppZip = {};
         var tmp;
         var path;
@@ -1419,10 +1376,9 @@
 
       task: function () {
         var aal = getCollection("_aal");
-        if (! aal) {
-          return true;
+        if (aal) {
+          aal.drop();
         }
-        aal.drop();
         return true;
       }
     });
