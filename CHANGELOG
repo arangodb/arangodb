@@ -1,6 +1,11 @@
 v2.6.10 (XXXX-XX-XX)
 --------------------
 
+* disable replication appliers when starting in modes `--upgrade`, `--no-server`
+  and `--check-upgrade`
+
+* more detailed output in arango-dfdb
+
 * fixed potential deadlock in collection status changing on Windows 
 
 * issue #1521: Can't dump/restore with user and password
@@ -15,7 +20,7 @@ v2.6.9 (2015-09-29)
 
 * fixed failing AQL skiplist, sort and limit combination
 
-  When using a Skiplist index on an attribute (say "a") and then using sort
+  When using a skiplist index on an attribute (say "a") and then using sort
   and skip on this attribute caused the result to be empty e.g.:
     
     require("internal").db.test.ensureSkiplist("a");
