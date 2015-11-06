@@ -98,7 +98,8 @@ pack-dmg:
 	rm -rf Build && mkdir Build
 
 	./configure \
-		--prefix=/opt/arangodb
+		--prefix=/opt/arangodb \
+		CPPFLAGS=-I/usr/local/include LDFLAGS=-L/usr/local/lib
 
 	${MAKE} pack-dmg-cmake
 
@@ -111,6 +112,9 @@ pack-dmg-cmake:
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
+		-D "OPENSSL_INCLUDE=/usr/local/include" \
+		-D "OPENSSL_LIB_PATH=/usr/local/lib" \
+		-D "OPENSSL_LIBS=/usr/local/lib/libssl.a;/usr/local/lib/libcrypto.a" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		..
@@ -159,6 +163,9 @@ pack-macosxcode-cmake:
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
+		-D "OPENSSL_INCLUDE=/usr/local/include" \
+		-D "OPENSSL_LIB_PATH=/usr/local/lib" \
+		-D "OPENSSL_LIBS=/usr/local/lib/libssl.a;/usr/local/lib/libcrypto.a" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		-G Xcode \
@@ -193,6 +200,9 @@ pack-macosx-cmake:
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
+		-D "OPENSSL_INCLUDE=/usr/local/include" \
+		-D "OPENSSL_LIB_PATH=/usr/local/lib" \
+		-D "OPENSSL_LIBS=/usr/local/lib/libssl.a;/usr/local/lib/libcrypto.a" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		$(MOREOPTS) \
