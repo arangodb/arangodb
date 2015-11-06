@@ -27,6 +27,7 @@
 
 #include "Basics/JsonHelper.h"
 #include "VocBase/Graphs.h"
+#include "Aql/Ast.h"
 #include "Aql/TraversalConditionFinder.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/TraversalNode.h"
@@ -65,7 +66,7 @@ bool checkPathVariableAccessFeasible(CalculationNode const* cn, Variable const* 
         return false;
       }
     }
-    else if ((onePath[len - 3]->type == NODE_TYPE_INDEXED_ACCESS) &&
+    else if ((onePath[len - 3]->type == NODE_TYPE_ITERATOR) &&
              (onePath[len - 4]->type == NODE_TYPE_EXPANSION)){
       // we now need to check for p.edges[*] which becomes a fancy structure
 
@@ -159,22 +160,44 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
         }
       }
 
+      auto const& varsValidInTraversal = node->getVarsValid();
+      std::unordered_set<Variable const*> varsUsedByCondition;
+
       for (auto& it : _variableDefinitions) {
         auto f = _filters.find(it.first);
         if (f != _filters.end()) {
           // a variable used in a FILTER
-          //it.second
-          //auto inVar = f.first;
           auto outVar = node->getVariablesSetHere();
           if (outVar.size() != 1 || outVar[0]->id == f->first) {
             // now we know, this filter is used for our traversal node.
             auto cn = it.second;
-            auto vars = cn->getVariablesUsedHere();
-            for (auto var: vars) {
-              // check whether its one of those we emit 
-              int variableType = node->checkIsOutVariable(var->id);
+
+            // check whether variables that are not in scope of the condition are used:
+            varsUsedByCondition.clear();
+            Ast::getReferencedVariables(cn->expression()->node(), varsUsedByCondition); 
+            bool unknownVariableFound = false;
+            for (auto conditionVar: varsUsedByCondition) {
+              bool found = false;
+              for (auto traversalKnownVar : varsValidInTraversal ) {
+                if (conditionVar->id == traversalKnownVar->id) {
+                  found = true;
+                  break;
+                }
+              }
+              if (!found) {
+                unknownVariableFound = true;
+                break;
+              }
+            }
+            if (unknownVariableFound) {
+              continue;
+            }
+
+            for (auto conditionVar: varsUsedByCondition) {
+              // check whether conditionVar is one of those we emit 
+              int variableType = node->checkIsOutVariable(conditionVar->id);
               if (variableType >= 0) {
-                if ((variableType == 2) && checkPathVariableAccessFeasible(cn, var)) {
+                if ((variableType == 2) && checkPathVariableAccessFeasible(cn, conditionVar)) {
                   condition->andCombine(it.second->expression()->node());
                   foundCondition = true;
                   node->setCalculationNodeId(cn->id());
@@ -192,19 +215,6 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
       if (foundCondition) {
         node->setCondition(condition.release());
       }
-      auto const& varsValid = node->getVarsValid();
-
-      // remove all invalid variables from the condition
-      /// TODO: we don't have a DNF?if (condition->removeInvalidVariables(varsValid)) {
-      /// TODO: we don't have a DNF?  // removing left a previously non-empty OR block empty...
-      /// TODO: we don't have a DNF?  // this means we can't use the index to restrict the results
-      /// TODO: we don't have a DNF?  break;
-      /// TODO: we don't have a DNF?}
-
-      //if (condition->isEmpty()) {
-        // no filter conditions left
-        //break;
-      // }
 
       break;
     }
