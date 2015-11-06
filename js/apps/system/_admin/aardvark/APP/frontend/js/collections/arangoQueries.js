@@ -53,8 +53,10 @@
       var queries = [];
 
       this.each(function(query) {
+        console.log(query.attributes);
         queries.push({
           value: query.attributes.value,
+          parameter: query.attributes.parameter,
           name: query.attributes.name
         });
       });
@@ -100,6 +102,7 @@
         processData: false,
         success: function() {
           window.progressView.hide();
+          arangoHelper.arangoNotification("Queries successfully imported.");
           callback();
         },
         error: function() {
