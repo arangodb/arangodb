@@ -63,11 +63,11 @@ namespace arangodb {
       private:
 
         Buffer<uint8_t> _buffer;  // Here we collect the result
-        uint8_t*             _start;   // Always points to the start of _buffer
-        ValueLength          _size;    // Always contains the size of _buffer
-        ValueLength          _pos;     // the append position, always <= _size
-        bool                 _attrWritten;  // indicates that an attribute name
-                                            // in an object has been written
+        uint8_t*        _start;   // Always points to the start of _buffer
+        ValueLength     _size;    // Always contains the size of _buffer
+        ValueLength     _pos;     // the append position, always <= _size
+        bool            _attrWritten;  // indicates that an attribute name
+                                       // in an object has been written
         std::vector<ValueLength>              _stack;  // Start positions of
                                                        // open objects/arrays
         std::vector<std::vector<ValueLength>> _index;  // Indices for starts
@@ -92,7 +92,7 @@ namespace arangodb {
         // allocations. In the beginning, the _stack is empty, which
         // allows to build a sequence of unrelated VPack objects in the
         // buffer. Whenever the stack is empty, one can use the start,
-        // size and stealTo methods to get out the ready built VPack
+        // size and slice methods to get out the ready built VPack
         // object(s).
 
         void reserveSpace (ValueLength len) {
@@ -145,15 +145,9 @@ namespace arangodb {
         ~Builder () {
         }
 
-        Builder (Builder const& that) {
-          _buffer = that._buffer;
-          _start = _buffer.data();
-          _size = _buffer.size();
-          _pos = that._pos;
-          _attrWritten = that._attrWritten;
-          _stack = that._stack;
-          _index = that._index;
-          options = that.options;
+        Builder (Builder const& that) 
+          : _buffer(that._buffer), _start(_buffer.data()), _size(_buffer.size()), _pos(that._pos),
+            _attrWritten(that._attrWritten), _stack(that._stack), _index(that._index), options(that.options) {
         }
 
         Builder& operator= (Builder const& that) {
@@ -233,17 +227,23 @@ namespace arangodb {
         }
 
         // Add a subvalue into an object from a Value:
-        void add (std::string const& attrName, Value const& sub);
+        uint8_t* add (std::string const& attrName, Value const& sub);
+        
+        // Add a subvalue into an object from a Slice:
+        uint8_t* add (std::string const& attrName, Slice const& sub);
 
         // Add a subvalue into an object from a ValuePair:
         uint8_t* add (std::string const& attrName, ValuePair const& sub);
 
         // Add a subvalue into an array from a Value:
-        void add (Value const& sub);
+        uint8_t* add (Value const& sub);
+        
+        // Add a slice to an array
+        uint8_t* add (Slice const& sub);
 
         // Add a subvalue into an array from a ValuePair:
         uint8_t* add (ValuePair const& sub);
-
+        
         // Seal the innermost array or object:
         void close ();
 
@@ -365,6 +365,46 @@ namespace arangodb {
 
       private:
 
+        template<typename T>
+        uint8_t* addInternal (T const& sub) {
+          if (! _stack.empty()) {
+            ValueLength& tos = _stack.back();
+            if (_start[tos] != 0x06 && _start[tos] != 0x0b) {
+              throw Exception(Exception::BuilderNeedOpenObject);
+            }
+            if (_start[tos] == 0x0b) {  // Object
+              if (! _attrWritten && ! sub.isString()) {
+                throw Exception(Exception::BuilderNeedOpenObject);
+              }
+              if (! _attrWritten) {
+                reportAdd(tos);
+              }
+              _attrWritten = ! _attrWritten;
+            }
+            else {  // Array
+              reportAdd(tos);
+            }
+          }
+          return set(sub);
+        }
+  
+        template<typename T>
+        uint8_t* addInternal (std::string const& attrName, T const& sub) {
+          if (_attrWritten) {
+            throw Exception(Exception::InternalError, "Attribute name already written");
+          }
+          if (! _stack.empty()) {
+            ValueLength& tos = _stack.back();
+            if (_start[tos] != 0x06 &&
+                _start[tos] != 0x0b) {
+              throw Exception(Exception::BuilderNeedOpenObject);
+            }
+            reportAdd(tos);
+          }
+          set(Value(attrName, ValueType::String));
+          return set(sub);
+        }
+
         void addCompoundValue (uint8_t type) {
           reserveSpace(9);
           // an array is started:
@@ -378,9 +418,11 @@ namespace arangodb {
           _pos += 8;    // Will be filled later with bytelength and nr subs
         }
 
-        void set (Value const& item);
+        uint8_t* set (Value const& item);
 
         uint8_t* set (ValuePair const& pair);
+        
+        uint8_t* set (Slice const& item);
         
         void reportAdd (ValueLength base) {
           size_t depth = _stack.size() - 1;

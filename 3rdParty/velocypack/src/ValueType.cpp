@@ -51,3 +51,8 @@ char const* arangodb::velocypack::ValueTypeName (ValueType type) {
 
   return "unknown";
 }
+
+std::ostream& operator<< (std::ostream& stream, ValueType type) {
+  stream << ValueTypeName(type);
+  return stream;
+}

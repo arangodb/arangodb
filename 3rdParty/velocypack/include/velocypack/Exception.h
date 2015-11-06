@@ -109,7 +109,7 @@ namespace arangodb {
             case BuilderObjectNotSealed:
               return "Object not sealed";
             case BuilderNeedOpenObject:
-              return "Need open array or object for close() call";
+              return "Need open Array or Object for close() call";
             case BuilderUnexpectedType:
               return "Unexpected type";
             case BuilderUnexpectedValue:

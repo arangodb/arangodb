@@ -27,6 +27,8 @@
 #ifndef VELOCYPACK_VALUETYPE_H
 #define VELOCYPACK_VALUETYPE_H
 
+#include <ostream>
+
 #include "velocypack-common.h"
 
 namespace arangodb {
@@ -56,5 +58,7 @@ namespace arangodb {
 
   }  // namespace arangodb::velocypack
 }  // namespace arangodb
+
+std::ostream& operator<< (std::ostream&, arangodb::velocypack::ValueType);
 
 #endif
