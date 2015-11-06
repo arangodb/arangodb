@@ -25,7 +25,6 @@ if (MSVC)
       Basics/terminal-utils-win32.cpp
       Basics/threads-win32.cpp
       Basics/win-utils.cpp
-      Utilities/LinenoiseShell.cpp
       Zip/iowin32.cpp
   )
 else ()
@@ -35,9 +34,19 @@ else ()
       Basics/terminal-utils-posix.cpp
       Basics/threads-posix.cpp
       Rest/EndpointUnixDomain.cpp
-      Utilities/ReadlineShell.cpp
   )
 endif ()
+
+include_directories(../3rdParty/linenoise-ng/include)
+include_directories(../3rdParty/linenoise-ng/src)
+add_definitions("-DTRI_HAVE_LINENOISE")
+
+SET(LIB_ARANGO_CONSOLE
+  ../3rdParty/linenoise-ng/src/ConvertUTF.cpp
+  ../3rdParty/linenoise-ng/src/linenoise.cpp
+  ../3rdParty/linenoise-ng/src/wcwidth.cpp
+  Utilities/LinenoiseShell.cpp
+)
 
 add_library(
     ${LIB_ARANGO}
@@ -45,6 +54,7 @@ add_library(
     ${LIB_ARANGO_APPLE}
     ${LIB_ARANGO_MSVC}
     ${LIB_ARANGO_POSIX}
+    ${LIB_ARANGO_CONSOLE}
     Basics/application-exit.cpp
     Basics/associative.cpp
     Basics/AttributeNameParser.cpp
@@ -118,8 +128,7 @@ add_library(
     Utilities/DummyShell.cpp
     Utilities/LineEditor.cpp
     Utilities/ScriptLoader.cpp
-    Utilities/ShellImplementation.cpp
-    Utilities/ShellImplFactory.cpp
+    Utilities/ShellBase.cpp
     Zip/ioapi.cpp
     Zip/unzip.cpp
     Zip/zip.cpp
