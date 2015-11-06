@@ -29,9 +29,7 @@
 
 #include "RestImportHandler.h"
 
-#include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
@@ -1412,32 +1410,35 @@ void RestImportHandler::generateDocumentsCreated (RestImportResult const& result
   _response = createResponse(HttpResponse::CREATED);
   _response->setContentType("application/json; charset=utf-8");
 
-  TRI_json_t json;
+  try {
+    VPackBuilder json;
+    json.add(VPackValue(VPackValueType::Object));
+    json.add("error", VPackValue(false));
+    json.add("created", VPackValue(static_cast<uint64_t>(result._numCreated)));
+    json.add("errors", VPackValue(static_cast<uint64_t>(result._numErrors)));
+    json.add("empty", VPackValue(static_cast<uint64_t>(result._numEmpty)));
+    json.add("updated", VPackValue(static_cast<uint64_t>(result._numUpdated)));
+    json.add("ignored", VPackValue(static_cast<uint64_t>(result._numIgnored)));
 
-  TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &json);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "error", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "created", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numCreated));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "errors", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numErrors));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "empty", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numEmpty));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "updated", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numUpdated));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "ignored", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numIgnored));
+    bool found;
+    char const* detailsStr = _request->value("details", found);
 
-  bool found;
-  char const* detailsStr = _request->value("details", found);
+    // include failure details?
+    if (found && StringUtils::boolean(detailsStr)) {
+      json.add("details", VPackValue(VPackValueType::Array));
 
-  // include failure details?
-  if (found && StringUtils::boolean(detailsStr)) {
-    TRI_json_t* messages = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-
-    for (size_t i = 0, n = result._errors.size(); i < n; ++i) {
-      string const& msg = result._errors[i];
-      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, messages, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, msg.c_str(), msg.size()));
+      for (size_t i = 0, n = result._errors.size(); i < n; ++i) {
+        json.add(VPackValue(result._errors[i]));
+      }
+      json.close();
     }
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "details", messages);
+    json.close();
+    VPackSlice s = json.slice();
+    generateResult(HttpResponse::CREATED, s);
   }
-
-  generateResult(HttpResponse::CREATED, &json);
-  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &json);
+  catch (...) {
+    // Ignore the error
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
