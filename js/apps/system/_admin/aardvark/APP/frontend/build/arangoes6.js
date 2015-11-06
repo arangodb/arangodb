@@ -7697,7 +7697,7 @@ var lessons = [
   },
   {
     title: "Creating Documents",
-    text:  "Now we have a collection, but it is still empty. So let's create some documents!\n\n" +
+    text:  "Now we have a collection, but it is empty. So let's create some documents!\n\n" +
            "  db.places.save({ _key : \"foo\", city : \"foo-city\" });\n" +
            "  for (i = 0; i <= 10; i++) { db.places.save({ _key: \"example\" + i, zipcode: i }) };"
   },
@@ -21639,7 +21639,7 @@ global.aqlQuery = function () {
   for (i = 1; i < arguments.length; i++) {
     value = arguments[i];
     name = 'value' + (i - 1);
-    if (value.constructor && value.constructor.name === 'ArangoCollection') {
+    if (value && value.constructor && value.constructor.name === 'ArangoCollection') {
       name = '@' + name;
       value = value.name();
     }

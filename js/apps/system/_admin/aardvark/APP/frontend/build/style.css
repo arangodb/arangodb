@@ -6199,7 +6199,25 @@ toolbar {
   .queryMethods button a {
     color: #fff; }
 
-.aql-editor {
+.vars-editor-header {
+  border-top: 1px solid rgba(140, 138, 137, 0.25);
+  margin-top: -5px;
+  padding-left: 5px; }
+  .vars-editor-header i {
+    border-radius: 2px;
+    color: #666;
+    height: 15px;
+    margin-left: 5px;
+    padding-left: 3px;
+    padding-top: 1px;
+    width: 15px; }
+  .vars-editor-header i:hover {
+    background-color: #8aa051;
+    color: #fff;
+    cursor: pointer; }
+
+.aql-editor,
+.vars-editor {
   border-color: #a0a0a0;
   border-left: 0 !important;
   border-top: 1px solid rgba(140, 138, 137, 0.25) !important;
@@ -6209,7 +6227,9 @@ toolbar {
   min-width: 99.8%;
   width: auto; }
   .aql-editor .ace_error,
-  .aql-editor .ace_info {
+  .aql-editor .ace_info,
+  .vars-editor .ace_error,
+  .vars-editor .ace_info {
     background: none; }
 
 .queryTH {
@@ -6424,7 +6444,8 @@ toolbar {
     position: relative;
     top: 0;
     width: 25px; }
-  .editor-toolbar span:hover {
+  .editor-toolbar span:hover,
+  .editor-toolbar .vars-editor-header i {
     background-color: #8aa051;
     color: #fff; }
   .editor-toolbar i {
@@ -6433,11 +6454,13 @@ toolbar {
     .editor-toolbar i:hover {
       cursor: pointer; }
   .editor-toolbar .fa {
+    color: #666;
     margin-left: 1px;
     margin-top: 2px; }
     .editor-toolbar .fa.fa-upload {
       margin-top: 1px; }
   .editor-toolbar .icon_arangodb {
+    color: #666;
     font-size: 14pt; }
     .editor-toolbar .icon_arangodb:first-child {
       margin-right: 10px; }
