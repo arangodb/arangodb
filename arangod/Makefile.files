@@ -124,7 +124,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Replication/InitialSyncer.cpp \
 	arangod/Replication/Syncer.cpp \
 	arangod/Rest/AnyServer.cpp \
-	arangod/RestHandler/RestAdminBaseHandler.cpp \
 	arangod/RestHandler/RestAdminLogHandler.cpp \
 	arangod/RestHandler/RestBaseHandler.cpp \
 	arangod/RestHandler/RestBatchHandler.cpp \

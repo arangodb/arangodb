@@ -31,7 +31,7 @@
 #define ARANGODB_REST_HANDLER_REST_ADMIN_LOG_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "RestHandler/RestAdminBaseHandler.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace triagens {
   namespace admin {
@@ -44,7 +44,7 @@ namespace triagens {
 /// @brief admin log request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestAdminLogHandler : public RestAdminBaseHandler {
+    class RestAdminLogHandler : public RestBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -56,7 +56,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestAdminLogHandler (rest::HttpRequest*);
+        explicit RestAdminLogHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
