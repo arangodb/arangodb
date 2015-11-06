@@ -5676,25 +5676,6 @@ if test x$GCC == xyes;  then
 
   if test x$tr_DARWIN == xyes;  then
     WALL="${WALL} -Wno-deprecated-declarations"
-
-
-
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking -stdlib=libc++ for $CXX" >&5
-$as_echo_n "checking -stdlib=libc++ for $CXX... " >&6; }
-          if { ac_try='${CXX} -Werror -stdlib=libc++ -xc++ /dev/null -S -o /dev/null'
-  { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; }; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-                tr_CXX_HAS_STDLIB="yes"
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-                tr_CXX_HAS_STDLIB="no"
-fi
   fi
 
   WALLC="${WALL} -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement"
@@ -5800,7 +5781,27 @@ fi
   CXXFLAGS="${GXXSTD} ${CXXFLAGS} ${WALLCXX}"
 fi
 
- if test "x$tr_CXX_HAS_STDLIB" = "yes"; then
+
+if test x$tr_DARWIN == xyes;  then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking -stdlib=libc++ for $CXX" >&5
+$as_echo_n "checking -stdlib=libc++ for $CXX... " >&6; }
+          if { ac_try='${CXX} -Werror -stdlib=libc++ -xc++ /dev/null -S -o /dev/null'
+  { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; }; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+                tr_CXX_HAS_STDLIB="yes"
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+                tr_CXX_HAS_STDLIB="no"
+fi
+fi
+
+ if test "x$tr_CXX_HAS_STDLIB" = "xyes"; then
   CXX_HAS_STDLIB_TRUE=
   CXX_HAS_STDLIB_FALSE='#'
 else

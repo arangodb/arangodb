@@ -171,12 +171,6 @@ if test x$GCC == xyes;  then
 
   if test x$tr_DARWIN == xyes;  then
     WALL="${WALL} -Wno-deprecated-declarations"
-
-    
-
-    TRI_TRY_CXX_OPTION([-stdlib=libc++],
-                       [tr_CXX_HAS_STDLIB="yes"],
-                       [tr_CXX_HAS_STDLIB="no"])
   fi
 
   WALLC="${WALL} -Wshadow -Wstrict-prototypes -Wdeclaration-after-statement"
@@ -213,7 +207,14 @@ if test x$GCC == xyes;  then
   CXXFLAGS="${GXXSTD} ${CXXFLAGS} ${WALLCXX}"
 fi
 
-AM_CONDITIONAL(CXX_HAS_STDLIB, test "x$tr_CXX_HAS_STDLIB" = "yes")
+
+if test x$tr_DARWIN == xyes;  then
+  TRI_TRY_CXX_OPTION([-stdlib=libc++],
+                     [tr_CXX_HAS_STDLIB="yes"],
+                     [tr_CXX_HAS_STDLIB="no"])
+fi
+
+AM_CONDITIONAL(CXX_HAS_STDLIB, test "x$tr_CXX_HAS_STDLIB" = "xyes")
 
 dnl ----------------------------------------------------------------------------
 dnl option for gnu style include
