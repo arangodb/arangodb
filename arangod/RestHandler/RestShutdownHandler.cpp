@@ -29,8 +29,6 @@
 
 #include "RestShutdownHandler.h"
 
-#include "Basics/json.h"
-#include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
 
 using namespace std;
@@ -83,10 +81,15 @@ bool RestShutdownHandler::isDirect () const {
 HttpHandler::status_t RestShutdownHandler::execute () {
   _applicationServer->beginShutdown();
 
-  TRI_json_t result;
-  TRI_InitStringJson(&result, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "OK"), strlen("OK"));
-  generateResult(&result);
-  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  try {
+    VPackBuilder json;
+    json.add(VPackValue("OK"));
+    VPackSlice slice(json.start());
+    generateResult(slice);
+  }
+  catch (...) {
+    // Ignore the error
+  }
 
   return status_t(HANDLER_DONE);
 }
