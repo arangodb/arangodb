@@ -137,15 +137,21 @@ void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
 
 void RestBaseHandler::generateCanceled () {
   VPackBuilder builder;
-  builder.add(VPackValue(VPackValueType::Object));
-  builder.add("error", VPackValue(true));
-  builder.add("code", VPackValue((int32_t) HttpResponse::REQUEST_TIMEOUT));
-  builder.add("errorNum", VPackValue((int32_t) TRI_ERROR_REQUEST_CANCELED));
-  builder.add("errorMessage", VPackValue("request canceled"));
-  builder.close();
+  try {
+    builder.add(VPackValue(VPackValueType::Object));
+    builder.add("error", VPackValue(true));
+    builder.add("code", VPackValue((int32_t) HttpResponse::REQUEST_TIMEOUT));
+    builder.add("errorNum", VPackValue((int32_t) TRI_ERROR_REQUEST_CANCELED));
+    builder.add("errorMessage", VPackValue("request canceled"));
+    builder.close();
 
-  VPackSlice slice(builder.start());
-  generateResult(HttpResponse::REQUEST_TIMEOUT, slice);
+    VPackSlice slice(builder.start());
+    generateResult(HttpResponse::REQUEST_TIMEOUT, slice);
+  } catch (...) {
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL,
+                  "cannot generate output");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,20 +179,28 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
   _response = createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
 
-  _response->body().appendText("{\"error\":true,\"errorMessage\":\"");
-  if (message.empty()) {
-    // prevent empty error messages
-    _response->body().appendText(TRI_errno_string(errorCode));
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue(VPackValueType::Object));
+    builder.add("error", VPackValue(true));
+    if (message.empty()) {
+      // prevent empty error messages
+      builder.add("errorMessage", VPackValue(TRI_errno_string(errorCode)));
+    }
+    else {
+      builder.add("errorMessage", VPackValue(StringUtils::escapeUnicode(message)));
+    }
+    builder.add("code", VPackValue(code));
+    builder.add("errorNum", VPackValue(errorCode));
+    builder.close();
+    VPackSlice slice(builder.start());
+    StringBufferAdapter buffer(_response->body().stringBuffer());
+    StringBufferDumper dumper(buffer);
+    dumper.dump(slice);
   }
-  else {
-    _response->body().appendText(StringUtils::escapeUnicode(message));
+  catch (...) {
+    // Building the error response failed
   }
-
-  _response->body().appendText("\",\"code\":");
-  _response->body().appendInteger(code);
-  _response->body().appendText(",\"errorNum\":");
-  _response->body().appendInteger(errorCode);
-  _response->body().appendText("}");
 }
 
 // -----------------------------------------------------------------------------
