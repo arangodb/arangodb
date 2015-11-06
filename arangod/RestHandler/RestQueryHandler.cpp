@@ -155,18 +155,18 @@ bool RestQueryHandler::readQueryProperties () {
   try {
     auto queryList = static_cast<QueryList*>(_vocbase->_queries);
 
-    Json result(Json::Object);
-
-    result
-    .set("error", Json(false))
-    .set("code", Json(HttpResponse::OK))
-    .set("enabled", Json(queryList->enabled()))
-    .set("trackSlowQueries", Json(queryList->trackSlowQueries()))
-    .set("maxSlowQueries", Json(static_cast<double>(queryList->maxSlowQueries())))
-    .set("slowQueryThreshold", Json(queryList->slowQueryThreshold()))
-    .set("maxQueryStringLength", Json(static_cast<double>(queryList->maxQueryStringLength())));
-
-    generateResult(HttpResponse::OK, result.json());
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("error", VPackValue(false));
+    result.add("code", VPackValue(HttpResponse::OK));
+    result.add("enabled", VPackValue(queryList->enabled()));
+    result.add("trackSlowQueries", VPackValue(queryList->trackSlowQueries()));
+    result.add("maxSlowQueries", VPackValue(static_cast<uint64_t>(queryList->maxSlowQueries())));
+    result.add("slowQueryThreshold", VPackValue(queryList->slowQueryThreshold()));
+    result.add("maxQueryStringLength", VPackValue(static_cast<uint64_t>(queryList->maxQueryStringLength())));
+    result.close();
+    VPackSlice slice = result.slice();
+    generateResult(slice);
   }
   catch (Exception const& err) {
     handleError(err);
@@ -253,24 +253,24 @@ bool RestQueryHandler::readQuery (bool slow) {
   try {
     auto queryList = static_cast<QueryList*>(_vocbase->_queries);
     auto const&& queries = slow ? queryList->listSlow() : queryList->listCurrent(); 
-    Json result(Json::Array);
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Array));
 
     for (auto it : queries) {
       const auto&& timeString = TRI_StringTimeStamp(it.started);
       const auto& queryString = it.queryString;
 
-      Json entry(Json::Object);
-
-      entry
-      .set("id", Json(StringUtils::itoa(it.id)))
-      .set("query", Json(queryString))
-      .set("started", Json(timeString))
-      .set("runTime", Json(it.runTime));
-
-      result.add(entry);
+      result.add(VPackValue(VPackValueType::Object));
+      result.add("id", VPackValue(StringUtils::itoa(it.id)));
+      result.add("query", VPackValue(queryString));
+      result.add("started", VPackValue(timeString));
+      result.add("runTime", VPackValue(it.runTime));
+      result.close();
     }
+    result.close();
+    VPackSlice s = result.slice();
 
-    generateResult(HttpResponse::OK, result.json());
+    generateResult(s);
   }
   catch (Exception const& err) {
     handleError(err);
@@ -343,15 +343,19 @@ bool RestQueryHandler::deleteQuerySlow () {
   auto queryList = static_cast<triagens::aql::QueryList*>(_vocbase->_queries);
   queryList->clearSlow();
 
-  Json result(Json::Object);
+  try {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("error", VPackValue(false));
+    result.add("code", VPackValue(HttpResponse::OK));
+    result.close();
+    VPackSlice slice = result.slice();
+    generateResult(slice);
+  }
+  catch (...) {
+    // Ignore the error
+  }
 
-  // added a "generateOk"?
-
-  result
-  .set("error", Json(false))
-  .set("code", Json(HttpResponse::OK));
-
-  generateResult(HttpResponse::OK, result.json());
   return true;
 }
 
@@ -393,13 +397,18 @@ bool RestQueryHandler::deleteQuery (const string& name) {
   auto res = queryList->kill(id);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    Json result(Json::Object);
-
-    result
-    .set("error", Json(false))
-    .set("code", Json(HttpResponse::OK));
-
-    generateResult(HttpResponse::OK, result.json());
+    try {
+      VPackBuilder result;
+      result.add(VPackValue(VPackValueType::Object));
+      result.add("error", VPackValue(false));
+      result.add("code", VPackValue(HttpResponse::OK));
+      result.close();
+      VPackSlice slice = result.slice();
+      generateResult(slice);
+    }
+    catch (...) {
+      // Ignore the error
+    }
   }
   else {
     generateError(HttpResponse::BAD, res, "cannot kill query '" + name + "'");
@@ -644,36 +653,36 @@ bool RestQueryHandler::parseQuery () {
       return true;
     }
 
-    Json collections(Json::Array);
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("error", VPackValue(false));
+    result.add("code", VPackValue(HttpResponse::OK));
+    result.add("parsed", VPackValue(true));
 
+    result.add("collections", VPackValue(VPackValueType::Array));
     for (const auto& it : parseResult.collectionNames) {
-      collections.add(Json(it));
+      result.add(VPackValue(it));
     }
+    result.close(); // Collections
 
-    Json bindVars(Json::Array);
-
+    result.add("bindVars", VPackValue(VPackValueType::Array));
     for (const auto& it : parseResult.bindParameters) {
-      bindVars.add(Json(it));
+      result.add(VPackValue(it));
     }
+    result.close(); // bindVars
+    // TODO The AST
+    // result.add("ast", Json(TRI_UNKNOWN_MEM_ZONE, parseResult.json, Json::NOFREE).copy());
+    
+    result.add("warnings", VPackValue(VPackValueType::Array));
+    // TODO The Warnings
+    // if (parseResult.warnings != nullptr) {
+    //   result.set("warnings", Json(TRI_UNKNOWN_MEM_ZONE, parseResult.warnings, Json::NOFREE).copy());
+    // }
+    result.close(); //warnings
 
-    Json result(Json::Object);
-
-    result
-    .set("error", Json(false))
-    .set("code", Json(HttpResponse::OK))
-    .set("parsed", Json(true))
-    .set("collections", collections)
-    .set("bindVars", bindVars)
-    .set("ast", Json(TRI_UNKNOWN_MEM_ZONE, parseResult.json, Json::NOFREE).copy());
-
-    if (parseResult.warnings == nullptr) {
-      result.set("warnings", Json(Json::Array));
-    }
-    else {
-      result.set("warnings", Json(TRI_UNKNOWN_MEM_ZONE, parseResult.warnings, Json::NOFREE).copy());
-    }
-
-    generateResult(HttpResponse::OK, result.json());
+    result.close(); // base
+    VPackSlice slice = result.slice();
+    generateResult(slice);
   }
   catch (Exception const& err) {
     handleError(err);
