@@ -3,6 +3,18 @@ v2.7.1 (XXXX-XX-XX)
 
 * switch to linenoise next generation
 
+* exclude `_apps` collection from replication
+
+  The slave has its own `_apps` collection which it populates on server start.
+  When replicating data from the master to the slave, the data from the master may
+  clash with the slave's own data in the `_apps` collection. Excluding the `_apps`
+  collection from replication avoids this.
+
+* disable replication appliers when starting in modes `--upgrade`, `--no-server`
+  and `--check-upgrade`
+
+* more detailed output in arango-dfdb
+
 * fixed "no start tick" issue in replication applier
         
   This error could occur after restarting a slave server after a shutdown
@@ -522,6 +534,13 @@ v2.7.0-rc1 (2015-09-17)
 
 v2.6.10 (XXXX-XX-XX)
 --------------------
+
+* disable replication appliers when starting in modes `--upgrade`, `--no-server`
+  and `--check-upgrade`
+
+* more detailed output in arango-dfdb
+
+* fixed potential deadlock in collection status changing on Windows 
 
 * issue #1521: Can't dump/restore with user and password
 
