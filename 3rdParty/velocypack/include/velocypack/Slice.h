@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include <ostream>
 #include <functional>
@@ -411,27 +412,6 @@ namespace arangodb {
           }
         }
         
-        std::vector<std::string> keys () const {
-          std::vector<std::string> keys;
-          ValueLength const n = length(); 
-          keys.reserve(n);
-          for (ValueLength i = 0; i < n; ++i) {
-            keys.emplace_back(keyAt(i).copyString());
-          }
-          return keys;
-        }
-
-        void keys (std::vector<std::string>& keys) const {
-          ValueLength const n = length(); 
-          if (! keys.empty()) {
-            keys.clear();
-          }
-          keys.reserve(n);
-          for (ValueLength i = 0; i < n; ++i) {
-            keys.emplace_back(keyAt(i).copyString());
-          }
-        }
-
         // return the pointer to the data for an External object
         char const* getExternal () const {
           return extractValue<char const*>();

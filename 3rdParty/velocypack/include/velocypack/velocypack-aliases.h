@@ -29,10 +29,13 @@
 
 #include "velocypack/vpack.h"
 
+using VPackArrayIterator      = arangodb::velocypack::ArrayIterator;
 using VPackBufferDumper       = arangodb::velocypack::BufferDumper;
 using VPackBuilder            = arangodb::velocypack::Builder;
 using VPackCharBuffer         = arangodb::velocypack::CharBuffer;
+using VPackCollection         = arangodb::velocypack::Collection;
 using VPackException          = arangodb::velocypack::Exception;
+using VPackObjectIterator     = arangodb::velocypack::ObjectIterator;
 using VPackOptions            = arangodb::velocypack::Options;
 using VPackParser             = arangodb::velocypack::Parser;
 using VPackStringDumper       = arangodb::velocypack::StringDumper;

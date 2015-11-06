@@ -106,6 +106,21 @@ namespace arangodb {
           : _valueType(t), _cType(CType::UInt64) {
           _value.u = u;
         }
+#ifdef __APPLE__       
+        // MacOS uses the following typedefs:
+        // - typedef unsigned int         uint32_t;
+        // - typedef unsigned long long   uint64_t; 
+        // - typedef unsigned long        size_t;
+        // not defining the method for type unsigned long will prevent
+        // users from constructing Value objects with a size_t input
+
+        // however, defining the method on Linux and with MSVC will lead 
+        // to ambiguous overloads, so this is restricted to __APPLE__ only
+        explicit Value (unsigned long i, ValueType t = ValueType::Int)
+          : _valueType(t), _cType(CType::UInt64) {
+          _value.i = static_cast<uint64_t>(i);
+        }
+#endif        
         explicit Value (std::string const& s, ValueType t = ValueType::String)
           : _valueType(t), _cType(CType::String) {
           _value.s = &s;

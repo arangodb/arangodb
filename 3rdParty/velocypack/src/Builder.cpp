@@ -295,7 +295,8 @@ void Builder::close () {
   // Intentionally leave _index[depth] intact to avoid future allocs!
 }
 
-void Builder::set (Value const& item) {
+uint8_t* Builder::set (Value const& item) {
+  auto const oldPos = _start + _pos;
   auto ctype = item.cType();
 
   // This method builds a single further VPack item at the current
@@ -521,6 +522,15 @@ void Builder::set (Value const& item) {
       throw Exception(Exception::BuilderUnexpectedType, "Cannot set a ValueType::Custom with this method");
     }
   }
+  return oldPos;
+}
+
+uint8_t* Builder::set (Slice const& item) {
+  ValueLength const l = item.byteSize();
+  reserveSpace(l);
+  memcpy(_start + _pos, item.start(), l);
+  _pos += l;
+  return _start + _pos - l;
 }
 
 uint8_t* Builder::set (ValuePair const& pair) {
@@ -615,80 +625,27 @@ void Builder::checkAttributeUniqueness (Slice const obj) const {
   }
 }
 
-void Builder::add (std::string const& attrName, Value const& sub) {
-  if (_attrWritten) {
-    throw Exception(Exception::InternalError, "Attribute name already written");
-  }
-  if (! _stack.empty()) {
-    ValueLength& tos = _stack.back();
-    if (_start[tos] != 0x06 &&
-        _start[tos] != 0x0b) {
-      throw Exception(Exception::BuilderNeedOpenObject);
-    }
-    reportAdd(tos);
-  }
-  set(Value(attrName, ValueType::String));
-  set(sub);
+uint8_t* Builder::add (std::string const& attrName, Value const& sub) {
+  return addInternal<Value>(attrName, sub);
+}
+
+uint8_t* Builder::add (std::string const& attrName, Slice const& sub) {
+  return addInternal<Slice>(attrName, sub);
 }
 
 uint8_t* Builder::add (std::string const& attrName, ValuePair const& sub) {
-  if (_attrWritten) {
-    throw Exception(Exception::InternalError, "Attribute name already written");
-  }
-  if (! _stack.empty()) {
-    ValueLength& tos = _stack.back();
-    if (_start[tos] != 0x06 &&
-        _start[tos] != 0x0b) {
-      throw Exception(Exception::BuilderNeedOpenObject);
-    }
-    reportAdd(tos);
-  }
-  set(Value(attrName, ValueType::String));
-  return set(sub);
+  return addInternal<ValuePair>(attrName, sub);
 }
 
-void Builder::add (Value const& sub) {
-  if (! _stack.empty()) {
-    ValueLength& tos = _stack.back();
-    if (_start[tos] != 0x06 && _start[tos] != 0x0b) {
-      // no array or object
-      throw Exception(Exception::BuilderNeedOpenObject);
-    }
-    if (_start[tos] == 0x0b) {   // object
-      if (! _attrWritten && ! sub.isString()) {
-        throw Exception(Exception::BuilderNeedOpenObject);
-      }
-      if (! _attrWritten) {
-        reportAdd(tos);
-      }
-      _attrWritten = ! _attrWritten;
-    }
-    else {
-      reportAdd(tos);
-    }
-  }
-  set(sub);
+uint8_t* Builder::add (Value const& sub) {
+  return addInternal<Value>(sub);
+}
+
+uint8_t* Builder::add (Slice const& sub) {
+  return addInternal<Slice>(sub);
 }
 
 uint8_t* Builder::add (ValuePair const& sub) {
-  if (! _stack.empty()) {
-    ValueLength& tos = _stack.back();
-    if (_start[tos] != 0x06 && _start[tos] != 0x0b) {
-      throw Exception(Exception::BuilderNeedOpenObject);
-    }
-    if (_start[tos] == 0x06) {   // object
-      if (! _attrWritten && ! sub.isString()) {
-        throw Exception(Exception::BuilderNeedOpenObject);
-      }
-      if (! _attrWritten) {
-        reportAdd(tos);
-      }
-      _attrWritten = ! _attrWritten;
-    }
-    else {
-      reportAdd(tos);
-    }
-  }
-  return set(sub);
+  return addInternal<ValuePair>(sub);
 }
 

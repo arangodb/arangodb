@@ -55,15 +55,15 @@ namespace arangodb {
         Options options;        
     
         enum UnsupportedTypeStrategy {
-          StrategyNullify,
-          StrategyFail
+          StrategyNullifyUnsupportedType,
+          StrategyFailOnUnsupportedType
         };
 
         Dumper (Dumper const&) = delete;
         Dumper& operator= (Dumper const&) = delete;
 
-        Dumper (T& buffer, UnsupportedTypeStrategy strategy = StrategyFail) 
-          : _buffer(&buffer), _strategy(strategy), _indentation(0) {
+        Dumper (T& buffer, UnsupportedTypeStrategy strategy = StrategyFailOnUnsupportedType) 
+          : strategy(strategy), _buffer(&buffer), _indentation(0) {
         }
 
         ~Dumper () {
@@ -99,24 +99,24 @@ namespace arangodb {
           internalDump(slice, nullptr);
         }
 
-        static void Dump (Slice const& slice, T& buffer, UnsupportedTypeStrategy strategy = StrategyFail) {
+        static void Dump (Slice const& slice, T& buffer, UnsupportedTypeStrategy strategy = StrategyFailOnUnsupportedType) {
           Dumper dumper(buffer, strategy);
           dumper.dump(slice);
         }
 
-        static void Dump (Slice const* slice, T& buffer, UnsupportedTypeStrategy strategy = StrategyFail) {
+        static void Dump (Slice const* slice, T& buffer, UnsupportedTypeStrategy strategy = StrategyFailOnUnsupportedType) {
           Dumper dumper(buffer, strategy);
           dumper.dump(slice);
         }
         
-        static T Dump (Slice const& slice, UnsupportedTypeStrategy strategy = StrategyFail) {
+        static T Dump (Slice const& slice, UnsupportedTypeStrategy strategy = StrategyFailOnUnsupportedType) {
           T buffer;
           Dumper dumper(buffer, strategy);
           dumper.dump(slice);
           return buffer;
         }
 
-        static T Dump (Slice const* slice, UnsupportedTypeStrategy strategy = StrategyFail) {
+        static T Dump (Slice const* slice, UnsupportedTypeStrategy strategy = StrategyFailOnUnsupportedType) {
           T buffer;
           Dumper dumper(buffer, strategy);
           dumper.dump(slice);
@@ -473,21 +473,22 @@ namespace arangodb {
         }
 
         void handleUnsupportedType (Slice const*) {
-          if (_strategy == StrategyNullify) {
+          if (strategy == StrategyNullifyUnsupportedType) {
             _buffer->append("null", 4);
             return;
           }
 
           throw Exception(Exception::NoJsonEquivalent);
         }
+        
+      public:
+        UnsupportedTypeStrategy strategy;
 
       private:
 
         T* _buffer;
           
         std::function<bool(T*, Slice const*, Slice const*)> _callback;
-
-        UnsupportedTypeStrategy _strategy;
 
         int _indentation;
 
