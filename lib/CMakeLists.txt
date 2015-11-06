@@ -49,6 +49,18 @@ SET(LIB_ARANGO_CONSOLE
   Utilities/LinenoiseShell.cpp
 )
 
+include_directories(../3rdParty/velocypack/include)
+
+SET(LIB_ARANGO_VPACK
+  ../3rdParty/velocypack/src/Builder.cpp
+  ../3rdParty/velocypack/src/Exception.cpp
+  ../3rdParty/velocypack/src/Parser.cpp
+  ../3rdParty/velocypack/src/Slice.cpp
+  ../3rdParty/velocypack/src/ValueType.cpp
+  ../3rdParty/velocypack/src/asm-functions.cpp
+  ../3rdParty/velocypack/src/fpconv.cpp
+  ../3rdParty/velocypack/src/velocypack-common.cpp 
+)
 
 add_library(
     ${LIB_ARANGO}
@@ -57,6 +69,7 @@ add_library(
     ${LIB_ARANGO_MSVC}
     ${LIB_ARANGO_POSIX}
     ${LIB_ARANGO_CONSOLE}
+    ${LIB_ARANGO_VPACK}
     Basics/application-exit.cpp
     Basics/associative.cpp
     Basics/AttributeNameParser.cpp

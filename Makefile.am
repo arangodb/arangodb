@@ -113,6 +113,7 @@ AM_CPPFLAGS = \
 	-DTRI_BUILD_DATE='"$(shell date +%Y-%m-%d)"' \
 	-D_SYSCONFDIR_='"${TRI_SYSCONFDIR}"' \
 	-I@top_srcdir@/lib \
+	-I@top_srcdir@/3rdParty/velocypack/include \
 	-I@top_builddir@/lib \
 	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
