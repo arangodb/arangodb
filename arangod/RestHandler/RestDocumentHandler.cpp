@@ -31,9 +31,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
-#include "Basics/json.h"
 #include "Basics/string-buffer.h"
-#include "Basics/json-utilities.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
@@ -829,22 +827,27 @@ bool RestDocumentHandler::readAllDocuments () {
     }
   }
 
-  // generate result
-  triagens::basics::Json documents(triagens::basics::Json::Array);
-  documents.reserve(ids.size());
+  try {
+    // generate result
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("documents", VPackValue());
 
-  for (auto const& id : ids) {
-    std::string v(prefix);
-    v.append(id);
-    documents.add(triagens::basics::Json(v));
+    for (auto const& id : ids) {
+      std::string v(prefix);
+      v.append(id);
+      result.add(VPackValue(v));
+    }
+    result.close();
+    result.close();
+
+    VPackSlice s = result.slice();
+    // and generate a response
+    generateResult(s);
   }
-
-  triagens::basics::Json result(triagens::basics::Json::Object);
-  result("documents", documents);
-
-  // and generate a response
-  generateResult(result.json());
-
+  catch (...) {
+    // Ignore the error 
+  }
   return true;
 }
 
