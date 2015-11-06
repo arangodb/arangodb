@@ -74,7 +74,7 @@ static int LidCompareDesc (void const* l, void const* r) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestAdminLogHandler::RestAdminLogHandler (rest::HttpRequest* request)
-  : RestAdminBaseHandler(request) {
+  : RestBaseHandler(request) {
 }
 
 // -----------------------------------------------------------------------------
