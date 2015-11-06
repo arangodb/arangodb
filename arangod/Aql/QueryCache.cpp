@@ -423,13 +423,14 @@ QueryCache::~QueryCache () {
 /// @brief return the query cache properties
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json QueryCache::properties () {
+VPackBuilder QueryCache::properties () {
   MUTEX_LOCKER(_propertiesLock);
 
-  triagens::basics::Json json(triagens::basics::Json::Object, 2);
-  json("mode", triagens::basics::Json(modeString(mode()))); 
-  json("maxResults", triagens::basics::Json(static_cast<double>(MaxResults)));
-
+  VPackBuilder json;
+  json.add(VPackValue(VPackValueType::Object));
+  json.add("mode", VPackValue(modeString(mode())));
+  json.add("maxResults", VPackValue(static_cast<uint64_t>(MaxResults)));
+  json.close();
   return json;
 }
 

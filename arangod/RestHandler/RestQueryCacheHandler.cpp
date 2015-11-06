@@ -116,14 +116,18 @@ HttpHandler::status_t RestQueryCacheHandler::execute () {
 bool RestQueryCacheHandler::clearCache () {
   auto queryCache = triagens::aql::QueryCache::instance();
   queryCache->invalidate();
-
-  Json result(Json::Object, 2);
-
-  result
-  .set("error", Json(false))
-  .set("code", Json(HttpResponse::OK));
-
-  generateResult(HttpResponse::OK, result.json());
+  try {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("error", VPackValue(false));
+    result.add("code", VPackValue(HttpResponse::OK));
+    result.close();
+    VPackSlice slice = result.slice();
+    generateResult(slice);
+  }
+  catch (...) {
+    // Ignore the error
+  }
   return true;
 }
 
@@ -158,8 +162,9 @@ bool RestQueryCacheHandler::readProperties () {
   try {
     auto queryCache = triagens::aql::QueryCache::instance();
 
-    Json result = queryCache->properties();
-    generateResult(HttpResponse::OK, result.json());
+    VPackBuilder result = queryCache->properties();
+    VPackSlice slice = result.slice();
+    generateResult(slice);
   }
   catch (Exception const& err) {
     handleError(err);
