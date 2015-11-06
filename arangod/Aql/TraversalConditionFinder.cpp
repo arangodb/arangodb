@@ -25,6 +25,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/JsonHelper.h"
+#include "VocBase/Graphs.h"
 #include "Aql/TraversalConditionFinder.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/TraversalNode.h"
@@ -46,9 +48,12 @@ bool checkPathVariableAccessFeasible(CalculationNode const* cn, Variable const* 
         strcmp(onePath[len - 2]->getStringValue(),    "edges") &&
         strcmp(onePath[len - 2]->getStringValue(), "vertices")) {
 
+    /* We can't catch all cases in which this error would occur, so we don't throw here.
       std::string message("TRAVERSAL: path only knows 'edges' and 'vertices', not ");
       message += onePath[len - 2]->getStringValue();
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, message);
+    */
+      return false;
     }
 
       // we now need to check for p.edges[n] whether n is >= 0

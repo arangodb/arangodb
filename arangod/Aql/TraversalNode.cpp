@@ -43,6 +43,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _vertexOutVariable(nullptr),
     _edgeOutVariable(nullptr),
     _pathOutVariable(nullptr),
+    _graphObj(nullptr),
     _condition(nullptr)
 {
   TRI_ASSERT(_vocbase != nullptr);
@@ -71,11 +72,13 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     if (_edgeCids.size() == 0) {
       if (graph->isStringValue()) {
         _graphName = graph->getStringValue();
-        auto graphObj = triagens::arango::GraphFactory::factory()->byName(
+        _graphObj = &triagens::arango::GraphFactory::factory()->byName(
           _vocbase,
           _graphName
         );
-        auto eColls = graphObj.edgeCollections();
+
+
+        auto eColls = _graphObj->edgeCollections();
         for (const auto& n: eColls) {
           TRI_voc_cid_t cid = resolver->getCollectionId(n);
           _edgeCids.push_back(cid);
@@ -235,6 +238,16 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     triagens::basics::JsonHelper::getStringValue(base.json(), "vertexId", _vertexId);  
   }
 
+  TRI_json_t const* condition = JsonHelper::checkAndGetObjectValue(base.json(), "condition");
+
+  if (condition != nullptr) {
+    triagens::basics::Json conditionJson(TRI_UNKNOWN_MEM_ZONE, condition, triagens::basics::Json::NOFREE);
+    _condition = Condition::fromJson(plan, conditionJson);
+  }
+  else {
+    _condition = nullptr;
+  }
+
   // Out variables
   if (base.has("vertexOutVariable")) {
     _vertexOutVariable = varFromJson(plan->getAst(), base, "vertexOutVariable");
@@ -273,6 +286,14 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
   }
   else {
     json("vertexId", triagens::basics::Json(_vertexId));
+  }
+
+  if (_condition != nullptr) {
+    json("condition", _condition->toJson(TRI_UNKNOWN_MEM_ZONE, verbose)); 
+  }
+  
+  if (_graphObj != nullptr) {
+    json("graphDefinition", _graphObj->toJson(TRI_UNKNOWN_MEM_ZONE, verbose)); 
   }
 
   // Out variables

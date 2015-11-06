@@ -27,9 +27,9 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/JsonHelper.h"
 #include "Graphs.h"
 #include "Utils/transactions.h"
-#include "Basics/JsonHelper.h"
 
 using namespace triagens::basics;
 using namespace triagens::arango;
@@ -51,11 +51,11 @@ static void insertVertexCollectionsFromJsonArray(Graph& g, Json& arr) {
 // --SECTION--                                                       Graph Class
 // -----------------------------------------------------------------------------
 
-std::unordered_set<std::string> const Graph::vertexCollections () {
+std::unordered_set<std::string> const& Graph::vertexCollections () const {
   return _vertexColls;
 }
 
-std::unordered_set<std::string> const Graph::edgeCollections () {
+std::unordered_set<std::string> const& Graph::edgeCollections () const {
   return _edgeColls;
 }
 
@@ -66,6 +66,31 @@ void Graph::addEdgeCollection (std::string name) {
 void Graph::addVertexCollection (std::string name) {
   _vertexColls.insert(name);
 }
+
+triagens::basics::Json Graph::toJson (TRI_memory_zone_t* z,
+                           bool verbose) const
+{
+  triagens::basics::Json json(z, triagens::basics::Json::Object);
+
+  if (_vertexColls.size() > 0) {
+    triagens::basics::Json vcn(z, triagens::basics::Json::Array);
+    for (auto cn : _vertexColls) {
+      vcn.add(triagens::basics::Json(cn));
+    }
+    json("vertexCollectionNames", vcn);
+  }
+
+  if (_edgeColls.size() > 0) {
+    triagens::basics::Json ecn(z, triagens::basics::Json::Array);
+    for (auto cn : _edgeColls) {
+      ecn.add(triagens::basics::Json(cn));
+    }
+    json("edgeCollectionNames", ecn);
+  }
+
+  return json;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      GraphFactory
 // -----------------------------------------------------------------------------
