@@ -113,6 +113,7 @@ add_library(
     Basics/SpinLocker.cpp
     Basics/ssl-helper.cpp
     Basics/string-buffer.cpp
+    Basics/StringBufferAdapter.cpp
     Basics/StringUtils.cpp
     Basics/structures.cpp
     Basics/system-functions.cpp
