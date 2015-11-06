@@ -146,6 +146,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void getVariablesUsedHere (std::unordered_set<Variable const*>& result) const override final {
+          for (auto condVar : _conditionVariables) {
+            result.emplace(condVar);
+          }
           if (usesInVariable()) {
             result.emplace(_inVariable);
           }
@@ -290,9 +293,7 @@ namespace triagens {
 /// @brief remember the condition to execute for early traversal abortion.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setCondition(Condition* condition) {
-          _condition = condition;
-        }
+        void setCondition(Condition* condition);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the condition for the node
@@ -399,6 +400,11 @@ namespace triagens {
                    
         Condition* _condition;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief variables that are inside of the condition
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<Variable const*> _conditionVariables;
     };
 
   }   // namespace triagens::aql

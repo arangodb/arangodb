@@ -372,6 +372,29 @@ void TraversalNode::fillTraversalOptions (basics::traverser::TraverserOptions& o
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remember the condition to execute for early traversal abortion.
+////////////////////////////////////////////////////////////////////////////////
+
+void TraversalNode::setCondition(triagens::aql::Condition* condition){
+
+  std::unordered_set<Variable const*> varsUsedByCondition;
+
+  Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
+
+  for (auto oneVar : varsUsedByCondition) {
+    if ((oneVar->id !=  _vertexOutVariable->id) &&
+        (oneVar->id !=  _edgeOutVariable->id) &&
+        (oneVar->id !=  _pathOutVariable->id) &&
+        (oneVar->id !=  _inVariable->id)) {
+
+      _conditionVariables.push_back(oneVar);
+    }
+  }
+
+  _condition = condition;
+}
+
 
 
 // Local Variables:
