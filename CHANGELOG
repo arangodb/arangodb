@@ -4,12 +4,6 @@ v2.8.0 (XXXX-XX-XX)
 * added new AQL function `UNSET_RECURSIVE` to recursively unset attritutes from 
   objects/documents
 
-* fixed "no start tick" issue in replication applier
-        
-  This error could occur after restarting a slave server after a shutdown
-  when no data was ever transferred from the master to the slave via the
-  continuous replication
-
 * switched command-line editor in ArangoShell and arangod to linenoise-ng
  
 * added automatic deadlock detection for transactions
@@ -18,9 +12,6 @@ v2.8.0 (XXXX-XX-XX)
   automatically and fail with error 29 (`deadlock detected`). Client code for
   operations containing more than one collection should be aware of this potential
   error and handle it accordingly, either by giving up or retrying the transaction.
-
-* fixed problem during SSL client connection abort that led to scheduler thread 
-  staying at 100% CPU saturation
 
 * Added C++ implementations for the AQL arithmetic operations and the following 
   AQL functions:
@@ -105,6 +96,18 @@ v2.8.0 (XXXX-XX-XX)
 
 v2.7.1 (XXXX-XX-XX)
 -------------------
+
+* exclude `_apps` collection from replication
+
+  The slave has its own `_apps` collection which it populates on server start.
+  When replicating data from the master to the slave, the data from the master may
+  clash with the slave's own data in the `_apps` collection. Excluding the `_apps`
+  collection from replication avoids this.
+
+* disable replication appliers when starting in modes `--upgrade`, `--no-server`
+  and `--check-upgrade`
+
+* more detailed output in arango-dfdb
 
 * fixed "no start tick" issue in replication applier
         
@@ -638,6 +641,13 @@ v2.7.0-rc1 (2015-09-17)
 
 v2.6.10 (XXXX-XX-XX)
 --------------------
+
+* disable replication appliers when starting in modes `--upgrade`, `--no-server`
+  and `--check-upgrade`
+
+* more detailed output in arango-dfdb
+
+* fixed potential deadlock in collection status changing on Windows 
 
 * issue #1521: Can't dump/restore with user and password
 
