@@ -288,11 +288,7 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
     return status_t(HANDLER_DONE);
   }
 
-
-  TRI_vector_t clean;
-
-  TRI_InitVector(&clean, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_log_buffer_t));
-
+  std::vector<TRI_log_buffer_t*> clean;
   for (size_t i = 0;  i < TRI_LengthVector(logs);  ++i) {
     TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(logs, i);
 
@@ -303,93 +299,84 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
         continue;
       }
     }
-
-    TRI_PushBackVector(&clean, buf);
+    clean.emplace_back(buf);
   }
+  VPackBuilder result;
+  result.add(VPackValue(VPackValueType::Object));
+  size_t length = clean.size();
+  try {
+    result.add("totalAmount", VPackValue(static_cast<double>(length)));
 
-
-  TRI_json_t result;
-  TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &result);
-
-  // create the 4 vectors for the result parts
-  TRI_json_t* lid       = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  TRI_json_t* level     = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  TRI_json_t* timestamp = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  TRI_json_t* text      = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "totalAmount", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) TRI_LengthVector(&clean)));
-
-  size_t length = TRI_LengthVector(&clean);
-
-  if (offset >= length) {
-    length = 0;
-    offset = 0;
-  }
-  else if (offset > 0) {
-    length -= static_cast<size_t>(offset);
-  }
-
-  // restrict to at most <size> elements
-  if (length > size) {
-    length = static_cast<size_t>(size);
-  }
-
-  qsort(((char*) TRI_BeginVector(&clean)) + offset * sizeof(TRI_log_buffer_t),
-        length,
-        sizeof(TRI_log_buffer_t),
-        (sortAscending ? LidCompareAsc : LidCompareDesc));
-
-  for (size_t i = 0;  i < length;  ++i) {
-    TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(&clean, (size_t) (offset + i));
-    uint32_t l = 0;
-
-    switch (buf->_level) {
-      case TRI_LOG_LEVEL_FATAL:    l = 0; break;
-      case TRI_LOG_LEVEL_ERROR:    l = 1; break;
-      case TRI_LOG_LEVEL_WARNING:  l = 2; break;
-      case TRI_LOG_LEVEL_INFO:     l = 3; break;
-      case TRI_LOG_LEVEL_DEBUG:    l = 4; break;
-      case TRI_LOG_LEVEL_TRACE:    l = 5; break;
+    if (offset >= length) {
+      length = 0;
+      offset = 0;
+    }
+    else if (offset > 0) {
+      length -= static_cast<size_t>(offset);
     }
 
-    // put the data into the individual vectors
-    if (lid != nullptr) {
-      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, lid, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) buf->_lid));
+    // restrict to at most <size> elements
+    if (length > size) {
+      length = static_cast<size_t>(size);
     }
 
-    if (level != nullptr) {
-      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, level, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) l));
+    std::sort(clean.begin() + offset, clean.begin() + offset + length, (sortAscending ? LidCompareAsc : LidCompareDesc));
+
+    // For now we build the arrays one ofter the other
+    // first lid
+    result.add("lid", VPackValue(VPackValueType::Array));
+    for (size_t i = 0; i < length; ++i) {
+      TRI_log_buffer_t* buf = clean.at(i + static_cast<size_t>(offset));
+      result.add(VPackValue(buf->_lid));
     }
+    result.close();
 
-    if (timestamp != nullptr) {
-      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, timestamp, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) buf->_timestamp));
+    // second level
+    result.add("level", VPackValue(VPackValueType::Array));
+    for (size_t i = 0; i < length; ++i) {
+      TRI_log_buffer_t* buf = clean.at(i + static_cast<size_t>(offset));
+      uint32_t l = 0;
+
+      switch (buf->_level) {
+        case TRI_LOG_LEVEL_FATAL:    l = 0; break;
+        case TRI_LOG_LEVEL_ERROR:    l = 1; break;
+        case TRI_LOG_LEVEL_WARNING:  l = 2; break;
+        case TRI_LOG_LEVEL_INFO:     l = 3; break;
+        case TRI_LOG_LEVEL_DEBUG:    l = 4; break;
+        case TRI_LOG_LEVEL_TRACE:    l = 5; break;
+      }
+      result.add(VPackValue(l));
     }
+    result.close();
 
-    if (text != nullptr) {
-      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, text, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buf->_text, strlen(buf->_text)));
+    // third timestamp
+    result.add("timestamp", VPackValue(VPackValueType::Array));
+    for (size_t i = 0; i < length; ++i) {
+      TRI_log_buffer_t* buf = clean.at(i + static_cast<size_t>(offset));
+      result.add(VPackValue(static_cast<double>(buf->_timestamp)));
     }
-  }
+    result.close();
 
-  TRI_FreeBufferLogging(logs);
-  TRI_DestroyVector(&clean);
+    // forth text
+    result.add("text", VPackValue(VPackValueType::Array));
+    for (size_t i = 0; i < length; ++i) {
+      TRI_log_buffer_t* buf = clean.at(i + static_cast<size_t>(offset));
+      result.add(VPackValue(buf->_text));
+    }
+    result.close();
 
-  // now put the 4 vectors into the result
-  if (lid != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "lid", lid);
-  }
-  if (level != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "level", level);
-  }
-  if (timestamp != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "timestamp", timestamp);
-  }
-  if (text != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "text", text);
-  }
+    result.close(); // Close the result object
 
-  generateResult(&result);
+    TRI_FreeBufferLogging(logs);
 
-  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &result);
+    VPackSlice slice(result.start());
+    generateResult(slice);
+  }
+  catch (...) {
+    // Not Enough memory to build everything up
+    // Has been ignored thus far
+    // So ignore again
+  }
 
   return status_t(HANDLER_DONE);
 }

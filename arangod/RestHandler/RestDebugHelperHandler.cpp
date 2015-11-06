@@ -72,19 +72,7 @@ bool RestDebugHelperHandler::isDirect () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestDebugHelperHandler::execute () {
-  TRI_json_t result;
-
   RequestStatisticsAgentSetIgnore(this);
-
-  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result, 3);
-
-  TRI_json_t server;
-  TRI_InitStringJson(&server, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "arango"), strlen("arango"));
-  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "server", &server);
-
-  TRI_json_t version;
-  TRI_InitStringJson(&version, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VERSION), strlen(TRI_VERSION));
-  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
 
   bool found;
   char const* sleepStr = _request->value("sleep", found);
@@ -105,17 +93,20 @@ HttpHandler::status_t RestDebugHelperHandler::execute () {
     _dispatcherThread->unblock();
   }
 
-  TRI_json_t sleepNumber;
-  TRI_InitNumberJson(&sleepNumber, s / 1000000.0);
-  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "sleep", &sleepNumber);
-
-  TRI_json_t blockFlag;
-  TRI_InitBooleanJson(&blockFlag, block);
-  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "block", &blockFlag);
-
-  generateResult(&result);
-  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
-
+  try {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("server", VPackValue("arango"));
+    result.add("version", VPackValue(TRI_VERSION));
+    result.add("sleep", VPackValue(s / 1000000.0));
+    result.add("block", VPackValue(block));
+    result.close();
+    VPackSlice slice(result.start());
+    generateResult(slice);
+  }
+  catch (...) {
+    // Ignore the error
+  }
   return status_t(HANDLER_DONE);
 }
 
