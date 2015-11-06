@@ -168,7 +168,6 @@ add_executable(
     Replication/InitialSyncer.cpp
     Replication/Syncer.cpp
     Rest/AnyServer.cpp
-    RestHandler/RestAdminBaseHandler.cpp
     RestHandler/RestAdminLogHandler.cpp
     RestHandler/RestBaseHandler.cpp
     RestHandler/RestBatchHandler.cpp

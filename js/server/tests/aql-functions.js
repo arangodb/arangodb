@@ -321,6 +321,30 @@ function ahuacatlFunctionsTestSuite () {
         // look up the element using the position
         actual = getQueryResults("RETURN NTH(@list, @position)", { list: list, position: actual[0] });
         assertEqual(search, actual[0]);
+
+        // find if element is contained in list (should be true)
+        actual = getQueryResults("RETURN NOOPT(POSITION(@list, @search, false))", { list: list, search: search });
+        assertTrue(actual[0]);
+
+        // find position of element in list
+        actual = getQueryResults("RETURN NOOPT(POSITION(@list, @search, true))", { list: list, search: search });
+        assertEqual(expected, actual[0]);
+        
+        // look up the element using the position
+        actual = getQueryResults("RETURN NOOPT(NTH(@list, @position))", { list: list, position: actual[0] });
+        assertEqual(search, actual[0]);
+
+        // find if element is contained in list (should be true)
+        actual = getQueryResults("RETURN NOOPT(V8(POSITION(@list, @search, false)))", { list: list, search: search });
+        assertTrue(actual[0]);
+
+        // find position of element in list
+        actual = getQueryResults("RETURN NOOPT(V8(POSITION(@list, @search, true)))", { list: list, search: search });
+        assertEqual(expected, actual[0]);
+        
+        // look up the element using the position
+        actual = getQueryResults("RETURN NOOPT(V8(NTH(@list, @position)))", { list: list, position: actual[0] });
+        assertEqual(search, actual[0]);
       });
     },
 
@@ -339,6 +363,18 @@ function ahuacatlFunctionsTestSuite () {
 
         actual = getQueryResults("RETURN POSITION(@list, @search, true)", { list: list, search: d });
         assertEqual(-1, actual[0]);
+
+        actual = getQueryResults("RETURN NOOPT(POSITION(@list, @search, false))", { list: list, search: d });
+        assertFalse(actual[0]);
+
+        actual = getQueryResults("RETURN NOOPT(POSITION(@list, @search, true))", { list: list, search: d });
+        assertEqual(-1, actual[0]);
+
+        actual = getQueryResults("RETURN NOOPT(V8(POSITION(@list, @search, false)))", { list: list, search: d });
+        assertFalse(actual[0]);
+
+        actual = getQueryResults("RETURN NOOPT(V8(POSITION(@list, @search, true)))", { list: list, search: d });
+        assertEqual(-1, actual[0]);
       });
     },
 
@@ -354,6 +390,22 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN POSITION(4, 'foo')"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN POSITION(\"yes\", 'foo')"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN POSITION({ }, 'foo')"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(POSITION())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(POSITION([ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION(null, 'foo'))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION(true, 'foo'))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION(4, 'foo'))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION(\"yes\", 'foo'))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(POSITION({ }, 'foo'))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(POSITION()))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(POSITION([ ])))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(POSITION(null, 'foo')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(POSITION(true, 'foo')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(POSITION(4, 'foo')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(POSITION(\"yes\", 'foo')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(POSITION({ }, 'foo')))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1028,6 +1080,16 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test merge function
 ////////////////////////////////////////////////////////////////////////////////
     
+    testMerge5 : function () {
+      var expected = [ { "age" : 15, "id" : 33, "sub": {"newer": "value"} } ];
+      var actual = getQueryResults("RETURN MERGE({ \"id\" : 100, \"age\" : 15, \"sub\": {\"old\": \"value\" }}, { \"id\" : 9 }, { \"id\" : 33, \"sub\": {\"newer\": \"value\" }})");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test merge function
+////////////////////////////////////////////////////////////////////////////////
+    
     testMergeCxx1 : function () {
       var expected = [ { "quarter" : 1, "year" : 2010 }, { "quarter" : 2, "year" : 2010 }, { "quarter" : 3, "year" : 2010 }, { "quarter" : 4, "year" : 2010 }, { "quarter" : 1, "year" : 2011 }, { "quarter" : 2, "year" : 2011 }, { "quarter" : 3, "year" : 2011 }, { "quarter" : 4, "year" : 2011 }, { "quarter" : 1, "year" : 2012 }, { "quarter" : 2, "year" : 2012 }, { "quarter" : 3, "year" : 2012 }, { "quarter" : 4, "year" : 2012 } ]; 
       var actual = getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FOR quarter IN [ 1, 2, 3, 4 ] return NOOPT(MERGE({ \"year\" : year }, { \"quarter\" : quarter }))");
@@ -1061,6 +1123,16 @@ function ahuacatlFunctionsTestSuite () {
     testMergeCxx4 : function () {
       var expected = [ { "age" : 15, "id" : 33, "name" : "foo" }, { "age" : 19, "id" : 33, "name" : "foo" } ];
       var actual = getQueryResults("FOR u IN [ { \"id\" : 100, \"name\" : \"John\", \"age\" : 15 }, { \"id\" : 101, \"name\" : \"Corey\", \"age\" : 19 } ] return NOOPT(MERGE(u, { \"id\" : 9 }, { \"name\" : \"foo\", \"id\" : 33 }))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test merge function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMergeCxx5 : function () {
+      var expected = [ { "age" : 15, "id" : 33, "sub": {"newer": "value"} } ];
+      var actual = getQueryResults("RETURN NOOPT(MERGE({ \"id\" : 100, \"age\" : 15, \"sub\": {\"old\": \"value\" }}, { \"id\" : 9 }, { \"id\" : 33, \"sub\": {\"newer\": \"value\" }}))");
       assertEqual(expected, actual);
     },
 
@@ -1130,6 +1202,12 @@ function ahuacatlFunctionsTestSuite () {
 
       var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ")");
       assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc2 + "))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ")))");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1143,6 +1221,12 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [ { "black" : { "enabled" : true, "visible" : false }, "list" : [ 1, 2, 3, 4, 5 ], "white" : { "enabled" : true } } ];
 
       var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc2 + ", " + doc1 + ")");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc2 + ", " + doc1 + "))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc2 + ", " + doc1 + ")))");
       assertEqual(expected, actual);
     },
 
@@ -1160,6 +1244,24 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
       
       actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ", " + doc1 + ", " + doc1 + ")");
+      assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc1 + "))");
+      assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ", " + doc1 + "))");
+      assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ", " + doc1 + ", " + doc1 + "))");
+      assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ")))");
+      assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ", " + doc1 + ")))");
+      assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc1 + ", " + doc1 + ", " + doc1 + ", " + doc1 + ")))");
       assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
     },
 
@@ -1183,6 +1285,30 @@ function ahuacatlFunctionsTestSuite () {
       
       actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + ")");
       assertEqual([ { "a" : 2, "b" : 3, "c" : 4 } ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + "))");
+      assertEqual([ { "a" : 3, "b" : 4, "c" : 5 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc3 + ", " + doc2 + "))");
+      assertEqual([ { "a" : 2, "b" : 3, "c" : 4 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc2 + ", " + doc3 + ", " + doc1 + "))");
+      assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + "))");
+      assertEqual([ { "a" : 2, "b" : 3, "c" : 4 } ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ")))");
+      assertEqual([ { "a" : 3, "b" : 4, "c" : 5 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc1 + ", " + doc3 + ", " + doc2 + ")))");
+      assertEqual([ { "a" : 2, "b" : 3, "c" : 4 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc2 + ", " + doc3 + ", " + doc1 + ")))");
+      assertEqual([ { "a" : 1, "b" : 2, "c" : 3 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + ")))");
+      assertEqual([ { "a" : 2, "b" : 3, "c" : 4 } ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1205,6 +1331,30 @@ function ahuacatlFunctionsTestSuite () {
       
       actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + ")");
       assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 9, "z" : 6 } ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + "))");
+      assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 5, "z" : 6 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc3 + ", " + doc2 + "))");
+      assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 9, "z" : 6 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc2 + ", " + doc3 + ", " + doc1 + "))");
+      assertEqual([ { "1" : 7, "a" : 1, "b" : 2, "c" : 3, "x" : 4, "y": 5, "z" : 6 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + "))");
+      assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 9, "z" : 6 } ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ")))");
+      assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 5, "z" : 6 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc1 + ", " + doc3 + ", " + doc2 + ")))");
+      assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 9, "z" : 6 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc2 + ", " + doc3 + ", " + doc1 + ")))");
+      assertEqual([ { "1" : 7, "a" : 1, "b" : 2, "c" : 3, "x" : 4, "y": 5, "z" : 6 } ], actual);
+      
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc3 + ", " + doc1 + ", " + doc2 + ")))");
+      assertEqual([ { "1" : 7, "a" : 1, "b" : 8, "c" : 3, "x" : 4, "y": 9, "z" : 6 } ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1226,6 +1376,24 @@ function ahuacatlFunctionsTestSuite () {
       var doc12 ="{ \"continent\" : { \"Africa\" : { \"country\" : { \"EG\" : { \"city\" : \"Cairo\" } } } } }";
 
       var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ", " + doc4 + ", " + doc5 + ", " + doc6 + ", " + doc7 + ", " + doc8 + ", " + doc9 + ", " + doc10 + ", " + doc11 + ", " + doc12 + ")");
+
+      assertEqual([ { "continent" : { 
+        "Europe" : { "country" : { "DE" : { "city" : "Munich" }, "UK" : { "city" : "London" }, "FR" : { "city" : "Paris" } } }, 
+        "Asia" : { "country" : { "CN" : { "city" : "Shanghai" }, "JP" : { "city" : "Tokyo" } } }, 
+        "Australia" : { "country" : { "AU" : { "city" : "Melbourne" } } }, 
+        "Africa" : { "country" : { "EG" : { "city" : "Cairo" } } } 
+      } } ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ", " + doc4 + ", " + doc5 + ", " + doc6 + ", " + doc7 + ", " + doc8 + ", " + doc9 + ", " + doc10 + ", " + doc11 + ", " + doc12 + "))");
+
+      assertEqual([ { "continent" : { 
+        "Europe" : { "country" : { "DE" : { "city" : "Munich" }, "UK" : { "city" : "London" }, "FR" : { "city" : "Paris" } } }, 
+        "Asia" : { "country" : { "CN" : { "city" : "Shanghai" }, "JP" : { "city" : "Tokyo" } } }, 
+        "Australia" : { "country" : { "AU" : { "city" : "Melbourne" } } }, 
+        "Africa" : { "country" : { "EG" : { "city" : "Cairo" } } } 
+      } } ], actual);
+
+      actual = getQueryResults("RETURN NOOPT(V8(MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ", " + doc4 + ", " + doc5 + ", " + doc6 + ", " + doc7 + ", " + doc8 + ", " + doc9 + ", " + doc10 + ", " + doc11 + ", " + doc12 + ")))");
 
       assertEqual([ { "continent" : { 
         "Europe" : { "country" : { "DE" : { "city" : "Munich" }, "UK" : { "city" : "London" }, "FR" : { "city" : "Paris" } } }, 
@@ -1257,6 +1425,42 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, { }, 3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, { }, \"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, { }, [ ])"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, true))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, 3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, \"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, [ ]))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE(null, { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE(true, { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE(3, { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE(\"yes\", { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE([ ], { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, { }, null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, { }, true))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, { }, 3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, { }, \"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(MERGE_RECURSIVE({ }, { }, [ ]))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE()))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE({ })))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE({ }, null)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE({ }, true)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE({ }, 3)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE({ }, \"yes\")))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE({ }, [ ])))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE(null, { })))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE(true, { })))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE(3, { })))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE(\"yes\", { })))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE([ ], { })))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE({ }, { }, null)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE({ }, { }, true)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE({ }, { }, 3)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE({ }, { }, \"yes\")))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(MERGE_RECURSIVE({ }, { }, [ ])))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2742,6 +2946,22 @@ function ahuacatlFunctionsTestSuite () {
         else {
           assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
         }
+
+        actual = getQueryResults("RETURN NOOPT(MEDIAN(" + JSON.stringify(value[1]) + "))");
+        if (actual[0] === null) {
+          assertNull(value[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+
+        actual = getQueryResults("RETURN NOOPT(V8(MEDIAN(" + JSON.stringify(value[1]) + ")))");
+        if (actual[0] === null) {
+          assertNull(value[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
       });
     },
 
@@ -2757,6 +2977,22 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN MEDIAN(3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN MEDIAN(\"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN MEDIAN({ })"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MEDIAN())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MEDIAN([ ], 2))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN(null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN(false))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN(3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN(\"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MEDIAN({ }))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(MEDIAN()))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(MEDIAN([ ], 2)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(MEDIAN(null)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(MEDIAN(false)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(MEDIAN(3)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(MEDIAN(\"yes\")))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(MEDIAN({ })))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2792,6 +3028,22 @@ function ahuacatlFunctionsTestSuite () {
 
       data.forEach(function (value) {
         var actual = getQueryResults("RETURN PERCENTILE(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ", " + JSON.stringify(value[3]) + ")");
+        if (actual[0] === null) {
+          assertNull(value[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4), value);
+        }
+
+        actual = getQueryResults("RETURN NOOPT(PERCENTILE(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ", " + JSON.stringify(value[3]) + "))");
+        if (actual[0] === null) {
+          assertNull(value[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4), value);
+        }
+
+        actual = getQueryResults("RETURN NOOPT(V8(PERCENTILE(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ", " + JSON.stringify(value[3]) + ")))");
         if (actual[0] === null) {
           assertNull(value[0]);
         }
@@ -3396,6 +3648,22 @@ function ahuacatlFunctionsTestSuite () {
         else {
           assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
         }
+
+        actual = getQueryResults("RETURN NOOPT(STDDEV_POPULATION(" + JSON.stringify(value[1]) + "))");
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+
+        actual = getQueryResults("RETURN NOOPT(V8(STDDEV_POPULATION(" + JSON.stringify(value[1]) + ")))");
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
       });
     },
 
@@ -3411,6 +3679,116 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_POPULATION(3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_POPULATION(\"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_POPULATION({ })"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(STDDEV_POPULATION())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(STDDEV_POPULATION([ ], 2))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION(null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION(false))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION(3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION(\"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_POPULATION({ }))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(STDDEV_POPULATION()))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(STDDEV_POPULATION([ ], 2)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_POPULATION(null)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_POPULATION(false)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_POPULATION(3)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_POPULATION(\"yes\")))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_POPULATION({ })))"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev function
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSample : function () {
+      var data = [
+        [ null, [ null ] ],
+        [ null, [ null, null, null ] ],
+        [ null, [ ] ],
+        [ null, [ 0 ] ],
+        [ null, [ null, 0 ] ],
+        [ null, [ 0.00001 ] ],
+        [ null, [ 1 ] ],
+        [ null, [ 100 ] ],
+        [ null, [ -1 ] ],
+        [ null, [ -10000000 ] ],
+        [ null, [ -100 ] ],
+        [ null, [ null, null, null, -100 ] ],
+        [ 1.5811, [ 1, 2, 3, 4, 5 ] ],
+        [ 1.5811, [ null, 1, null, 2, 3, null, null, 4, null, 5 ] ],
+        [ 0.89443, [ 1, 3, 1, 3, 2, 2, 2, 1, 3, 1, 3 ] ],
+        [ 0.94281, [ 1, 3, 1, 3, 2, 2, 1, 3, 1, 3 ] ],
+        [ 1.0, [ 1, 3, 1, 3, 2, 1, 3, 1, 3 ] ],
+        [ 0.86603, [ 1, 1, 1, 2, 2, 2, 3, 3, 3] ],
+        [ 420.994418 , [ 12,96, 13, 143, 999 ] ],
+        [ 420.994418, [ 12,96, 13, 143, null, 999 ] ],
+        [ 24.2894, [ 18, -4, 6, 35.2, 63.66, 12.4 ] ],
+        [ 54.74486277, [ 1, 10, 100 ] ],
+        [ 547.4486277, [ 10, 100, 1000 ] ],
+        [ 4835.7031548, [ 10, 100, 1000, 10000 ] ],
+        [ 4470895.7806, [ 10, 100, 1000, 10000, 10000000 ] ],
+        [ 4835.7031548, [ -10, -100, -1000, -10000 ] ],
+        [ 54.74486277, [ -1, -10, -100 ] ],
+        [ 0.001, [ 0.001, 0.002, 0.003 ] ],
+        [ 7.72686, [ -0.1, 2.4, -0.004, 12.054, 12.53, -7.35 ] ]
+      ];
+
+      data.forEach(function (value) {
+        var actual = getQueryResults("RETURN STDDEV_SAMPLE(" + JSON.stringify(value[1]) + ")");
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+
+        actual = getQueryResults("RETURN NOOPT(STDDEV_SAMPLE(" + JSON.stringify(value[1]) + "))");
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+
+        actual = getQueryResults("RETURN NOOPT(V8(STDDEV_SAMPLE(" + JSON.stringify(value[1]) + ")))");
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test stddev function
+////////////////////////////////////////////////////////////////////////////////
+
+    testStddevSampleInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN STDDEV_SAMPLE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN STDDEV_SAMPLE([ ], 2)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE(null)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE(false)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE(3)"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE(\"yes\")"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN STDDEV_SAMPLE({ })"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(STDDEV_SAMPLE())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(STDDEV_SAMPLE([ ], 2))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE(null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE(false))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE(3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE(\"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(STDDEV_SAMPLE({ }))"); 
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(STDDEV_SAMPLE()))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(STDDEV_SAMPLE([ ], 2)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_SAMPLE(null)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_SAMPLE(false)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_SAMPLE(3)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_SAMPLE(\"yes\")))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(STDDEV_SAMPLE({ })))"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

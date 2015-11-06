@@ -8,6 +8,41 @@ AQL supports the following data-modification operations:
 - **REMOVE**: remove existing documents from a collection
 - **UPSERT**: conditionally insert or update documents in a collection
 
+!SUBSECTION Modifying a single document 
+
+Let's start with the basics: `INSERT`, `UPDATE` and `REMOVE` operations on single documents.
+Here is an example that insert a document in an existing collection *users*:
+
+	INSERT {firstName:'Anna', name:'Pavlova', profession:'artist'} IN users
+
+You may provide a key for the new document; if not provided, ArangoDB will create one for you.  
+
+	INSERT {_key:'GilbertoGil', firstName:'Gilberto', name:'Gil', city:'Fortalezza'} IN users
+
+As Arango is schema-free, attributes of the documents may vary: 
+
+	INSERT {_key:'PhilCarpenter',  firstName:'Phil', name:'Carpenter', middleName:'G.',status:'inactive', } IN users
+
+	INSERT {_key:'NatachaDeclerck', firstName:'Natacha', name:'Declerck', location:'Antwerp'} IN users 
+
+Update is quite simple. The following AQL statement will add or change the attributes status and location
+
+	UPDATE 'PhilCarpenter' WITH { status:'active', location:'Beijing' }  IN users
+
+Replace is an alternative to update where all attributes of the document are replaced.
+
+	REPLACE   { _key: 'NatachaDeclerck', firstName:'Natacha', name:'Leclerc', status: 'active', level:'premium' } IN users
+
+Removing a document if you know its key is simple as well : 
+
+	REMOVE 'GilbertoGil' IN users
+
+or 
+
+	REMOVE {_key:'GilbertoGil'} IN users
+
+
+!SUBSECTION Modifying multiple documents
 
 Data-modification operations are normally combined with *FOR* loops to
 iterate over a given list of documents. They can optionally be combined with
@@ -20,12 +55,7 @@ Let's start with an example that modifies existing documents in a collection
       FILTER u.status == 'not active'
       UPDATE u WITH { status: 'inactive' } IN users
 
-Note that there is no need to combine a data-modification query with other
-AQL operations such as *FOR* and *FILTER*. For example, the following 
-stripped-down *update* query will work, too. It will *update* one document
-(with key *foo*) in collection *users*:
 
-    UPDATE "foo" WITH { status: 'inactive' } IN users
 
 Now, let's copy the contents of the collection *users* into the collection
 *backup*:

@@ -654,7 +654,7 @@ public:
 };
 
 class InputBuffer {
-    char32_t* buf32;    // input buffer
+    char32_t* buf32;   // input buffer
     char* charWidths;  // character widths from mk_wcwidth()
     int buflen;        // buffer size in characters
     int len;           // length of text in input buffer
@@ -2270,7 +2270,7 @@ int InputBuffer::getInputLine(PromptBase& pi) {
         }
 
         c = cleanupCtrl(c);  // convert CTRL + <char> into normal ctrl
-
+        
         if (c == 0) {
             return len;
         }
@@ -2796,8 +2796,8 @@ int InputBuffer::getInputLine(PromptBase& pi) {
     return len;
 }
 
-string preloadedBufferContents;  // used with linenoisePreloadBuffer
-string preloadErrorMessage;
+static string preloadedBufferContents;  // used with linenoisePreloadBuffer
+static string preloadErrorMessage;
 
 /**
  * linenoisePreloadBuffer provides text to be inserted into the command buffer
@@ -2958,6 +2958,23 @@ int linenoiseHistoryAdd(const char* line) {
     if (!linecopy) {
         return 0;
     }
+    
+    // convert newlines in multi-line code to spaces before storing
+    char8_t* p = linecopy;
+    while (*p) {
+        if (*p == '\n') {
+            *p = ' ';
+        }
+        ++p;
+    }
+    
+    // prevent duplicate history entries
+    if (historyLen > 0 && history[historyLen - 1] != nullptr &&
+        strcmp(reinterpret_cast<char const*>(history[historyLen - 1]), reinterpret_cast<char const*>(linecopy)) == 0) {
+        free(linecopy);
+        return 0;
+    }
+
     if (historyLen == historyMaxLen) {
         free(history[0]);
         memmove(history, history + 1, sizeof(char*) * (historyMaxLen - 1));
@@ -2967,14 +2984,6 @@ int linenoiseHistoryAdd(const char* line) {
         }
     }
 
-    // convert newlines in multi-line code to spaces before storing
-    char8_t* p = linecopy;
-    while (*p) {
-        if (*p == '\n') {
-            *p = ' ';
-        }
-        ++p;
-    }
     history[historyLen] = linecopy;
     ++historyLen;
     return 1;
@@ -3048,3 +3057,4 @@ int linenoiseHistoryLoad(const char* filename) {
     fclose(fp);
     return 0;
 }
+

@@ -406,14 +406,20 @@ static void AppendAsString (triagens::basics::StringBuffer& buffer,
 /// @brief Checks if the given list contains the element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ListContainsElement (Json const& list, Json const& testee) {
+static bool ListContainsElement (Json const& list, Json const& testee, size_t& index) {
   for (size_t i = 0; i < list.size(); ++i) {
     if (TRI_CheckSameValueJson(testee.json(), list.at(i).json())) {
       // We found the element in the list.
+      index = i;
       return true;
     }
   }
   return false;
+}
+
+static bool ListContainsElement (Json const& list, Json const& testee) {
+  size_t unused;
+  return ListContainsElement(list, testee, unused);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,6 +451,29 @@ static bool Variance (Json const& values, double& value, size_t& count) {
     }
   }
 
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Sorts the given list of Numbers in ASC order.
+///        Removes all null entries.
+///        Returns false if the list contains non-number values.
+////////////////////////////////////////////////////////////////////////////////
+
+static bool SortNumberList (Json const& values, std::vector<double>& result) {
+  TRI_ASSERT(values.isArray());
+  TRI_ASSERT(result.empty());
+  bool unused;
+  for (size_t i = 0; i < values.size(); ++i) {
+    Json element = values.at(i);
+    if (! element.isNull()) {
+      if (! element.isNumber()) {
+        return false;
+      }
+      result.emplace_back(ValueToNumber(element.json(), unused));
+    }
+  }
+  std::sort(result.begin(), result.end());
   return true;
 }
 
@@ -1145,7 +1174,7 @@ AqlValue Functions::Merge (triagens::aql::Query* query,
         return AqlValue(new Json(Json::Null));
       }
 
-      auto merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, result.get(), v, false, true);
+      auto merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, result.get(), v, false, false);
   
       if (merged == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1172,6 +1201,88 @@ AqlValue Functions::Merge (triagens::aql::Query* query,
 
     if (! param.isObject()) {
       RegisterInvalidArgumentWarning(query, "MERGE");
+      return AqlValue(new Json(Json::Null));
+    }
+ 
+    auto merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, result.get(), param.json(), false, false);
+
+    if (merged == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    result.reset(merged);
+  } 
+
+  auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
+  result.release();
+  return AqlValue(jr);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function MERGE_RECURSIVE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::MergeRecursive (triagens::aql::Query* query,
+                                    triagens::arango::AqlTransaction* trx,
+                                    FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n == 0) {
+    // no parameters
+    return AqlValue(new Json(Json::Object));
+  }
+
+  // use the first argument as the preliminary result
+  auto initial = ExtractFunctionParameter(trx, parameters, 0, true);
+
+  if (initial.isArray() && n == 1) {
+    // special case: a single array parameter
+    std::unique_ptr<TRI_json_t> array(initial.steal());
+    std::unique_ptr<TRI_json_t> result(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
+
+    if (result == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+  
+    // now merge in all other arguments
+    size_t const k = TRI_LengthArrayJson(array.get());
+
+    for (size_t i = 0; i < k; ++i) {
+      auto v = static_cast<TRI_json_t const*>(TRI_LookupArrayJson(array.get(), i));
+
+      if (! TRI_IsObjectJson(v)) {
+        RegisterInvalidArgumentWarning(query, "MERGE_RECURSIVE");
+        return AqlValue(new Json(Json::Null));
+      }
+
+      auto merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, result.get(), v, false, true);
+  
+      if (merged == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      result.reset(merged);
+    }
+     
+    auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
+    result.release();
+    return AqlValue(jr);
+  }
+
+  if (! initial.isObject()) {
+    RegisterInvalidArgumentWarning(query, "MERGE_RECURSIVE");
+    return AqlValue(new Json(Json::Null));
+  }
+
+  std::unique_ptr<TRI_json_t> result(initial.steal());
+
+  // now merge in all other arguments
+  for (size_t i = 1; i < n; ++i) {
+    auto param = ExtractFunctionParameter(trx, parameters, i, false);
+
+    if (! param.isObject()) {
+      RegisterInvalidArgumentWarning(query, "MERGE_RECURSIVE");
       return AqlValue(new Json(Json::Null));
     }
  
@@ -3826,6 +3937,287 @@ AqlValue Functions::VariancePopulation (triagens::aql::Query* query,
 
   return AqlValue(new Json(value / count));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function STDDEV_SAMPLE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::StdDevSample (triagens::aql::Query* query,
+                                  triagens::arango::AqlTransaction* trx,
+                                  FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "STDDEV_SAMPLE", (int) 1, (int) 1);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "STDDEV_SAMPLE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  double value = 0.0;
+  size_t count = 0;
+
+  if (! Variance(list, value, count)) {
+    RegisterWarning(query, "STDDEV_SAMPLE", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  if (count < 2) {
+    return AqlValue(new Json(Json::Null));
+  }
+
+  return AqlValue(new Json(sqrt(value / (count - 1))));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function STDDEV_POPULATION
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::StdDevPopulation (triagens::aql::Query* query,
+                                      triagens::arango::AqlTransaction* trx,
+                                      FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "STDDEV_POPULATION", (int) 1, (int) 1);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "STDDEV_POPULATION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  double value = 0.0;
+  size_t count = 0;
+
+  if (! Variance(list, value, count)) {
+    RegisterWarning(query, "STDDEV_POPULATION", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  if (count < 1) {
+    return AqlValue(new Json(Json::Null));
+  }
+
+  return AqlValue(new Json(sqrt(value / count)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function MEDIAN
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Median (triagens::aql::Query* query,
+                            triagens::arango::AqlTransaction* trx,
+                            FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "MEDIAN", (int) 1, (int) 1);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "MEDIAN", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  std::vector<double> values;
+  if (! SortNumberList(list, values)) {
+    RegisterWarning(query, "MEDIAN", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  if (values.empty()) {
+    return AqlValue(new Json(Json::Null));
+  }
+  size_t const l = values.size();
+  size_t midpoint = l / 2;
+
+  if (l % 2 == 0) {
+    return AqlValue(new Json((values[midpoint - 1] + values[midpoint]) / 2));
+  }
+  return AqlValue(new Json(values[midpoint]));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function PERCENTILE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Percentile (triagens::aql::Query* query,
+                                triagens::arango::AqlTransaction* trx,
+                                FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "PERCENTILE", (int) 2, (int) 3);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  Json border = ExtractFunctionParameter(trx, parameters, 1, false);
+
+  if (! border.isNumber()) {
+    RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  bool unused = false;
+  double p = ValueToNumber(border.json(), unused);
+  if (p <= 0 || p > 100) {
+    RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  bool useInterpolation = false;
+
+  if (n == 3) {
+    Json methodJson = ExtractFunctionParameter(trx, parameters, 2, false);
+    if (! methodJson.isString()) {
+      RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return AqlValue(new Json(Json::Null));
+    }
+    std::string method = triagens::basics::JsonHelper::getStringValue(methodJson.json(), "");
+    if (method == "interpolation") {
+      useInterpolation = true;
+    }
+    else if (method == "rank") {
+      useInterpolation = false;
+    }
+    else {
+      RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return AqlValue(new Json(Json::Null));
+    }
+  }
+
+  std::vector<double> values;
+  if (! SortNumberList(list, values)) {
+    RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  if (values.empty()) {
+    return AqlValue(new Json(Json::Null));
+  }
+  size_t l = values.size();
+  if (l == 1) {
+    return AqlValue(new Json(values[0]));
+  }
+
+  if (useInterpolation) {
+    double idx = p * (l + 1) / 100;
+    double pos = floor(idx);
+
+    if (pos >= l) {
+      return AqlValue(new Json(values[l - 1]));
+    }
+
+    double delta = idx - pos;
+    return AqlValue(new Json(delta * (values[pos] - values[pos - 1]) + values[pos - 1]));
+  }
+  double idx = p * l / 100;
+  double pos = ceil(idx);
+  if (pos >= l) {
+    return AqlValue(new Json(values[l - 1]));
+  }
+  return AqlValue(new Json(values[pos - 1]));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function RANGE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Range (triagens::aql::Query* query,
+                           triagens::arango::AqlTransaction* trx,
+                           FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "RANGE", (int) 2, (int) 3);
+  }
+
+  auto const leftJson = ExtractFunctionParameter(trx, parameters, 0, false);
+  auto const rightJson = ExtractFunctionParameter(trx, parameters, 1, false);
+
+  bool unused = true;
+  double from = ValueToNumber(leftJson.json(), unused);
+  double to = ValueToNumber(rightJson.json(), unused);
+
+  double step = 0;
+  if (n == 3) {
+    auto const stepJson = ExtractFunctionParameter(trx, parameters, 2, false);
+    step = ValueToNumber(stepJson.json(), unused);
+  }
+  if ( step == 0 ||
+      (from < to && step < 0) ||
+      (from > to && step > 0)) {
+    RegisterWarning(query, "RANGE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(new Json(Json::Null));
+  }
+  Json result(Json::Array);
+  if (from < to) {
+    for (; from <= to; from += step) {
+      result.add(Json(from));
+    }
+  }
+  else {
+    for (; from >= to; from += step) {
+      result.add(Json(from));
+    }
+  }
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function POSITION
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Position (triagens::aql::Query* query,
+                              triagens::arango::AqlTransaction* trx,
+                              FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 2 && n != 3) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "POSITION", (int) 2, (int) 3);
+  }
+
+  Json list = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! list.isArray()) {
+    RegisterWarning(query, "POSITION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  bool returnIndex = false;
+  if (n == 3) {
+    Json returnIndexJson = ExtractFunctionParameter(trx, parameters, 2, false);
+    returnIndex = ValueToBoolean(returnIndexJson.json());
+  }
+
+  if (list.size() > 0) {
+    Json searchValue = ExtractFunctionParameter(trx, parameters, 1, false);
+
+    size_t index;
+    if (ListContainsElement(list, searchValue, index)) {
+      if (returnIndex) {
+        return AqlValue(new Json(static_cast<double>(index)));
+      }
+      return AqlValue(new Json(true));
+    }
+  }
+
+  if (returnIndex) {
+    return AqlValue(new Json(-1));
+  }
+  return AqlValue(new Json(false));
+}
+
 
 
 // -----------------------------------------------------------------------------

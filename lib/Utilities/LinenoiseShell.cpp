@@ -111,14 +111,15 @@ bool LinenoiseShell::open (bool) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LinenoiseShell::close () {
-
   // avoid duplicate saving of history
   if (_state != STATE_OPENED) {
     return true;
   }
 
   _state = STATE_CLOSED;
-  return writeHistory();
+  auto result = writeHistory();
+  linenoiseHistoryFree();
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

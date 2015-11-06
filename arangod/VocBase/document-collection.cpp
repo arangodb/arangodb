@@ -123,6 +123,7 @@ TRI_document_collection_t::TRI_document_collection_t ()
     _headersPtr(nullptr),
     _keyGenerator(nullptr),
     _uncollectedLogfileEntries(0),
+    _currentWriterThread(0),
     _cleanupIndexes(0) {
 
   _tickMax = 0;
@@ -199,13 +200,8 @@ int TRI_document_collection_t::beginWrite () {
   // std::cout << "BeginWrite: " << document->_info._name << std::endl;
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
 
-  try {
-    _vocbase->_deadlockDetector.setWriterStarted(this);
-  }
-  catch (...) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+  // register writer 
+  _currentWriterThread.store(TRI_CurrentThreadId());
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -229,11 +225,8 @@ int TRI_document_collection_t::endWrite () {
   // std::cout << "EndWrite: " << document->_info._name << std::endl;
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
  
-  try { 
-    _vocbase->_deadlockDetector.setWriterFinished(this);
-  }
-  catch (...) {
-  }
+  // unregister writer
+  _currentWriterThread.store(0);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -390,14 +383,9 @@ int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
   if (wasBlocked) {      
     _vocbase->_deadlockDetector.setReaderUnblocked(this);
   }
-  
-  try {
-    _vocbase->_deadlockDetector.setWriterStarted(this);
-  }
-  catch (...) {
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+ 
+  // register writer 
+  _currentWriterThread.store(TRI_CurrentThreadId());
 
   return TRI_ERROR_NO_ERROR;
 }

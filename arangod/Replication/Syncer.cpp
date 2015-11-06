@@ -284,9 +284,11 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
       return res;
     }
     catch (triagens::basics::Exception const& ex) {
+      TRI_FreeShapedJson(zone, shaped);
       return ex.code();
     }
     catch (...) {
+      TRI_FreeShapedJson(zone, shaped);
       return TRI_ERROR_INTERNAL;
     }
   }

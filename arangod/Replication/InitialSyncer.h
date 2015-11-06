@@ -197,6 +197,7 @@ namespace triagens {
 
         int applyCollectionDump (struct TRI_transaction_collection_s*,
                                  httpclient::SimpleHttpResult*,
+                                 uint64_t&,
                                  std::string&);
 
 
