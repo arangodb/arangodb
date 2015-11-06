@@ -31,14 +31,18 @@
 
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
+#include "Basics/StringBufferAdapter.h"
 #include "Basics/StringUtils.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
+
+typedef arangodb::velocypack::Dumper<StringBufferAdapter, false> StringBufferDumper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -97,28 +101,51 @@ void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateResult (VPackSlice& slice) {
+  generateResult(HttpResponse::OK, slice);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
+                                      VPackSlice& slice) {
+  _response = createResponse(code);
+  _response->setContentType("application/json; charset=utf-8");
+
+  StringBufferAdapter buffer(_response->body().stringBuffer());
+
+  StringBufferDumper dumper(buffer);
+  try {
+    dumper.dump(slice);
+  }
+  catch (...) {
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL,
+                  "cannot generate output");
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a cancel message
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateCanceled () {
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
-  char* msg = TRI_DuplicateString("request canceled");
+  VPackBuilder builder;
+  builder.add(VPackValue(VPackValueType::Object));
+  builder.add("error", VPackValue(true));
+  builder.add("code", VPackValue((int32_t) HttpResponse::REQUEST_TIMEOUT));
+  builder.add("errorNum", VPackValue((int32_t) TRI_ERROR_REQUEST_CANCELED));
+  builder.add("errorMessage", VPackValue("request canceled"));
+  builder.close();
 
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
-                       "error", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
-                       "code", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (int32_t) HttpResponse::REQUEST_TIMEOUT));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
-                       "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (int32_t) TRI_ERROR_REQUEST_CANCELED));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
-                       "errorMessage", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, msg, strlen(msg)));
-
-  generateResult(HttpResponse::REQUEST_TIMEOUT, json);
-
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  VPackSlice slice(builder.start());
+  generateResult(HttpResponse::REQUEST_TIMEOUT, slice);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

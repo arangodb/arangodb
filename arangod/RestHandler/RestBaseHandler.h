@@ -37,6 +37,8 @@
 #include "Basics/json.h"
 #include "Rest/HttpResponse.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class RestBaseHandler
 // -----------------------------------------------------------------------------
@@ -92,6 +94,21 @@ namespace triagens {
 
         virtual void generateResult (rest::HttpResponse::HttpResponseCode,
                                      TRI_json_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void generateResult (VPackSlice& slice);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void generateResult (rest::HttpResponse::HttpResponseCode,
+                                     VPackSlice& slice);
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a cancel message
