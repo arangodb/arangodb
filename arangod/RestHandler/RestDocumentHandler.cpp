@@ -831,7 +831,7 @@ bool RestDocumentHandler::readAllDocuments () {
     // generate result
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
-    result.add("documents", VPackValue());
+    result.add("documents", VPackValue(VPackValueType::Array));
 
     for (auto const& id : ids) {
       std::string v(prefix);
