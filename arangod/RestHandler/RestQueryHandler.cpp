@@ -161,9 +161,9 @@ bool RestQueryHandler::readQueryProperties () {
     result.add("code", VPackValue(HttpResponse::OK));
     result.add("enabled", VPackValue(queryList->enabled()));
     result.add("trackSlowQueries", VPackValue(queryList->trackSlowQueries()));
-    result.add("maxSlowQueries", VPackValue(static_cast<uint64_t>(queryList->maxSlowQueries())));
+    result.add("maxSlowQueries", VPackValue(queryList->maxSlowQueries()));
     result.add("slowQueryThreshold", VPackValue(queryList->slowQueryThreshold()));
-    result.add("maxQueryStringLength", VPackValue(static_cast<uint64_t>(queryList->maxQueryStringLength())));
+    result.add("maxQueryStringLength", VPackValue(queryList->maxQueryStringLength()));
     result.close();
     VPackSlice slice = result.slice();
     generateResult(slice);

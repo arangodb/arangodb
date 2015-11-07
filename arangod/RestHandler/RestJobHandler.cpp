@@ -320,8 +320,9 @@ void RestJobHandler::putJobMethod () {
         VPackBuilder json;
         json.add(VPackValue(VPackValueType::Object));
         json.add("result", VPackValue(true));
-        VPackSlice slice(json.start());
         json.close();
+
+        VPackSlice slice(json.start());
         generateResult(slice);
       }
       catch (...) {
@@ -570,7 +571,7 @@ void RestJobHandler::getJobByType (std::string const& type) {
 
   try {
     VPackBuilder json;
-    json.add(VPackValue(VPackValueType::Object));
+    json.add(VPackValue(VPackValueType::Array));
     size_t const n = ids.size();
     for (size_t i = 0; i < n; ++i) {
       char* idString = TRI_StringUInt64(ids[i]);

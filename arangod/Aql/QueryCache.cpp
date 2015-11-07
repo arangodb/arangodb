@@ -429,7 +429,7 @@ VPackBuilder QueryCache::properties () {
   VPackBuilder json;
   json.add(VPackValue(VPackValueType::Object));
   json.add("mode", VPackValue(modeString(mode())));
-  json.add("maxResults", VPackValue(static_cast<uint64_t>(MaxResults)));
+  json.add("maxResults", VPackValue(MaxResults));
   json.close();
   return json;
 }

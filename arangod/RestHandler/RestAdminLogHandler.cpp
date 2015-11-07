@@ -33,6 +33,7 @@
 #include "Basics/logging.h"
 #include "Rest/HttpRequest.h"
 
+
 using namespace std;
 using namespace triagens;
 using namespace triagens::basics;
@@ -305,7 +306,7 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
   result.add(VPackValue(VPackValueType::Object));
   size_t length = clean.size();
   try {
-    result.add("totalAmount", VPackValue(static_cast<double>(length)));
+    result.add("totalAmount", VPackValue(length));
 
     if (offset >= length) {
       length = 0;
@@ -353,11 +354,11 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
     result.add("timestamp", VPackValue(VPackValueType::Array));
     for (size_t i = 0; i < length; ++i) {
       TRI_log_buffer_t* buf = clean.at(i + static_cast<size_t>(offset));
-      result.add(VPackValue(static_cast<double>(buf->_timestamp)));
+      result.add(VPackValue(static_cast<size_t>(buf->_timestamp)));
     }
     result.close();
 
-    // forth text
+    // fourth text
     result.add("text", VPackValue(VPackValueType::Array));
     for (size_t i = 0; i < length; ++i) {
       TRI_log_buffer_t* buf = clean.at(i + static_cast<size_t>(offset));
@@ -369,7 +370,7 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
 
     TRI_FreeBufferLogging(logs);
 
-    VPackSlice slice(result.start());
+    VPackSlice slice = result.slice();
     generateResult(slice);
   }
   catch (...) {

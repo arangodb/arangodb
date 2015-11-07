@@ -1414,11 +1414,11 @@ void RestImportHandler::generateDocumentsCreated (RestImportResult const& result
     VPackBuilder json;
     json.add(VPackValue(VPackValueType::Object));
     json.add("error", VPackValue(false));
-    json.add("created", VPackValue(static_cast<uint64_t>(result._numCreated)));
-    json.add("errors", VPackValue(static_cast<uint64_t>(result._numErrors)));
-    json.add("empty", VPackValue(static_cast<uint64_t>(result._numEmpty)));
-    json.add("updated", VPackValue(static_cast<uint64_t>(result._numUpdated)));
-    json.add("ignored", VPackValue(static_cast<uint64_t>(result._numIgnored)));
+    json.add("created", VPackValue(result._numCreated));
+    json.add("errors", VPackValue(result._numErrors));
+    json.add("empty", VPackValue(result._numEmpty));
+    json.add("updated", VPackValue(result._numUpdated));
+    json.add("ignored", VPackValue(result._numIgnored));
 
     bool found;
     char const* detailsStr = _request->value("details", found);
