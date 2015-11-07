@@ -36,7 +36,6 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
-
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -77,7 +76,6 @@ void RestBaseHandler::handleError (Exception const& ex) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from JSON
 ////////////////////////////////////////////////////////////////////////////////
-
 void RestBaseHandler::generateResult (TRI_json_t const* json) {
   generateResult(HttpResponse::OK, json);
 }
@@ -104,7 +102,7 @@ void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateResult (VPackSlice& slice) {
+void RestBaseHandler::generateResult (VPackSlice const& slice) {
   generateResult(HttpResponse::OK, slice);
 }
 
@@ -113,7 +111,7 @@ void RestBaseHandler::generateResult (VPackSlice& slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
-                                      VPackSlice& slice) {
+                                      VPackSlice const& slice) {
   _response = createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
 

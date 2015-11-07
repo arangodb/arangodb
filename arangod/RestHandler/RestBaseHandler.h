@@ -99,14 +99,14 @@ namespace triagens {
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void generateResult (VPackSlice& slice);
+        virtual void generateResult (VPackSlice const& slice);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void generateResult (rest::HttpResponse::HttpResponseCode,
-                                     VPackSlice& slice);
+                                     VPackSlice const& slice);
 
 
 
