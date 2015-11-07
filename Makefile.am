@@ -253,15 +253,16 @@ CLEANUP += @srcdir@/.file-list-js
 ### @brief /var data
 ################################################################################
 
-#if ENABLE_RELATIVE
-#else
-
 install-data-local:
 	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb
 	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb-apps || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb-apps
 	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/log/arangodb || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/log/arangodb
 
-#endif
+################################################################################
+### @brief /doc
+################################################################################
+
+dist_doc_DATA = README README.md LICENSE LICENSES-OTHER-COMPONENTS.md
 
 ################################################################################
 ### @brief symbolic links
