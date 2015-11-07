@@ -284,7 +284,6 @@ pack-deb-cmake:
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "ETCDIR=${sysconfdir}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
-		-D "READLINE_VERSION=${READLINE_VERSION}" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "VARDIR=${localstatedir}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \

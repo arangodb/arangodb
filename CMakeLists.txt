@@ -691,28 +691,10 @@ if (OPENSSL_LIB_PATH)
 endif ()
 
 ################################################################################
-### @brief READLINE or LINENOISE
+### @brief LINENOISE
 ################################################################################
 
-if (MSVC)
-  set(READLINE_LIBS linenoise CACHE string "LINENOISE libraries")
-  set(READLINE_VERSION "linenoise" CACHE string "LINENOISE version")
-else ()
-  set(READLINE_INCLUDE "" CACHE path "READLINE include path")
-  set(READLINE_LIB_PATH "" CACHE path "READLINE library path")
-  set(READLINE_LIBS readline CACHE string "READLINE libraries")
-  set(READLINE_VERSION "unknown" CACHE string "READLINE version")
-endif ()
-
-if (READLINE_INCLUDE)
-  include_directories(${READLINE_INCLUDE})
-endif ()
-
-if (READLINE_LIB_PATH)
-  link_directories(${READLINE_LIB_PATH})
-endif ()
-
-add_definitions("-DTRI_READLINE_VERSION=\"${READLINE_VERSION}\"")
+set(LINENOISE_VERSION "unknown" CACHE string "LINENOISE version")
 
 ################################################################################
 ### @brief V8

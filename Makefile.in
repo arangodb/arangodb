@@ -247,7 +247,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 DIST_COMMON = $(srcdir)/Makefile.am $(top_srcdir)/configure \
-	$(am__configure_deps) $(am__DIST_COMMON)
+	$(am__configure_deps) $(dist_doc_DATA) $(am__DIST_COMMON)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno config.status.lineno
 mkinstalldirs = $(install_sh) -d
@@ -634,12 +634,13 @@ lib_libarango_v8_a_OBJECTS = $(am_lib_libarango_v8_a_OBJECTS)
 am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" \
 	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" \
-	"$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)" \
-	"$(DESTDIR)$(pkgdataJS01dir)" "$(DESTDIR)$(pkgdataJS02dir)" \
-	"$(DESTDIR)$(pkgdataJS03dir)" "$(DESTDIR)$(pkgdataJS04dir)" \
-	"$(DESTDIR)$(pkgdataJS05dir)" "$(DESTDIR)$(pkgdataJS06dir)" \
-	"$(DESTDIR)$(pkgdataJS07dir)" "$(DESTDIR)$(pkgdataJS08dir)" \
-	"$(DESTDIR)$(pkgdataJS09dir)" "$(DESTDIR)$(pkgdataJS10dir)"
+	"$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(docdir)" \
+	"$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(pkgdataJS01dir)" \
+	"$(DESTDIR)$(pkgdataJS02dir)" "$(DESTDIR)$(pkgdataJS03dir)" \
+	"$(DESTDIR)$(pkgdataJS04dir)" "$(DESTDIR)$(pkgdataJS05dir)" \
+	"$(DESTDIR)$(pkgdataJS06dir)" "$(DESTDIR)$(pkgdataJS07dir)" \
+	"$(DESTDIR)$(pkgdataJS08dir)" "$(DESTDIR)$(pkgdataJS09dir)" \
+	"$(DESTDIR)$(pkgdataJS10dir)"
 @ENABLE_MAINTAINER_MODE_TRUE@am__EXEEXT_1 =  \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/basics_suite$(EXEEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/geo_suite$(EXEEXT)
@@ -824,7 +825,7 @@ man1dir = $(mandir)/man1
 man8dir = $(mandir)/man8
 NROFF = nroff
 MANS = $(dist_man_MANS)
-DATA = $(arangosysconf_DATA) $(nobase_pkgdata_DATA) \
+DATA = $(arangosysconf_DATA) $(dist_doc_DATA) $(nobase_pkgdata_DATA) \
 	$(nobase_pkgdataJS01_DATA) $(nobase_pkgdataJS02_DATA) \
 	$(nobase_pkgdataJS03_DATA) $(nobase_pkgdataJS04_DATA) \
 	$(nobase_pkgdataJS05_DATA) $(nobase_pkgdataJS06_DATA) \
@@ -1270,6 +1271,11 @@ nobase_pkgdataJS08_DATA = $(wordlist 7001,   8000, $(JS_FILE_LIST))
 nobase_pkgdataJS09_DATA = $(wordlist 8001,   9000, $(JS_FILE_LIST))
 nobase_pkgdataJS10_DATA = $(wordlist 9001, 100000, $(JS_FILE_LIST))
 nobase_pkgdata_DATA = 
+
+################################################################################
+### @brief /doc
+################################################################################
+dist_doc_DATA = README README.md LICENSE LICENSES-OTHER-COMPONENTS.md
 lib_libarango_a_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
 	$(CONSOLE_CPPFLAGS)
@@ -8694,6 +8700,27 @@ uninstall-arangosysconfDATA:
 	@list='$(arangosysconf_DATA)'; test -n "$(arangosysconfdir)" || list=; \
 	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
 	dir='$(DESTDIR)$(arangosysconfdir)'; $(am__uninstall_files_from_dir)
+install-dist_docDATA: $(dist_doc_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(dist_doc_DATA)'; test -n "$(docdir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(docdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(docdir)" || exit 1; \
+	fi; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(docdir)'"; \
+	  $(INSTALL_DATA) $$files "$(DESTDIR)$(docdir)" || exit $$?; \
+	done
+
+uninstall-dist_docDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(dist_doc_DATA)'; test -n "$(docdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	dir='$(DESTDIR)$(docdir)'; $(am__uninstall_files_from_dir)
 install-nobase_pkgdataDATA: $(nobase_pkgdata_DATA)
 	@$(NORMAL_INSTALL)
 	@list='$(nobase_pkgdata_DATA)'; test -n "$(pkgdatadir)" || list=; \
@@ -9181,7 +9208,7 @@ check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(SCRIPTS) $(MANS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(pkgdataJS01dir)" "$(DESTDIR)$(pkgdataJS02dir)" "$(DESTDIR)$(pkgdataJS03dir)" "$(DESTDIR)$(pkgdataJS04dir)" "$(DESTDIR)$(pkgdataJS05dir)" "$(DESTDIR)$(pkgdataJS06dir)" "$(DESTDIR)$(pkgdataJS07dir)" "$(DESTDIR)$(pkgdataJS08dir)" "$(DESTDIR)$(pkgdataJS09dir)" "$(DESTDIR)$(pkgdataJS10dir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(docdir)" "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(pkgdataJS01dir)" "$(DESTDIR)$(pkgdataJS02dir)" "$(DESTDIR)$(pkgdataJS03dir)" "$(DESTDIR)$(pkgdataJS04dir)" "$(DESTDIR)$(pkgdataJS05dir)" "$(DESTDIR)$(pkgdataJS06dir)" "$(DESTDIR)$(pkgdataJS07dir)" "$(DESTDIR)$(pkgdataJS08dir)" "$(DESTDIR)$(pkgdataJS09dir)" "$(DESTDIR)$(pkgdataJS10dir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -9316,7 +9343,7 @@ info: info-am
 info-am:
 
 install-data-am: install-arangosysconfDATA install-data-local \
-	install-man install-nobase_pkgdataDATA \
+	install-dist_docDATA install-man install-nobase_pkgdataDATA \
 	install-nobase_pkgdataJS01DATA install-nobase_pkgdataJS02DATA \
 	install-nobase_pkgdataJS03DATA install-nobase_pkgdataJS04DATA \
 	install-nobase_pkgdataJS05DATA install-nobase_pkgdataJS06DATA \
@@ -9371,7 +9398,7 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
-	uninstall-binSCRIPTS uninstall-man \
+	uninstall-binSCRIPTS uninstall-dist_docDATA uninstall-man \
 	uninstall-nobase_pkgdataDATA uninstall-nobase_pkgdataJS01DATA \
 	uninstall-nobase_pkgdataJS02DATA \
 	uninstall-nobase_pkgdataJS03DATA \
@@ -9398,23 +9425,24 @@ uninstall-man: uninstall-man1 uninstall-man8
 	distdir distuninstallcheck dvi dvi-am html html-am info \
 	info-am install install-am install-arangosysconfDATA \
 	install-binPROGRAMS install-binSCRIPTS install-data \
-	install-data-am install-data-local install-dvi install-dvi-am \
-	install-exec install-exec-am install-exec-hook install-html \
-	install-html-am install-info install-info-am install-man \
-	install-man1 install-man8 install-nobase_pkgdataDATA \
-	install-nobase_pkgdataJS01DATA install-nobase_pkgdataJS02DATA \
-	install-nobase_pkgdataJS03DATA install-nobase_pkgdataJS04DATA \
-	install-nobase_pkgdataJS05DATA install-nobase_pkgdataJS06DATA \
-	install-nobase_pkgdataJS07DATA install-nobase_pkgdataJS08DATA \
-	install-nobase_pkgdataJS09DATA install-nobase_pkgdataJS10DATA \
-	install-pdf install-pdf-am install-pkglibexecSCRIPTS \
-	install-ps install-ps-am install-sbinPROGRAMS install-strip \
-	installcheck installcheck-am installdirs maintainer-clean \
+	install-data-am install-data-local install-dist_docDATA \
+	install-dvi install-dvi-am install-exec install-exec-am \
+	install-exec-hook install-html install-html-am install-info \
+	install-info-am install-man install-man1 install-man8 \
+	install-nobase_pkgdataDATA install-nobase_pkgdataJS01DATA \
+	install-nobase_pkgdataJS02DATA install-nobase_pkgdataJS03DATA \
+	install-nobase_pkgdataJS04DATA install-nobase_pkgdataJS05DATA \
+	install-nobase_pkgdataJS06DATA install-nobase_pkgdataJS07DATA \
+	install-nobase_pkgdataJS08DATA install-nobase_pkgdataJS09DATA \
+	install-nobase_pkgdataJS10DATA install-pdf install-pdf-am \
+	install-pkglibexecSCRIPTS install-ps install-ps-am \
+	install-sbinPROGRAMS install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags tags-am uninstall \
 	uninstall-am uninstall-arangosysconfDATA uninstall-binPROGRAMS \
-	uninstall-binSCRIPTS uninstall-man uninstall-man1 \
-	uninstall-man8 uninstall-nobase_pkgdataDATA \
+	uninstall-binSCRIPTS uninstall-dist_docDATA uninstall-man \
+	uninstall-man1 uninstall-man8 uninstall-nobase_pkgdataDATA \
 	uninstall-nobase_pkgdataJS01DATA \
 	uninstall-nobase_pkgdataJS02DATA \
 	uninstall-nobase_pkgdataJS03DATA \
@@ -9434,15 +9462,10 @@ uninstall-man: uninstall-man1 uninstall-man8
 ### @brief /var data
 ################################################################################
 
-#if ENABLE_RELATIVE
-#else
-
 install-data-local:
 	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb
 	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb-apps || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/lib/arangodb-apps
 	test -d $(DESTDIR)$(TRI_LOCALSTATEDIR)/log/arangodb || mkdir -p $(DESTDIR)$(TRI_LOCALSTATEDIR)/log/arangodb
-
-#endif
 
 ################################################################################
 ### @brief symbolic links
