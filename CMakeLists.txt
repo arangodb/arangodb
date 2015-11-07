@@ -797,6 +797,12 @@ endif ()
 
 if (MSVC)
   install_readme(LICENSE . LICENSE.txt)
+  install_readme(LICENSES-OTHER-COMPONENTS.md . LICENSES-OTHER-COMPONENTS.md)
+else ()
+  install_readme(README share/doc/arangodb README)
+  install_readme(README.md share/doc/arangodb README.md)
+  install_readme(LICENSE share/doc/arangodb LICENSE)
+  install_readme(LICENSES-OTHER-COMPONENTS.md share/doc/arangodb LICENSES-OTHER-COMPONENTS.md)
 endif ()
 
 ## -----------------------------------------------------------------------------
@@ -907,8 +913,6 @@ if (MSVC)
     SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
     SET(BITS 32)
   endif()
-
-  
 
   message(STATUS "ARANGO_IMG:  ${ARANGO_IMG}")
   message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
