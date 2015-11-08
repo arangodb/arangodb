@@ -1680,7 +1680,7 @@ static void JS_QueryCachePropertiesAql (const v8::FunctionCallbackInfo<v8::Value
   }
 
   auto properties = queryCache->properties();
-  TRI_V8_RETURN(TRI_ObjectJson(isolate, properties.json()));
+  TRI_V8_RETURN(TRI_ObjectJson(isolate, properties.slice()));
   
   // fetch current configuration and return it
   TRI_V8_TRY_CATCH_END
