@@ -37,6 +37,8 @@
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 using namespace std;
 using namespace triagens::basics;
 
@@ -73,7 +75,7 @@ static inline v8::Handle<v8::Value> ObjectJsonNumber (v8::Isolate* isolate, TRI_
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_json_t NUMBER into a V8 object
+/// @brief converts a TRI_json_t STRING into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> ObjectJsonString (v8::Isolate* isolate, TRI_json_t const* json) {
@@ -774,6 +776,98 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> const value) {
 
   return false;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a VelocyValueType::String into a V8 object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ObjectJsonString (v8::Isolate* isolate, VPackSlice const& slice) {
+    arangodb::velocypack::ValueLength l;
+    char const* val = slice.getString(l);
+    return TRI_V8_PAIR_STRING(val, l);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a VelocyValueType::Object into a V8 object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ObjectJsonObject (v8::Isolate* isolate, VPackSlice const& slice) {
+  v8::Handle<v8::Object> object = v8::Object::New(isolate);
+  
+  if (object.IsEmpty()) {
+    return v8::Undefined(isolate);
+  }
+
+  slice.iterateObject([&object, &isolate] (VPackSlice const& key, VPackSlice const& value ) -> bool {
+    v8::Handle<v8::Value> val = TRI_ObjectJson(isolate, value);
+    if (! val.IsEmpty()) {
+      auto k = ObjectJsonString(isolate, key); 
+      object->ForceSet(k, val);
+    }
+    return true;
+  });
+
+  return object;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a VelocyValueType::Array into a V8 object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ObjectJsonArray (v8::Isolate* isolate, VPackSlice const& slice) {
+  uint32_t const n = static_cast<uint32_t>(slice.length());
+  v8::Handle<v8::Array> object = v8::Array::New(isolate, static_cast<int>(n));
+  
+  if (object.IsEmpty()) {
+    return v8::Undefined(isolate);
+  }
+
+  uint32_t j = 0;
+  slice.iterateArray([&object, &j, &isolate] (VPackSlice const& element) -> bool {
+    v8::Handle<v8::Value> val = TRI_ObjectJson(isolate, element);
+    if (! val.IsEmpty()) {
+      object->Set(j++, val);
+    }
+    return true;
+  });
+
+  return object;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a TRI_json_t into a V8 object
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> TRI_ObjectJson (v8::Isolate* isolate,
+                                      VPackSlice const& slice) {
+  switch (slice.type()) {
+    case VPackValueType::None:
+      return v8::Undefined(isolate);
+    case VPackValueType::Null:
+      return v8::Null(isolate); 
+    case VPackValueType::Bool:
+      return v8::Boolean::New(isolate, slice.getBool());
+    case VPackValueType::Double:
+      return v8::Number::New(isolate, slice.getDouble());
+    case VPackValueType::Int:
+      return v8::Number::New(isolate, slice.getInt());
+    case VPackValueType::UInt:
+      return v8::Number::New(isolate, slice.getUInt());
+    case VPackValueType::SmallInt:
+      return v8::Number::New(isolate, slice.getSmallInt());
+    case VPackValueType::String:
+      return ObjectJsonString(isolate, slice);
+    case VPackValueType::Object:
+      return ObjectJsonObject(isolate, slice);
+   case VPackValueType::Array:
+      return ObjectJsonArray(isolate, slice);
+    default:
+      return v8::Undefined(isolate);
+  }
+}
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
