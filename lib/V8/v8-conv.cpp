@@ -799,14 +799,15 @@ static v8::Handle<v8::Value> ObjectJsonObject (v8::Isolate* isolate, VPackSlice 
     return v8::Undefined(isolate);
   }
 
-  slice.iterateObject([&object, &isolate] (VPackSlice const& key, VPackSlice const& value ) -> bool {
-    v8::Handle<v8::Value> val = TRI_ObjectJson(isolate, value);
+  VPackObjectIterator it(slice);
+  while (it.valid()) {
+    v8::Handle<v8::Value> val = TRI_ObjectJson(isolate, it.value());
     if (! val.IsEmpty()) {
-      auto k = ObjectJsonString(isolate, key); 
+      auto k = ObjectJsonString(isolate, it.key()); 
       object->ForceSet(k, val);
     }
-    return true;
-  });
+    it.next();
+  }
 
   return object;
 }
@@ -824,13 +825,15 @@ static v8::Handle<v8::Value> ObjectJsonArray (v8::Isolate* isolate, VPackSlice c
   }
 
   uint32_t j = 0;
-  slice.iterateArray([&object, &j, &isolate] (VPackSlice const& element) -> bool {
-    v8::Handle<v8::Value> val = TRI_ObjectJson(isolate, element);
+  VPackArrayIterator it(slice);
+
+  while (it.valid()) {
+    v8::Handle<v8::Value> val = TRI_ObjectJson(isolate, it.value());
     if (! val.IsEmpty()) {
       object->Set(j++, val);
     }
-    return true;
-  });
+    it.next();
+  }
 
   return object;
 }

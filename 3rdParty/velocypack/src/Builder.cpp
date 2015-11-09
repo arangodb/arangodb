@@ -30,7 +30,7 @@
 #include "velocypack/Builder.h"
 
 using namespace arangodb::velocypack;
-
+        
 void Builder::doActualSort (std::vector<SortEntry>& entries) {
   VELOCYPACK_ASSERT(entries.size() > 1);
   std::sort(entries.begin(), entries.end(), 
@@ -68,7 +68,7 @@ uint8_t const* Builder::findAttrName (uint8_t const* base, uint64_t& len) {
 }
 
 void Builder::sortObjectIndexShort (uint8_t* objBase,
-                                         std::vector<ValueLength>& offsets) {
+                                    std::vector<ValueLength>& offsets) {
   auto cmp = [&] (ValueLength a, ValueLength b) -> bool {
     uint8_t const* aa = objBase + a;
     uint8_t const* bb = objBase + b;
@@ -93,7 +93,7 @@ void Builder::sortObjectIndexShort (uint8_t* objBase,
 }
 
 void Builder::sortObjectIndexLong (uint8_t* objBase,
-                                        std::vector<ValueLength>& offsets) {
+                                   std::vector<ValueLength>& offsets) {
 
   // on some platforms we can use a thread-local vector
 #if __llvm__ == 1
@@ -124,7 +124,7 @@ void Builder::sortObjectIndexLong (uint8_t* objBase,
 }
 
 void Builder::sortObjectIndex (uint8_t* objBase,
-                                    std::vector<ValueLength>& offsets) {
+                               std::vector<ValueLength>& offsets) {
   if (offsets.size() > 32) {
     sortObjectIndexLong(objBase, offsets);
   }
@@ -133,9 +133,22 @@ void Builder::sortObjectIndex (uint8_t* objBase,
   }
 }
 
-void Builder::close () {
+void Builder::removeLast () {
   if (_stack.empty()) {
-    throw Exception(Exception::BuilderNeedOpenObject);
+    throw Exception(Exception::BuilderNeedOpenCompound);
+  }
+  ValueLength& tos = _stack.back();
+  std::vector<ValueLength>& index = _index[_stack.size() - 1];
+  if (index.empty()) {
+    throw Exception(Exception::BuilderNeedSubvalue);
+  }
+  _pos = tos + index.back();
+  index.pop_back();
+}
+
+void Builder::close () {
+  if (isClosed()) {
+    throw Exception(Exception::BuilderNeedOpenCompound);
   }
   ValueLength& tos = _stack.back();
   if (_start[tos] != 0x06 && _start[tos] != 0x0b) {
@@ -295,6 +308,28 @@ void Builder::close () {
   // Intentionally leave _index[depth] intact to avoid future allocs!
 }
 
+// checks whether an Object value has a specific key attribute
+bool Builder::hasKey (std::string const& key) const {
+  if (_stack.empty()) {
+    throw Exception(Exception::BuilderNeedOpenObject);
+  }
+  ValueLength const& tos = _stack.back();
+  if (_start[tos] != 0x06 && _start[tos] != 0x0b) {
+    throw Exception(Exception::BuilderNeedOpenObject);
+  }
+  std::vector<ValueLength> const& index = _index[_stack.size() - 1];
+  if (index.empty()) {
+    return false;
+  }
+  for (size_t i = 0; i < index.size(); ++i) {
+    Slice s(_start + tos + index[i]);
+    if (s.isString() && s.copyString() == key) {
+      return true;
+    }
+  }
+  return false; 
+}
+
 uint8_t* Builder::set (Value const& item) {
   auto const oldPos = _start + _pos;
   auto ctype = item.cType();
@@ -371,6 +406,7 @@ uint8_t* Builder::set (Value const& item) {
           break;
         case Value::CType::UInt64:
           vv = static_cast<int64_t>(item.getUInt64());
+          break;
         default:
           throw Exception(Exception::BuilderUnexpectedValue, "Must give number for ValueType::SmallInt");
       }
@@ -648,4 +684,6 @@ uint8_t* Builder::add (Slice const& sub) {
 uint8_t* Builder::add (ValuePair const& sub) {
   return addInternal<ValuePair>(sub);
 }
+
+static_assert(sizeof(double) == 8, "double is not 8 bytes");
 

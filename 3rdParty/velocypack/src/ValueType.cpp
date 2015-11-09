@@ -28,7 +28,7 @@
 
 using namespace arangodb::velocypack;
 
-char const* arangodb::velocypack::ValueTypeName (ValueType type) {
+char const* arangodb::velocypack::valueTypeName (ValueType type) {
   switch (type) {
     case ValueType::None:        return "none";
     case ValueType::Null:        return "null";
@@ -53,6 +53,6 @@ char const* arangodb::velocypack::ValueTypeName (ValueType type) {
 }
 
 std::ostream& operator<< (std::ostream& stream, ValueType type) {
-  stream << ValueTypeName(type);
+  stream << valueTypeName(type);
   return stream;
 }

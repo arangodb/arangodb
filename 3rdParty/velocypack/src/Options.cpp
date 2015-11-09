@@ -24,19 +24,11 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <ostream>
-
 #include "velocypack/velocypack-common.h"
-#include "velocypack/Exception.h"
+#include "velocypack/Options.h"
 
 using namespace arangodb::velocypack;
 
-std::ostream& operator<< (std::ostream& stream, Exception const* ex) {
-  stream << "[Exception " << ex->what() << "]";
-  return stream;
-}
-
-std::ostream& operator<< (std::ostream& stream, Exception const& ex) { 
-  return operator<<(stream, &ex);
-}
+// default options instance        
+Options Options::Defaults;
 

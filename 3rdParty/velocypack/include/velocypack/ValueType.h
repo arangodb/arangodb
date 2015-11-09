@@ -54,7 +54,7 @@ namespace arangodb {
       Custom
     };
 
-    char const* ValueTypeName (ValueType);
+    char const* valueTypeName (ValueType);
 
   }  // namespace arangodb::velocypack
 }  // namespace arangodb

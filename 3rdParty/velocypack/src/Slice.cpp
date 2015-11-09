@@ -162,12 +162,13 @@ std::string Slice::hexType () const {
 }
         
 std::ostream& operator<< (std::ostream& stream, Slice const* slice) {
-  stream << "[Slice " << ValueTypeName(slice->type()) << " (" << slice->hexType() << "), byteSize: " << slice->byteSize() << "]";
+  stream << "[Slice " << valueTypeName(slice->type()) << " (" << slice->hexType() << "), byteSize: " << slice->byteSize() << "]";
   return stream;
 }
 
 std::ostream& operator<< (std::ostream& stream, Slice const& slice) {
-  stream << "[Slice " << ValueTypeName(slice.type()) << " (" << slice.hexType() << "), byteSize: " << slice.byteSize() << "]";
-  return stream;
+  return operator<<(stream, &slice);
 }
 
+static_assert(sizeof(arangodb::velocypack::Slice) == sizeof(void*),
+              "Slice has an unexpected size");

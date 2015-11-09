@@ -24,19 +24,37 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <ostream>
-
 #include "velocypack/velocypack-common.h"
-#include "velocypack/Exception.h"
+#include "velocypack/HexDump.h"
 
 using namespace arangodb::velocypack;
+        
+std::ostream& operator<< (std::ostream& stream, HexDump const* hexdump) {
+  int current = 0;
 
-std::ostream& operator<< (std::ostream& stream, Exception const* ex) {
-  stream << "[Exception " << ex->what() << "]";
+  for (uint8_t it : hexdump->slice) {
+    if (current != 0) {
+      stream << hexdump->separator;
+    }
+
+    stream << "0x";
+    uint8_t x = it / 16;
+    stream << static_cast<unsigned char>(x < 10 ? ('0' + x) : ('a' + x - 10));
+    x = it % 16;
+    stream << static_cast<unsigned char>(x < 10 ? ('0' + x) : ('a' + x - 10));
+
+    ++current;
+
+    if (hexdump->valuesPerLine > 0 && current == hexdump->valuesPerLine) {
+      stream << std::endl;
+      current = 0;
+    }
+  }
+
   return stream;
 }
 
-std::ostream& operator<< (std::ostream& stream, Exception const& ex) { 
-  return operator<<(stream, &ex);
+std::ostream& operator<< (std::ostream& stream, HexDump const& hexdump) {
+  return operator<<(stream, &hexdump);
 }
 

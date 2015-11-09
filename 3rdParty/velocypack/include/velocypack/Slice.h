@@ -30,11 +30,8 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
-#include <unordered_set>
 #include <vector>
 #include <ostream>
-#include <functional>
-#include <algorithm>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
@@ -43,6 +40,9 @@
 
 namespace arangodb {
   namespace velocypack {
+
+    // forward for fasthash64 function declared elsewhere
+    uint64_t fasthash64 (void const*, size_t, uint64_t);
 
     class Slice {
 
@@ -68,6 +68,22 @@ namespace arangodb {
         explicit Slice (char const* start) 
           : _start(reinterpret_cast<uint8_t const*>(start)) {
         }
+        
+        uint8_t const* begin () {
+          return _start;
+        }
+        
+        uint8_t const* begin () const {
+          return _start;
+        }
+        
+        uint8_t const* end () {
+          return _start + byteSize();
+        }
+
+        uint8_t const* end () const {
+          return _start + byteSize();
+        }
 
         // No destructor, does not take part in memory management,
         // standard copy, and move constructors, behaves like a pointer.
@@ -78,7 +94,7 @@ namespace arangodb {
         }
 
         char const* typeName () const {
-          return ValueTypeName(type());
+          return valueTypeName(type());
         }
 
         // pointer to the head byte
@@ -89,6 +105,10 @@ namespace arangodb {
         // value of the head byte
         inline uint8_t head () const {
           return *_start;
+        }
+
+        inline uint64_t hash () const {
+          return fasthash64(start(), byteSize(), 0xdeadbeef);
         }
 
         // check if slice is of the specified type
@@ -393,25 +413,17 @@ namespace arangodb {
         Slice operator[] (std::string const& attribute) const {
           return get(attribute);
         }
-
-        void iterateArray (std::function<bool(Slice const&)> const& callback) const {
-          ValueLength const n = length(); 
-          for (ValueLength i = 0; i < n; ++i) {
-            if (! callback(at(i))) {
-              return;
-            }
-          }
+ 
+        // whether or not an Object has a specific key
+        bool hasKey (std::string const& attribute) const {
+          return ! get(attribute).isNone();
         }
 
-        void iterateObject (std::function<bool(Slice const&, Slice const&)> const& callback) const {
-          ValueLength const n = length(); 
-          for (ValueLength i = 0; i < n; ++i) {
-            if (! callback(keyAt(i), valueAt(i))) {
-              return;
-            }
-          }
+        // whether or not an Object has a specific sub-key
+        bool hasKey (std::vector<std::string> const& attributes) const {
+          return ! get(attributes).isNone();
         }
-        
+
         // return the pointer to the data for an External object
         char const* getExternal () const {
           return extractValue<char const*>();
@@ -853,10 +865,34 @@ namespace arangodb {
         static unsigned int const FirstSubMap[256];
     };
 
-    static_assert(sizeof(Slice) == sizeof(void*), "Slice has an unexpected size");
-
   }  // namespace arangodb::velocypack
 }  // namespace arangodb
+
+namespace std {
+  template<> struct hash<arangodb::velocypack::Slice> {
+    size_t operator () (arangodb::velocypack::Slice const& slice) const {
+      return slice.hash();
+    }
+  };
+
+  template<> struct equal_to<arangodb::velocypack::Slice> {
+    bool operator () (arangodb::velocypack::Slice const& a,
+                      arangodb::velocypack::Slice const& b) const {
+      if (*a.start() != *b.start()) {
+        return false;
+      }
+
+      auto const aSize = a.byteSize();
+      auto const bSize = b.byteSize();
+
+      if (aSize != bSize) {
+        return false;
+      }
+
+      return (memcmp(a.start(), b.start(), aSize) == 0);
+    }
+  };
+}
         
 std::ostream& operator<< (std::ostream&, arangodb::velocypack::Slice const*);
 

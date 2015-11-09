@@ -29,7 +29,7 @@
 #include "asm-functions.h"
 
 using namespace arangodb::velocypack;
-
+       
 // The following function does the actual parse. It gets bytes
 // via peek, consume and reset appends the result to the Builder
 // in _b. Errors are reported via an exception.
@@ -415,6 +415,8 @@ void Parser::parseArray () {
     return;
   }
 
+  increaseNesting();
+
   while (true) {
     // parse array element itself
     _b.reportAdd(base);
@@ -424,6 +426,7 @@ void Parser::parseArray () {
       // end of array
       ++_pos;  // the closing ']'
       _b.close();
+      decreaseNesting();
       return;
     }
     // skip over ','
@@ -432,6 +435,9 @@ void Parser::parseArray () {
     }
     ++_pos;  // the ','
   }
+
+  // should never get here
+  VELOCYPACK_ASSERT(false);
 }
                        
 void Parser::parseObject () {
@@ -442,9 +448,14 @@ void Parser::parseObject () {
   if (i == '}') {
     // empty object
     consume();   // the closing ']'
-    _b.close();
+    if (_nesting != 0 || ! options.keepTopLevelOpen) {
+      // only close if we've not been asked to keep top level open
+      _b.close();
+    }
     return;
   }
+
+  increaseNesting();
 
   while (true) {
     // always expecting a string attribute name here
@@ -455,7 +466,17 @@ void Parser::parseObject () {
     ++_pos;
 
     _b.reportAdd(base);
-    parseString();
+    bool excludeAttribute = false;
+    if (options.excludeAttribute == nullptr) {
+      parseString();
+    }
+    else {
+      auto lastPos = _b._pos;
+      parseString();
+      if (options.excludeAttribute(Slice(_b._start + lastPos), _nesting)) {
+        excludeAttribute = true;
+      }
+    }
     i = skipWhiteSpace("Expecting ':'");
     // always expecting the ':' here
     if (i != ':') {
@@ -464,11 +485,20 @@ void Parser::parseObject () {
     ++_pos; // skip over the colon
 
     parseJson();
+
+    if (excludeAttribute) {
+      _b.removeLast();
+    }
+
     i = skipWhiteSpace("Expecting ',' or '}'");
     if (i == '}') {
       // end of object
       ++_pos;  // the closing '}'
-      _b.close();
+      if (_nesting != 1 || ! options.keepTopLevelOpen) {
+        // only close if we've not been asked to keep top level open
+        _b.close();
+      }
+      decreaseNesting();
       return;
     }
     if (i != ',') {
@@ -478,6 +508,9 @@ void Parser::parseObject () {
     ++_pos;  // the ','
     i = skipWhiteSpace("Expecting '\"' or '}'");
   }
+  
+  // should never get here
+  VELOCYPACK_ASSERT(false);
 }
                        
 void Parser::parseJson () {
