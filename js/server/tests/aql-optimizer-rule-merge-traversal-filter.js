@@ -31,7 +31,7 @@
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var isEqual = helper.isEqual;
-
+var getLinearizedPlan = helper.getLinearizedPlan;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,6 +135,7 @@ function optimizerRuleTestSuite () {
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].label == 'foo' return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[*].label == 'foo' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 2    OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[*].label == 'foo' return {v:v,e:e,p:p}", /// TODO: check for circles[D,E] to be _the_ result
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true FILTER p.edges[0].label == 'foo' return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true FILTER p.edges[*].label == 'foo' return {v:v,e:e,p:p}",
@@ -155,8 +156,32 @@ function optimizerRuleTestSuite () {
         assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query);
 
       });
-    }
+    },
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test NOOP results
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoResults : function () {
+      var queries = [ 
+         // shure shot: 5 < 7
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[7].label == 'foo' return {v:v,e:e,p:p}",
+        // indexed access starts with 0 - this is also forbidden since it will look for the 6th!
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[5].label == 'foo' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 5..1 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}"
+        // TODO: right now we're not clever enough to find this:
+        // "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[1].label == 'foo' AND p.edges[1].label == 'bar' return {v:v,e:e,p:p}"
+      ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query, { }, paramEnabled);
+        var simplePlan = helper.getCompactPlan(result);
+        
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertEqual(simplePlan[2].type, "NoResultsNode");
+      });
+    }
   };
 }
 
