@@ -1932,13 +1932,17 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
     generateError(HttpResponse::responseCode(res), res);
   }
   else {
-    TRI_json_t result;
-
-    TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &result);
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-
-    generateResult(&result);
-    TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &result);
+    try {
+      VPackBuilder result;
+      result.add(VPackValue(VPackValueType::Object));
+      result.add("result", VPackValue(true));
+      result.close();
+      VPackSlice s = result.slice();
+      generateResult(s);
+    }
+    catch (...) {
+      generateOOMError();
+    }
   }
 }
 
@@ -1979,13 +1983,17 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
     generateError(HttpResponse::responseCode(res), res);
   }
   else {
-    TRI_json_t result;
-
-    TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-
-    generateResult(&result);
-    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+    try {
+      VPackBuilder result;
+      result.add(VPackValue(VPackValueType::Object));
+      result.add("result", VPackValue(true));
+      result.close();
+      VPackSlice s = result.slice();
+      generateResult(s);
+    }
+    catch (...) {
+      generateOOMError();
+    }
   }
 }
 
