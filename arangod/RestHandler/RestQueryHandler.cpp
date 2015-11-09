@@ -502,12 +502,18 @@ bool RestQueryHandler::replaceProperties () {
     return true;
   }
 
-  unique_ptr<TRI_json_t> body(parseJsonBody());
-
-  if (body == nullptr) {
-    // error message generated in parseJsonBody
+  bool parseSuccess = true;
+  VPackBuilder parsedBody = parseVelocyPackBody(parseSuccess);
+  if (! parseSuccess) {
+    // error message generated in parseVelocyPackBody
     return true;
   }
+  VPackSlice body = parsedBody.slice();
+  if (! body.isObject()) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting a JSON object as body");
+  };
 
   auto queryList = static_cast<triagens::aql::QueryList*>(_vocbase->_queries);
 
@@ -518,26 +524,30 @@ bool RestQueryHandler::replaceProperties () {
     double slowQueryThreshold = queryList->slowQueryThreshold();
     size_t maxQueryStringLength = queryList->maxQueryStringLength();
 
-    // TODO(fc) add a "hasSomething" to JsonHelper?
-
-    if (JsonHelper::getObjectElement(body.get(), "enabled") != nullptr) {
-      enabled = JsonHelper::checkAndGetBooleanValue(body.get(), "enabled");
+    VPackSlice attribute;
+    attribute = body.get("enabled");
+    if (attribute.isBool()) {
+      enabled = attribute.getBool();
     }
 
-    if (JsonHelper::getObjectElement(body.get(), "trackSlowQueries") != nullptr) {
-      trackSlowQueries = JsonHelper::checkAndGetBooleanValue(body.get(), "trackSlowQueries");
+    attribute = body.get("trackSlowQueries");
+    if (attribute.isBool()) {
+      trackSlowQueries = attribute.getBool();
     }
 
-    if (JsonHelper::getObjectElement(body.get(), "maxSlowQueries") != nullptr) {
-      maxSlowQueries = JsonHelper::checkAndGetNumericValue<size_t>(body.get(), "maxSlowQueries");
+    attribute = body.get("maxSlowQueries");
+    if (attribute.isInteger()) {
+      maxSlowQueries = static_cast<size_t>(attribute.getUInt());
     }
 
-    if (JsonHelper::getObjectElement(body.get(), "slowQueryThreshold") != nullptr) {
-      slowQueryThreshold = JsonHelper::checkAndGetNumericValue<double>(body.get(), "slowQueryThreshold");
+    attribute = body.get("slowQueryThreshold");
+    if (attribute.isDouble()) {
+      slowQueryThreshold = attribute.getDouble();
     }
 
-    if (JsonHelper::getObjectElement(body.get(), "maxQueryStringLength") != nullptr) {
-      maxQueryStringLength = JsonHelper::checkAndGetNumericValue<size_t>(body.get(), "maxQueryStringLength");
+    attribute = body.get("maxQueryStringLength");
+    if (attribute.isInteger()) {
+      maxQueryStringLength = static_cast<size_t>(attribute.getUInt());
     }
 
     queryList->enabled(enabled);
@@ -632,12 +642,20 @@ bool RestQueryHandler::parseQuery () {
     return true;
   }
 
-  unique_ptr<TRI_json_t> body(parseJsonBody());
-
-  if (body.get() == nullptr) {
-    // error message generated in parseJsonBody
+  bool parseSuccess = true;
+  VPackBuilder parsedBody = parseVelocyPackBody(parseSuccess);
+  if (! parseSuccess) {
+    // error message generated in parseVelocyPackBody
     return true;
   }
+
+  VPackSlice body = parsedBody.slice();
+
+  if (! body.isObject()) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting a JSON object as body");
+  };
 
   try {
     const string&& queryString = JsonHelper::checkAndGetStringValue(body.get(), "query");
