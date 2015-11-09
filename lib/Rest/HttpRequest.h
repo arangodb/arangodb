@@ -40,6 +40,8 @@
 #include "Rest/ConnectionInfo.h"
 #include "Rest/RequestContext.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class HttpRequest
 // -----------------------------------------------------------------------------
@@ -514,6 +516,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int32_t compatibility ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the request body as VelocyPackBuilder
+////////////////////////////////////////////////////////////////////////////////
+
+        VPackBuilder toVelocyPack ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the request body as TRI_json_t*

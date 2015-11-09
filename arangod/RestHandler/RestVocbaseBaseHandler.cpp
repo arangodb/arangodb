@@ -562,6 +562,30 @@ bool RestVocbaseBaseHandler::extractWaitForSync () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief parses the body as VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+VPackBuilder RestVocbaseBaseHandler::parseVelocyPackBody (bool& success) {
+  try {
+    success = true;
+    return _request->toVelocyPack();
+  }
+  catch (std::bad_alloc const& e) {
+    generateOOMError();
+  }
+  catch (Exception const& e) {
+    std::string errmsg ("Parse error: ");
+    errmsg.append(e.what());
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  errmsg);
+  }
+  success = false;
+  VPackParser p;
+  return p.steal();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the body
 ////////////////////////////////////////////////////////////////////////////////
 
