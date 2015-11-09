@@ -145,10 +145,6 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
 
     case EN::TRAVERSAL: {
       auto node = static_cast<TraversalNode *>(en);
-      if (_changes->find(node->id()) != _changes->end()) {
-        // already optimized this node
-        break;
-      }
 
       std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
 
@@ -214,6 +210,7 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
       }
       if (foundCondition) {
         node->setCondition(condition.release());
+        *_planAltered = true;
       }
 
       break;

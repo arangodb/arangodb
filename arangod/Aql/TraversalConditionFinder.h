@@ -44,12 +44,10 @@ namespace triagens {
       public:
 
         TraversalConditionFinder (ExecutionPlan* plan,
-                                  std::unordered_map<size_t, ExecutionNode*>* changes,
-                                  bool* hasEmptyResult)
+                                  bool* planAltered)
           : _plan(plan),
             _variableDefinitions(),
-            _changes(changes),
-            _hasEmptyResult(hasEmptyResult) {
+            _planAltered(planAltered) {
         };
 
         ~TraversalConditionFinder () {
@@ -61,12 +59,10 @@ namespace triagens {
 
       private:
 
-        ExecutionPlan*                                 _plan;
-        std::unordered_map<VariableId, CalculationNode const*>        _variableDefinitions;
-        std::unordered_map<VariableId, ExecutionNode const*>  _filters;
-        // note: this class will never free the contents of this map
-        std::unordered_map<size_t, ExecutionNode*>*    _changes;
-        bool*                                          _hasEmptyResult;
+        ExecutionPlan*                                          _plan;
+        std::unordered_map<VariableId, CalculationNode const*>  _variableDefinitions;
+        std::unordered_map<VariableId, ExecutionNode const*>    _filters;
+        bool *                                                  _planAltered;
     
     };
   }

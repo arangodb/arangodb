@@ -3680,36 +3680,13 @@ int triagens::aql::mergeFilterIntoTraversal (Optimizer* opt,
   // These are all the FILTER nodes where we start
   std::vector<ExecutionNode*>&& nodes = plan->findEndNodes(true);
 
-  std::unordered_map<size_t, ExecutionNode*> changes;
-
-  auto cleanupChanges = [&changes] () -> void {
-    for (auto& v : changes) {
-      delete v.second;
-    }
-    changes.clear();
-  };
-
-  TRI_DEFER(cleanupChanges());
-  bool hasEmptyResult = false; 
+  bool planAltered = false; 
   for (auto const& n : nodes) {
-    TraversalConditionFinder finder(plan, &changes, &hasEmptyResult);
+    TraversalConditionFinder finder(plan, &planAltered);
     n->walk(&finder);
   }
 
-  if (! changes.empty()) {
-    for (auto& it : changes) {
-      plan->registerNode(it.second); 
-      plan->replaceNode(plan->getNodeById(it.first), it.second);
-
-      // prevent double deletion by cleanupChanges()
-      it.second = nullptr;
-    }
-    opt->addPlan(plan, rule, true);
-    plan->findVarUsage();
-  }
-  else {
-    opt->addPlan(plan, rule, hasEmptyResult);
-  }
+  opt->addPlan(plan, rule, planAltered);
 
   return TRI_ERROR_NO_ERROR;
 }
