@@ -59,6 +59,38 @@ namespace arangodb {
           _position = 0;
           return *this;
         }
+
+        Slice operator++ () { 
+          return _slice.at(_position++);
+        }
+
+        bool operator!= (ArrayIterator const& other) const {
+          return _position != other._position;
+        }
+
+        Slice operator* () const { 
+          return _slice.at(_position); 
+        }
+
+        ArrayIterator begin () { 
+          return ArrayIterator(_slice);
+        }
+
+        ArrayIterator begin () const { 
+          return ArrayIterator(_slice);
+        }
+
+        ArrayIterator end () { 
+          auto it = ArrayIterator(_slice);
+          it._position = it._size;
+          return it;
+        }
+
+        ArrayIterator end () const { 
+          auto it = ArrayIterator(_slice);
+          it._position = it._size;
+          return it;
+        }
         
         inline bool valid () const throw() {
           return (_position < _size);
@@ -87,6 +119,14 @@ namespace arangodb {
 
       public:
 
+        struct ObjectPair {
+          ObjectPair (Slice const& key, Slice const& value) 
+            : key(key), value(value) {
+          }
+          Slice const key;
+          Slice const value;
+        };
+
         ObjectIterator () = delete;
 
         ObjectIterator (Slice const& slice) 
@@ -107,7 +147,41 @@ namespace arangodb {
           _position = 0;
           return *this;
         }
-        
+
+        ObjectPair operator++ () { 
+          ObjectPair current(_slice.keyAt(_position), _slice.valueAt(_position)); 
+          ++_position;
+          return current;
+        }
+
+        bool operator!= (ObjectIterator const& other) const {
+          return _position != other._position;
+        }
+
+        ObjectPair operator* () const { 
+          return ObjectPair(_slice.keyAt(_position), _slice.valueAt(_position)); 
+        }
+
+        ObjectIterator begin () { 
+          return ObjectIterator(_slice);
+        }
+
+        ObjectIterator begin () const { 
+          return ObjectIterator(_slice);
+        }
+
+        ObjectIterator end () { 
+          auto it = ObjectIterator(_slice);
+          it._position = it._size;
+          return it;
+        }
+
+        ObjectIterator end () const { 
+          auto it = ObjectIterator(_slice);
+          it._position = it._size;
+          return it;
+        }
+
         inline bool valid () const throw() {
           return (_position < _size);
         }

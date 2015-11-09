@@ -71,6 +71,8 @@ namespace arangodb {
 
       public:
 
+        Value () = delete;
+
         explicit Value (ValueType t = ValueType::Null) 
           : _valueType(t), _cType(CType::None) {
         }

@@ -73,8 +73,6 @@ namespace arangodb {
     // though no VPack values can exceed the bounds of 32 bit on a 32 bit OS
     typedef uint64_t ValueLength;
 
-    static_assert(sizeof(ValueLength) >= sizeof(SIZE_MAX), "invalid value for SIZE_MAX");
-
 #ifndef VELOCYPACK_64BIT
     // check if the length is beyond the size of a SIZE_MAX on this platform
     static void CheckValueLength (ValueLength);

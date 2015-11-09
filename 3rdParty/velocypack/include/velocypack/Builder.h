@@ -66,8 +66,6 @@ namespace arangodb {
         uint8_t*        _start;   // Always points to the start of _buffer
         ValueLength     _size;    // Always contains the size of _buffer
         ValueLength     _pos;     // the append position, always <= _size
-        bool            _attrWritten;  // indicates that an attribute name
-                                       // in an object has been written
         std::vector<ValueLength>              _stack;  // Start positions of
                                                        // open objects/arrays
         std::vector<std::vector<ValueLength>> _index;  // Indices for starts
@@ -134,8 +132,7 @@ namespace arangodb {
 
         Builder ()
           : _buffer({ 0 }),
-            _pos(0), 
-            _attrWritten(false) {
+            _pos(0) {
           _start = _buffer.data();
           _size = _buffer.size();
         }
@@ -147,7 +144,7 @@ namespace arangodb {
 
         Builder (Builder const& that) 
           : _buffer(that._buffer), _start(_buffer.data()), _size(_buffer.size()), _pos(that._pos),
-            _attrWritten(that._attrWritten), _stack(that._stack), _index(that._index), options(that.options) {
+            _stack(that._stack), _index(that._index), options(that.options) {
         }
 
         Builder& operator= (Builder const& that) {
@@ -155,7 +152,6 @@ namespace arangodb {
           _start = _buffer.data();
           _size = _buffer.size();
           _pos = that._pos;
-          _attrWritten = that._attrWritten;
           _stack = that._stack;
           _index = that._index;
           options = that.options;
@@ -169,7 +165,6 @@ namespace arangodb {
           _start = _buffer.data();
           _size = _buffer.size();
           _pos = that._pos;
-          _attrWritten = that._attrWritten;
           _stack.clear();
           _stack.swap(that._stack);
           _index.clear();
@@ -178,7 +173,6 @@ namespace arangodb {
           that._start = nullptr;
           that._size = 0;
           that._pos = 0;
-          that._attrWritten = false;
         }
 
         Builder& operator= (Builder&& that) {
@@ -188,7 +182,6 @@ namespace arangodb {
           _start = _buffer.data();
           _size = _buffer.size();
           _pos = that._pos;
-          _attrWritten = that._attrWritten;
           _stack.clear();
           _stack.swap(that._stack);
           _index.clear();
@@ -197,33 +190,45 @@ namespace arangodb {
           that._start = nullptr;
           that._size = 0;
           that._pos = 0;
-          that._attrWritten = false;
           return *this;
+        }
+
+        static Builder clone (Slice const& slice, Options const& options = Options::Defaults) {
+          Builder b;
+          b.options = options;
+          b.add(slice);
+          return b; 
         }
 
         // Clear and start from scratch:
         void clear () {
           _pos = 0;
-          _attrWritten = false;
           _stack.clear();
         }
 
         // Return a pointer to the start of the result:
         uint8_t* start () const {
+          if (! isClosed()) {
+            throw Exception(Exception::BuilderNotSealed);
+          }
           return _start;
         }
 
         // Return a Slice of the result:
         Slice slice () const {
-          return Slice(_start);
+          return Slice(start());
         }
 
         // Compute the actual size here, but only when sealed
         ValueLength size () const {
-          if (! _stack.empty()) {
-            throw Exception(Exception::BuilderObjectNotSealed);
+          if (! isClosed()) {
+            throw Exception(Exception::BuilderNotSealed);
           }
           return _pos;
+        }
+
+        bool isClosed () const throw() {
+          return _stack.empty();
         }
 
         // Add a subvalue into an object from a Value:
@@ -246,6 +251,13 @@ namespace arangodb {
         
         // Seal the innermost array or object:
         void close ();
+
+        // Remove last subvalue written to an (unclosed) object or array:
+        // Throws if an error occurs.
+        void removeLast ();
+
+        // whether or not a specific key is present in an Object value
+        bool hasKey (std::string const& key) const;
 
         // Syntactic sugar for add:
         Builder& operator() (std::string const& attrName, Value sub) {
@@ -293,8 +305,6 @@ namespace arangodb {
         }
 
         void addDouble (double v) {
-          static_assert(sizeof(double) == 8, "double is not 8 bytes");
-
           uint64_t dv;
           memcpy(&dv, &v, sizeof(double));
           ValueLength vSize = sizeof(double);
@@ -369,34 +379,19 @@ namespace arangodb {
         uint8_t* addInternal (T const& sub) {
           if (! _stack.empty()) {
             ValueLength& tos = _stack.back();
-            if (_start[tos] != 0x06 && _start[tos] != 0x0b) {
-              throw Exception(Exception::BuilderNeedOpenObject);
+            if (_start[tos] != 0x06) {
+              throw Exception(Exception::BuilderNeedOpenArray);
             }
-            if (_start[tos] == 0x0b) {  // Object
-              if (! _attrWritten && ! sub.isString()) {
-                throw Exception(Exception::BuilderNeedOpenObject);
-              }
-              if (! _attrWritten) {
-                reportAdd(tos);
-              }
-              _attrWritten = ! _attrWritten;
-            }
-            else {  // Array
-              reportAdd(tos);
-            }
+            reportAdd(tos);
           }
           return set(sub);
         }
   
         template<typename T>
         uint8_t* addInternal (std::string const& attrName, T const& sub) {
-          if (_attrWritten) {
-            throw Exception(Exception::InternalError, "Attribute name already written");
-          }
           if (! _stack.empty()) {
             ValueLength& tos = _stack.back();
-            if (_start[tos] != 0x06 &&
-                _start[tos] != 0x0b) {
+            if (_start[tos] != 0x0b) {
               throw Exception(Exception::BuilderNeedOpenObject);
             }
             reportAdd(tos);

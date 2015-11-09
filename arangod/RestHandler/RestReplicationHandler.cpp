@@ -642,10 +642,10 @@ void RestReplicationHandler::handleCommandLoggerTickRanges () {
       char buffer[21];
       size_t len;
       len = TRI_StringUInt64InPlace(it.tickMin, (char*) &buffer);
-      b.add("tickMin", VPackValue((char const*) buffer));
+      b.add("tickMin", VPackValue(std::string(&buffer[0], len)));
 
       len = TRI_StringUInt64InPlace(it.tickMax, (char*) &buffer);
-      b.add("tickMax", VPackValue((char const*) buffer));
+      b.add("tickMax", VPackValue(std::string(&buffer[0], len)));
 
       b.close();
     }

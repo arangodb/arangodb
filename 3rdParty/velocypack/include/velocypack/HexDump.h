@@ -24,19 +24,40 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef VELOCYPACK_HEXDUMP_H
+#define VELOCYPACK_HEXDUMP_H 1
+
 #include <ostream>
 
 #include "velocypack/velocypack-common.h"
-#include "velocypack/Exception.h"
+#include "velocypack/Slice.h"
+#include "velocypack/Value.h"
+#include "velocypack/ValueType.h"
 
-using namespace arangodb::velocypack;
+namespace arangodb {
+  namespace velocypack {
 
-std::ostream& operator<< (std::ostream& stream, Exception const* ex) {
-  stream << "[Exception " << ex->what() << "]";
-  return stream;
-}
+    struct HexDump {
+      HexDump () = delete;
 
-std::ostream& operator<< (std::ostream& stream, Exception const& ex) { 
-  return operator<<(stream, &ex);
-}
+      HexDump (Slice const& slice, int valuesPerLine = 16, std::string const& separator = " ")
+        : slice(slice), valuesPerLine(valuesPerLine), separator(separator) {
+      }
 
+      HexDump (Slice const* slice, int valuesPerLine = 16, std::string const& separator = " ")
+        : HexDump(*slice, valuesPerLine, separator) {
+      }
+
+      Slice const slice;
+      int valuesPerLine;
+      std::string separator;
+    };
+
+  }  // namespace arangodb::velocypack
+}  // namespace arangodb
+
+std::ostream& operator<< (std::ostream&, arangodb::velocypack::HexDump const*);
+
+std::ostream& operator<< (std::ostream&, arangodb::velocypack::HexDump const&);
+
+#endif

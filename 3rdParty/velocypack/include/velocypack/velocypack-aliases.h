@@ -35,6 +35,7 @@ using VPackBuilder            = arangodb::velocypack::Builder;
 using VPackCharBuffer         = arangodb::velocypack::CharBuffer;
 using VPackCollection         = arangodb::velocypack::Collection;
 using VPackException          = arangodb::velocypack::Exception;
+using VPackHexDump            = arangodb::velocypack::HexDump;
 using VPackObjectIterator     = arangodb::velocypack::ObjectIterator;
 using VPackOptions            = arangodb::velocypack::Options;
 using VPackParser             = arangodb::velocypack::Parser;
@@ -42,6 +43,7 @@ using VPackStringDumper       = arangodb::velocypack::StringDumper;
 using VPackStringPrettyDumper = arangodb::velocypack::StringPrettyDumper;
 using VPackSlice              = arangodb::velocypack::Slice;
 using VPackValue              = arangodb::velocypack::Value;
+using VPackValueLength        = arangodb::velocypack::ValueLength;
 using VPackValueType          = arangodb::velocypack::ValueType;
 
 #endif

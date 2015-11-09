@@ -40,23 +40,28 @@ namespace arangodb {
     struct Exception : std::exception {
       public:
         enum ExceptionType {
-          InternalError            = 1,
-          NotImplemented,
-          NoJsonEquivalent,
-          ParseError,
-          UnexpectedControlCharacter,
-          IndexOutOfBounds,
-          NumberOutOfRange,
-          InvalidUtf8Sequence,
-          InvalidAttributePath,
-          InvalidValueType,
-          DuplicateAttributeName,
-          BuilderObjectNotSealed,
-          BuilderNeedOpenObject,
-          BuilderUnexpectedType,
-          BuilderUnexpectedValue,
+          InternalError               = 1,
+          NotImplemented              = 2,
 
-          UnknownError
+          NoJsonEquivalent            = 10,  
+          ParseError                  = 11, 
+          UnexpectedControlCharacter  = 12,
+          IndexOutOfBounds            = 13,
+          NumberOutOfRange            = 14,
+          InvalidUtf8Sequence         = 15,
+          InvalidAttributePath        = 16,
+          InvalidValueType            = 17,
+          DuplicateAttributeName      = 18,
+          BuilderNotSealed            = 20,
+
+          BuilderNeedOpenObject       = 21,
+          BuilderNeedOpenArray        = 22,
+          BuilderNeedOpenCompound     = 23,
+          BuilderUnexpectedType       = 24,
+          BuilderUnexpectedValue      = 25,
+          BuilderNeedSubvalue         = 26,
+
+          UnknownError                = 999 
         };
 
       private:
@@ -106,10 +111,16 @@ namespace arangodb {
               return "Invalid attribute path";
             case InvalidValueType:
               return "Invalid value type for operation";
-            case BuilderObjectNotSealed:
-              return "Object not sealed";
+            case BuilderNotSealed:
+              return "Builder object not yet sealed";
             case BuilderNeedOpenObject:
-              return "Need open Array or Object for close() call";
+              return "Need open Object";
+            case BuilderNeedOpenArray:
+              return "Need open Array";
+            case BuilderNeedSubvalue:
+              return "Need subvalue in current object or array";
+            case BuilderNeedOpenCompound:
+              return "Need open compound value (Array or Object)";
             case BuilderUnexpectedType:
               return "Unexpected type";
             case BuilderUnexpectedValue:

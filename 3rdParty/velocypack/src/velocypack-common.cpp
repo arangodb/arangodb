@@ -44,3 +44,6 @@ int64_t arangodb::velocypack::CurrentUTCDateValue () {
   return static_cast<int64_t>(std::chrono::system_clock::now().time_since_epoch().count() / std::chrono::milliseconds(1).count());
 }
 
+static_assert(sizeof(arangodb::velocypack::ValueLength) >= sizeof(SIZE_MAX),
+              "invalid value for SIZE_MAX");
+

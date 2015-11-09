@@ -32,6 +32,7 @@
 #include "velocypack/Collection.h"
 #include "velocypack/Dump.h"
 #include "velocypack/Exception.h"
+#include "velocypack/HexDump.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Options.h"
 #include "velocypack/Parser.h"
