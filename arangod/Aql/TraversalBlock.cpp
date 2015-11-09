@@ -331,7 +331,6 @@ bool TraversalBlock::executeExpressions (AqlValue& pathValue) {
   bool rc = a.isTrue();
   a.destroy();
 
-  printf("x\n");
   return rc;
 }
 
@@ -364,7 +363,6 @@ bool TraversalBlock::morePaths (size_t hint) {
 
     if ((en->condition() != NULL) && 
         !executeExpressions(pathValue)) {
-      printf("SKIP\n");
       _traverser->prune();
       continue;
     }
