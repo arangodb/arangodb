@@ -36,6 +36,7 @@
 #include "Basics/json.h"
 #include "Basics/string-buffer.h"
 #include "Basics/json-utilities.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
@@ -658,7 +659,7 @@ bool RestQueryHandler::parseQuery () {
   };
 
   try {
-    const string&& queryString = JsonHelper::checkAndGetStringValue(body.get(), "query");
+    const string&& queryString = VelocyPackHelper::checkAndGetStringValue(body, "query");
 
     Query query(_applicationV8, true, _vocbase, queryString.c_str(), queryString.size(), nullptr, nullptr, PART_MAIN);
     
