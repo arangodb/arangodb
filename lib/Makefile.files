@@ -72,6 +72,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/tri-zip.cpp \
 	lib/Basics/Utf8Helper.cpp \
 	lib/Basics/vector.cpp \
+	lib/Basics/VelocyPackHelper.cpp \
 	lib/Basics/voc-errors.cpp \
 	lib/Basics/voc-mimetypes.cpp \
 	lib/Basics/WriteLocker.cpp \

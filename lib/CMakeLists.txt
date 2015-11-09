@@ -128,6 +128,7 @@ add_library(
     Basics/tri-zip.cpp
     Basics/Utf8Helper.cpp
     Basics/vector.cpp
+    Basics/VelocyPackHelper.cpp
     Basics/voc-errors.cpp
     Basics/voc-mimetypes.cpp
     Basics/WriteLocker.cpp
