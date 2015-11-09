@@ -521,79 +521,59 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerState () {
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+  try {
+    VPackBuilder json;
+    json.add(VPackValue(VPackValueType::Object)); // Base
 
-  if (json == nullptr) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return;
-  }
+    triagens::wal::LogfileManagerState const&& s = triagens::wal::LogfileManager::instance()->state();
+    std::string const lastTickString(StringUtils::itoa(s.lastTick));
 
-  // "state" part
-  TRI_json_t* state = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+    // "state" part
+    json.add("state", VPackValue(VPackValueType::Object));
+    json.add("running", VPackValue(true));
+    json.add("lastLogTick", VPackValue(lastTickString));
+    json.add("totalEvents", VPackValue(s.numEvents));
+    json.add("time", VPackValue(s.timeString));
+    json.close();
 
-  if (state == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return;
-  }
+    // "server" part
+    char* serverIdString = TRI_StringUInt64(TRI_GetIdServer());
 
-  triagens::wal::LogfileManagerState const&& s = triagens::wal::LogfileManager::instance()->state();
-  std::string const lastTickString(StringUtils::itoa(s.lastTick));
+    json.add("server", VPackValue(VPackValueType::Object));
+    json.add("version", VPackValue(TRI_VERSION));
+    json.add("serverId", VPackValue(serverIdString));
+    TRI_FreeString(TRI_CORE_MEM_ZONE, serverIdString);
+    json.close();
 
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "running", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "lastLogTick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, lastTickString.c_str(), lastTickString.size()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) s.numEvents));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, s.timeString.c_str(), s.timeString.size()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "state", state);
+    // "clients" part
+    json.add("clients", VPackValue(VPackValueType::Array));
+    auto allClients = _vocbase->getReplicationClients();
+    for (auto& it : allClients) {
+      // One client
+      json.add(VPackValue(VPackValueType::Object));
+      serverIdString = TRI_StringUInt64(std::get<0>(it));
+      json.add("serverId", VPackValue(serverIdString));
+      TRI_FreeString(TRI_CORE_MEM_ZONE, serverIdString);
 
-  // "server" part
-  TRI_json_t* server = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+      char buffer[21];
+      TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
+      json.add("time", VPackValue(buffer));
 
-  if (server == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return;
-  }
+      char* tickString = TRI_StringUInt64(std::get<2>(it));
+      json.add("lastServedTick", VPackValue(tickString));
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
 
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_VERSION, strlen(TRI_VERSION)));
-  char* serverIdString = TRI_StringUInt64(TRI_GetIdServer());
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, server, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverIdString, strlen(serverIdString)));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, serverIdString);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "server", server);
-
-  // clients
-  TRI_json_t* clients = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-
-  if (clients != nullptr) {
-    try {
-      auto allClients = _vocbase->getReplicationClients();
-      for (auto& it : allClients) {
-        TRI_json_t* client = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-
-        if (client != nullptr) {
-          serverIdString = TRI_StringUInt64(std::get<0>(it));
-          TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, client, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverIdString, strlen(serverIdString)));
-          TRI_FreeString(TRI_CORE_MEM_ZONE, serverIdString);
-    
-          char buffer[21];
-          TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
-          TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, client, "time", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buffer, strlen(buffer)));
-
-          char* tickString = TRI_StringUInt64(std::get<2>(it));
-          TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, client, "lastServedTick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString, strlen(tickString)));
-          TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
-        }
-
-        TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, clients, client);
-      }
+      json.close();
     }
-    catch (...) {
-    }
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "clients", clients);
-  }
+    json.close(); // clients
 
-  generateResult(json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    json.close(); // base
+
+    VPackSlice slice = json.slice();
+    generateResult(slice);
+  } catch (...) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -650,40 +630,33 @@ void RestReplicationHandler::handleCommandLoggerState () {
 
 void RestReplicationHandler::handleCommandLoggerTickRanges () {
   auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
-  
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ranges.size());
+  try {
+    VPackBuilder b;
+    b.add(VPackValue(VPackValueType::Array));
 
-  if (json == nullptr) {
+    for (auto& it : ranges) {
+      b.add(VPackValue(VPackValueType::Object));
+      b.add("datafile", VPackValue(it.filename));
+      b.add("status", VPackValue(it.state));
+
+      char buffer[21];
+      size_t len;
+      len = TRI_StringUInt64InPlace(it.tickMin, (char*) &buffer);
+      b.add("tickMin", VPackValue((char const*) buffer));
+
+      len = TRI_StringUInt64InPlace(it.tickMax, (char*) &buffer);
+      b.add("tickMax", VPackValue((char const*) buffer));
+
+      b.close();
+    }
+
+    b.close();
+    generateResult(b.slice());
+  }
+  catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
-
-  for (auto& it : ranges) {
-    auto r = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-
-    if (r == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-      return;
-    }
-    
-    char buffer[21];
-    size_t len;
-
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "datafile", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, it.filename.c_str(), it.filename.size()));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "status", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, it.state.c_str(), it.state.size()));
-
-    len = TRI_StringUInt64InPlace(it.tickMin, (char*) &buffer);
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "tickMin", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char const*) buffer, len));
-
-    len = TRI_StringUInt64InPlace(it.tickMax, (char*) &buffer);
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, "tickMax", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char const*) buffer, len));
-
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, r);
-  }
-
-  generateResult(json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -736,35 +709,34 @@ void RestReplicationHandler::handleCommandLoggerTickRanges () {
 void RestReplicationHandler::handleCommandLoggerFirstTick () {
   auto const& ranges = triagens::wal::LogfileManager::instance()->ranges();
   
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 1);
+  try {
+    VPackBuilder b;
+    b.add(VPackValue(VPackValueType::Object));
+    TRI_voc_tick_t tick = UINT64_MAX;
 
-  if (json == nullptr) {
+    for (auto& it : ranges) {
+      if (it.tickMin == 0) {
+        continue;
+      }
+
+      if (it.tickMin < tick) {
+        tick = it.tickMin;
+      }
+    }
+
+    if (tick == UINT64_MAX) {
+      b.add("firstTick", VPackValue(VPackValueType::Null));
+    }
+    else {
+      auto tickString = std::to_string(tick);
+      b.add("firstTick", VPackValue(tickString));
+    }
+    b.close();
+    generateResult(b.slice());
+  }
+  catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return;
   }
-
-  TRI_voc_tick_t tick = UINT64_MAX;
-
-  for (auto& it : ranges) {
-    if (it.tickMin == 0) {
-      continue;
-    }
-
-    if (it.tickMin < tick) {
-      tick = it.tickMin;
-    }
-  }
-
-  if (tick == UINT64_MAX) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "firstTick", TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
-  }
-  else {
-    auto tickString = std::to_string(tick);
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "firstTick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString.c_str(), tickString.size()));
-  }
-
-  generateResult(json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -911,15 +883,18 @@ void RestReplicationHandler::handleCommandBatch () {
       return;
     }
 
-    TRI_json_t json;
-    TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &json);
-    std::string const idString(std::to_string(id));
-
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "id",
-                          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str(), idString.size()));
-
-    generateResult(&json);
-    TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &json);
+    try {
+      VPackBuilder b;
+      b.add(VPackValue(VPackValueType::Object));
+      std::string const idString(std::to_string(id));
+      b.add("id", VPackValue(idString));
+      b.close();
+      VPackSlice s = b.slice();
+      generateResult(s);
+    }
+    catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    }
     return;
   }
 
