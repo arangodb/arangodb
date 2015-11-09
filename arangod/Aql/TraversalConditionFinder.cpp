@@ -35,7 +35,7 @@
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
 
-bool checkPathVariableAccessFeasible(CalculationNode const* cn, Variable const* var) {
+bool checkPathVariableAccessFeasible(CalculationNode const* cn, TraversalNode * tn, Variable const* var, bool &conditionIsImpossible) {
   auto node = cn->expression()->node();
   std::vector<AstNode const*> currentPath;
   std::vector<std::vector<AstNode const*>> paths;
@@ -65,6 +65,7 @@ bool checkPathVariableAccessFeasible(CalculationNode const* cn, Variable const* 
           (indexAccessNode->value.value._int < 0)) {
         return false;
       }
+      conditionIsImpossible = !tn->isInRange(indexAccessNode->value.value._int);
     }
     else if ((onePath[len - 3]->type == NODE_TYPE_ITERATOR) &&
              (onePath[len - 4]->type == NODE_TYPE_EXPANSION)){
@@ -149,15 +150,10 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
       std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
 
       bool foundCondition = false;
-      for (auto& it : _variableDefinitions) {
-        if (_filters.find(it.first) != _filters.end()) {
-          // a variable used in a FILTER
-          foundCondition = true;
-        }
-      }
-
       auto const& varsValidInTraversal = node->getVarsValid();
       std::unordered_set<Variable const*> varsUsedByCondition;
+
+      bool conditionIsImpossible = false;
 
       for (auto& it : _variableDefinitions) {
         auto f = _filters.find(it.first);
@@ -193,19 +189,41 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
               // check whether conditionVar is one of those we emit 
               int variableType = node->checkIsOutVariable(conditionVar->id);
               if (variableType >= 0) {
-                if ((variableType == 2) && checkPathVariableAccessFeasible(cn, conditionVar)) {
-                  condition->andCombine(it.second->expression()->node());
-                  foundCondition = true;
-                  node->setCalculationNodeId(cn->id());
-                }
+                if ((variableType == 2) &&
+                    checkPathVariableAccessFeasible(cn, node, conditionVar, conditionIsImpossible))
+                  {
+                    condition->andCombine(it.second->expression()->node());
+                    foundCondition = true;
+                    node->setCalculationNodeId(cn->id());
+                  }
+                if (conditionIsImpossible)
+                  break;
               }
             }
           }
         }
+        if (conditionIsImpossible)
+          break;
       }
-      bool const conditionIsImpossible = (foundCondition && condition->isEmpty());
+
+      if (!conditionIsImpossible) {
+        conditionIsImpossible = !node->isRangeValid();
+      }
+
+      // TODO: we can't execute if we condition->normalize(_plan); in generateCodeNode
+      if (!conditionIsImpossible) {
+        // right now we're not clever enough to find impossible conditions...
+        conditionIsImpossible = (foundCondition && condition->isEmpty());
+      }
 
       if (conditionIsImpossible) {
+        // condition is always false
+        for (auto const& x : node->getParents()) {
+          auto noRes = new NoResultsNode(_plan, _plan->nextId());
+          _plan->registerNode(noRes);
+          _plan->insertDependency(x, noRes);
+          *_planAltered = true;
+        }
         break;
       }
       if (foundCondition) {

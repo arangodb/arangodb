@@ -309,6 +309,23 @@ namespace triagens {
 
         int checkIsOutVariable(size_t variableId);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether an access is inside the specified range
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isInRange(uint64_t thisIndex) {
+          // TODO: is there a way not to have it specified?((_maxDepth == ) ||
+          return (thisIndex < _maxDepth);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whecher min..max actualy span a range
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isRangeValid() {
+          return _maxDepth >= _minDepth;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
