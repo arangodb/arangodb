@@ -131,6 +131,12 @@ namespace triagens {
                                     int,
                                     std::string const&);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an OUT_OF_MEMORY error
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void generateOOMError ();
+
     };
   }
 }

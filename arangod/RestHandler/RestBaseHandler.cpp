@@ -201,6 +201,13 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an OUT_OF_MEMORY error
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateOOMError () {
+  generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
