@@ -2758,13 +2758,17 @@ void RestReplicationHandler::handleCommandRestoreData () {
     generateError(HttpResponse::responseCode(res), res);
   }
   else {
-    TRI_json_t result;
-
-    TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-
-    generateResult(&result);
-    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+    try {
+      VPackBuilder result;
+      result.add(VPackValue(VPackValueType::Object));
+      result.add("result", VPackValue(true));
+      result.close();
+      VPackSlice s = result.slice();
+      generateResult(s);
+    }
+    catch (...) {
+      generateOOMError();
+    }
   }
 }
 
@@ -3048,14 +3052,17 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     generateError(HttpResponse::responseCode(res), res, errorMsg);
     return;
   }
-
-  TRI_json_t result;
-
-  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-
-  generateResult(&result);
-  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  try {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("result", VPackValue(true));
+    result.close();
+    VPackSlice s = result.slice();
+    generateResult(s);
+  }
+  catch (...) {
+    generateOOMError();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3123,12 +3130,13 @@ void RestReplicationHandler::handleCommandCreateKeys () {
       throw;
     }
 
-    triagens::basics::Json json(triagens::basics::Json::Object);
-    json.set("id", triagens::basics::Json(idString));
-    json.set("count", triagens::basics::Json(static_cast<double>(count)));
-
-    generateResult(HttpResponse::OK, json.json());
-
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("id", VPackValue(idString));
+    result.add("count", VPackValue(count));
+    result.close();
+    VPackSlice s = result.slice();
+    generateResult(s);
   }
   catch (triagens::basics::Exception const& ex) {
     res = ex.code();
@@ -3191,8 +3199,8 @@ void RestReplicationHandler::handleCommandGetKeys () {
     }
 
     try {  
-    
-      triagens::basics::Json json(triagens::basics::Json::Array, 200);
+      VPackBuilder b;
+      b.add(VPackValue(VPackValueType::Array));
         
       TRI_voc_tick_t max = static_cast<TRI_voc_tick_t>(collectionKeys->count());
 
@@ -3205,17 +3213,18 @@ void RestReplicationHandler::handleCommandGetKeys () {
 
         auto result = collectionKeys->hashChunk(from, to);
 
-        triagens::basics::Json chunk(triagens::basics::Json::Object, 3);
-        chunk.set("low", triagens::basics::Json(std::get<0>(result)));
-        chunk.set("high", triagens::basics::Json(std::get<1>(result)));
-        chunk.set("hash", triagens::basics::Json(std::to_string(std::get<2>(result))));
-        
-        json.add(chunk);
+        // Add a chunk
+        b.add(VPackValue(VPackValueType::Object));
+        b.add("low", VPackValue(std::get<0>(result)));
+        b.add("high", VPackValue(std::get<1>(result)));
+        b.add("hash", VPackValue(std::to_string(std::get<2>(result))));
+        b.close();
       }
+      b.close();
 
       collectionKeys->release();
-
-      generateResult(HttpResponse::OK, json.json());
+      VPackSlice s = b.slice();
+      generateResult(s);
     }
     catch (...) {
       collectionKeys->release();
@@ -4122,44 +4131,36 @@ void RestReplicationHandler::handleCommandSync () {
     generateError(HttpResponse::responseCode(res), res, errorMsg);
     return;
   }
+  try {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
 
-  TRI_json_t result;
-  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
+    result.add("collections", VPackValue(VPackValueType::Array));
 
-  TRI_json_t* jsonCollections = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-  if (jsonCollections != nullptr) {
     std::map<TRI_voc_cid_t, std::string>::const_iterator it;
     std::map<TRI_voc_cid_t, std::string> const& c = syncer.getProcessedCollections();
 
     for (it = c.begin(); it != c.end(); ++it) {
       std::string const cidString = StringUtils::itoa((*it).first);
-
-      TRI_json_t* ci = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 2);
-
-      if (ci != nullptr) {
-        TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                             ci,
-                             "id",
-                             TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString.c_str(), cidString.size()));
-
-        TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                             ci,
-                             "name",
-                             TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, (*it).second.c_str(), (*it).second.size()));
-
-        TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, jsonCollections, ci);
-      }
+      // Insert a collection
+      result.add(VPackValue(VPackValueType::Object));
+      result.add("id", VPackValue(cidString));
+      result.add("name", VPackValue((*it).second));
+      result.close(); // one collection
     }
 
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "collections", jsonCollections);
+    result.close(); // collections
+
+    char* tickString = TRI_StringUInt64(syncer.getLastLogTick());
+    result.add("lastLogTick", VPackValue(tickString));
+
+    result.close(); // base
+    VPackSlice s = result.slice();
+    generateResult(s);
   }
-
-  char* tickString = TRI_StringUInt64(syncer.getLastLogTick());
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString, strlen(tickString)));
-
-  generateResult(&result);
-  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  catch (...) {
+    generateOOMError();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4199,18 +4200,18 @@ void RestReplicationHandler::handleCommandSync () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandServerId () {
-  TRI_json_t result;
-
-  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
-
-  const string serverId = StringUtils::itoa(TRI_GetIdServer());
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       &result,
-                       "serverId",
-                       TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, serverId.c_str(), serverId.size()));
-
-  generateResult(&result);
-  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  try {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    const string serverId = StringUtils::itoa(TRI_GetIdServer());
+    result.add("serverId", VPackValue(serverId));
+    result.close();
+    VPackSlice s = result.slice();
+    generateResult(s);
+  }
+  catch (...) {
+    generateOOMError();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
