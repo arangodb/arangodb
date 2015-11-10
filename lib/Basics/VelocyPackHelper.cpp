@@ -39,6 +39,22 @@ using VelocyPackHelper = triagens::basics::VelocyPackHelper;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a boolean sub-element, or a default if it is does not exist
+////////////////////////////////////////////////////////////////////////////////
+
+bool VelocyPackHelper::getBooleanValue (VPackSlice const& slice,
+                                        char const* name,
+                                        bool defaultValue) {
+  VPackSlice const& sub = slice.get(name);
+
+  if (sub.isBoolean()) {
+    return sub.getBool();
+  }
+
+  return defaultValue;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or throws if <name> does not exist
 /// or it is not a string 
 ////////////////////////////////////////////////////////////////////////////////

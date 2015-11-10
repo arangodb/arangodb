@@ -53,6 +53,47 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a numeric value
+////////////////////////////////////////////////////////////////////////////////
+
+        template<typename T> 
+        static T getNumericValue (VPackSlice const& slice,
+                                  T defaultValue) {
+          if (slice.isNumber()) {
+            return (T) slice.getUInt();
+            // return slice.getNumericValue<T>();
+          }
+          return defaultValue;
+        }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a numeric sub-element, or a default if it does not exist
+////////////////////////////////////////////////////////////////////////////////
+
+        template<typename T> 
+        static T getNumericValue (VPackSlice const& slice,
+                                  char const* name,
+                                  T defaultValue) {
+          VPackSlice sub = slice.get(name);
+          if (sub.isNumber()) {
+            return (T) sub.getUInt();
+            // return sub.getNumericValue<T>();
+          }
+          return defaultValue;
+        }
+ 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a boolean sub-element, or a default if it does not exist
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool getBooleanValue (VPackSlice const&,
+                                     char const*,
+                                     bool);
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or throws if <name> does not exist
 /// or it is not a string 
 ////////////////////////////////////////////////////////////////////////////////

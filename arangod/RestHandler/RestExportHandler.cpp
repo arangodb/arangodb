@@ -31,10 +31,14 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StringBufferAdapter.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Utils/CollectionExport.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Wal/LogfileManager.h"
+
+typedef arangodb::velocypack::Dumper<triagens::basics::StringBufferAdapter, false> StringBufferDumper;
 
 using namespace triagens::arango;
 using namespace triagens::rest;
@@ -99,53 +103,75 @@ HttpHandler::status_t RestExportHandler::execute () {
 /// @brief build options for the query as JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) {
-  auto getAttribute = [&json] (char const* name) {
-    return TRI_LookupObjectJson(json, name);
-  };
+VPackBuilder RestExportHandler::buildOptions (VPackSlice const& slice) {
+  VPackBuilder options;
+  options.addObject();
 
-  triagens::basics::Json options(triagens::basics::Json::Object);
-
-  auto attribute = getAttribute("count");
-  options.set("count", triagens::basics::Json(TRI_IsBooleanJson(attribute) ? attribute->_value._boolean : false));
-
-  attribute = getAttribute("batchSize");
-  options.set("batchSize", triagens::basics::Json(TRI_IsNumberJson(attribute) ? attribute->_value._number : 1000.0));
-
-  if (TRI_IsNumberJson(attribute) && static_cast<size_t>(attribute->_value._number) == 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting non-zero value for 'batchSize'");
+  VPackSlice count = slice.get("count");
+  if (count.isBool()) {
+    options.add("count", count);
+  }
+  else {
+    options.add("count", VPackValue(false));
   }
 
-  attribute = getAttribute("limit");
-  if (TRI_IsNumberJson(attribute)) {
-    options.set("limit", triagens::basics::Json(attribute->_value._number));
+  VPackSlice batchSize = slice.get("batchSize");
+  if (batchSize.isNumber()) {
+    if ((batchSize.isInteger() && batchSize.getUInt() == 0) ||
+        (batchSize.isDouble() && batchSize.getDouble() == 0.0)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting non-zero value for 'batchSize'");
+    }
+    options.add("batchSize", batchSize);
   }
-  
-  attribute = getAttribute("flush");
-  options.set("flush", triagens::basics::Json(TRI_IsBooleanJson(attribute) ? attribute->_value._boolean : false));
+  else {
+    options.add("batchSize", VPackValue(1000));
+  }
 
-  if (! options.has("ttl")) {
-    attribute = getAttribute("ttl");
-    options.set("ttl", triagens::basics::Json(TRI_IsNumberJson(attribute) ? attribute->_value._number : 30.0));
+  VPackSlice limit = slice.get("limit");
+  if (limit.isNumber()) {
+    options.add("limit", limit);
   }
-    
-  attribute = getAttribute("flushWait");
-  options.set("flushWait", triagens::basics::Json(TRI_IsNumberJson(attribute) ? attribute->_value._number : 10.0));
+
+  VPackSlice flush = slice.get("flush");
+  if (flush.isBool()) {
+    options.add("flush", flush);
+  }
+  else {
+    options.add("flush", VPackValue(false));
+  }
+
+  VPackSlice ttl = slice.get("ttl");
+  if (ttl.isNumber()) {
+    options.add("ttl", ttl);
+  }
+  else {
+    options.add("ttl", VPackValue(30));
+  }
+
+  VPackSlice flushWait = slice.get("flushWait");
+  if (flushWait.isNumber()) {
+    options.add("flushWait", flushWait);
+  }
+  else {
+    options.add("flushWait", VPackValue(10));
+  }
+  options.close();
 
   // handle "restrict" parameter
-  attribute = getAttribute("restrict");
-  if (attribute != nullptr) {
-    if (! TRI_IsObjectJson(attribute)) {
+  VPackSlice restrct = slice.get("restrict");
+  if (! restrct.isObject()) {
+    if (! restrct.isNone()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting object for 'restrict'");
     }
-
+  }
+  else {
     // "restrict"."type"
-    auto type = TRI_LookupObjectJson(attribute, "type");
-    if (! TRI_IsStringJson(type)) {
+    VPackSlice type = restrct.get("type");
+    if (! type.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "expecting string for 'restrict.type'");
     }
+    std::string typeString = type.copyString();
 
-    std::string typeString = std::string(type->_value._string.data, type->_value._string.length - 1);
     if (typeString == "include") {
       _restrictions.type = CollectionExport::Restrictions::RESTRICTION_INCLUDE;
     }
@@ -157,17 +183,13 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
     }
 
     // "restrict"."fields"
-    auto fields = TRI_LookupObjectJson(attribute, "fields");
-    if (! TRI_IsArrayJson(fields)) {
+    VPackSlice fields = restrct.get("fields");
+    if (! fields.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "expecting array for 'restrict.fields'");
     }
-
-    size_t const n = TRI_LengthArrayJson(fields);
-    for (size_t i = 0; i < n; ++i) {
-      auto name = TRI_LookupArrayJson(fields, i);
-
-      if (TRI_IsStringJson(name)) {
-        _restrictions.fields.emplace(std::string(name->_value._string.data, name->_value._string.length - 1));
+    for (auto const& name : VPackArrayIterator(fields)) {
+      if (name.isString()) {
+        _restrictions.fields.emplace(name.copyString());
       }
     }
   }
@@ -351,29 +373,32 @@ void RestExportHandler::createCursor () {
   }
 
   try { 
-    std::unique_ptr<TRI_json_t> json(parseJsonBody());
+    bool parseSuccess = true;
+    VPackBuilder parsedBody = parseVelocyPackBody(parseSuccess);
     
-    if (json.get() == nullptr) {
+    if (! parseSuccess) {
       return;
     }
- 
-    triagens::basics::Json options;
+    VPackSlice body = parsedBody.slice();
 
-    if (json.get() != nullptr) {
-      if (! TRI_IsObjectJson(json.get())) {
+    VPackBuilder optionsBuilder;
+
+    if (! body.isNone()) {
+      if (! body.isObject()) {
         generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
         return;
       }
-   
-      options = buildOptions(json.get());
+      optionsBuilder = buildOptions(body);
     }
     else {
       // create an empty options object
-      options = triagens::basics::Json(triagens::basics::Json::Object);
+      optionsBuilder.addObject();
     }
+
+    VPackSlice options = optionsBuilder.slice();
       
     uint64_t waitTime = 0;
-    bool flush = triagens::basics::JsonHelper::getBooleanValue(options.json(), "flush", false);
+    bool flush = triagens::basics::VelocyPackHelper::getBooleanValue(options, "flush", false);
 
     if (flush) {
       // flush the logfiles so the export can fetch all documents
@@ -383,21 +408,21 @@ void RestExportHandler::createCursor () {
         THROW_ARANGO_EXCEPTION(res);
       }
 
-      double flushWait = triagens::basics::JsonHelper::getNumericValue<double>(options.json(), "flushWait", 10.0);
+      double flushWait = triagens::basics::VelocyPackHelper::getNumericValue<double>(options, "flushWait", 10.0);
 
       waitTime = static_cast<uint64_t>(flushWait * 1000 * 1000); // flushWait is specified in s, but we need ns
     }
     
-    size_t limit = triagens::basics::JsonHelper::getNumericValue<size_t>(options.json(), "limit", 0);
+    size_t limit = triagens::basics::VelocyPackHelper::getNumericValue<size_t>(options, "limit", 0);
 
     // this may throw!
     std::unique_ptr<CollectionExport> collectionExport(new CollectionExport(_vocbase, name, _restrictions));
     collectionExport->run(waitTime, limit);
 
     { 
-      size_t batchSize = triagens::basics::JsonHelper::getNumericValue<size_t>(options.json(), "batchSize", 1000);
-      double ttl = triagens::basics::JsonHelper::getNumericValue<double>(options.json(), "ttl", 30);
-      bool count = triagens::basics::JsonHelper::getBooleanValue(options.json(), "count", false);
+      size_t batchSize = triagens::basics::VelocyPackHelper::getNumericValue<size_t>(options, "batchSize", 1000);
+      double ttl = triagens::basics::VelocyPackHelper::getNumericValue<double>(options, "ttl", 30);
+      bool count = triagens::basics::VelocyPackHelper::getBooleanValue(options, "count", false);
       
       _response = createResponse(HttpResponse::CREATED);
       _response->setContentType("application/json; charset=utf-8");
@@ -510,13 +535,16 @@ void RestExportHandler::deleteCursor () {
 
   _response = createResponse(HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
-   
-  triagens::basics::Json json(triagens::basics::Json::Object);
-  json.set("id", triagens::basics::Json(id)); // id as a string! 
-  json.set("error", triagens::basics::Json(false)); 
-  json.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
-
-  json.dump(_response->body());
+  VPackBuilder result;
+  result.addObject();
+  result.add("id", VPackValue(id));
+  result.add("error", VPackValue(false));
+  result.add("code", VPackValue(_response->responseCode()));
+  result.close();
+  VPackSlice s = result.slice();
+  triagens::basics::StringBufferAdapter buffer(_response->body().stringBuffer());
+  StringBufferDumper dumper(buffer);
+  dumper.dump(s);
 }
 
 // -----------------------------------------------------------------------------
