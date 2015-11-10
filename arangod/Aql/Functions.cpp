@@ -2292,10 +2292,18 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
       }
 
       std::string const collectionName = vertexId.substr(0, split);
+      if (collectionName.compare(vColName) != 0) {
+        THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_INVALID_PARAMETER,
+                                      "you specified vertex collection `%s` for start vertext from `%s`",
+                                      vColName.c_str(),
+                                      collectionName.c_str());
+    }
       auto coli = resolver->getCollectionStruct(collectionName);
 
-      if (coli == nullptr || collectionName.compare(vColName) != 0) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      if (coli == nullptr) {
+        THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                      "`%s`",
+                                      collectionName.c_str());
       }
 
       VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
@@ -2320,10 +2328,18 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     }
 
     std::string const collectionName = vertexId.substr(0, split);
+    if (collectionName.compare(vColName) != 0) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_INVALID_PARAMETER,
+                                    "you specified vertex collection `%s` for start vertext from `%s`",
+                                    vColName.c_str(),
+                                    collectionName.c_str());
+    }
     auto coli = resolver->getCollectionStruct(collectionName);
 
-    if (coli == nullptr || collectionName.compare(vColName) != 0) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    if (coli == nullptr) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                    "`%s`",
+                                    collectionName.c_str());
     }
 
     VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
@@ -2512,21 +2528,25 @@ AqlValue Functions::Near (triagens::aql::Query* query,
                                            true,
                                            true);
     if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
+      THROW_ARANGO_EXCEPTION_FORMAT(res, "`%s`", colName.c_str());
     }
 
     TRI_EnsureCollectionsTransaction(trx->getInternals());
     collection = trx->trxCollection(cid);
 
     if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                    "`%s`",
+                                    colName.c_str());
     }
   }
 
   auto document = trx->documentCollection(cid);
 
   if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                    "`%s`",
+                                    colName.c_str());
   }
 
   triagens::arango::Index* index = nullptr;
@@ -2678,21 +2698,23 @@ AqlValue Functions::Within (triagens::aql::Query* query,
                                            true,
                                            true);
     if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
+      THROW_ARANGO_EXCEPTION_FORMAT(res, "`%s`", colName.c_str());
     }
 
     TRI_EnsureCollectionsTransaction(trx->getInternals());
     collection = trx->trxCollection(cid);
 
     if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                    "`%s`",
+                                    colName.c_str());
     }
   }
 
   auto document = trx->documentCollection(cid);
     
   if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND); /// TODO
   }
 
   triagens::arango::Index* index = nullptr;
@@ -2965,7 +2987,9 @@ static void RegisterCollectionInTransaction (triagens::arango::AqlTransaction* t
   TRI_ASSERT(collection == nullptr);
   cid = trx->resolver()->getCollectionId(collectionName);
   if (cid == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                  "`%s`",
+                                  collectionName.c_str());
   }
   // ensure the collection is loaded
   collection = trx->trxCollection(cid);
@@ -2978,7 +3002,7 @@ static void RegisterCollectionInTransaction (triagens::arango::AqlTransaction* t
                                            true,
                                            true);
     if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
+      THROW_ARANGO_EXCEPTION_FORMAT(res, "`%s`", collectionName.c_str());
     }
     TRI_EnsureCollectionsTransaction(trx->getInternals());
     collection = trx->trxCollection(cid);
@@ -3219,7 +3243,9 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
   
   TRI_voc_cid_t startCid = resolver->getCollectionId(parts[0]);
   if (startCid == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                  "`%s`",
+                                  parts[0].c_str());
   }
 
   char* key = const_cast<char*>(parts[1].c_str());
