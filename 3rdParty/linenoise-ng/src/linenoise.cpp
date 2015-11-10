@@ -3141,11 +3141,11 @@ static void WindowSizeChanged(int) {
 int linenoiseInstallWindowChangeHandler(void) {
 #ifndef _WIN32
     struct sigaction sa;
-    ::sigemptyset(&sa.sa_mask);
+    sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     sa.sa_handler = &WindowSizeChanged;
 
-    if (::sigaction(SIGWINCH, &sa, nullptr) == -1) {
+    if (sigaction(SIGWINCH, &sa, nullptr) == -1) {
       return errno;
     }
 #endif
