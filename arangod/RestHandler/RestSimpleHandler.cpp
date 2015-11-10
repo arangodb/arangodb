@@ -267,12 +267,10 @@ void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
         return;
       }
     
-      VPackValueLength l;
-      char const* cName = value.getString(l);
-      collectionName = std::string(cName, l);
+      collectionName = value.copyString();
 
       if (! collectionName.empty()) {
-        auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, cName);
+        auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
 
         if (col != nullptr && collectionName.compare(col->_name) != 0) {
           // user has probably passed in a numeric collection id.
@@ -468,13 +466,10 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
         generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting string for <collection>");
         return;
       }
-      VPackValueLength len;
-      char const* cName = slice.getString(len);
-
-      collectionName = std::string(cName, len);
+      collectionName = slice.copyString();
 
       if (! collectionName.empty()) {
-        auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, cName);
+        auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
 
         if (col != nullptr && collectionName.compare(col->_name) != 0) {
           // user has probably passed in a numeric collection id.

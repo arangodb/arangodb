@@ -248,9 +248,7 @@ bool RestQueryCacheHandler::replaceProperties () {
 
     VPackSlice attribute = body.get("mode");
     if (attribute.isString()) {
-      VPackValueLength len;
-      char const* st = attribute.getString(len);
-      cacheProperties.first = std::string(st, len);
+      cacheProperties.first = attribute.copyString();
     }
 
     attribute = body.get("maxResults");
