@@ -116,7 +116,7 @@ void Parser::parseNumber () {
     scanDigits(numberValue);
   }
   i = consume();
-  if (i < 0 || i != '.') {
+  if (i < 0 || (i != '.' && i != 'e' && i != 'E')) {
     if (i >= 0) {
       unconsume();
     }
@@ -144,22 +144,34 @@ void Parser::parseNumber () {
     }
     return;
   }
-  i = getOneOrThrow("Incomplete number");
-  if (i < '0' || i > '9') {
-    throw Exception(Exception::ParseError, "Incomplete number");
-  }
-  unconsume();
-  double fractionalPart = scanDigitsFractional();
-  if (negative) {
-    fractionalPart = - numberValue.asDouble() - fractionalPart;
+  double fractionalPart;
+  if (i == '.') {
+    // fraction. skip over '.'
+    i = getOneOrThrow("Incomplete number");
+    if (i < '0' || i > '9') {
+      throw Exception(Exception::ParseError, "Incomplete number");
+    }
+    unconsume();
+    fractionalPart = scanDigitsFractional();
+    if (negative) {
+      fractionalPart = - numberValue.asDouble() - fractionalPart;
+    }
+    else {
+      fractionalPart = numberValue.asDouble() + fractionalPart;
+    }
+    i = consume();
+    if (i < 0) {
+      _b.addDouble(fractionalPart);
+      return;
+    }
   }
   else {
-    fractionalPart = numberValue.asDouble() + fractionalPart;
-  }
-  i = consume();
-  if (i < 0) {
-    _b.addDouble(fractionalPart);
-    return;
+    if (negative) {
+      fractionalPart = - numberValue.asDouble();
+    }
+    else {
+      fractionalPart = numberValue.asDouble();
+    }
   }
   if (i != 'e' && i != 'E') {
     unconsume();
