@@ -130,7 +130,7 @@ using namespace linenoise_ng;
 
 typedef unsigned char char8_t;
 
-ConversionResult copyString8to32 (char32_t* dst, size_t dstSize, size_t& dstCount, const char* src) {
+static ConversionResult copyString8to32 (char32_t* dst, size_t dstSize, size_t& dstCount, const char* src) {
   const UTF8* sourceStart = reinterpret_cast<const UTF8*>(src);
   const UTF8* sourceEnd = sourceStart + strlen(src);
   UTF32* targetStart = reinterpret_cast<UTF32*>(dst);
@@ -149,11 +149,11 @@ ConversionResult copyString8to32 (char32_t* dst, size_t dstSize, size_t& dstCoun
   return res;
 }
 
-ConversionResult copyString8to32 (char32_t* dst, size_t dstSize, size_t& dstCount, const char8_t* src) {
+static ConversionResult copyString8to32 (char32_t* dst, size_t dstSize, size_t& dstCount, const char8_t* src) {
   return copyString8to32(dst, dstSize, dstCount, reinterpret_cast<const char*>(src));
 }
 
-size_t strlen32 (const char32_t* str) {
+static size_t strlen32 (const char32_t* str) {
   const char32_t* ptr = str;
 
   while (*ptr) {
@@ -163,15 +163,16 @@ size_t strlen32 (const char32_t* str) {
   return ptr - str;
 }
 
-size_t strlen8 (const char8_t* str) {
+static size_t strlen8 (const char8_t* str) {
   return strlen(reinterpret_cast<const char*>(str));
 }
 
-char8_t* strdup8 (const char* src) {
+static char8_t* strdup8 (const char* src) {
   return reinterpret_cast<char8_t*>(strdup(src));
 }
 
-void copyString32to16(char16_t* dst, size_t dstSize, size_t* dstCount, const char32_t* src, size_t srcSize) {
+#ifdef _WIN32
+static void copyString32to16(char16_t* dst, size_t dstSize, size_t* dstCount, const char32_t* src, size_t srcSize) {
   const UTF32* sourceStart = reinterpret_cast<const UTF32*>(src);
   const UTF32* sourceEnd = sourceStart + srcSize;
   char16_t* targetStart = reinterpret_cast<char16_t*>(dst);
@@ -187,8 +188,9 @@ void copyString32to16(char16_t* dst, size_t dstSize, size_t* dstCount, const cha
     }
   }
 }
+#endif
 
-void copyString32to8 (char* dst, size_t dstSize, size_t* dstCount, const char32_t* src, size_t srcSize) {
+static void copyString32to8 (char* dst, size_t dstSize, size_t* dstCount, const char32_t* src, size_t srcSize) {
   const UTF32* sourceStart = reinterpret_cast<const UTF32*>(src);
   const UTF32* sourceEnd = sourceStart + srcSize;
   UTF8* targetStart = reinterpret_cast<UTF8*>(dst);
@@ -205,12 +207,12 @@ void copyString32to8 (char* dst, size_t dstSize, size_t* dstCount, const char32_
   }
 }
 
-void copyString32to8 (char* dst, size_t dstLen, const char32_t* src) {
+static void copyString32to8 (char* dst, size_t dstLen, const char32_t* src) {
   size_t dstCount = 0;
   copyString32to8 (dst, dstLen, &dstCount, src, strlen32(src));
 }
 
-void copyString32 (char32_t* dst, const char32_t* src, size_t len) {
+static void copyString32 (char32_t* dst, const char32_t* src, size_t len) {
   while (*src && 1 < len) {
     *dst++ = *src++;
     --len;
@@ -219,7 +221,7 @@ void copyString32 (char32_t* dst, const char32_t* src, size_t len) {
   *dst = 0;
 }
 
-int strncmp32 (const char32_t* left, const char32_t* right, size_t len) {
+static int strncmp32 (const char32_t* left, const char32_t* right, size_t len) {
   while (0 < len && *left) {
     if (*left != *right) {
       return *left - * right;
@@ -233,7 +235,7 @@ int strncmp32 (const char32_t* left, const char32_t* right, size_t len) {
   return 0;
 }
 
-int write32 (int fd, char32_t* text32, int len32) {
+static int write32 (int fd, char32_t* text32, int len32) {
 #ifdef _WIN32
   if (_isatty(fd)) {
     size_t len16 = 2 * len32 + 1;
@@ -464,6 +466,7 @@ struct PromptBase {              // a convenience struct for grouping prompt inf
     Utf32String promptText;      // our copy of the prompt text, edited
     char* promptCharWidths;      // character widths from mk_wcwidth()
     int promptChars;             // chars in promptText
+    int promptBytes;             // bytes in promptText
     int promptExtraLines;        // extra lines (beyond 1) occupied by prompt
     int promptIndentation;       // column offset to end of prompt
     int promptLastLinePosition;  // index into promptText where last line begins
@@ -474,6 +477,13 @@ struct PromptBase {              // a convenience struct for grouping prompt inf
     int promptErrorCode;         // error code (invalid UTF-8) or zero
 
     PromptBase() : promptPreviousInputLen(0) {}
+
+    bool write() {
+        if (write32(1, promptText.get(), promptBytes) == -1)
+            return false;
+
+        return true;
+    }
 };
 
 struct PromptInfo : public PromptBase {
@@ -487,37 +497,78 @@ struct PromptInfo : public PromptBase {
         // strip control characters from the prompt -- we do allow newline
         char32_t* pIn = tempUnicode.get();
         char32_t* pOut = pIn;
+
+        int len = 0;
+        int x = 0;
+
+#ifdef _WIN32
+        bool const strip = true;
+#else
+        bool const strip = (isatty(1) != 1);
+#endif
+
         while (*pIn) {
             char32_t c = *pIn;
             if ('\n' == c || !isControlChar(c)) {
                 *pOut = c;
                 ++pOut;
-            }
-            ++pIn;
-        }
-        *pOut = 0;
-        promptChars = static_cast<int>(pOut - tempUnicode.get());
-        promptText = tempUnicode;
-
-        int x = 0;
-        for (int i = 0; i < promptChars; ++i) {
-            char32_t c = promptText[i];
-            if ('\n' == c) {
-                x = 0;
-                ++promptExtraLines;
-                promptLastLinePosition = i + 1;
-            } else {
-                ++x;
-                if (x >= promptScreenColumns) {
+                ++pIn;
+                ++len;
+                if ('\n' == c || ++x >= promptScreenColumns) {
                     x = 0;
                     ++promptExtraLines;
-                    promptLastLinePosition = i + 1;
+                    promptLastLinePosition = len;
                 }
             }
+            else if (c == '\x1b') {
+                if (strip) {
+                    // jump over control chars 
+                    ++pIn;
+                    if (*pIn == '[') {
+                         ++pIn;
+                         while (*pIn && ((*pIn == ';') || ((*pIn >= '0' && *pIn <= '9')))) {
+                             ++pIn;
+                         }
+                         if (*pIn == 'm') {
+                             ++pIn;
+                         }
+                    }
+                }
+                else {
+                    // copy control chars 
+                    *pOut = *pIn;
+                    ++pOut;
+                    ++pIn;
+                    if (*pIn == '[') {
+                         *pOut = *pIn;
+                         ++pOut;
+                         ++pIn;
+                         while (*pIn && ((*pIn == ';') || ((*pIn >= '0' && *pIn <= '9')))) {
+                             *pOut = *pIn;
+                             ++pOut;
+                             ++pIn;
+                         }
+                         if (*pIn == 'm') {
+                             *pOut = *pIn;
+                             ++pOut;
+                             ++pIn;
+                         }
+                    }
+                }
+            }
+            else {
+                ++pIn;
+            }
         }
-        promptIndentation = promptChars - promptLastLinePosition;
+        *pOut = 0;
+        promptChars = len;
+        promptBytes = static_cast<int>(pOut - tempUnicode.get());
+        promptText = tempUnicode;
+
+        promptIndentation = len - promptLastLinePosition;
         promptCursorRowOffset = promptExtraLines;
     }
+
 };
 
 // Used with DynamicPrompt (history search)
@@ -545,6 +596,7 @@ struct DynamicPrompt : public PromptBase {
             (direction > 0) ? &forwardSearchBasePrompt : &reverseSearchBasePrompt;
         size_t promptStartLength = basePrompt->length();
         promptChars = static_cast<int>(promptStartLength + endSearchBasePrompt.length());
+        promptBytes = promptChars;
         promptLastLinePosition =
             promptChars;  // TODO fix this, we are asssuming that the history prompt won't wrap (!)
         promptPreviousLen = promptChars;
@@ -564,6 +616,7 @@ struct DynamicPrompt : public PromptBase {
             (direction > 0) ? &forwardSearchBasePrompt : &reverseSearchBasePrompt;
         size_t promptStartLength = basePrompt->length();
         promptChars = static_cast<int>(promptStartLength + searchTextLen + endSearchBasePrompt.length());
+        promptBytes = promptChars;
         Utf32String tempUnicode(promptChars + 1);
         memcpy(tempUnicode.get(), basePrompt->get(), sizeof(char32_t) * promptStartLength);
         memcpy(&tempUnicode[promptStartLength], searchText.get(), sizeof(char32_t) * searchTextLen);
@@ -787,7 +840,7 @@ static int enableRawMode(void) {
 #else
     struct termios raw;
 
-    if (!isatty(0))
+    if (!isatty(STDIN_FILENO))
         goto fatal;
     if (!atexit_registered) {
         atexit(linenoiseAtExit);
@@ -955,7 +1008,7 @@ static void dynamicRefresh(PromptBase& pi, char32_t* buf32, int len, int pos) {
     pi.promptPreviousInputLen = len;
 
     // display the prompt
-    if (write32(1, pi.promptText.get(), pi.promptChars) == -1)
+    if (! pi.write())
         return;
 
     // display the input line
@@ -981,7 +1034,7 @@ static void dynamicRefresh(PromptBase& pi, char32_t* buf32, int len, int pos) {
         return;
 
     // display the prompt
-    if (write32(1, pi.promptText.get(), pi.promptChars) == -1)
+    if (! pi.write())
         return;
 
     // display the input line
@@ -1919,7 +1972,7 @@ int InputBuffer::completeLine(PromptBase& pi) {
         if (write(1, "\n", 1) == -1)
             return 0;
     }
-    if (write32(1, pi.promptText.get(), pi.promptChars) == -1)
+    if (! pi.write()) 
         return 0;
 #ifndef _WIN32
     // we have to generate our own newline on line wrap on Linux
@@ -1952,7 +2005,7 @@ void linenoiseClearScreen(void) {
 
 void InputBuffer::clearScreen(PromptBase& pi) {
     linenoiseClearScreen();
-    if (write32(1, pi.promptText.get(), pi.promptChars) == -1)
+    if (! pi.write()) 
         return;
 #ifndef _WIN32
     // we have to generate our own newline on line wrap on Linux
@@ -2190,8 +2243,10 @@ int InputBuffer::incrementalHistorySearch(PromptBase& pi, int startChar) {
     // leaving history search, restore previous prompt, maybe make searched line current
     PromptBase pb;
     pb.promptChars = pi.promptIndentation;
-    Utf32String tempUnicode(pb.promptChars + 1);
-    copyString32(tempUnicode.get(), &pi.promptText[pi.promptLastLinePosition], pb.promptChars + 1);
+    pb.promptBytes = pi.promptBytes;
+    Utf32String tempUnicode(pb.promptBytes + 1);
+
+    copyString32(tempUnicode.get(), &pi.promptText[pi.promptLastLinePosition], pb.promptBytes + 1);
     tempUnicode.initFromBuffer();
     pb.promptText = tempUnicode;
     pb.promptExtraLines = 0;
@@ -2221,6 +2276,10 @@ static bool isCharacterAlphanumeric(char32_t testChar) {
     return (iswalnum(testChar) != 0 ? true : false);
 }
 
+#ifndef _WIN32
+static bool gotResize = false;
+#endif
+
 int InputBuffer::getInputLine(PromptBase& pi) {
     // The latest history entry is always our current buffer
     if (len > 0) {
@@ -2235,7 +2294,7 @@ int InputBuffer::getInputLine(PromptBase& pi) {
     historyRecallMostRecent = false;
 
     // display the prompt
-    if (write32(1, pi.promptText.get(), pi.promptChars) == -1)
+    if (! pi.write()) 
         return -1;
 
 #ifndef _WIN32
@@ -2264,11 +2323,22 @@ int InputBuffer::getInputLine(PromptBase& pi) {
         int c;
         if (terminatingKeystroke == -1) {
             c = linenoiseReadChar();  // get a new keystroke
+
+#ifndef _WIN32
+            if (c == 0 && gotResize) {
+                // caught a window resize event
+                // now redraw the prompt and line
+                gotResize = false;
+                pi.promptScreenColumns = getScreenColumns();
+                dynamicRefresh(pi, buf32, len, pos);  // redraw the original prompt with current input
+                continue;
+            }
+#endif
         } else {
             c = terminatingKeystroke;   // use the terminating keystroke from search
             terminatingKeystroke = -1;  // clear it once we've used it
         }
-
+                
         c = cleanupCtrl(c);  // convert CTRL + <char> into normal ctrl
         
         if (c == 0) {
@@ -2281,7 +2351,7 @@ int InputBuffer::getInputLine(PromptBase& pi) {
         }
 
         if (c == -2) {
-            if (write32(1, pi.promptText.get(), pi.promptChars) == -1)
+            if (! pi.write())
                 return -1;
             refreshLine(pi);
             continue;
@@ -2707,7 +2777,7 @@ int InputBuffer::getInputLine(PromptBase& pi) {
                 disableRawMode();  // Returning to Linux (whatever) shell, leave raw mode
                 raise(SIGSTOP);    // Break out in mid-line
                 enableRawMode();   // Back from Linux shell, re-enter raw mode
-                if (write32(1, pi.promptText.get(), pi.promptChars) == -1)
+                if (! pi.write()) 
                     break;        // Redraw prompt
                 refreshLine(pi);  // Refresh the line
                 break;
@@ -2869,6 +2939,9 @@ void linenoisePreloadBuffer(const char* preloadText) {
  *               memory leaks
  */
 char* linenoise(const char* prompt) {
+#ifndef _WIN32
+    gotResize = false;
+#endif
     if (isatty(STDIN_FILENO)) {  // input is from a terminal
         char32_t buf32[LINENOISE_MAX_LINE];
         char charWidths[LINENOISE_MAX_LINE];
@@ -2879,7 +2952,7 @@ char* linenoise(const char* prompt) {
         }
         PromptInfo pi(prompt, getScreenColumns());
         if (isUnsupportedTerm()) {
-            if (write32(1, pi.promptText.get(), pi.promptChars) == -1)
+            if (! pi.write()) 
                 return 0;
             fflush(stdout);
             if (preloadedBufferContents.empty()) {
@@ -3058,3 +3131,23 @@ int linenoiseHistoryLoad(const char* filename) {
     return 0;
 }
 
+#ifndef _WIN32
+static void WindowSizeChanged(int) {
+    // do nothing here but setting this flag
+    gotResize = true;
+} 
+#endif
+
+int linenoiseInstallWindowChangeHandler(void) {
+#ifndef _WIN32
+    struct sigaction sa;
+    ::sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sa.sa_handler = &WindowSizeChanged;
+
+    if (::sigaction(SIGWINCH, &sa, nullptr) == -1) {
+      return errno;
+    }
+#endif
+    return 0;
+}
