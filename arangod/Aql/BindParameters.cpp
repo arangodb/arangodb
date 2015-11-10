@@ -134,12 +134,11 @@ VPackSlice BindParameters::StripCollectionNames (VPackSlice const& keys,
     if (element.isString()) {
       VPackValueLength l;
       char const* s = element.getString(l);
-      char const search = '/';
+      char search = '/';
       auto p = strchr(s, search);
       if (p != nullptr && strncmp(s, collectionName, p - s) == 0) {
         // key begins with collection name + '/', now strip it in place for further comparisons
-        char * pch = strstr(s, &search);
-        result.add(VPackValue(pch));
+        result.add(VPackValue(p));
         continue;
       }
     }
@@ -147,7 +146,6 @@ VPackSlice BindParameters::StripCollectionNames (VPackSlice const& keys,
   }
   return result.slice();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief strip collection name prefixes from the parameters
