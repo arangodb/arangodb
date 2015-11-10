@@ -453,6 +453,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static std::string const BatchErrorHeader;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hide the "Server: ArangoDB" header in HTTP responses
+/// @startDocuBlock serverHideProductHeader
+/// `--server.hide-product-header`
+///
+/// If *true*, the server will exclude the HTTP header "Server: ArangoDB" in
+/// HTTP responses. If set to *false*, the server will send the header in
+/// responses.
+///
+/// The default is *false*.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+        
+        static bool HideProductHeader;
     };
   }
 }

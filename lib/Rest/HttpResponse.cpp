@@ -48,6 +48,12 @@ using namespace std;
 std::string const HttpResponse::BatchErrorHeader = "X-Arango-Errors";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief hide header "Server: ArangoDB" in HTTP responses
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpResponse::HideProductHeader = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief http response string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -266,7 +272,9 @@ HttpResponse::HttpResponse (HttpResponseCode code,
     _bodySize(0),
     _freeables() {
 
-  _headers.insert(TRI_CHAR_LENGTH_PAIR("server"), "ArangoDB");
+  if (! HideProductHeader) {
+    _headers.insert(TRI_CHAR_LENGTH_PAIR("server"), "ArangoDB");
+  }
   _headers.insert(TRI_CHAR_LENGTH_PAIR("connection"), "Keep-Alive");
   _headers.insert(TRI_CHAR_LENGTH_PAIR("content-type"), "text/plain; charset=utf-8");
 }
