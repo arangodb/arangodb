@@ -27,6 +27,8 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/Exceptions.h"
+#include <velocypack/vpack.h>
+#include <velocypack/velocypack-aliases.h>
 
 using VelocyPackHelper = triagens::basics::VelocyPackHelper;
 
@@ -73,10 +75,10 @@ std::string VelocyPackHelper::checkAndGetStringValue (VPackSlice const& slice,
 }
 
 TRI_json_t* VelocyPackHelper::velocyPackToJson (VPackSlice const& slice) {
-  std::string output;
-  VPackStringDumper dumper(output);
+  VPackStringSink sink;
+  VPackDumper dumper(&sink);
   dumper.dump(slice);
-  return JsonHelper::fromString(output.c_str());
+  return JsonHelper::fromString(sink.buffer);
 }
 
 // -----------------------------------------------------------------------------

@@ -299,7 +299,7 @@ void Builder::close () {
   if (options.checkAttributeUniqueness && index.size() > 1 &&
       _start[tos] >= 0x0b) {
     // check uniqueness of attribute names
-    checkAttributeUniqueness(Slice(_start + tos));
+    checkAttributeUniqueness(Slice(_start + tos, options.customTypeHandler));
   }
 
   // Now the array or object is complete, we pop a ValueLength 
@@ -322,7 +322,7 @@ bool Builder::hasKey (std::string const& key) const {
     return false;
   }
   for (size_t i = 0; i < index.size(); ++i) {
-    Slice s(_start + tos + index[i]);
+    Slice s(_start + tos + index[i], options.customTypeHandler);
     if (s.isString() && s.copyString() == key) {
       return true;
     }

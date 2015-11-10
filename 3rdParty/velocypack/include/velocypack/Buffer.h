@@ -30,7 +30,6 @@
 #include <cstring>
 
 #include "velocypack/velocypack-common.h"
-#include "velocypack/Value.h"
 
 namespace arangodb {
   namespace velocypack {
@@ -45,7 +44,8 @@ namespace arangodb {
             _alloc(sizeof(_local)), 
             _pos(0) {
 #ifdef VELOCYPACK_DEBUG
-          memset(_buffer, 0x0a, _alloc);
+          // poison memory
+          memset(_buffer, 0xa5, _alloc);
 #endif
         } 
 
@@ -127,7 +127,8 @@ namespace arangodb {
             _buffer = _local;
             _alloc = sizeof(_local);
 #ifdef VELOCYPACK_DEBUG
-            memset(_buffer, 0x0a, _alloc);
+            // poison memory
+            memset(_buffer, 0xa5, _alloc);
 #endif
           }
           _pos = 0;
@@ -179,7 +180,8 @@ namespace arangodb {
 
           T* p = new T[newLen];
 #ifdef VELOCYPACK_DEBUG
-          memset(p, 0x0a, newLen);
+          // poison memory
+          memset(p, 0xa5, newLen);
 #endif
           // copy old data
           memcpy(p, _buffer, _pos);

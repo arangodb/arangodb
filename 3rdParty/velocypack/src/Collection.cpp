@@ -78,23 +78,6 @@ Builder Collection::filter (Slice const& slice, std::function<bool(Slice const&,
   return b;
 }
         
-Builder Collection::map (Slice const& slice, std::function<Value(Slice const&, ValueLength)> const& cb) {
-  // construct a new Array
-  Builder b;
-  b.add(Value(ValueType::Array));
-
-  ArrayIterator it(slice);
-  ValueLength index = 0;
-
-  while (it.valid()) {
-    b.add(cb(it.value(), index));
-    it.next();
-    ++index;
-  }
-  b.close();
-  return b;
-}
-
 Slice Collection::find (Slice const& slice, std::function<bool(Slice const&, ValueLength)> const& cb) {
   ArrayIterator it(slice);
   ValueLength index = 0;

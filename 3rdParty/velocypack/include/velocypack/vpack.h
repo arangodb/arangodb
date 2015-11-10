@@ -28,16 +28,19 @@
 #define VELOCYPACK_VPACK_H 1
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/Buffer.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Collection.h"
-#include "velocypack/Dump.h"
+#include "velocypack/Dumper.h"
 #include "velocypack/Exception.h"
 #include "velocypack/HexDump.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Options.h"
 #include "velocypack/Parser.h"
+#include "velocypack/Sink.h"
 #include "velocypack/Slice.h"
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
+#include "velocypack/Version.h"
 
 #endif

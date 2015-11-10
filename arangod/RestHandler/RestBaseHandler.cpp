@@ -41,8 +41,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
 
-typedef arangodb::velocypack::Dumper<StringBufferAdapter, false> StringBufferDumper;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -117,7 +115,7 @@ void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
 
   StringBufferAdapter buffer(_response->body().stringBuffer());
 
-  StringBufferDumper dumper(buffer);
+  VPackDumper dumper(&buffer);
   try {
     dumper.dump(slice);
   }
@@ -127,7 +125,6 @@ void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
                   "cannot generate output");
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a cancel message
@@ -145,7 +142,8 @@ void RestBaseHandler::generateCanceled () {
 
     VPackSlice slice(builder.start());
     generateResult(HttpResponse::REQUEST_TIMEOUT, slice);
-  } catch (...) {
+  } 
+  catch (...) {
     generateError(HttpResponse::SERVER_ERROR,
                   TRI_ERROR_INTERNAL,
                   "cannot generate output");
@@ -193,7 +191,7 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
     builder.close();
     VPackSlice slice(builder.start());
     StringBufferAdapter buffer(_response->body().stringBuffer());
-    StringBufferDumper dumper(buffer);
+    VPackDumper dumper(&buffer);
     dumper.dump(slice);
   }
   catch (...) {

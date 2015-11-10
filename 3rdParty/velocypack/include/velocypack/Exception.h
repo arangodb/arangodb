@@ -52,8 +52,8 @@ namespace arangodb {
           InvalidAttributePath        = 16,
           InvalidValueType            = 17,
           DuplicateAttributeName      = 18,
+          NeedCustomTypeHandler       = 19,
           BuilderNotSealed            = 20,
-
           BuilderNeedOpenObject       = 21,
           BuilderNeedOpenArray        = 22,
           BuilderNeedOpenCompound     = 23,
@@ -111,6 +111,8 @@ namespace arangodb {
               return "Invalid attribute path";
             case InvalidValueType:
               return "Invalid value type for operation";
+            case NeedCustomTypeHandler:
+              return "Cannot execute operation without custom type handler";
             case BuilderNotSealed:
               return "Builder object not yet sealed";
             case BuilderNeedOpenObject:

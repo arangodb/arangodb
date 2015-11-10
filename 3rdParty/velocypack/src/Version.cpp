@@ -1,7 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a string buffer wrapper to be used by VelocyPackDumper
-///
-/// @file
+/// @brief Library to build up VPack documents.
 ///
 /// DISCLAIMER
 ///
@@ -21,36 +19,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Max Neunhoeffer
+/// @author Jan Steemann
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "string-buffer.h"
-#include <velocypack/vpack.h>
-#include <velocypack/velocypack-aliases.h>
+#include <sstream>
 
-namespace triagens {
-  namespace basics {
+#include "velocypack/velocypack-common.h"
+#include "velocypack/Version.h"
 
-    class StringBufferAdapter final : public VPackSink {
+using namespace arangodb::velocypack;
+  
+int const Version::major = 0;      
+int const Version::minor = 1;      
+int const Version::patch = 0;
 
-      public: 
-        StringBufferAdapter (TRI_string_buffer_t* buffer) 
-          : _buffer(buffer) {
-        }
-
-        void push_back (char c) override final;
-        void append (std::string const& p) override final;
-        void append (char c) override final;
-        void append (char const* p) override final;
-        void append (char const* p, uint64_t len) override final;
-        void append (uint8_t const* p, uint64_t len) override final;
-        void reserve (uint64_t len) override final;
-
-      private:
-        TRI_string_buffer_t* _buffer;
-
-    };
-
-  }
+std::string Version::toString () {
+  std::stringstream version;
+  version << major << "." << minor << "." << patch;
+  return version.str();
 }
+

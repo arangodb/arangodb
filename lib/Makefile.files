@@ -112,12 +112,14 @@ endif
 lib_libarango_a_SOURCES += \
 	3rdParty/velocypack/src/Builder.cpp \
 	3rdParty/velocypack/src/Collection.cpp \
+	3rdParty/velocypack/src/Dumper.cpp \
 	3rdParty/velocypack/src/Exception.cpp \
 	3rdParty/velocypack/src/HexDump.cpp \
 	3rdParty/velocypack/src/Options.cpp \
 	3rdParty/velocypack/src/Parser.cpp \
 	3rdParty/velocypack/src/Slice.cpp \
 	3rdParty/velocypack/src/ValueType.cpp \
+	3rdParty/velocypack/src/Version.cpp \
 	3rdParty/velocypack/src/asm-functions.cpp \
 	3rdParty/velocypack/src/fasthash.cpp \
 	3rdParty/velocypack/src/fpconv.cpp \

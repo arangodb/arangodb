@@ -57,12 +57,6 @@ namespace arangodb {
           return filter(*slice, cb);
         }
         
-        static Builder map (Slice const& slice, std::function<Value(Slice const&, ValueLength)> const& cb);
-        
-        static Builder map (Slice const* slice, std::function<Value(Slice const&, ValueLength)> const& cb) {
-          return map(*slice, cb);
-        }
-        
         static Slice find (Slice const& slice, std::function<bool(Slice const&, ValueLength)> const& cb);
         
         static Slice find (Slice const* slice, std::function<bool(Slice const&, ValueLength)> const& cb) {

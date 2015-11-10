@@ -467,13 +467,13 @@ void Parser::parseObject () {
 
     _b.reportAdd(base);
     bool excludeAttribute = false;
-    if (options.excludeAttribute == nullptr) {
+    if (options.attributeExcludeHandler == nullptr) {
       parseString();
     }
     else {
       auto lastPos = _b._pos;
       parseString();
-      if (options.excludeAttribute(Slice(_b._start + lastPos), _nesting)) {
+      if (options.attributeExcludeHandler->shouldExclude(Slice(_b._start + lastPos, options.customTypeHandler), _nesting)) {
         excludeAttribute = true;
       }
     }

@@ -32,9 +32,11 @@
 #include <string>
 #include <vector>
 #include <ostream>
+#include <algorithm>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
+#include "velocypack/Options.h"
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
 
@@ -55,18 +57,30 @@ namespace arangodb {
         uint8_t const* _start;
 
       public:
+        
+        CustomTypeHandler* customTypeHandler;
  
         // constructor for an empty Value of type None 
         Slice () 
           : Slice("\x00") {
         }
 
-        explicit Slice (uint8_t const* start) 
-          : _start(start) {
+        explicit Slice (uint8_t const* start, CustomTypeHandler* handler = nullptr) 
+          : _start(start), customTypeHandler(handler) {
         }
 
-        explicit Slice (char const* start) 
-          : _start(reinterpret_cast<uint8_t const*>(start)) {
+        explicit Slice (char const* start, CustomTypeHandler* handler = nullptr) 
+          : _start(reinterpret_cast<uint8_t const*>(start)), customTypeHandler(handler) {
+        }
+
+        Slice (Slice const& other) 
+          : _start(other._start), customTypeHandler(other.customTypeHandler) {
+        }
+
+        Slice& operator= (Slice const& other) {
+          _start = other._start;
+          customTypeHandler = other.customTypeHandler;
+          return *this;
         }
         
         uint8_t const* begin () {
@@ -86,7 +100,6 @@ namespace arangodb {
         }
 
         // No destructor, does not take part in memory management,
-        // standard copy, and move constructors, behaves like a pointer.
 
         // get the type for the slice
         inline ValueType type () const {
@@ -286,7 +299,7 @@ namespace arangodb {
           // find number of items
           if (h <= 0x05) {    // No offset table or length, need to compute:
             ValueLength firstSubOffset = findDataOffset(h);
-            Slice first(_start + firstSubOffset);
+            Slice first(_start + firstSubOffset, customTypeHandler);
             return (end - firstSubOffset) / first.byteSize();
           } 
           else if (offsetSize < 8) {
@@ -316,7 +329,7 @@ namespace arangodb {
 
         Slice valueAt (ValueLength index) const {
           Slice key = keyAt(index);
-          return Slice(key.start() + key.byteSize());
+          return Slice(key.start() + key.byteSize(), customTypeHandler);
         }
 
         // look for the specified attribute path inside an Object
@@ -328,7 +341,7 @@ namespace arangodb {
           }
 
           // use ourselves as the starting point
-          Slice last = Slice(start());
+          Slice last = Slice(start(), customTypeHandler);
           for (size_t i = 0; i < attributes.size(); ++i) {
             // fetch subattribute
             last = last.get(attributes[i]);
@@ -363,7 +376,7 @@ namespace arangodb {
           ValueLength n;
           if (h <= 0x05) {    // No offset table or length, need to compute:
             dataOffset = findDataOffset(h);
-            Slice first(_start + dataOffset);
+            Slice first(_start + dataOffset, customTypeHandler);
             n = (end - dataOffset) / first.byteSize();
           } 
           else if (offsetSize < 8) {
@@ -378,7 +391,7 @@ namespace arangodb {
             if (dataOffset == 0) {
               dataOffset = findDataOffset(h);
             }
-            Slice attrName = Slice(_start + dataOffset);
+            Slice attrName = Slice(_start + dataOffset, customTypeHandler);
             if (! attrName.isString()) {
               return Slice();
             }
@@ -391,7 +404,8 @@ namespace arangodb {
             if (memcmp(k, attribute.c_str(), attribute.size()) != 0) {
               return Slice();
             }
-            return Slice(attrName.start() + attrName.byteSize());
+
+            return Slice(attrName.start() + attrName.byteSize(), customTypeHandler);
           }
 
           ValueLength const ieBase = end - n * offsetSize 
@@ -483,6 +497,11 @@ namespace arangodb {
             // Smallint >= 0
             return static_cast<uint64_t>(h - 0x30);
           }
+
+          if (h >= 0x3a && h <= 0x3f) {
+            // Smallint < 0
+            throw Exception(Exception::NumberOutOfRange);
+          }
           
           throw Exception(Exception::InvalidValueType, "Expecting type UInt");
         }
@@ -511,6 +530,62 @@ namespace arangodb {
           throw Exception(Exception::InvalidValueType, "Expecting type Smallint");
         }
 
+        template<typename T>
+        T getNumericValue () const {
+          if (std::is_integral<T>()) {
+            if (std::is_signed<T>()) {
+              // signed integral type
+              if (isDouble()) {
+                auto v = getDouble();
+                if (v < static_cast<double>(std::numeric_limits<T>::min()) || 
+                    v > static_cast<double>(std::numeric_limits<T>::max())) {
+                  throw Exception(Exception::NumberOutOfRange);
+                }
+                return static_cast<T>(v);
+              }
+
+              int64_t v = getInt();
+              if (v < static_cast<int64_t>(std::numeric_limits<T>::min()) || 
+                  v > static_cast<int64_t>(std::numeric_limits<T>::max())) {
+                throw Exception(Exception::NumberOutOfRange);
+              }
+              return static_cast<T>(v);
+            }
+            else {
+              // unsigned integral type
+              if (isDouble()) {
+                auto v = getDouble();
+                if (v < 0.0 ||
+                    v > static_cast<double>(UINT64_MAX) ||
+                    v > static_cast<double>(std::numeric_limits<T>::max())) {
+                  throw Exception(Exception::NumberOutOfRange);
+                }
+                return static_cast<T>(v);
+              }
+
+              uint64_t v = getUInt();
+              if (v > static_cast<uint64_t>(std::numeric_limits<T>::max())) {
+                throw Exception(Exception::NumberOutOfRange);
+              }
+              return static_cast<T>(v);
+            }
+          }
+
+          // floating point type
+
+          if (isDouble()) {
+            return static_cast<T>(getDouble());
+          }
+          if (isInt() || isSmallInt()) {
+            return static_cast<T>(getInt());
+          }
+          if (isUInt()) {
+            return static_cast<T>(getUInt());
+          }
+
+          throw Exception(Exception::InvalidValueType, "Expecting numeric type");
+        }
+        
         // return the value for a UTCDate object
         int64_t getUTCDate () const {
           assertType(ValueType::UTCDate);
@@ -657,7 +732,11 @@ namespace arangodb {
             }
 
             case ValueType::Custom: {
-              return 0; // TODO 
+              if (customTypeHandler == nullptr) {
+                throw Exception(Exception::NeedCustomTypeHandler);
+              }
+
+              return customTypeHandler->byteSize(*this);
             }
           }
 
@@ -703,7 +782,7 @@ namespace arangodb {
           // find the number of items
           ValueLength n;
           if (h <= 0x05) {    // No offset table or length, need to compute:
-            Slice first(_start + dataOffset);
+            Slice first(_start + dataOffset, customTypeHandler);
             n = (end - dataOffset) / first.byteSize();
           }
           else if (offsetSize < 8) {
@@ -726,13 +805,13 @@ namespace arangodb {
             if (dataOffset == 0) {
               dataOffset = findDataOffset(h);
             }
-            Slice firstItem(_start + dataOffset);
-            return Slice(_start + dataOffset + index * firstItem.byteSize());
+            Slice firstItem(_start + dataOffset, customTypeHandler);
+            return Slice(_start + dataOffset + index * firstItem.byteSize(), customTypeHandler);
           }
           
           ValueLength const ieBase = end - n * offsetSize + index * offsetSize
                                      - (offsetSize == 8 ? 8 : 0);
-          return Slice(_start + readInteger<ValueLength>(_start + ieBase, offsetSize));
+          return Slice(_start + readInteger<ValueLength>(_start + ieBase, offsetSize), customTypeHandler);
         }
 
         ValueLength indexEntrySize (uint8_t head) const {
@@ -746,7 +825,7 @@ namespace arangodb {
                                           ValueLength n) const {
           for (ValueLength index = 0; index < n; ++index) {
             ValueLength offset = ieBase + index * offsetSize;
-            Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize));
+            Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize), customTypeHandler);
             if (! key.isString()) {
               // invalid object
               return Slice();
@@ -763,7 +842,7 @@ namespace arangodb {
               continue;
             }
             // key is identical. now return value
-            return Slice(key.start() + key.byteSize());
+            return Slice(key.start() + key.byteSize(), customTypeHandler);
           }
 
           // nothing found
@@ -787,7 +866,7 @@ namespace arangodb {
             ValueLength index = l + ((r - l) / 2);
 
             ValueLength offset = ieBase + index * offsetSize;
-            Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize));
+            Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize), customTypeHandler);
             if (! key.isString()) {
               // invalid object
               return Slice();
@@ -800,7 +879,7 @@ namespace arangodb {
 
             if (res == 0 && keyLength == attributeLength) {
               // key is identical. now return value
-              return Slice(key.start() + key.byteSize());
+              return Slice(key.start() + key.byteSize(), customTypeHandler);
             }
 
             if (res > 0 || (res == 0 && keyLength > attributeLength)) {

@@ -27,14 +27,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StringBufferAdapter.h"
-#include "Exceptions.h"
+#include "Basics/Exceptions.h"
 
 void triagens::basics::StringBufferAdapter::push_back (char c) {
   append(c);
 }
 
+void triagens::basics::StringBufferAdapter::append (std::string const& p) {
+  int res = TRI_AppendString2StringBuffer(_buffer, p.c_str(), p.size());
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
+
 void triagens::basics::StringBufferAdapter::append (char c) {
   int res = TRI_AppendCharStringBuffer(_buffer, c);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
+
+void triagens::basics::StringBufferAdapter::append (char const* p) {
+  int res = TRI_AppendString2StringBuffer(_buffer, p, strlen(p));
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }

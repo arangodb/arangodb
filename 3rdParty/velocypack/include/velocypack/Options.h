@@ -33,7 +33,24 @@
 
 namespace arangodb {
   namespace velocypack {
+    struct BufferInterface;
+    struct Sink;
     class Slice;
+
+    struct AttributeExcludeHandler {
+      virtual ~AttributeExcludeHandler () {
+      }
+
+      virtual bool shouldExclude (Slice const& key, int nesting) = 0;
+    };
+       
+    struct CustomTypeHandler {
+      virtual ~CustomTypeHandler () {
+      }
+
+      virtual void toJson (Slice const& value, Sink* sink, Slice const& base) = 0;
+      virtual ValueLength byteSize (Slice const& value) = 0;
+    }; 
         
     enum UnsupportedTypeBehavior {
       NullifyUnsupportedType,
@@ -49,7 +66,13 @@ namespace arangodb {
       UnsupportedTypeBehavior unsupportedTypeBehavior = FailOnUnsupportedType;
      
       // callback for excluding attributes from being built by the Parser
-      std::function<bool(Slice const& key, int nesting)> excludeAttribute = nullptr;
+      AttributeExcludeHandler* attributeExcludeHandler = nullptr;
+
+      // custom type handler used for processing custom types by Dumper and Slicer
+      CustomTypeHandler* customTypeHandler = nullptr;
+
+      // pretty-print JSON output when dumping with Dumper
+      bool prettyPrint              = false;
       
       // keep top-level object/array open when building objects with the Parser
       bool keepTopLevelOpen         = false;

@@ -40,8 +40,6 @@
 using namespace triagens::arango;
 using namespace triagens::rest;
 
-typedef arangodb::velocypack::Dumper<triagens::basics::StringBufferAdapter, false> StringBufferDumper;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -360,7 +358,7 @@ void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
       VPackSlice s = result.slice();
 
       triagens::basics::StringBufferAdapter buffer(_response->body().stringBuffer());
-      StringBufferDumper dumper(buffer); 
+      VPackDumper dumper(&buffer); 
       dumper.dump(s);
     }
   }  

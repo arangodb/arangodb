@@ -130,9 +130,10 @@ namespace arangodb {
 
         // Constructor and destructor:
 
-        Builder ()
+        Builder (Options const& options = Options::Defaults)
           : _buffer({ 0 }),
-            _pos(0) {
+            _pos(0),
+            options(options) {
           _start = _buffer.data();
           _size = _buffer.size();
         }
@@ -216,7 +217,7 @@ namespace arangodb {
 
         // Return a Slice of the result:
         Slice slice () const {
-          return Slice(start());
+          return Slice(start(), options.customTypeHandler);
         }
 
         // Compute the actual size here, but only when sealed

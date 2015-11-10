@@ -38,8 +38,6 @@
 #include "Utils/CursorRepository.h"
 #include "Wal/LogfileManager.h"
 
-typedef arangodb::velocypack::Dumper<triagens::basics::StringBufferAdapter, false> StringBufferDumper;
-
 using namespace triagens::arango;
 using namespace triagens::rest;
 
@@ -543,7 +541,7 @@ void RestExportHandler::deleteCursor () {
   result.close();
   VPackSlice s = result.slice();
   triagens::basics::StringBufferAdapter buffer(_response->body().stringBuffer());
-  StringBufferDumper dumper(buffer);
+  VPackDumper dumper(&buffer);
   dumper.dump(s);
 }
 

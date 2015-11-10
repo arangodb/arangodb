@@ -50,13 +50,13 @@ namespace arangodb {
         }
         
         ArrayIterator (ArrayIterator const& other) 
-          : _slice(other._slice), _size(other._size), _position(0) {
+          : _slice(other._slice), _size(other._size), _position(other._position) {
         }
         
         ArrayIterator& operator= (ArrayIterator const& other) {
           _slice = other._slice;
           _size  = other._size;
-          _position = 0;
+          _position = other._position;
           return *this;
         }
 
@@ -138,13 +138,13 @@ namespace arangodb {
         }
         
         ObjectIterator (ObjectIterator const& other) 
-          : _slice(other._slice), _size(other._size), _position(0) {
+          : _slice(other._slice), _size(other._size), _position(other._position) {
         }
         
         ObjectIterator& operator= (ObjectIterator const& other) {
           _slice = other._slice;
           _size  = other._size;
-          _position = 0;
+          _position = other._position;
           return *this;
         }
 

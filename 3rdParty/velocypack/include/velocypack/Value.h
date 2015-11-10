@@ -73,9 +73,10 @@ namespace arangodb {
 
         Value () = delete;
 
-        explicit Value (ValueType t = ValueType::Null) 
+        explicit Value(ValueType t)
           : _valueType(t), _cType(CType::None) {
         }
+
         explicit Value (bool b, ValueType t = ValueType::Bool) 
           : _valueType(t), _cType(CType::Bool) {
           _value.b = b;

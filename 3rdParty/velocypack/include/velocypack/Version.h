@@ -1,7 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a string buffer wrapper to be used by VelocyPackDumper
-///
-/// @file
+/// @brief Library to build up VPack documents.
 ///
 /// DISCLAIMER
 ///
@@ -21,36 +19,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Max Neunhoeffer
+/// @author Jan Steemann
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "string-buffer.h"
-#include <velocypack/vpack.h>
-#include <velocypack/velocypack-aliases.h>
+#ifndef VELOCYPACK_VERSION_H
+#define VELOCYPACK_VERSION_H 1
 
-namespace triagens {
-  namespace basics {
+#include <string>
 
-    class StringBufferAdapter final : public VPackSink {
+#include "velocypack/velocypack-common.h"
 
-      public: 
-        StringBufferAdapter (TRI_string_buffer_t* buffer) 
-          : _buffer(buffer) {
-        }
+namespace arangodb {
+  namespace velocypack {
 
-        void push_back (char c) override final;
-        void append (std::string const& p) override final;
-        void append (char c) override final;
-        void append (char const* p) override final;
-        void append (char const* p, uint64_t len) override final;
-        void append (uint8_t const* p, uint64_t len) override final;
-        void reserve (uint64_t len) override final;
+    struct Version {
+      Version () = delete;
 
-      private:
-        TRI_string_buffer_t* _buffer;
+      static std::string toString ();
 
+      static int const major;
+      static int const minor;
+      static int const patch;
     };
 
-  }
-}
+  }  // namespace arangodb::velocypack
+}  // namespace arangodb
+
+#endif
