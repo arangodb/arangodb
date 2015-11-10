@@ -1869,10 +1869,18 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
       }
 
       std::string const collectionName = vertexId.substr(0, split);
+      if (collectionName.compare(vColName) != 0) {
+        THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_INVALID_PARAMETER,
+                                      "you specified vertex collection `%s` for start vertext from `%s`",
+                                      vColName.c_str(),
+                                      collectionName.c_str());
+    }
       auto coli = resolver->getCollectionStruct(collectionName);
 
-      if (coli == nullptr || collectionName.compare(vColName) != 0) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      if (coli == nullptr) {
+        THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                      "`%s`",
+                                      collectionName.c_str());
       }
 
       VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
@@ -1897,10 +1905,18 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     }
 
     std::string const collectionName = vertexId.substr(0, split);
+    if (collectionName.compare(vColName) != 0) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_INVALID_PARAMETER,
+                                    "you specified vertex collection `%s` for start vertext from `%s`",
+                                    vColName.c_str(),
+                                    collectionName.c_str());
+    }
     auto coli = resolver->getCollectionStruct(collectionName);
 
-    if (coli == nullptr || collectionName.compare(vColName) != 0) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    if (coli == nullptr) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                    "`%s`",
+                                    collectionName.c_str());
     }
 
     VertexId v(coli->_cid, const_cast<char*>(str + split + 1));
