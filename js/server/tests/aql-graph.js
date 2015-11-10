@@ -382,7 +382,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       actual = getQueryResults(queryStart + theFox + queryEnd);
       assertEqual(actual, [ ]);
       
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
+      assertQueryError(errors.ERROR_GRAPH_INVALID_PARAMETER.code, queryStart + "thefox/thefox" + queryEnd);
 
       // Including Data
       actual = getRawQueryResults(queryStart + v3 + queryEndData);
@@ -434,7 +434,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       actual = getQueryResults(queryStart + theFox + queryEnd);
       assertEqual(actual, [ ]);
       
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
+      assertQueryError(errors.ERROR_GRAPH_INVALID_PARAMETER.code, queryStart + "thefox/thefox" + queryEnd);
 
       // Inclunding Data
       actual = getRawQueryResults(queryStart + v3 + queryEndData);
@@ -485,7 +485,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       actual = getQueryResults(queryStart + theFox + queryEnd);
       assertEqual(actual, [ ]);
 
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, queryStart + "thefox/thefox" + queryEnd);
+      assertQueryError(errors.ERROR_GRAPH_INVALID_PARAMETER.code, queryStart + "thefox/thefox" + queryEnd);
 
       // Inclunding Data
       actual = getRawQueryResults(queryStart + v3 + queryEndData);
