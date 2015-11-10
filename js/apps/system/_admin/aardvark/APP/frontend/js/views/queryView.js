@@ -21,7 +21,6 @@
       "click #result-switch": "switchTab",
       "click #query-switch": "switchTab",
       'click #customs-switch': "switchTab",
-//      'click #explain-switch': "switchTab",
       'click #submitQueryButton': 'submitQuery',
       'click #explainQueryButton': 'explainQuery',
       'click #commentText': 'commentText',
@@ -87,6 +86,9 @@
       _.each(this.tableDescription.rows, function(k) {
         k.thirdRow = '<a class="deleteButton"><span class="icon_arangodb_roundminus"' +
                      ' title="Delete query"></span></a>';
+        if (k.hasOwnProperty('parameter')) {
+          delete k.parameter;
+        }
       });
 
       // escape all columns but the third (which contains HTML)
@@ -96,9 +98,12 @@
     },
 
     editCustomQuery: function(e) {
-      var queryName = $(e.target).parent().children().first().text();
-      var inputEditor = ace.edit("aqlEditor");
+      var queryName = $(e.target).parent().children().first().text(),
+      inputEditor = ace.edit("aqlEditor"),
+      varsEditor = ace.edit("varsEditor");
       inputEditor.setValue(this.getCustomQueryValueByName(queryName));
+      varsEditor.setValue(this.getCustomQueryParameterByName(queryName));
+      this.deselect(varsEditor);
       this.deselect(inputEditor);
       $('#querySelect').val(queryName);
       this.switchTab("query-switch");
@@ -147,9 +152,11 @@
     },
 
     clearInput: function () {
-      var inputEditor = ace.edit("aqlEditor");
-      this.setCachedQuery(inputEditor.getValue());
+      var inputEditor = ace.edit("aqlEditor"),
+      varsEditor = ace.edit("varsEditor");
+      this.setCachedQuery(inputEditor.getValue(), varsEditor.getValue());
       inputEditor.setValue('');
+      varsEditor.setValue('');
     },
 
     smallOutput: function () {
@@ -175,7 +182,6 @@
     ],
 
     customQueries: [],
-
 
     tableDescription: {
       id: "arangoQueryTable",
@@ -220,17 +226,34 @@
         multiSelectAction: "forEach"
       });
 
+      var varsEditor = ace.edit("varsEditor");
+      varsEditor.getSession().setMode("ace/mode/aql");
+      varsEditor.setFontSize("13px");
+      varsEditor.commands.addCommand({
+        name: "togglecomment",
+        bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
+        exec: function (editor) {
+          editor.toggleCommentLines();
+        },
+        multiSelectAction: "forEach"
+      });
+
       //get cached query if available
-      var query = this.getCachedQuery();
-      if (query !== null && query !== undefined && query !== "") {
-        inputEditor.setValue(query);
+      var queryObject = this.getCachedQuery();
+      if (queryObject !== null && queryObject !== undefined && queryObject !== "") {
+        inputEditor.setValue(queryObject.query);
+        if (queryObject.parameter === '' || queryObject === undefined) {
+          varsEditor.setValue('{}');
+        }
+        else {
+          varsEditor.setValue(queryObject.parameter);
+        }
       }
 
-      inputEditor.getSession().selection.on('changeCursor', function () {
-        var inputEditor = ace.edit("aqlEditor");
-        var session = inputEditor.getSession();
-        var cursor = inputEditor.getCursorPosition();
-        var token = session.getTokenAt(cursor.row, cursor.column);
+      var changedFunction = function() {
+        var session = inputEditor.getSession(),
+        cursor = inputEditor.getCursorPosition(),
+        token = session.getTokenAt(cursor.row, cursor.column);
         if (token) {
           if (token.type === "comment") {
             $("#commentText i")
@@ -245,8 +268,17 @@
           }
         }
         //cache query in localstorage
-        self.setCachedQuery(inputEditor.getValue());
+        self.setCachedQuery(inputEditor.getValue(), varsEditor.getValue());
+      };
+
+      inputEditor.getSession().selection.on('changeCursor', function () {
+        changedFunction();
       });
+
+      varsEditor.getSession().selection.on('changeCursor', function () {
+        changedFunction();
+      });
+
       $('#queryOutput').resizable({
         handles: "s",
         ghost: true,
@@ -258,12 +290,13 @@
         }
       });
 
-      arangoHelper.fixTooltips(".queryTooltips, .icon_arangodb", "top");
+      arangoHelper.fixTooltips(".vars-editor-header i, .queryTooltips, .icon_arangodb", "top");
 
       $('#aqlEditor .ace_text-input').focus();
 
       var windowHeight = $(window).height() - 295;
-      $('#aqlEditor').height(windowHeight - 19);
+      $('#aqlEditor').height(windowHeight - 100 - 29);
+      $('#varsEditor').height(100);
       $('#queryOutput').height(windowHeight);
 
       inputEditor.resize();
@@ -271,6 +304,7 @@
 
       this.initTabArray();
       this.renderSelectboxes();
+      this.deselect(varsEditor);
       this.deselect(outputEditor);
       this.deselect(inputEditor);
 
@@ -294,9 +328,13 @@
       }
     },
 
-    setCachedQuery: function(query) {
-      if(typeof(Storage) !== "undefined") {
-        localStorage.setItem("cachedQuery", JSON.stringify(query));
+    setCachedQuery: function(query, vars) {
+      if (typeof(Storage) !== "undefined") {
+        var myObject = {
+          query: query,
+          parameter: vars
+        };
+        localStorage.setItem("cachedQuery", JSON.stringify(myObject));
       }
     },
 
@@ -345,7 +383,7 @@
     exportCustomQueries: function () {
       var name, toExport = {}, exportArray = [];
       _.each(this.customQueries, function(value, key) {
-        exportArray.push({name: value.name, value: value.value});
+        exportArray.push({name: value.name, value: value.value, parameter: value.parameter});
       });
       toExport = {
         "extra": {
@@ -446,7 +484,8 @@
         this.collection.each(function(model) {
           self.customQueries.push({
             name: model.get("name"),
-            value: model.get("value")
+            value: model.get("value"),
+            parameter: model.get("parameter")
           });
         });
       },
@@ -457,8 +496,10 @@
         //update queries first, before writing
         this.refreshAQL();
 
-        var inputEditor = ace.edit("aqlEditor");
-        var saveName = $('#new-query-name').val();
+        var inputEditor = ace.edit("aqlEditor"),
+        varsEditor = ace.edit("varsEditor"),
+        saveName = $('#new-query-name').val(),
+        bindVars = varsEditor.getValue();
 
         if ($('#new-query-name').hasClass('invalid-input')) {
           return;
@@ -469,9 +510,9 @@
           return;
         }
 
-        var content = inputEditor.getValue();
+        var content = inputEditor.getValue(),
         //check for already existing entry
-        var quit = false;
+        quit = false;
         $.each(this.customQueries, function (k, v) {
           if (v.name === saveName) {
             v.value = content;
@@ -482,14 +523,21 @@
 
         if (quit === true) {
           //Heiko: Form-Validator - name already taken
-          window.modalView.hide();
-          return;
+          // Update model and save
+          this.collection.findWhere({name: saveName}).set("value", content);
+        }
+        else {
+          if (bindVars === '' || bindVars === undefined) {
+            bindVars = '{}';
+          }
+
+          this.collection.add({
+            name: saveName,
+            parameter: bindVars, 
+            value: content
+          });
         }
 
-        this.collection.add({
-          name: saveName,
-          value: content
-        });
         this.collection.saveCollectionQueries();
 
         window.modalView.hide();
@@ -518,13 +566,11 @@
       },
 
       getCustomQueryValueByName: function (qName) {
-        var returnVal;
-        $.each(this.customQueries, function (k, v) {
-          if (qName === v.name) {
-            returnVal = v.value;
-          }
-        });
-        return returnVal;
+        return this.collection.findWhere({name: qName}).get("value");
+      },
+
+      getCustomQueryParameterByName: function (qName) {
+        return this.collection.findWhere({name: qName}).get("parameter");
       },
 
       refreshAQL: function(select) {
@@ -540,7 +586,8 @@
       },
 
       importSelected: function (e) {
-        var inputEditor = ace.edit("aqlEditor");
+        var inputEditor = ace.edit("aqlEditor"),
+        varsEditor = ace.edit("varsEditor");
         $.each(this.queries, function (k, v) {
           if ($('#' + e.currentTarget.id).val() === v.name) {
             inputEditor.setValue(v.value);
@@ -549,6 +596,16 @@
         $.each(this.customQueries, function (k, v) {
           if ($('#' + e.currentTarget.id).val() === v.name) {
             inputEditor.setValue(v.value);
+
+            if (v.hasOwnProperty('parameter')) {
+              if (v.parameter === '' || v.parameter === undefined) {
+                v.parameter = '{}';
+              }
+              varsEditor.setValue(v.parameter);
+            }
+            else {
+              varsEditor.setValue('{}');
+            }
           }
         });
 
@@ -610,6 +667,7 @@
 
       readQueryData: function() {
         var inputEditor = ace.edit("aqlEditor");
+        var varsEditor = ace.edit("varsEditor");
         var selectedText = inputEditor.session.getTextRange(inputEditor.getSelectionRange());
         var sizeBox = $('#querySize');
         var data = {
@@ -617,6 +675,17 @@
           batchSize: parseInt(sizeBox.val(), 10),
           id: "currentFrontendQuery"
         };
+
+        var bindVars = varsEditor.getValue();
+        try {
+          var params = JSON.parse(bindVars);
+          if (Object.keys(params).length !== 0) {
+            data.bindVars = params;
+          }
+        }
+        catch (e) {
+          arangoHelper.arangoError("Query error", "Could not use bind parameters.");
+        }
         return JSON.stringify(data);
       },
 
@@ -848,7 +917,6 @@
           error: function (errObj) {
             var res = errObj.responseJSON;
             // Display ErrorMessage
-            console.log("Error:", res.errorMessage);
           }
         });
       */
@@ -931,7 +999,7 @@
             try {
               var temp = JSON.parse(data.responseText);
               outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
-              arangoHelper.arangoError("Query error", temp.errorNum, temp.errorMessage);
+              //arangoHelper.arangoError("Query error", temp.errorMessage);
             }
             catch (e) {
               outputEditor.setValue('ERROR');

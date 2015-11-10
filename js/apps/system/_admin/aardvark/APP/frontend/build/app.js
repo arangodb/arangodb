@@ -14545,7 +14545,7 @@ exports.GeneralArrayCursor = GeneralArrayCursor;exports.SimpleQueryAll = SimpleQ
 // -----------------------------------------------------------------------------
 // --SECTION--                                    module "org/arangodb/tutorial"
 // -----------------------------------------------------------------------------
-var index=0;var next="Type 'tutorial' again to get to the next chapter.";var lessons=[{title:"Welcome to the tutorial!",text:"This is a user-interactive tutorial on ArangoDB and the ArangoDB shell.\n" + "It will give you a first look into ArangoDB and how it works."},{title:"JavaScript Shell",text:"On this shell's prompt, you can issue arbitrary JavaScript commands.\n" + "So you are able to do things like...:\n\n" + "  number = 123;\n" + "  number = number * 10;"},{title:"Running Complex Instructions",text:"You can also run more complex instructions, such as for loops:\n\n" + "  for (i = 0; i < 10; i++) { number = number + 1; }"},{title:"Printing Results",text:"As you can see, the result of the last command executed is printed automatically. " + "To explicitly print a value at any other time, there is the print function:\n\n" + "  for (i = 0; i < 5; ++i) { print(\"I am a JavaScript shell\"); }"},{title:"Creating Collections",text:"ArangoDB is a document database. This means that we store data as documents " + "(which are similar to JavaScript objects) in so-called 'collections'. " + "Let's create a collection named 'places' now:\n\n" + "  db._create('places');\n\n" + "Note: each collection is identified by a unique name. Trying to create a " + "collection that already exists will produce an error."},{title:"Displaying Collections",text:"Now you can take a look at the collection(s) you just created:\n\n" + "  db._collections();\n\n" + "Please note that all collections will be returned, including ArangoDB's pre-defined " + "system collections."},{title:"Creating Documents",text:"Now we have a collection, but it is still empty. So let's create some documents!\n\n" + "  db.places.save({ _key : \"foo\", city : \"foo-city\" });\n" + "  for (i = 0; i <= 10; i++) { db.places.save({ _key: \"example\" + i, zipcode: i }) };"},{title:"Displaying All Documents",text:"You want to take a look at your docs? No problem:\n\n" + "  db.places.toArray();"},{title:"Counting Documents",text:"To see how many documents there are in a collection, use the 'count' method:\n\n" + "  db.places.count();"},{title:"Retrieving Single Documents",text:"As you can see, each document has some meta attributes '_id', '_key' and '_rev'.\n" + "The '_key' attribute can be used to quickly retrieve a single document from " + "a collection:\n\n" + "  db.places.document(\"foo\");\n" + "  db.places.document(\"example5\");"},{title:"Retrieving Single Documents",text:"The '_id' attribute can also be used to retrieve documents using the 'db' object:\n\n" + "  db._document(\"places/foo\");\n" + "  db._document(\"places/example5\");"},{title:"Modifying Documents",text:"You can modify existing documents. Try to add a new attribute to a document and " + "verify whether it has been added:\n\n" + "  db._update(\"places/foo\", { zipcode: 39535 });\n" + "  db._document(\"places/foo\");"},{title:"Document Revisions",text:"Note that after updating the document, its '_rev' attribute changed automatically.\n" + "The '_rev' attribute contains a document revision number, and it can be used for " + "conditional modifications. Here's an example of how to avoid lost updates in case " + "multiple clients are accessing the documents in parallel:\n\n" + "  doc = db._document(\"places/example1\");\n" + "  db._update(\"places/example1\", { someValue: 23 });\n" + "  db._update(doc, { someValue: 42 });\n\n" + "Note that the first update will succeed because it was unconditional. The second " + "update however is conditional because we're also passing the document's revision " + "id in the first parameter to _update. As the revision id we're passing to update " + "does not match the document's current revision anymore, the update is rejected."},{title:"Removing Documents",text:"Deleting single documents can be achieved by providing the document _id or _key:\n\n" + "  db._remove(\"places/example7\");\n" + "  db.places.remove(\"example8\");\n" + "  db.places.count();"},{title:"Searching Documents",text:"Searching for documents with specific attributes can be done by using the " + "byExample method:\n\n" + "  db._create(\"users\");\n" + "  for (i = 0; i < 10; ++i) { " + "db.users.save({ name: \"username\" + i, active: (i % 3 == 0), age: 30 + i }); }\n" + "  db.users.byExample({ active: false }).toArray();\n" + "  db.users.byExample({ name: \"username3\", active: true }).toArray();\n"},{title:"Running AQL Queries",text:"ArangoDB also provides a query language for more complex matching:\n\n" + "  db._query(\"FOR u IN users FILTER u.active == true && u.age >= 33 " + "RETURN { username: u.name, age: u.age }\").toArray();"},{title:"Using Databases",text:"By default, the ArangoShell connects to the default database. The default database " + "is named '_system'. To create another database, use the '_createDatabase' method of the " + "'db' object. To switch into an existing database, use '_useDatabase'. To get rid of a " + "database and all of its collections, use '_dropDatabase':\n\n" + "  db._createDatabase(\"mydb\");\n" + "  db._useDatabase(\"mydb\");\n" + "  db._dropDatabase(\"mydb\");"}]; // -----------------------------------------------------------------------------
+var index=0;var next="Type 'tutorial' again to get to the next chapter.";var lessons=[{title:"Welcome to the tutorial!",text:"This is a user-interactive tutorial on ArangoDB and the ArangoDB shell.\n" + "It will give you a first look into ArangoDB and how it works."},{title:"JavaScript Shell",text:"On this shell's prompt, you can issue arbitrary JavaScript commands.\n" + "So you are able to do things like...:\n\n" + "  number = 123;\n" + "  number = number * 10;"},{title:"Running Complex Instructions",text:"You can also run more complex instructions, such as for loops:\n\n" + "  for (i = 0; i < 10; i++) { number = number + 1; }"},{title:"Printing Results",text:"As you can see, the result of the last command executed is printed automatically. " + "To explicitly print a value at any other time, there is the print function:\n\n" + "  for (i = 0; i < 5; ++i) { print(\"I am a JavaScript shell\"); }"},{title:"Creating Collections",text:"ArangoDB is a document database. This means that we store data as documents " + "(which are similar to JavaScript objects) in so-called 'collections'. " + "Let's create a collection named 'places' now:\n\n" + "  db._create('places');\n\n" + "Note: each collection is identified by a unique name. Trying to create a " + "collection that already exists will produce an error."},{title:"Displaying Collections",text:"Now you can take a look at the collection(s) you just created:\n\n" + "  db._collections();\n\n" + "Please note that all collections will be returned, including ArangoDB's pre-defined " + "system collections."},{title:"Creating Documents",text:"Now we have a collection, but it is empty. So let's create some documents!\n\n" + "  db.places.save({ _key : \"foo\", city : \"foo-city\" });\n" + "  for (i = 0; i <= 10; i++) { db.places.save({ _key: \"example\" + i, zipcode: i }) };"},{title:"Displaying All Documents",text:"You want to take a look at your docs? No problem:\n\n" + "  db.places.toArray();"},{title:"Counting Documents",text:"To see how many documents there are in a collection, use the 'count' method:\n\n" + "  db.places.count();"},{title:"Retrieving Single Documents",text:"As you can see, each document has some meta attributes '_id', '_key' and '_rev'.\n" + "The '_key' attribute can be used to quickly retrieve a single document from " + "a collection:\n\n" + "  db.places.document(\"foo\");\n" + "  db.places.document(\"example5\");"},{title:"Retrieving Single Documents",text:"The '_id' attribute can also be used to retrieve documents using the 'db' object:\n\n" + "  db._document(\"places/foo\");\n" + "  db._document(\"places/example5\");"},{title:"Modifying Documents",text:"You can modify existing documents. Try to add a new attribute to a document and " + "verify whether it has been added:\n\n" + "  db._update(\"places/foo\", { zipcode: 39535 });\n" + "  db._document(\"places/foo\");"},{title:"Document Revisions",text:"Note that after updating the document, its '_rev' attribute changed automatically.\n" + "The '_rev' attribute contains a document revision number, and it can be used for " + "conditional modifications. Here's an example of how to avoid lost updates in case " + "multiple clients are accessing the documents in parallel:\n\n" + "  doc = db._document(\"places/example1\");\n" + "  db._update(\"places/example1\", { someValue: 23 });\n" + "  db._update(doc, { someValue: 42 });\n\n" + "Note that the first update will succeed because it was unconditional. The second " + "update however is conditional because we're also passing the document's revision " + "id in the first parameter to _update. As the revision id we're passing to update " + "does not match the document's current revision anymore, the update is rejected."},{title:"Removing Documents",text:"Deleting single documents can be achieved by providing the document _id or _key:\n\n" + "  db._remove(\"places/example7\");\n" + "  db.places.remove(\"example8\");\n" + "  db.places.count();"},{title:"Searching Documents",text:"Searching for documents with specific attributes can be done by using the " + "byExample method:\n\n" + "  db._create(\"users\");\n" + "  for (i = 0; i < 10; ++i) { " + "db.users.save({ name: \"username\" + i, active: (i % 3 == 0), age: 30 + i }); }\n" + "  db.users.byExample({ active: false }).toArray();\n" + "  db.users.byExample({ name: \"username3\", active: true }).toArray();\n"},{title:"Running AQL Queries",text:"ArangoDB also provides a query language for more complex matching:\n\n" + "  db._query(\"FOR u IN users FILTER u.active == true && u.age >= 33 " + "RETURN { username: u.name, age: u.age }\").toArray();"},{title:"Using Databases",text:"By default, the ArangoShell connects to the default database. The default database " + "is named '_system'. To create another database, use the '_createDatabase' method of the " + "'db' object. To switch into an existing database, use '_useDatabase'. To get rid of a " + "database and all of its collections, use '_dropDatabase':\n\n" + "  db._createDatabase(\"mydb\");\n" + "  db._useDatabase(\"mydb\");\n" + "  db._dropDatabase(\"mydb\");"}]; // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
@@ -19950,7 +19950,7 @@ if(typeof global === 'undefined' && typeof window !== 'undefined'){global = wind
 global.Buffer = require("buffer").Buffer;global.process = require("process");global.setInterval = global.setInterval || function(){};global.clearInterval = global.clearInterval || function(){};global.setTimeout = global.setTimeout || function(){};global.clearTimeout = global.clearTimeout || function(){}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief template string generator for building an AQL query
 ////////////////////////////////////////////////////////////////////////////////
-global.aqlQuery = function(){var strings=arguments[0];var bindVars={};var query=strings[0];var name,value,i;for(i = 1;i < arguments.length;i++) {value = arguments[i];name = 'value' + (i - 1);if(value.constructor && value.constructor.name === 'ArangoCollection'){name = '@' + name;value = value.name();}bindVars[name] = value;query += '@' + name + strings[i];}return {query:query,bindVars:bindVars};}; ////////////////////////////////////////////////////////////////////////////////
+global.aqlQuery = function(){var strings=arguments[0];var bindVars={};var query=strings[0];var name,value,i;for(i = 1;i < arguments.length;i++) {value = arguments[i];name = 'value' + (i - 1);if(value && value.constructor && value.constructor.name === 'ArangoCollection'){name = '@' + name;value = value.name();}bindVars[name] = value;query += '@' + name + strings[i];}return {query:query,bindVars:bindVars};}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief start paging
 ////////////////////////////////////////////////////////////////////////////////
 global.start_pager = function start_pager(){var internal=require("internal");internal.startPager();}; ////////////////////////////////////////////////////////////////////////////////
@@ -21824,8 +21824,10 @@ window.arangoDocument = Backbone.Collection.extend({
       var queries = [];
 
       this.each(function(query) {
+        console.log(query.attributes);
         queries.push({
           value: query.attributes.value,
+          parameter: query.attributes.parameter,
           name: query.attributes.name
         });
       });
@@ -21871,6 +21873,7 @@ window.arangoDocument = Backbone.Collection.extend({
         processData: false,
         success: function() {
           window.progressView.hide();
+          arangoHelper.arangoNotification("Queries successfully imported.");
           callback();
         },
         error: function() {
@@ -28799,7 +28802,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #result-switch": "switchTab",
       "click #query-switch": "switchTab",
       'click #customs-switch': "switchTab",
-//      'click #explain-switch': "switchTab",
       'click #submitQueryButton': 'submitQuery',
       'click #explainQueryButton': 'explainQuery',
       'click #commentText': 'commentText',
@@ -28865,6 +28867,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       _.each(this.tableDescription.rows, function(k) {
         k.thirdRow = '<a class="deleteButton"><span class="icon_arangodb_roundminus"' +
                      ' title="Delete query"></span></a>';
+        if (k.hasOwnProperty('parameter')) {
+          delete k.parameter;
+        }
       });
 
       // escape all columns but the third (which contains HTML)
@@ -28874,9 +28879,12 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     editCustomQuery: function(e) {
-      var queryName = $(e.target).parent().children().first().text();
-      var inputEditor = ace.edit("aqlEditor");
+      var queryName = $(e.target).parent().children().first().text(),
+      inputEditor = ace.edit("aqlEditor"),
+      varsEditor = ace.edit("varsEditor");
       inputEditor.setValue(this.getCustomQueryValueByName(queryName));
+      varsEditor.setValue(this.getCustomQueryParameterByName(queryName));
+      this.deselect(varsEditor);
       this.deselect(inputEditor);
       $('#querySelect').val(queryName);
       this.switchTab("query-switch");
@@ -28925,9 +28933,11 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     clearInput: function () {
-      var inputEditor = ace.edit("aqlEditor");
-      this.setCachedQuery(inputEditor.getValue());
+      var inputEditor = ace.edit("aqlEditor"),
+      varsEditor = ace.edit("varsEditor");
+      this.setCachedQuery(inputEditor.getValue(), varsEditor.getValue());
       inputEditor.setValue('');
+      varsEditor.setValue('');
     },
 
     smallOutput: function () {
@@ -28953,7 +28963,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     ],
 
     customQueries: [],
-
 
     tableDescription: {
       id: "arangoQueryTable",
@@ -28998,17 +29007,34 @@ window.ArangoUsers = Backbone.Collection.extend({
         multiSelectAction: "forEach"
       });
 
+      var varsEditor = ace.edit("varsEditor");
+      varsEditor.getSession().setMode("ace/mode/aql");
+      varsEditor.setFontSize("13px");
+      varsEditor.commands.addCommand({
+        name: "togglecomment",
+        bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
+        exec: function (editor) {
+          editor.toggleCommentLines();
+        },
+        multiSelectAction: "forEach"
+      });
+
       //get cached query if available
-      var query = this.getCachedQuery();
-      if (query !== null && query !== undefined && query !== "") {
-        inputEditor.setValue(query);
+      var queryObject = this.getCachedQuery();
+      if (queryObject !== null && queryObject !== undefined && queryObject !== "") {
+        inputEditor.setValue(queryObject.query);
+        if (queryObject.parameter === '' || queryObject === undefined) {
+          varsEditor.setValue('{}');
+        }
+        else {
+          varsEditor.setValue(queryObject.parameter);
+        }
       }
 
-      inputEditor.getSession().selection.on('changeCursor', function () {
-        var inputEditor = ace.edit("aqlEditor");
-        var session = inputEditor.getSession();
-        var cursor = inputEditor.getCursorPosition();
-        var token = session.getTokenAt(cursor.row, cursor.column);
+      var changedFunction = function() {
+        var session = inputEditor.getSession(),
+        cursor = inputEditor.getCursorPosition(),
+        token = session.getTokenAt(cursor.row, cursor.column);
         if (token) {
           if (token.type === "comment") {
             $("#commentText i")
@@ -29023,8 +29049,17 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         }
         //cache query in localstorage
-        self.setCachedQuery(inputEditor.getValue());
+        self.setCachedQuery(inputEditor.getValue(), varsEditor.getValue());
+      };
+
+      inputEditor.getSession().selection.on('changeCursor', function () {
+        changedFunction();
       });
+
+      varsEditor.getSession().selection.on('changeCursor', function () {
+        changedFunction();
+      });
+
       $('#queryOutput').resizable({
         handles: "s",
         ghost: true,
@@ -29036,12 +29071,13 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
       });
 
-      arangoHelper.fixTooltips(".queryTooltips, .icon_arangodb", "top");
+      arangoHelper.fixTooltips(".vars-editor-header i, .queryTooltips, .icon_arangodb", "top");
 
       $('#aqlEditor .ace_text-input').focus();
 
       var windowHeight = $(window).height() - 295;
-      $('#aqlEditor').height(windowHeight - 19);
+      $('#aqlEditor').height(windowHeight - 100 - 29);
+      $('#varsEditor').height(100);
       $('#queryOutput').height(windowHeight);
 
       inputEditor.resize();
@@ -29049,6 +29085,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       this.initTabArray();
       this.renderSelectboxes();
+      this.deselect(varsEditor);
       this.deselect(outputEditor);
       this.deselect(inputEditor);
 
@@ -29072,9 +29109,13 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
     },
 
-    setCachedQuery: function(query) {
-      if(typeof(Storage) !== "undefined") {
-        localStorage.setItem("cachedQuery", JSON.stringify(query));
+    setCachedQuery: function(query, vars) {
+      if (typeof(Storage) !== "undefined") {
+        var myObject = {
+          query: query,
+          parameter: vars
+        };
+        localStorage.setItem("cachedQuery", JSON.stringify(myObject));
       }
     },
 
@@ -29123,7 +29164,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     exportCustomQueries: function () {
       var name, toExport = {}, exportArray = [];
       _.each(this.customQueries, function(value, key) {
-        exportArray.push({name: value.name, value: value.value});
+        exportArray.push({name: value.name, value: value.value, parameter: value.parameter});
       });
       toExport = {
         "extra": {
@@ -29224,7 +29265,8 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.collection.each(function(model) {
           self.customQueries.push({
             name: model.get("name"),
-            value: model.get("value")
+            value: model.get("value"),
+            parameter: model.get("parameter")
           });
         });
       },
@@ -29235,9 +29277,10 @@ window.ArangoUsers = Backbone.Collection.extend({
         //update queries first, before writing
         this.refreshAQL();
 
-        var inputEditor = ace.edit("aqlEditor");
-        var saveName = $('#new-query-name').val();
-        var isUpdate = $('#modalButton1').text() === 'Update';
+        var inputEditor = ace.edit("aqlEditor"),
+        varsEditor = ace.edit("varsEditor"),
+        saveName = $('#new-query-name').val(),
+        bindVars = varsEditor.getValue();
 
         if ($('#new-query-name').hasClass('invalid-input')) {
           return;
@@ -29248,33 +29291,34 @@ window.ArangoUsers = Backbone.Collection.extend({
           return;
         }
 
-        var content = inputEditor.getValue();
+        var content = inputEditor.getValue(),
         //check for already existing entry
-        var quit = false;
+        quit = false;
         $.each(this.customQueries, function (k, v) {
           if (v.name === saveName) {
             v.value = content;
-            quit = !isUpdate;
+            quit = true;
             return;
           }
         });
 
         if (quit === true) {
           //Heiko: Form-Validator - name already taken
-          window.modalView.hide();
-          return;
+          // Update model and save
+          this.collection.findWhere({name: saveName}).set("value", content);
         }
+        else {
+          if (bindVars === '' || bindVars === undefined) {
+            bindVars = '{}';
+          }
 
-        if (! isUpdate) {
           this.collection.add({
             name: saveName,
+            parameter: bindVars, 
             value: content
           });
         }
-        else {
-          var toModifiy = this.collection.findWhere({name: saveName});
-          toModifiy.set("value", content);
-        }
+
         this.collection.saveCollectionQueries();
 
         window.modalView.hide();
@@ -29303,13 +29347,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       },
 
       getCustomQueryValueByName: function (qName) {
-        var returnVal;
-        $.each(this.customQueries, function (k, v) {
-          if (qName === v.name) {
-            returnVal = v.value;
-          }
-        });
-        return returnVal;
+        return this.collection.findWhere({name: qName}).get("value");
+      },
+
+      getCustomQueryParameterByName: function (qName) {
+        return this.collection.findWhere({name: qName}).get("parameter");
       },
 
       refreshAQL: function(select) {
@@ -29325,7 +29367,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       },
 
       importSelected: function (e) {
-        var inputEditor = ace.edit("aqlEditor");
+        var inputEditor = ace.edit("aqlEditor"),
+        varsEditor = ace.edit("varsEditor");
         $.each(this.queries, function (k, v) {
           if ($('#' + e.currentTarget.id).val() === v.name) {
             inputEditor.setValue(v.value);
@@ -29334,6 +29377,16 @@ window.ArangoUsers = Backbone.Collection.extend({
         $.each(this.customQueries, function (k, v) {
           if ($('#' + e.currentTarget.id).val() === v.name) {
             inputEditor.setValue(v.value);
+
+            if (v.hasOwnProperty('parameter')) {
+              if (v.parameter === '' || v.parameter === undefined) {
+                v.parameter = '{}';
+              }
+              varsEditor.setValue(v.parameter);
+            }
+            else {
+              varsEditor.setValue('{}');
+            }
           }
         });
 
@@ -29395,6 +29448,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       readQueryData: function() {
         var inputEditor = ace.edit("aqlEditor");
+        var varsEditor = ace.edit("varsEditor");
         var selectedText = inputEditor.session.getTextRange(inputEditor.getSelectionRange());
         var sizeBox = $('#querySize');
         var data = {
@@ -29402,6 +29456,17 @@ window.ArangoUsers = Backbone.Collection.extend({
           batchSize: parseInt(sizeBox.val(), 10),
           id: "currentFrontendQuery"
         };
+
+        var bindVars = varsEditor.getValue();
+        try {
+          var params = JSON.parse(bindVars);
+          if (Object.keys(params).length !== 0) {
+            data.bindVars = params;
+          }
+        }
+        catch (e) {
+          arangoHelper.arangoError("Query error", "Could not use bind parameters.");
+        }
         return JSON.stringify(data);
       },
 
@@ -29633,7 +29698,6 @@ window.ArangoUsers = Backbone.Collection.extend({
           error: function (errObj) {
             var res = errObj.responseJSON;
             // Display ErrorMessage
-            console.log("Error:", res.errorMessage);
           }
         });
       */
@@ -29716,7 +29780,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             try {
               var temp = JSON.parse(data.responseText);
               outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
-              arangoHelper.arangoError("Query error", temp.errorNum, temp.errorMessage);
+              //arangoHelper.arangoError("Query error", temp.errorMessage);
             }
             catch (e) {
               outputEditor.setValue('ERROR');

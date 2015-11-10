@@ -148,9 +148,6 @@ case $target in
   armv7l-*-linux-gnueabihf)
     tr_ARM="yes"
     tr_ARM7="yes"
-    CFLAGS="$CFLAGS"
-    CXXFLAGS="$CXXFLAGS"
-    CPPFLAGS="$CPPFLAGS"
     ;;
 
   armv6l-*-linux-gnueabihf)
