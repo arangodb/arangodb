@@ -573,7 +573,7 @@ VPackBuilder RestVocbaseBaseHandler::parseVelocyPackBody (bool& success) {
   catch (std::bad_alloc const& e) {
     generateOOMError();
   }
-  catch (Exception const& e) {
+  catch (VPackException const& e) {
     std::string errmsg ("Parse error: ");
     errmsg.append(e.what());
     generateError(HttpResponse::BAD,

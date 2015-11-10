@@ -34,6 +34,7 @@
 #include "Basics/json.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "V8Server/ApplicationV8.h"
@@ -108,38 +109,38 @@ bool RestCursorHandler::cancel () {
 /// this method is also used by derived classes
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::processQuery (TRI_json_t const* json) {
-  if (! TRI_IsObjectJson(json)) {
+void RestCursorHandler::processQuery (VPackSlice const& slice) {
+  if (! slice.isObject()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
+    return;
+  }
+  VPackSlice const querySlice = slice.get("query");
+  if (! querySlice.isString()) {
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
   }
 
-  auto const* queryString = TRI_LookupObjectJson(json, "query");
-
-  if (! TRI_IsStringJson(queryString)) {
-    generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
-    return;
-  }
-
-  auto const* bindVars = TRI_LookupObjectJson(json, "bindVars");
-
-  if (bindVars != nullptr) {
-    if (! TRI_IsObjectJson(bindVars) && 
-        ! TRI_IsNullJson(bindVars)) {
+  VPackSlice const bindVars = slice.get("bindVars");
+  if (! bindVars.isNone()) {
+    if (! bindVars.isObject() &&
+        ! bindVars.isNull() ){
       generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting object for <bindVars>");
       return;
     }
   }
-  
-  auto options = buildOptions(json);
+
+  VPackBuilder optionsBuilder = buildOptions(slice);
+  VPackSlice options = optionsBuilder.slice();
+  VPackValueLength l;
+  char const* queryString = querySlice.getString(l);
 
   triagens::aql::Query query(_applicationV8, 
                              false, 
                              _vocbase, 
-                             queryString->_value._string.data,
-                             static_cast<size_t>(queryString->_value._string.length - 1),
-                             (bindVars != nullptr ? TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, bindVars) : nullptr),
-                             TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, options.json()), 
+                             queryString,
+                             static_cast<size_t>(l),
+                             (! bindVars.isNone() ? triagens::basics::VelocyPackHelper::velocyPackToJson(bindVars) : nullptr),
+                             triagens::basics::VelocyPackHelper::velocyPackToJson(options),
                              triagens::aql::PART_MAIN);
 
   registerQuery(&query); 
@@ -161,27 +162,9 @@ void RestCursorHandler::processQuery (TRI_json_t const* json) {
     _response = createResponse(HttpResponse::CREATED);
     _response->setContentType("application/json; charset=utf-8");
 
-    // build "extra" attribute
-    triagens::basics::Json extra(triagens::basics::Json::Object, 3); 
+    triagens::basics::Json extra = buildExtra(queryResult);
 
-    if (queryResult.stats != nullptr) {
-      extra.set("stats", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.stats, triagens::basics::Json::AUTOFREE));
-      queryResult.stats = nullptr;
-    }
-    if (queryResult.profile != nullptr) {
-      extra.set("profile", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.profile, triagens::basics::Json::AUTOFREE));
-      queryResult.profile = nullptr;
-    }
-    if (queryResult.warnings == nullptr) {
-      extra.set("warnings", triagens::basics::Json(triagens::basics::Json::Array));
-    }
-    else {
-      extra.set("warnings", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.warnings, triagens::basics::Json::AUTOFREE));
-      queryResult.warnings = nullptr;
-    }
-
-
-    size_t batchSize = triagens::basics::JsonHelper::getNumericValue<size_t>(options.json(), "batchSize", 1000);
+    size_t batchSize = triagens::basics::VelocyPackHelper::getNumericValue<size_t>(options, "batchSize", 1000);
     size_t const n = TRI_LengthArrayJson(queryResult.json);
 
     if (n <= batchSize) {
@@ -193,7 +176,7 @@ void RestCursorHandler::processQuery (TRI_json_t const* json) {
 
       result.set("hasMore", triagens::basics::Json(false));
 
-      if (triagens::basics::JsonHelper::getBooleanValue(options.json(), "count", false)) {
+      if (triagens::basics::VelocyPackHelper::getBooleanValue(options, "count", false)) {
         result.set("count", triagens::basics::Json(static_cast<double>(n)));
       }
     
@@ -210,8 +193,8 @@ void RestCursorHandler::processQuery (TRI_json_t const* json) {
     auto cursors = static_cast<triagens::arango::CursorRepository*>(_vocbase->_cursorRepository);
     TRI_ASSERT(cursors != nullptr);
 
-    double ttl = triagens::basics::JsonHelper::getNumericValue<double>(options.json(), "ttl", 30);
-    bool count = triagens::basics::JsonHelper::getBooleanValue(options.json(), "count", false);
+    double ttl = triagens::basics::VelocyPackHelper::getNumericValue<double>(options, "ttl", 30);
+    bool count = triagens::basics::VelocyPackHelper::getBooleanValue(options, "count", false);
     
     // steal the query JSON, cursor will take over the ownership
     auto j = queryResult.json;
@@ -288,63 +271,64 @@ bool RestCursorHandler::wasCanceled () {
 /// @brief build options for the query as JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json RestCursorHandler::buildOptions (TRI_json_t const* json) const {
-  auto getAttribute = [&json] (char const* name) {
-    return TRI_LookupObjectJson(json, name);
-  };
+VPackBuilder RestCursorHandler::buildOptions (VPackSlice const& slice) const {
+  VPackBuilder options;
+  options.addObject();
 
-  triagens::basics::Json options(triagens::basics::Json::Object, 3);
-
-  auto attribute = getAttribute("count");
-  options.set("count", triagens::basics::Json(TRI_IsBooleanJson(attribute) ? attribute->_value._boolean : false));
-
-  attribute = getAttribute("batchSize");
-  options.set("batchSize", triagens::basics::Json(TRI_IsNumberJson(attribute) ? attribute->_value._number : 1000.0));
-
-  if (TRI_IsNumberJson(attribute) && static_cast<size_t>(attribute->_value._number) == 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting non-zero value for <batchSize>");
+  VPackSlice count = slice.get("count");
+  if (count.isBool()) {
+    options.add("count", count);
+  }
+  else {
+    options.add("count", VPackValue(false));
   }
 
-  attribute = getAttribute("cache");
-  if (TRI_IsBooleanJson(attribute)) {
-    options.set("cache", triagens::basics::Json(attribute->_value._boolean));
+  VPackSlice batchSize = slice.get("batchSize");
+  if (batchSize.isNumber()) {
+    if ((batchSize.isDouble() && batchSize.getDouble() == 0.0) ||
+        (batchSize.isInteger() && batchSize.getUInt() == 0)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting non-zero value for <batchSize>");
+    }
+    options.add("batchSize", batchSize);
+  }
+  else {
+    options.add("batchSize", VPackValue(1000));
   }
 
-  attribute = getAttribute("options");
+  bool hasCache = false;
+  VPackSlice cache = slice.get("cache");
+  if (cache.isBool()) {
+    hasCache = true;
+    options.add("cache", cache);
+  }
 
-  if (TRI_IsObjectJson(attribute)) {
-    size_t const n = TRI_LengthVector(&attribute->_value._objects);
-
-    for (size_t i = 0; i < n; i += 2) {
-      auto key   = static_cast<TRI_json_t const*>(TRI_AtVector(&attribute->_value._objects, i));
-      auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&attribute->_value._objects, i + 1));
-
-      if (! TRI_IsStringJson(key) || value == nullptr) {
+  VPackSlice opts = slice.get("options");
+  if (opts.isObject()) {
+    for (auto const& it : VPackObjectIterator(opts)) {
+      if (! it.key.isString() || it.value.isNone()) {
         continue;
       }
+      std::string keyName = it.key.copyString();
 
-      auto keyName = key->_value._string.data;
+      if (keyName != "count" && 
+          keyName != "batchSize") { 
 
-      if (strcmp(keyName, "count") != 0 && 
-          strcmp(keyName, "batchSize") != 0) { 
-
-        if (strcmp(keyName, "cache") == 0 && options.has("cache")) {
+        if (keyName == "cache" && hasCache) {
           continue;
         }
-
-        options.set(keyName, triagens::basics::Json(
-          TRI_UNKNOWN_MEM_ZONE, 
-          TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value),
-          triagens::basics::Json::NOFREE
-        ));
+        options.add(keyName, it.value);
       }
     }
   }
 
-  if (! options.has("ttl")) {
-    attribute = getAttribute("ttl");
-    options.set("ttl", triagens::basics::Json(TRI_IsNumberJson(attribute) ? attribute->_value._number : 30.0));
+  VPackSlice ttl = slice.get("ttl");
+  if (ttl.isNumber()) {
+    options.add("ttl", ttl);
   }
+  else {
+    options.add("ttl", VPackValue(30));
+  }
+  options.close();
 
   return options;
 }
@@ -737,13 +721,15 @@ void RestCursorHandler::createCursor () {
   }
 
   try { 
-    std::unique_ptr<TRI_json_t> json(parseJsonBody());
+    bool parseSuccess = true;
+    VPackBuilder parsedBody = parseVelocyPackBody(parseSuccess);
 
-    if (json.get() == nullptr) {
+    if (! parseSuccess) {
       return;
     }
+    VPackSlice body = parsedBody.slice();
 
-    processQuery(json.get());
+    processQuery(body);
   }  
   catch (triagens::basics::Exception const& ex) {
     unregisterQuery(); 

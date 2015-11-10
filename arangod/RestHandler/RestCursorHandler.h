@@ -99,7 +99,7 @@ namespace triagens {
 /// this method is also used by derived classes
 ////////////////////////////////////////////////////////////////////////////////
 
-        void processQuery (struct TRI_json_t const*);
+        void processQuery (VPackSlice const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -135,7 +135,7 @@ namespace triagens {
 /// @brief build options for the query as JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json buildOptions (TRI_json_t const*) const;
+        VPackBuilder buildOptions (VPackSlice const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds the "extra" attribute values from the result.

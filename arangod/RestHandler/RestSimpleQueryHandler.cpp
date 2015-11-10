@@ -249,7 +249,7 @@ void RestSimpleQueryHandler::allDocuments () {
 
     VPackSlice s = data.slice();
     // now run the actual query and handle the result
-    processQuery(triagens::basics::VelocyPackHelper::velocyPackToJson(s));
+    processQuery(s);
   }
   catch (triagens::basics::Exception const& ex) {
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
