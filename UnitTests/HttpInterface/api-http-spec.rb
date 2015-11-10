@@ -156,7 +156,7 @@ describe ArangoDB do
 
         # run a HTTP HEAD query on the existing document, with wrong precondition
         cmd = "/_api/document/" + did
-        doc = ArangoDB.log_head("#{prefix}-head-check-documentq", cmd, :header => { :"if-match" => "1" })
+        doc = ArangoDB.log_head("#{prefix}-head-check-document", cmd, :header => { :"if-match" => "1" })
 
         doc.code.should eq(200)
         doc.response.body.should be_nil

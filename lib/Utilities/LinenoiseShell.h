@@ -101,6 +101,18 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
       std::string getLine (const std::string& prompt, bool& eof) override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the shell implementation supports colors
+////////////////////////////////////////////////////////////////////////////////
+
+      bool supportsColors () const override final {
+#ifdef _WIN32        
+        return false;
+#else
+        return true;
+#endif
+      }
   };
 }
 #endif
