@@ -268,7 +268,17 @@
           }
         }
         //cache query in localstorage
-        self.setCachedQuery(inputEditor.getValue(), varsEditor.getValue());
+        var a = inputEditor.getValue(),
+        b = varsEditor.getValue();
+
+        if (a.length === 1) {
+          a = "";
+        }
+        if (b.length === 1) {
+          b = "";
+        }
+
+        self.setCachedQuery(a, b);
       };
 
       inputEditor.getSession().selection.on('changeCursor', function () {
@@ -650,21 +660,6 @@
         this.customQueries = _.sortBy(this.customQueries, 'name');
       },
 
-      abortQuery: function () {
-        /*
-         $.ajax({
-           type: "DELETE",
-           url: "/_api/cursor/currentFrontendQuery",
-           contentType: "application/json",
-           processData: false,
-           success: function (data) {
-           },
-           error: function (data) {
-           }
-         });
-         */
-      },
-
       readQueryData: function() {
         var inputEditor = ace.edit("aqlEditor");
         var varsEditor = ace.edit("varsEditor");
@@ -677,14 +672,16 @@
         };
 
         var bindVars = varsEditor.getValue();
-        try {
-          var params = JSON.parse(bindVars);
-          if (Object.keys(params).length !== 0) {
-            data.bindVars = params;
+        if (bindVars.length > 0) {
+          try {
+            var params = JSON.parse(bindVars);
+            if (Object.keys(params).length !== 0) {
+              data.bindVars = params;
+            }
           }
-        }
-        catch (e) {
-          arangoHelper.arangoError("Query error", "Could not use bind parameters.");
+          catch (e) {
+            arangoHelper.arangoError("Query error", "Could not parse bind parameters.");
+          }
         }
         return JSON.stringify(data);
       },
