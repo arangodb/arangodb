@@ -224,6 +224,7 @@ void RestSimpleQueryHandler::allDocuments () {
         bindVars.add("limit", VPackValue(VPackValueType::Null));
       }
     }
+    bindVars.close();
     aql.append("RETURN doc");
 
     VPackBuilder data;
@@ -244,6 +245,7 @@ void RestSimpleQueryHandler::allDocuments () {
         data.add("batchSize", batchSize);
       }
     }
+    data.close();
 
     VPackSlice s = data.slice();
     // now run the actual query and handle the result
