@@ -1,4 +1,4 @@
-v2.6.10 (XXXX-XX-XX)
+v2.6.10 (2015-11-10)
 --------------------
 
 * disable replication appliers when starting in modes `--upgrade`, `--no-server`

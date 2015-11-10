@@ -1,10 +1,10 @@
-shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-follow?from=837811109&amp;chunkSize=400</span>
+shell&gt; curl --dump - http:<span class="hljs-comment">//localhost:8529/_api/replication/logger-follow?from=841154269&amp;chunkSize=400</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/x-arango-dump; charset=utf-<span class="hljs-number">8</span>
 x-arango-replication-active: <span class="hljs-literal">true</span>
 x-arango-replication-checkmore: <span class="hljs-literal">true</span>
-x-arango-replication-lastincluded: <span class="hljs-number">838335397</span>
-x-arango-replication-lasttick: <span class="hljs-number">839121829</span>
+x-arango-replication-lastincluded: <span class="hljs-number">842006237</span>
+x-arango-replication-lasttick: <span class="hljs-number">844299997</span>
 
-<span class="hljs-string">"{\"tick\":\"837876645\",\"type\":2001,\"database\":\"129957\",\"cid\":\"836893605\"}\n{\"tick\":\"838007717\",\"type\":2000,\"database\":\"129957\",\"cid\":\"837942181\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"837942181\",\"indexBuckets\":1,\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"838335397\",\"type\":2300,\"database\":\"129957\",\"cid\":\"837942181\",\"tid\":\"0\",\"key\":\"p1\",\"rev\":\"838269861\",\"data\":{\"_key\":\"p1\",\"_rev\":\"838269861\",\"name\":\"flux compensator\"}}\n"</span>
+<span class="hljs-string">"{\"tick\":\"841416413\",\"type\":2100,\"database\":\"130781\",\"cid\":\"841088733\",\"id\":\"841350877\",\"index\":{\"id\":\"841350877\",\"type\":\"hash\",\"fields\":[\"name\"],\"selectivityEstimate\":1,\"unique\":false,\"sparse\":false}}\n{\"tick\":\"841744093\",\"type\":2100,\"database\":\"130781\",\"cid\":\"841088733\",\"id\":\"841678557\",\"index\":{\"id\":\"841678557\",\"type\":\"skiplist\",\"fields\":[\"a\",\"b\"],\"unique\":true,\"sparse\":false}}\n{\"tick\":\"842006237\",\"type\":2100,\"database\":\"130781\",\"cid\":\"841088733\",\"id\":\"841875165\",\"index\":{\"id\":\"841875165\",\"type\":\"cap\",\"size\":500,\"byteSize\":0,\"unique\":false}}\n"</span>
