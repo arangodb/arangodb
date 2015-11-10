@@ -122,6 +122,35 @@ void BindParameters::process () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief strip collection name prefixes from the parameters
+/// the values must be a VelocyPack array
+////////////////////////////////////////////////////////////////////////////////
+
+VPackSlice BindParameters::StripCollectionNames (VPackSlice const& keys, 
+                                                 char const* collectionName) {
+  TRI_ASSERT(keys.isArray());
+  VPackBuilder result;
+  result.add(VPackValue(VPackValueType::Array));
+  for (auto const& element : VPackArrayIterator(keys)) {
+    if (element.isString()) {
+      VPackValueLength l;
+      char const* s = element.getString(l);
+      char const search = '/';
+      auto p = strchr(s, search);
+      if (p != nullptr && strncmp(s, collectionName, p - s) == 0) {
+        // key begins with collection name + '/', now strip it in place for further comparisons
+        char * pch = strstr(s, &search);
+        result.add(VPackValue(pch));
+        continue;
+      }
+    }
+    result.add(element);
+  }
+  return result.slice();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief strip collection name prefixes from the parameters
 /// the values must be a JSON array. the array is modified in place
 ////////////////////////////////////////////////////////////////////////////////
 
