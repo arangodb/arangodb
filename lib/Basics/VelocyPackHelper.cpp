@@ -56,6 +56,13 @@ std::string VelocyPackHelper::checkAndGetStringValue (VPackSlice const& slice,
   return std::string(res, len);
 }
 
+TRI_json_t* VelocyPackHelper::velocyPackToJson (VPackSlice const& slice) {
+  std::string output;
+  VPackStringDumper dumper(output);
+  dumper.dump(slice);
+  return JsonHelper::fromString(output.c_str());
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

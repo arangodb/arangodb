@@ -28,6 +28,8 @@
 #ifndef ARANGODB_BASICS_VELOCYPACK_HELPER_H
 #define ARANGODB_BASICS_VELOCYPACK_HELPER_H 1
 
+#include "Basics/JsonHelper.h"
+
 #include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
@@ -58,8 +60,12 @@ namespace triagens {
         static std::string checkAndGetStringValue (VPackSlice const&,
                                                    char const*);
 
-    };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Build TRI_json_t from VelocyPack. Just a temporary solution
+////////////////////////////////////////////////////////////////////////////////
 
+        static TRI_json_t* velocyPackToJson (VPackSlice const&);
+    };
   }
 }
 
