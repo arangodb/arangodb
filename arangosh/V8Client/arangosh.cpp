@@ -1728,7 +1728,7 @@ static bool RunScripts (v8::Isolate* isolate,
       current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), TRI_V8_STRING(dirname));
       TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
      
-      TRI_ExecuteGlobalJavaScriptFile(isolate, scripts[i].c_str()); 
+      ok = TRI_ExecuteGlobalJavaScriptFile(isolate, scripts[i].c_str()); 
 
       // restore old values for __dirname and __filename
       if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
@@ -1755,6 +1755,9 @@ static bool RunScripts (v8::Isolate* isolate,
       BaseClient.log("%s\n", exception.c_str());
 
       ok = false;
+      break;
+    }
+    if (!ok) {
       break;
     }
   }
