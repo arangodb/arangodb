@@ -31,12 +31,12 @@
 #include "Aql/Arithmetic.h"
 #include "Aql/Collection.h"
 #include "Aql/Executor.h"
+#include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
 #include "Basics/tri-strings.h"
 #include "VocBase/collection.h"
-#include "VocBase/Graphs.h"
 
 using namespace triagens::aql;
 
@@ -1485,7 +1485,7 @@ void Ast::injectBindParameters (BindParameters& parameters) {
       if (graphNode->type == NODE_TYPE_VALUE) {
         TRI_ASSERT(graphNode->isStringValue());
         std::string graphName = graphNode->getStringValue();
-        auto graph = triagens::arango::lookupGraphByName(_query->vocbase(), graphName);
+        auto graph = _query->lookupGraphByName(graphName);
         auto vColls = graph->vertexCollections();
         for (const auto& n: vColls) {
           _query->collections()->add(n, TRI_TRANSACTION_READ);

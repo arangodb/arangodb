@@ -35,7 +35,6 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/JsonHelper.h"
 #include "lib/Basics/json-utilities.h"
-#include "VocBase/Graphs.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

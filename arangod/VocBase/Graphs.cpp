@@ -28,96 +28,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/JsonHelper.h"
-#include "Graphs.h"
+#include "Aql/Graphs.h"
+#include "VocBase/Graphs.h"
 #include "Utils/transactions.h"
 #include "Cluster/ClusterMethods.h"
 using namespace triagens::basics;
 using namespace triagens::arango;
 
-const std::string Graph::_graphs = "_graphs";
-char const* Graph::_attrEdgeDefs = "edgeDefinitions";
-char const* Graph::_attrOrphans = "orphanCollections";
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       Local utils
-// -----------------------------------------------------------------------------
-
-void Graph::insertVertexCollectionsFromJsonArray(Json& arr) {
-  for (size_t j = 0; j < arr.size(); ++j) {
-    Json c = arr.at(j);
-    TRI_ASSERT(c.isString());
-    std::string name = JsonHelper::getStringValue(c.json(), "");
-    addVertexCollection(name);
-  }
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       Graph Class
-// -----------------------------------------------------------------------------
-
-std::unordered_set<std::string> const& Graph::vertexCollections () const {
-  return _vertexColls;
-}
-
-std::unordered_set<std::string> const& Graph::edgeCollections () const {
-  return _edgeColls;
-}
-
-void Graph::addEdgeCollection (std::string name) {
-  _edgeColls.insert(name);
-}
-
-void Graph::addVertexCollection (std::string name) {
-  _vertexColls.insert(name);
-}
-
-triagens::basics::Json Graph::toJson (TRI_memory_zone_t* z,
-                           bool verbose) const
-{
-  triagens::basics::Json json(z, triagens::basics::Json::Object);
-
-  if (_vertexColls.size() > 0) {
-    triagens::basics::Json vcn(z, triagens::basics::Json::Array);
-    for (auto cn : _vertexColls) {
-      vcn.add(triagens::basics::Json(cn));
-    }
-    json("vertexCollectionNames", vcn);
-  }
-
-  if (_edgeColls.size() > 0) {
-    triagens::basics::Json ecn(z, triagens::basics::Json::Array);
-    for (auto cn : _edgeColls) {
-      ecn.add(triagens::basics::Json(cn));
-    }
-    json("edgeCollectionNames", ecn);
-  }
-
-  return json;
-}
-
-Graph::Graph(triagens::basics::Json j) : 
-  _vertexColls(),
-  _edgeColls()
-{
-  auto jsonDef = j.get(_attrEdgeDefs);
-
-  for (size_t i = 0; i < jsonDef.size(); ++i) {
-    Json def = jsonDef.at(i);
-    TRI_ASSERT(def.isObject());
-    Json e = def.get("collection");
-    TRI_ASSERT(e.isString());
-    std::string eCol = JsonHelper::getStringValue(e.json(), "");
-    addEdgeCollection(eCol);
-    e = def.get("from");
-    TRI_ASSERT(e.isArray());
-    insertVertexCollectionsFromJsonArray(e);
-    e = def.get("to");
-    TRI_ASSERT(e.isArray());
-    insertVertexCollectionsFromJsonArray(e);
-  }
-  auto orphans = j.get(_attrOrphans);
-  insertVertexCollectionsFromJsonArray(orphans);
-}
+const std::string graphs = "_graphs";
 
 
 // -----------------------------------------------------------------------------
@@ -125,11 +43,11 @@ Graph::Graph(triagens::basics::Json j) :
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Instanciation of static class members
+/// @brief Load a graph from the _graphs collection; local and coordinator way
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbase, std::string name) {
-  Graph *g = nullptr;
+triagens::aql::Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbase, std::string name) {
+  triagens::aql::Graph *g = nullptr;
 
   if (ServerState::instance()->isCoordinator()) {
     triagens::rest::HttpResponse::HttpResponseCode responseCode;
@@ -140,7 +58,7 @@ Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbase, std::string 
     TRI_voc_rid_t rev = 0;
 
     int error = triagens::arango::getDocumentOnCoordinator(vocbase->_name,
-                                                           Graph::_graphs,
+                                                           graphs,
                                                            name,
                                                            rev,
                                                            headers,
@@ -161,12 +79,11 @@ Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbase, std::string 
                                     "while fetching _graph entry: `%s`",
                                     resultBody.c_str());
     }
-    g = new Graph(Json(TRI_UNKNOWN_MEM_ZONE, json));
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    g = new triagens::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, json));
   }
   else {
     CollectionNameResolver resolver(vocbase);
-    auto collName = resolver.getCollectionId(Graph::_graphs);
+    auto collName = resolver.getCollectionId(graphs);
 
 
     SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), vocbase, collName);
@@ -182,7 +99,7 @@ Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbase, std::string 
     auto shaper = trx.trxCollection()->_collection->_collection->getShaper();
     TRI_shaped_json_t document;
     auto j = TRI_JsonShapedJson(shaper, &document);
-    g = new Graph(Json(TRI_UNKNOWN_MEM_ZONE, j));
+    g = new triagens::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, j));
     trx.finish(res);
   }
   return g;

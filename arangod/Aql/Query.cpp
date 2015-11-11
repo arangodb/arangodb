@@ -51,6 +51,7 @@
 #include "V8Server/ApplicationV8.h"
 #include "V8Server/v8-shape-conv.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/Graphs.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
@@ -299,6 +300,9 @@ Query::~Query () {
   // free nodes
   for (auto& it : _nodes) {
     delete it;
+  }
+  for (auto& it : _graphs) {
+    delete it.second;
   }
 }
 
@@ -1495,6 +1499,24 @@ triagens::arango::TransactionContext* Query::createTransactionContext () {
 
   return new triagens::arango::StandaloneTransactionContext();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a TransactionContext
+////////////////////////////////////////////////////////////////////////////////
+
+Graph const* Query::lookupGraphByName (std::string &name) {
+  auto it = _graphs.find(name);
+  if (it != _graphs.end()) {
+    return it->second;
+  }
+
+  auto g = triagens::arango::lookupGraphByName (_vocbase, name);
+  if (g != nullptr) {
+    _graphs.emplace(name, g);
+  }
+  return g;
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -31,8 +31,8 @@
 #include "Basics/Traverser.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Condition.h"
+#include "Aql/Graphs.h"
 #include "V8Server/V8Traverser.h"
-#include "VocBase/Graphs.h"
 
 namespace triagens {
   namespace aql {
@@ -69,7 +69,6 @@ namespace triagens {
 
         ~TraversalNode () {
           delete _condition;
-          delete _graphObj;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -404,7 +403,7 @@ namespace triagens {
 /// @brief our graph...
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::arango::Graph * _graphObj;
+        Graph const* _graphObj;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief id of the calculation node that executes a filter for this query:

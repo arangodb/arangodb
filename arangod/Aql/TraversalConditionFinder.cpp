@@ -26,7 +26,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/JsonHelper.h"
-#include "VocBase/Graphs.h"
 #include "Aql/Ast.h"
 #include "Aql/TraversalConditionFinder.h"
 #include "Aql/ExecutionPlan.h"

@@ -27,115 +27,18 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPHS_H
-#define ARANGODB_GRAPHS_H 1
-
+#ifndef ARANGODB_GRAPHS_LOOKUP_H
+#define ARANGODB_GRAPHS_LOOKUP_H 1
 #include "vocbase.h"
-#include "voc-types.h"
+
 
 namespace triagens {
+  namespace aql {
+    class Graph;
+
+  }
   namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       Graph Class
-// -----------------------------------------------------------------------------
-
-    class Graph {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          constructor & destructor
-// -----------------------------------------------------------------------------
-      public:
-
-        Graph (triagens::basics::Json j);
-
-        ~Graph () {
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-      private: 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the cids of all vertexCollections
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_set<std::string> _vertexColls;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the cids of all edgeCollections
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_set<std::string> _edgeColls;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Graph collection edge definition attribute name
-////////////////////////////////////////////////////////////////////////////////
-
-        static char const* _attrEdgeDefs;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Graph collection orphan list arribute name
-////////////////////////////////////////////////////////////////////////////////
-
-        static char const* _attrOrphans;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Graph collection name
-////////////////////////////////////////////////////////////////////////////////
-
-        static const std::string _graphs;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Add Collections to the object
-////////////////////////////////////////////////////////////////////////////////
-
-        void insertVertexCollectionsFromJsonArray(triagens::basics::Json& arr);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the cids of all vertexCollections
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_set<std::string> const & vertexCollections () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the cids of all edgeCollections
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_set<std::string> const & edgeCollections () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Add an edge collection to this graphs definition
-////////////////////////////////////////////////////////////////////////////////
-
-        void addEdgeCollection (std::string);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Add a vertex collection to this graphs definition
-////////////////////////////////////////////////////////////////////////////////
-
-        void addVertexCollection (std::string);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a JSON representation of the graph
-/// the caller is responsible for freeing the JSON later
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::basics::Json toJson (TRI_memory_zone_t*,
-                                       bool) const;
-
-    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                Factory for graphs
@@ -148,7 +51,7 @@ namespace triagens {
 ///  The caller has to take care for the memory.
 ////////////////////////////////////////////////////////////////////////////////
 
-    Graph * lookupGraphByName (TRI_vocbase_t*, std::string);
+    triagens::aql::Graph * lookupGraphByName (TRI_vocbase_t*, std::string);
 
   } // namespace arango
 } // namespace triagens
