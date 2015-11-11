@@ -156,6 +156,7 @@ var allTests =
     "shell_client",
     "dump",
     "arangob",
+    "arangosh",
     "importing",
     "upgrade",
     "authentication",
@@ -1543,6 +1544,49 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
   var exe = fs.join("bin","arangob");
   return executeAndWait(exe, toArgv(args));
 }
+
+testFuncs.arangosh = function (options) {
+  var failed = 0;
+  var args = makeTestingArgsClient(options);
+  var topDir = findTopDir();
+  var arangosh = fs.join("bin","arangosh");
+
+  args["javascript.execute-string"] =  "throw('foo')";
+  print(toArgv(args));
+  var rc = executeExternalAndWait(arangosh, toArgv(args));
+  var failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
+  if (!failSuccess) {
+    failed += 1;
+  }
+
+  args["javascript.execute-string"] =  ";";
+  print(toArgv(args));
+  var rc = executeExternalAndWait(arangosh, toArgv(args));
+  var successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
+  if (!successSuccess) {
+    failed += 1;
+  }
+
+  return [
+    {
+      "suiteName": "ArangoshExitCodeTest",
+      "testArangoshExitCodeFail":
+      {
+        "status": failSuccess,
+        "duration": 0
+      },
+      "testArangoshExitCodeSuccess":
+      {
+        "status": successSuccess,
+        "duration": 0
+      },
+     "duration": 0,
+     "status": failSuccess && successSuccess,
+     "failed": failed,
+     "total": 2
+    }
+  ]
+};
 
 var impTodo = [
   {id: "json1", data: makePathUnix("UnitTests/import-1.json"),
