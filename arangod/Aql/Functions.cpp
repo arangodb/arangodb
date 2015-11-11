@@ -1859,8 +1859,6 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   if (vertexInfo.isString()) {
     vertexId = basics::JsonHelper::getStringValue(vertexInfo.json(), "");
     if (vertexId.find("/") != std::string::npos) {
-      
-      // TODO tmp can be replaced by Traversal::IdStringToVertexId
       size_t split;
       char const* str = vertexId.c_str();
 
@@ -1871,7 +1869,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
       std::string const collectionName = vertexId.substr(0, split);
       if (collectionName.compare(vColName) != 0) {
         THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_INVALID_PARAMETER,
-                                      "you specified vertex collection `%s` for start vertext from `%s`",
+                                      "specified vertex collection `%s` does not match start vertex collection `%s`",
                                       vColName.c_str(),
                                       collectionName.c_str());
     }
@@ -1896,7 +1894,6 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
     }
     vertexId = basics::JsonHelper::getStringValue(vertexInfo.get("_id").json(), "");
-    // TODO tmp can be replaced by Traversal::IdStringToVertexId
     size_t split;
     char const* str = vertexId.c_str();
 
@@ -1907,7 +1904,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     std::string const collectionName = vertexId.substr(0, split);
     if (collectionName.compare(vColName) != 0) {
       THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_INVALID_PARAMETER,
-                                    "you specified vertex collection `%s` for start vertext from `%s`",
+                                    "specified vertex collection `%s` does not match start vertex collection `%s`",
                                     vColName.c_str(),
                                     collectionName.c_str());
     }
