@@ -1,3 +1,10 @@
+v2.6.11 (XXXX-XX-XX)
+--------------------
+
+* fixed potentially invalid pointer access in shaper when the currently accessed
+  document got re-located by the WAL collector at the very same time
+
+
 v2.6.10 (2015-11-10)
 --------------------
 

@@ -204,12 +204,12 @@ struct TRI_doc_mptr_t {
       if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
           marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
         auto offset = (reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker))->_offsetJson;
-        return static_cast<char const*>(_dataptr) + offset;
+        return reinterpret_cast<char const*>(marker) + offset;
       }
       else if (marker->_type == TRI_WAL_MARKER_DOCUMENT ||
                marker->_type == TRI_WAL_MARKER_EDGE) {
         auto offset = (reinterpret_cast<triagens::wal::document_marker_t const*>(marker))->_offsetJson;
-        return static_cast<char const*>(_dataptr) + offset;
+        return reinterpret_cast<char const*>(marker) + offset;
       }
 
       TRI_ASSERT(false);
