@@ -285,7 +285,7 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
     {
       auto const* value = TRI_LookupObjectJson(json, "options");
       if (TRI_IsObjectJson(value)) {
-        value = TRI_LookupObjectJson(json, "waitForSync");
+        value = TRI_LookupObjectJson(value, "waitForSync");
         if (TRI_IsBooleanJson(value)) {
           waitForSync = value->_value._boolean;
         }

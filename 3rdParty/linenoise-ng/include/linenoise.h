@@ -58,6 +58,7 @@ extern "C" {
   int linenoiseHistoryLoad(const char* filename);
   void linenoiseHistoryFree(void);
   void linenoiseClearScreen(void);
+  int linenoiseInstallWindowChangeHandler(void);
 
 #ifdef __cplusplus
 }

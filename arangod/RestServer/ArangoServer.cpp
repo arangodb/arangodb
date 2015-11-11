@@ -601,6 +601,7 @@ void ArangoServer::buildApplicationServer () {
     ("server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS, "allow change of database in REST actions, only needed for unittests")
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
     ("server.additional-threads", &_additionalThreads, "number of threads in additional queues")
+    ("server.hide-product-header", &HttpResponse::HideProductHeader, "do not expose \"Server: ArangoDB\" header in HTTP responses")
     ("server.foxx-queues", &_foxxQueues, "enable Foxx queues")
     ("server.foxx-queues-poll-interval", &_foxxQueuesPollInterval, "Foxx queue manager poll interval (in seconds)")
     ("server.session-timeout", &VocbaseContext::ServerSessionTtl, "timeout of web interface server sessions (in seconds)")

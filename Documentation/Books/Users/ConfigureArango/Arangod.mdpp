@@ -32,6 +32,10 @@
 @startDocuBlock serverDefaultApi
 
 
+!SUBSECTION Hide Product header
+@startDocuBlock serverHideProductHeader
+
+
 !SUBSECTION Allow method override
 @startDocuBlock serverAllowMethod
 
