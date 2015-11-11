@@ -30,20 +30,24 @@
 #include "Basics/JsonHelper.h"
 #include "Graphs.h"
 #include "Utils/transactions.h"
-
+#include "Cluster/ClusterMethods.h"
 using namespace triagens::basics;
 using namespace triagens::arango;
+
+const std::string Graph::_graphs = "_graphs";
+char const* Graph::_attrEdgeDefs = "edgeDefinitions";
+char const* Graph::_attrOrphans = "orphanCollections";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Local utils
 // -----------------------------------------------------------------------------
 
-static void insertVertexCollectionsFromJsonArray(Graph& g, Json& arr) {
+void Graph::insertVertexCollectionsFromJsonArray(Json& arr) {
   for (size_t j = 0; j < arr.size(); ++j) {
     Json c = arr.at(j);
     TRI_ASSERT(c.isString());
     std::string name = JsonHelper::getStringValue(c.json(), "");
-    g.addVertexCollection(name);
+    addVertexCollection(name);
   }
 }
 
@@ -91,6 +95,31 @@ triagens::basics::Json Graph::toJson (TRI_memory_zone_t* z,
   return json;
 }
 
+Graph::Graph(triagens::basics::Json j) : 
+  _vertexColls(),
+  _edgeColls()
+{
+  auto jsonDef = j.get(_attrEdgeDefs);
+
+  for (size_t i = 0; i < jsonDef.size(); ++i) {
+    Json def = jsonDef.at(i);
+    TRI_ASSERT(def.isObject());
+    Json e = def.get("collection");
+    TRI_ASSERT(e.isString());
+    std::string eCol = JsonHelper::getStringValue(e.json(), "");
+    addEdgeCollection(eCol);
+    e = def.get("from");
+    TRI_ASSERT(e.isArray());
+    insertVertexCollectionsFromJsonArray(e);
+    e = def.get("to");
+    TRI_ASSERT(e.isArray());
+    insertVertexCollectionsFromJsonArray(e);
+  }
+  auto orphans = j.get(_attrOrphans);
+  insertVertexCollectionsFromJsonArray(orphans);
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      GraphFactory
 // -----------------------------------------------------------------------------
@@ -99,31 +128,48 @@ triagens::basics::Json Graph::toJson (TRI_memory_zone_t* z,
 /// @brief Instanciation of static class members
 ////////////////////////////////////////////////////////////////////////////////
 
-GraphFactory* GraphFactory::_singleton = nullptr;
-const std::string GraphFactory::_graphs = "_graphs";
-char const* GraphFactory::_attrEdgeDefs = "edgeDefinitions";
-char const* GraphFactory::_attrOrphans = "orphanCollections";
+Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbase, std::string name) {
+  Graph *g = nullptr;
 
-GraphFactory* GraphFactory::factory () {
-  if (_singleton == nullptr) {
-    _singleton = new GraphFactory();
-  }
-  return _singleton;
-}
+  if (ServerState::instance()->isCoordinator()) {
+    triagens::rest::HttpResponse::HttpResponseCode responseCode;
+    std::map<std::string, std::string> headers;
+    std::map<std::string, std::string> resultHeaders;
+    std::string resultBody;
 
-Graph const& GraphFactory::byName (TRI_vocbase_t* vocbase, std::string name) {
-  _cache.clear(); //// TODO: clear cache from js graph management.
-  auto outit = _cache.find(vocbase->_id);
-  if (outit == _cache.end()) {
-    // database not yet found.
-    std::unordered_map<std::string, Graph> map;
-    _cache.emplace(vocbase->_id, map);
-    outit = _cache.find(vocbase->_id);
+    TRI_voc_rid_t rev = 0;
+
+    int error = triagens::arango::getDocumentOnCoordinator(vocbase->_name,
+                                                           Graph::_graphs,
+                                                           name,
+                                                           rev,
+                                                           headers,
+                                                           true,
+                                                           responseCode,
+                                                           resultHeaders,
+                                                           resultBody);
+
+    if (error != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_FORMAT(error,
+                                    "while fetching _graph entry: `%s`",
+                                    resultBody.c_str());
+    }
+
+    auto json = JsonHelper::fromString(resultBody);
+    if (json == nullptr) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_HTTP_CORRUPTED_JSON,
+                                    "while fetching _graph entry: `%s`",
+                                    resultBody.c_str());
+    }
+    g = new Graph(Json(TRI_UNKNOWN_MEM_ZONE, json));
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
-  auto it = outit->second.find(name);
-  if (it == outit->second.end()) {
+  else {
     CollectionNameResolver resolver(vocbase);
-    SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), vocbase, resolver.getCollectionId(_graphs));
+    auto collName = resolver.getCollectionId(Graph::_graphs);
+
+
+    SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), vocbase, collName);
     int res = trx.begin();
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -134,70 +180,11 @@ Graph const& GraphFactory::byName (TRI_vocbase_t* vocbase, std::string name) {
       THROW_ARANGO_EXCEPTION(res);
     }
     auto shaper = trx.trxCollection()->_collection->_collection->getShaper();
-    auto pid = shaper->lookupAttributePathByName(_attrEdgeDefs);
-    if (pid == 0) {
-      //TODO FIXME
-      THROW_ARANGO_EXCEPTION(42);
-    }
     TRI_shaped_json_t document;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(document, mptr.getDataPtr());
-    TRI_shaped_json_t result;
-    TRI_shape_t const* shape;
-    bool ok = shaper->extractShapedJson(&document,
-                                        0,
-                                        pid,
-                                        &result,
-                                        &shape);
-
-    if (! ok) {
-      //TODO FIXME
-      THROW_ARANGO_EXCEPTION(42);
-    }
-    Graph g;
-    Json jsonDef(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &result));
-    for (size_t i = 0; i < jsonDef.size(); ++i) {
-      Json def = jsonDef.at(i);
-      TRI_ASSERT(def.isObject());
-      Json e = def.get("collection");
-      TRI_ASSERT(e.isString());
-      std::string eCol = JsonHelper::getStringValue(e.json(), "");
-      g.addEdgeCollection(eCol);
-      e = def.get("from");
-      TRI_ASSERT(e.isArray());
-      insertVertexCollectionsFromJsonArray(g, e);
-      e = def.get("to");
-      TRI_ASSERT(e.isArray());
-      insertVertexCollectionsFromJsonArray(g, e);
-    }
-    pid = shaper->lookupAttributePathByName(_attrOrphans);
-    if (pid == 0) {
-      //TODO FIXME
-      THROW_ARANGO_EXCEPTION(42);
-    }
-    TRI_EXTRACT_SHAPED_JSON_MARKER(document, mptr.getDataPtr());
-    ok = shaper->extractShapedJson(&document,
-                                   0,
-                                   pid,
-                                   &result,
-                                   &shape);
-    if (! ok) {
-      //TODO FIXME
-      THROW_ARANGO_EXCEPTION(42);
-    }
-    Json orphans(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &result));
-    insertVertexCollectionsFromJsonArray(g, orphans);
+    auto j = TRI_JsonShapedJson(shaper, &document);
+    g = new Graph(Json(TRI_UNKNOWN_MEM_ZONE, j));
     trx.finish(res);
-    outit->second.emplace(name, g);
-    it = outit->second.find(name);
   }
-  return it->second;
-}
-
-void GraphFactory::invalidateCache (TRI_vocbase_t* vocbase, std::string name) {
-  auto outit = _cache.find(vocbase->_id);
-  if (outit != _cache.end()) {
-    outit->second.erase(name);
-  }
-  // No else here, if the database has not yet been cached the graph cannot be
+  return g;
 }
 

@@ -72,10 +72,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     if (_edgeCids.size() == 0) {
       if (graph->isStringValue()) {
         _graphName = graph->getStringValue();
-        _graphObj = &triagens::arango::GraphFactory::factory()->byName(
-          _vocbase,
-          _graphName
-        );
+        _graphObj = triagens::arango::lookupGraphByName(_vocbase, _graphName);
 
 
         auto eColls = _graphObj->edgeCollections();

@@ -49,7 +49,7 @@ namespace triagens {
 
       friend class ExecutionBlock;
       friend class TraversalCollectionBlock;
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor with a vocbase and a collection name
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,7 +58,7 @@ namespace triagens {
 
         TraversalNode (ExecutionPlan* plan,
                        size_t id,
-                       TRI_vocbase_t* vocbase, 
+                       TRI_vocbase_t* vocbase,
                        AstNode const* direction,
                        AstNode const* start,
                        AstNode const* graph);
@@ -69,6 +69,7 @@ namespace triagens {
 
         ~TraversalNode () {
           delete _condition;
+          delete _graphObj;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +80,7 @@ namespace triagens {
 
         TraversalNode (ExecutionPlan* plan,
                        size_t id,
-                       TRI_vocbase_t* vocbase, 
+                       TRI_vocbase_t* vocbase,
                        std::vector<TRI_voc_cid_t> const& edgeCids,
                        Variable const* inVariable,
                        std::string const& vertexId,
@@ -119,7 +120,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of a traversal node
 ////////////////////////////////////////////////////////////////////////////////
-        
+
         double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -403,7 +404,7 @@ namespace triagens {
 /// @brief our graph...
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::arango::Graph const * _graphObj;
+        triagens::arango::Graph * _graphObj;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief id of the calculation node that executes a filter for this query:
@@ -414,7 +415,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief early abort traversal conditions:
 ////////////////////////////////////////////////////////////////////////////////
-                   
+
         Condition* _condition;
 
 ////////////////////////////////////////////////////////////////////////////////
