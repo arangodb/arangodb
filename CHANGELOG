@@ -652,7 +652,14 @@ v2.7.0-rc1 (2015-09-17)
   The "Applications" tab in the web interfaces has been renamed to "Services".
 
 
-v2.6.10 (XXXX-XX-XX)
+v2.6.11 (XXXX-XX-XX)
+--------------------
+
+* fixed potentially invalid pointer access in shaper when the currently accessed
+  document got re-located by the WAL collector at the very same time
+
+
+v2.6.10 (2015-11-10)
 --------------------
 
 * disable replication appliers when starting in modes `--upgrade`, `--no-server`
