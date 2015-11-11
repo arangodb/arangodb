@@ -30,18 +30,14 @@
 #include "Basics/Exceptions.h"
 
 void triagens::basics::StringBufferAdapter::push_back (char c) {
-  append(c);
-}
-
-void triagens::basics::StringBufferAdapter::append (std::string const& p) {
-  int res = TRI_AppendString2StringBuffer(_buffer, p.c_str(), p.size());
+  int res = TRI_AppendCharStringBuffer(_buffer, c);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
 
-void triagens::basics::StringBufferAdapter::append (char c) {
-  int res = TRI_AppendCharStringBuffer(_buffer, c);
+void triagens::basics::StringBufferAdapter::append (std::string const& p) {
+  int res = TRI_AppendString2StringBuffer(_buffer, p.c_str(), p.size());
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -59,10 +55,6 @@ void triagens::basics::StringBufferAdapter::append (char const* p, uint64_t len)
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-}
-
-void triagens::basics::StringBufferAdapter::append (uint8_t const* p, uint64_t len) {
-  append(reinterpret_cast<char const*>(p), len);
 }
 
 void triagens::basics::StringBufferAdapter::reserve (uint64_t len) {

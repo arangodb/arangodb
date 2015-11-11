@@ -41,10 +41,8 @@ namespace triagens {
 
         void push_back (char c) override final;
         void append (std::string const& p) override final;
-        void append (char c) override final;
         void append (char const* p) override final;
         void append (char const* p, uint64_t len) override final;
-        void append (uint8_t const* p, uint64_t len) override final;
         void reserve (uint64_t len) override final;
 
       private:

@@ -77,11 +77,11 @@ namespace arangodb {
         static std::string toString (Slice const& slice, Options const& options = Options::Defaults) {
           StringSink sink;
           dump(slice, &sink, options);
-          return sink.buffer;
+          return std::move(sink.buffer);
         }
 
         static std::string toString (Slice const* slice, Options const& options = Options::Defaults) {
-          return toString(*slice, options);
+          return std::move(toString(*slice, options));
         }
 
         void append (Slice const& slice) {

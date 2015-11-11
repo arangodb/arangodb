@@ -27,13 +27,10 @@
 #ifndef VELOCYPACK_OPTIONS_H
 #define VELOCYPACK_OPTIONS_H 1
 
-#include <functional>
-
 #include "velocypack/velocypack-common.h"
 
 namespace arangodb {
   namespace velocypack {
-    struct BufferInterface;
     struct Sink;
     class Slice;
 

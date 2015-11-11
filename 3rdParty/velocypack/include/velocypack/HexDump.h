@@ -48,6 +48,8 @@ namespace arangodb {
         : HexDump(*slice, valuesPerLine, separator) {
       }
 
+      static std::string toHex (uint8_t value);
+
       Slice const slice;
       int valuesPerLine;
       std::string separator;

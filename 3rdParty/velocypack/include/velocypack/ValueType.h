@@ -34,7 +34,7 @@
 namespace arangodb {
   namespace velocypack {
 
-    enum ValueType {
+    enum class ValueType {
       None,           // not yet initialized
       Null,           // JSON null
       Bool,

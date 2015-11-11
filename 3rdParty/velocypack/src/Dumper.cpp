@@ -335,8 +335,7 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
     
     case ValueType::BCD: {
       // TODO
-      handleUnsupportedType(slice);
-      break;
+      throw Exception(Exception::NotImplemented);
     }
     
     case ValueType::Custom: {

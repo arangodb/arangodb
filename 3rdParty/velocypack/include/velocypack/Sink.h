@@ -45,10 +45,8 @@ namespace arangodb {
       }
       virtual void push_back (char c) = 0;
       virtual void append (std::string const& p) = 0;
-      virtual void append (char c) = 0;
       virtual void append (char const* p) = 0;
       virtual void append (char const* p, ValueLength len) = 0;
-      virtual void append (uint8_t const* p, ValueLength len) = 0;
       virtual void reserve (ValueLength len) = 0;
     };
  
@@ -70,19 +68,11 @@ namespace arangodb {
         buffer.append(p.c_str(), p.size());
       }
 
-      void append (char c) override final {
-        buffer.push_back(c);
-      }
-
       void append (char const* p) override final {
         buffer.append(p, strlen(p));
       }
 
       void append (char const* p, ValueLength len) override final {
-        buffer.append(p, len);
-      }
-
-      void append (uint8_t const* p, ValueLength len) override final {
         buffer.append(p, len);
       }
 
@@ -106,20 +96,12 @@ namespace arangodb {
         buffer.append(p);
       }
 
-      void append (char c) override final {
-        buffer.push_back(c);
-      }
-
       void append (char const* p) override final {
         buffer.append(p, strlen(p));
       }
 
       void append (char const* p, ValueLength len) override final {
         buffer.append(p, len);
-      }
-
-      void append (uint8_t const* p, ValueLength len) override final {
-        buffer.append(reinterpret_cast<char const*>(p), len);
       }
 
       void reserve (ValueLength len) override final {
@@ -130,6 +112,34 @@ namespace arangodb {
     };
 
     typedef ByteBufferSink<char> CharBufferSink;
+
+    template<typename T>
+    struct StreamSink final : public Sink {
+      StreamSink (T* stream) 
+        : stream(stream) {
+      }
+
+      void push_back (char c) override final {
+        *stream << c;
+      }
+
+      void append (std::string const& p) override final {
+        *stream << p;
+      }
+
+      void append (char const* p) override final {
+        stream->write(p, static_cast<std::streamsize>(strlen(p)));
+      }
+
+      void append (char const* p, ValueLength len) override final {
+        stream->write(p, static_cast<std::streamsize>(len));
+      }
+
+      void reserve (ValueLength) override final {
+      }
+
+      T* stream;
+    };
 
   }  // namespace arangodb::velocypack
 }  // namespace arangodb

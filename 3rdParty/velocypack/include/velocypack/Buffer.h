@@ -105,15 +105,19 @@ namespace arangodb {
           reset();
         }
 
-        T* data () {
+        inline T* data () {
           return _buffer;
         }
 
-        T const* data () const {
+        inline T const* data () const {
           return _buffer;
         }
 
-        ValueLength size () const {
+        inline ValueLength size () const {
+          return _pos;
+        }
+        
+        inline ValueLength length () const {
           return _pos;
         }
 
@@ -134,12 +138,7 @@ namespace arangodb {
           _pos = 0;
         }
 
-        void push_back (char c) {
-          reserve(1); 
-          _buffer[_pos++] = c;
-        }
-
-        void append (char c) {
+        inline void push_back (char c) {
           reserve(1); 
           _buffer[_pos++] = c;
         }
@@ -149,13 +148,7 @@ namespace arangodb {
           memcpy(_buffer + _pos, p, len);
           _pos += len;
         }
-
-        void append (uint8_t const* p, ValueLength len) {
-          reserve(len);
-          memcpy(_buffer + _pos, p, len);
-          _pos += len;
-        }
-
+        
         void reserve (ValueLength len) {
           if (_pos + len < _alloc) {
             return;
@@ -201,7 +194,7 @@ namespace arangodb {
        
       private:
 
-        ValueLength capacity () const {
+        inline ValueLength capacity () const {
           return _alloc;
         }
 

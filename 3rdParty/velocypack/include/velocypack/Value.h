@@ -43,7 +43,7 @@ namespace arangodb {
 
       public:
 
-        enum CType {
+        enum class CType {
           None     = 0,
           Bool     = 1,
           Double   = 2,
@@ -73,7 +73,7 @@ namespace arangodb {
 
         Value () = delete;
 
-        explicit Value(ValueType t)
+        explicit Value (ValueType t)
           : _valueType(t), _cType(CType::None) {
         }
 
@@ -142,37 +142,37 @@ namespace arangodb {
         }
 
         bool getBool () const {
-          VELOCYPACK_ASSERT(_cType == Bool);
+          VELOCYPACK_ASSERT(_cType == CType::Bool);
           return _value.b;
         }
 
         double getDouble () const {
-          VELOCYPACK_ASSERT(_cType == Double);
+          VELOCYPACK_ASSERT(_cType == CType::Double);
           return _value.d;
         }
 
         int64_t getInt64 () const {
-          VELOCYPACK_ASSERT(_cType == Int64);
+          VELOCYPACK_ASSERT(_cType == CType::Int64);
           return _value.i;
         }
 
         uint64_t getUInt64 () const {
-          VELOCYPACK_ASSERT(_cType == UInt64);
+          VELOCYPACK_ASSERT(_cType == CType::UInt64);
           return _value.u;
         }
 
         std::string const* getString () const {
-          VELOCYPACK_ASSERT(_cType == String);
+          VELOCYPACK_ASSERT(_cType == CType::String);
           return _value.s;
         }
 
         void const* getExternal () const {
-          VELOCYPACK_ASSERT(_cType == VoidPtr);
+          VELOCYPACK_ASSERT(_cType == CType::VoidPtr);
           return _value.e;
         }
 
         char const* getCharPtr () const {
-          VELOCYPACK_ASSERT(_cType == CharPtr);
+          VELOCYPACK_ASSERT(_cType == CType::CharPtr);
           return _value.c;
         }
 
@@ -185,13 +185,13 @@ namespace arangodb {
 
       public:
 
-        explicit ValuePair (uint8_t const* start, uint64_t size,
-                            ValueType type = ValueType::Binary)
+        ValuePair (uint8_t const* start, uint64_t size,
+                   ValueType type = ValueType::Binary)
           : _start(start), _size(size), _type(type) {
         }
 
-        explicit ValuePair (char const* start, uint64_t size,
-                            ValueType type = ValueType::Binary)
+        ValuePair (char const* start, uint64_t size,
+                   ValueType type = ValueType::Binary)
           : _start(reinterpret_cast<uint8_t const*>(start)),
             _size(size), _type(type) {
         }

@@ -163,7 +163,9 @@ void Builder::close () {
     // Intentionally leave _index[depth] intact to avoid future allocs!
     return;
   }
+
   // From now on index.size() > 0
+  VELOCYPACK_ASSERT(index.size() > 0);
 
   bool needIndexTable = true;
   bool needNrSubs = true;
@@ -179,15 +181,17 @@ void Builder::close () {
     // In this case it could be that all entries have the same length
     // and we do not need an offset table at all:
     bool noTable = true;
-    ValueLength subLen = index[1] - index[0];
-    for (size_t i = 1; i < index.size() - 1; i++) {
-      if (index[i + 1] - index[i] != subLen) {
-        noTable = false;
-        break;
-      }
-    }
-    if ((_pos - tos) - index[index.size()-1] != subLen) {
+    ValueLength const subLen = index[1] - index[0];
+    if ((_pos - tos) - index[index.size() - 1] != subLen) {
       noTable = false;
+    }
+    else {
+      for (size_t i = 1; i < index.size() - 1; i++) {
+        if (index[i + 1] - index[i] != subLen) {
+          noTable = false;
+          break;
+        }
+      }
     }
     if (noTable) {
       needIndexTable = false;
@@ -630,7 +634,7 @@ void Builder::checkAttributeUniqueness (Slice const obj) const {
     for (ValueLength i = 1; i < n; ++i) {
       Slice current = obj.keyAt(i);
       if (! current.isString()) {
-        throw Exception(Exception::InternalError, "Expecting String key");
+        throw Exception(Exception::BuilderUnexpectedType, "Expecting String key");
       }
       
       ValueLength len2;
@@ -651,7 +655,7 @@ void Builder::checkAttributeUniqueness (Slice const obj) const {
     for (size_t i = 0; i < n; ++i) {
       Slice key = obj.keyAt(i);
       if (! key.isString()) {
-        throw Exception(Exception::InternalError, "Expecting String key");
+        throw Exception(Exception::BuilderUnexpectedType, "Expecting String key");
       }
       
       if (! keys.emplace(key.copyString()).second) {
