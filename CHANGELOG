@@ -98,8 +98,17 @@ v2.8.0 (XXXX-XX-XX)
   of AQL queries
 
 
-v2.7.1 (XXXX-XX-XX)
+v2.7.2 (XXXX-XX-XX)
 -------------------
+
+* fixed potentially invalid pointer access in shaper when the currently accessed
+  document got re-located by the WAL collector at the very same time
+
+
+v2.7.1 (2015-11-07)
+-------------------
+
+* switch to linenoise next generation
 
 * exclude `_apps` collection from replication
 
