@@ -68,7 +68,31 @@ toolbar {
   @extend %toolbar;
 }
 
-.aql-editor {
+.vars-editor-header {
+  border-top: 1px solid $c-content-border;
+  margin-top: -5px;
+  padding-left: 5px;
+
+  i {
+    border-radius: 2px;
+    color: $c-darker-grey;
+    height: 15px;
+    margin-left: 5px;
+    padding-left: 3px;
+    padding-top: 1px;
+    width: 15px;
+  }
+
+  i:hover {
+    background-color: $c-positive;
+    color: $c-white;
+    cursor: pointer;
+  }
+
+}
+
+.aql-editor,
+.vars-editor {
   @extend %toolbar;
   border-color: $c-editor-toolbar;
   border-left: 0 !important;
@@ -376,7 +400,8 @@ toolbar {
     width: 25px;
   }
 
-  span:hover {
+  span:hover,
+  .vars-editor-header i {
     background-color: $c-positive;
     color: $c-white;
   }
@@ -391,6 +416,7 @@ toolbar {
   }
 
   .fa {
+    color: $c-darker-grey;
     margin-left: 1px;
     margin-top: 2px;
 
@@ -400,6 +426,7 @@ toolbar {
   }
 
   .icon_arangodb {
+    color: $c-darker-grey;
     font-size: 14pt;
 
     &:first-child {

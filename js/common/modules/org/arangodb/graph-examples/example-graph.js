@@ -735,7 +735,7 @@ var loadGraph = function(name) {
   }
 
   dropGraph(name);
-  knownGraphs[name]();
+  return knownGraphs[name]();
 };
 
 exports.loadGraph = loadGraph;

@@ -82,6 +82,7 @@ LinenoiseShell::LinenoiseShell (std::string const& history,
   : ShellBase(history, completer) {
   COMPLETER = completer;
   linenoiseSetCompletionCallback(LinenoiseCompletionGenerator);
+  linenoiseInstallWindowChangeHandler();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
