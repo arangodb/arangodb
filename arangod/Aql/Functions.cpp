@@ -2282,8 +2282,6 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   if (vertexInfo.isString()) {
     vertexId = basics::JsonHelper::getStringValue(vertexInfo.json(), "");
     if (vertexId.find("/") != std::string::npos) {
-      
-      // TODO tmp can be replaced by Traversal::IdStringToVertexId
       size_t split;
       char const* str = vertexId.c_str();
 
@@ -2294,7 +2292,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
       std::string const collectionName = vertexId.substr(0, split);
       if (collectionName.compare(vColName) != 0) {
         THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_INVALID_PARAMETER,
-                                      "you specified vertex collection `%s` for start vertext from `%s`",
+                                      "specified vertex collection '%s' does not match start vertex collection '%s'",
                                       vColName.c_str(),
                                       collectionName.c_str());
     }
@@ -2302,7 +2300,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
 
       if (coli == nullptr) {
         THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                      "`%s`",
+                                      "'%s'",
                                       collectionName.c_str());
       }
 
@@ -2319,7 +2317,6 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
     }
     vertexId = basics::JsonHelper::getStringValue(vertexInfo.get("_id").json(), "");
-    // TODO tmp can be replaced by Traversal::IdStringToVertexId
     size_t split;
     char const* str = vertexId.c_str();
 
@@ -2330,7 +2327,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     std::string const collectionName = vertexId.substr(0, split);
     if (collectionName.compare(vColName) != 0) {
       THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_INVALID_PARAMETER,
-                                    "you specified vertex collection `%s` for start vertext from `%s`",
+                                    "specified vertex collection '%s' does not match start vertex collection '%s'",
                                     vColName.c_str(),
                                     collectionName.c_str());
     }
@@ -2338,7 +2335,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
 
     if (coli == nullptr) {
       THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                    "`%s`",
+                                    "'%s'",
                                     collectionName.c_str());
     }
 
@@ -2528,7 +2525,7 @@ AqlValue Functions::Near (triagens::aql::Query* query,
                                            true,
                                            true);
     if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_FORMAT(res, "`%s`", colName.c_str());
+      THROW_ARANGO_EXCEPTION_FORMAT(res, "'%s'", colName.c_str());
     }
 
     TRI_EnsureCollectionsTransaction(trx->getInternals());
@@ -2536,7 +2533,7 @@ AqlValue Functions::Near (triagens::aql::Query* query,
 
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                    "`%s`",
+                                    "'%s'",
                                     colName.c_str());
     }
   }
@@ -2544,9 +2541,9 @@ AqlValue Functions::Near (triagens::aql::Query* query,
   auto document = trx->documentCollection(cid);
 
   if (document == nullptr) {
-      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                    "`%s`",
-                                    colName.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                  "'%s'",
+                                  colName.c_str());
   }
 
   triagens::arango::Index* index = nullptr;
@@ -2698,7 +2695,7 @@ AqlValue Functions::Within (triagens::aql::Query* query,
                                            true,
                                            true);
     if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_FORMAT(res, "`%s`", colName.c_str());
+      THROW_ARANGO_EXCEPTION_FORMAT(res, "'%s'", colName.c_str());
     }
 
     TRI_EnsureCollectionsTransaction(trx->getInternals());
@@ -2706,7 +2703,7 @@ AqlValue Functions::Within (triagens::aql::Query* query,
 
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                    "`%s`",
+                                    "'%s'",
                                     colName.c_str());
     }
   }
@@ -2988,7 +2985,7 @@ static void RegisterCollectionInTransaction (triagens::arango::AqlTransaction* t
   cid = trx->resolver()->getCollectionId(collectionName);
   if (cid == 0) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "`%s`",
+                                  "'%s'",
                                   collectionName.c_str());
   }
   // ensure the collection is loaded
@@ -3002,7 +2999,7 @@ static void RegisterCollectionInTransaction (triagens::arango::AqlTransaction* t
                                            true,
                                            true);
     if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_FORMAT(res, "`%s`", collectionName.c_str());
+      THROW_ARANGO_EXCEPTION_FORMAT(res, "'%s'", collectionName.c_str());
     }
     TRI_EnsureCollectionsTransaction(trx->getInternals());
     collection = trx->trxCollection(cid);
@@ -3244,7 +3241,7 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
   TRI_voc_cid_t startCid = resolver->getCollectionId(parts[0]);
   if (startCid == 0) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "`%s`",
+                                  "'%s'",
                                   parts[0].c_str());
   }
 

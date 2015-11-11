@@ -32,9 +32,6 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/hashes.h"
-#include "Basics/locks.h"
-#include "Basics/vector.h"
 #include "VocBase/datafile.h"
 #include "VocBase/voc-types.h"
 

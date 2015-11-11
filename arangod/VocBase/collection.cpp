@@ -33,6 +33,7 @@
 
 #include "Basics/conversions.h"
 #include "Basics/files.h"
+#include "Basics/hashes.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
