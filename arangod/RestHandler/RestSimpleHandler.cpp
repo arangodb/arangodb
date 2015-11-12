@@ -335,16 +335,18 @@ void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
 
       size_t ignored = 0;
       size_t removed = 0;
+      VPackSlice stats = queryResult.stats.slice();
 
-      if (queryResult.stats != nullptr) {
-        auto found = TRI_LookupObjectJson(queryResult.stats, "writesIgnored");
-        if (TRI_IsNumberJson(found)) {
-          ignored = static_cast<size_t>(found->_value._number);
+      if (! stats.isNone()) {
+        TRI_ASSERT(stats.isObject());
+        VPackSlice found = stats.get("writesIgnored");
+        if (found.isNumber()) {
+          ignored = found.getNumericValue<size_t>();
         }
-        
-        found = TRI_LookupObjectJson(queryResult.stats, "writesExecuted");
-        if (TRI_IsNumberJson(found)) {
-          removed = static_cast<size_t>(found->_value._number);
+
+        found = stats.get("writesExecuted");
+        if (found.isNumber()) {
+          removed = found.getNumericValue<size_t>();
         }
       }
 
@@ -487,8 +489,8 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
     VPackBuilder bindVars;
     bindVars.add(VPackValue(VPackValueType::Object));
     bindVars.add("@collection", VPackValue(collectionName));
-
-    VPackSlice stripped = triagens::aql::BindParameters::StripCollectionNames(keys, collectionName.c_str());
+    VPackBuilder strippedBuilder = triagens::aql::BindParameters::StripCollectionNames(keys, collectionName.c_str());
+    VPackSlice stripped = strippedBuilder.slice();
 
     bindVars.add("keys", stripped);
     bindVars.close();

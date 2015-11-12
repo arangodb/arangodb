@@ -38,6 +38,44 @@ using JsonHelper = triagens::basics::JsonHelper;
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the statistics to VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+VPackBuilder ExecutionStats::toVelocyPack () const {
+  VPackBuilder result;
+  result.addObject();
+  result.add("writesExecuted", VPackValue(writesExecuted));
+  result.add("writesIgnored", VPackValue(writesIgnored));
+  result.add("scannedFull", VPackValue(scannedFull));
+  result.add("scannedIndex", VPackValue(scannedIndex));
+  result.add("filtered", VPackValue(filtered));
+
+  if (fullCount > -1) {
+    // fullCount is exceptional. it has a default value of -1 and is
+    // not reported with this value
+    result.add("fullCount", VPackValue(fullCount));
+  }
+  result.close();
+  return result;
+}
+
+VPackBuilder ExecutionStats::toVelocyPackStatic () {
+  VPackBuilder result;
+  result.addObject();
+  result.add("writesExecuted", VPackValue(0));
+  result.add("writesIgnored", VPackValue(0));
+  result.add("scannedFull", VPackValue(0));
+  result.add("scannedIndex", VPackValue(0));
+  result.add("filtered", VPackValue(0));
+  result.add("fullCount", VPackValue(-1));
+  result.close();
+  return result;
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the statistics to JSON
 ////////////////////////////////////////////////////////////////////////////////

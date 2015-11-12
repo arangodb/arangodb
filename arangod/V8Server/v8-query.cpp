@@ -2290,16 +2290,19 @@ static void JS_RemoveByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
   
   size_t ignored = 0;
   size_t removed = 0;
-    
-  if (queryResult.stats != nullptr) {
-    auto found = TRI_LookupObjectJson(queryResult.stats, "writesIgnored");
-    if (TRI_IsNumberJson(found)) {
-      ignored = static_cast<size_t>(found->_value._number);
+
+  VPackSlice stats = queryResult.stats.slice();
+
+  if (! stats.isNone()) {
+    TRI_ASSERT(stats.isObject());
+    VPackSlice found = stats.get("writesIgnored");
+    if (found.isNumber()) {
+      ignored = found.getNumericValue<size_t>();
     }
-      
-    found = TRI_LookupObjectJson(queryResult.stats, "writesExecuted");
-    if (TRI_IsNumberJson(found)) {
-      removed = static_cast<size_t>(found->_value._number);
+
+    found = stats.get("writesExecuted");
+    if (found.isNumber()) {
+      removed = found.getNumericValue<size_t>();
     }
   }
 

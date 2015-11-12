@@ -33,6 +33,8 @@
 
 #include "Aql/ExecutionPlan.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 namespace triagens {
   namespace aql {
 
@@ -52,6 +54,16 @@ namespace triagens {
         int64_t rulesExecuted = 0;
         int64_t rulesSkipped  = 0;
         int64_t plansCreated  = 1; // 1 for the initial plan
+
+        VPackBuilder toVelocyPack () const {
+          VPackBuilder result;
+          result.addObject();
+          result.add("rulesExecuted", VPackValue(rulesExecuted));
+          result.add("rulesSkipped", VPackValue(rulesSkipped));
+          result.add("plansCreated", VPackValue(plansCreated));
+          result.close();
+          return result;
+        }
 
         TRI_json_t* toJson (TRI_memory_zone_t* zone) const {
           TRI_json_t* stats = TRI_CreateObjectJson(zone, 3);

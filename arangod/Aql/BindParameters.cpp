@@ -125,8 +125,8 @@ void BindParameters::process () {
 /// the values must be a VelocyPack array
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackSlice BindParameters::StripCollectionNames (VPackSlice const& keys, 
-                                                 char const* collectionName) {
+VPackBuilder BindParameters::StripCollectionNames (VPackSlice const& keys, 
+                                                   char const* collectionName) {
   TRI_ASSERT(keys.isArray());
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Array));
@@ -144,7 +144,7 @@ VPackSlice BindParameters::StripCollectionNames (VPackSlice const& keys,
     }
     result.add(element);
   }
-  return result.slice();
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

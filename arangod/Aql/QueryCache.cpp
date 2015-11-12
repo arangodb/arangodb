@@ -184,7 +184,7 @@ QueryCacheResultEntry* QueryCacheDatabaseEntry::lookup (uint64_t hash,
   // found some result in cache
   
   if (queryStringLength != (*it).second->_queryStringLength ||
-      strcmp(queryString, (*it).second->_queryString) != 0) {
+      memcmp(queryString, (*it).second->_queryString, queryStringLength) != 0) {
     // found something, but obviously the result of a different query with the same hash
     return nullptr;
   }

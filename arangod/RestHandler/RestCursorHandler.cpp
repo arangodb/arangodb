@@ -342,10 +342,10 @@ VPackBuilder RestCursorHandler::buildOptions (VPackSlice const& slice) const {
 triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult& queryResult) const {
   // build "extra" attribute
   triagens::basics::Json extra(triagens::basics::Json::Object); 
+  VPackSlice stats = queryResult.stats.slice();
  
-  if (queryResult.stats != nullptr) {
-    extra.set("stats", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.stats, triagens::basics::Json::AUTOFREE));
-    queryResult.stats = nullptr;
+  if (! stats.isNone()) {
+    extra.set("stats", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, triagens::basics::VelocyPackHelper::velocyPackToJson(stats), triagens::basics::Json::AUTOFREE));
   }
   if (queryResult.profile != nullptr) {
     extra.set("profile", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.profile, triagens::basics::Json::AUTOFREE));

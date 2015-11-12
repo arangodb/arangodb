@@ -94,8 +94,8 @@ namespace triagens {
 /// the values must be a VelocyPack array
 ////////////////////////////////////////////////////////////////////////////////
 
-        static VPackSlice StripCollectionNames (VPackSlice const&, 
-                                                char const*);
+        static VPackBuilder StripCollectionNames (VPackSlice const&, 
+                                                  char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief strip collection name prefixes from the parameters
