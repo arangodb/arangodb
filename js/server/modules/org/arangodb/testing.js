@@ -1548,7 +1548,6 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
 testFuncs.arangosh = function (options) {
   var failed = 0;
   var args = makeTestingArgsClient(options);
-  var topDir = findTopDir();
   var arangosh = fs.join("bin","arangosh");
 
   args["javascript.execute-string"] =  "throw('foo')";
@@ -1561,7 +1560,7 @@ testFuncs.arangosh = function (options) {
 
   args["javascript.execute-string"] =  ";";
   print(toArgv(args));
-  var rc = executeExternalAndWait(arangosh, toArgv(args));
+  rc = executeExternalAndWait(arangosh, toArgv(args));
   var successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
   if (!successSuccess) {
     failed += 1;
@@ -1585,7 +1584,7 @@ testFuncs.arangosh = function (options) {
      "failed": failed,
      "total": 2
     }
-  ]
+  ];
 };
 
 var impTodo = [
