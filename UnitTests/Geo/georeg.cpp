@@ -2,7 +2,7 @@
 /// @brief geo index
 ///
 /// @file
-///
+/// 
 /// DISCLAIMER
 ///
 /// Copyright by triAGENS GmbH - All rights reserved.
