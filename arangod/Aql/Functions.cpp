@@ -47,6 +47,7 @@
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using CollectionNameResolver = triagens::arango::CollectionNameResolver;
+using VertexId = triagens::arango::traverser::VertexId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief thread-local cache for compiled regexes
@@ -2255,7 +2256,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
                                triagens::arango::AqlTransaction* trx,
                                FunctionParameters const& parameters) {
   size_t const n = parameters.size();
-  basics::traverser::NeighborsOptions opts;
+  triagens::arango::traverser::NeighborsOptions opts;
 
   if (n < 4 || n > 6) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS", (int) 4, (int) 6);

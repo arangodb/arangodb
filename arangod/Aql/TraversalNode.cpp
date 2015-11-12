@@ -362,7 +362,7 @@ double TraversalNode::estimateCost (size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-void TraversalNode::fillTraversalOptions (basics::traverser::TraverserOptions& opts) const {
+void TraversalNode::fillTraversalOptions (triagens::arango::traverser::TraverserOptions& opts) const {
   opts.direction = _direction;
   opts.minDepth = _minDepth;
   opts.maxDepth = _maxDepth;

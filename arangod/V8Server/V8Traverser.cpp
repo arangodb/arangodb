@@ -32,14 +32,16 @@
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ShapedJsonTransformer.h"
+#include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"
 
 using namespace std;
 using namespace triagens::basics;
-using namespace triagens::basics::traverser;
 using namespace triagens::arango;
+using namespace triagens::arango::traverser;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the _from Id out of mptr, we return an RValue reference
@@ -68,7 +70,7 @@ static VertexId ExtractToId (TRI_doc_mptr_copy_t const& ptr) {
 ///        VertexId is in use
 ////////////////////////////////////////////////////////////////////////////////
 
-VertexId triagens::basics::traverser::IdStringToVertexId (
+VertexId triagens::arango::traverser::IdStringToVertexId (
     CollectionNameResolver const* resolver,
     string const& vertex
   ) {
@@ -719,6 +721,85 @@ void TRI_RunNeighborsSearch (
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                   class SingleServerTraversalPath
+// -----------------------------------------------------------------------------
+
+Json* SingleServerTraversalPath::pathToJson (Transaction* trx,
+                                             CollectionNameResolver* resolver) const {
+  std::unique_ptr<Json> path(new Json(Json::Object, 2));
+  Json vertices(Json::Array);
+  for (size_t i = 0; i < _path.vertices.size(); ++i) {
+    vertices(*vertexToJson(trx, resolver, _path.vertices[i]));
+  }
+  Json edges(Json::Array);
+  for (size_t i = 0; i < _path.edges.size(); ++i) {
+    edges(*edgeToJson(trx, resolver, _path.edges[i]));
+  }
+  (*path)("vertices", vertices)
+         ("edges", edges);
+
+  return path.release();
+}
+
+
+Json* SingleServerTraversalPath::lastEdgeToJson (Transaction* trx,
+                                                 CollectionNameResolver* resolver) const {
+  return edgeToJson(trx, resolver, _path.edges.back());
+}
+
+Json* SingleServerTraversalPath::lastVertexToJson (Transaction* trx,
+                                                   CollectionNameResolver* resolver) const {
+  return vertexToJson(trx, resolver, _path.vertices.back());
+}
+
+Json* SingleServerTraversalPath::edgeToJson (Transaction* trx,
+                                             CollectionNameResolver* resolver,
+                                             EdgeInfo const& e) const {
+  auto collection = trx->trxCollection(e.cid);
+  TRI_shaped_json_t shapedJson;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, &e.mptr);
+  return new Json(TRI_ExpandShapedJson(
+    collection->_collection->_collection->getShaper(),
+    resolver,
+    e.cid,
+    &e.mptr
+  ));
+}
+
+Json* SingleServerTraversalPath::vertexToJson (Transaction* trx,
+                                               CollectionNameResolver* resolver,
+                                               VertexId const& v) const {
+  auto collection = trx->trxCollection(v.cid);
+  if (collection == nullptr) {
+    SingleCollectionReadOnlyTransaction intTrx(new StandaloneTransactionContext(), trx->vocbase(), v.cid);
+    int res = intTrx.begin();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    collection = intTrx.trxCollection();
+    TRI_doc_mptr_copy_t mptr;
+    intTrx.read(&mptr, v.key);
+    std::unique_ptr<Json> tmp(new Json(TRI_ExpandShapedJson(
+      collection->_collection->_collection->getShaper(),
+      resolver,
+      v.cid,
+      &mptr
+    )));
+    intTrx.finish(res);
+    return tmp.release();
+  }
+  TRI_doc_mptr_copy_t mptr;
+  trx->readSingle(collection, &mptr, v.key);
+  return new Json(TRI_ExpandShapedJson(
+    collection->_collection->_collection->getShaper(),
+    resolver,
+    v.cid,
+    &mptr
+  ));
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                         class DepthFirstTraverser
 // -----------------------------------------------------------------------------
 
@@ -856,10 +937,9 @@ void DepthFirstTraverser::setStartVertex (VertexId& v) {
 
 size_t DepthFirstTraverser::skip (size_t amount) {
   size_t skipped = 0;
-  TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t> p;
   for (size_t i = 0; i < amount; ++i) {
-    p = next();
-    if (p.edges.size() == 0) {
+    std::unique_ptr<const TraversalPath> p(next());
+    if (p == nullptr) {
       break;
     }
     ++skipped;
@@ -871,21 +951,22 @@ bool DepthFirstTraverser::hasMore () {
   return !_done;
 }
 
-const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& DepthFirstTraverser::next () {
+const TraversalPath* DepthFirstTraverser::next () {
   TRI_ASSERT(!_done);
   if (_pruneNext) {
     _pruneNext = false;
     _enumerator->prune();
   }
   TRI_ASSERT(!_pruneNext);
-  const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& p = _enumerator->next();
-  size_t countEdges = p.edges.size();
+  const EnumeratedPath<EdgeInfo, VertexId>& path = _enumerator->next();
+  size_t countEdges = path.edges.size();
   if (countEdges == 0) {
     _done = true;
     // Done traversing
-    return p;
+    return nullptr;
   }
-  if (_opts.shouldPrunePath(p)) {
+  std::unique_ptr<SingleServerTraversalPath> p(new SingleServerTraversalPath(path));
+  if (_opts.shouldPrunePath(p.get())) {
     _enumerator->prune();
     return next();
   }
@@ -895,7 +976,7 @@ const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& DepthFirstTraverse
   if (countEdges < _opts.minDepth) {
     return next();
   }
-  return p;
+  return p.release();
 }
 
 void DepthFirstTraverser::prune () {

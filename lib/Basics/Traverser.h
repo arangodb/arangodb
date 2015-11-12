@@ -1232,14 +1232,14 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              struct TraversalPath
+// --SECTION--                                             struct EnumeratedPath
 // -----------------------------------------------------------------------------
 
-    template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
-    struct TraversalPath {
+    template <typename edgeIdentifier, typename vertexIdentifier>
+    struct EnumeratedPath {
       std::vector<edgeIdentifier> edges;
       std::vector<vertexIdentifier> vertices;
-      TraversalPath () {}
+      EnumeratedPath () {}
     };
 
 // -----------------------------------------------------------------------------
@@ -1262,7 +1262,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief List of the last path is used to 
 ////////////////////////////////////////////////////////////////////////////////
-      TraversalPath<edgeIdentifier, vertexIdentifier, edgeItem> _traversalPath;
+      EnumeratedPath<edgeIdentifier, vertexIdentifier> _enumeratedPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The pointers returned for edge indexes on this path. Used to continue
@@ -1310,11 +1310,11 @@ namespace triagens {
           vertexIdentifier& startVertex
         ) : _getEdge(getEdge),
             _getVertex(getVertex) {
-          _traversalPath.vertices.push_back(startVertex);
+          _enumeratedPath.vertices.push_back(startVertex);
           _lastEdges.push(nullptr);
           _lastEdgesDir.push(false);
           _lastEdgesIdx.push(0);
-          TRI_ASSERT(_traversalPath.vertices.size() == 1);
+          TRI_ASSERT(_enumeratedPath.vertices.size() == 1);
           TRI_ASSERT(_lastEdges.size() == 1);
           TRI_ASSERT(_lastEdgesDir.size() == 1);
         };
@@ -1329,32 +1329,32 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the next Path element from the traversal.
 ////////////////////////////////////////////////////////////////////////////////
-      const TraversalPath<edgeIdentifier, vertexIdentifier, edgeItem>& next () {
+      const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next () {
         if (_lastEdges.size() == 0) {
-          _traversalPath.edges.clear();
-          _traversalPath.vertices.clear();
-          return _traversalPath;
+          _enumeratedPath.edges.clear();
+          _enumeratedPath.vertices.clear();
+          return _enumeratedPath;
         }
-        _getEdge(_traversalPath.vertices.back(), _traversalPath.edges, _lastEdges.top(), _lastEdgesIdx.top(), _lastEdgesDir.top());
+        _getEdge(_enumeratedPath.vertices.back(), _enumeratedPath.edges, _lastEdges.top(), _lastEdgesIdx.top(), _lastEdgesDir.top());
         if (_lastEdges.top() != nullptr) {
           // Could continue the path in the next depth.
           _lastEdges.push(nullptr); 
           _lastEdgesDir.push(false);
           _lastEdgesIdx.push(0);
-          vertexIdentifier v = _getVertex(_traversalPath.edges.back(), _traversalPath.vertices.back());
-          _traversalPath.vertices.push_back(v);
-          TRI_ASSERT(_traversalPath.vertices.size() == _traversalPath.edges.size() + 1);
+          vertexIdentifier v = _getVertex(_enumeratedPath.edges.back(), _enumeratedPath.vertices.back());
+          _enumeratedPath.vertices.push_back(v);
+          TRI_ASSERT(_enumeratedPath.vertices.size() == _enumeratedPath.edges.size() + 1);
         } else {
-          if (_traversalPath.edges.size() == 0) {
+          if (_enumeratedPath.edges.size() == 0) {
             // We are done with enumerating paths
-            _traversalPath.edges.clear();
-            _traversalPath.vertices.clear();
+            _enumeratedPath.edges.clear();
+            _enumeratedPath.vertices.clear();
           } else {
             prune();
             return next();
           }
         }
-        return _traversalPath;
+        return _enumeratedPath;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1366,9 +1366,9 @@ namespace triagens {
           _lastEdges.pop();
           _lastEdgesDir.pop();
           _lastEdgesIdx.pop();
-          if (_traversalPath.edges.size() > 0) {
-            _traversalPath.edges.pop_back();
-            _traversalPath.vertices.pop_back();
+          if (_enumeratedPath.edges.size() > 0) {
+            _enumeratedPath.edges.pop_back();
+            _enumeratedPath.vertices.pop_back();
           }
         }
       }

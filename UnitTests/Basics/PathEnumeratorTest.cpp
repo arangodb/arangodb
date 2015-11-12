@@ -126,7 +126,7 @@ BOOST_FIXTURE_TEST_SUITE (PathEnumeratorTest, PathEnumeratorSetup)
 BOOST_AUTO_TEST_CASE (test_fullPathEnumerator) {
   int startVertex = 1;
   PathEnumerator<int, int, int> it(integerEdgeEnumerator, integerVertexEnumerator, startVertex);
-  TraversalPath<int, int, int> path;
+  EnumeratedPath<int, int> path;
   for (int k = 1; k < 4; k++) {
     path = it.next();
     BOOST_CHECK_EQUAL(path.edges.size(), (size_t)1);

@@ -35,38 +35,9 @@
 #include "Utils/ExplicitTransaction.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
+#include "VocBase/Traverser.h"
 
 class VocShaper;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Template for a vertex id. Is simply a pair of cid and key
-/// NOTE: This struct will never free the value asigned to char const* key
-///       The environment has to make sure that the string it points to is
-///       not freed as long as this struct is in use!
-////////////////////////////////////////////////////////////////////////////////
-
-struct VertexId {
-  TRI_voc_cid_t cid;
-  char const* key;
-
-  VertexId () 
-    : cid(0), 
-      key("") {
-  }
-
-  VertexId (TRI_voc_cid_t cid, char const* key) 
-    : cid(cid),
-      key(key) {
-  }
-
-  bool operator== (const VertexId& other) const {
-    if (cid == other.cid) {
-      return strcmp(key, other.key) == 0;
-    }
-    return false;
-  }
-
-};
 
 struct EdgeInfo {
   TRI_voc_cid_t cid;
@@ -77,41 +48,6 @@ struct EdgeInfo {
     TRI_doc_mptr_copy_t& pmptr
   ) : cid(pcid), mptr(pmptr) { }
 };
-
-namespace std {
-  template<>
-  struct hash<VertexId> {
-    public:
-      size_t operator() (VertexId const& s) const {
-        size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
-        size_t h2 = TRI_FnvHashString(s.key);
-        return h1 ^ ( h2 << 1 );
-      }
-  };
-
-  template<>
-  struct equal_to<VertexId> {
-    public:
-      bool operator() (VertexId const& s, VertexId const& t) const {
-        return s.cid == t.cid && strcmp(s.key, t.key) == 0;
-      }
-  };
-
-  template<>
-    struct less<VertexId> {
-      public:
-        bool operator() (const VertexId& lhs, const VertexId& rhs) {
-          if (lhs.cid != rhs.cid) {
-            return lhs.cid < rhs.cid;
-          }
-          return strcmp(lhs.key, rhs.key) < 0;
-        }
-    };
-
-}
-
-// EdgeId and VertexId are similar here. both have a key and a cid
-typedef VertexId EdgeId; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Template for information required by vertex filter.
@@ -137,14 +73,17 @@ struct VertexFilterInfo {
 /// @brief typedef the template instantiation of the PathFinder
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef triagens::basics::PathFinder<VertexId, EdgeId, double> 
+typedef triagens::basics::PathFinder<triagens::arango::traverser::VertexId,
+                                     triagens::arango::traverser::EdgeId,
+                                     double> 
         ArangoDBPathFinder;
 
-typedef triagens::basics::ConstDistanceFinder<VertexId, EdgeId> 
+typedef triagens::basics::ConstDistanceFinder<triagens::arango::traverser::VertexId,
+                                              triagens::arango::traverser::EdgeId>
         ArangoDBConstDistancePathFinder;
 
 namespace triagens {
-  namespace basics {
+  namespace arango {
     namespace traverser {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,7 +128,7 @@ namespace triagens {
                               TRI_voc_cid_t const& cid,
                               std::string& errorMessage);
 
-          void addEdgeFilter (Json const& example,
+          void addEdgeFilter (triagens::basics::Json const& example,
                               VocShaper* shaper,
                               TRI_voc_cid_t const& cid,
                               triagens::arango::CollectionNameResolver const* resolver);
@@ -262,7 +201,7 @@ namespace triagens {
       struct TraverserOptions {
 
         private:
-          std::function<bool (const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& path)> pruningFunction;
+          std::function<bool (const TraversalPath* path)> pruningFunction;
 
         public:
           TRI_edge_direction_e direction;
@@ -282,14 +221,14 @@ namespace triagens {
           { };
 
           void setPruningFunction (
-               std::function<bool (const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& path)> callback
+               std::function<bool (const TraversalPath* path)> callback
           ) {
             pruningFunction = callback;
             usesPrune = true;
           }
 
           bool shouldPrunePath (
-               const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>& path
+               const TraversalPath* path
           ) {
             if (!usesPrune) {
               return false;
@@ -300,9 +239,59 @@ namespace triagens {
       };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                   class SingleServerTraversalPath
+// -----------------------------------------------------------------------------
+
+      class SingleServerTraversalPath : public TraversalPath {
+        
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+        public:
+
+          SingleServerTraversalPath (
+            const triagens::basics::EnumeratedPath<EdgeInfo, VertexId>& path
+          ) : _path(path) {
+          }
+
+          ~SingleServerTraversalPath () {
+          }
+
+          triagens::basics::Json* pathToJson (Transaction*,
+                                              CollectionNameResolver*) const override;
+
+          triagens::basics::Json* lastEdgeToJson (Transaction*,
+                                                  CollectionNameResolver*) const override;
+
+          triagens::basics::Json* lastVertexToJson (Transaction*,
+                                                    CollectionNameResolver*) const override;
+
+        private:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+          triagens::basics::Json* edgeToJson (Transaction* trx,
+                                              CollectionNameResolver* resolver,
+                                              EdgeInfo const& e) const;
+
+          triagens::basics::Json* vertexToJson (Transaction* trx,
+                                                CollectionNameResolver* resolver,
+                                                VertexId const& v) const;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+          triagens::basics::EnumeratedPath<EdgeInfo, VertexId> _path;
+
+      };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                         class DepthFirstTraverser
 // -----------------------------------------------------------------------------
-      class DepthFirstTraverser {
+      class DepthFirstTraverser : public Traverser {
 
         private:
 
@@ -328,7 +317,9 @@ namespace triagens {
 /// @brief internal cursor to enumerate the paths of a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-          std::unique_ptr<PathEnumerator<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>> _enumerator;
+          std::unique_ptr<triagens::basics::PathEnumerator<EdgeInfo,
+                                                           VertexId,
+                                                           TRI_doc_mptr_copy_t>> _enumerator;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to extract an edge
@@ -375,25 +366,25 @@ namespace triagens {
 /// @brief Reset the traverser to use another start vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-          void setStartVertex (VertexId& v);
+          void setStartVertex (VertexId& v) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Skip amount many paths of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-          size_t skip (size_t amount);
+          size_t skip (size_t amount) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the next possible path in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-          const TraversalPath<EdgeInfo, VertexId, TRI_doc_mptr_copy_t>&  next ();
+          const TraversalPath*  next () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Prune the current path prefix. Do not evaluate it any further.
 ////////////////////////////////////////////////////////////////////////////////
 
-          void prune ();
+          void prune () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Simple check if there potentially more paths.
@@ -401,7 +392,7 @@ namespace triagens {
 ///        If it returns false it is guaranteed that there are no more paths.
 ////////////////////////////////////////////////////////////////////////////////
 
-          bool hasMore ();
+          bool hasMore () override;
 
       };
 
@@ -453,12 +444,12 @@ class EdgeCollectionInfo {
         _weighter(weighter) {
     }
 
-    EdgeId extractEdgeId (TRI_doc_mptr_copy_t& ptr) {
-      return EdgeId(_edgeCollectionCid, TRI_EXTRACT_MARKER_KEY(&ptr));
+    triagens::arango::traverser::EdgeId extractEdgeId (TRI_doc_mptr_copy_t& ptr) {
+      return triagens::arango::traverser::EdgeId(_edgeCollectionCid, TRI_EXTRACT_MARKER_KEY(&ptr));
     }
 
     std::vector<TRI_doc_mptr_copy_t> getEdges (TRI_edge_direction_e direction,
-                                               VertexId const& vertexId) const {
+                                               triagens::arango::traverser::VertexId const& vertexId) const {
       return TRI_LookupEdgesDocumentCollection(_edgeCollection,
                    direction, vertexId.cid, const_cast<char*>(vertexId.key));
     }
@@ -525,13 +516,13 @@ class VertexCollectionInfo {
 
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
     std::vector<EdgeCollectionInfo*>& collectionInfos,
-    triagens::basics::traverser::ShortestPathOptions& opts
+    triagens::arango::traverser::ShortestPathOptions& opts
 );
 
 
 std::unique_ptr<ArangoDBConstDistancePathFinder::Path> TRI_RunSimpleShortestPathSearch (
     std::vector<EdgeCollectionInfo*>& collectionInfos,
-    triagens::basics::traverser::ShortestPathOptions& opts
+    triagens::arango::traverser::ShortestPathOptions& opts
 );
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -539,7 +530,7 @@ std::unique_ptr<ArangoDBConstDistancePathFinder::Path> TRI_RunSimpleShortestPath
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RunNeighborsSearch (std::vector<EdgeCollectionInfo*>& collectionInfos,
-                             triagens::basics::traverser::NeighborsOptions& opts,
-                             std::unordered_set<VertexId>& distinct);
+                             triagens::arango::traverser::NeighborsOptions& opts,
+                             std::unordered_set<triagens::arango::traverser::VertexId>& distinct);
 
 #endif

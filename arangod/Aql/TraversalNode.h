@@ -267,7 +267,7 @@ namespace triagens {
 ///        with default values.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void fillTraversalOptions (basics::traverser::TraverserOptions& opts) const;
+        void fillTraversalOptions (triagens::arango::traverser::TraverserOptions& opts) const;
 
         std::vector<TRI_voc_cid_t> const edgeCids () const {
           return _edgeCids;

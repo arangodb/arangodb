@@ -73,8 +73,8 @@
 
 using namespace std;
 using namespace triagens::basics;
-using namespace triagens::basics::traverser;
 using namespace triagens::arango;
+using namespace triagens::arango::traverser;
 using namespace triagens::rest;
 using namespace arangodb;
 
