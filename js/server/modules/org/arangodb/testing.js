@@ -1550,16 +1550,16 @@ testFuncs.arangosh = function (options) {
   var args = makeTestingArgsClient(options);
   var arangosh = fs.join("bin","arangosh");
 
+  print("Starting arangosh with exception throwing script:");
   args["javascript.execute-string"] =  "throw('foo')";
-  print(toArgv(args));
   var rc = executeExternalAndWait(arangosh, toArgv(args));
   var failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
   if (!failSuccess) {
     failed += 1;
   }
 
+  print("Starting arangosh with regular terminating script:");
   args["javascript.execute-string"] =  ";";
-  print(toArgv(args));
   rc = executeExternalAndWait(arangosh, toArgv(args));
   var successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
   if (!successSuccess) {
