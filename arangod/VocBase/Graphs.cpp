@@ -69,14 +69,16 @@ triagens::aql::Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbas
 
     if (error != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_FORMAT(error,
-                                    "while fetching _graph entry: `%s`",
+                                    "while fetching _graph['%s'] entry: `%s`",
+                                    name.c_str(),
                                     resultBody.c_str());
     }
 
     auto json = JsonHelper::fromString(resultBody);
     if (json == nullptr) {
       THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_HTTP_CORRUPTED_JSON,
-                                    "while fetching _graph entry: `%s`",
+                                    "while fetching _graph['%s'] entry: `%s`",
+                                    name.c_str(),
                                     resultBody.c_str());
     }
     g = new triagens::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, json));
@@ -96,9 +98,15 @@ triagens::aql::Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbas
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    auto shaper = trx.trxCollection()->_collection->_collection->getShaper();
     TRI_shaped_json_t document;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(document, mptr.getDataPtr());
+    auto shaper = trx.trxCollection()->_collection->_collection->getShaper();
     auto j = TRI_JsonShapedJson(shaper, &document);
+    if (j == nullptr) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_SHAPER_FAILED,
+                                    "while accessing shape for _graph['%s'] entry",
+                                    name.c_str());
+    }
     g = new triagens::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, j));
     trx.finish(res);
   }
