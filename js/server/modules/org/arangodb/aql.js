@@ -412,7 +412,7 @@ function WARN (func, error, data) {
 /// @brief throw a runtime exception
 ////////////////////////////////////////////////////////////////////////////////
 
-function THROW (func, error, data) {
+function THROW (func, error, data, moreMessage) {
   'use strict';
   
   var prefix = "";
@@ -428,6 +428,9 @@ function THROW (func, error, data) {
   }
   else {
     err.errorMessage = prefix + error.message;
+  }
+  if (moreMessage !== undefined) {
+    err.errorMessage += "; " + moreMessage;
   }
 
   throw err;
@@ -7422,6 +7425,15 @@ function AQL_NEIGHBORS (vertexCollection,
   'use strict';
 
   vertex = TO_ID(vertex, vertexCollection);
+  var collectionFromVertex = vertex.slice(0, vertexCollection.length);
+  if (collectionFromVertex !== vertexCollection) {
+    THROW("AQL_NEIGBORS",
+          INTERNAL.errors.ERROR_ARANGO_DOCUMENT_KEY_BAD,
+          "",
+          "You specified vertex collection `" + collectionFromVertex +
+          "...` for start vertext from the collection`" + vertexCollection + "`");
+
+  } 
   options = CLONE(options) || {};
   // Fallback to JS if we are in the cluster
   // Improve the examples. LocalServer can match String -> _id
