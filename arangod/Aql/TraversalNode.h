@@ -49,6 +49,18 @@ namespace triagens {
       friend class ExecutionBlock;
       friend class TraversalCollectionBlock;
 
+      struct simpleTravererExpression {
+        bool              isAsteriscAccess;
+        bool              isEdgeAccess;
+        size_t            indexAccess;
+        AstNodeType       comparisonType;
+        AstNode const*    varAccess;
+        AstNode const*    compareTo;
+        
+        void toJson(triagens::basics::Json& json,
+                    TRI_memory_zone_t* zone) const;
+      };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor with a vocbase and a collection name
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,6 +337,17 @@ namespace triagens {
           return _maxDepth >= _minDepth;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Remember a simple comparator filter
+////////////////////////////////////////////////////////////////////////////////
+
+        void storeSimpleExpression(bool isAsteriscAccess,
+                                   bool isEdgeAccess,
+                                   size_t indexAccess,
+                                   AstNodeType comparisonType,
+                                   AstNode const* varAccess,
+                                   AstNode const* compareTo);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -421,6 +444,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> _conditionVariables;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief store a simple comparator filter
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<simpleTravererExpression> expressions;
     };
 
   }   // namespace triagens::aql

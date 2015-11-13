@@ -34,26 +34,38 @@
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
 
-bool checkPathVariableAccessFeasible(CalculationNode const* cn, TraversalNode * tn, Variable const* var, bool &conditionIsImpossible) {
+bool checkPathVariableAccessFeasible(CalculationNode const* cn,
+                                     TraversalNode * tn,
+                                     Variable const* var,
+                                     bool &conditionIsImpossible,
+                                     Ast* ast) {
   auto node = cn->expression()->node();
   std::vector<AstNode const*> currentPath;
   std::vector<std::vector<AstNode const*>> paths;
+  std::vector<std::vector<AstNode const*>> clonePath;
                                  
   node->findVariableAccess(currentPath, paths, var);
 
   for (auto onePath : paths) {
     size_t len = onePath.size();
+    bool isEdgeAccess = false;
+    bool isVertexAccess = false;
+    bool isAsterisc = false;
+    size_t attrAccessTo = 0;
 
-    if ((onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) &&
-        strcmp(onePath[len - 2]->getStringValue(),    "edges") &&
-        strcmp(onePath[len - 2]->getStringValue(), "vertices")) {
+    if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      isEdgeAccess   = strcmp(onePath[len - 2]->getStringValue(),    "edges") == 0;
+      isVertexAccess = strcmp(onePath[len - 2]->getStringValue(), "vertices") == 0;
 
-    /* We can't catch all cases in which this error would occur, so we don't throw here.
-      std::string message("TRAVERSAL: path only knows 'edges' and 'vertices', not ");
-      message += onePath[len - 2]->getStringValue();
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, message);
-    */
-      return false;
+      if (!isEdgeAccess && ! isVertexAccess) {
+
+        /* We can't catch all cases in which this error would occur, so we don't throw here.
+           std::string message("TRAVERSAL: path only knows 'edges' and 'vertices', not ");
+           message += onePath[len - 2]->getStringValue();
+           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, message);
+        */
+        return false;
+      }
     }
 
       // we now need to check for p.edges[n] whether n is >= 0
@@ -65,21 +77,83 @@ bool checkPathVariableAccessFeasible(CalculationNode const* cn, TraversalNode * 
         return false;
       }
       conditionIsImpossible = !tn->isInRange(indexAccessNode->value.value._int);
+      attrAccessTo = indexAccessNode->value.value._int;
     }
     else if ((onePath[len - 3]->type == NODE_TYPE_ITERATOR) &&
              (onePath[len - 4]->type == NODE_TYPE_EXPANSION)){
       // we now need to check for p.edges[*] which becomes a fancy structure
-
+      isAsterisc = true;
     }
     else {
       return false;
     }
 
     // OR? don't know howto continue.
+    AstNode const * compareNode = nullptr;
+    AstNode const * accessNodeBranch = nullptr;
     for (auto oneNode : onePath) {
       if (oneNode->type == NODE_TYPE_OPERATOR_BINARY_OR) {
         return false; 
       }
+      if (compareNode != nullptr && accessNodeBranch == nullptr) {
+        accessNodeBranch = oneNode;
+      }
+
+      if (oneNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+        compareNode = oneNode;
+      }
+    }
+
+    if (compareNode != NULL) {
+      AstNode const * pathAccessNode;
+      AstNode const * filterByNode;
+      
+      if (compareNode->getMember(0) == accessNodeBranch) {
+        pathAccessNode = accessNodeBranch;
+        filterByNode = compareNode->getMember(1);
+      }
+      else {
+        pathAccessNode = accessNodeBranch;
+        filterByNode = compareNode->getMember(0);
+      }
+
+      if (accessNodeBranch->isSimple() && filterByNode->type == NODE_TYPE_VALUE) {
+        AstNode *newNode = accessNodeBranch->clone(ast);
+
+        // since we just copied one path, we should only find one. 
+        newNode->findVariableAccess(currentPath, clonePath, var);
+        newNode->dump(20);
+        if (isAsterisc) {
+
+        }
+        else {
+          auto len = clonePath[0].size();
+          /// todo len < 4
+          AstNode* firstRefNode = (AstNode*) clonePath[0][len - 4];
+          TRI_ASSERT(firstRefNode->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+          auto varRefNode = new AstNode(NODE_TYPE_REFERENCE);
+          ast->query()->addNode(varRefNode);
+          varRefNode->setData(isEdgeAccess ? tn->edgeOutVariable(): tn->vertexOutVariable());
+          firstRefNode->changeMember(0, varRefNode);
+          tn->storeSimpleExpression(isAsterisc,
+                                    isEdgeAccess,
+                                    attrAccessTo,
+                                    NODE_TYPE_OPERATOR_BINARY_EQ,
+                                    newNode,
+                                    filterByNode);
+          
+          printf("\n      xxxxx: %s\n", newNode->toString().c_str());
+          printf("\n      yyyy: %s\n", accessNodeBranch->toString().c_str());
+          printf("\n      yyyy: %s\n", filterByNode->toString().c_str());
+        }
+
+      }
+printf("\na: %s\n", compareNode->toString().c_str());
+printf("\na: %s\n", accessNodeBranch->toString().c_str());
+
+  triagens::basics::Json j(TRI_UNKNOWN_MEM_ZONE, accessNodeBranch->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+  printf("sanotuh %s\n", j.toString().c_str());
+
     }
   }
 
@@ -189,7 +263,7 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
               int variableType = node->checkIsOutVariable(conditionVar->id);
               if (variableType >= 0) {
                 if ((variableType == 2) &&
-                    checkPathVariableAccessFeasible(cn, node, conditionVar, conditionIsImpossible))
+                    checkPathVariableAccessFeasible(cn, node, conditionVar, conditionIsImpossible, _plan->getAst()))
                   {
                     condition->andCombine(it.second->expression()->node());
                     foundCondition = true;
