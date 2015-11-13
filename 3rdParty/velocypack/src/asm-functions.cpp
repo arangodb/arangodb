@@ -65,15 +65,16 @@ static bool HasSSE42 () {
 
 static size_t JSONStringCopySSE42 (uint8_t* dst, uint8_t const* src, size_t limit) {
   alignas(16) static char const ranges[17] 
-      = "\x00\x1f\"\"\\\\\"\"\"\"\"\"\"\"\"\"";
+      = "\x20\x21\x23\x5b\x5d\xff          ";
+      //= "\x01\x1f\"\"\\\\\"\"\"\"\"\"\"\"\"\"";
   __m128i const r = _mm_load_si128(reinterpret_cast<__m128i const*>(ranges));
   size_t count = 0;
   int x = 0;
   while (limit >= 16) {
     __m128i const s = _mm_loadu_si128(reinterpret_cast<__m128i const*>(src));
-    x = _mm_cmpestri(r, 6, s, 16,
+    x = _mm_cmpistri(r, /* 6, */ s, /* 16, */
                      _SIDD_UBYTE_OPS | _SIDD_CMP_RANGES |
-                     _SIDD_POSITIVE_POLARITY |
+                     _SIDD_NEGATIVE_POLARITY |
                      _SIDD_LEAST_SIGNIFICANT);
     if (x < 16) {
       memcpy(dst, src, x);
@@ -92,9 +93,9 @@ static size_t JSONStringCopySSE42 (uint8_t* dst, uint8_t const* src, size_t limi
     return count;
   }
   __m128i const s = _mm_loadu_si128(reinterpret_cast<__m128i const*>(src));
-  x = _mm_cmpestri(r, 6, s, limit,
+  x = _mm_cmpistri(r, /* 6, */ s, /* limit, */
                    _SIDD_UBYTE_OPS | _SIDD_CMP_RANGES |
-                   _SIDD_POSITIVE_POLARITY |
+                   _SIDD_NEGATIVE_POLARITY |
                    _SIDD_LEAST_SIGNIFICANT);
   if (x > static_cast<int>(limit)) {
     x = static_cast<int>(limit);
@@ -119,15 +120,17 @@ static size_t DoInitCopy (uint8_t* dst, uint8_t const* src, size_t limit) {
 static size_t JSONStringCopyCheckUtf8SSE42 (uint8_t* dst,
                                             uint8_t const* src,
                                             size_t limit) {
-  alignas(16) static unsigned char const ranges[17] = "\x00\x1f\x80\xff\"\"\\\\\"\"\"\"\"\"\"\"";
+  alignas(16) static unsigned char const ranges[17] 
+    = "\x20\x21\x23\x5b\x5d\x7f          ";
+    //= "\x01\x1f\x80\xff\"\"\\\\\"\"\"\"\"\"\"\"";
   __m128i const r = _mm_load_si128(reinterpret_cast<__m128i const*>(ranges));
   size_t count = 0;
   int x = 0;
   while (limit >= 16) {
     __m128i const s = _mm_loadu_si128(reinterpret_cast<__m128i const*>(src));
-    x = _mm_cmpestri(r, 8, s, 16,
+    x = _mm_cmpistri(r, /* 8, */ s, /* 16, */
                      _SIDD_UBYTE_OPS | _SIDD_CMP_RANGES |
-                     _SIDD_POSITIVE_POLARITY |
+                     _SIDD_NEGATIVE_POLARITY |
                      _SIDD_LEAST_SIGNIFICANT);
     if (x < 16) {
       memcpy(dst, src, x);
@@ -146,9 +149,9 @@ static size_t JSONStringCopyCheckUtf8SSE42 (uint8_t* dst,
     return count;
   }
   __m128i const s = _mm_loadu_si128(reinterpret_cast<__m128i const*>(src));
-  x = _mm_cmpestri(r, 8, s, limit,
+  x = _mm_cmpistri(r, /* 8, */ s, /* limit, */
                    _SIDD_UBYTE_OPS | _SIDD_CMP_RANGES |
-                   _SIDD_POSITIVE_POLARITY |
+                   _SIDD_NEGATIVE_POLARITY |
                    _SIDD_LEAST_SIGNIFICANT);
   if (x > static_cast<int>(limit)) {
     x = static_cast<int>(limit);
@@ -296,7 +299,7 @@ void TestStringCopyCorrectness (uint8_t* src, uint8_t* dst, size_t size) {
         src[pos] = merk;
 
         // Test a 0 character:
-        src[pos] = 0;
+        src[pos] = 1;
         copied = JSONStringCopy(dst, src, size);
         if (copied != pos || memcmp(dst, src, copied) != 0) {
           std::cout << "Error: " << salign << " " << dalign << " "
@@ -371,7 +374,7 @@ void TestStringCopyCorrectnessCheckUtf8 (uint8_t* src, uint8_t* dst,
         src[pos] = merk;
 
         // Test a 0 character:
-        src[pos] = 0;
+        src[pos] = 1;
         copied = JSONStringCopyCheckUtf8(dst, src, size);
         if (copied != pos || memcmp(dst, src, copied) != 0) {
           std::cout << "Error: " << salign << " " << dalign << " "

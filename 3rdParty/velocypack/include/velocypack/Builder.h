@@ -27,11 +27,11 @@
 #ifndef VELOCYPACK_BUILDER_H
 #define VELOCYPACK_BUILDER_H
 
-#include <ostream>
 #include <vector>
 #include <cstring>
 #include <cstdint>
 #include <algorithm>
+#include <memory>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Buffer.h"
@@ -62,7 +62,7 @@ namespace arangodb {
 
       private:
 
-        Buffer<uint8_t> _buffer;  // Here we collect the result
+        std::shared_ptr<Buffer<uint8_t>> _buffer;  // Here we collect the result
         uint8_t*        _start;   // Always points to the start of _buffer
         ValueLength     _size;    // Always contains the size of _buffer
         ValueLength     _pos;     // the append position, always <= _size
@@ -99,11 +99,11 @@ namespace arangodb {
           if (_pos + len <= _size) {
             return;  // All OK, we can just increase tos->pos by len
           }
-          CheckValueLength(_pos + len);
+          checkValueLength(_pos + len);
 
-          _buffer.prealloc(len);
-          _start = _buffer.data();
-          _size = _buffer.size();
+          _buffer->prealloc(len);
+          _start = _buffer->data();
+          _size = _buffer->size();
         }
 
         // Sort the indices by attribute name:
@@ -126,16 +126,33 @@ namespace arangodb {
 
       public:
         
-        Options options;
+        Options const* options;
 
         // Constructor and destructor:
-
-        Builder (Options const& options = Options::Defaults)
-          : _buffer({ 0 }),
+        Builder (std::shared_ptr<Buffer<uint8_t>>& buffer, Options const* options = &Options::Defaults)
+          : _buffer(buffer),
             _pos(0),
             options(options) {
-          _start = _buffer.data();
-          _size = _buffer.size();
+          _start = _buffer->data();
+          _size = _buffer->size();
+
+          VELOCYPACK_ASSERT(options != nullptr);
+          if (options == nullptr) {
+            throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+          }
+        }
+
+        Builder (Options const* options = &Options::Defaults)
+          : _buffer(new Buffer<uint8_t>()),
+            _pos(0),
+            options(options) {
+          _start = _buffer->data();
+          _size = _buffer->size();
+
+          VELOCYPACK_ASSERT(options != nullptr);
+          if (options == nullptr) {
+            throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+          }
         }
 
         // The rule of five:
@@ -144,61 +161,89 @@ namespace arangodb {
         }
 
         Builder (Builder const& that) 
-          : _buffer(that._buffer), _start(_buffer.data()), _size(_buffer.size()), _pos(that._pos),
+          : _buffer(that._buffer), _start(_buffer->data()), _size(_buffer->size()), _pos(that._pos),
             _stack(that._stack), _index(that._index), options(that.options) {
+          VELOCYPACK_ASSERT(options != nullptr);
+          if (that._buffer == nullptr) {
+            throw Exception(Exception::InternalError, "Buffer of Builder is already gone");
+          }
         }
 
         Builder& operator= (Builder const& that) {
+          if (that._buffer == nullptr) {
+            throw Exception(Exception::InternalError, "Buffer of Builder is already gone");
+          }
           _buffer = that._buffer;
-          _start = _buffer.data();
-          _size = _buffer.size();
+          _start = _buffer->data();
+          _size = _buffer->size();
           _pos = that._pos;
           _stack = that._stack;
           _index = that._index;
           options = that.options;
+          VELOCYPACK_ASSERT(options != nullptr);
           return *this;
         }
 
         Builder (Builder&& that) {
-          _buffer.reset();
+          if (that._buffer == nullptr) {
+            throw Exception(Exception::InternalError, "Buffer of Builder is already gone");
+          }
           _buffer = that._buffer;
           that._buffer.reset();
-          _start = _buffer.data();
-          _size = _buffer.size();
+          _start = _buffer->data();
+          _size = _buffer->size();
           _pos = that._pos;
           _stack.clear();
           _stack.swap(that._stack);
           _index.clear();
           _index.swap(that._index);
           options = that.options;
+          VELOCYPACK_ASSERT(options != nullptr);
           that._start = nullptr;
           that._size = 0;
           that._pos = 0;
         }
 
         Builder& operator= (Builder&& that) {
-          _buffer.reset();
+          if (that._buffer == nullptr) {
+            throw Exception(Exception::InternalError, "Buffer of Builder is already gone");
+          }
           _buffer = that._buffer;
           that._buffer.reset();
-          _start = _buffer.data();
-          _size = _buffer.size();
+          _start = _buffer->data();
+          _size = _buffer->size();
           _pos = that._pos;
           _stack.clear();
           _stack.swap(that._stack);
           _index.clear();
           _index.swap(that._index);
           options = that.options;
+          VELOCYPACK_ASSERT(options != nullptr);
           that._start = nullptr;
           that._size = 0;
           that._pos = 0;
           return *this;
         }
 
-        static Builder clone (Slice const& slice, Options const& options = Options::Defaults) {
+        // get a const reference to the Builder's Buffer object
+        std::shared_ptr<Buffer<uint8_t>> const& buffer () const {
+          return _buffer;
+        }
+        
+        // get a non-const reference to the Builder's Buffer object
+        std::shared_ptr<Buffer<uint8_t>>& buffer () {
+          return _buffer;
+        }
+
+        static Builder clone (Slice const& slice, Options const* options = &Options::Defaults) {
+          VELOCYPACK_ASSERT(options != nullptr);
+          if (options == nullptr) {
+            throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+          }
           Builder b;
           b.options = options;
           b.add(slice);
-          return b; 
+          return std::move(b); 
         }
 
         // Clear and start from scratch:
@@ -217,7 +262,7 @@ namespace arangodb {
 
         // Return a Slice of the result:
         Slice slice () const {
-          return Slice(start(), options.customTypeHandler);
+          return Slice(start(), options);
         }
 
         // Compute the actual size here, but only when sealed
@@ -343,7 +388,7 @@ namespace arangodb {
 
         void addUTCDate (int64_t v) {
           uint8_t vSize = sizeof(int64_t);   // is always 8
-          uint64_t x = ToUInt64(v);
+          uint64_t x = toUInt64(v);
           reserveSpace(1 + vSize);
           _start[_pos++] = 0x1c;
           appendLength(x, 8);
@@ -366,12 +411,12 @@ namespace arangodb {
           return target;
         }
 
-        void addArray () {
-          addCompoundValue(0x06);
+        inline void addArray (bool unindexed = false) {
+          addCompoundValue(unindexed ? 0x13 : 0x06);
         }
 
-        void addObject () {
-          addCompoundValue(0x0b);
+        inline void addObject (bool unindexed = false) {
+          addCompoundValue(unindexed ? 0x14 : 0x0b);
         }
 
       private:
@@ -380,7 +425,7 @@ namespace arangodb {
         uint8_t* addInternal (T const& sub) {
           if (! _stack.empty()) {
             ValueLength& tos = _stack.back();
-            if (_start[tos] != 0x06) {
+            if (_start[tos] != 0x06 && _start[tos] != 0x13) {
               throw Exception(Exception::BuilderNeedOpenArray);
             }
             reportAdd(tos);
@@ -392,7 +437,7 @@ namespace arangodb {
         uint8_t* addInternal (std::string const& attrName, T const& sub) {
           if (! _stack.empty()) {
             ValueLength& tos = _stack.back();
-            if (_start[tos] != 0x0b) {
+            if (_start[tos] != 0x0b && _start[tos] != 0x14) {
               throw Exception(Exception::BuilderNeedOpenObject);
             }
             reportAdd(tos);
@@ -403,7 +448,7 @@ namespace arangodb {
 
         void addCompoundValue (uint8_t type) {
           reserveSpace(9);
-          // an array is started:
+          // an Array or Object is started:
           _stack.push_back(_pos);
           while (_stack.size() > _index.size()) {
             _index.emplace_back();
@@ -466,7 +511,7 @@ namespace arangodb {
           uint8_t vSize = intLength(v);
           uint64_t x;
           if (vSize == 8) {
-            x = ToUInt64(v);
+            x = toUInt64(v);
           }
           else {
             int64_t shift = 1LL << (vSize * 8 - 1);  // will never overflow!
@@ -481,7 +526,7 @@ namespace arangodb {
           }
         }
  
-        void checkAttributeUniqueness (Slice const obj) const;
+        void checkAttributeUniqueness (Slice const& obj) const;
     };
 
   }  // namespace arangodb::velocypack

@@ -151,12 +151,17 @@ void Builder::close () {
     throw Exception(Exception::BuilderNeedOpenCompound);
   }
   ValueLength& tos = _stack.back();
-  if (_start[tos] != 0x06 && _start[tos] != 0x0b) {
+  uint8_t const head = _start[tos];
+
+  if (head != 0x06 && head != 0x0b && head != 0x13 && head != 0x14) {
     throw Exception(Exception::BuilderNeedOpenObject);
   }
+  bool const isArray = (head == 0x06 || head == 0x13);
   std::vector<ValueLength>& index = _index[_stack.size() - 1];
+
   if (index.empty()) {
-    _start[tos] = (_start[tos] == 0x06) ? 0x01 : 0x0a;
+    // empty Array or Object
+    _start[tos] = (isArray ? 0x01 : 0x0a);
     VELOCYPACK_ASSERT(_pos == tos + 9);
     _pos -= 8;  // no bytelength and number subvalues needed
     _stack.pop_back();
@@ -167,6 +172,54 @@ void Builder::close () {
   // From now on index.size() > 0
   VELOCYPACK_ASSERT(index.size() > 0);
 
+  // check if we can use the compact Array / Object format
+  if (index.size() > 1 &&
+      ((head == 0x13 || head == 0x14) ||
+       (head == 0x06 && options->buildUnindexedArrays) ||
+       (head == 0x0b && options->buildUnindexedObjects))) { 
+    // use compact notation
+    ValueLength nLen = getVariableValueLength(static_cast<ValueLength>(index.size()));
+    VELOCYPACK_ASSERT(nLen > 0);
+    ValueLength byteSize = _pos - (tos + 8) + nLen;
+    VELOCYPACK_ASSERT(byteSize > 0);
+    ValueLength bLen = getVariableValueLength(byteSize);
+    byteSize += bLen; 
+    if (getVariableValueLength(byteSize) != bLen) {
+      byteSize += 1;
+      bLen += 1;
+    }
+
+    if (bLen < 9) {
+      // can only use compact notation if total byte length is at most 8 bytes long
+      _start[tos] = (isArray ? 0x13 : 0x14);
+      ValueLength targetPos = 1 + bLen;
+
+      if (_pos > (tos + 9)) {
+        memmove(_start + tos + targetPos, _start + tos + 9,
+                _pos - (tos + 9));
+      }
+
+      // store byte length
+      VELOCYPACK_ASSERT(byteSize > 0);
+      storeVariableValueLength<false>(_start + tos + 1, byteSize);
+
+      // need additional memory for storing the number of values
+      if (nLen > 8 - bLen) {
+        reserveSpace(nLen);
+      }
+      storeVariableValueLength<true>(_start + tos + byteSize - 1, static_cast<ValueLength>(index.size()));
+      
+      _pos -= 8;
+      _pos += nLen + bLen;
+
+      _stack.pop_back();
+      return;
+    }
+  }
+  
+  // fix head byte in case a compact Array / Object was originally requested
+  _start[tos] = (isArray ? 0x06 : 0x0b); 
+
   bool needIndexTable = true;
   bool needNrSubs = true;
   if (index.size() == 1) {
@@ -176,7 +229,7 @@ void Builder::close () {
     }
     // For objects we leave needNrSubs at true here!
   }
-  else if (_start[tos] == 0x06 &&   // an array
+  else if (_start[tos] == 0x06 &&   // an Array
            (_pos - tos) - index[0] == index.size() * (index[1] - index[0])) {
     // In this case it could be that all entries have the same length
     // and we do not need an offset table at all:
@@ -246,12 +299,13 @@ void Builder::close () {
     reserveSpace(offsetSize * index.size() + (offsetSize == 8 ? 8 : 0));
     tableBase = _pos;
     _pos += offsetSize * index.size();
-    if (_start[tos] == 0x0b) {  // an object
-      if (! options.sortAttributeNames) {
+    if (_start[tos] == 0x0b) {  
+      // Object
+      if (! options->sortAttributeNames) {
         _start[tos] = 0x0f;  // unsorted
       }
       else if (index.size() >= 2 &&
-               options.sortAttributeNames) {
+               options->sortAttributeNames) {
         sortObjectIndex(_start + tos, index);
       }
     }
@@ -300,10 +354,10 @@ void Builder::close () {
   }
 
   // And, if desired, check attribute uniqueness:
-  if (options.checkAttributeUniqueness && index.size() > 1 &&
+  if (options->checkAttributeUniqueness && index.size() > 1 &&
       _start[tos] >= 0x0b) {
     // check uniqueness of attribute names
-    checkAttributeUniqueness(Slice(_start + tos, options.customTypeHandler));
+    checkAttributeUniqueness(Slice(_start + tos, options));
   }
 
   // Now the array or object is complete, we pop a ValueLength 
@@ -318,7 +372,7 @@ bool Builder::hasKey (std::string const& key) const {
     throw Exception(Exception::BuilderNeedOpenObject);
   }
   ValueLength const& tos = _stack.back();
-  if (_start[tos] != 0x06 && _start[tos] != 0x0b) {
+  if (_start[tos] != 0x0b && _start[tos] != 0x14) {
     throw Exception(Exception::BuilderNeedOpenObject);
   }
   std::vector<ValueLength> const& index = _index[_stack.size() - 1];
@@ -326,8 +380,8 @@ bool Builder::hasKey (std::string const& key) const {
     return false;
   }
   for (size_t i = 0; i < index.size(); ++i) {
-    Slice s(_start + tos + index[i], options.customTypeHandler);
-    if (s.isString() && s.copyString() == key) {
+    Slice s(_start + tos + index[i], options);
+    if (s.isString() && s.isEqualString(key)) {
       return true;
     }
   }
@@ -436,7 +490,7 @@ uint8_t* Builder::set (Value const& item) {
           v = item.getInt64();
           break;
         case Value::CType::UInt64:
-          v = ToInt64(item.getUInt64());
+          v = toInt64(item.getUInt64());
           break;
         default:
           throw Exception(Exception::BuilderUnexpectedValue, "Must give number for ValueType::Int");
@@ -478,7 +532,7 @@ uint8_t* Builder::set (Value const& item) {
           v = item.getInt64();
           break;
         case Value::CType::UInt64:
-          v = ToInt64(item.getUInt64());
+          v = toInt64(item.getUInt64());
           break;
         default:
           throw Exception(Exception::BuilderUnexpectedValue, "Must give number for ValueType::UTCDate");
@@ -518,11 +572,11 @@ uint8_t* Builder::set (Value const& item) {
       break;
     }
     case ValueType::Array: {
-      addArray();
+      addArray(item._unindexed);
       break;
     }
     case ValueType::Object: {
-      addObject();
+      addObject(item._unindexed);
       break;
     }
     case ValueType::Binary: {
@@ -620,8 +674,8 @@ uint8_t* Builder::set (ValuePair const& pair) {
   throw Exception(Exception::BuilderUnexpectedType, "Only ValueType::Binary, ValueType::String and ValueType::Custom are valid for ValuePair argument");
 }
 
-void Builder::checkAttributeUniqueness (Slice const obj) const {
-  VELOCYPACK_ASSERT(options.checkAttributeUniqueness == true);
+void Builder::checkAttributeUniqueness (Slice const& obj) const {
+  VELOCYPACK_ASSERT(options->checkAttributeUniqueness == true);
   ValueLength const n = obj.length();
 
   if (obj.isSorted()) {

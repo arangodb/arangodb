@@ -28,6 +28,7 @@
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Dumper.h"
+#include "velocypack/Iterator.h"
 #include "velocypack/ValueType.h"
     
 using namespace arangodb::velocypack;
@@ -141,7 +142,7 @@ void Dumper::dumpString (char const* src, ValueLength len) {
       char esc = EscapeTable[c];
 
       if (esc) {
-        if (c != '/' || options.escapeForwardSlashes) {
+        if (c != '/' || options->escapeForwardSlashes) {
           // escape forward slashes only when requested
           _sink->push_back('\\');
         }
@@ -220,28 +221,30 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
     }
 
     case ValueType::Array: {
-      ValueLength const n = slice->length();
+      ArrayIterator it(*slice);
       _sink->push_back('[');
-      if (options.prettyPrint) {
+      if (options->prettyPrint) {
         _sink->push_back('\n');
         ++_indentation;
-        for (ValueLength i = 0; i < n; ++i) {
+        while (it.valid()) {
           indent();
-          dumpValue(slice->at(i), base);
-          if (i + 1 !=  n) {
+          dumpValue(it.value(), base);
+          if (! it.isLast()) {
             _sink->push_back(',');
           }
           _sink->push_back('\n');
+          it.next();
         }
         --_indentation;
         indent();
       }
       else {
-        for (ValueLength i = 0; i < n; ++i) {
-          if (i > 0) {
+        while (it.valid()) {
+          if (! it.isFirst()) {
             _sink->push_back(',');
           }
-          dumpValue(slice->at(i), base);
+          dumpValue(it.value(), base);
+          it.next();
         }
       }
       _sink->push_back(']');
@@ -249,32 +252,34 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
     }
 
     case ValueType::Object: {
-      ValueLength const n = slice->length();
+      ObjectIterator it(*slice);
       _sink->push_back('{');
-      if (options.prettyPrint) {
+      if (options->prettyPrint) {
         _sink->push_back('\n');
         ++_indentation;
-        for (ValueLength i = 0; i < n; ++i) {
+        while (it.valid()) {
           indent();
-          dumpValue(slice->keyAt(i), base);
+          dumpValue(it.key(), base);
           _sink->append(" : ", 3);
-          dumpValue(slice->valueAt(i), base);
-          if (i + 1 !=  n) {
+          dumpValue(it.value(), base);
+          if (! it.isLast()) {
             _sink->push_back(',');
           }
           _sink->push_back('\n');
+          it.next();
         }
         --_indentation;
         indent();
       }
       else {
-        for (ValueLength i = 0; i < n; ++i) {
-          if (i > 0) {
+        while (it.valid()) {
+          if (! it.isFirst()) {
             _sink->push_back(',');
           }
-          dumpValue(slice->keyAt(i), base);
+          dumpValue(it.key(), base);
           _sink->push_back(':');
-          dumpValue(slice->valueAt(i), base);
+          dumpValue(it.value(), base);
+          it.next();
         }
       }
       _sink->push_back('}');
@@ -300,7 +305,7 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
     }
 
     case ValueType::External: {
-      Slice const external(slice->getExternal(), slice->customTypeHandler);
+      Slice const external(slice->getExternal(), slice->options);
       dumpValue(&external, base);
       break;
     }
@@ -339,11 +344,11 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
     }
     
     case ValueType::Custom: {
-      if (options.customTypeHandler == nullptr) {
+      if (options->customTypeHandler == nullptr) {
         handleUnsupportedType(slice);
       }
       else {
-        options.customTypeHandler->toJson(*slice, _sink, *base);
+        options->customTypeHandler->toJson(*slice, this, *base);
       }
       break;
     }

@@ -519,13 +519,13 @@ void HttpRequest::setHeader (char const* key,
 ////////////////////////////////////////////////////////////////////////////////
 
 VPackBuilder HttpRequest::toVelocyPack () {
-  VPackParser parser;
-  parser.options.checkAttributeUniqueness = true;
+  VPackOptions options;
+  options.checkAttributeUniqueness = true;
+  
+  VPackParser parser(&options);
   parser.parse(body());
   return parser.steal();
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the request body as TRI_json_t*

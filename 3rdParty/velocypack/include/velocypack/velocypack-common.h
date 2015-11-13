@@ -75,17 +75,69 @@ namespace arangodb {
 
 #ifndef VELOCYPACK_64BIT
     // check if the length is beyond the size of a SIZE_MAX on this platform
-    static void CheckValueLength (ValueLength);
+    static void checkValueLength (ValueLength);
 #else
-    static inline void CheckValueLength (ValueLength) { 
+    static inline void checkValueLength (ValueLength) { 
       // do nothing on a 64 bit platform 
     }
 #endif
 
-    // returns current value for UTCDate
-    int64_t CurrentUTCDateValue ();
+    // calculate the length of a variable length integer in unsigned LEB128 format 
+    static inline ValueLength getVariableValueLength (ValueLength value) throw() {
+      ValueLength len = 1;
+      while (value >= 0x80) {
+        value >>= 7;
+        ++len; 
+      }
+      return len;
+    }
 
-    static inline uint64_t ToUInt64 (int64_t v) {
+    // read a variable length integer in unsigned LEB128 format 
+    template<bool reverse>
+    static inline ValueLength readVariableValueLength (uint8_t const* source) {
+      ValueLength len = 0;
+      uint8_t v;
+      ValueLength p = 0;
+      do {
+        v = *source;
+        len += (v & 0x7f) << p;
+        p += 7;
+        if (reverse) {
+          --source;
+        }
+        else {
+          ++source;
+        } 
+      }
+      while (v & 0x80);
+      return len;
+    }
+
+    // store a variable length integer in unsigned LEB128 format 
+    template<bool reverse>
+    static inline void storeVariableValueLength (uint8_t* dst, ValueLength value) {
+      VELOCYPACK_ASSERT(value > 0);
+
+      if (reverse) {
+        while (value >= 0x80) {
+          *dst-- = static_cast<uint8_t>(value | 0x80);
+          value >>= 7;
+        }
+        *dst-- = static_cast<uint8_t>(value & 0x7f);
+      }
+      else {
+        while (value >= 0x80) {
+          *dst++ = static_cast<uint8_t>(value | 0x80);
+          value >>= 7;
+        }
+        *dst++ = static_cast<uint8_t>(value & 0x7f);
+      }
+    }
+
+    // returns current value for UTCDate
+    int64_t currentUTCDateValue ();
+
+    static inline uint64_t toUInt64 (int64_t v) throw() {
       // If v is negative, we need to add 2^63 to make it positive,
       // before we can cast it to an uint64_t:
       uint64_t shift2 = 1ULL << 63;
@@ -97,7 +149,7 @@ namespace arangodb {
       // uint64_t is not guaranteed to work for negative values!
     }
 
-    static inline int64_t ToInt64 (uint64_t v) {
+    static inline int64_t toInt64 (uint64_t v) throw() {
       uint64_t shift2 = 1ULL << 63;
       int64_t shift = static_cast<int64_t>(shift2 - 1);
       return v >= shift2 ? (static_cast<int64_t>(v - shift2) - shift) - 1

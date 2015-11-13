@@ -67,48 +67,65 @@ namespace arangodb {
           std::string const* s;  // 5: std::string
           char const* c;         // 6: char const*
           void const* e;         // external
-        } _value;
+        } 
+        _value;
+
+        bool _unindexed;
 
       public:
 
         Value () = delete;
 
-        explicit Value (ValueType t)
-          : _valueType(t), _cType(CType::None) {
+        // creates a Value with the specified type Array or Object 
+        explicit Value (ValueType t, bool allowUnindexed = false)
+          : _valueType(t), _cType(CType::None), _unindexed(allowUnindexed) {
+          
+          if (allowUnindexed && 
+              (_valueType != ValueType::Array && _valueType != ValueType::Object)) {
+            throw Exception(Exception::InvalidValueType, "Expecting compound type");
+          }
         }
 
         explicit Value (bool b, ValueType t = ValueType::Bool) 
-          : _valueType(t), _cType(CType::Bool) {
+          : _valueType(t), _cType(CType::Bool), _unindexed(false) {
           _value.b = b;
         }
+
         explicit Value (double d, ValueType t = ValueType::Double) 
-          : _valueType(t), _cType(CType::Double) {
+          : _valueType(t), _cType(CType::Double), _unindexed(false) {
           _value.d = d;
         }
+
         explicit Value (void const* e, ValueType t = ValueType::External)
-          : _valueType(t), _cType(CType::VoidPtr) {
+          : _valueType(t), _cType(CType::VoidPtr), _unindexed(false) {
           _value.e = e;
         }
+
         explicit Value (char const* c, ValueType t = ValueType::String)
-          : _valueType(t), _cType(CType::CharPtr) {
+          : _valueType(t), _cType(CType::CharPtr), _unindexed(false) {
           _value.c = c;
         }
+
         explicit Value (int32_t i, ValueType t = ValueType::Int)
-          : _valueType(t), _cType(CType::Int64) {
+          : _valueType(t), _cType(CType::Int64), _unindexed(false) {
           _value.i = static_cast<int64_t>(i);
         }
+
         explicit Value (uint32_t u, ValueType t = ValueType::UInt)
-          : _valueType(t), _cType(CType::UInt64) {
+          : _valueType(t), _cType(CType::UInt64), _unindexed(false) {
           _value.u = static_cast<uint64_t>(u);
         }
+
         explicit Value (int64_t i, ValueType t = ValueType::Int)
-          : _valueType(t), _cType(CType::Int64) {
+          : _valueType(t), _cType(CType::Int64), _unindexed(false) {
           _value.i = i;
         }
+
         explicit Value (uint64_t u, ValueType t = ValueType::UInt)
-          : _valueType(t), _cType(CType::UInt64) {
+          : _valueType(t), _cType(CType::UInt64), _unindexed(false) {
           _value.u = u;
         }
+
 #ifdef __APPLE__       
         // MacOS uses the following typedefs:
         // - typedef unsigned int         uint32_t;
@@ -120,12 +137,13 @@ namespace arangodb {
         // however, defining the method on Linux and with MSVC will lead 
         // to ambiguous overloads, so this is restricted to __APPLE__ only
         explicit Value (unsigned long i, ValueType t = ValueType::Int)
-          : _valueType(t), _cType(CType::UInt64) {
+          : _valueType(t), _cType(CType::UInt64), _unindexed(false) {
           _value.i = static_cast<uint64_t>(i);
         }
-#endif        
+#endif  
+              
         explicit Value (std::string const& s, ValueType t = ValueType::String)
-          : _valueType(t), _cType(CType::String) {
+          : _valueType(t), _cType(CType::String), _unindexed(false) {
           _value.s = &s;
         }
 

@@ -58,28 +58,44 @@ namespace arangodb {
 
       public:
         
-        CustomTypeHandler* customTypeHandler;
+        Options const* options;
  
         // constructor for an empty Value of type None 
         Slice () 
-          : Slice("\x00") {
+          : Slice("\x00", &Options::Defaults) {
         }
 
-        explicit Slice (uint8_t const* start, CustomTypeHandler* handler = nullptr) 
-          : _start(start), customTypeHandler(handler) {
+        explicit Slice (uint8_t const* start, Options const* options = &Options::Defaults) 
+          : _start(start), options(options) {
+          VELOCYPACK_ASSERT(options != nullptr);
         }
 
-        explicit Slice (char const* start, CustomTypeHandler* handler = nullptr) 
-          : _start(reinterpret_cast<uint8_t const*>(start)), customTypeHandler(handler) {
+        explicit Slice (char const* start, Options const* options = &Options::Defaults) 
+          : _start(reinterpret_cast<uint8_t const*>(start)), options(options) {
+          VELOCYPACK_ASSERT(options != nullptr);
         }
 
         Slice (Slice const& other) 
-          : _start(other._start), customTypeHandler(other.customTypeHandler) {
+          : _start(other._start), options(other.options) {
+          VELOCYPACK_ASSERT(options != nullptr);
+        }
+
+        Slice (Slice&& other) 
+          : _start(other._start), options(other.options) {
+          VELOCYPACK_ASSERT(options != nullptr);
         }
 
         Slice& operator= (Slice const& other) {
           _start = other._start;
-          customTypeHandler = other.customTypeHandler;
+          options = other.options;
+          VELOCYPACK_ASSERT(options != nullptr);
+          return *this;
+        }
+
+        Slice& operator= (Slice&& other) {
+          _start = other._start;
+          options = other.options;
+          VELOCYPACK_ASSERT(options != nullptr);
           return *this;
         }
         
@@ -299,13 +315,19 @@ namespace arangodb {
             return 0;
           }
 
+          if (h == 0x13 || h == 0x14) {
+            // compact Array or Object
+            ValueLength end = readVariableValueLength<false>(_start + 1);
+            return readVariableValueLength<true>(_start + end - 1);
+          }
+
           ValueLength const offsetSize = indexEntrySize(h);
           ValueLength end = readInteger<ValueLength>(_start + 1, offsetSize);
 
           // find number of items
           if (h <= 0x05) {    // No offset table or length, need to compute:
             ValueLength firstSubOffset = findDataOffset(h);
-            Slice first(_start + firstSubOffset, customTypeHandler);
+            Slice first(_start + firstSubOffset, options);
             return (end - firstSubOffset) / first.byteSize();
           } 
           else if (offsetSize < 8) {
@@ -335,7 +357,7 @@ namespace arangodb {
 
         Slice valueAt (ValueLength index) const {
           Slice key = keyAt(index);
-          return Slice(key.start() + key.byteSize(), customTypeHandler);
+          return Slice(key.start() + key.byteSize(), options);
         }
 
         // look for the specified attribute path inside an Object
@@ -347,7 +369,7 @@ namespace arangodb {
           }
 
           // use ourselves as the starting point
-          Slice last = Slice(start(), customTypeHandler);
+          Slice last = Slice(start(), options);
           for (size_t i = 0; i < attributes.size(); ++i) {
             // fetch subattribute
             last = last.get(attributes[i]);
@@ -363,72 +385,7 @@ namespace arangodb {
 
         // look for the specified attribute inside an Object
         // returns a Slice(ValueType::None) if not found
-        Slice get (std::string const& attribute) const {
-          if (! isType(ValueType::Object)) {
-            throw Exception(Exception::InvalidValueType, "Expecting Object");
-          }
-
-          auto const h = head();
-          if (h == 0xa) {
-            // special case, empty object
-            return Slice();
-          }
-          
-          ValueLength const offsetSize = indexEntrySize(h);
-          ValueLength end = readInteger<ValueLength>(_start + 1, offsetSize);
-          ValueLength dataOffset = 0;
-
-          // read number of items
-          ValueLength n;
-          if (h <= 0x05) {    // No offset table or length, need to compute:
-            dataOffset = findDataOffset(h);
-            Slice first(_start + dataOffset, customTypeHandler);
-            n = (end - dataOffset) / first.byteSize();
-          } 
-          else if (offsetSize < 8) {
-            n = readInteger<ValueLength>(_start + 1 + offsetSize, offsetSize);
-          }
-          else {
-            n = readInteger<ValueLength>(_start + end - offsetSize, offsetSize);
-          }
-          
-          if (n == 1) {
-            // Just one attribute, there is no index table!
-            if (dataOffset == 0) {
-              dataOffset = findDataOffset(h);
-            }
-            Slice attrName = Slice(_start + dataOffset, customTypeHandler);
-            if (! attrName.isString()) {
-              return Slice();
-            }
-            ValueLength attrLength;
-            char const* k = attrName.getString(attrLength); 
-            if (attrLength != static_cast<ValueLength>(attribute.size())) {
-              // key must have the exact same length as the attribute we search for
-              return Slice();
-            }
-            if (memcmp(k, attribute.c_str(), attribute.size()) != 0) {
-              return Slice();
-            }
-
-            return Slice(attrName.start() + attrName.byteSize(), customTypeHandler);
-          }
-
-          ValueLength const ieBase = end - n * offsetSize 
-                                     - (offsetSize == 8 ? offsetSize : 0);
-
-          // only use binary search for attributes if we have at least this many entries
-          // otherwise we'll always use the linear search
-          static ValueLength const SortedSearchEntriesThreshold = 4;
-
-          if (isSorted() && n >= SortedSearchEntriesThreshold) {
-            // This means, we have to handle the special case n == 1 only
-            // in the linear search!
-            return searchObjectKeyBinary(attribute, ieBase, offsetSize, n);
-          }
-
-          return searchObjectKeyLinear(attribute, ieBase, offsetSize, n);
-        }
+        Slice get (std::string const& attribute) const;
 
         Slice operator[] (std::string const& attribute) const {
           return get(attribute);
@@ -450,91 +407,13 @@ namespace arangodb {
         }
 
         // return the value for an Int object
-        int64_t getInt () const {
-          uint8_t const h = head();
-          if (h >= 0x20 && h <= 0x27) {
-            // Int  T
-            uint64_t v = readInteger<uint64_t>(_start + 1, h - 0x1f);
-            if (h == 0x27) {
-              return ToInt64(v);
-            }
-            else {
-              int64_t vv = static_cast<int64_t>(v);
-              int64_t shift = 1LL << ((h - 0x1f) * 8 - 1);
-              return vv < shift ? vv : vv - (shift << 1);
-            }
-          }
-
-          if (h >= 0x28 && h <= 0x2f) { 
-            // UInt
-            uint64_t v = getUInt();
-            if (v > static_cast<uint64_t>(INT64_MAX)) {
-              throw Exception(Exception::NumberOutOfRange);
-            }
-            return static_cast<int64_t>(v);
-          }
-          
-          if (h >= 0x30 && h <= 0x3f) {
-            // SmallInt
-            return getSmallInt();
-          }
-
-          throw Exception(Exception::InvalidValueType, "Expecting type Int");
-        }
+        int64_t getInt () const;
 
         // return the value for a UInt object
-        uint64_t getUInt () const {
-          uint8_t const h = head();
-          if (h >= 0x28 && h <= 0x2f) {
-            // UInt
-            return readInteger<uint64_t>(_start + 1, h - 0x27);
-          }
-          
-          if (h >= 0x20 && h <= 0x27) {
-            // Int 
-            int64_t v = getInt();
-            if (v < 0) {
-              throw Exception(Exception::NumberOutOfRange);
-            }
-            return static_cast<int64_t>(v);
-          }
-
-          if (h >= 0x30 && h <= 0x39) {
-            // Smallint >= 0
-            return static_cast<uint64_t>(h - 0x30);
-          }
-
-          if (h >= 0x3a && h <= 0x3f) {
-            // Smallint < 0
-            throw Exception(Exception::NumberOutOfRange);
-          }
-          
-          throw Exception(Exception::InvalidValueType, "Expecting type UInt");
-        }
+        uint64_t getUInt () const;
 
         // return the value for a SmallInt object
-        int64_t getSmallInt () const {
-          uint8_t const h = head();
-
-          if (h >= 0x30 && h <= 0x39) {
-            // Smallint >= 0
-            return static_cast<int64_t>(h - 0x30);
-          }
-
-          if (h >= 0x3a && h <= 0x3f) {
-            // Smallint < 0
-            return static_cast<int64_t>(h - 0x3a) - 6;
-          }
-
-          if ((h >= 0x20 && h <= 0x27) ||
-              (h >= 0x28 && h <= 0x2f)) {
-            // Int and UInt
-            // we'll leave it to the compiler to detect the two ranges above are adjacent
-            return getInt();
-          }
-
-          throw Exception(Exception::InvalidValueType, "Expecting type Smallint");
-        }
+        int64_t getSmallInt () const;
 
         template<typename T>
         T getNumericValue () const {
@@ -596,7 +475,7 @@ namespace arangodb {
         int64_t getUTCDate () const {
           assertType(ValueType::UTCDate);
           uint64_t v = readInteger<uint64_t>(_start + 1, sizeof(uint64_t));
-          return ToInt64(v);
+          return toInt64(v);
         }
 
         // return the value for a String object
@@ -611,7 +490,7 @@ namespace arangodb {
           if (h == 0xbf) {
             // long UTF-8 String
             length = readInteger<ValueLength>(_start + 1, 8);
-            CheckValueLength(length);
+            checkValueLength(length);
             return reinterpret_cast<char const*>(_start + 1 + 8);
           }
 
@@ -629,7 +508,7 @@ namespace arangodb {
 
           if (h == 0xbf) {
             ValueLength length = readInteger<ValueLength>(_start + 1, 8);
-            CheckValueLength(length);
+            checkValueLength(length);
             return std::string(reinterpret_cast<char const*>(_start + 1 + 8), length);
           }
 
@@ -643,7 +522,7 @@ namespace arangodb {
 
           if (h >= 0xc0 && h <= 0xc7) {
             length = readInteger<ValueLength>(_start + 1, h - 0xbf); 
-            CheckValueLength(length);
+            checkValueLength(length);
             return _start + 1 + h - 0xbf;
           }
 
@@ -658,7 +537,7 @@ namespace arangodb {
           if (h >= 0xc0 && h <= 0xc7) {
             std::vector<uint8_t> out;
             ValueLength length = readInteger<ValueLength>(_start + 1, h - 0xbf); 
-            CheckValueLength(length);
+            checkValueLength(length);
             out.reserve(static_cast<size_t>(length));
             out.insert(out.end(), _start + 1 + h - 0xbf, _start + 1 + h - 0xbf + length);
             return out; 
@@ -687,10 +566,16 @@ namespace arangodb {
             case ValueType::Object: {
               auto const h = head();
               if (h == 0x01 || h == 0x0a) {
-                // empty array or object
+                // empty Array or Object
                 return 1;
               }
 
+              if (h == 0x13 || h == 0x14) {
+                // compact Array or Object
+                return readVariableValueLength<false>(_start + 1);
+              }
+
+              VELOCYPACK_ASSERT(h <= 0x12);
               return readInteger<ValueLength>(_start + 1, WidthMap[h]);
             }
 
@@ -738,11 +623,11 @@ namespace arangodb {
             }
 
             case ValueType::Custom: {
-              if (customTypeHandler == nullptr) {
+              if (options->customTypeHandler == nullptr) {
                 throw Exception(Exception::NeedCustomTypeHandler);
               }
 
-              return customTypeHandler->byteSize(*this);
+              return options->customTypeHandler->byteSize(*this);
             }
           }
 
@@ -750,14 +635,21 @@ namespace arangodb {
           return 0;
         }
 
+        int compareString (std::string const& attribute) const;
+        bool isEqualString (std::string const& attribute) const;
+
+
         std::string toJson () const;
         std::string toString () const;
         std::string hexType () const;
 
       private:
-        
-        ValueLength findDataOffset (uint8_t const head) const {
+
+        Slice getFromCompactObject (std::string const& attribute) const;
+
+        ValueLength findDataOffset (uint8_t head) const {
           // Must be called for a nonempty array or object at start():
+          VELOCYPACK_ASSERT(head <= 0x12);
           unsigned int fsm = FirstSubMap[head];
           if (fsm <= 2 && _start[2] != 0) {
             return 2;
@@ -770,139 +662,40 @@ namespace arangodb {
           }
           return 9;
         }
+        
+        ValueLength valueOffset (ValueLength index) const {
+          if (type() != ValueType::Array && type() != ValueType::Object) {
+            throw Exception(Exception::InvalidValueType, "Expecting Array or Object");
+          }
+          
+          return getNthOffset(index);
+        }
+        
+        // get the offset for the nth member from an Array or Object type
+        ValueLength getNthOffset (ValueLength index) const;
           
         // extract the nth member from an Array or Object type
-        Slice getNth (ValueLength index) const {
-          VELOCYPACK_ASSERT(type() == ValueType::Array || type() == ValueType::Object);
-
-          auto const h = head();
-          if (h == 0x01 || h == 0x0a) {
-            // special case. empty array or object
-            throw Exception(Exception::IndexOutOfBounds);
-          }
-
-          ValueLength const offsetSize = indexEntrySize(h);
-          ValueLength end = readInteger<ValueLength>(_start + 1, offsetSize);
-
-          ValueLength dataOffset = findDataOffset(h);
-          
-          // find the number of items
-          ValueLength n;
-          if (h <= 0x05) {    // No offset table or length, need to compute:
-            Slice first(_start + dataOffset, customTypeHandler);
-            n = (end - dataOffset) / first.byteSize();
-          }
-          else if (offsetSize < 8) {
-            n = readInteger<ValueLength>(_start + 1 + offsetSize, offsetSize);
-          }
-          else {
-            n = readInteger<ValueLength>(_start + end - offsetSize, offsetSize);
-          }
-
-          if (index >= n) {
-            throw Exception(Exception::IndexOutOfBounds);
-          }
-
-          // empty array case was already covered
-          VELOCYPACK_ASSERT(n > 0);
-
-          if (h <= 0x05 || n == 1) {
-            // no index table, but all array items have the same length
-            // now fetch first item and determine its length
-            if (dataOffset == 0) {
-              dataOffset = findDataOffset(h);
-            }
-            Slice firstItem(_start + dataOffset, customTypeHandler);
-            return Slice(_start + dataOffset + index * firstItem.byteSize(), customTypeHandler);
-          }
-          
-          ValueLength const ieBase = end - n * offsetSize + index * offsetSize
-                                     - (offsetSize == 8 ? 8 : 0);
-          return Slice(_start + readInteger<ValueLength>(_start + ieBase, offsetSize), customTypeHandler);
-        }
+        Slice getNth (ValueLength index) const;
+        
+        // get the offset for the nth member from a compact Array or Object type
+        ValueLength getNthOffsetFromCompact (ValueLength index) const;
 
         ValueLength indexEntrySize (uint8_t head) const {
+          VELOCYPACK_ASSERT(head <= 0x12);
           return static_cast<ValueLength>(WidthMap[head]);
         }
 
         // perform a linear search for the specified attribute inside an Object
         Slice searchObjectKeyLinear (std::string const& attribute, 
-                                          ValueLength ieBase, 
-                                          ValueLength offsetSize, 
-                                          ValueLength n) const {
-          for (ValueLength index = 0; index < n; ++index) {
-            ValueLength offset = ieBase + index * offsetSize;
-            Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize), customTypeHandler);
-            if (! key.isString()) {
-              // invalid object
-              return Slice();
-            }
-
-            ValueLength keyLength;
-            char const* k = key.getString(keyLength); 
-            if (keyLength != static_cast<ValueLength>(attribute.size())) {
-              // key must have the exact same length as the attribute we search for
-              continue;
-            }
-
-            if (memcmp(k, attribute.c_str(), attribute.size()) != 0) {
-              continue;
-            }
-            // key is identical. now return value
-            return Slice(key.start() + key.byteSize(), customTypeHandler);
-          }
-
-          // nothing found
-          return Slice();
-        }
+                                     ValueLength ieBase, 
+                                     ValueLength offsetSize, 
+                                     ValueLength n) const;
 
         // perform a binary search for the specified attribute inside an Object
         Slice searchObjectKeyBinary (std::string const& attribute, 
-                                          ValueLength ieBase,
-                                          ValueLength offsetSize, 
-                                          ValueLength n) const {
-          VELOCYPACK_ASSERT(n > 0);
-            
-          ValueLength const attributeLength = static_cast<ValueLength>(attribute.size());
-
-          ValueLength l = 0;
-          ValueLength r = n - 1;
-
-          while (true) {
-            // midpoint
-            ValueLength index = l + ((r - l) / 2);
-
-            ValueLength offset = ieBase + index * offsetSize;
-            Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize), customTypeHandler);
-            if (! key.isString()) {
-              // invalid object
-              return Slice();
-            }
-
-            ValueLength keyLength;
-            char const* k = key.getString(keyLength); 
-            size_t const compareLength = static_cast<size_t>((std::min)(keyLength, attributeLength));
-            int res = memcmp(k, attribute.c_str(), compareLength);
-
-            if (res == 0 && keyLength == attributeLength) {
-              // key is identical. now return value
-              return Slice(key.start() + key.byteSize(), customTypeHandler);
-            }
-
-            if (res > 0 || (res == 0 && keyLength > attributeLength)) {
-              if (index == 0) {
-                return Slice();
-              }
-              r = index - 1;
-            }
-            else {
-              l = index + 1;
-            }
-            if (r < l) {
-              return Slice();
-            }
-          }
-        }
+                                     ValueLength ieBase,
+                                     ValueLength offsetSize, 
+                                     ValueLength n) const;
          
         // assert that the slice is of a specific type
         // can be used for debugging and removed in production
@@ -947,8 +740,8 @@ namespace arangodb {
       private:
 
         static ValueType const TypeMap[256];
-        static unsigned int const WidthMap[256];
-        static unsigned int const FirstSubMap[256];
+        static unsigned int const WidthMap[32];
+        static unsigned int const FirstSubMap[32];
     };
 
   }  // namespace arangodb::velocypack

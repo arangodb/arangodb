@@ -75,10 +75,7 @@ std::string VelocyPackHelper::checkAndGetStringValue (VPackSlice const& slice,
 }
 
 TRI_json_t* VelocyPackHelper::velocyPackToJson (VPackSlice const& slice) {
-  VPackStringSink sink;
-  VPackDumper dumper(&sink);
-  dumper.dump(slice);
-  return JsonHelper::fromString(sink.buffer);
+  return JsonHelper::fromString(slice.toJson());
 }
 
 // -----------------------------------------------------------------------------

@@ -28,6 +28,8 @@
 #define VELOCYPACK_SINK_H 1
 
 #include <string>
+#include <fstream>
+#include <sstream>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Buffer.h"
@@ -51,71 +53,70 @@ namespace arangodb {
     };
  
     template<typename T>
-    struct ByteBufferSink final : public Sink {
-      ByteBufferSink ()
-        : buffer() {
-      }
-
-      ByteBufferSink (ValueLength size)
-        : buffer(size) {
-      }
-      
-      void push_back (char c) override final {
-        buffer.push_back(c);
-      }
-
-      void append (std::string const& p) override final {
-        buffer.append(p.c_str(), p.size());
-      }
-
-      void append (char const* p) override final {
-        buffer.append(p, strlen(p));
-      }
-
-      void append (char const* p, ValueLength len) override final {
-        buffer.append(p, len);
-      }
-
-      void reserve (ValueLength len) override final {
-        buffer.reserve(len);
-      }
-
-      Buffer<T> buffer;
-    };
-
-    struct StringSink final : public Sink {
-      StringSink () 
-        : buffer() {
+    struct ByteBufferSinkImpl final : public Sink {
+      explicit ByteBufferSinkImpl (Buffer<T>* buffer)
+        : buffer(buffer) {
       }
 
       void push_back (char c) override final {
-        buffer.push_back(c);
+        buffer->push_back(c);
       }
 
       void append (std::string const& p) override final {
-        buffer.append(p);
+        buffer->append(p.c_str(), p.size());
       }
 
       void append (char const* p) override final {
-        buffer.append(p, strlen(p));
+        buffer->append(p, strlen(p));
       }
 
       void append (char const* p, ValueLength len) override final {
-        buffer.append(p, len);
+        buffer->append(p, len);
       }
 
       void reserve (ValueLength len) override final {
-        buffer.reserve(len);
+        buffer->reserve(len);
       }
 
-      std::string buffer;
+      Buffer<T>* buffer;
     };
-
-    typedef ByteBufferSink<char> CharBufferSink;
+    
+    typedef ByteBufferSinkImpl<char> CharBufferSink;
 
     template<typename T>
-    struct StreamSink final : public Sink {
-      StreamSink (T* stream) 
+    struct StringSinkImpl final : public Sink {
+      explicit StringSinkImpl (T* buffer) 
+        : buffer(buffer) {
+      }
+
+      void push_back (char c) override final {
+        buffer->push_back(c);
+      }
+
+      void append (std::string const& p) override final {
+        buffer->append(p);
+      }
+
+      void append (char const* p) override final {
+        buffer->append(p, strlen(p));
+      }
+
+      void append (char const* p, ValueLength len) override final {
+        buffer->append(p, len);
+      }
+
+      void reserve (ValueLength len) override final {
+        buffer->reserve(len);
+      }
+
+      T* buffer;
+    };
+    
+    typedef StringSinkImpl<std::string> StringSink;
+
+    template<typename T>
+    struct StreamSinkImpl final : public Sink {
+      explicit StreamSinkImpl (T* stream) 
         : stream(stream) {
       }
 
@@ -140,6 +141,9 @@ namespace arangodb {
 
       T* stream;
     };
+    
+    typedef StreamSinkImpl<std::ostringstream> StringStreamSink;
+    typedef StreamSinkImpl<std::ofstream> OutputFileStreamSink;
 
   }  // namespace arangodb::velocypack
 }  // namespace arangodb
