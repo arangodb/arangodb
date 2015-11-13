@@ -150,6 +150,7 @@ lib_libarango_v8_a_SOURCES = \
 	lib/V8/v8-json.cpp \
 	lib/V8/v8-shell.cpp \
 	lib/V8/v8-utils.cpp \
+	lib/V8/v8-vpack.cpp \
 	lib/V8/v8-environment.cpp \
 	lib/SimpleHttpClient/GeneralClientConnection.cpp \
 	lib/SimpleHttpClient/ClientConnection.cpp \

@@ -52,6 +52,7 @@
 #include "V8/JSLoader.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8/V8LineEditor.h"
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-replication.h"
@@ -1246,7 +1247,7 @@ static void JS_ExplainAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
       result->Set(TRI_V8_STRING("stats"), v8::Object::New(isolate));
     }
     else {
-      result->Set(TRI_V8_STRING("stats"), TRI_ObjectJson(isolate, stats));
+      result->Set(TRI_V8_STRING("stats"), TRI_VPackToV8(isolate, stats));
     }
   }
 
@@ -1309,11 +1310,11 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
   // return the array value as it is. this is a performance optimisation
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (queryResult.json != nullptr) {
-    result->ForceSet(TRI_V8_ASCII_STRING("json"),     TRI_ObjectJson(isolate, queryResult.json));
+    result->ForceSet(TRI_V8_ASCII_STRING("json"), TRI_ObjectJson(isolate, queryResult.json));
   }
   VPackSlice stats = queryResult.stats.slice();
   if (! stats.isNone()) {
-    result->ForceSet(TRI_V8_ASCII_STRING("stats"),    TRI_ObjectJson(isolate, stats));
+    result->ForceSet(TRI_V8_ASCII_STRING("stats"), TRI_VPackToV8(isolate, stats));
   }
   if (queryResult.profile != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("profile"), TRI_ObjectJson(isolate, queryResult.profile));
@@ -1415,7 +1416,7 @@ static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   VPackSlice stats = queryResult.stats.slice();
   if (! stats.isNone()) {
-    result->ForceSet(TRI_V8_ASCII_STRING("stats"), TRI_ObjectJson(isolate, stats));
+    result->ForceSet(TRI_V8_ASCII_STRING("stats"), TRI_VPackToV8(isolate, stats));
   }
   if (queryResult.profile != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("profile"), TRI_ObjectJson(isolate, queryResult.profile));
@@ -1683,7 +1684,7 @@ static void JS_QueryCachePropertiesAql (const v8::FunctionCallbackInfo<v8::Value
   }
 
   auto properties = queryCache->properties();
-  TRI_V8_RETURN(TRI_ObjectJson(isolate, properties.slice()));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, properties.slice()));
   
   // fetch current configuration and return it
   TRI_V8_TRY_CATCH_END

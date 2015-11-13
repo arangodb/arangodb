@@ -39,6 +39,7 @@
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/v8-shape-conv.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
@@ -47,6 +48,8 @@
 #include "VocBase/auth.h"
 #include "VocBase/KeyGenerator.h"
 #include "Wal/LogfileManager.h"
+
+#include <velocypack/velocypack-aliases.h>
 
 #include "unicode/timezone.h"
 
@@ -968,6 +971,7 @@ static void ReplaceVocbaseCol (bool useCollection,
 /// @brief inserts a document
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 static void InsertVocbaseCol (TRI_vocbase_col_t* col,
                               const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -995,6 +999,18 @@ static void InsertVocbaseCol (TRI_vocbase_col_t* col,
   else {
     options.waitForSync = ExtractWaitForSync(args, 2);
   }
+  
+  if (! args[0]->IsObject() || args[0]->IsArray()) {
+    // invalid value type. must be a document
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  VPackBuilder builder = TRI_V8ToVPack(isolate, args[0]->ToObject());
+
+  VPackSlice slice(builder.slice());
+
+  //std::cout << "GOT: " << VPackHexDump(slice) << "\n\n";
+
 
   // set document key
   std::unique_ptr<char[]> key;

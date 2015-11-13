@@ -29,15 +29,14 @@
 
 #include "v8-conv.h"
 
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Basics/Exceptions.h"
 #include "Basics/logging.h"
+#include "Basics/StringUtils.h"
 #include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"
-
-#include <velocypack/velocypack-aliases.h>
 
 using namespace std;
 using namespace triagens::basics;
@@ -776,101 +775,6 @@ bool TRI_ObjectToBoolean (v8::Handle<v8::Value> const value) {
 
   return false;
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a VelocyValueType::String into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> ObjectJsonString (v8::Isolate* isolate, VPackSlice const& slice) {
-    arangodb::velocypack::ValueLength l;
-    char const* val = slice.getString(l);
-    return TRI_V8_PAIR_STRING(val, l);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a VelocyValueType::Object into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> ObjectJsonObject (v8::Isolate* isolate, VPackSlice const& slice) {
-  v8::Handle<v8::Object> object = v8::Object::New(isolate);
-  
-  if (object.IsEmpty()) {
-    return v8::Undefined(isolate);
-  }
-
-  VPackObjectIterator it(slice);
-  while (it.valid()) {
-    v8::Handle<v8::Value> val = TRI_ObjectJson(isolate, it.value());
-    if (! val.IsEmpty()) {
-      auto k = ObjectJsonString(isolate, it.key()); 
-      object->ForceSet(k, val);
-    }
-    it.next();
-  }
-
-  return object;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a VelocyValueType::Array into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> ObjectJsonArray (v8::Isolate* isolate, VPackSlice const& slice) {
-  uint32_t const n = static_cast<uint32_t>(slice.length());
-  v8::Handle<v8::Array> object = v8::Array::New(isolate, static_cast<int>(n));
-  
-  if (object.IsEmpty()) {
-    return v8::Undefined(isolate);
-  }
-
-  uint32_t j = 0;
-  VPackArrayIterator it(slice);
-
-  while (it.valid()) {
-    v8::Handle<v8::Value> val = TRI_ObjectJson(isolate, it.value());
-    if (! val.IsEmpty()) {
-      object->Set(j++, val);
-    }
-    it.next();
-  }
-
-  return object;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_json_t into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_ObjectJson (v8::Isolate* isolate,
-                                      VPackSlice const& slice) {
-  switch (slice.type()) {
-    case VPackValueType::None:
-      return v8::Undefined(isolate);
-    case VPackValueType::Null:
-      return v8::Null(isolate); 
-    case VPackValueType::Bool:
-      return v8::Boolean::New(isolate, slice.getBool());
-    case VPackValueType::Double:
-      return v8::Number::New(isolate, slice.getDouble());
-    case VPackValueType::Int:
-      return v8::Number::New(isolate, slice.getInt());
-    case VPackValueType::UInt:
-      return v8::Number::New(isolate, slice.getUInt());
-    case VPackValueType::SmallInt:
-      return v8::Number::New(isolate, slice.getSmallInt());
-    case VPackValueType::String:
-      return ObjectJsonString(isolate, slice);
-    case VPackValueType::Object:
-      return ObjectJsonObject(isolate, slice);
-   case VPackValueType::Array:
-      return ObjectJsonArray(isolate, slice);
-    default:
-      return v8::Undefined(isolate);
-  }
-}
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

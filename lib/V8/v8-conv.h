@@ -34,8 +34,6 @@
 #include "Basics/json.h"
 #include "V8/v8-globals.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              CONVERSION FUNCTIONS
 // -----------------------------------------------------------------------------
@@ -118,16 +116,6 @@ double TRI_ObjectToDouble (v8::Handle<v8::Value> const,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ObjectToBoolean (v8::Handle<v8::Value> const);
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a VelocyPackSlice into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> TRI_ObjectJson (v8::Isolate* isolate,
-                                      VPackSlice const&);
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           GENERAL
