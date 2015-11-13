@@ -37,6 +37,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/edge-collection.h"
 #include "VocBase/update-policy.h"
 #include "VocBase/voc-types.h"
 #include "Cluster/AgencyComm.h"
@@ -163,6 +164,32 @@ namespace triagens {
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  std::string& contentType,
                  std::string& resultBody);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get all edges in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int getAllEdgesOnCoordinator (
+                 std::string const& dbname,
+                 std::string const& collname,
+                 std::string const& vertex,
+                 TRI_edge_direction_e const& direction,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 std::string& contentType,
+                 std::string& resultBody);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get all edges in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int getAllEdgesOnCoordinator (
+                 std::string const& dbname,
+                 std::string const& collname,
+                 std::string const& vertex,
+                 TRI_edge_direction_e const& direction,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 std::string& contentType,
+                 triagens::basics::Json& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator

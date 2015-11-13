@@ -1075,6 +1075,122 @@ int getAllDocumentsOnCoordinator (
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get all edges on coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+int getAllEdgesOnCoordinator (
+                 string const& dbname,
+                 string const& collname,
+                 string const& vertex,
+                 TRI_edge_direction_e const& direction,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 string& contentType,
+                 string& resultBody ) {
+  triagens::basics::Json result(triagens::basics::Json::Object);
+  int res = getAllEdgesOnCoordinator(dbname, collname, vertex, direction, responseCode, contentType, result);
+  resultBody = triagens::basics::JsonHelper::toString(result.json()); 
+  return res;
+}
+
+
+int getAllEdgesOnCoordinator (
+                 string const& dbname,
+                 string const& collname,
+                 string const& vertex,
+                 TRI_edge_direction_e const& direction,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 string& contentType,
+                 triagens::basics::Json& result ) {
+  TRI_ASSERT(result.isObject());
+  TRI_ASSERT(result.members() == 0);
+
+  // Set a few variables needed for our work:
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+
+  // First determine the collection ID from the name:
+  shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
+  if (collinfo->empty()) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  ClusterCommResult* res;
+
+  map<ShardID, ServerID> shards = collinfo->shardIds();
+  map<ShardID, ServerID>::iterator it;
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::string queryParameters = "?vertex=" + StringUtils::urlEncode(vertex);
+  if (direction == TRI_EDGE_IN) {
+    queryParameters += "in";
+  }
+  else if (direction == TRI_EDGE_OUT) {
+    queryParameters += "out";
+  }
+  for (it = shards.begin(); it != shards.end(); ++it) {
+    map<string, string>* headers = new map<string, string>;
+
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
+                           triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" + it->first + queryParameters,
+                           0, false, headers, nullptr, 3600.0);
+    delete res;
+  }
+  // Now listen to the results:
+  int count;
+  responseCode = triagens::rest::HttpResponse::OK;
+  contentType = "application/json; charset=utf-8";
+
+  triagens::basics::Json documents(triagens::basics::Json::Array);
+  
+  for (count = (int) shards.size(); count > 0; count--) {
+    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    if (res->status == CL_COMM_TIMEOUT) {
+      delete res;
+      cc->drop( "", coordTransactionID, 0, "");
+      return TRI_ERROR_CLUSTER_TIMEOUT;
+    }
+    if (res->status == CL_COMM_ERROR || res->status == CL_COMM_DROPPED ||
+        res->answer_code == triagens::rest::HttpResponse::NOT_FOUND) {
+      delete res;
+      cc->drop( "", coordTransactionID, 0, "");
+      return TRI_ERROR_INTERNAL;
+    }
+
+    std::unique_ptr<TRI_json_t> shardResult(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res->answer->body()));
+
+    if (shardResult == nullptr || ! TRI_IsObjectJson(shardResult.get())) {
+      delete res;
+      return TRI_ERROR_INTERNAL;
+    }
+
+    auto docs = TRI_LookupObjectJson(shardResult.get(), "documents");
+
+    if (! TRI_IsArrayJson(docs)) {
+      delete res;
+      return TRI_ERROR_INTERNAL;
+    }
+
+    size_t const n = TRI_LengthArrayJson(docs);
+    documents.reserve(n);
+
+    for (size_t j = 0; j < n; ++j) {
+      auto doc = static_cast<TRI_json_t*>(TRI_AtVector(&docs->_value._objects, j));
+
+      // this will transfer the ownership for the JSON into "documents"
+      documents.transfer(doc);
+    }
+
+    delete res;
+  }
+  
+  result("documents", documents);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
