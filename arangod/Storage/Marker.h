@@ -74,7 +74,7 @@ namespace arangodb {
 // --SECTION--                        helper struct for reading / writing values
 // -----------------------------------------------------------------------------
 
-  struct PersistenceHelper {
+  struct MarkerHelper {
     template<typename T>
     static inline uint32_t calculateNumberLength (T value) throw() {
       uint32_t len = 1;
@@ -108,6 +108,19 @@ namespace arangodb {
       while (dest < end);
     }
 
+    // returns the static length for the marker type
+    // the static length is the total length of the marker's static data fields,
+    // excluding the base marker's fields and excluding the marker's dynamic
+    // VPack data values
+    static uint64_t staticLength (MarkerType type);
+
+    // calculate the required length for a marker of the specified type, given a
+    // payload of the specified length
+    static uint64_t calculateMarkerLength (MarkerType type, uint64_t payloadLength);
+    
+    // calculate the required length for the header of a marker, given a body
+    // of the specified length
+    static uint64_t calculateHeaderLength (uint64_t bodyLength);
   };
 
   /* the base layout for all markers is:
@@ -199,11 +212,12 @@ namespace arangodb {
 
       template<typename T>
       T readNumber (uint8_t const* start, uint64_t length) const {
-        return PersistenceHelper::readNumber<T>(start, length);
+        return MarkerHelper::readNumber<T>(start, length);
       }
       
       template<typename T>
       T readAlignedNumber (uint8_t const* start, uint64_t length) const {
+        TRI_ASSERT(reinterpret_cast<uintptr_t>(start) % sizeof(T) == 0);
         // TODO: create an optimized version for aligned data access
         return readNumber<T>(start, length);
       }
@@ -238,25 +252,69 @@ namespace arangodb {
       // calculates the marker's CRC values and stores it
       uint32_t storeCrc () {
         // invalidate crc data in marker
-        PersistenceHelper::storeNumber(_begin + 4, 0, 4);
+        MarkerHelper::storeNumber(_begin + 4, 0, 4);
         // recalculate crc
         uint32_t crc = TRI_InitialCrc32();
         crc = TRI_BlockCrc32(crc, data(), _length);
         crc = TRI_FinalCrc32(crc);
-        PersistenceHelper::storeNumber(_begin + 4, crc, 4);
+        MarkerHelper::storeNumber(_begin + 4, crc, 4);
         return crc;
       }
       
       template<typename T>
       void storeNumber (uint8_t* start, T value, uint64_t length) const {
-        PersistenceHelper::storeNumber<T>(start, value, length);
+        MarkerHelper::storeNumber<T>(start, value, length);
       }
       
       template<typename T>
       void storeAlignedNumber (uint8_t* start, T value, uint64_t length) const {
+        TRI_ASSERT(reinterpret_cast<uintptr_t>(start) % sizeof(T) == 0);
         // TODO: create an optimized version for aligned data access
         storeNumber<T>(start, value, length);
       }
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                 generic accessor for meta markers
+// -----------------------------------------------------------------------------
+
+  template<typename T>
+  class MarkerAccessorMeta : public T {
+    /* this is a marker for meta data (header, footer etc)
+       its layout is:
+
+       BaseMarker      base (16 or 24 bytes)
+    */
+
+    public:
+
+      MarkerAccessorMeta (uint8_t* begin)
+        : T(begin) {
+      }
+
+      static uint64_t staticLength () {
+        return 0;
+      }
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                               read-only accessor for meta markers
+// -----------------------------------------------------------------------------
+  
+  typedef MarkerAccessorMeta<MarkerReader> MarkerReaderMeta;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                              read-write accessor for meta markers
+// -----------------------------------------------------------------------------
+
+  class MarkerWriterMeta : public MarkerAccessorMeta<MarkerWriter> {
+
+    public:
+
+      MarkerWriterMeta (uint8_t* begin)
+        : MarkerAccessorMeta<MarkerWriter>(begin) {
+      }
+
   };
 
 // -----------------------------------------------------------------------------
@@ -294,6 +352,10 @@ namespace arangodb {
       
       uint8_t* vPackValue () const {
         return versionedVPackValue() + 1;
+      }
+      
+      static uint64_t staticLength () {
+        return 8;
       }
   };
 
@@ -345,6 +407,10 @@ namespace arangodb {
 
       uint64_t transaction () const {
         return MarkerReader::readAlignedNumber<uint64_t>(MarkerReader::payload(), 8);
+      }
+      
+      static uint64_t staticLength () {
+        return 0;
       }
   };
 
@@ -411,6 +477,10 @@ namespace arangodb {
       uint8_t* vPackValue () const {
         return versionedVPackValue() + 1;
       }
+      
+      static uint64_t staticLength () {
+        return 0;
+      }
   };
 
 // -----------------------------------------------------------------------------
@@ -435,6 +505,9 @@ namespace arangodb {
         : MarkerAccessorStructural<T>(begin) {
       }
 
+      static uint64_t staticLength () {
+        return 0;
+      }
   };
 
 // -----------------------------------------------------------------------------
@@ -479,6 +552,9 @@ namespace arangodb {
         : MarkerAccessorStructural<T>(begin) {
       }
 
+      static uint64_t staticLength () {
+        return 0;
+      }
   };
 
 // -----------------------------------------------------------------------------
@@ -520,6 +596,9 @@ namespace arangodb {
         : MarkerAccessorStructural<T>(begin) {
       }
 
+      static uint64_t staticLength () {
+        return 0;
+      }
   };
 
 // -----------------------------------------------------------------------------
