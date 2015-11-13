@@ -639,6 +639,151 @@ AstNode::AstNode (Ast* ast,
   ast->query()->addNode(this);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the node from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode::AstNode (std::function<void (AstNode*)> registerNode,
+                  std::function<char* (std::string const&)> registerString,
+                  triagens::basics::Json const& json) 
+  : AstNode(getNodeTypeFromJson(json)) {
+
+  TRI_ASSERT_EXPENSIVE(flags == 0);
+  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+
+  switch (type) {
+    case NODE_TYPE_ATTRIBUTE_ACCESS: {
+      /* TODO
+      std::string const str(JsonHelper::getStringValue(json.json(), "name", ""));
+      value.type = VALUE_TYPE_STRING;
+      setStringValue(query->registerString(str), str.size());
+      */
+      break;
+    }
+    case NODE_TYPE_VALUE: {
+      int vType = JsonHelper::checkAndGetNumericValue<int>(json.json(), "vTypeID");
+      validateValueType(vType);
+      value.type = static_cast<AstNodeValueType>(vType);
+
+      switch (value.type) {
+        case VALUE_TYPE_NULL:
+          break;
+        case VALUE_TYPE_BOOL:
+          value.value._bool = JsonHelper::checkAndGetBooleanValue(json.json(), "value");
+          break;
+        case VALUE_TYPE_INT:
+          setIntValue(JsonHelper::checkAndGetNumericValue<int64_t>(json.json(), "value"));
+          break;
+        case VALUE_TYPE_DOUBLE:
+          setDoubleValue(JsonHelper::checkAndGetNumericValue<double>(json.json(), "value"));
+          break;
+        case VALUE_TYPE_STRING: {
+          std::string const str (JsonHelper::checkAndGetStringValue(json.json(), "value"));
+          setStringValue(registerString(str), str.size());
+          break;
+        }
+        default: {
+        }
+      }
+      break;
+    }
+    case NODE_TYPE_REFERENCE: {
+      // We use the edge here
+      /*
+      auto variableId = JsonHelper::checkAndGetNumericValue<VariableId>(json.json(), "id");
+      auto variable = ast->variables()->getVariable(variableId);
+
+      TRI_ASSERT(variable != nullptr);
+      setData(variable);
+      */
+      break;
+    }
+    case NODE_TYPE_EXPANSION: {
+      setIntValue(JsonHelper::checkAndGetNumericValue<int64_t>(json.json(), "levels"));
+      break;
+    }
+    case NODE_TYPE_FCALL_USER:
+    case NODE_TYPE_OBJECT_ELEMENT:
+    case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_VARIABLE:
+    case NODE_TYPE_FCALL:
+    case NODE_TYPE_FOR:
+    case NODE_TYPE_LET:
+    case NODE_TYPE_FILTER:
+    case NODE_TYPE_RETURN:
+    case NODE_TYPE_REMOVE:
+    case NODE_TYPE_INSERT:
+    case NODE_TYPE_UPDATE:
+    case NODE_TYPE_REPLACE:
+    case NODE_TYPE_UPSERT:
+    case NODE_TYPE_COLLECT:
+    case NODE_TYPE_COLLECT_COUNT:
+    case NODE_TYPE_COLLECT_EXPRESSION:
+    case NODE_TYPE_SORT:
+    case NODE_TYPE_SORT_ELEMENT:
+    case NODE_TYPE_LIMIT:
+    case NODE_TYPE_ASSIGN:
+    case NODE_TYPE_SUBQUERY:
+    case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
+    case NODE_TYPE_EXAMPLE:
+    case NODE_TYPE_DISTINCT:
+    case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_DIRECTION:
+    case NODE_TYPE_COLLECTION_LIST:
+    case NODE_TYPE_PASSTHRU: {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Unsupported node type");
+    }
+    case NODE_TYPE_OBJECT:
+    case NODE_TYPE_ROOT:
+    case NODE_TYPE_OPERATOR_UNARY_PLUS:
+    case NODE_TYPE_OPERATOR_UNARY_MINUS:
+    case NODE_TYPE_OPERATOR_UNARY_NOT:
+    case NODE_TYPE_OPERATOR_BINARY_AND:
+    case NODE_TYPE_OPERATOR_BINARY_OR:
+    case NODE_TYPE_OPERATOR_BINARY_PLUS:
+    case NODE_TYPE_OPERATOR_BINARY_MINUS:
+    case NODE_TYPE_OPERATOR_BINARY_TIMES:
+    case NODE_TYPE_OPERATOR_BINARY_DIV:
+    case NODE_TYPE_OPERATOR_BINARY_MOD:
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
+    case NODE_TYPE_OPERATOR_TERNARY:
+    case NODE_TYPE_INDEXED_ACCESS:
+    case NODE_TYPE_ITERATOR:
+    case NODE_TYPE_ARRAY:
+    case NODE_TYPE_RANGE:
+    case NODE_TYPE_NOP:
+    case NODE_TYPE_ARRAY_LIMIT:
+    case NODE_TYPE_OPERATOR_NARY_AND:
+    case NODE_TYPE_OPERATOR_NARY_OR:
+      break;
+  }
+
+  Json subNodes = json.get("subNodes");
+
+  if (subNodes.isArray()) {
+    size_t const len = subNodes.size();
+    for (size_t i = 0; i < len; i++) {
+      Json subNode(subNodes.at(i));
+      addMember(new AstNode(registerNode, registerString, subNode));
+    }
+  }
+
+  registerNode(this);
+}
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the node
 ////////////////////////////////////////////////////////////////////////////////
