@@ -59,12 +59,20 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
 
   triagens::arango::traverser::TraverserOptions opts;
   ep->fillTraversalOptions(opts);
-  std::vector<TRI_document_collection_t*> edgeCollections;
   auto cids = ep->edgeCids();
 
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
-    _traverser.reset(new triagens::arango::traverser::ClusterTraverser());
+    std::vector<std::string> edgeCollections;
+    for (auto const& cid : cids) {
+      edgeCollections.push_back(_resolver->getCollectionNameCluster(cid));
+    }
+    _traverser.reset(new triagens::arango::traverser::ClusterTraverser(
+      edgeCollections,
+      opts,
+      std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name))
+    ));
   } else {
+    std::vector<TRI_document_collection_t*> edgeCollections;
     for (auto const& cid : cids) {
       edgeCollections.push_back(_trx->documentCollection(cid));
     }

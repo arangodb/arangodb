@@ -44,8 +44,13 @@ namespace triagens {
         
         public:
 
-          ClusterTraverser () 
-          : Traverser(),
+          ClusterTraverser (
+            std::vector<std::string> edgeCollections,
+            TraverserOptions& opts,
+            std::string dbname
+          ) : Traverser(opts),
+            _edgeCols(edgeCollections),
+            _dbname(dbname),
             _vertexGetter(&_edges),
             _edgeGetter(this) {
           }
@@ -101,12 +106,6 @@ namespace triagens {
           };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-          void defineInternalFunctions ();
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -115,6 +114,10 @@ namespace triagens {
           std::unordered_map<std::string, TRI_json_t*> _vertices;
 
           std::stack<std::stack<std::string>> _iteratorCache;
+
+          std::vector<std::string> _edgeCols;
+
+          std::string _dbname;
 
           VertexGetter _vertexGetter;
 

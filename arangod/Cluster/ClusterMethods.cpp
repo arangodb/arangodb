@@ -37,6 +37,7 @@
 #include "Basics/StringUtils.h"
 #include "Indexes/Index.h"
 #include "VocBase/server.h"
+#include <iostream>
 
 using namespace std;
 using namespace triagens::basics;
@@ -1092,7 +1093,6 @@ int getAllEdgesOnCoordinator (
   return res;
 }
 
-
 int getAllEdgesOnCoordinator (
                  string const& dbname,
                  string const& collname,
@@ -1103,6 +1103,7 @@ int getAllEdgesOnCoordinator (
                  triagens::basics::Json& result ) {
   TRI_ASSERT(result.isObject());
   TRI_ASSERT(result.members() == 0);
+  std::cout << "Requestung: " << dbname << " / " << collname << " / " << vertex << " / " << direction << "\n";
 
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();

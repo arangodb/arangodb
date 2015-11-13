@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterTraverser.h"
+#include "Cluster/ClusterMethods.h"
 
 using ClusterTraversalPath = triagens::arango::traverser::ClusterTraversalPath;
 using ClusterTraverser = triagens::arango::traverser::ClusterTraverser;
@@ -70,15 +71,33 @@ std::string ClusterTraverser::VertexGetter::operator() (std::string const& edgeI
   return def;
 }
 
+#include <iostream>
 void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
                                                std::vector<std::string>& result,
                                                size_t*& last,
                                                size_t& eColIdx,
                                                bool&) {
-  // TRI_ASSERT(eColIdx < _edgeCols->size());
+  TRI_ASSERT(eColIdx < _traverser->_edgeCols.size());
   if (last == nullptr) {
     TRI_ASSERT(_traverser->_iteratorCache.size() == result.size());
     // We have to request the next level
+    triagens::basics::Json result(triagens::basics::Json::Object);
+    triagens::rest::HttpResponse::HttpResponseCode responseCode;
+    std::string contentType;
+    std::string collName = _traverser->_edgeCols[eColIdx];
+
+    int res = getAllEdgesOnCoordinator(_traverser->_dbname,
+                                       collName,
+                                       startVertex,
+                                       _traverser->_opts.direction,
+                                       responseCode,
+                                       contentType,
+                                       result);
+    if (res != TRI_ERROR_NO_ERROR) {
+      std::cout << "Result:" << res << std::endl;
+    }
+    std::cout << result << std::endl;
+    TRI_ASSERT(false);
   }
   else {
     std::stack<std::string> tmp = _traverser->_iteratorCache.top();
@@ -93,6 +112,7 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     }
   }
 }
+
 /*
 void ClusterTraverser::defineInternalFunctions () {
 
