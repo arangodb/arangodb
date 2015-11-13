@@ -32,6 +32,19 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
+void TraversalNode::simpleTravererExpression::toJson(triagens::basics::Json& json,
+                                                     TRI_memory_zone_t* zone) const
+{
+  json("isAsteriscAccess", triagens::basics::Json(isAsteriscAccess))
+    ("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
+    ("indexAccess", triagens::basics::Json((int32_t)indexAccess))
+    ("comparisonType", triagens::basics::Json("==")) /// TODO more comparison types?
+    ("varAccess", varAccess->toJson(zone, true))
+    ("compareTo", compareTo->toJson(zone, true));
+        
+
+}
+
 TraversalNode::TraversalNode (ExecutionPlan* plan,
                size_t id,
                TRI_vocbase_t* vocbase, 
@@ -185,13 +198,13 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
 }
 
 int TraversalNode::checkIsOutVariable(size_t variableId) {
-  if (_vertexOutVariable->id == variableId) {
+  if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
     return 0;
   }
-  if (_edgeOutVariable->id == variableId) {
+  if (_edgeOutVariable != nullptr && _edgeOutVariable->id == variableId) {
     return 1;
   }
-  if (_pathOutVariable->id == variableId) {
+  if (_pathOutVariable != nullptr && _pathOutVariable->id == variableId) {
     return 2;
   }
   return -1;
@@ -304,6 +317,16 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
     json("pathOutVariable", pathOutVariable()->toJson());
   }
 
+  if (expressions.size() > 0) {
+    triagens::basics::Json expressionArray = triagens::basics::Json(triagens::basics::Json::Array,
+                                                                    expressions.size());
+    for (auto x : expressions) {
+      triagens::basics::Json exp(zone, triagens::basics::Json::Object);
+      x.toJson(exp, zone);
+      expressionArray(exp);
+    }
+    json("simpleExpressions", expressionArray);
+  }
   // And add it:
   nodes(json);
 }
@@ -380,10 +403,10 @@ void TraversalNode::setCondition(triagens::aql::Condition* condition){
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
 
   for (auto oneVar : varsUsedByCondition) {
-    if ((oneVar->id !=  _vertexOutVariable->id) &&
-        (oneVar->id !=  _edgeOutVariable->id) &&
-        (oneVar->id !=  _pathOutVariable->id) &&
-        (oneVar->id !=  _inVariable->id)) {
+    if ((_vertexOutVariable != nullptr && oneVar->id !=  _vertexOutVariable->id) &&
+        (_edgeOutVariable   != nullptr && oneVar->id !=  _edgeOutVariable->id) &&
+        (_pathOutVariable   != nullptr && oneVar->id !=  _pathOutVariable->id) &&
+        (_inVariable        != nullptr && oneVar->id !=  _inVariable->id)) {
 
       _conditionVariables.push_back(oneVar);
     }
@@ -392,6 +415,22 @@ void TraversalNode::setCondition(triagens::aql::Condition* condition){
   _condition = condition;
 }
 
+void TraversalNode::storeSimpleExpression(bool isAsteriscAccess,
+                                          bool isEdgeAccess,
+                                          size_t indexAccess,
+                                          AstNodeType comparisonType,
+                                          AstNode const* varAccess,
+                                          AstNode const* compareTo) {
+
+  simpleTravererExpression e {
+    isAsteriscAccess,
+      isEdgeAccess,
+      indexAccess,
+      comparisonType,
+      varAccess,
+      compareTo};
+  expressions.emplace_back(e);
+}
 
 
 // Local Variables:
