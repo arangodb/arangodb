@@ -82,6 +82,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Cluster/ApplicationCluster.cpp \
 	arangod/Cluster/ClusterComm.cpp \
 	arangod/Cluster/ClusterInfo.cpp \
+	arangod/Cluster/ClusterTraverser.cpp \
 	arangod/Cluster/HeartbeatThread.cpp \
 	arangod/Cluster/RestShardHandler.cpp \
 	arangod/Cluster/ServerJob.cpp \

@@ -30,8 +30,6 @@
 #ifndef ARANGODB_V8_TRAVERSER_H
 #define ARANGODB_V8_TRAVERSER_H 1
 
-#include "Basics/Common.h"
-#include "Basics/Traverser.h"
 #include "Utils/ExplicitTransaction.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
@@ -191,50 +189,6 @@ namespace triagens {
           }
           
           bool matchesVertex (VertexId const&) const;
-
-      };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 Traverser options
-// -----------------------------------------------------------------------------
-
-      struct TraverserOptions {
-
-        private:
-          std::function<bool (const TraversalPath* path)> pruningFunction;
-
-        public:
-          TRI_edge_direction_e direction;
-
-          uint64_t minDepth;
-
-          uint64_t maxDepth;
-
-          bool usesPrune;
-
-
-          TraverserOptions () : 
-            direction(TRI_EDGE_OUT),
-            minDepth(1),
-            maxDepth(1),
-            usesPrune(false)
-          { };
-
-          void setPruningFunction (
-               std::function<bool (const TraversalPath* path)> callback
-          ) {
-            pruningFunction = callback;
-            usesPrune = true;
-          }
-
-          bool shouldPrunePath (
-               const TraversalPath* path
-          ) {
-            if (!usesPrune) {
-              return false;
-            }
-            return pruningFunction(path);
-          }
 
       };
 

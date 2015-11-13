@@ -30,7 +30,11 @@
 #ifndef ARANGODB_VOCBASE_TRAVERSER_H
 #define ARANGODB_VOCBASE_TRAVERSER_H 1
 
-#include "basics/Traverser.h"
+#include "Basics/Common.h"
+#include "Basics/Traverser.h"
+#include "Basics/JsonHelper.h"
+#include "Utils/Transaction.h"
+#include "VocBase/voc-types.h"
 
 namespace triagens {
   namespace arango {
@@ -48,37 +52,37 @@ namespace triagens {
 ///       not freed as long as this struct is in use!
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct VertexId {
-      TRI_voc_cid_t cid;
-      char const* key;
+      struct VertexId {
+        TRI_voc_cid_t cid;
+        char const* key;
 
-      VertexId () 
-        : cid(0), 
-          key("") {
-      }
-
-      VertexId (TRI_voc_cid_t cid, char const* key) 
-        : cid(cid),
-          key(key) {
-      }
-
-      bool operator== (const VertexId& other) const {
-        if (cid == other.cid) {
-          return strcmp(key, other.key) == 0;
+        VertexId () 
+          : cid(0), 
+            key("") {
         }
-        return false;
-      }
 
-    };
+        VertexId (TRI_voc_cid_t cid, char const* key) 
+          : cid(cid),
+            key(key) {
+        }
 
-    // EdgeId and VertexId are similar here. both have a key and a cid
-    typedef VertexId EdgeId; 
+        bool operator== (const VertexId& other) const {
+          if (cid == other.cid) {
+            return strcmp(key, other.key) == 0;
+          }
+          return false;
+        }
+
+      };
+
+      // EdgeId and VertexId are similar here. both have a key and a cid
+      typedef VertexId EdgeId; 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class TraversalPath
 // -----------------------------------------------------------------------------
 
-    class TraversalPath {
+      class TraversalPath {
 
         public:
 
@@ -116,6 +120,50 @@ namespace triagens {
                                                             CollectionNameResolver*) const = 0;
 
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 Traverser options
+// -----------------------------------------------------------------------------
+
+      struct TraverserOptions {
+
+        private:
+          std::function<bool (const TraversalPath* path)> pruningFunction;
+
+        public:
+          TRI_edge_direction_e direction;
+
+          uint64_t minDepth;
+
+          uint64_t maxDepth;
+
+          bool usesPrune;
+
+
+          TraverserOptions () : 
+            direction(TRI_EDGE_OUT),
+            minDepth(1),
+            maxDepth(1),
+            usesPrune(false)
+          { };
+
+          void setPruningFunction (
+               std::function<bool (const TraversalPath* path)> callback
+          ) {
+            pruningFunction = callback;
+            usesPrune = true;
+          }
+
+          bool shouldPrunePath (
+               const TraversalPath* path
+          ) {
+            if (!usesPrune) {
+              return false;
+            }
+            return pruningFunction(path);
+          }
+
+      };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class Traverser

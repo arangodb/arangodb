@@ -28,11 +28,10 @@
 #ifndef ARANGODB_AQL_TRAVERSAL_NODE_H
 #define ARANGODB_AQL_TRAVERSAL_NODE_H 1
 
-#include "Basics/Traverser.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Condition.h"
 #include "Aql/Graphs.h"
-#include "V8Server/V8Traverser.h"
+#include "VocBase/Traverser.h"
 
 namespace triagens {
   namespace aql {

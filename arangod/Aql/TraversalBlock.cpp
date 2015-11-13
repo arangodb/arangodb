@@ -30,6 +30,8 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/TraversalBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "V8Server/V8Traverser.h"
+#include "Cluster/ClusterTraverser.h"
 #include <iostream> /// TODO: remove me.
 
 using namespace std;
@@ -60,10 +62,14 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
   std::vector<TRI_document_collection_t*> edgeCollections;
   auto cids = ep->edgeCids();
 
-  for (auto const& cid : cids) {
-    edgeCollections.push_back(_trx->documentCollection(cid));
+  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+    _traverser.reset(new triagens::arango::traverser::ClusterTraverser());
+  } else {
+    for (auto const& cid : cids) {
+      edgeCollections.push_back(_trx->documentCollection(cid));
+    }
+    _traverser.reset(new triagens::arango::traverser::DepthFirstTraverser(edgeCollections, opts));
   }
-  _traverser.reset(new triagens::arango::traverser::DepthFirstTraverser(edgeCollections, opts));
   _resolver = new CollectionNameResolver(_trx->vocbase());
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
@@ -230,7 +236,7 @@ bool TraversalBlock::executeExpressions (AqlValue& pathValue) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read more paths
 ////////////////////////////////////////////////////////////////////////////////
-#include <iostream>
+
 bool TraversalBlock::morePaths (size_t hint) {
   freeCaches();
   _posInPaths = 0;
@@ -341,7 +347,7 @@ void TraversalBlock::initializePaths (AqlItemBlock const* items) {
                                      std::string("Only one start vertex allowed. Embed it in a FOR loop."));
     }
     else {
-      std::cout << "FOUND Type: " << in.getTypeString() << std::endl;
+      TRI_ASSERT(in.getTypeString() == "");
     }
   }
 }
