@@ -106,6 +106,12 @@ namespace triagens {
 
       void setDone (ExecutionState);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the profile to VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+      VPackBuilder toVelocyPack ();
+
       TRI_json_t* toJson (TRI_memory_zone_t*);
 
       Query*                                         query;

@@ -1241,11 +1241,12 @@ static void JS_ExplainAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
     else {
       result->Set(TRI_V8_ASCII_STRING("warnings"), TRI_ObjectJson(isolate, queryResult.warnings));
     }
-    if (queryResult.stats == nullptr) {
+    VPackSlice stats = queryResult.stats.slice();
+    if (stats.isNone()) {
       result->Set(TRI_V8_STRING("stats"), v8::Object::New(isolate));
     }
     else {
-      result->Set(TRI_V8_STRING("stats"), TRI_ObjectJson(isolate, queryResult.stats));
+      result->Set(TRI_V8_STRING("stats"), TRI_ObjectJson(isolate, stats));
     }
   }
 
@@ -1310,8 +1311,9 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
   if (queryResult.json != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("json"),     TRI_ObjectJson(isolate, queryResult.json));
   }
-  if (queryResult.stats != nullptr) {
-    result->ForceSet(TRI_V8_ASCII_STRING("stats"),    TRI_ObjectJson(isolate, queryResult.stats));
+  VPackSlice stats = queryResult.stats.slice();
+  if (! stats.isNone()) {
+    result->ForceSet(TRI_V8_ASCII_STRING("stats"),    TRI_ObjectJson(isolate, stats));
   }
   if (queryResult.profile != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("profile"), TRI_ObjectJson(isolate, queryResult.profile));
@@ -1411,8 +1413,9 @@ static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   result->ForceSet(TRI_V8_ASCII_STRING("json"), queryResult.result);
 
-  if (queryResult.stats != nullptr) {
-    result->ForceSet(TRI_V8_ASCII_STRING("stats"), TRI_ObjectJson(isolate, queryResult.stats));
+  VPackSlice stats = queryResult.stats.slice();
+  if (! stats.isNone()) {
+    result->ForceSet(TRI_V8_ASCII_STRING("stats"), TRI_ObjectJson(isolate, stats));
   }
   if (queryResult.profile != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("profile"), TRI_ObjectJson(isolate, queryResult.profile));

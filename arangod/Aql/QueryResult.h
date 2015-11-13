@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
+#include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
   namespace aql {
@@ -58,7 +59,7 @@ namespace triagens {
 
         other.warnings    = nullptr;
         other.json        = nullptr;
-        other.stats       = nullptr;
+        other.stats       = other.stats;
         other.profile     = nullptr;
         other.clusterplan = nullptr;
       }
@@ -71,7 +72,6 @@ namespace triagens {
           zone(TRI_UNKNOWN_MEM_ZONE),
           warnings(nullptr),
           json(nullptr),
-          stats(nullptr),
           profile(nullptr),
           clusterplan(nullptr) {
       }
@@ -91,9 +91,6 @@ namespace triagens {
         if (json != nullptr) {
           TRI_FreeJson(zone, json);
         }
-        if (stats != nullptr) {
-          TRI_FreeJson(zone, stats);
-        }
         if (profile != nullptr) {
           TRI_FreeJson(zone, profile);
         }
@@ -107,7 +104,7 @@ namespace triagens {
       TRI_memory_zone_t*              zone;
       TRI_json_t*                     warnings;
       TRI_json_t*                     json;
-      TRI_json_t*                     stats;
+      VPackBuilder                    stats;
       TRI_json_t*                     profile;
       TRI_json_t*                     clusterplan;
     };

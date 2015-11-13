@@ -144,6 +144,20 @@ void Profile::setDone (ExecutionState state) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the profile to VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+VPackBuilder Profile::toVelocyPack () {
+  VPackBuilder result;
+  result.addObject();
+  for (auto const& it : results) {
+    result.add(StateNames[static_cast<int>(it.first)], VPackValue(it.second));
+  }
+  result.close();
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the profile to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -651,7 +665,6 @@ QueryResult Query::execute (QueryRegistry* registry) {
         QueryResult res(TRI_ERROR_NO_ERROR);
         res.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
         res.json     = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, cacheEntry->_queryResult);
-        res.stats    = nullptr;
         res.cached   = true;
 
         return res;
@@ -669,7 +682,6 @@ QueryResult Query::execute (QueryRegistry* registry) {
     }
 
     triagens::basics::Json jsonResult(triagens::basics::Json::Array, 16);
-    triagens::basics::Json stats;
 
     // this is the RegisterId our results can be found in
     auto const resultRegister = _engine->resultRegister();
@@ -735,7 +747,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
       throw;
     }
 
-    stats = _engine->_stats.toJson();
+    VPackBuilder stats = _engine->_stats.toVelocyPack();
 
     _trx->commit();
     
@@ -746,7 +758,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
     QueryResult result(TRI_ERROR_NO_ERROR);
     result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
     result.json     = jsonResult.steal();
-    result.stats    = stats.steal(); 
+    result.stats    = stats;
 
     if (_profile != nullptr && profiling()) {
       result.profile = _profile->toJson(TRI_UNKNOWN_MEM_ZONE);
@@ -812,7 +824,6 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
 
     QueryResultV8 result(TRI_ERROR_NO_ERROR);
     result.result = v8::Array::New(isolate);
-    triagens::basics::Json stats;
     
     // this is the RegisterId our results can be found in
     auto const resultRegister = _engine->resultRegister();
@@ -881,7 +892,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
       throw;
     }
 
-    stats = _engine->_stats.toJson();
+    VPackBuilder stats = _engine->_stats.toVelocyPack();
 
     _trx->commit();
     
@@ -890,7 +901,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
     enterState(FINALIZATION); 
 
     result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
-    result.stats    = stats.steal(); 
+    result.stats    = stats;
 
     if (_profile != nullptr && profiling()) {
       result.profile = _profile->toJson(TRI_UNKNOWN_MEM_ZONE);
@@ -1018,7 +1029,7 @@ QueryResult Query::explain () {
     _trx->commit();
       
     result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
-    result.stats = opt._stats.toJson(TRI_UNKNOWN_MEM_ZONE);
+    result.stats = opt._stats.toVelocyPack();
 
     return result;
   }
