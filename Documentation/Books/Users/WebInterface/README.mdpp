@@ -6,8 +6,8 @@ interface can be accessed via the URL
     http://localhost:8529
 
 assuming you are using the standard port and no user routings. If you
-have any application installed, the home page might point to that
-application instead. In this case use
+have any service installed, the home page might point to that
+service instead. In this case use
 
   http://localhost:8529/_admin/aardvark/index.html
 
@@ -56,16 +56,16 @@ line to add a new document to the collection. The document will be created
 instantly, with a system-defined key. The key and all other attributes of the
 document can be adjusted in the following view.
 
-!SECTION Applications Tab
+!SECTION Services Tab
 
-The *Applications* tab provides a list of installed Foxx applications. The view
-is divided into lists of installed and applications that are available for
+The *Services* tab provides a list of installed Foxx services ( also called applications). The view
+is divided into lists of installed and services that are available for
 installation.
 
-Please note that ArangoDB's web interface (_aardvark_) is a Foxx application 
-itself. Please also note that installed applications will be listed in both
+Please note that ArangoDB's web interface (_aardvark_) is a Foxx service 
+itself. Please also note that installed services will be listed in both
 the *installed* and the *available* section. This is intentional because each
-application can be installed multiple times using different mount points.
+service can be installed multiple times using different mount points.
 
 !SECTION Graphs Tab 
 
