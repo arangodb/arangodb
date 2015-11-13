@@ -808,9 +808,7 @@ DepthFirstTraverser::DepthFirstTraverser (
     TRI_edge_direction_e& direction,
     uint64_t minDepth,
     uint64_t maxDepth
-  ) : _done(false),
-      _pruneNext(false)
-       {
+  ) : Traverser() {
   _opts.minDepth = minDepth;
   _opts.maxDepth = maxDepth;
   _opts.direction = direction;
@@ -820,9 +818,7 @@ DepthFirstTraverser::DepthFirstTraverser (
 DepthFirstTraverser::DepthFirstTraverser (
   std::vector<TRI_document_collection_t*> edgeCollections,
   TraverserOptions& opts
-) : _done(false),
-    _opts(opts),
-    _pruneNext(false),
+) : Traverser(opts),
     _edgeCols(edgeCollections) {
   _defInternalFunctions();
 }
@@ -935,22 +931,6 @@ void DepthFirstTraverser::setStartVertex (VertexId& v) {
   _done = false;
 }
 
-size_t DepthFirstTraverser::skip (size_t amount) {
-  size_t skipped = 0;
-  for (size_t i = 0; i < amount; ++i) {
-    std::unique_ptr<const TraversalPath> p(next());
-    if (p == nullptr) {
-      break;
-    }
-    ++skipped;
-  }
-  return skipped;
-}
-
-bool DepthFirstTraverser::hasMore () {
-  return !_done;
-}
-
 const TraversalPath* DepthFirstTraverser::next () {
   TRI_ASSERT(!_done);
   if (_pruneNext) {
@@ -977,8 +957,4 @@ const TraversalPath* DepthFirstTraverser::next () {
     return next();
   }
   return p.release();
-}
-
-void DepthFirstTraverser::prune () {
-  _pruneNext = true;
 }
