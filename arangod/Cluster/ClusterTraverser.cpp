@@ -39,17 +39,29 @@ using ClusterTraverser = triagens::arango::traverser::ClusterTraverser;
 
 triagens::basics::Json* ClusterTraversalPath::pathToJson (Transaction*,
                                                           CollectionNameResolver*) const {
-  return nullptr;
+  std::unique_ptr<triagens::basics::Json> result(new triagens::basics::Json(triagens::basics::Json::Object));
+  size_t vCount = _path.vertices.size();
+  triagens::basics::Json vertices(triagens::basics::Json::Array, vCount);
+  for (auto& it : _path.vertices) {
+    vertices.add(*_traverser->vertexToJson(it));
+  } 
+  triagens::basics::Json edges(triagens::basics::Json::Array, _path.edges.size());
+  for (auto& it : _path.edges) {
+    edges.add(*_traverser->edgeToJson(it));
+  } 
+  result->set("edges", edges);
+  result->set("vertices", vertices);
+  return result.release();
 }
 
 triagens::basics::Json* ClusterTraversalPath::lastEdgeToJson (Transaction*,
                                                               CollectionNameResolver*) const {
-  return nullptr;
+  return _traverser->edgeToJson(_path.edges.back());
 }
 
 triagens::basics::Json* ClusterTraversalPath::lastVertexToJson (Transaction*,
                                                                 CollectionNameResolver*) const {
-  return nullptr;
+  return _traverser->vertexToJson(_path.vertices.back());
 }
 
 // -----------------------------------------------------------------------------
@@ -71,7 +83,6 @@ std::string ClusterTraverser::VertexGetter::operator() (std::string const& edgeI
   return def;
 }
 
-#include <iostream>
 void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
                                                std::vector<std::string>& result,
                                                size_t*& last,
@@ -81,7 +92,7 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
   if (last == nullptr) {
     TRI_ASSERT(_traverser->_iteratorCache.size() == result.size());
     // We have to request the next level
-    triagens::basics::Json result(triagens::basics::Json::Object);
+    triagens::basics::Json resultEdges(triagens::basics::Json::Object);
     triagens::rest::HttpResponse::HttpResponseCode responseCode;
     std::string contentType;
     std::string collName = _traverser->_edgeCols[eColIdx];
@@ -92,19 +103,59 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
                                        _traverser->_opts.direction,
                                        responseCode,
                                        contentType,
-                                       result);
+                                       resultEdges);
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    triagens::basics::Json edgesJson = result.get("edges");
+    triagens::basics::Json edgesJson = resultEdges.get("edges");
+    size_t count = edgesJson.size();
+    if (count == 0) {
+      // TODO Multiple edge collections
+      _traverser->_iteratorCache.pop();
+      last = nullptr;
+      return;
+    }
     _traverser->_iteratorCache.emplace();
     auto stack = _traverser->_iteratorCache.top();
+    std::unordered_set<std::string> verticesToFetch;
     for (size_t i = 0; i < edgesJson.size(); ++i) {
       triagens::basics::Json edge = edgesJson.at(i);
       std::string edgeId = triagens::basics::JsonHelper::getStringValue(edge.json(), "_id", "");
       stack.push(edgeId);
-      _traverser->_edges.emplace(edgeId, edge.steal());
+      std::string fromId = triagens::basics::JsonHelper::getStringValue(edge.json(), "_from", "");
+      if (_traverser->_vertices.find(fromId) == _traverser->_vertices.end()) {
+        verticesToFetch.emplace(fromId);
+      }
+      std::string toId = triagens::basics::JsonHelper::getStringValue(edge.json(), "_to", "");
+      if (_traverser->_vertices.find(toId) == _traverser->_vertices.end()) {
+        verticesToFetch.emplace(toId);
+      }
+      _traverser->_edges.emplace(edgeId, edge.copy().steal());
     }
+    std::map<std::string, std::string> headers;
+    std::map<std::string, std::string> resultHeaders;
+    for (auto it : verticesToFetch) {
+      std::vector<std::string> splitId = triagens::basics::StringUtils::split(it, '/'); 
+      TRI_ASSERT(splitId.size() == 2);
+      std::string vertexResult;
+      int res = getDocumentOnCoordinator(_traverser->_dbname,
+                                         splitId[0],
+                                         splitId[1],
+                                         0,
+                                         headers,
+                                         true,
+                                         responseCode,
+                                         resultHeaders,
+                                         vertexResult);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      _traverser->_vertices.emplace(it, triagens::basics::JsonHelper::fromString(vertexResult));
+    }
+    std::string next = stack.top();
+    stack.pop();
+    last = &_continueConst;
+    result.push_back(next);
   }
   else {
     std::stack<std::string> tmp = _traverser->_iteratorCache.top();
@@ -119,31 +170,6 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     }
   }
 }
-
-/*
-void ClusterTraverser::defineInternalFunctions () {
-
-  auto direction = _opts.direction;
-  auto edgeCols = _edgeCols;
-  _getEdge = [&edgeCols, &_iteratorCache] (std::string& startVertex, std::vector<std::string>& result, size_t*& last, size_t& eColIdx, bool&) {
-    if (last == nullptr) {
-      TRI_ASSERT(_iteratorCache.size() == result.size());
-      // We have to request the next level
-      // TODO
-    }
-    else {
-      std::stack<std::string> tmp = _iteratorCache.top();
-      if (tmp.empty()) {
-        _iteratorCache.pop();
-        last = nullptr;
-      }
-      else {
-        result.push_back(tmp.pop());
-      }
-    }
-  }
-}
-*/
 
 void ClusterTraverser::setStartVertex (VertexId& v) {
   std::string id = v.toString(_resolver);
@@ -178,4 +204,16 @@ const triagens::arango::traverser::TraversalPath* ClusterTraverser::next () {
     return next();
   }
   return p.release();
+}
+
+triagens::basics::Json* ClusterTraverser::edgeToJson (std::string id) const {
+  auto it = _edges.find(id);
+  TRI_ASSERT(it != _edges.end());
+  return new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it->second));
+}
+
+triagens::basics::Json* ClusterTraverser::vertexToJson (std::string id) const {
+  auto it = _vertices.find(id);
+  TRI_ASSERT(it != _vertices.end());
+  return new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it->second));
 }

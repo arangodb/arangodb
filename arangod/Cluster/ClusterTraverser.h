@@ -36,6 +36,7 @@ namespace triagens {
   namespace arango {
     namespace traverser {
 
+      class ClusterTraversalPath;
 // -----------------------------------------------------------------------------
 // --SECTION--                                            class ClusterTraverser
 // -----------------------------------------------------------------------------
@@ -64,6 +65,10 @@ namespace triagens {
 
           const TraversalPath* next () override;
 
+          triagens::basics::Json* edgeToJson (std::string) const;
+
+          triagens::basics::Json* vertexToJson (std::string) const;
+
         private:
 
 // -----------------------------------------------------------------------------
@@ -91,7 +96,8 @@ namespace triagens {
             public:
 
               EdgeGetter (ClusterTraverser* traverser)
-                : _traverser(traverser) {
+                : _traverser(traverser),
+                  _continueConst(1) {
                 }
 
               void operator() (std::string const&,
@@ -104,6 +110,7 @@ namespace triagens {
 
               ClusterTraverser* _traverser;
 
+              size_t _continueConst;
 
           };
 
@@ -141,7 +148,10 @@ namespace triagens {
 
         public:
 
-          ClusterTraversalPath (ClusterTraverser* traverser, const triagens::basics::EnumeratedPath<std::string, std::string>& path) {
+          ClusterTraversalPath (ClusterTraverser const* traverser,
+                                const triagens::basics::EnumeratedPath<std::string, std::string>& path) :
+            _path(path),
+            _traverser(traverser) {
           }
 
           triagens::basics::Json* pathToJson (Transaction*,
@@ -152,6 +162,12 @@ namespace triagens {
 
           triagens::basics::Json* lastVertexToJson (Transaction*,
                                                     CollectionNameResolver*) const;
+
+        private:
+
+          triagens::basics::EnumeratedPath<std::string, std::string> _path;
+
+          ClusterTraverser const* _traverser;
 
       };
 
