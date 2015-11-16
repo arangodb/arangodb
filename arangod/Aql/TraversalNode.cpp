@@ -69,14 +69,14 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _graphName = '[';
     for (size_t i = 0; i <  graph->numMembers(); ++i) {
       auto eColName = graph->getMember(i)->getStringValue();
-      auto edgeStruct = resolver->getCollectionStruct(eColName);
+      auto eColType = resolver->getCollectionTypeCluster(eColName);
       if (_graphName.length() > 1) {
         _graphName += "'";
       }
       _graphName += "'";
       _graphName += eColName;
       _graphName += "'";
-      if (edgeStruct->_type != TRI_COL_TYPE_EDGE) {
+      if (eColType != TRI_COL_TYPE_EDGE) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
       }
       _edgeColls.push_back(eColName);
