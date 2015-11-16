@@ -113,7 +113,6 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     triagens::basics::Json edgesJson = resultEdges.get("edges");
     size_t count = edgesJson.size();
     if (count == 0) {
-      _traverser->_iteratorCache.pop();
       last = nullptr;
       eColIdx++;
       operator()(startVertex, result, last, eColIdx, unused);
