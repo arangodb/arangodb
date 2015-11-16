@@ -236,11 +236,11 @@ namespace arangodb {
           return isType(ValueType::BCD);
         }
         
-        // check if slice is a custom type
+        // check if slice is a Custom type
         bool isCustom () const {
           return isType(ValueType::Custom);
         }
-        
+
         // check if a slice is any number type
         bool isInteger () const {
           return isType(ValueType::Int) || isType(ValueType::UInt) || isType(ValueType::SmallInt);
@@ -352,11 +352,15 @@ namespace arangodb {
             throw Exception(Exception::InvalidValueType, "Expecting Object");
           }
           
-          return getNth(index);
+          return getNthKey(index, true);
         }
 
         Slice valueAt (ValueLength index) const {
-          Slice key = keyAt(index);
+          if (! isType(ValueType::Object)) {
+            throw Exception(Exception::InvalidValueType, "Expecting Object");
+          }
+          
+          Slice key = getNthKey(index, false);
           return Slice(key.start() + key.byteSize(), options);
         }
 
@@ -403,8 +407,12 @@ namespace arangodb {
 
         // return the pointer to the data for an External object
         char const* getExternal () const {
+          assertType(ValueType::External);
           return extractValue<char const*>();
         }
+
+        // translates an integer key into a string
+        Slice translate () const;
 
         // return the value for an Int object
         int64_t getInt () const;
@@ -634,10 +642,11 @@ namespace arangodb {
           VELOCYPACK_ASSERT(false);
           return 0;
         }
+        
+        Slice makeKey () const;
 
         int compareString (std::string const& attribute) const;
         bool isEqualString (std::string const& attribute) const;
-
 
         std::string toJson () const;
         std::string toString () const;
@@ -671,12 +680,15 @@ namespace arangodb {
           return getNthOffset(index);
         }
         
-        // get the offset for the nth member from an Array or Object type
+        // get the offset for the nth member from an Array type
         ValueLength getNthOffset (ValueLength index) const;
-          
-        // extract the nth member from an Array or Object type
+
+        // extract the nth member from an Array 
         Slice getNth (ValueLength index) const;
-        
+
+        // extract the nth member from an Object 
+        Slice getNthKey (ValueLength index, bool) const;
+
         // get the offset for the nth member from a compact Array or Object type
         ValueLength getNthOffsetFromCompact (ValueLength index) const;
 

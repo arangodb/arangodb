@@ -24,24 +24,26 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_VPACK_H
-#define VELOCYPACK_VPACK_H 1
-
 #include "velocypack/velocypack-common.h"
-#include "velocypack/AttributeTranslator.h"
-#include "velocypack/Buffer.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Collection.h"
-#include "velocypack/Dumper.h"
-#include "velocypack/Exception.h"
-#include "velocypack/HexDump.h"
 #include "velocypack/Iterator.h"
-#include "velocypack/Options.h"
-#include "velocypack/Parser.h"
-#include "velocypack/Sink.h"
-#include "velocypack/Slice.h"
-#include "velocypack/Value.h"
-#include "velocypack/ValueType.h"
-#include "velocypack/Version.h"
 
-#endif
+using namespace arangodb::velocypack;
+
+std::ostream& operator<< (std::ostream& stream, ArrayIterator const* it) {
+  stream << "[ArrayIterator " << it->index() << " / " << it->size() << "]";
+  return stream;
+}
+
+std::ostream& operator<< (std::ostream& stream, ArrayIterator const& it) {
+  return operator<<(stream, &it);
+}
+
+std::ostream& operator<< (std::ostream& stream, ObjectIterator const* it) {
+  stream << "[ObjectIterator " << it->index() << " / " << it->size() << "]";
+  return stream;
+}
+
+std::ostream& operator<< (std::ostream& stream, ObjectIterator const& it) {
+  return operator<<(stream, &it);
+}
+

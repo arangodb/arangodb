@@ -24,24 +24,51 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_VPACK_H
-#define VELOCYPACK_VPACK_H 1
+#ifndef VELOCYPACK_ATTRIBUTETRANSLATOR_H
+#define VELOCYPACK_ATTRIBUTETRANSLATOR_H 1
+
+#include <cstdint>
+#include <unordered_map>
+#include <memory>
 
 #include "velocypack/velocypack-common.h"
-#include "velocypack/AttributeTranslator.h"
-#include "velocypack/Buffer.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Collection.h"
-#include "velocypack/Dumper.h"
-#include "velocypack/Exception.h"
-#include "velocypack/HexDump.h"
-#include "velocypack/Iterator.h"
-#include "velocypack/Options.h"
-#include "velocypack/Parser.h"
-#include "velocypack/Sink.h"
-#include "velocypack/Slice.h"
-#include "velocypack/Value.h"
-#include "velocypack/ValueType.h"
-#include "velocypack/Version.h"
+
+namespace arangodb {
+  namespace velocypack {
+    class Builder;
+
+    class AttributeTranslator {
+
+      public:
+
+        AttributeTranslator (AttributeTranslator const&) = delete;
+        AttributeTranslator& operator= (AttributeTranslator const&) = delete;
+
+        AttributeTranslator () 
+          : _builder() {
+        }
+
+        ~AttributeTranslator () {
+        }
+
+        void add (std::string const& key, uint64_t id);
+
+        void seal ();
+
+        // translate from string to id
+        uint8_t const* translate (std::string const& key) const;
+
+        // translate from id to string
+        uint8_t const* translate (uint64_t id) const;
+    
+      private:
+
+        std::unique_ptr<Builder> _builder;
+        std::unordered_map<std::string, uint8_t const*> _keyToId;
+        std::unordered_map<uint64_t, uint8_t const*> _idToKey;
+    };
+
+  }  // namespace arangodb::velocypack
+}  // namespace arangodb
 
 #endif

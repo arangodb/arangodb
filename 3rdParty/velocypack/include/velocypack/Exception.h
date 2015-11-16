@@ -53,13 +53,17 @@ namespace arangodb {
           InvalidValueType            = 17,
           DuplicateAttributeName      = 18,
           NeedCustomTypeHandler       = 19,
-          BuilderNotSealed            = 20,
-          BuilderNeedOpenObject       = 21,
-          BuilderNeedOpenArray        = 22,
-          BuilderNeedOpenCompound     = 23,
-          BuilderUnexpectedType       = 24,
-          BuilderUnexpectedValue      = 25,
-          BuilderNeedSubvalue         = 26,
+          NeedAttributeTranslator     = 20,
+          CannotTranslateKey          = 21,
+          KeyNotFound                 = 22,
+
+          BuilderNotSealed            = 30,
+          BuilderNeedOpenObject       = 31,
+          BuilderNeedOpenArray        = 32,
+          BuilderNeedOpenCompound     = 33,
+          BuilderUnexpectedType       = 34,
+          BuilderUnexpectedValue      = 35,
+          BuilderNeedSubvalue         = 36,
 
           UnknownError                = 999 
         };
@@ -113,6 +117,12 @@ namespace arangodb {
               return "Invalid value type for operation";
             case NeedCustomTypeHandler:
               return "Cannot execute operation without custom type handler";
+            case NeedAttributeTranslator:
+              return "Cannot execute operation without attribute translator";
+            case CannotTranslateKey:
+              return "Cannot translate key";
+            case KeyNotFound:
+              return "Key not found";
             case BuilderNotSealed:
               return "Builder object not yet sealed";
             case BuilderNeedOpenObject:

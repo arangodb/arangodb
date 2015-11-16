@@ -34,6 +34,7 @@
 #include <memory>
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/AttributeTranslator.h"
 #include "velocypack/Buffer.h"
 #include "velocypack/Exception.h"
 #include "velocypack/Options.h"
@@ -129,7 +130,7 @@ namespace arangodb {
         Options const* options;
 
         // Constructor and destructor:
-        Builder (std::shared_ptr<Buffer<uint8_t>>& buffer, Options const* options = &Options::Defaults)
+        explicit Builder (std::shared_ptr<Buffer<uint8_t>>& buffer, Options const* options = &Options::Defaults)
           : _buffer(buffer),
             _pos(0),
             options(options) {
@@ -142,7 +143,7 @@ namespace arangodb {
           }
         }
 
-        Builder (Options const* options = &Options::Defaults)
+        explicit Builder (Options const* options = &Options::Defaults)
           : _buffer(new Buffer<uint8_t>()),
             _pos(0),
             options(options) {
@@ -442,6 +443,17 @@ namespace arangodb {
             }
             reportAdd(tos);
           }
+
+          if (options->attributeTranslator != nullptr) {
+            // check if a translation for the attribute name exists
+            uint8_t const* translated = options->attributeTranslator->translate(attrName);
+            if (translated != nullptr) {
+              set(Slice(options->attributeTranslator->translate(attrName)));
+              return set(sub);
+            }
+            // otherwise fall through to regular behavior
+          }
+
           set(Value(attrName, ValueType::String));
           return set(sub);
         }
@@ -486,7 +498,8 @@ namespace arangodb {
             vSize++;
             _start[_pos++] = static_cast<uint8_t>(v & 0xff);
             v >>= 8;
-          } while (v != 0);
+          } 
+          while (v != 0);
           _start[save] = base + vSize;
         }
 

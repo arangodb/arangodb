@@ -27,6 +27,8 @@
 #ifndef VELOCYPACK_ITERATOR_H
 #define VELOCYPACK_ITERATOR_H 1
 
+#include <ostream>
+
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
 #include "velocypack/Slice.h"
@@ -134,6 +136,10 @@ namespace arangodb {
         inline ValueLength index () const throw() {
           return _position;
         }
+        
+        inline ValueLength size () const throw() {
+          return _size;
+        }
 
         inline bool isFirst () const throw() {
           return (_position == 0);
@@ -150,7 +156,7 @@ namespace arangodb {
         ValueLength _position;
         uint8_t const* _current;
     };
-    
+
     class ObjectIterator {
 
       public:
@@ -276,6 +282,10 @@ namespace arangodb {
         inline ValueLength index () const throw() {
           return _position;
         }
+        
+        inline ValueLength size () const throw() {
+          return _size;
+        }
 
         inline bool isFirst () const throw() {
           return (_position == 0);
@@ -295,5 +305,13 @@ namespace arangodb {
 
   }  // namespace arangodb::velocypack
 }  // namespace arangodb
+    
+std::ostream& operator<< (std::ostream&, arangodb::velocypack::ArrayIterator const*);
+
+std::ostream& operator<< (std::ostream&, arangodb::velocypack::ArrayIterator const&);
+    
+std::ostream& operator<< (std::ostream&, arangodb::velocypack::ObjectIterator const*);
+
+std::ostream& operator<< (std::ostream&, arangodb::velocypack::ObjectIterator const&);
 
 #endif

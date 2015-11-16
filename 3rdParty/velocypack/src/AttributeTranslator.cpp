@@ -24,24 +24,60 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_VPACK_H
-#define VELOCYPACK_VPACK_H 1
-
 #include "velocypack/velocypack-common.h"
 #include "velocypack/AttributeTranslator.h"
-#include "velocypack/Buffer.h"
 #include "velocypack/Builder.h"
-#include "velocypack/Collection.h"
-#include "velocypack/Dumper.h"
 #include "velocypack/Exception.h"
-#include "velocypack/HexDump.h"
 #include "velocypack/Iterator.h"
-#include "velocypack/Options.h"
-#include "velocypack/Parser.h"
-#include "velocypack/Sink.h"
-#include "velocypack/Slice.h"
 #include "velocypack/Value.h"
-#include "velocypack/ValueType.h"
-#include "velocypack/Version.h"
 
-#endif
+using namespace arangodb::velocypack;
+        
+void AttributeTranslator::add (std::string const& key, uint64_t id) {
+  if (_builder == nullptr) {
+    _builder.reset(new Builder);
+    _builder->add(Value(ValueType::Object));
+  }
+
+  _builder->add(key, Value(id));
+}
+
+void AttributeTranslator::seal () {
+  if (_builder == nullptr) {
+    return;
+  }
+
+  _builder->close();
+
+  Slice s(_builder->slice());
+
+  ObjectIterator it(s);
+  while (it.valid()) {
+    _keyToId.emplace(it.key().copyString(), it.value().begin());
+    _idToKey.emplace(it.value().getUInt(), it.key().begin());
+    it.next();
+  }
+}
+
+// translate from string to id
+uint8_t const* AttributeTranslator::translate (std::string const& key) const {
+  auto it = _keyToId.find(key);
+
+  if (it == _keyToId.end()) {
+    return nullptr;
+  }
+
+  return (*it).second;
+}
+
+// translate from id to string
+uint8_t const* AttributeTranslator::translate (uint64_t id) const {
+  auto it = _idToKey.find(id);
+
+  if (it == _idToKey.end()) {
+    throw Exception(Exception::KeyNotFound);
+  }
+
+  return (*it).second;
+}
+

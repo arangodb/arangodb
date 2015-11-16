@@ -25,9 +25,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/AttributeTranslator.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Dumper.h"
 #include "velocypack/HexDump.h"
+#include "velocypack/Iterator.h"
 #include "velocypack/Slice.h"
 #include "velocypack/ValueType.h"
 
@@ -147,6 +149,18 @@ unsigned int const Slice::FirstSubMap[32] = {
   0
 };
 
+// translates an integer key into a string
+Slice Slice::translate () const {
+  VELOCYPACK_ASSERT(isSmallInt() || isUInt());
+  uint64_t id = getUInt();
+
+  if (options->attributeTranslator == nullptr) {
+    throw Exception(Exception::NeedAttributeTranslator);
+  }
+
+  return Slice(options->attributeTranslator->translate(id), options);
+}
+
 std::string Slice::toJson () const {
   std::string buffer;
   StringSink sink(&buffer);
@@ -213,10 +227,20 @@ Slice Slice::get (std::string const& attribute) const {
     }
 
     Slice key = Slice(_start + dataOffset, options);
-    if (! key.isString()) {
-      return Slice();
+
+    if (key.isString()) { 
+      if (! key.isEqualString(attribute)) {
+        return Slice();
+      }
     }
-    if (! key.isEqualString(attribute)) {
+    else if (key.isInteger()) {
+      // translate key
+      if (! key.translate().isEqualString(attribute)) {
+        return Slice();
+      }
+    }
+    else {
+      // invalid key
       return Slice();
     }
 
@@ -351,17 +375,21 @@ bool Slice::isEqualString (std::string const& attribute) const {
 }
 
 Slice Slice::getFromCompactObject (std::string const& attribute) const {
-  ValueLength n = length();
-  ValueLength current = 0;
-
-  while (current != n) { 
-    Slice key = keyAt(current);
-    if (key.isString()) {
+  ObjectIterator it(*this);
+  while (it.valid()) {
+    Slice key = it.key();
+    if (key.isString()) { 
       if (key.isEqualString(attribute)) {
         return Slice(key.start() + key.byteSize(), options);
       }
     }
-    ++current;
+    else if (key.isInteger()) {
+      if (key.translate().isEqualString(attribute)) {
+        return Slice(key.start() + key.byteSize(), options);
+      }
+    }
+
+    it.next();
   }
   // not found
   return Slice();
@@ -422,17 +450,47 @@ ValueLength Slice::getNthOffset (ValueLength index) const {
   return readInteger<ValueLength>(_start + ieBase, offsetSize);
 }
 
-// extract the nth member from an Array or Object type
+// extract the nth member from an Array 
 Slice Slice::getNth (ValueLength index) const {
-  VELOCYPACK_ASSERT(type() == ValueType::Array || type() == ValueType::Object);
+  VELOCYPACK_ASSERT(type() == ValueType::Array);
 
   auto const h = head();
-  if (h == 0x01 || h == 0x0a) {
-    // special case. empty array or object
+  if (h == 0x01) {
+    // special case. empty Array
     throw Exception(Exception::IndexOutOfBounds);
   }
 
   return Slice(_start + getNthOffset(index), options);
+}
+
+// extract the nth member from an Object 
+Slice Slice::getNthKey (ValueLength index, bool translate) const {
+  VELOCYPACK_ASSERT(type() == ValueType::Object);
+
+  auto const h = head();
+  if (h == 0x01) {
+    // special case. empty Object
+    throw Exception(Exception::IndexOutOfBounds);
+  }
+
+  Slice s(_start + getNthOffset(index), options); 
+
+  if (translate) {
+    return s.makeKey();
+  }
+
+  return s;
+}
+
+Slice Slice::makeKey () const {
+  if (isString()) {
+    return *this;
+  }
+  if (isInteger()) {
+    return translate();
+  }
+
+  throw Exception(Exception::InternalError, "Cannot translate key");
 }
         
 // get the offset for the nth member from a compact Array or Object type
@@ -467,14 +525,23 @@ Slice Slice::searchObjectKeyLinear (std::string const& attribute,
   for (ValueLength index = 0; index < n; ++index) {
     ValueLength offset = ieBase + index * offsetSize;
     Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize), options);
-    if (! key.isString()) {
-      // invalid object
+
+    if (key.isString()) {
+      if (! key.isEqualString(attribute)) {
+        continue;
+      }
+    }
+    else if (key.isInteger()) {
+      // translate key
+      if (! key.translate().isEqualString(attribute)) {
+        continue;
+      }
+    }
+    else {
+      // invalid key type
       return Slice();
     }
 
-    if (! key.isEqualString(attribute)) {
-      continue;
-    }
     // key is identical. now return value
     return Slice(key.start() + key.byteSize(), options);
   }
@@ -499,12 +566,19 @@ Slice Slice::searchObjectKeyBinary (std::string const& attribute,
 
     ValueLength offset = ieBase + index * offsetSize;
     Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize), options);
-    if (! key.isString()) {
-      // invalid object
+
+    int res;
+    if (key.isString()) { 
+      res = key.compareString(attribute);
+    }
+    else if (key.isInteger()) { 
+      // translate key
+      res = key.translate().compareString(attribute);
+    }
+    else {
+      // invalid key
       return Slice();
     }
-
-    int res = key.compareString(attribute);
 
     if (res == 0) {
       // found

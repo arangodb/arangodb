@@ -259,7 +259,7 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
         ++_indentation;
         while (it.valid()) {
           indent();
-          dumpValue(it.key(), base);
+          dumpValue(it.key().makeKey(), base);
           _sink->append(" : ", 3);
           dumpValue(it.value(), base);
           if (! it.isLast()) {
@@ -276,7 +276,7 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
           if (! it.isFirst()) {
             _sink->push_back(',');
           }
-          dumpValue(it.key(), base);
+          dumpValue(it.key().makeKey(), base);
           _sink->push_back(':');
           dumpValue(it.value(), base);
           it.next();

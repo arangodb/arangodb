@@ -27,10 +27,14 @@
 #ifndef VELOCYPACK_OPTIONS_H
 #define VELOCYPACK_OPTIONS_H 1
 
+#include <string>
+#include <cstdint>
+
 #include "velocypack/velocypack-common.h"
 
 namespace arangodb {
   namespace velocypack {
+    class AttributeTranslator;
     class Dumper;
     class Slice;
 
@@ -64,6 +68,8 @@ namespace arangodb {
      
       // callback for excluding attributes from being built by the Parser
       AttributeExcludeHandler* attributeExcludeHandler = nullptr;
+
+      AttributeTranslator* attributeTranslator = nullptr;
 
       // custom type handler used for processing custom types by Dumper and Slicer
       CustomTypeHandler* customTypeHandler = nullptr;
