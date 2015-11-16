@@ -19,6 +19,8 @@ If the first argument is not a formatting string or any of the additional argume
 **Examples**
 
 ```js
+var console = require("console");
+
 console.log("%s, %s!", "Hello", "World"); // => "Hello, World!"
 console.log("%s, World!", "Hello", "extra"); // => "Hello, World! extra"
 console.log("Hello,", "beautiful", "world!"); // => "Hello, beautiful world!"
