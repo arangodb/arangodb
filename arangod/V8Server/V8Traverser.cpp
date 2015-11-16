@@ -82,12 +82,12 @@ VertexId triagens::arango::traverser::IdStringToVertexId (
   }
 
   string const collectionName = vertex.substr(0, split);
-  auto coli = resolver->getCollectionStruct(collectionName);
+  auto cid = resolver->getCollectionIdCluster(collectionName);
 
-  if (coli == nullptr) {
+  if (cid == 0) {
     throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  return VertexId(coli->_cid, const_cast<char *>(str + split + 1));
+  return VertexId(cid, const_cast<char *>(str + split + 1));
 }
 
 
