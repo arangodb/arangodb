@@ -95,6 +95,25 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a collection type for a collection name (local case)
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_col_type_t const getCollectionType (std::string const& name) const {
+          if (name[0] >= '0' && name[0] <= '9') {
+            // name is a numeric id
+            return getCollectionType(getCollectionName(static_cast<TRI_voc_cid_t>(triagens::basics::StringUtils::uint64(name))));
+          }
+
+          TRI_vocbase_col_t const* collection = getCollectionStruct(name);
+
+          if (collection != nullptr) {
+            return collection->_type;
+          }
+          return TRI_COL_TYPE_UNKNOWN;
+        }
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief look up a collection struct for a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -137,6 +156,31 @@ namespace triagens {
           }
           return cinfo->id();
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a cluster collection type for a cluster collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_col_type_t const getCollectionTypeCluster (std::string const& name) const {
+          if (! ServerState::instance()->isRunningInCluster()) {
+            return getCollectionType(name);
+          }
+          if (name[0] >= '0' && name[0] <= '9') {
+            // name is a numeric id
+            return getCollectionTypeCluster(getCollectionName(static_cast<TRI_voc_cid_t>(triagens::basics::StringUtils::uint64(name))));
+          }
+
+          // We have to look up the collection info:
+          ClusterInfo* ci = ClusterInfo::instance();
+          std::shared_ptr<CollectionInfo> cinfo
+            = ci->getCollection(DatabaseID(_vocbase->_name),
+                                name);
+          if (cinfo->empty()) {
+            return TRI_COL_TYPE_UNKNOWN;
+          }
+          return cinfo->type();
+        }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief look up a collection name for a collection id, this implements
