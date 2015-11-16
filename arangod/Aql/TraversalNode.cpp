@@ -79,10 +79,10 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
       if (edgeStruct->_type != TRI_COL_TYPE_EDGE) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
       }
-      _edgeCids.push_back(edgeStruct->_cid);
+      _edgeColls.push_back(eColName);
     }
   } else {
-    if (_edgeCids.size() == 0) {
+    if (_edgeColls.size() == 0) {
       if (graph->isStringValue()) {
         _graphName = graph->getStringValue();
         _graphObj = plan->getAst()->query()->lookupGraphByName(_graphName);
@@ -90,8 +90,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
 
         auto eColls = _graphObj->edgeCollections();
         for (const auto& n: eColls) {
-          TRI_voc_cid_t cid = resolver->getCollectionId(n);
-          _edgeCids.push_back(cid);
+          _edgeColls.push_back(n);
         }
       }
     }
@@ -174,7 +173,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
 TraversalNode::TraversalNode (ExecutionPlan* plan,
                        size_t id,
                        TRI_vocbase_t* vocbase, 
-                       std::vector<TRI_voc_cid_t> const& edgeCids,
+                       std::vector<std::string> const& edgeColls,
                        Variable const* inVariable,
                        std::string const& vertexId,
                        TRI_edge_direction_e direction,
@@ -192,8 +191,8 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _direction(direction),
     _condition(nullptr)
 {
-  for (auto& it : edgeCids) {
-    _edgeCids.push_back(it);
+  for (auto& it : edgeColls) {
+    _edgeColls.push_back(it);
   }
 }
 
@@ -338,7 +337,7 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
 ExecutionNode* TraversalNode::clone (ExecutionPlan* plan,
                                      bool withDependencies,
                                      bool withProperties) const {
-  auto c = new TraversalNode(plan, _id, _vocbase, _edgeCids, _inVariable,
+  auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable,
                                       _vertexId, _direction, _minDepth, _maxDepth);
 
   if (usesVertexOutVariable()) {

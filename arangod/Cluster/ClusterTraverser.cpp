@@ -94,10 +94,17 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
                                        contentType,
                                        result);
     if (res != TRI_ERROR_NO_ERROR) {
-      std::cout << "Result:" << res << std::endl;
+      THROW_ARANGO_EXCEPTION(res);
     }
-    std::cout << result << std::endl;
-    TRI_ASSERT(false);
+    triagens::basics::Json edgesJson = result.get("edges");
+    _traverser->_iteratorCache.emplace();
+    auto stack = _traverser->_iteratorCache.top();
+    for (size_t i = 0; i < edgesJson.size(); ++i) {
+      triagens::basics::Json edge = edgesJson.at(i);
+      std::string edgeId = triagens::basics::JsonHelper::getStringValue(edge.json(), "_id", "");
+      stack.push(edgeId);
+      _traverser->_edges.emplace(edgeId, edge.steal());
+    }
   }
   else {
     std::stack<std::string> tmp = _traverser->_iteratorCache.top();
@@ -139,8 +146,7 @@ void ClusterTraverser::defineInternalFunctions () {
 */
 
 void ClusterTraverser::setStartVertex (VertexId& v) {
-  // TODO
-  std::string id = "";
+  std::string id = v.toString(_resolver);
   _enumerator.reset(new triagens::basics::PathEnumerator<std::string, std::string, size_t> (_edgeGetter, _vertexGetter, id));
   _done = false;
 }

@@ -37,7 +37,6 @@
 #include "Basics/StringUtils.h"
 #include "Indexes/Index.h"
 #include "VocBase/server.h"
-#include <iostream>
 
 using namespace std;
 using namespace triagens::basics;
@@ -1103,7 +1102,6 @@ int getAllEdgesOnCoordinator (
                  triagens::basics::Json& result ) {
   TRI_ASSERT(result.isObject());
   TRI_ASSERT(result.members() == 0);
-  std::cout << "Requestung: " << dbname << " / " << collname << " / " << vertex << " / " << direction << "\n";
 
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -1122,10 +1120,10 @@ int getAllEdgesOnCoordinator (
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::string queryParameters = "?vertex=" + StringUtils::urlEncode(vertex);
   if (direction == TRI_EDGE_IN) {
-    queryParameters += "in";
+    queryParameters += "&direction=in";
   }
   else if (direction == TRI_EDGE_OUT) {
-    queryParameters += "out";
+    queryParameters += "&direction=out";
   }
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headers = new map<string, string>;
@@ -1164,7 +1162,7 @@ int getAllEdgesOnCoordinator (
       return TRI_ERROR_INTERNAL;
     }
 
-    auto docs = TRI_LookupObjectJson(shardResult.get(), "documents");
+    auto docs = TRI_LookupObjectJson(shardResult.get(), "edges");
 
     if (! TRI_IsArrayJson(docs)) {
       delete res;
@@ -1184,7 +1182,7 @@ int getAllEdgesOnCoordinator (
     delete res;
   }
   
-  result("documents", documents);
+  result("edges", documents);
 
   return TRI_ERROR_NO_ERROR;
 }

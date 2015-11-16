@@ -47,12 +47,14 @@ namespace triagens {
           ClusterTraverser (
             std::vector<std::string> edgeCollections,
             TraverserOptions& opts,
-            std::string dbname
+            std::string dbname,
+            CollectionNameResolver const* resolver
           ) : Traverser(opts),
             _edgeCols(edgeCollections),
             _dbname(dbname),
             _vertexGetter(&_edges),
-            _edgeGetter(this) {
+            _edgeGetter(this),
+            _resolver(resolver) {
           }
 
           ~ClusterTraverser () {
@@ -122,6 +124,8 @@ namespace triagens {
           VertexGetter _vertexGetter;
 
           EdgeGetter _edgeGetter;
+
+          CollectionNameResolver const* _resolver;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal cursor to enumerate the paths of a graph

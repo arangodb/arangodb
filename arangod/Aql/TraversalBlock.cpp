@@ -59,32 +59,30 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
 
   triagens::arango::traverser::TraverserOptions opts;
   ep->fillTraversalOptions(opts);
-  auto cids = ep->edgeCids();
+  auto edgeColls = ep->edgeColls();
+  _resolver = new CollectionNameResolver(_trx->vocbase());
 
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
-    std::vector<std::string> edgeCollections;
-    for (auto const& cid : cids) {
-      edgeCollections.push_back(_resolver->getCollectionNameCluster(cid));
-    }
     _traverser.reset(new triagens::arango::traverser::ClusterTraverser(
-      edgeCollections,
+      edgeColls,
       opts,
-      std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name))
+      std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
+      _resolver
     ));
   } else {
     std::vector<TRI_document_collection_t*> edgeCollections;
-    for (auto const& cid : cids) {
+    for (auto const& coll : edgeColls) {
+      TRI_voc_cid_t cid = _resolver->getCollectionId(coll);
       edgeCollections.push_back(_trx->documentCollection(cid));
     }
     _traverser.reset(new triagens::arango::traverser::DepthFirstTraverser(edgeCollections, opts));
   }
-  _resolver = new CollectionNameResolver(_trx->vocbase());
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
     auto pos = _vertexId.find("/");
     
     _startId = VertexId(
-      _resolver->getCollectionId(_vertexId.substr(0, pos).c_str()),
+      _resolver->getCollectionIdCluster(_vertexId.substr(0, pos).c_str()),
       _vertexId.c_str() + pos + 1
     );
   }

@@ -91,7 +91,7 @@ namespace triagens {
         TraversalNode (ExecutionPlan* plan,
                        size_t id,
                        TRI_vocbase_t* vocbase,
-                       std::vector<TRI_voc_cid_t> const& edgeCids,
+                       std::vector<std::string> const& edgeColls,
                        Variable const* inVariable,
                        std::string const& vertexId,
                        TRI_edge_direction_e direction,
@@ -280,8 +280,8 @@ namespace triagens {
 
         void fillTraversalOptions (triagens::arango::traverser::TraverserOptions& opts) const;
 
-        std::vector<TRI_voc_cid_t> const edgeCids () const {
-          return _edgeCids;
+        std::vector<std::string> const edgeColls () const {
+          return _edgeColls;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -418,7 +418,7 @@ namespace triagens {
 /// @brief the edge collection cid
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<TRI_voc_cid_t> _edgeCids;
+        std::vector<std::string> _edgeColls;
 
 
 ////////////////////////////////////////////////////////////////////////////////
