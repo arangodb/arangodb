@@ -31,7 +31,49 @@
 #include "Basics/Exceptions.h"
 
 using namespace arangodb;
-      
+
+// returns a type name for a marker
+char const* MarkerHelper::typeName (MarkerType type) {
+  switch (type) {
+    case MarkerTypeHeader:
+      return "header";
+    case MarkerTypeFooter:
+      return "footer";
+    case MarkerTypeDocumentPreface:
+      return "document preface";
+    case MarkerTypeDocument:
+      return "document";
+    case MarkerTypeDocumentDeletion:
+      return "document deletion";
+    case MarkerTypeTransactionBegin:
+      return "transaction begin";
+    case MarkerTypeTransactionCommit:
+      return "transaction commit";
+    case MarkerTypeTransactionAbort:
+      return "transaction abort";
+    case MarkerTypeCollectionCreate:
+      return "collection create";
+    case MarkerTypeCollectionDrop:
+      return "collection drop";
+    case MarkerTypeCollectionRename:
+      return "collection rename";
+    case MarkerTypeCollectionProperties:
+      return "collection properties";
+    case MarkerTypeIndexCreate:
+      return "index create";
+    case MarkerTypeIndexDrop:
+      return "index drop";
+    case MarkerTypeDatabaseCreate:
+      return "database create";
+    case MarkerTypeDatabaseDrop:
+      return "database drop";
+    case MarkerMax:
+      break;
+  }
+
+  return "invalid marker type";
+}
+
 // returns the static length for the marker type
 // the static length is the total length of the marker's static data fields,
 // excluding the base marker's fields and excluding the marker's dynamic
@@ -41,6 +83,9 @@ uint64_t MarkerHelper::staticLength (MarkerType type) {
     case MarkerTypeHeader:
     case MarkerTypeFooter:
       return MarkerReaderMeta::staticLength();
+
+    case MarkerTypeDocumentPreface:
+      return MarkerReaderDocumentPreface::staticLength();
 
     case MarkerTypeDocument:
     case MarkerTypeDocumentDeletion:
@@ -54,7 +99,7 @@ uint64_t MarkerHelper::staticLength (MarkerType type) {
     case MarkerTypeCollectionCreate:
     case MarkerTypeCollectionDrop:
     case MarkerTypeCollectionRename:
-    case MarkerTypeCollectionChange:
+    case MarkerTypeCollectionProperties:
       return MarkerReaderCollection::staticLength();
     
     case MarkerTypeIndexCreate:
@@ -86,6 +131,41 @@ uint64_t MarkerHelper::calculateHeaderLength (uint64_t bodyLength) {
     return 16;
   }
   return 24;
+}
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReader const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+  return stream;
+}
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderMeta const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+  return stream;
+}
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderDocumentPreface const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+  return stream;
+}
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderDocument const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+  return stream;
+}
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderDatabase const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+  return stream;
+}
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderCollection const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+  return stream;
+}
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderIndex const* marker) {
+  stream << "[Marker " << MarkerHelper::typeName(marker->type()) << ", size: " << marker->length() << "]";
+  return stream;
 }
 
 // -----------------------------------------------------------------------------

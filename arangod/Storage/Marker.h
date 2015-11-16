@@ -47,8 +47,9 @@ namespace arangodb {
     MarkerTypeHeader               =  1,
     MarkerTypeFooter               =  2,
 
-    MarkerTypeDocument             = 10,
-    MarkerTypeDocumentDeletion     = 11,
+    MarkerTypeDocumentPreface      = 10,
+    MarkerTypeDocument             = 11,
+    MarkerTypeDocumentDeletion     = 12,
 
     MarkerTypeTransactionBegin     = 20,
     MarkerTypeTransactionCommit    = 21,
@@ -57,7 +58,7 @@ namespace arangodb {
     MarkerTypeCollectionCreate     = 30,
     MarkerTypeCollectionDrop       = 31,
     MarkerTypeCollectionRename     = 32,
-    MarkerTypeCollectionChange     = 33,
+    MarkerTypeCollectionProperties = 33,
 
     MarkerTypeIndexCreate          = 40,
     MarkerTypeIndexDrop            = 41,
@@ -75,6 +76,14 @@ namespace arangodb {
 // -----------------------------------------------------------------------------
 
   struct MarkerHelper {
+    uint32_t alignedSize (uint32_t value) {
+      return ((value + 7) / 8) * 8;
+    }
+    
+    uint64_t alignedSize (uint64_t value) {
+      return ((value + 7) / 8) * 8;
+    }
+
     template<typename T>
     static inline uint32_t calculateNumberLength (T value) throw() {
       uint32_t len = 1;
@@ -107,6 +116,9 @@ namespace arangodb {
       }
       while (dest < end);
     }
+
+    // returns a type name for a marker
+    static char const* typeName (MarkerType type);
 
     // returns the static length for the marker type
     // the static length is the total length of the marker's static data fields,
@@ -315,6 +327,70 @@ namespace arangodb {
         : MarkerAccessorMeta<MarkerWriter>(begin) {
       }
 
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                     generic accessor for document preface markers
+// -----------------------------------------------------------------------------
+
+  template<typename T>
+  class MarkerAccessorDocumentPreface : public T {
+    /* this is a preface marker for documents operations
+       its layout is:
+
+       BaseMarker      base (16 or 24 bytes)
+       uint64_t        database id
+       uint64_t        collection id
+    */
+
+    public:
+
+      MarkerAccessorDocumentPreface (uint8_t* begin)
+        : T(begin) {
+      }
+
+    public:
+      
+      uint64_t database () const {
+        return MarkerReader::readAlignedNumber<uint64_t>(MarkerReader::payload(), 8);
+      }
+
+      uint64_t collection () const {
+        return MarkerReader::readAlignedNumber<uint64_t>(MarkerReader::payload() + 8, 8);
+      }
+
+      static uint64_t staticLength () {
+        return 16;
+      }
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                   read-only accessor for document preface markers
+// -----------------------------------------------------------------------------
+  
+  typedef MarkerAccessorDocumentPreface<MarkerReader> MarkerReaderDocumentPreface;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                  read-write accessor for document preface markers
+// -----------------------------------------------------------------------------
+
+  class MarkerWriterDocumentPreface : public MarkerAccessorDocumentPreface<MarkerWriter> {
+
+    public:
+
+      MarkerWriterDocumentPreface (uint8_t* begin)
+        : MarkerAccessorDocumentPreface<MarkerWriter>(begin) {
+      }
+
+    public:
+
+      void database (uint64_t id) {
+        MarkerWriter::storeAlignedNumber<uint64_t>(MarkerWriter::payload(), id, 8);
+      }
+
+      void collection (uint64_t id) {
+        MarkerWriter::storeAlignedNumber<uint64_t>(MarkerWriter::payload() + 8, id, 8);
+      }
   };
 
 // -----------------------------------------------------------------------------
@@ -621,6 +697,48 @@ namespace arangodb {
     
   };
   
+}
+
+std::ostream& operator<< (std::ostream&, arangodb::MarkerReader const*);
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReader const& marker) {
+  return operator<<(stream, &marker);
+}
+
+std::ostream& operator<< (std::ostream&, arangodb::MarkerReaderMeta const*);
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderMeta const& marker) {
+  return operator<<(stream, &marker);
+}
+
+std::ostream& operator<< (std::ostream&, arangodb::MarkerReaderDocumentPreface const*);
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderDocumentPreface const& marker) {
+  return operator<<(stream, &marker);
+}
+
+std::ostream& operator<< (std::ostream&, arangodb::MarkerReaderDocument const*);
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderDocument const& marker) {
+  return operator<<(stream, &marker);
+}
+
+std::ostream& operator<< (std::ostream&, arangodb::MarkerReaderDatabase const*);
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderDatabase const& marker) {
+  return operator<<(stream, &marker);
+}
+
+std::ostream& operator<< (std::ostream&, arangodb::MarkerReaderCollection const*);
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderCollection const& marker) {
+  return operator<<(stream, &marker);
+}
+
+std::ostream& operator<< (std::ostream&, arangodb::MarkerReaderIndex const*);
+
+std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderIndex const& marker) {
+  return operator<<(stream, &marker);
 }
 
 #endif
