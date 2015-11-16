@@ -115,8 +115,7 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
       last = nullptr;
       return;
     }
-    _traverser->_iteratorCache.emplace();
-    auto stack = _traverser->_iteratorCache.top();
+    std::stack<std::string> stack;
     std::unordered_set<std::string> verticesToFetch;
     for (size_t i = 0; i < edgesJson.size(); ++i) {
       triagens::basics::Json edge = edgesJson.at(i);
@@ -156,9 +155,10 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     stack.pop();
     last = &_continueConst;
     result.push_back(next);
+    _traverser->_iteratorCache.emplace(stack);
   }
   else {
-    std::stack<std::string> tmp = _traverser->_iteratorCache.top();
+    std::stack<std::string>& tmp = _traverser->_iteratorCache.top();
     if (tmp.empty()) {
       _traverser->_iteratorCache.pop();
       last = nullptr;
