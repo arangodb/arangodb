@@ -35,10 +35,16 @@ using namespace triagens::aql;
 void TraversalNode::simpleTravererExpression::toJson(triagens::basics::Json& json,
                                                      TRI_memory_zone_t* zone) const
 {
-  json("isAsteriscAccess", triagens::basics::Json(isAsteriscAccess))
-    ("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
+  auto op = AstNode::Operators.find(comparisonType);
+  
+  if (op == AstNode::Operators.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid operator for simpleTraverserExpression");
+  }
+  std::string const operatorStr = op->second;
+
+  json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
     ("indexAccess", triagens::basics::Json((int32_t)indexAccess))
-    ("comparisonType", triagens::basics::Json("==")) /// TODO more comparison types?
+    ("comparisonType", triagens::basics::Json(operatorStr))
     ("varAccess", varAccess->toJson(zone, true))
     ("compareTo", compareTo->toJson(zone, true));
         
@@ -414,16 +420,14 @@ void TraversalNode::setCondition(triagens::aql::Condition* condition){
   _condition = condition;
 }
 
-void TraversalNode::storeSimpleExpression(bool isAsteriscAccess,
-                                          bool isEdgeAccess,
+void TraversalNode::storeSimpleExpression(bool isEdgeAccess,
                                           size_t indexAccess,
                                           AstNodeType comparisonType,
                                           AstNode const* varAccess,
                                           AstNode const* compareTo) {
 
   simpleTravererExpression e {
-    isAsteriscAccess,
-      isEdgeAccess,
+    isEdgeAccess,
       indexAccess,
       comparisonType,
       varAccess,
