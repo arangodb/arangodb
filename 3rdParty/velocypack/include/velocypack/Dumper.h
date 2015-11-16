@@ -136,7 +136,7 @@ namespace arangodb {
         }
 
         void handleUnsupportedType (Slice const*) {
-          if (options->unsupportedTypeBehavior == NullifyUnsupportedType) {
+          if (options->unsupportedTypeBehavior == Options::NullifyUnsupportedType) {
             _sink->append("null", 4);
             return;
           }

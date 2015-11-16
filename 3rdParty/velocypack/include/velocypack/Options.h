@@ -53,12 +53,12 @@ namespace arangodb {
       virtual ValueLength byteSize (Slice const& value) = 0;
     }; 
         
-    enum UnsupportedTypeBehavior {
-      NullifyUnsupportedType,
-      FailOnUnsupportedType
-    };
-
     struct Options {
+      enum UnsupportedTypeBehavior {
+        NullifyUnsupportedType,
+        FailOnUnsupportedType
+      };
+
       Options () {
       }
       

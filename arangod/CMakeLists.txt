@@ -203,6 +203,7 @@ add_executable(
     Scheduler/TimerTask.cpp
     Statistics/statistics.cpp
     Storage/Marker.cpp
+    Storage/Options.cpp
     Utils/CollectionExport.cpp
     Utils/CollectionKeys.cpp
     Utils/CollectionKeysRepository.cpp
