@@ -87,8 +87,11 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
                                                std::vector<std::string>& result,
                                                size_t*& last,
                                                size_t& eColIdx,
-                                               bool&) {
-  TRI_ASSERT(eColIdx < _traverser->_edgeCols.size());
+                                               bool& unused) {
+  if (eColIdx >= _traverser->_edgeCols.size()) {
+    // Nothing to do, caller has set a defined state already.
+    return;
+  }
   if (last == nullptr) {
     TRI_ASSERT(_traverser->_iteratorCache.size() == result.size());
     // We have to request the next level
@@ -110,9 +113,10 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     triagens::basics::Json edgesJson = resultEdges.get("edges");
     size_t count = edgesJson.size();
     if (count == 0) {
-      // TODO Multiple edge collections
       _traverser->_iteratorCache.pop();
       last = nullptr;
+      eColIdx++;
+      operator()(startVertex, result, last, eColIdx, unused);
       return;
     }
     std::stack<std::string> stack;
@@ -166,6 +170,9 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     if (tmp.empty()) {
       _traverser->_iteratorCache.pop();
       last = nullptr;
+      eColIdx++;
+      operator()(startVertex, result, last, eColIdx, unused);
+      return;
     }
     else {
       std::string next = tmp.top();
