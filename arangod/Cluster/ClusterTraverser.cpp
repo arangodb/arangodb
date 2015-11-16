@@ -158,6 +158,10 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     _traverser->_iteratorCache.emplace(stack);
   }
   else {
+    if (_traverser->_iteratorCache.empty()) {
+      last = nullptr;
+      return;
+    }
     std::stack<std::string>& tmp = _traverser->_iteratorCache.top();
     if (tmp.empty()) {
       _traverser->_iteratorCache.pop();
