@@ -37,6 +37,7 @@
 #include "Cluster/ServerState.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
+#include "V8/v8-utils.h"
 #include "V8Server/v8-shape-conv.h"
 
 using namespace triagens::aql;
@@ -561,6 +562,8 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
       v8::Handle<v8::Array> objValue = v8::Handle<v8::Array>::Cast(tryCatch.Exception());
       v8::Handle<v8::String> errorNum = TRI_V8_ASCII_STRING("errorNum");
       v8::Handle<v8::String> errorMessage = TRI_V8_ASCII_STRING("errorMessage");
+
+      TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch.StackTrace());
         
       if (objValue->HasOwnProperty(errorNum) && 
           objValue->HasOwnProperty(errorMessage)) {
@@ -571,14 +574,25 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
         if ((errorNumValue->IsNumber() || errorNumValue->IsNumberObject()) && 
             (errorMessageValue->IsString() || errorMessageValue->IsStringObject())) {
           int errorCode = static_cast<int>(TRI_ObjectToInt64(errorNumValue));
-          std::string const errorMessage(TRI_ObjectToString(errorMessageValue));
+          std::string errorMessage(TRI_ObjectToString(errorMessageValue));
     
+          if (*stacktrace && stacktrace.length() > 0) {
+            errorMessage += "\nstacktrace of offending AQL js Function  : ";
+            errorMessage += *stacktrace;
+          }
+
           THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, errorMessage);
         }
       }
     
       // exception is no ArangoError
-      std::string const details(TRI_ObjectToString(tryCatch.Exception()));
+      std::string details(TRI_ObjectToString(tryCatch.Exception()));
+
+      if (*stacktrace && stacktrace.length() > 0) {
+        details += "\nstacktrace of offending AQL js Function  : ";
+        details += *stacktrace;
+      }
+
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, details);
     }
     
