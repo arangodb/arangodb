@@ -73,6 +73,11 @@ namespace triagens {
           return false;
         }
 
+        std::string toString (CollectionNameResolver const* resolver) {
+            return resolver->getCollectionNameCluster(cid) + "/" + std::string(key);
+        }
+
+
       };
 
       // EdgeId and VertexId are similar here. both have a key and a cid
