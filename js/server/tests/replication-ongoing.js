@@ -165,9 +165,9 @@ function ReplicationSuite () {
         break;
       }
 
-      if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) > 0 ||
-          compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) > 0 ||
-          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
+      if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) >= 0 ||
+          compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) { // ||
+//          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
         break;
       }
 
@@ -226,11 +226,11 @@ function ReplicationSuite () {
         function (state) {
           // flush the wal logs on the master so the start tick is not available
           // anymore when we start replicating
-          for (var i = 0; i < 25; ++i) {
+          for (var i = 0; i < 30; ++i) {
             db._collection(cn).save({ value: i });
             internal.wal.flush(); //true, true);
           }
-          internal.wait(5, false);
+          internal.wait(6, false);
         },
 
         function (state) {
@@ -239,7 +239,7 @@ function ReplicationSuite () {
 
         function (state) {
           // data loss on slave!
-          assertTrue(db._collection(cn).count() < 20);
+          assertTrue(db._collection(cn).count() < 25);
         },
         { 
           requireFromPresent: false 
@@ -262,16 +262,16 @@ function ReplicationSuite () {
         function (state) {
           // flush the wal logs on the master so the start tick is not available
           // anymore when we start replicating
-          for (var i = 0; i < 25; ++i) {
+          for (var i = 0; i < 30; ++i) {
             db._collection(cn).save({ value: i });
             internal.wal.flush(); //true, true);
           }
-          internal.wait(5, false);
+          internal.wait(6, false);
         },
 
         function (state) {
           // wait for slave applier to have started and detect the mess
-          internal.wait(2, false);
+          internal.wait(3, false);
 
           // slave should have stopped
           assertFalse(replication.applier.state().state.running);
@@ -282,7 +282,7 @@ function ReplicationSuite () {
 
         function (state) {
           // data loss on slave!
-          assertTrue(db._collection(cn).count() < 20);
+          assertTrue(db._collection(cn).count() < 25);
         },
         { 
           requireFromPresent: true 

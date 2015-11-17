@@ -1,6 +1,8 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* web interface: aql editor now supports bind parameters
+
 * added startup option `--server.hide-product-header` to make the server not send
   the HTTP response header `"Server: ArangoDB"` in its HTTP responses. By default,
   the option is turned off so the header is still sent as usual.

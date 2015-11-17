@@ -1006,6 +1006,7 @@ int SkiplistIndex::ElementElementComparator::operator() (TRI_index_element_t con
   // ..........................................................................
   // The document could be the same -- so no further comparison is required.
   // ..........................................................................
+
   if (leftElement == rightElement ||
       (! _idx->_skiplistIndex->isArray() && leftElement->document() == rightElement->document())) {
     return 0;
@@ -1059,14 +1060,40 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
     return false;
   }
   
+  triagens::aql::AstNode const* what = access;
   std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> attributeData;
-
-  if (! access->isAttributeAccessForVariable(attributeData) ||
-      attributeData.first != reference) {
-    // this access is not referencing this collection
-    return false;
+  
+  if (op->type != triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    if (! what->isAttributeAccessForVariable(attributeData) ||
+        attributeData.first != reference) {
+        // this access is not referencing this collection
+        return false;
+    }
+    if (triagens::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
+      // doc.value[*] IN 'value'
+      return false;
+    }
   }
-          
+  else { 
+    // ok, we do have an IN here... check if it's something like 'value' IN doc.value[*]
+    bool canUse = false;
+    if (what->isAttributeAccessForVariable(attributeData) && 
+        attributeData.first == reference &&
+        ! triagens::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
+      // doc.value[*] IN 'value'
+      canUse = true;
+    }
+    if (! canUse) {
+      // check for doc.value[*] IN 'value'
+      what = other;
+      if (! what->isAttributeAccessForVariable(attributeData) ||
+          attributeData.first != reference) {
+        // this access is not referencing this collection
+        return false;
+      }
+    }
+  }
+
   std::vector<triagens::basics::AttributeName> const& fieldNames = attributeData.second;
 
   for (size_t i = 0; i < _fields.size(); ++i) {
@@ -1074,14 +1101,14 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
       // attribute path length differs
       continue;
     }
-
-    bool match = true;
-    for (size_t j = 0; j < _fields[i].size(); ++j) {
-      if (_fields[i][j] != fieldNames[j]) {
-        match = false;
-        break;
-      }
+    
+    if (this->isAttributeExpanded(i) &&
+        op->type != triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      // If this attribute is correct or not, it could only serve for IN
+      continue;
     }
+
+    bool match = triagens::basics::AttributeName::isIdentical(_fields[i], fieldNames, true);
 
     if (match) {
       // mark ith attribute as being covered
@@ -1126,13 +1153,10 @@ void SkiplistIndex::matchAttributes (triagens::aql::AstNode const* node,
       case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN:
         if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference, found, isExecution)) {
           auto m = op->getMember(1);
-          if (m->type != triagens::aql::NODE_TYPE_EXPANSION && m->numMembers() > 1) {
+          if (m->isArray() && m->numMembers() > 1) {
             // attr IN [ a, b, c ]  =>  this will produce multiple items, so count them!
             values += m->numMembers() - 1;
           }
-        }
-        else {
-          accessFitsIndex(op->getMember(1), op->getMember(0), op, reference, found, isExecution);
         }
         break;
 
@@ -1301,6 +1325,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     }
     return new SkiplistIndexIterator(this, searchValues, reverse);
   }
+
   std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
   size_t unused = 0;
   matchAttributes(node, reference, found, unused, true);
