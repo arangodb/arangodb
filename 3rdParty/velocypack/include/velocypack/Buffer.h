@@ -28,6 +28,7 @@
 #define VELOCYPACK_BUFFER_H 1
 
 #include <cstring>
+#include <string>
 
 #include "velocypack/velocypack-common.h"
 
@@ -119,6 +120,11 @@ namespace arangodb {
         
         inline ValueLength length () const {
           return _pos;
+        }
+
+        std::string toString () const {
+          std::string result(reinterpret_cast<char const*>(_buffer), _pos);
+          return std::move(result);
         }
 
         void clear () {

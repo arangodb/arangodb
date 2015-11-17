@@ -74,7 +74,13 @@ namespace arangodb {
 
       public:
 
+#ifdef SWIG
+        Value () : _valueType(ValueType::None), _cType(CType::None),
+                   _unindexed(false) {
+        }
+#else
         Value () = delete;
+#endif
 
         // creates a Value with the specified type Array or Object 
         explicit Value (ValueType t, bool allowUnindexed = false)
