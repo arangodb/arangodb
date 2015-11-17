@@ -28,15 +28,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Storage/Options.h"
+#include "Basics/Exceptions.h"
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/voc-types.h"
 
 using namespace arangodb;
 
 // global options used when converting JSON into a document
-VPackOptions JsonToDocumentOptions;
+VPackOptions StorageOptions::JsonToDocumentTemplate;
 // global options used when converting documents into JSON
-VPackOptions DocumentToJsonOptions;
+VPackOptions StorageOptions::DocumentToJsonTemplate;
 // global options used for other conversions
-VPackOptions NonDocumentOptions;
+VPackOptions StorageOptions::NonDocumentTemplate;
   
 struct ExcludeHandlerImpl : public VPackAttributeExcludeHandler {
   bool shouldExclude (VPackSlice const& key, int nesting) override final {
@@ -62,16 +65,45 @@ struct ExcludeHandlerImpl : public VPackAttributeExcludeHandler {
 };
 
 struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
+  CustomTypeHandlerImpl (triagens::arango::CollectionNameResolver const* resolver,
+                         TRI_voc_cid_t cid)
+    : resolver(resolver), 
+      cid(cid) {
+  }
+
   void toJson (VPackSlice const& value, VPackDumper* dumper, VPackSlice const& base) {
     if (value.head() == 0xf0) {
       // _id
-      // TODO
-      return;
+      if (! base.isObject()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid value type"); 
+      }
+      char buffer[512]; // TODO: check if size is appropriate
+      size_t len = resolver->getCollectionName(&buffer[0], cid); 
+      buffer[len] = '/';
+      VPackSlice key = base.get("_key");
+      
+      VPackValueLength keyLength;
+      char const* p = key.getString(keyLength);
+      if (p == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid _key value"); 
+      }
+      memcpy(&buffer[len + 1], p, keyLength);
+      dumper->appendString(&buffer[0], len + 1 + keyLength);
     }
 
     if (value.head() == 0xf1) {
       // _rev
-      // TODO
+      uint64_t rev = 0;
+      uint8_t const* start = value.start() + 1;
+      uint8_t const* end = start + value.byteSize();
+      do {
+        rev <<= 8;
+        rev += static_cast<uint64_t>(*start++);
+      }
+      while (start < end);
+      dumper->sink()->push_back('"');
+      dumper->appendUInt(rev);
+      dumper->sink()->push_back('"');
       return;
     }
 
@@ -101,12 +133,13 @@ struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
     }
     throw "unknown type!";
   }
+
+  triagens::arango::CollectionNameResolver const* resolver;
+  TRI_voc_cid_t cid;
 };
       
-
 StorageOptions::StorageOptions () 
   : _translator(new VPackAttributeTranslator),
-    _customTypeHandler(new CustomTypeHandlerImpl),
     _excludeHandler(new ExcludeHandlerImpl) {
 
   // these attribute names will be translated into short integer values
@@ -118,37 +151,48 @@ StorageOptions::StorageOptions ()
   _translator->seal();
 
   // set options for JSON to document conversion
-  JsonToDocumentOptions.buildUnindexedArrays     = false;
-  JsonToDocumentOptions.buildUnindexedObjects    = false;
-  JsonToDocumentOptions.checkAttributeUniqueness = true;
-  JsonToDocumentOptions.sortAttributeNames       = true;
-  JsonToDocumentOptions.attributeTranslator      = _translator.get();
-  JsonToDocumentOptions.customTypeHandler        = _customTypeHandler.get();
-  JsonToDocumentOptions.attributeExcludeHandler  = _excludeHandler.get();
+  JsonToDocumentTemplate.buildUnindexedArrays     = false;
+  JsonToDocumentTemplate.buildUnindexedObjects    = false;
+  JsonToDocumentTemplate.checkAttributeUniqueness = true;
+  JsonToDocumentTemplate.sortAttributeNames       = true;
+  JsonToDocumentTemplate.attributeTranslator      = _translator.get();
+  JsonToDocumentTemplate.customTypeHandler        = nullptr;
+  JsonToDocumentTemplate.attributeExcludeHandler  = _excludeHandler.get();
 
   // set options for document to JSON conversion
-  DocumentToJsonOptions.prettyPrint              = false;
-  DocumentToJsonOptions.escapeForwardSlashes     = true;
-  DocumentToJsonOptions.unsupportedTypeBehavior  = VPackOptions::FailOnUnsupportedType;
-  DocumentToJsonOptions.attributeTranslator      = _translator.get();
-  DocumentToJsonOptions.customTypeHandler        = _customTypeHandler.get();
-  DocumentToJsonOptions.attributeExcludeHandler  = nullptr;
+  DocumentToJsonTemplate.attributeTranslator      = _translator.get();
+  DocumentToJsonTemplate.customTypeHandler        = nullptr;
+  DocumentToJsonTemplate.attributeExcludeHandler  = nullptr;
+  DocumentToJsonTemplate.prettyPrint              = false;
+  DocumentToJsonTemplate.escapeForwardSlashes     = true;
+  DocumentToJsonTemplate.unsupportedTypeBehavior  = VPackOptions::FailOnUnsupportedType;
 
-
-  NonDocumentOptions.prettyPrint                 = false;
-  NonDocumentOptions.escapeForwardSlashes        = true;
-  NonDocumentOptions.sortAttributeNames          = false;
-  NonDocumentOptions.buildUnindexedArrays        = true;
-  NonDocumentOptions.buildUnindexedObjects       = true;
-  NonDocumentOptions.checkAttributeUniqueness    = false;
-  NonDocumentOptions.unsupportedTypeBehavior     = VPackOptions::FailOnUnsupportedType;
-  NonDocumentOptions.attributeTranslator         = nullptr;
-  NonDocumentOptions.customTypeHandler           = nullptr;
-  NonDocumentOptions.attributeExcludeHandler     = nullptr;
-//      bool keepTopLevelOpen         = false;
+  // non-document options
+  NonDocumentTemplate.buildUnindexedArrays        = true;
+  NonDocumentTemplate.buildUnindexedObjects       = true;
+  NonDocumentTemplate.checkAttributeUniqueness    = false;
+  NonDocumentTemplate.sortAttributeNames          = false;
+  NonDocumentTemplate.attributeTranslator         = nullptr;
+  NonDocumentTemplate.customTypeHandler           = nullptr;
+  NonDocumentTemplate.attributeExcludeHandler     = nullptr;
+  NonDocumentTemplate.prettyPrint                 = false;
+  NonDocumentTemplate.escapeForwardSlashes        = true;
+  NonDocumentTemplate.unsupportedTypeBehavior     = VPackOptions::FailOnUnsupportedType;
 }
 
 StorageOptions::~StorageOptions () {
+}
+      
+VPackOptions StorageOptions::getDocumentToJsonTemplate () {
+  return DocumentToJsonTemplate;
+}
+
+VPackOptions StorageOptions::getJsonToDocumentTemplate () {
+  return JsonToDocumentTemplate;
+}
+
+VPackOptions StorageOptions::getNonDocumentTemplate () {
+  return NonDocumentTemplate;
 }
 
 // -----------------------------------------------------------------------------

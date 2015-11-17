@@ -39,32 +39,36 @@ namespace arangodb {
     int fpconv_dtoa (double fp, char dest[24]);
   }
 };
-        
+
+void Dumper::appendUInt (uint64_t v) {
+  if (10000000000000000000ULL <= v) { _sink->push_back('0' + (v / 10000000000000000000ULL) % 10); }
+  if ( 1000000000000000000ULL <= v) { _sink->push_back('0' + (v /  1000000000000000000ULL) % 10); }
+  if (  100000000000000000ULL <= v) { _sink->push_back('0' + (v /   100000000000000000ULL) % 10); }
+  if (   10000000000000000ULL <= v) { _sink->push_back('0' + (v /    10000000000000000ULL) % 10); }
+  if (    1000000000000000ULL <= v) { _sink->push_back('0' + (v /     1000000000000000ULL) % 10); }
+  if (     100000000000000ULL <= v) { _sink->push_back('0' + (v /      100000000000000ULL) % 10); }
+  if (      10000000000000ULL <= v) { _sink->push_back('0' + (v /       10000000000000ULL) % 10); }
+  if (       1000000000000ULL <= v) { _sink->push_back('0' + (v /        1000000000000ULL) % 10); }
+  if (        100000000000ULL <= v) { _sink->push_back('0' + (v /         100000000000ULL) % 10); }
+  if (         10000000000ULL <= v) { _sink->push_back('0' + (v /          10000000000ULL) % 10); }
+  if (          1000000000ULL <= v) { _sink->push_back('0' + (v /           1000000000ULL) % 10); }
+  if (           100000000ULL <= v) { _sink->push_back('0' + (v /            100000000ULL) % 10); }
+  if (            10000000ULL <= v) { _sink->push_back('0' + (v /             10000000ULL) % 10); }
+  if (             1000000ULL <= v) { _sink->push_back('0' + (v /              1000000ULL) % 10); }
+  if (              100000ULL <= v) { _sink->push_back('0' + (v /               100000ULL) % 10); }
+  if (               10000ULL <= v) { _sink->push_back('0' + (v /                10000ULL) % 10); }
+  if (                1000ULL <= v) { _sink->push_back('0' + (v /                 1000ULL) % 10); }
+  if (                 100ULL <= v) { _sink->push_back('0' + (v /                  100ULL) % 10); }
+  if (                  10ULL <= v) { _sink->push_back('0' + (v /                   10ULL) % 10); }
+
+  _sink->push_back('0' + (v % 10));
+}
+    
 void Dumper::dumpInteger (Slice const* slice) {
   if (slice->isType(ValueType::UInt)) {
     uint64_t v = slice->getUInt();
 
-    if (10000000000000000000ULL <= v) { _sink->push_back('0' + (v / 10000000000000000000ULL) % 10); }
-    if ( 1000000000000000000ULL <= v) { _sink->push_back('0' + (v /  1000000000000000000ULL) % 10); }
-    if (  100000000000000000ULL <= v) { _sink->push_back('0' + (v /   100000000000000000ULL) % 10); }
-    if (   10000000000000000ULL <= v) { _sink->push_back('0' + (v /    10000000000000000ULL) % 10); }
-    if (    1000000000000000ULL <= v) { _sink->push_back('0' + (v /     1000000000000000ULL) % 10); }
-    if (     100000000000000ULL <= v) { _sink->push_back('0' + (v /      100000000000000ULL) % 10); }
-    if (      10000000000000ULL <= v) { _sink->push_back('0' + (v /       10000000000000ULL) % 10); }
-    if (       1000000000000ULL <= v) { _sink->push_back('0' + (v /        1000000000000ULL) % 10); }
-    if (        100000000000ULL <= v) { _sink->push_back('0' + (v /         100000000000ULL) % 10); }
-    if (         10000000000ULL <= v) { _sink->push_back('0' + (v /          10000000000ULL) % 10); }
-    if (          1000000000ULL <= v) { _sink->push_back('0' + (v /           1000000000ULL) % 10); }
-    if (           100000000ULL <= v) { _sink->push_back('0' + (v /            100000000ULL) % 10); }
-    if (            10000000ULL <= v) { _sink->push_back('0' + (v /             10000000ULL) % 10); }
-    if (             1000000ULL <= v) { _sink->push_back('0' + (v /              1000000ULL) % 10); }
-    if (              100000ULL <= v) { _sink->push_back('0' + (v /               100000ULL) % 10); }
-    if (               10000ULL <= v) { _sink->push_back('0' + (v /                10000ULL) % 10); }
-    if (                1000ULL <= v) { _sink->push_back('0' + (v /                 1000ULL) % 10); }
-    if (                 100ULL <= v) { _sink->push_back('0' + (v /                  100ULL) % 10); }
-    if (                  10ULL <= v) { _sink->push_back('0' + (v /                   10ULL) % 10); }
-
-    _sink->push_back('0' + (v % 10));
+    appendUInt(v);
   } 
   else if (slice->isType(ValueType::Int)) {
     int64_t v = slice->getInt();

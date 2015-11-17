@@ -54,8 +54,10 @@ v8::Handle<v8::Value> TRI_VPackToV8 (v8::Isolate* isolate,
 /// @brief convert a V8 value to VPack value
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder TRI_V8ToVPack (v8::Isolate* isolate,
-                            v8::Handle<v8::Value> const);
+int TRI_V8ToVPack (v8::Isolate* isolate,
+                   VPackBuilder& builder,
+                   v8::Handle<v8::Value> const value,
+                   bool keepTopLevelOpen);
 
 #endif
 

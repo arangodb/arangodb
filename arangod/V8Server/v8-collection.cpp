@@ -34,6 +34,7 @@
 #include "Basics/json-utilities.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
+#include "Storage/Options.h"
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
 #include "Utils/V8TransactionContext.h"
@@ -1005,11 +1006,23 @@ static void InsertVocbaseCol (TRI_vocbase_col_t* col,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  VPackBuilder builder = TRI_V8ToVPack(isolate, args[0]->ToObject());
+  VPackOptions vOptions = arangodb::StorageOptions::getDocumentToJsonTemplate();
+  VPackBuilder builder(&vOptions);
+  int res2 = TRI_V8ToVPack(isolate, builder, args[0]->ToObject(), true);
+
+  if (res2 || builder.hasKey("_key")) {
+  }
+  else {
+  }
+
+  builder.close();
 
   VPackSlice slice(builder.slice());
+  for (auto const& it : VPackObjectIterator(slice)) {
+    std::cout << "KEY: " << it.key.copyString() << "\n";
+  }
 
-  //std::cout << "GOT: " << VPackHexDump(slice) << "\n\n";
+  // std::cout << "GOT: " << VPackHexDump(slice) << "\n\n";
 
 
   // set document key

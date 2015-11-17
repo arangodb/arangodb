@@ -42,15 +42,18 @@ namespace arangodb {
       StorageOptions (StorageOptions const&) = delete;
       StorageOptions& operator= (StorageOptions const&) = delete;
 
+      static VPackOptions getDocumentToJsonTemplate ();
+      static VPackOptions getJsonToDocumentTemplate ();
+      static VPackOptions getNonDocumentTemplate ();
+
     private:
 
       std::unique_ptr<VPackAttributeTranslator>      _translator;
-      std::unique_ptr<VPackCustomTypeHandler>        _customTypeHandler;
       std::unique_ptr<VPackAttributeExcludeHandler>  _excludeHandler;
 
-      static VPackOptions JsonToDocumentOptions;
-      static VPackOptions DocumentToJsonOptions;
-      static VPackOptions NonDocumentOptions;
+      static VPackOptions JsonToDocumentTemplate;
+      static VPackOptions DocumentToJsonTemplate;
+      static VPackOptions NonDocumentTemplate;
   };
   
 }

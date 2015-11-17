@@ -128,19 +128,31 @@ v8::Handle<v8::Value> TRI_VPackToV8 (v8::Isolate* isolate,
   }
 }
 
+struct BuilderContext {
+  BuilderContext (v8::Isolate* isolate, VPackBuilder& builder, bool keepTopLevelOpen)
+    : isolate(isolate), builder(builder), keepTopLevelOpen(keepTopLevelOpen) {
+  }
+
+  v8::Isolate* isolate;
+  VPackBuilder& builder;
+  std::set<int> seenHashes;
+  std::vector<v8::Handle<v8::Object>> seenObjects;
+  bool keepTopLevelOpen;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a VPackValue to either an array or an object
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AddValue (VPackBuilder& builder,
+static void AddValue (BuilderContext& context,
                       std::string const& attributeName,
                       bool inObject,
                       VPackValue const& value) {
   if (inObject) {
-    builder.add(attributeName, value);
+    context.builder.add(attributeName, value);
   }
   else {
-    builder.add(value);
+    context.builder.add(value);
   }
 }
 
@@ -148,29 +160,27 @@ static void AddValue (VPackBuilder& builder,
 /// @brief convert a V8 value to a VPack value
 ////////////////////////////////////////////////////////////////////////////////
 
-static int V8ToVPack (v8::Isolate* isolate,
-                      VPackBuilder& builder,
+static int V8ToVPack (BuilderContext& context,
                       v8::Handle<v8::Value> const parameter,
-                      std::set<int>& seenHashes,
-                      std::vector<v8::Handle<v8::Object>>& seenObjects,
                       std::string const& attributeName,
                       bool inObject) {
+  v8::Isolate* isolate = context.isolate;
   v8::HandleScope scope(isolate);
 
   if (parameter->IsNull()) {
-    AddValue(builder, attributeName, inObject, VPackValue(VPackValueType::Null));
+    AddValue(context, attributeName, inObject, VPackValue(VPackValueType::Null));
     return TRI_ERROR_NO_ERROR;
   }
 
   if (parameter->IsBoolean()) {
     v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
-    AddValue(builder, attributeName, inObject, VPackValue(booleanParameter->Value()));
+    AddValue(context, attributeName, inObject, VPackValue(booleanParameter->Value()));
     return TRI_ERROR_NO_ERROR;
   }
 
   if (parameter->IsNumber()) {
     v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
-    AddValue(builder, attributeName, inObject, VPackValue(numberParameter->Value()));
+    AddValue(context, attributeName, inObject, VPackValue(numberParameter->Value()));
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -182,37 +192,37 @@ static int V8ToVPack (v8::Isolate* isolate,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    AddValue(builder, attributeName, inObject, VPackValue(*str));
+    AddValue(context, attributeName, inObject, VPackValue(*str));
     return TRI_ERROR_NO_ERROR;
   }
   
   if (parameter->IsArray()) {
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
 
-    AddValue(builder, attributeName, inObject, VPackValue(VPackValueType::Array));
+    AddValue(context, attributeName, inObject, VPackValue(VPackValueType::Array));
     uint32_t const n = array->Length();
 
     for (uint32_t i = 0; i < n; ++i) {
       // get address of next element
-      int res = V8ToVPack(isolate, builder, array->Get(i), seenHashes, seenObjects, "", false);
+      int res = V8ToVPack(context, array->Get(i), "", false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
     }
 
-    builder.close();
+    context.builder.close();
     return TRI_ERROR_NO_ERROR;
   }
   
   if (parameter->IsObject()) {
     if (parameter->IsBooleanObject()) {
-      AddValue(builder, attributeName, inObject, VPackValue(v8::Handle<v8::BooleanObject>::Cast(parameter)->BooleanValue()));
+      AddValue(context, attributeName, inObject, VPackValue(v8::Handle<v8::BooleanObject>::Cast(parameter)->BooleanValue()));
       return TRI_ERROR_NO_ERROR;
     }
 
     if (parameter->IsNumberObject()) {
-      AddValue(builder, attributeName, inObject, VPackValue(v8::Handle<v8::NumberObject>::Cast(parameter)->NumberValue()));
+      AddValue(context, attributeName, inObject, VPackValue(v8::Handle<v8::NumberObject>::Cast(parameter)->NumberValue()));
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -224,7 +234,7 @@ static int V8ToVPack (v8::Isolate* isolate,
         return TRI_ERROR_OUT_OF_MEMORY;
       }
     
-      AddValue(builder, attributeName, inObject, VPackValue(*str));
+      AddValue(context, attributeName, inObject, VPackValue(*str));
       return TRI_ERROR_NO_ERROR;
     }
   
@@ -256,7 +266,7 @@ static int V8ToVPack (v8::Isolate* isolate,
           }
     
           // this passes ownership for the utf8 string to the JSON object
-          AddValue(builder, attributeName, inObject, VPackValue(*str));
+          AddValue(context, attributeName, inObject, VPackValue(*str));
           return TRI_ERROR_NO_ERROR;
         }
       }
@@ -266,10 +276,10 @@ static int V8ToVPack (v8::Isolate* isolate,
 
     int hash = o->GetIdentityHash();
 
-    if (seenHashes.find(hash) != seenHashes.end()) {
+    if (context.seenHashes.find(hash) != context.seenHashes.end()) {
       // LOG_TRACE("found hash %d", hash);
 
-      for (auto& it : seenObjects) {
+      for (auto& it : context.seenObjects) {
         if (parameter->StrictEquals(it)) {
           // object is recursive
           return TRI_ERROR_BAD_PARAMETER;
@@ -277,15 +287,15 @@ static int V8ToVPack (v8::Isolate* isolate,
       }
     }
     else {
-      seenHashes.emplace(hash);
+      context.seenHashes.emplace(hash);
     }
 
-    seenObjects.emplace_back(o);
+    context.seenObjects.emplace_back(o);
 
     v8::Handle<v8::Array> names = o->GetOwnPropertyNames();
     uint32_t const n = names->Length();
 
-    AddValue(builder, attributeName, inObject, VPackValue(VPackValueType::Object));
+    AddValue(context, attributeName, inObject, VPackValue(VPackValueType::Object));
 
     for (uint32_t i = 0; i < n; ++i) {
       // process attribute name
@@ -296,7 +306,7 @@ static int V8ToVPack (v8::Isolate* isolate,
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
-      int res = V8ToVPack(isolate, builder, o->Get(key), seenHashes, seenObjects, *str, true);
+      int res = V8ToVPack(context, o->Get(key), *str, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // to mimic behavior of previous ArangoDB versions, we need to silently ignore this error
@@ -305,8 +315,10 @@ static int V8ToVPack (v8::Isolate* isolate,
       }
     }
 
-    seenObjects.pop_back();
-    builder.close();
+    context.seenObjects.pop_back();
+    if (! context.keepTopLevelOpen || ! context.seenObjects.empty()) { 
+      context.builder.close(); 
+    }
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -317,20 +329,15 @@ static int V8ToVPack (v8::Isolate* isolate,
 /// @brief convert a V8 value to VPack value
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder TRI_V8ToVPack (v8::Isolate* isolate,
-                            v8::Handle<v8::Value> const parameter) {
+int TRI_V8ToVPack (v8::Isolate* isolate,
+                   VPackBuilder& builder,
+                   v8::Handle<v8::Value> const value,
+                   bool keepTopLevelOpen) {
 
-  VPackBuilder builder;
+  BuilderContext context(isolate, builder, keepTopLevelOpen);
+  int res = V8ToVPack(context, value, "", false);
 
-  std::set<int> seenHashes;
-  std::vector<v8::Handle<v8::Object>> seenObjects;
-  int res = V8ToVPack(isolate, builder, parameter, seenHashes, seenObjects, "", false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return builder;
+  return res;
 }
 
 // -----------------------------------------------------------------------------
