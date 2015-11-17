@@ -1912,7 +1912,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
             return true;
           }
 
-          if (! seen.empty() && triagens::basics::AttributeName::isIdentical(index->fields, seen)) {
+          if (! seen.empty() && triagens::basics::AttributeName::isIdentical(index->fields, seen, true)) {
             // different attributes
             return true;
           }
