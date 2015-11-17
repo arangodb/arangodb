@@ -562,8 +562,9 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
     }
 
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-        other->type == triagens::aql::NODE_TYPE_EXPANSION) {
-      // value IN a.b
+        (other->type == triagens::aql::NODE_TYPE_EXPANSION ||
+         other->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
+      // value IN a.b  OR  value IN a.b[*]
       if (! access->isConstant()) {
         return false;
       }
@@ -576,7 +577,7 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
     }
     else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
              access->type == triagens::aql::NODE_TYPE_EXPANSION) {
-      // value IN a.b
+      // value[*] IN a.b
       if (! other->isConstant()) {
         return false;
       }
@@ -627,8 +628,10 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
   // test if the reference variable is contained on both side of the expression
   std::unordered_set<aql::Variable const*> variables;
   if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-      other->type == triagens::aql::NODE_TYPE_EXPANSION) {
-    // value IN a.b
+      (other->type == triagens::aql::NODE_TYPE_EXPANSION ||
+       other->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
+
+    // value IN a.b  OR  value IN a.b[*]
     triagens::aql::Ast::getReferencedVariables(access, variables);
   }
   else {

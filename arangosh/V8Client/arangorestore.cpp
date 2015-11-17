@@ -915,12 +915,12 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   if (InputDirectory == "" || ! TRI_IsDirectory(InputDirectory.c_str())) {
-    cerr << "input directory '" << InputDirectory << "' does not exist" << endl;
+    cerr << "Error: input directory '" << InputDirectory << "' does not exist" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (! ImportStructure && ! ImportData) {
-    cerr << "must specify either --create-collection or --import-data" << endl;
+    cerr << "Error: must specify either --create-collection or --import-data" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -931,7 +931,7 @@ int main (int argc, char* argv[]) {
   BaseClient.createEndpoint();
 
   if (BaseClient.endpointServer() == nullptr) {
-    cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
+    cerr << "Error: invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -941,17 +941,7 @@ int main (int argc, char* argv[]) {
                                                 ArangoClient::DEFAULT_RETRIES,
                                                 BaseClient.sslProtocol());
 
-  if (Connection == nullptr) {
-    cerr << "out of memory" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-
   Client = new SimpleHttpClient(Connection, BaseClient.requestTimeout(), false);
-
-  if (Client == nullptr) {
-    cerr << "out of memory" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
 
   Client->setLocationRewriter(nullptr, &rewriteLocation);
   Client->setUserNamePassword("/", BaseClient.username(), BaseClient.password());
@@ -995,7 +985,7 @@ int main (int argc, char* argv[]) {
   int minor = 0;
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    cerr << "invalid server version '" << versionString << "'" << endl;
+    cerr << "Error: invalid server version '" << versionString << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -1003,7 +993,7 @@ int main (int argc, char* argv[]) {
       major > 2 ||
       (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
-    cerr << "got incompatible server version '" << versionString << "'" << endl;
+    cerr << "Error: got incompatible server version '" << versionString << "'" << endl;
     if (! Force) {
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
@@ -1027,11 +1017,11 @@ int main (int argc, char* argv[]) {
     res = ProcessInputDirectory(errorMsg);
   }
   catch (std::exception const& ex) {
-    cerr << "caught exception " << ex.what() << endl;
+    cerr << "Error: caught exception " << ex.what() << endl;
     res = TRI_ERROR_INTERNAL;
   }
   catch (...) {
-    cerr << "caught unknown exception" << endl;
+    cerr << "Error: caught unknown exception" << endl;
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -1049,7 +1039,9 @@ int main (int argc, char* argv[]) {
 
 
   if (res != TRI_ERROR_NO_ERROR) {
-    cerr << errorMsg << endl;
+    if (! errorMsg.empty()) {
+      cerr << "Error: " << errorMsg << endl;
+    }
     ret = EXIT_FAILURE;
   }
 

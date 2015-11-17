@@ -856,7 +856,7 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
 
     size_t attributePosition = SIZE_MAX;
     for (size_t j = 0; j < _fields.size(); ++j) {
-      if (_fields[j] == paramPair.second) {
+      if (triagens::basics::AttributeName::isIdentical(_fields[j], paramPair.second, true)) {
         attributePosition = j;
         break;
       }

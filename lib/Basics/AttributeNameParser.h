@@ -77,14 +77,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       static bool isIdentical (std::vector<AttributeName> const&,
-                               std::vector<AttributeName> const&);
+                               std::vector<AttributeName> const&,
+                               bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two attribute name vectors
 ////////////////////////////////////////////////////////////////////////////////
 
       static bool isIdentical (std::vector<std::vector<AttributeName>> const&,
-                               std::vector<std::vector<AttributeName>> const&);
+                               std::vector<std::vector<AttributeName>> const&,
+                               bool);
     };
 
 // -----------------------------------------------------------------------------

@@ -38,14 +38,23 @@ using AttributeName = triagens::basics::AttributeName;
 ////////////////////////////////////////////////////////////////////////////////
       
 bool triagens::basics::AttributeName::isIdentical (std::vector<AttributeName> const& lhs,
-                                                   std::vector<AttributeName> const& rhs) {
+                                                   std::vector<AttributeName> const& rhs,
+                                                   bool ignoreExpansionInLast) {
   if (lhs.size() != rhs.size()) {
     return false;
   }
 
   for (size_t i = 0; i < lhs.size(); ++i) {
-    if (lhs[i] != rhs[i]) {
+    if (lhs[i].name != rhs[i].name) {
       return false;
+    } 
+    if (lhs[i].shouldExpand != rhs[i].shouldExpand) {
+      if (! ignoreExpansionInLast) {
+        return false;
+      }
+      if (i != lhs.size() - 1) {
+        return false;
+      }
     }
   }
 
@@ -57,13 +66,14 @@ bool triagens::basics::AttributeName::isIdentical (std::vector<AttributeName> co
 ////////////////////////////////////////////////////////////////////////////////
       
 bool triagens::basics::AttributeName::isIdentical (std::vector<std::vector<AttributeName>> const& lhs,
-                                                   std::vector<std::vector<AttributeName>> const& rhs) {
+                                                   std::vector<std::vector<AttributeName>> const& rhs,
+                                                   bool ignoreExpansionInLast) {
   if (lhs.size() != rhs.size()) {
     return false;
   }
 
   for (size_t i = 0; i < lhs.size(); ++i) {
-    if (! isIdentical(lhs[i], rhs[i])) {
+    if (! isIdentical(lhs[i], rhs[i], ignoreExpansionInLast && (i == lhs.size() - 1))) {
       return false;
     }
   }

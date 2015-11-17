@@ -14687,7 +14687,7 @@ n = 0;}return new Array(n).join(" ");}function wrap(str,width){'use strict';var 
 return "[ " + node.subNodes.slice(0,20).map(buildExpression).join(", ") + " ... ]";}return "[ " + node.subNodes.map(buildExpression).join(", ") + " ]";}return "[ ]";case "unary not":return "! " + buildExpression(node.subNodes[0]);case "unary plus":return "+ " + buildExpression(node.subNodes[0]);case "unary minus":return "- " + buildExpression(node.subNodes[0]);case "array limit":return buildExpression(node.subNodes[0]) + ", " + buildExpression(node.subNodes[1]);case "attribute access":return buildExpression(node.subNodes[0]) + "." + attribute(node.name);case "indexed access":return buildExpression(node.subNodes[0]) + "[" + buildExpression(node.subNodes[1]) + "]";case "range":return buildExpression(node.subNodes[0]) + " .. " + buildExpression(node.subNodes[1]) + "   " + annotation("/* range */");case "expand":case "expansion":if(node.subNodes.length > 2){ // [FILTER ...]
 references[node.subNodes[0].subNodes[0].name] = [node.levels,node.subNodes[0].subNodes[1],node.subNodes[2],node.subNodes[3],node.subNodes[4]];}else { // [*]
 references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];}_x = node.subNodes[1];_again = true;continue _function;case "user function call":return func(node.name) + "(" + (node.subNodes && node.subNodes[0].subNodes || []).map(buildExpression).join(", ") + ")" + "   " + annotation("/* user-defined function */");case "function call":return func(node.name) + "(" + (node.subNodes && node.subNodes[0].subNodes || []).map(buildExpression).join(", ") + ")";case "plus":return buildExpression(node.subNodes[0]) + " + " + buildExpression(node.subNodes[1]);case "minus":return buildExpression(node.subNodes[0]) + " - " + buildExpression(node.subNodes[1]);case "times":return buildExpression(node.subNodes[0]) + " * " + buildExpression(node.subNodes[1]);case "division":return buildExpression(node.subNodes[0]) + " / " + buildExpression(node.subNodes[1]);case "modulus":return buildExpression(node.subNodes[0]) + " % " + buildExpression(node.subNodes[1]);case "compare not in":return buildExpression(node.subNodes[0]) + " not in " + buildExpression(node.subNodes[1]);case "compare in":return buildExpression(node.subNodes[0]) + " in " + buildExpression(node.subNodes[1]);case "compare ==":return buildExpression(node.subNodes[0]) + " == " + buildExpression(node.subNodes[1]);case "compare !=":return buildExpression(node.subNodes[0]) + " != " + buildExpression(node.subNodes[1]);case "compare >":return buildExpression(node.subNodes[0]) + " > " + buildExpression(node.subNodes[1]);case "compare >=":return buildExpression(node.subNodes[0]) + " >= " + buildExpression(node.subNodes[1]);case "compare <":return buildExpression(node.subNodes[0]) + " < " + buildExpression(node.subNodes[1]);case "compare <=":return buildExpression(node.subNodes[0]) + " <= " + buildExpression(node.subNodes[1]);case "logical or":return buildExpression(node.subNodes[0]) + " || " + buildExpression(node.subNodes[1]);case "logical and":return buildExpression(node.subNodes[0]) + " && " + buildExpression(node.subNodes[1]);case "ternary":return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);case "n-ary or":if(node.hasOwnProperty("subNodes")){return node.subNodes.map(function(sub){return buildExpression(sub);}).join(" || ");}return "";case "n-ary and":if(node.hasOwnProperty("subNodes")){return node.subNodes.map(function(sub){return buildExpression(sub);}).join(" && ");}return "";default:return "unhandled node type (" + node.type + ")";}}};var buildBound=function buildBound(attr,operators,bound){var boundValue=bound.isConstant?value(JSON.stringify(bound.bound)):buildExpression(bound.bound);return attribute(attr) + " " + operators[bound.include?1:0] + " " + boundValue;};var buildRanges=function buildRanges(ranges){var results=[];ranges.forEach(function(range){var attr=range.attr;if(range.lowConst.hasOwnProperty("bound") && range.highConst.hasOwnProperty("bound") && JSON.stringify(range.lowConst.bound) === JSON.stringify(range.highConst.bound)){range.equality = true;}if(range.equality){if(range.lowConst.hasOwnProperty("bound")){results.push(buildBound(attr,["==","=="],range.lowConst));}else if(range.hasOwnProperty("lows")){range.lows.forEach(function(bound){results.push(buildBound(attr,["==","=="],bound));});}}else {if(range.lowConst.hasOwnProperty("bound")){results.push(buildBound(attr,[">",">="],range.lowConst));}if(range.highConst.hasOwnProperty("bound")){results.push(buildBound(attr,["<","<="],range.highConst));}if(range.hasOwnProperty("lows")){range.lows.forEach(function(bound){results.push(buildBound(attr,[">",">="],bound));});}if(range.hasOwnProperty("highs")){range.highs.forEach(function(bound){results.push(buildBound(attr,["<","<="],bound));});}}});if(results.length > 1){return "(" + results.join(" && ") + ")";}return results[0];};var label=function label(node){switch(node.type){case "SingletonNode":return keyword("ROOT");case "NoResultsNode":return keyword("EMPTY") + "   " + annotation("/* empty result set */");case "EnumerateCollectionNode":collectionVariables[node.outVariable.id] = node.collection;return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* full collection scan" + (node.random?", random order":"") + " */");case "EnumerateListNode":return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + variableName(node.inVariable) + "   " + annotation("/* list iteration */");case "IndexNode":collectionVariables[node.outVariable.id] = node.collection;var types=[];node.indexes.forEach(function(idx,i){types.push((idx.reverse?"reverse ":"") + idx.type + " index scan");idx.collection = node.collection;idx.node = node.id;if(node.condition.type && node.condition.type === 'n-ary or'){idx.condition = buildExpression(node.condition.subNodes[i]);}else {idx.condition = "*"; // empty condition. this is likely an index used for sorting only
-}indexes.push(idx);});return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");case "IndexRangeNode":collectionVariables[node.outVariable.id] = node.collection;var index=node.index;index.ranges = node.ranges.map(buildRanges).join(" || ");index.collection = node.collection;index.node = node.id;indexes.push(index);return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse?"reverse ":"") + node.index.type + " index scan */");case "CalculationNode":return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");case "FilterNode":return keyword("FILTER") + " " + variableName(node.inVariable);case "AggregateNode":return keyword("COLLECT") + " " + node.aggregates.map(function(node){return variableName(node.outVariable) + " = " + variableName(node.inVariable);}).join(", ") + (node.count?" " + keyword("WITH COUNT"):"") + (node.outVariable?" " + keyword("INTO") + " " + variableName(node.outVariable):"") + (node.keepVariables?" " + keyword("KEEP") + " " + node.keepVariables.map(function(variable){return variableName(variable);}).join(", "):"") + "   " + annotation("/* " + node.aggregationOptions.method + "*/");case "SortNode":return keyword("SORT") + " " + node.elements.map(function(node){return variableName(node.inVariable) + " " + keyword(node.ascending?"ASC":"DESC");}).join(", ");case "LimitNode":return keyword("LIMIT") + " " + value(JSON.stringify(node.offset)) + ", " + value(JSON.stringify(node.limit));case "ReturnNode":return keyword("RETURN") + " " + variableName(node.inVariable);case "SubqueryNode":return keyword("LET") + " " + variableName(node.outVariable) + " = ...   " + annotation("/* subquery */");case "InsertNode":modificationFlags = node.modificationFlags;return keyword("INSERT") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpdateNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("UPDATE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("UPDATE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "ReplaceNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("REPLACE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("REPLACE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpsertNode":modificationFlags = node.modificationFlags;return keyword("UPSERT") + " " + variableName(node.inDocVariable) + " " + keyword("INSERT") + " " + variableName(node.insertVariable) + " " + keyword(node.isReplace?"REPLACE":"UPDATE") + " " + variableName(node.updateVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoveNode":modificationFlags = node.modificationFlags;return keyword("REMOVE") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoteNode":return keyword("REMOTE");case "DistributeNode":return keyword("DISTRIBUTE");case "ScatterNode":return keyword("SCATTER");case "GatherNode":return keyword("GATHER");}return "unhandled node type (" + node.type + ")";};var level=0,subqueries=[];var indent=function indent(level,isRoot){return pad(1 + level + level) + (isRoot?"* ":"- ");};var preHandle=function preHandle(node){usedVariables = {};isConst = true;if(node.type === "SubqueryNode"){subqueries.push(level);}};var postHandle=function postHandle(node){if(["EnumerateCollectionNode","EnumerateListNode","IndexRangeNode","SubqueryNode"].indexOf(node.type) !== -1){level++;}else if(node.type === "ReturnNode" && subqueries.length > 0){level = subqueries.pop();}else if(node.type === "SingletonNode"){level++;}};var constNess=function constNess(){if(isConst){return "   " + annotation("/* const assignment */");}return "";};var variablesUsed=function variablesUsed(){var used=[];for(var a in usedVariables) {if(usedVariables.hasOwnProperty(a)){used.push(variable(a) + " : " + collection(usedVariables[a]));}}if(used.length > 0){return "   " + annotation("/* collections used:") + " " + used.join(", ") + " " + annotation("*/");}return "";};var printNode=function printNode(node){preHandle(node);var line=" " + pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " + keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   " + pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + "   " + indent(level,node.type === "SingletonNode") + label(node);if(node.type === "CalculationNode"){line += variablesUsed() + constNess();}stringBuilder.appendLine(line);postHandle(node);};printQuery(query);stringBuilder.appendLine(section("Execution plan:"));var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   " + pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " + header("Comment");stringBuilder.appendLine(line);var walk=[rootNode];while(walk.length > 0) {var id=walk.pop();var node=nodes[id];printNode(node);if(parents.hasOwnProperty(id)){walk = walk.concat(parents[id]);}if(node.type === "SubqueryNode"){walk = walk.concat([node.subquery.nodes[0].id]);}}stringBuilder.appendLine();printIndexes(indexes);stringBuilder.appendLine();printRules(plan.rules);printModificationFlags(modificationFlags);printWarnings(explain.warnings);} /* the exposed function */function explain(data,options,shouldPrint){'use strict';if(typeof data === "string"){data = {query:data};}if(!(data instanceof Object)){throw "ArangoStatement needs initial data";}options = options || {};setColors(options.colors === undefined?true:options.colors);var stmt=db._createStatement(data);var result=stmt.explain(options);stringBuilder.clearOutput();processQuery(data.query,result,true);if(shouldPrint === undefined || shouldPrint){print(stringBuilder.getOutput());}else {return stringBuilder.getOutput();}}exports.explain = explain;});module.define("org/arangodb/aql/functions",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+}indexes.push(idx);});return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");case "IndexRangeNode":collectionVariables[node.outVariable.id] = node.collection;var index=node.index;index.ranges = node.ranges.map(buildRanges).join(" || ");index.collection = node.collection;index.node = node.id;indexes.push(index);return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse?"reverse ":"") + node.index.type + " index scan */");case "CalculationNode":return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");case "FilterNode":return keyword("FILTER") + " " + variableName(node.inVariable);case "AggregateNode":return keyword("COLLECT") + " " + node.aggregates.map(function(node){return variableName(node.outVariable) + " = " + variableName(node.inVariable);}).join(", ") + (node.count?" " + keyword("WITH COUNT"):"") + (node.outVariable?" " + keyword("INTO") + " " + variableName(node.outVariable):"") + (node.keepVariables?" " + keyword("KEEP") + " " + node.keepVariables.map(function(variable){return variableName(variable);}).join(", "):"") + "   " + annotation("/* " + node.aggregationOptions.method + "*/");case "SortNode":return keyword("SORT") + " " + node.elements.map(function(node){return variableName(node.inVariable) + " " + keyword(node.ascending?"ASC":"DESC");}).join(", ");case "LimitNode":return keyword("LIMIT") + " " + value(JSON.stringify(node.offset)) + ", " + value(JSON.stringify(node.limit));case "ReturnNode":return keyword("RETURN") + " " + variableName(node.inVariable);case "SubqueryNode":return keyword("LET") + " " + variableName(node.outVariable) + " = ...   " + annotation("/* subquery */");case "InsertNode":modificationFlags = node.modificationFlags;return keyword("INSERT") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpdateNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("UPDATE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("UPDATE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "ReplaceNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("REPLACE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("REPLACE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpsertNode":modificationFlags = node.modificationFlags;return keyword("UPSERT") + " " + variableName(node.inDocVariable) + " " + keyword("INSERT") + " " + variableName(node.insertVariable) + " " + keyword(node.isReplace?"REPLACE":"UPDATE") + " " + variableName(node.updateVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoveNode":modificationFlags = node.modificationFlags;return keyword("REMOVE") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoteNode":return keyword("REMOTE");case "DistributeNode":return keyword("DISTRIBUTE");case "ScatterNode":return keyword("SCATTER");case "GatherNode":return keyword("GATHER");}return "unhandled node type (" + node.type + ")";};var level=0,subqueries=[];var indent=function indent(level,isRoot){return pad(1 + level + level) + (isRoot?"* ":"- ");};var preHandle=function preHandle(node){usedVariables = {};isConst = true;if(node.type === "SubqueryNode"){subqueries.push(level);}};var postHandle=function postHandle(node){if(["EnumerateCollectionNode","EnumerateListNode","IndexRangeNode","IndexNode","SubqueryNode"].indexOf(node.type) !== -1){level++;}else if(node.type === "ReturnNode" && subqueries.length > 0){level = subqueries.pop();}else if(node.type === "SingletonNode"){level++;}};var constNess=function constNess(){if(isConst){return "   " + annotation("/* const assignment */");}return "";};var variablesUsed=function variablesUsed(){var used=[];for(var a in usedVariables) {if(usedVariables.hasOwnProperty(a)){used.push(variable(a) + " : " + collection(usedVariables[a]));}}if(used.length > 0){return "   " + annotation("/* collections used:") + " " + used.join(", ") + " " + annotation("*/");}return "";};var printNode=function printNode(node){preHandle(node);var line=" " + pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " + keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   " + pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + "   " + indent(level,node.type === "SingletonNode") + label(node);if(node.type === "CalculationNode"){line += variablesUsed() + constNess();}stringBuilder.appendLine(line);postHandle(node);};printQuery(query);stringBuilder.appendLine(section("Execution plan:"));var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   " + pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " + header("Comment");stringBuilder.appendLine(line);var walk=[rootNode];while(walk.length > 0) {var id=walk.pop();var node=nodes[id];printNode(node);if(parents.hasOwnProperty(id)){walk = walk.concat(parents[id]);}if(node.type === "SubqueryNode"){walk = walk.concat([node.subquery.nodes[0].id]);}}stringBuilder.appendLine();printIndexes(indexes);stringBuilder.appendLine();printRules(plan.rules);printModificationFlags(modificationFlags);printWarnings(explain.warnings);} /* the exposed function */function explain(data,options,shouldPrint){'use strict';if(typeof data === "string"){data = {query:data};}if(!(data instanceof Object)){throw "ArangoStatement needs initial data";}options = options || {};setColors(options.colors === undefined?true:options.colors);var stmt=db._createStatement(data);var result=stmt.explain(options);stringBuilder.clearOutput();processQuery(data.query,result,true);if(shouldPrint === undefined || shouldPrint){print(stringBuilder.getOutput());}else {return stringBuilder.getOutput();}}exports.explain = explain;});module.define("org/arangodb/aql/functions",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL user functions management
 ///
 /// @file
@@ -28883,7 +28883,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       inputEditor = ace.edit("aqlEditor"),
       varsEditor = ace.edit("varsEditor");
       inputEditor.setValue(this.getCustomQueryValueByName(queryName));
-      varsEditor.setValue(this.getCustomQueryParameterByName(queryName));
+      varsEditor.setValue(JSON.stringify(this.getCustomQueryParameterByName(queryName)));
       this.deselect(varsEditor);
       this.deselect(inputEditor);
       $('#querySelect').val(queryName);
@@ -29049,7 +29049,17 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         }
         //cache query in localstorage
-        self.setCachedQuery(inputEditor.getValue(), varsEditor.getValue());
+        var a = inputEditor.getValue(),
+        b = varsEditor.getValue();
+
+        if (a.length === 1) {
+          a = "";
+        }
+        if (b.length === 1) {
+          b = "";
+        }
+
+        self.setCachedQuery(a, b);
       };
 
       inputEditor.getSession().selection.on('changeCursor', function () {
@@ -29312,6 +29322,14 @@ window.ArangoUsers = Backbone.Collection.extend({
             bindVars = '{}';
           }
 
+          if (typeof bindVars === 'string') {
+            try {
+              bindVars = JSON.parse(bindVars);
+            }
+            catch (err) {
+              console.log("could not parse bind parameter");
+            }
+          }
           this.collection.add({
             name: saveName,
             parameter: bindVars, 
@@ -29372,6 +29390,21 @@ window.ArangoUsers = Backbone.Collection.extend({
         $.each(this.queries, function (k, v) {
           if ($('#' + e.currentTarget.id).val() === v.name) {
             inputEditor.setValue(v.value);
+
+            if (v.hasOwnProperty('parameter')) {
+              if (v.parameter === '' || v.parameter === undefined) {
+                v.parameter = '{}';
+              }
+              if (typeof v.parameter === 'object') {
+                varsEditor.setValue(JSON.stringify(v.parameter));
+              }
+              else {
+                varsEditor.setValue(v.parameter);
+              }
+            }
+            else {
+              varsEditor.setValue('{}');
+            }
           }
         });
         $.each(this.customQueries, function (k, v) {
@@ -29389,7 +29422,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             }
           }
         });
-
+        this.deselect(ace.edit("varsEditor"));
         this.deselect(ace.edit("aqlEditor"));
       },
 
@@ -29431,21 +29464,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.customQueries = _.sortBy(this.customQueries, 'name');
       },
 
-      abortQuery: function () {
-        /*
-         $.ajax({
-           type: "DELETE",
-           url: "/_api/cursor/currentFrontendQuery",
-           contentType: "application/json",
-           processData: false,
-           success: function (data) {
-           },
-           error: function (data) {
-           }
-         });
-         */
-      },
-
       readQueryData: function() {
         var inputEditor = ace.edit("aqlEditor");
         var varsEditor = ace.edit("varsEditor");
@@ -29458,14 +29476,18 @@ window.ArangoUsers = Backbone.Collection.extend({
         };
 
         var bindVars = varsEditor.getValue();
-        try {
-          var params = JSON.parse(bindVars);
-          if (Object.keys(params).length !== 0) {
-            data.bindVars = params;
+
+        if (bindVars.length > 0) {
+          try {
+            var params = JSON.parse(bindVars);
+            if (Object.keys(params).length !== 0) {
+              data.bindVars = params;
+            }
           }
-        }
-        catch (e) {
-          arangoHelper.arangoError("Query error", "Could not use bind parameters.");
+          catch (e) {
+            arangoHelper.arangoError("Query error", "Could not parse bind parameters.");
+            return false;
+          }
         }
         return JSON.stringify(data);
       },
@@ -29643,42 +29665,47 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         var self = this;
         var outputEditor = ace.edit("queryOutput");
+        var queryData = this.readQueryData();
         $('.queryExecutionTime').text('');
-        window.progressView.show(
-          "Explain is operating..."
-        );
         this.execPending = false;
-        $.ajax({
-          type: "POST",
-          url: "/_admin/aardvark/query/explain/",
-          data: this.readQueryData(),
-          contentType: "application/json",
-          processData: false,
-          success: function (data) {
-            outputEditor.setValue(data.msg);
-            self.switchTab("result-switch");
-            window.progressView.hide();
-            self.deselect(outputEditor);
-            $('#downloadQueryResult').hide();
-            if (typeof callback === "function") {
-              callback();
-            }
-          },
-          error: function (data) {
-            try {
-              var temp = JSON.parse(data.responseText);
-              arangoHelper.arangoError("Explain error", temp.errorNum);
-            }
-            catch (e) {
-              arangoHelper.arangoError("Explain error", "ERROR");
-            }
-            window.progressView.hide();
-            if (typeof callback === "function") {
-              callback();
-            }
-          }
-        });
 
+        if (queryData) {
+          window.progressView.show(
+            "Explain is operating..."
+          );
+
+          $.ajax({
+            type: "POST",
+            url: "/_admin/aardvark/query/explain/",
+            data: queryData,
+            contentType: "application/json",
+            processData: false,
+            success: function (data) {
+              outputEditor.setValue(data.msg);
+              self.switchTab("result-switch");
+              window.progressView.hide();
+              self.deselect(outputEditor);
+              $('#downloadQueryResult').hide();
+              if (typeof callback === "function") {
+                callback();
+              }
+            },
+            error: function (data) {
+              window.progressView.hide();
+              try {
+                var temp = JSON.parse(data.responseText);
+                arangoHelper.arangoError("Explain error", temp.errorNum);
+              }
+              catch (e) {
+                arangoHelper.arangoError("Explain error", "ERROR");
+              }
+              window.progressView.hide();
+              if (typeof callback === "function") {
+                callback();
+              }
+            }
+          });
+        }
       /*
         var self = this;
         $("svg#explainOutput").html();
@@ -29736,67 +29763,70 @@ window.ArangoUsers = Backbone.Collection.extend({
         // clear result
         outputEditor.setValue('');
 
-        window.progressView.show(
-          "Query is operating..."
-        );
+        var queryData = this.readQueryData();
+        if (queryData) {
 
-        $('.queryExecutionTime').text('');
-        self.timer.start();
+          window.progressView.show(
+            "Query is operating..."
+          );
 
-        this.execPending = false;
-        $.ajax({
-          type: "POST",
-          url: "/_api/cursor",
-          data: this.readQueryData(),
-          contentType: "application/json",
-          processData: false,
-          success: function (data) {
+          $('.queryExecutionTime').text('');
+          self.timer.start();
 
-            var time = "Execution time: " + self.timer.getTimeAndReset()/1000 + " s";
-            $('.queryExecutionTime').text(time);
+          this.execPending = false;
+          $.ajax({
+            type: "POST",
+            url: "/_api/cursor",
+            data: queryData,
+            contentType: "application/json",
+            processData: false,
+            success: function (data) {
 
-            var warnings = "";
-            if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
-              warnings += "Warnings:" + "\r\n\r\n";
-              data.extra.warnings.forEach(function(w) {
-                warnings += "[" + w.code + "], '" + w.message + "'\r\n";
-              });
+              var time = "Execution time: " + self.timer.getTimeAndReset()/1000 + " s";
+              $('.queryExecutionTime').text(time);
+
+              var warnings = "";
+              if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
+                warnings += "Warnings:" + "\r\n\r\n";
+                data.extra.warnings.forEach(function(w) {
+                  warnings += "[" + w.code + "], '" + w.message + "'\r\n";
+                });
+              }
+              if (warnings !== "") {
+                warnings += "\r\n" + "Result:" + "\r\n\r\n";
+              }
+              outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
+              self.switchTab("result-switch");
+              window.progressView.hide();
+              self.deselect(outputEditor);
+              $('#downloadQueryResult').show();
+              if (typeof callback === "function") {
+                callback();
+              }
+            },
+            error: function (data) {
+              self.switchTab("result-switch");
+              $('#downloadQueryResult').hide();
+              try {
+                var temp = JSON.parse(data.responseText);
+                outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
+                //arangoHelper.arangoError("Query error", temp.errorMessage);
+              }
+              catch (e) {
+                outputEditor.setValue('ERROR');
+                arangoHelper.arangoError("Query error", "ERROR");
+              }
+              window.progressView.hide();
+              if (typeof callback === "function") {
+                callback();
+              }
             }
-            if (warnings !== "") {
-              warnings += "\r\n" + "Result:" + "\r\n\r\n";
-            }
-            outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
-            self.switchTab("result-switch");
-            window.progressView.hide();
-            self.deselect(outputEditor);
-            $('#downloadQueryResult').show();
-            if (typeof callback === "function") {
-              callback();
-            }
-          },
-          error: function (data) {
-            self.switchTab("result-switch");
-            $('#downloadQueryResult').hide();
-            try {
-              var temp = JSON.parse(data.responseText);
-              outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
-              //arangoHelper.arangoError("Query error", temp.errorMessage);
-            }
-            catch (e) {
-              outputEditor.setValue('ERROR');
-              arangoHelper.arangoError("Query error", "ERROR");
-            }
-            window.progressView.hide();
-            if (typeof callback === "function") {
-              callback();
-            }
-          }
-        });
+          });
+        }
       },
 
       submitQuery: function () {
         var outputEditor = ace.edit("queryOutput");
-        // this.fillExplain();
         this.fillResult(this.switchTab.bind(this, "result-switch"));
         outputEditor.resize();
         var inputEditor = ace.edit("aqlEditor");
@@ -29805,14 +29835,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       },
 
       explainQuery: function() {
-
         this.fillExplain();
-      /*
-        this.fillExplain(this.switchTab.bind(this, "explain-switch"));
-        this.execPending = true;
-        var inputEditor = ace.edit("aqlEditor");
-        this.deselect(inputEditor);
-      */
       },
 
       // This function changes the focus onto the tab that has been clicked
