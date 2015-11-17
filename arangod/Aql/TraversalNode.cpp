@@ -32,8 +32,8 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
-void TraversalNode::simpleTravererExpression::toJson (triagens::basics::Json& json,
-                                                      TRI_memory_zone_t* zone) const
+void SimpleTraverserExpression::toJson (triagens::basics::Json& json,
+                                        TRI_memory_zone_t* zone) const
 {
   auto op = AstNode::Operators.find(comparisonType);
   
@@ -43,10 +43,10 @@ void TraversalNode::simpleTravererExpression::toJson (triagens::basics::Json& js
   std::string const operatorStr = op->second;
 
   json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
-    ("indexAccess", triagens::basics::Json((int32_t)indexAccess))
-    ("comparisonType", triagens::basics::Json(operatorStr))
-    ("varAccess", varAccess->toJson(zone, true))
-    ("compareTo", compareTo->toJson(zone, true));
+      ("indexAccess", triagens::basics::Json((int32_t)indexAccess))
+      ("comparisonType", triagens::basics::Json(operatorStr))
+      ("varAccess", varAccess->toJson(zone, true))
+      ("compareTo", compareTo->toJson(zone, true));
         
 
 }
@@ -426,17 +426,12 @@ void TraversalNode::storeSimpleExpression(bool isEdgeAccess,
                                           AstNode const* varAccess,
                                           AstNode const* compareTo) {
 
-  simpleTravererExpression e {
-    isEdgeAccess,
-    indexAccess,
-    comparisonType,
-    varAccess,
-    compareTo,
-    nullptr
-  };
-  _expressions.emplace_back(e);
+  _expressions.emplace_back(isEdgeAccess,
+                            indexAccess,
+                            comparisonType,
+                            varAccess,
+                            compareTo);
 }
-
 
 // Local Variables:
 // mode: outline-minor

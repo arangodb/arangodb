@@ -40,6 +40,45 @@ namespace triagens {
 // --SECTION--                                               class TraversalNode
 // -----------------------------------------------------------------------------
 
+    struct SimpleTraverserExpression {
+      bool                           isEdgeAccess;
+      size_t                         indexAccess;
+      AstNodeType                    comparisonType;
+      AstNode const*                 varAccess;
+      AstNode const*                 compareTo;
+      Expression*                    expression;
+      triagens::basics::Json*        evaluated;
+      bool                           isV8;
+      
+      void toJson (triagens::basics::Json& json,
+                   TRI_memory_zone_t* zone) const;
+
+      SimpleTraverserExpression (
+        bool pisEdgeAccess,
+        size_t pindexAccess,
+        AstNodeType pcomparisonType,
+        AstNode const* pvarAccess,
+        AstNode const* pcompareTo
+      ) : isEdgeAccess(pisEdgeAccess),
+          indexAccess(pindexAccess),
+          comparisonType(pcomparisonType),
+          varAccess(pvarAccess),
+          compareTo(pcompareTo),
+          expression(nullptr),
+          evaluated(nullptr),
+          isV8(false) {
+      }
+
+      ~SimpleTraverserExpression () {
+        if (expression != nullptr) {
+          delete expression;
+        }
+        if (evaluated != nullptr) {
+          delete evaluated;
+        }
+      }
+    };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class TraversalNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,17 +88,6 @@ namespace triagens {
       friend class ExecutionBlock;
       friend class TraversalCollectionBlock;
 
-      struct simpleTravererExpression {
-        bool              isEdgeAccess;
-        size_t            indexAccess;
-        AstNodeType       comparisonType;
-        AstNode const*    varAccess;
-        AstNode const*    compareTo;
-        AqlValue const*   evaluatedExpression;
-        
-        void toJson (triagens::basics::Json& json,
-                     TRI_memory_zone_t* zone) const;
-      };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor with a vocbase and a collection name
@@ -347,6 +375,14 @@ namespace triagens {
                                    AstNode const* varAccess,
                                    AstNode const* compareTo);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Returns a regerence to the simple traverser expressions
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<SimpleTraverserExpression> const* expressions () const {
+          return &_expressions;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -448,7 +484,7 @@ namespace triagens {
 /// @brief store a simple comparator filter
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<simpleTravererExpression> _expressions;
+        std::vector<SimpleTraverserExpression> _expressions;
     };
 
   }   // namespace triagens::aql

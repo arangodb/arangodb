@@ -98,7 +98,7 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
         accessNodeBranch = oneNode;
       }
 
-      if ((oneNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) 
+      if ((oneNode->type == NODE_TYPE_OPERATOR_BINARY_EQ)  ||
           (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NE ) ||
           (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LT ) ||
           (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LE ) ||
@@ -127,6 +127,7 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
         
         std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
         if (filterByNode->isAttributeAccessForVariable(result)) {
+          /*
           for (auto v : result) {
             if ((v.first->id == tn->edgeOutVariable()->id)   ||
                 (v.first->id == tn->vertexOutVariable()->id) ||
@@ -135,6 +136,7 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
               return false;
             }
           }
+          */
         }
         AstNode *newNode = pathAccessNode->clone(ast);
 

@@ -27,9 +27,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Ast.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Functions.h"
 #include "Aql/TraversalBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Basics/ScopeGuard.h"
+#include "V8/v8-globals.h"
 #include "V8Server/V8Traverser.h"
 #include "Cluster/ClusterTraverser.h"
 #include <iostream> /// TODO: remove me.
@@ -55,19 +59,45 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
     _edgeReg(0),
     _pathReg(0),
     _condition((ep->condition()) ? ep->condition()->root(): nullptr),
+    _expressions(ep->expressions()),
     _hasV8Expression(false) {
 
   triagens::arango::traverser::TraverserOptions opts;
   ep->fillTraversalOptions(opts);
   auto edgeColls = ep->edgeColls();
-  _resolver = new CollectionNameResolver(_trx->vocbase());
+  auto ast = ep->_plan->getAst();
 
+  for (size_t i = 0; i < _expressions->size(); ++i) {
+    SimpleTraverserExpression it = _expressions->at(i);
+    std::unique_ptr<Expression> e(new Expression(ast, it.compareTo));
+    _hasV8Expression |= e->isV8();
+    std::unordered_set<Variable const*> inVars;
+    e->variables(inVars);
+    it.expression = e.release();
+
+    // Prepare _inVars and _inRegs:
+    _inVars.emplace_back();
+    std::vector<Variable const*>& inVarsCur = _inVars.back();
+    _inRegs.emplace_back();
+    std::vector<RegisterId>& inRegsCur = _inRegs.back();
+
+    for (auto const& v : inVars) {
+      inVarsCur.emplace_back(v);
+      auto it = ep->getRegisterPlan()->varInfo.find(v->id);
+      TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
+      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+      inRegsCur.emplace_back(it->second.registerId);
+    }
+
+  }
+
+  _resolver = new CollectionNameResolver(_trx->vocbase());
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     _traverser.reset(new triagens::arango::traverser::ClusterTraverser(
       edgeColls,
       opts,
       std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
-      // ep->_expressions,
+      // expressions,
       _resolver
     ));
   } else {
@@ -78,7 +108,7 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
     }
     _traverser.reset(new triagens::arango::traverser::DepthFirstTraverser(edgeCollections,
                                                                           opts));
-                                                                          // ep->_expressions));
+                                                                          // _expressions));
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
@@ -209,19 +239,77 @@ int TraversalBlock::initialize () {
   return res;
 }
 
+void TraversalBlock::executeExpressions () {
+  AqlItemBlock* cur = _buffer.front();
+  for (size_t i = 0; i < _expressions->size(); ++i) {
+    // Right now no inVars are allowed.
+    SimpleTraverserExpression it = _expressions->at(i);
+    TRI_document_collection_t const* myCollection = nullptr; 
+    if (it.expression != nullptr) {
+      if (it.evaluated != nullptr) {
+        delete it.evaluated;
+      }
+      AqlValue a = it.expression->execute(_trx, cur, _pos, _inVars[i], _inRegs[i], &myCollection);
+      it.evaluated = new Json(a.toJson(_trx, myCollection, true));
+      a.destroy();
+    }
+  }
+}
+
 void TraversalBlock::executeFilterExpressions () {
-  // TODO walk over simpleFilterExp and execute them
+  if (! _expressions->empty()) {
+    if (_hasV8Expression) {
+      bool const isRunningInCluster = triagens::arango::ServerState::instance()->isRunningInCluster();
+
+      // must have a V8 context here to protect Expression::execute()
+      auto engine = _engine;
+      triagens::basics::ScopeGuard guard{
+        [&engine]() -> void { 
+          engine->getQuery()->enterContext(); 
+        },
+        [&]() -> void {
+          if (isRunningInCluster) {
+            // must invalidate the expression now as we might be called from
+            // different threads
+            for (auto const& e : *_expressions) {
+              e.expression->invalidate();
+            }
+          
+            engine->getQuery()->exitContext(); 
+          }
+        }
+      };
+
+      ISOLATE;
+      v8::HandleScope scope(isolate); // do not delete this!
+    
+      executeExpressions();
+      TRI_IF_FAILURE("TraversalBlock::executeV8")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
+    else {
+      // no V8 context required!
+
+      Functions::InitializeThreadContext();
+      try {
+        executeExpressions();
+        TRI_IF_FAILURE("TraversalBlock::executeExpression")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        Functions::DestroyThreadContext();
+      }
+      catch (...) {
+        Functions::DestroyThreadContext();
+        throw;
+      }
+    }
+  }
 }
 
 int TraversalBlock::initializeCursor (AqlItemBlock* items, 
                                       size_t pos) {
-  int res = ExecutionBlock::initializeCursor(items, pos);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return ExecutionBlock::initializeCursor(items, pos);
 }
 
 bool TraversalBlock::executeExpressions (AqlValue& pathValue) {
