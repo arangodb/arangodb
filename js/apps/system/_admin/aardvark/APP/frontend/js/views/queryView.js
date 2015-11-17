@@ -609,6 +609,21 @@
         $.each(this.queries, function (k, v) {
           if ($('#' + e.currentTarget.id).val() === v.name) {
             inputEditor.setValue(v.value);
+
+            if (v.hasOwnProperty('parameter')) {
+              if (v.parameter === '' || v.parameter === undefined) {
+                v.parameter = '{}';
+              }
+              if (typeof v.parameter === 'object') {
+                varsEditor.setValue(JSON.stringify(v.parameter));
+              }
+              else {
+                varsEditor.setValue(v.parameter);
+              }
+            }
+            else {
+              varsEditor.setValue('{}');
+            }
           }
         });
         $.each(this.customQueries, function (k, v) {
@@ -626,7 +641,7 @@
             }
           }
         });
-
+        this.deselect(ace.edit("varsEditor"));
         this.deselect(ace.edit("aqlEditor"));
       },
 
