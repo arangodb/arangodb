@@ -98,7 +98,14 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
         accessNodeBranch = oneNode;
       }
 
-      if (oneNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      if ((oneNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) 
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NE ) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LT ) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LE ) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GT ) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GE ) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_IN ) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
         compareNode = oneNode;
       }
     }
@@ -116,29 +123,47 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
         filterByNode = compareNode->getMember(0);
       }
 
-      if (accessNodeBranch->isSimple() && filterByNode->type == NODE_TYPE_VALUE) {
-          AstNode *newNode = pathAccessNode->clone(ast);
-
-          // since we just copied one path, we should only find one. 
-          newNode->findVariableAccess(currentPath, clonePath, var);
-          auto len = clonePath[0].size();
-          if (len < 4) {
-            // well, if we've gotten here, we can't cluster filter, but 
-            // usual early filtering should be fine.
-            return true;
+      if (accessNodeBranch->isSimple() && filterByNode->isDeterministic()) {
+        
+        std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
+        if (filterByNode->isAttributeAccessForVariable(result)) {
+          for (auto v : result) {
+            if ((v.first->id == tn->edgeOutVariable()->id)   ||
+                (v.first->id == tn->vertexOutVariable()->id) ||
+                (v.first->id == tn->pathOutVariable()->id))     {
+              // The RHS also has one of our variables, we can't evaluate that!
+              return false;
+            }
           }
-          AstNode* firstRefNode = (AstNode*) clonePath[0][len - 4];
-          TRI_ASSERT(firstRefNode->type == NODE_TYPE_ATTRIBUTE_ACCESS);
-          auto varRefNode = new AstNode(NODE_TYPE_REFERENCE);
-          ast->query()->addNode(varRefNode);
-          varRefNode->setData(isEdgeAccess ? tn->edgeOutVariable(): tn->vertexOutVariable());
-          firstRefNode->changeMember(0, varRefNode);
-          tn->storeSimpleExpression(isEdgeAccess,
-                                    attrAccessTo,
-                                    compareNode->type,
-                                    newNode,
-                                    filterByNode);
+        }
+        AstNode *newNode = pathAccessNode->clone(ast);
 
+        // since we just copied one path, we should only find one. 
+        newNode->findVariableAccess(currentPath, clonePath, var);
+        if (clonePath.size() != 1) {
+          return false;
+        }
+        auto len = clonePath[0].size();
+        if (len < 4) {
+          // well, if we've gotten here, we can't cluster filter, but 
+          // usual early filtering should be fine.
+          return true;
+        }
+
+        AstNode* firstRefNode = (AstNode*) clonePath[0][len - 4];
+        TRI_ASSERT(firstRefNode->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+
+        // replace the path variable access by a variable access to edge/vertex (then current to the iteration)
+        auto varRefNode = new AstNode(NODE_TYPE_REFERENCE);
+        ast->query()->addNode(varRefNode);
+        varRefNode->setData(isEdgeAccess ? tn->edgeOutVariable(): tn->vertexOutVariable());
+        firstRefNode->changeMember(0, varRefNode);
+
+        tn->storeSimpleExpression(isEdgeAccess,
+                                  attrAccessTo,
+                                  compareNode->type,
+                                  newNode,
+                                  filterByNode);
       }
     }
   }
