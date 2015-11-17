@@ -32,25 +32,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
-void SimpleTraverserExpression::toJson (triagens::basics::Json& json,
-                                        TRI_memory_zone_t* zone) const
-{
-  auto op = AstNode::Operators.find(comparisonType);
-  
-  if (op == AstNode::Operators.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid operator for simpleTraverserExpression");
-  }
-  std::string const operatorStr = op->second;
-
-  json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
-      ("indexAccess", triagens::basics::Json((int32_t)indexAccess))
-      ("comparisonType", triagens::basics::Json(operatorStr))
-      ("varAccess", varAccess->toJson(zone, true))
-      ("compareTo", compareTo->toJson(zone, true));
-        
-
-}
-
 TraversalNode::TraversalNode (ExecutionPlan* plan,
                size_t id,
                TRI_vocbase_t* vocbase, 
@@ -323,14 +304,19 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   if (_expressions.size() > 0) {
-    triagens::basics::Json expressionArray = triagens::basics::Json(triagens::basics::Json::Array,
-                                                                    _expressions.size());
-    for (auto x : _expressions) {
-      triagens::basics::Json exp(zone, triagens::basics::Json::Object);
-      x.toJson(exp, zone);
-      expressionArray(exp);
+    triagens::basics::Json expressionObject = triagens::basics::Json(triagens::basics::Json::Object,
+                                                                     _expressions.size());
+    for (auto map : _expressions) {
+      triagens::basics::Json expressionArray = triagens::basics::Json(triagens::basics::Json::Array,
+                                                                      map.second.size());
+      for (auto x : map.second) {
+        triagens::basics::Json exp(zone, triagens::basics::Json::Object);
+        x->toJson(exp, zone);
+        expressionArray(exp);
+      }
+      expressionObject.set(std::to_string(map.first), expressionArray);
     }
-    json("simpleExpressions", expressionArray);
+    json("simpleExpressions", expressionObject);
   }
   // And add it:
   nodes(json);
@@ -425,12 +411,18 @@ void TraversalNode::storeSimpleExpression(bool isEdgeAccess,
                                           AstNodeType comparisonType,
                                           AstNode const* varAccess,
                                           AstNode const* compareTo) {
-
-  _expressions.emplace_back(isEdgeAccess,
-                            indexAccess,
-                            comparisonType,
-                            varAccess,
-                            compareTo);
+  auto it = _expressions.find(indexAccess);
+  if (it == _expressions.end()) {
+    std::vector<triagens::arango::traverser::TraverserExpression* > sec;
+    _expressions.emplace(indexAccess, sec);
+    it = _expressions.find(indexAccess);
+  }
+  std::unique_ptr<SimpleTraverserExpression> e(new SimpleTraverserExpression(isEdgeAccess,
+                                                                             comparisonType,
+                                                                             varAccess,
+                                                                             compareTo));
+  it->second.push_back(e.get());
+  e.release();
 }
 
 // Local Variables:

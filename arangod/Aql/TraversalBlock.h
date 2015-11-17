@@ -212,7 +212,7 @@ namespace triagens {
 /// @brief reference to the conditions that might be executed locally
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<SimpleTraverserExpression> const* _expressions;
+        std::unordered_map<size_t, std::vector<triagens::arango::traverser::TraverserExpression*>> const* _expressions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not one of the bounds expressions requires V8

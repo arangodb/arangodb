@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/Traverser.h"
 #include "Basics/JsonHelper.h"
+#include "Aql/AstNode.h"
 #include "Utils/Transaction.h"
 #include "VocBase/voc-types.h"
 
@@ -40,6 +41,50 @@ namespace triagens {
   namespace arango {
     namespace traverser {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                        struct TraverserExpression
+// -----------------------------------------------------------------------------
+
+      class TraverserExpression {
+        public:
+
+          bool                           isEdgeAccess;
+          triagens::aql::AstNodeType     comparisonType;
+          triagens::aql::AstNode const*  varAccess;
+          triagens::basics::Json*        compareTo;
+
+          TraverserExpression (
+            bool pisEdgeAccess,
+            triagens::aql::AstNodeType pcomparisonType,
+            triagens::aql::AstNode const* pvarAccess
+          ) : isEdgeAccess(pisEdgeAccess),
+              comparisonType(pcomparisonType),
+              varAccess(pvarAccess),
+              compareTo(nullptr) {
+          }
+
+          virtual ~TraverserExpression () {
+            if (compareTo != nullptr) {
+              delete compareTo;
+            }
+          }
+
+          void toJson (triagens::basics::Json& json,
+                       TRI_memory_zone_t* zone) const {
+            auto op = triagens::aql::AstNode::Operators.find(comparisonType);
+            
+            if (op == triagens::aql::AstNode::Operators.end()) {
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid operator for TraverserExpression");
+            }
+            std::string const operatorStr = op->second;
+
+            json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
+                ("comparisonType", triagens::basics::Json(operatorStr))
+                ("varAccess", varAccess->toJson(zone, true))
+                ("compareTo", *compareTo);
+          }
+
+      };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   struct VertexId
@@ -184,17 +229,20 @@ namespace triagens {
 
           Traverser () 
           : _pruneNext(false),
-            _done(false) {
+            _done(false),
+            _expressions(nullptr) {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Constructor. This is an abstract only class.
 ////////////////////////////////////////////////////////////////////////////////
 
-          Traverser (TraverserOptions& opts) 
+          Traverser (TraverserOptions& opts,
+                     std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expressions) 
           : _pruneNext(false),
             _done(false),
-            _opts(opts) {
+            _opts(opts),
+            _expressions(expressions) {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,6 +318,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           TraverserOptions _opts;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a vector containing all information for early pruning
+////////////////////////////////////////////////////////////////////////////////
+
+          std::unordered_map<size_t, std::vector<TraverserExpression*>> const* _expressions;
 
       };
 

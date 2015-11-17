@@ -818,7 +818,16 @@ DepthFirstTraverser::DepthFirstTraverser (
 DepthFirstTraverser::DepthFirstTraverser (
   std::vector<TRI_document_collection_t*> edgeCollections,
   TraverserOptions& opts
-) : Traverser(opts),
+) : Traverser(opts, nullptr),
+    _edgeCols(edgeCollections) {
+  _defInternalFunctions();
+}
+
+DepthFirstTraverser::DepthFirstTraverser (
+  std::vector<TRI_document_collection_t*> edgeCollections,
+  TraverserOptions& opts,
+  std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expressions
+) : Traverser(opts, expressions),
     _edgeCols(edgeCollections) {
   _defInternalFunctions();
 }

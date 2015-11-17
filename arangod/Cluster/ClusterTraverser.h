@@ -49,8 +49,9 @@ namespace triagens {
             std::vector<std::string> edgeCollections,
             TraverserOptions& opts,
             std::string dbname,
-            CollectionNameResolver const* resolver
-          ) : Traverser(opts),
+            CollectionNameResolver const* resolver,
+            std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expressions
+          ) : Traverser(opts, expressions),
             _edgeCols(edgeCollections),
             _dbname(dbname),
             _vertexGetter(&_edges),

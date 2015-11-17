@@ -298,6 +298,12 @@ namespace triagens {
             TraverserOptions& _opts
           );
 
+          DepthFirstTraverser (
+            std::vector<TRI_document_collection_t*> edgeCollections,
+            TraverserOptions& _opts,
+            std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expressions
+          );
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reset the traverser to use another start vertex
 ////////////////////////////////////////////////////////////////////////////////

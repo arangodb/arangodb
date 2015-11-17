@@ -37,47 +37,50 @@ namespace triagens {
   namespace aql {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class TraversalNode
+// --SECTION--                                  struct SimpleTraverserExpression
 // -----------------------------------------------------------------------------
 
-    struct SimpleTraverserExpression {
-      bool                           isEdgeAccess;
-      size_t                         indexAccess;
-      AstNodeType                    comparisonType;
-      AstNode const*                 varAccess;
-      AstNode const*                 compareTo;
-      Expression*                    expression;
-      triagens::basics::Json*        evaluated;
-      bool                           isV8;
+    class SimpleTraverserExpression : public triagens::arango::traverser::TraverserExpression {
+
+      public:
+        triagens::aql::AstNode const*  toEvaluate;
+        triagens::aql::Expression*     expression;
       
-      void toJson (triagens::basics::Json& json,
-                   TRI_memory_zone_t* zone) const;
-
-      SimpleTraverserExpression (
-        bool pisEdgeAccess,
-        size_t pindexAccess,
-        AstNodeType pcomparisonType,
-        AstNode const* pvarAccess,
-        AstNode const* pcompareTo
-      ) : isEdgeAccess(pisEdgeAccess),
-          indexAccess(pindexAccess),
-          comparisonType(pcomparisonType),
-          varAccess(pvarAccess),
-          compareTo(pcompareTo),
-          expression(nullptr),
-          evaluated(nullptr),
-          isV8(false) {
-      }
-
-      ~SimpleTraverserExpression () {
-        if (expression != nullptr) {
-          delete expression;
+        SimpleTraverserExpression (
+          bool isEdgeAccess,
+          triagens::aql::AstNodeType comparisonType,
+          triagens::aql::AstNode const* varAccess,
+          triagens::aql::AstNode const* ptoEvaluate
+        ) : triagens::arango::traverser::TraverserExpression(isEdgeAccess,
+                                                             comparisonType,
+                                                             varAccess),
+            toEvaluate(ptoEvaluate),
+            expression(nullptr) {
         }
-        if (evaluated != nullptr) {
-          delete evaluated;
+
+        ~SimpleTraverserExpression () {
+          if (expression != nullptr) {
+            delete expression;
+          }
         }
-      }
+
+        void toJson (triagens::basics::Json& json,
+                     TRI_memory_zone_t* zone) const {
+          auto op = triagens::aql::AstNode::Operators.find(comparisonType);
+          
+          if (op == triagens::aql::AstNode::Operators.end()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid operator for simpleTraverserExpression");
+          }
+          std::string const operatorStr = op->second;
+
+          json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
+              ("comparisonType", triagens::basics::Json(operatorStr))
+              ("varAccess", varAccess->toJson(zone, true))
+              ("compareTo", toEvaluate->toJson(zone, true));
+        }
+
     };
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class TraversalNode
@@ -379,7 +382,7 @@ namespace triagens {
 /// @brief Returns a regerence to the simple traverser expressions
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<SimpleTraverserExpression> const* expressions () const {
+        std::unordered_map<size_t, std::vector<triagens::arango::traverser::TraverserExpression*>> const* expressions () const {
           return &_expressions;
         }
 
@@ -484,7 +487,7 @@ namespace triagens {
 /// @brief store a simple comparator filter
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<SimpleTraverserExpression> _expressions;
+        std::unordered_map<size_t, std::vector<triagens::arango::traverser::TraverserExpression*>> _expressions;
     };
 
   }   // namespace triagens::aql

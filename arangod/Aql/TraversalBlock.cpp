@@ -67,28 +67,29 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
   auto edgeColls = ep->edgeColls();
   auto ast = ep->_plan->getAst();
 
-  for (size_t i = 0; i < _expressions->size(); ++i) {
-    SimpleTraverserExpression it = _expressions->at(i);
-    std::unique_ptr<Expression> e(new Expression(ast, it.compareTo));
-    _hasV8Expression |= e->isV8();
-    std::unordered_set<Variable const*> inVars;
-    e->variables(inVars);
-    it.expression = e.release();
+  for (auto& map : *_expressions) {
+    for (size_t i = 0; i < map.second.size(); ++i) {
+      SimpleTraverserExpression* it = dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
+      std::unique_ptr<Expression> e(new Expression(ast, it->toEvaluate));
+      _hasV8Expression |= e->isV8();
+      std::unordered_set<Variable const*> inVars;
+      e->variables(inVars);
+      it->expression = e.release();
 
-    // Prepare _inVars and _inRegs:
-    _inVars.emplace_back();
-    std::vector<Variable const*>& inVarsCur = _inVars.back();
-    _inRegs.emplace_back();
-    std::vector<RegisterId>& inRegsCur = _inRegs.back();
+      // Prepare _inVars and _inRegs:
+      _inVars.emplace_back();
+      std::vector<Variable const*>& inVarsCur = _inVars.back();
+      _inRegs.emplace_back();
+      std::vector<RegisterId>& inRegsCur = _inRegs.back();
 
-    for (auto const& v : inVars) {
-      inVarsCur.emplace_back(v);
-      auto it = ep->getRegisterPlan()->varInfo.find(v->id);
-      TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
-      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-      inRegsCur.emplace_back(it->second.registerId);
+      for (auto const& v : inVars) {
+        inVarsCur.emplace_back(v);
+        auto it = ep->getRegisterPlan()->varInfo.find(v->id);
+        TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
+        TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+        inRegsCur.emplace_back(it->second.registerId);
+      }
     }
-
   }
 
   _resolver = new CollectionNameResolver(_trx->vocbase());
@@ -97,8 +98,8 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
       edgeColls,
       opts,
       std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
-      // expressions,
-      _resolver
+      _resolver,
+      _expressions
     ));
   } else {
     std::vector<TRI_document_collection_t*> edgeCollections;
@@ -107,8 +108,8 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
       edgeCollections.push_back(_trx->documentCollection(cid));
     }
     _traverser.reset(new triagens::arango::traverser::DepthFirstTraverser(edgeCollections,
-                                                                          opts));
-                                                                          // _expressions));
+                                                                          opts,
+                                                                          _expressions));
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
@@ -241,17 +242,20 @@ int TraversalBlock::initialize () {
 
 void TraversalBlock::executeExpressions () {
   AqlItemBlock* cur = _buffer.front();
-  for (size_t i = 0; i < _expressions->size(); ++i) {
-    // Right now no inVars are allowed.
-    SimpleTraverserExpression it = _expressions->at(i);
-    TRI_document_collection_t const* myCollection = nullptr; 
-    if (it.expression != nullptr) {
-      if (it.evaluated != nullptr) {
-        delete it.evaluated;
+  for (auto& map : *_expressions) {
+    for (size_t i = 0; i < map.second.size(); ++i) {
+      // Right now no inVars are allowed.
+      SimpleTraverserExpression* it = dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
+      TRI_document_collection_t const* myCollection = nullptr; 
+      if (it->expression != nullptr) {
+        if (it->compareTo != nullptr) {
+          delete it->compareTo;
+        }
+        // inVars and inRegs needs fixx
+        AqlValue a = it->expression->execute(_trx, cur, _pos, _inVars[i], _inRegs[i], &myCollection);
+        it->compareTo = new Json(a.toJson(_trx, myCollection, true));
+        a.destroy();
       }
-      AqlValue a = it.expression->execute(_trx, cur, _pos, _inVars[i], _inRegs[i], &myCollection);
-      it.evaluated = new Json(a.toJson(_trx, myCollection, true));
-      a.destroy();
     }
   }
 }
@@ -271,8 +275,11 @@ void TraversalBlock::executeFilterExpressions () {
           if (isRunningInCluster) {
             // must invalidate the expression now as we might be called from
             // different threads
-            for (auto const& e : *_expressions) {
-              e.expression->invalidate();
+            for (auto const& map : *_expressions) {
+              for (auto const& e : map.second) {
+                auto casted = dynamic_cast<SimpleTraverserExpression*>(e);
+                casted->expression->invalidate();
+              }
             }
           
             engine->getQuery()->exitContext(); 
