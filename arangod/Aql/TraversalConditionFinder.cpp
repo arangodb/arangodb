@@ -50,7 +50,6 @@ bool checkPathVariableAccessFeasible(CalculationNode const* cn,
     size_t len = onePath.size();
     bool isEdgeAccess = false;
     bool isVertexAccess = false;
-    bool isAsterisc = false;
     size_t attrAccessTo = 0;
 
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
@@ -82,7 +81,7 @@ bool checkPathVariableAccessFeasible(CalculationNode const* cn,
     else if ((onePath[len - 3]->type == NODE_TYPE_ITERATOR) &&
              (onePath[len - 4]->type == NODE_TYPE_EXPANSION)){
       // we now need to check for p.edges[*] which becomes a fancy structure
-      isAsterisc = true;
+      return false;
     }
     else {
       return false;
@@ -118,42 +117,29 @@ bool checkPathVariableAccessFeasible(CalculationNode const* cn,
       }
 
       if (accessNodeBranch->isSimple() && filterByNode->type == NODE_TYPE_VALUE) {
-        AstNode *newNode = accessNodeBranch->clone(ast);
+          AstNode *newNode = pathAccessNode->clone(ast);
 
-        // since we just copied one path, we should only find one. 
-        newNode->findVariableAccess(currentPath, clonePath, var);
-        newNode->dump(20);
-        if (isAsterisc) {
-
-        }
-        else {
+          // since we just copied one path, we should only find one. 
+          newNode->findVariableAccess(currentPath, clonePath, var);
           auto len = clonePath[0].size();
-          /// todo len < 4
+          if (len < 4) {
+            // well, if we've gotten here, we can't cluster filter, but 
+            // usual early filtering should be fine.
+            return true;
+          }
           AstNode* firstRefNode = (AstNode*) clonePath[0][len - 4];
           TRI_ASSERT(firstRefNode->type == NODE_TYPE_ATTRIBUTE_ACCESS);
           auto varRefNode = new AstNode(NODE_TYPE_REFERENCE);
           ast->query()->addNode(varRefNode);
           varRefNode->setData(isEdgeAccess ? tn->edgeOutVariable(): tn->vertexOutVariable());
           firstRefNode->changeMember(0, varRefNode);
-          tn->storeSimpleExpression(isAsterisc,
-                                    isEdgeAccess,
+          tn->storeSimpleExpression(isEdgeAccess,
                                     attrAccessTo,
                                     NODE_TYPE_OPERATOR_BINARY_EQ,
                                     newNode,
                                     filterByNode);
-          
-          printf("\n      xxxxx: %s\n", newNode->toString().c_str());
-          printf("\n      yyyy: %s\n", accessNodeBranch->toString().c_str());
-          printf("\n      yyyy: %s\n", filterByNode->toString().c_str());
-        }
 
       }
-printf("\na: %s\n", compareNode->toString().c_str());
-printf("\na: %s\n", accessNodeBranch->toString().c_str());
-
-  triagens::basics::Json j(TRI_UNKNOWN_MEM_ZONE, accessNodeBranch->toJson(TRI_UNKNOWN_MEM_ZONE, true));
-  printf("sanotuh %s\n", j.toString().c_str());
-
     }
   }
 

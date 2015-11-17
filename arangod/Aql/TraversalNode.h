@@ -50,7 +50,6 @@ namespace triagens {
       friend class TraversalCollectionBlock;
 
       struct simpleTravererExpression {
-        bool              isAsteriscAccess;
         bool              isEdgeAccess;
         size_t            indexAccess;
         AstNodeType       comparisonType;
@@ -341,8 +340,7 @@ namespace triagens {
 /// @brief Remember a simple comparator filter
 ////////////////////////////////////////////////////////////////////////////////
 
-        void storeSimpleExpression(bool isAsteriscAccess,
-                                   bool isEdgeAccess,
+        void storeSimpleExpression(bool isEdgeAccess,
                                    size_t indexAccess,
                                    AstNodeType comparisonType,
                                    AstNode const* varAccess,
