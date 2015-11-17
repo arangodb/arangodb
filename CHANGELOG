@@ -4,6 +4,19 @@ v2.6.11 (XXXX-XX-XX)
 * fixed potentially invalid pointer access in shaper when the currently accessed
   document got re-located by the WAL collector at the very same time
 
+* fixed "no start tick" issue in replication applier
+        
+  This error could occur after restarting a slave server after a shutdown
+  when no data was ever transferred from the master to the slave via the
+  continuous replication
+
+* exclude `_apps` collection from replication
+
+  The slave has its own `_apps` collection which it populates on server start.
+  When replicating data from the master to the slave, the data from the master may
+  clash with the slave's own data in the `_apps` collection. Excluding the `_apps`
+  collection from replication avoids this.
+
 
 v2.6.10 (2015-11-10)
 --------------------

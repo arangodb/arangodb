@@ -1102,7 +1102,9 @@ int main (int argc, char* argv[]) {
 
 
   if (res != TRI_ERROR_NO_ERROR) {
-    cerr << errorMsg << endl;
+    if (! errorMsg.empty()) {
+      cerr << "Error: " << errorMsg << endl;
+    }
     ret = EXIT_FAILURE;
   }
 

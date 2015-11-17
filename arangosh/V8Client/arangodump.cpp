@@ -1349,12 +1349,12 @@ int main (int argc, char* argv[]) {
 
   if (OutputDirectory.empty() ||
       (TRI_ExistsFile(OutputDirectory.c_str()) && ! isDirectory)) {
-    cerr << "cannot write to output directory '" << OutputDirectory << "'" << endl;
+    cerr << "Error: cannot write to output directory '" << OutputDirectory << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (isDirectory && ! isEmptyDirectory && ! Overwrite) {
-    cerr << "output directory '" << OutputDirectory << "' already exists. use \"--overwrite true\" to overwrite data in it" << endl;
+    cerr << "Error: output directory '" << OutputDirectory << "' already exists. use \"--overwrite true\" to overwrite data in it" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -1383,11 +1383,6 @@ int main (int argc, char* argv[]) {
 
   Client = new SimpleHttpClient(Connection, BaseClient.requestTimeout(), false);
 
-  if (Client == nullptr) {
-    cerr << "out of memory" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-
   Client->setLocationRewriter(0, &rewriteLocation);
   Client->setUserNamePassword("/", BaseClient.username(), BaseClient.password());
 
@@ -1408,7 +1403,7 @@ int main (int argc, char* argv[]) {
   int minor = 0;
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    cerr << "invalid server version '" << versionString << "'" << endl;
+    cerr << "Error: invalid server version '" << versionString << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -1416,7 +1411,7 @@ int main (int argc, char* argv[]) {
       major > 2 ||
       (major == 1 && minor < 4)) {
     // we can connect to 1.4, 2.0 and higher only
-    cerr << "got incompatible server version '" << versionString << "'" << endl;
+    cerr << "Error: got incompatible server version '" << versionString << "'" << endl;
     if (! Force) {
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
@@ -1427,7 +1422,7 @@ int main (int argc, char* argv[]) {
     clusterMode = GetArangoIsCluster();
     if (clusterMode) {
       if (TickStart != 0 || TickEnd != 0) {
-        cerr << "cannot use tick-start or tick-end on a cluster" << endl;
+        cerr << "Error: cannot use tick-start or tick-end on a cluster" << endl;
         TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
     }
@@ -1446,7 +1441,7 @@ int main (int argc, char* argv[]) {
     int res = TRI_CreateDirectory(OutputDirectory.c_str(),systemError, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      cerr << "unable to create output directory '" << OutputDirectory << "': " << errorMessage << endl;
+      cerr << "Error: unable to create output directory '" << OutputDirectory << "': " << errorMessage << endl;
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
   }
@@ -1485,11 +1480,11 @@ int main (int argc, char* argv[]) {
     }
   }
   catch (std::exception const& ex) {
-    cerr << "caught exception " << ex.what() << endl;
+    cerr << "Error: caught exception " << ex.what() << endl;
     res = TRI_ERROR_INTERNAL;
   }
   catch (...) {
-    cerr << "caught unknown exception" << endl;
+    cerr << "Error: caught unknown exception" << endl;
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -1505,7 +1500,9 @@ int main (int argc, char* argv[]) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    cerr << errorMsg << endl;
+    if (! errorMsg.empty()) {
+      cerr << "Error: " << errorMsg << endl;
+    }
     ret = EXIT_FAILURE;
   }
 

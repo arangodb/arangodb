@@ -541,8 +541,17 @@ static int StartApplier (TRI_replication_applier_t* applier,
     return TRI_ERROR_INTERNAL;
   }
 
-  LOG_INFO("started replication applier for database '%s'",
-           applier->_databaseName);
+  if (useTick) {
+    LOG_INFO("started replication applier for database '%s', endpoint '%s' from tick %llu", 
+             applier->_databaseName,
+             applier->_configuration._endpoint,
+             (unsigned long long) initialTick);
+  }
+  else {
+    LOG_INFO("re-started replication applier for database '%s', endpoint '%s'",
+             applier->_databaseName,
+             applier->_configuration._endpoint);
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
