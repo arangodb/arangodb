@@ -55,6 +55,7 @@ namespace triagens {
         AstNodeType       comparisonType;
         AstNode const*    varAccess;
         AstNode const*    compareTo;
+        AqlValue const*   evaluatedExpression;
         
         void toJson (triagens::basics::Json& json,
                      TRI_memory_zone_t* zone) const;

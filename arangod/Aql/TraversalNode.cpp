@@ -428,10 +428,12 @@ void TraversalNode::storeSimpleExpression(bool isEdgeAccess,
 
   simpleTravererExpression e {
     isEdgeAccess,
-      indexAccess,
-      comparisonType,
-      varAccess,
-      compareTo};
+    indexAccess,
+    comparisonType,
+    varAccess,
+    compareTo,
+    nullptr
+  };
   _expressions.emplace_back(e);
 }
 

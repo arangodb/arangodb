@@ -67,6 +67,7 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
       edgeColls,
       opts,
       std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
+      // ep->_expressions,
       _resolver
     ));
   } else {
@@ -75,7 +76,9 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
       TRI_voc_cid_t cid = _resolver->getCollectionId(coll);
       edgeCollections.push_back(_trx->documentCollection(cid));
     }
-    _traverser.reset(new triagens::arango::traverser::DepthFirstTraverser(edgeCollections, opts));
+    _traverser.reset(new triagens::arango::traverser::DepthFirstTraverser(edgeCollections,
+                                                                          opts));
+                                                                          // ep->_expressions));
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
@@ -206,6 +209,10 @@ int TraversalBlock::initialize () {
   return res;
 }
 
+void TraversalBlock::executeFilterExpressions () {
+  // TODO walk over simpleFilterExp and execute them
+}
+
 int TraversalBlock::initializeCursor (AqlItemBlock* items, 
                                       size_t pos) {
   int res = ExecutionBlock::initializeCursor(items, pos);
@@ -219,8 +226,6 @@ int TraversalBlock::initializeCursor (AqlItemBlock* items,
 
 bool TraversalBlock::executeExpressions (AqlValue& pathValue) {
   TRI_ASSERT(_condition != nullptr);
-  return true;
-
 
   auto& toReplace = _nonConstExpressions[0];
   auto exp = toReplace->expression;
@@ -376,6 +381,7 @@ AqlItemBlock* TraversalBlock::getSome (size_t, // atLeast,
       return nullptr;
     }
     _pos = 0;           // this is in the first block
+    executeFilterExpressions();
   }
 
   // If we get here, we do have _buffer.front()
@@ -477,6 +483,7 @@ size_t TraversalBlock::skipSome (size_t atLeast, size_t atMost) {
       return skipped;
     }
     _pos = 0;           // this is in the first block
+    executeFilterExpressions();
   }
 
   // If we get here, we do have _buffer.front()

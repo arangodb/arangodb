@@ -282,6 +282,12 @@ namespace triagens {
           return _pathVar != nullptr;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Executes the path-local filter expressions
+////////////////////////////////////////////////////////////////////////////////
+
+        void executeFilterExpressions ();
+
     };
   }  // namespace triagens::aql
 }  // namespace triagens
