@@ -147,6 +147,26 @@
       width: $content-size;
     }
 
+    .dashboard-full-width-chart {
+      $int-width: $content-size - 3px;
+      width: $int-width;
+
+      .dashboard-full-width-chart-inner {
+        width: $int-width - 10px;
+
+        .dashboard-interior-chart {
+          float: left;
+          $int-height: (($dashboard-height - 29px) / 2) - $tendency-height-corrector;
+          height: $int-height;
+          width: (($int-width - 11px) / 3) - 2px;
+        }
+      }
+
+      .dashboard-sub-bar {
+        width: $int-width - 11px;
+      }
+    }
+
     .dashboard-large-chart {
       $int-width: ($content-size * 2 / 3) - 4px - 2px;
       width: $int-width;

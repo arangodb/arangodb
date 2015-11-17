@@ -47,6 +47,74 @@
   }
 }
 
+.dashboard-full-width-chart {
+  @extend %dashboard-chart-basic;
+  border: 1px solid rgba(104, 103, 102, .10);
+  border-radius: 3px;
+  margin-right: 12px;
+
+  .dashboard-full-width-chart-inner {
+    @extend %dashboard-chart-box;
+    @extend %pull-left;
+    background-color: $c-white;
+    border-left: $dashboard-borderwidth solid $c-white;
+    border-right: $dashboard-borderwidth solid $c-white;
+    border-top: $dashboard-borderwidth solid $c-white;
+    padding-bottom: $dashboard-padding;
+    padding-top: $dashboard-padding + 2px;
+
+    .dashboard-subtitle-bar {
+
+      &.top {
+        border-bottom: 1px solid $c-e1grey;
+        height: 48px;
+        line-height: 48px;
+        text-align: right;
+      }
+
+    }
+
+    .dashboard-interior-chart {
+      @extend %pull-left;
+      border-left: 1px solid $c-e1grey;
+
+      .inner {
+        margin-left: 10px;
+        margin-right: 10px;
+
+
+        table {
+          margin-top: 10px;
+          margin-bottom: 10px;
+          width: 100%;
+
+          td {
+            white-space: nowrap;
+          }
+
+          td:first-child {
+            width: 100px;
+          }
+        }
+      }
+
+    }
+
+    .dashboard-interior-chart:first-child {
+      border-left: 0;
+    }
+
+  }
+
+  .state {
+    background-color: $c-white;
+    border-radius: 5px;
+    color: $c-black;
+    margin-left: 5px;
+    padding-left: 3px;
+    padding-right: 5px;
+  }
+}
 
 .dashboard-large-chart {
   @extend %dashboard-chart-basic;
