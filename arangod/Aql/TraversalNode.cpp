@@ -32,8 +32,8 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
-void TraversalNode::simpleTravererExpression::toJson(triagens::basics::Json& json,
-                                                     TRI_memory_zone_t* zone) const
+void TraversalNode::simpleTravererExpression::toJson (triagens::basics::Json& json,
+                                                      TRI_memory_zone_t* zone) const
 {
   auto op = AstNode::Operators.find(comparisonType);
   
@@ -322,10 +322,10 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
     json("pathOutVariable", pathOutVariable()->toJson());
   }
 
-  if (expressions.size() > 0) {
+  if (_expressions.size() > 0) {
     triagens::basics::Json expressionArray = triagens::basics::Json(triagens::basics::Json::Array,
-                                                                    expressions.size());
-    for (auto x : expressions) {
+                                                                    _expressions.size());
+    for (auto x : _expressions) {
       triagens::basics::Json exp(zone, triagens::basics::Json::Object);
       x.toJson(exp, zone);
       expressionArray(exp);
@@ -432,7 +432,7 @@ void TraversalNode::storeSimpleExpression(bool isEdgeAccess,
       comparisonType,
       varAccess,
       compareTo};
-  expressions.emplace_back(e);
+  _expressions.emplace_back(e);
 }
 
 

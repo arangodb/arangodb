@@ -34,11 +34,11 @@
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
 
-bool checkPathVariableAccessFeasible(CalculationNode const* cn,
-                                     TraversalNode * tn,
-                                     Variable const* var,
-                                     bool &conditionIsImpossible,
-                                     Ast* ast) {
+bool checkPathVariableAccessFeasible (CalculationNode const* cn,
+                                      TraversalNode* tn,
+                                      Variable const* var,
+                                      bool &conditionIsImpossible,
+                                      Ast* ast) {
   auto node = cn->expression()->node();
   std::vector<AstNode const*> currentPath;
   std::vector<std::vector<AstNode const*>> paths;
@@ -88,8 +88,8 @@ bool checkPathVariableAccessFeasible(CalculationNode const* cn,
     }
 
     // OR? don't know howto continue.
-    AstNode const * compareNode = nullptr;
-    AstNode const * accessNodeBranch = nullptr;
+    AstNode const* compareNode = nullptr;
+    AstNode const* accessNodeBranch = nullptr;
     for (auto oneNode : onePath) {
       if (oneNode->type == NODE_TYPE_OPERATOR_BINARY_OR) {
         return false; 
@@ -135,7 +135,7 @@ bool checkPathVariableAccessFeasible(CalculationNode const* cn,
           firstRefNode->changeMember(0, varRefNode);
           tn->storeSimpleExpression(isEdgeAccess,
                                     attrAccessTo,
-                                    NODE_TYPE_OPERATOR_BINARY_EQ,
+                                    compareNode->type,
                                     newNode,
                                     filterByNode);
 

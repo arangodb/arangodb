@@ -56,8 +56,8 @@ namespace triagens {
         AstNode const*    varAccess;
         AstNode const*    compareTo;
         
-        void toJson(triagens::basics::Json& json,
-                    TRI_memory_zone_t* zone) const;
+        void toJson (triagens::basics::Json& json,
+                     TRI_memory_zone_t* zone) const;
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -447,7 +447,7 @@ namespace triagens {
 /// @brief store a simple comparator filter
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<simpleTravererExpression> expressions;
+        std::vector<simpleTravererExpression> _expressions;
     };
 
   }   // namespace triagens::aql
