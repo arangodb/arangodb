@@ -3,8 +3,8 @@ var _ = require('underscore');
 var joi = require('joi');
 var Foxx = require('org/arangodb/foxx');
 var ArangoError = require('org/arangodb').ArangoError;
-var <%= repository %> = require('<%= repositoryPath %>');
-var <%= model %> = require('<%= modelPath %>');
+var <%= repository %> = require('../<%= repositoryPath %>');
+var <%= model %> = require('../<%= modelPath %>');
 var controller = new Foxx.Controller(applicationContext);
 
 var <%= modelInstance %>IdSchema = joi.string().required()
