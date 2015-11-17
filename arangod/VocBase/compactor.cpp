@@ -440,8 +440,6 @@ static bool Compactifier (TRI_df_marker_t const* marker,
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
       marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
 
-    bool deleted;
-
     TRI_doc_document_key_marker_t const* d = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
     TRI_voc_key_t key = (char*) d + d->_offsetKey;
 
@@ -449,7 +447,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     auto primaryIndex = document->primaryIndex();
 
     auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key));
-    deleted = (found == nullptr || found->_rid > d->_rid);
+    bool deleted = (found == nullptr || found->_rid > d->_rid);
 
     if (deleted) {
       LOG_TRACE("found a stale document: %s", key);
