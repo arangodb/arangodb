@@ -256,6 +256,7 @@ add_executable(
     VocBase/shaped-json.cpp
     VocBase/Shaper.cpp
     VocBase/transaction.cpp
+    VocBase/Traverser.cpp
     VocBase/vocbase.cpp
     VocBase/vocbase-defaults.cpp
     VocBase/VocShaper.cpp

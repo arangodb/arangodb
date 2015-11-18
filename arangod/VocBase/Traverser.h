@@ -70,21 +70,10 @@ namespace triagens {
           }
 
           void toJson (triagens::basics::Json& json,
-                       TRI_memory_zone_t* zone) const {
-            auto op = triagens::aql::AstNode::Operators.find(comparisonType);
-            
-            if (op == triagens::aql::AstNode::Operators.end()) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid operator for TraverserExpression");
-            }
-            std::string const operatorStr = op->second;
+                       TRI_memory_zone_t* zone) const;
 
-            json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
-                ("comparisonType", triagens::basics::Json(operatorStr))
-                ("varAccess", varAccess->toJson(zone, true));
-            if (compareTo != nullptr) {
-              json("compareTo", *compareTo);
-            }
-          }
+          bool matchesCheck (TRI_doc_mptr_t& element,
+                             VocShaper* shaper) const;
 
       };
 

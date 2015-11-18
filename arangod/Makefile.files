@@ -218,6 +218,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/shaped-json.cpp \
 	arangod/VocBase/Shaper.cpp \
 	arangod/VocBase/transaction.cpp \
+	arangod/VocBase/Traverser.cpp \
 	arangod/VocBase/vocbase.cpp \
 	arangod/VocBase/vocbase-defaults.cpp \
 	arangod/VocBase/VocShaper.cpp \
