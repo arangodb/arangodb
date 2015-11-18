@@ -140,7 +140,6 @@ var createMoviesGraph = function (prefixed) {
   var Carrie = g[Person].save({_key: "Carrie", name:'Carrie-Anne Moss', born:1967})._id;
   var Laurence = g[Person].save({_key: "Laurence", name:'Laurence Fishburne', born:1961})._id;
   var Hugo = g[Person].save({_key: "Hugo", name:'Hugo Weaving', born:1960})._id;
-  var Emil = g[Person].save({_key: "Emil", name:"Emil Eifrem", born: 1978})._id;
   var AndyW = g[Person].save({_key: "AndyW", name:'Andy Wachowski', born:1967})._id;
   var LanaW = g[Person].save({_key: "LanaW", name:'Lana Wachowski', born:1965})._id;
   var JoelS = g[Person].save({_key: "JoelS", name:'Joel Silver', born:1952})._id;
@@ -149,7 +148,6 @@ var createMoviesGraph = function (prefixed) {
   g[ACTED_IN].save(Carrie, TheMatrix, {roles: ["Trinity"]});
   g[ACTED_IN].save(Laurence, TheMatrix, {roles: ["Morpheus"]});
   g[ACTED_IN].save(Hugo, TheMatrix, {roles: ["Agent Smith"]});
-  g[ACTED_IN].save(Emil, TheMatrix, {roles: ["Emil"]}); 
   g[DIRECTED].save(AndyW, TheMatrix, {});
   g[DIRECTED].save(LanaW, TheMatrix, {});
   g[PRODUCED].save(JoelS, TheMatrix, {});
@@ -705,37 +703,34 @@ var createMoviesGraph = function (prefixed) {
 };
 
 
-
-var dropGraph = function(name, prefixed) {
-  if (prefixed) {
-    name = "UnitTest" + name;
-  }
-
 var knownGraphs = {
   "knows_graph" : createTraversalExample,
   "routeplanner" : createRoutePlannerGraph,
   "social" : createSocialGraph,
-  "movie" : createMoviesGraph
+  "movies" : createMoviesGraph
 };
 
-var dropGraph = function(name) {
+var dropGraph = function (name, prefixed) {
   if (! knownGraphs.hasOwnProperty(name)) {
     // trying to drop an unknown graph - better not do it
     return false;
+  }
+  if (prefixed) {
+    name = "UnitTest" + name;
   }
   if (Graph._exists(name)) {
     return Graph._drop(name, true);
   }
 };
 
-var loadGraph = function(name) {
+var loadGraph = function (name, prefixed) {
   if (! knownGraphs.hasOwnProperty(name)) {
     // trying to drop an unknown graph - better not do it
     return false;
   }
 
   dropGraph(name);
-  return knownGraphs[name]();
+  return knownGraphs[name](prefixed);
 };
 
 exports.loadGraph = loadGraph;

@@ -53,6 +53,7 @@
     beforeEach(function() {
       cleanup();
       graph = example.loadGraph("movies", true);
+      expect(graph).not.toEqual(false);
     });
 
     afterEach(function() {
@@ -327,7 +328,7 @@
         "@Acted_In": Acted_In,
         "@Person": Person
       }).toArray();
-      expect(result.length).toEqual(50);
+      expect(result.length).toEqual(49);
       result.sort(function (a, b) {
         if (a.Strength > b.Strength) {
           return -1;
