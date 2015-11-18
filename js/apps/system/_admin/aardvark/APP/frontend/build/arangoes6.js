@@ -8981,6 +8981,7 @@ function processQuery (query, explain) {
     if ([ "EnumerateCollectionNode",
           "EnumerateListNode",
           "IndexRangeNode",
+          "IndexNode",
           "SubqueryNode" ].indexOf(node.type) !== -1) {
       level++;
     }

@@ -297,7 +297,7 @@ function arrayIndexSuite () {
       var query = `FOR x IN ${cName} FILTER x.a[*] IN [1] RETURN x`;
       validateIndexNotUsed(query);
       query = `FOR x IN ${cName} FILTER 1 IN x.a RETURN x`;
-      validateIndexNotUsed(query);
+      checkIsOptimizedQuery(query);
       query = `FOR x IN ${cName} FILTER x.a IN [1] RETURN x`;
       validateIndexNotUsed(query);
     },
@@ -410,7 +410,7 @@ function arrayIndexSuite () {
       var query = `FOR x IN ${cName} FILTER x.a[*] IN [1] RETURN x`;
       validateIndexNotUsed(query);
       query = `FOR x IN ${cName} FILTER 1 IN x.a RETURN x`;
-      validateIndexNotUsed(query);
+      checkIsOptimizedQuery(query);
       query = `FOR x IN ${cName} FILTER x.a IN [1] RETURN x`;
       validateIndexNotUsed(query);
     },

@@ -159,9 +159,9 @@ function ReplicationSuite () {
         break;
       }
 
-      if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) > 0 ||
-          compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) > 0 ||
-          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
+      if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) >= 0 ||
+          compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) { //||
+//          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
         break;
       }
 

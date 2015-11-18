@@ -36,6 +36,7 @@
 
 using namespace triagens::arango;
 
+#include <iostream>
 // -----------------------------------------------------------------------------
 // --SECTION--                              class SimpleAttributeEqualityMatcher
 // -----------------------------------------------------------------------------
@@ -120,10 +121,6 @@ bool SimpleAttributeEqualityMatcher::matchAll (triagens::arango::Index const* in
 
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, false) ||
           accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference, false)) {
-        if (_found.size() == _attributes.size()) {
-          // got enough attributes
-          break;
-        }
       }
     }
     else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -131,16 +128,17 @@ bool SimpleAttributeEqualityMatcher::matchAll (triagens::arango::Index const* in
 
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference, false)) {
         auto m = op->getMember(1);
-        if (m->type != triagens::aql::NODE_TYPE_EXPANSION && m->numMembers() > 1) {
+
+        if (m->isArray() && m->numMembers() > 1) {
           // attr IN [ a, b, c ]  =>  this will produce multiple items, so count them!
           values += m->numMembers() - 1;
         }
-
-        if (_found.size() == _attributes.size()) {
-          // got enough attributes
-          break;
-        }
       }
+    }
+        
+    if (_found.size() == _attributes.size()) {
+      // got enough attributes
+      break;
     }
   }
 
@@ -346,22 +344,38 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex (triagens::arango::Index co
     return false;
   }
 
-  triagens::aql::AstNode const* what;
-
-  if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-      other->type == triagens::aql::NODE_TYPE_EXPANSION) {
-    what = other;
-  }
-  else {
-    what = access;
-  }
-
+  triagens::aql::AstNode const* what = access;
   std::pair<triagens::aql::Variable const*, std::vector<triagens::basics::AttributeName>> attributeData;
 
-  if (! what->isAttributeAccessForVariable(attributeData) ||
-      attributeData.first != reference) {
-    // this access is not referencing this collection
-    return false;
+  if (op->type != triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    if (! what->isAttributeAccessForVariable(attributeData) ||
+        attributeData.first != reference) {
+        // this access is not referencing this collection
+        return false;
+    }
+    if (triagens::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
+      // doc.value[*] IN 'value'
+      return false;
+    }
+  }
+  else { 
+    // ok, we do have an IN here... check if it's something like 'value' IN doc.value[*]
+    bool canUse = false;
+    if (what->isAttributeAccessForVariable(attributeData) && 
+        attributeData.first == reference &&
+        ! triagens::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
+      // doc.value[*] IN 'value'
+      canUse = true;
+    }
+    if (! canUse) {
+      // check for doc.value[*] IN 'value'
+      what = other;
+      if (! what->isAttributeAccessForVariable(attributeData) ||
+          attributeData.first != reference) {
+        // this access is not referencing this collection
+        return false;
+      }
+    }
   }
 
   std::vector<triagens::basics::AttributeName> const& fieldNames = attributeData.second;
@@ -380,8 +394,15 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex (triagens::arango::Index co
     bool match = true;
     for (size_t j = 0; j < _attributes[i].size(); ++j) {
       if (_attributes[i][j] != fieldNames[j]) {
-        match = false;
-        break;
+        // special case: a[*] is identical to a, and a.b[*] is identical to a.b
+        // general rule: if index attribute is expanded and last part in index, then it can
+        // be used in a query without expansion operator
+        bool const isLast = (j == _attributes[i].size() - 1);
+
+        if (! isLast || (! _attributes[i][j].shouldExpand) || _attributes[i][j].name != fieldNames[j].name) {
+          match = false;
+          break;
+        }
       }
     }
 

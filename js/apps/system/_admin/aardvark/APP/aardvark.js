@@ -170,11 +170,17 @@ controller.post("disableVersionCheck", function(req, res) {
  */
 controller.post("/query/explain", function(req, res) {
 
-  var explain, query = req.body().query;
+  var explain, query = req.body().query,
+  bindVars = req.body().bindVars;
 
   if (query.length > 0) {
     try {
-      explain = require("org/arangodb/aql/explainer").explain(query, {colors: false}, false);
+      if (bindVars) {
+        explain = require("org/arangodb/aql/explainer").explain(query, {colors: false}, false, bindVars);
+      }
+      else {
+        explain = require("org/arangodb/aql/explainer").explain(query, {colors: false}, false);
+      }
     }
     catch (e) {
       explain = JSON.stringify(e);

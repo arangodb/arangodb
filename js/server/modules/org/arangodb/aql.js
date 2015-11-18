@@ -7428,10 +7428,10 @@ function AQL_NEIGHBORS (vertexCollection,
   var collectionFromVertex = vertex.slice(0, vertexCollection.length);
   if (collectionFromVertex !== vertexCollection) {
     THROW("AQL_NEIGBORS",
-          INTERNAL.errors.ERROR_ARANGO_DOCUMENT_KEY_BAD,
+          INTERNAL.errors.ERROR_GRAPH_INVALID_PARAMETER,
           "",
           "You specified vertex collection `" + collectionFromVertex +
-          "...` for start vertext from the collection`" + vertexCollection + "`");
+          "...` for start vertext from the collection `" + vertexCollection + "`");
 
   } 
   options = CLONE(options) || {};

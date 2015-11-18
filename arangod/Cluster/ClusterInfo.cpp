@@ -2260,7 +2260,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers () {
 /// our id
 ////////////////////////////////////////////////////////////////////////////////
 
-static const std::string prefixTargetServerEndoint = "Target/MapIDToEndpoint/";
+static const std::string prefixTargetServerEndpoint = "Target/MapIDToEndpoint/";
 
 std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
 
@@ -2271,12 +2271,12 @@ std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
     AgencyCommLocker locker("Target", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues(prefixTargetServerEndoint + serverID, false);
+      result = _agency.getValues(prefixTargetServerEndpoint + serverID, false);
     }
   }
 
   if (result.successful()) {
-    result.parse(prefixTargetServerEndoint, false);
+    result.parse(prefixTargetServerEndpoint, false);
 
     // check if we can find ourselves in the list returned by the agency
     std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.find(serverID);
