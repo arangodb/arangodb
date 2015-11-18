@@ -262,7 +262,7 @@ function printIndexes (indexes) {
 function processQuery (query, explain) {
   'use strict';
   var nodes = { }, 
-    parents = { }, 
+    parents = { },
     rootNode = null,
     maxTypeLen = 0,
     maxIdLen = String("Id").length,
@@ -595,6 +595,8 @@ function processQuery (query, explain) {
   };
 
   var postHandle = function (node) {
+    var isLeafNode = ! parents.hasOwnProperty(node.id);
+
     if ([ "EnumerateCollectionNode",
           "EnumerateListNode",
           "IndexRangeNode",
@@ -602,7 +604,7 @@ function processQuery (query, explain) {
           "SubqueryNode" ].indexOf(node.type) !== -1) {
       level++;
     }
-    else if (node.type === "ReturnNode" && subqueries.length > 0) {
+    else if (isLeafNode && subqueries.length > 0) {
       level = subqueries.pop();
     }
     else if (node.type === "SingletonNode") {
@@ -678,7 +680,7 @@ function processQuery (query, explain) {
 }
 
 /* the exposed function */
-function explain (data, options, shouldPrint) {
+function explain (data, options, shouldPrint, bindVars) {
   'use strict';
   if (typeof data === "string") {
     data = { query: data };
@@ -691,6 +693,13 @@ function explain (data, options, shouldPrint) {
   setColors(options.colors === undefined ? true : options.colors);
 
   var stmt = db._createStatement(data);
+
+  if (typeof bindVars === 'object') {
+    Object.keys(bindVars).forEach(function(key) {
+      stmt.bind(key, bindVars[key]);
+    });
+  }
+
   var result = stmt.explain(options);
 
   stringBuilder.clearOutput();

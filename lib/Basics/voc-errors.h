@@ -429,9 +429,6 @@
 /// - 1573: @LIT{multi-modify query}
 ///    "Will be raised when an AQL query contains more than one data-modifying
 ///   operation."
-/// - 1574: @LIT{modify operation in subquery}
-///    "Will be raised when an AQL query contains a data-modifying operation
-///   inside a subquery."
 /// - 1575: @LIT{query options must be readable at query compile time}
 ///    "Will be raised when an AQL data-modification query contains options
 ///   that cannot be figured out at query compile time."
@@ -445,8 +442,8 @@
 ///    "Will be raised when a dynamic function call is made to a function that
 ///   cannot be called dynamically."
 /// - 1579: @LIT{access after data-modification}
-///    "Will be raised when collection data is accessed after a
-///   data-modification query part."
+///    "Will be raised when collection data are accessed after a
+///   data-modification operation."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -2434,17 +2431,6 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_QUERY_MULTI_MODIFY                                      (1573)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1574: ERROR_QUERY_MODIFY_IN_SUBQUERY
-///
-/// modify operation in subquery
-///
-///  "Will be raised when an AQL query contains a data-modifying operation
-/// inside a subquery."
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_MODIFY_IN_SUBQUERY                                (1574)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 1575: ERROR_QUERY_COMPILE_TIME_OPTIONS
 ///
 /// query options must be readable at query compile time
@@ -2493,8 +2479,8 @@ void TRI_InitializeErrorMessages ();
 ///
 /// access after data-modification
 ///
-///  "Will be raised when collection data is accessed after a data-modification
-/// query part."
+///  "Will be raised when collection data are accessed after a
+/// data-modification operation."
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION                         (1579)

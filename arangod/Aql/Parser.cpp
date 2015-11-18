@@ -73,20 +73,6 @@ Parser::~Parser () {
 bool Parser::configureWriteQuery (AstNode const* collectionNode,
                                   AstNode* optionNode) {
 
-  // check if we currently are in a subquery
-  if (_ast->isInSubQuery()) {
-    // data modification not allowed in sub-queries
-    _query->registerError(TRI_ERROR_QUERY_MODIFY_IN_SUBQUERY);
-    return false;
-  }
-
-  // check current query type
-  if (_isModificationQuery) {
-    // already a data-modification query, cannot have two data-modification operations in one query
-    _query->registerError(TRI_ERROR_QUERY_MULTI_MODIFY);
-    return false;
-  }
-
   // now track which collection is going to be modified
   _ast->addWriteCollection(collectionNode);
 

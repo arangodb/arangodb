@@ -1709,7 +1709,8 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
     }
     else {
       auto nn = static_cast<SubqueryNode*>(n);
-      if (nn->canThrow()) {
+
+      if (nn->canThrow() || nn->isModificationQuery()) {
         // subqueries that can throw must not be optimized away
         continue;
       }
