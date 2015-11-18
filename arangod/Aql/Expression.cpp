@@ -1012,8 +1012,8 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     TRI_ASSERT(node->numMembers() == 2);
 
     // intentionally do not stringify node 0
-    TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue value = executeSimpleExpression(node->getMember(1), &myCollection, trx, argv, startPos, vars, regs, true);
+    *collection = nullptr;
+    AqlValue value = executeSimpleExpression(node->getMember(1), collection, trx, argv, startPos, vars, regs, true);
     return value;
   }
 
