@@ -808,7 +808,7 @@ DepthFirstTraverser::DepthFirstTraverser (
     TRI_edge_direction_e& direction,
     uint64_t minDepth,
     uint64_t maxDepth
-  ) : Traverser() {
+  ) : Traverser(), _resolver(nullptr) {
   _opts.minDepth = minDepth;
   _opts.maxDepth = maxDepth;
   _opts.direction = direction;
@@ -816,18 +816,18 @@ DepthFirstTraverser::DepthFirstTraverser (
 }
 
 DepthFirstTraverser::DepthFirstTraverser (
-  std::vector<TRI_document_collection_t*> edgeCollections,
+  std::vector<TRI_document_collection_t*> const& edgeCollections,
   TraverserOptions& opts
-) : Traverser(opts, nullptr),
-    _edgeCols(edgeCollections) {
-  _defInternalFunctions();
+) : DepthFirstTraverser(edgeCollections, opts, nullptr, nullptr) {
 }
 
 DepthFirstTraverser::DepthFirstTraverser (
-  std::vector<TRI_document_collection_t*> edgeCollections,
+  std::vector<TRI_document_collection_t*> const& edgeCollections,
   TraverserOptions& opts,
+  CollectionNameResolver* resolver,
   std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expressions
 ) : Traverser(opts, expressions),
+    _resolver(resolver),
     _edgeCols(edgeCollections) {
   _defInternalFunctions();
 }
@@ -897,9 +897,8 @@ void DepthFirstTraverser::_defInternalFunctions () {
         TRI_ASSERT(tmp.size() == 1);
         auto it = _expressions->find(edges.size());
         if (it != _expressions->end()) {
-          auto shaper = _edgeCols.at(eColIdx)->getShaper();
           for (auto const& exp : it->second) {
-            if (exp->isEdgeAccess && ! exp->matchesCheck(tmp.back(), shaper)) {
+            if (exp->isEdgeAccess && ! exp->matchesCheck(tmp.back(), _edgeCols.at(eColIdx), _resolver)) {
               // Retry with the next element
               _getEdge(startVertex, edges, last, eColIdx, dir);
               return;
@@ -937,9 +936,8 @@ void DepthFirstTraverser::_defInternalFunctions () {
         TRI_ASSERT(tmp.size() == 1);
         auto it = _expressions->find(edges.size());
         if (it != _expressions->end()) {
-          auto shaper = _edgeCols.at(eColIdx)->getShaper();
           for (auto const& exp : it->second) {
-            if (exp->isEdgeAccess && ! exp->matchesCheck(tmp.back(), shaper)) {
+            if (exp->isEdgeAccess && ! exp->matchesCheck(tmp.back(), _edgeCols.at(eColIdx), _resolver)) {
               // Retry with the next element
               _getEdge(startVertex, edges, last, eColIdx, dir);
               return;

@@ -88,7 +88,7 @@ namespace triagens {
 /// @brief Helper function to convert an _id string into a VertexId
 ////////////////////////////////////////////////////////////////////////////////
       VertexId IdStringToVertexId (triagens::arango::CollectionNameResolver const* resolver,
-                                    std::string const& vertex);
+                                   std::string const& vertex);
 
       // A collection of shared options used in several functions.
       // Should not be used directly, use specialization instead.
@@ -250,6 +250,12 @@ namespace triagens {
         private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief collection name resolver
+////////////////////////////////////////////////////////////////////////////////
+
+          CollectionNameResolver* _resolver;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief internal cursor to enumerate the paths of a graph
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -263,8 +269,7 @@ namespace triagens {
 
           std::function<void(VertexId&, std::vector<EdgeInfo>&,
                              TRI_doc_mptr_copy_t*&,
-                             size_t&, bool&)>
-            _getEdge;
+                             size_t&, bool&)>              _getEdge;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to extract vertex information
@@ -294,13 +299,14 @@ namespace triagens {
           );
 
           DepthFirstTraverser (
-            std::vector<TRI_document_collection_t*> edgeCollections,
+            std::vector<TRI_document_collection_t*> const& edgeCollections,
             TraverserOptions& _opts
           );
 
           DepthFirstTraverser (
-            std::vector<TRI_document_collection_t*> edgeCollections,
+            std::vector<TRI_document_collection_t*> const& edgeCollections,
             TraverserOptions& _opts,
+            CollectionNameResolver*,
             std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expressions
           );
 

@@ -35,6 +35,7 @@
 #include "Basics/JsonHelper.h"
 #include "Aql/AstNode.h"
 #include "Utils/Transaction.h"
+#include "VocBase/DocumentAccessor.h"
 #include "VocBase/voc-types.h"
 
 namespace triagens {
@@ -73,7 +74,13 @@ namespace triagens {
                        TRI_memory_zone_t* zone) const;
 
           bool matchesCheck (TRI_doc_mptr_t& element,
-                             VocShaper* shaper) const;
+                             TRI_document_collection_t* collection,
+                             CollectionNameResolver* resolver) const;
+
+        private:
+
+          bool recursiveCheck (triagens::aql::AstNode const*,
+                               DocumentAccessor&) const;               
 
       };
 

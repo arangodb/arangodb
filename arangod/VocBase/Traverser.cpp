@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Traverser.h"
+#include "Basics/json-utilities.h"
 
 using TraverserExpression = triagens::arango::traverser::TraverserExpression;
 
@@ -53,10 +54,63 @@ void TraverserExpression::toJson (triagens::basics::Json& json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief recursively iterates through the access ast
+///        Returns false whenever the document does not have the required format
+////////////////////////////////////////////////////////////////////////////////
+
+bool TraverserExpression::recursiveCheck (triagens::aql::AstNode const* node,
+                                          DocumentAccessor& accessor) const {
+  switch (node->type) {
+    case triagens::aql::NODE_TYPE_REFERENCE:
+      // We are on the variable access
+      return true;
+      break;
+    case triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
+      char const* attributeName = node->getStringValue();
+      TRI_ASSERT(attributeName != nullptr);
+      std::string name(attributeName, node->getStringLength());
+      if (! recursiveCheck(node->getMember(0), accessor)) {
+        return false;
+      }
+      if (! accessor.isObject() || ! accessor.hasKey(name)) {
+        return false;
+      }
+      accessor.get(name);
+      break;
+    }
+    case triagens::aql::NODE_TYPE_INDEXED_ACCESS: {
+      auto index = node->getMember(1);
+      if (! index->isIntValue()) {
+        return false;
+      }
+      if (! recursiveCheck(node->getMember(0), accessor)) {
+        return false;
+      }
+      auto idx = index->getIntValue();
+        // TODO check for Number
+      if (! accessor.isArray()) {
+        return false;
+      }
+      accessor.at(idx);
+      break;
+    }
+    default:
+      return false;
+  }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief evalutes if an element matches the given expression
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TraverserExpression::matchesCheck (TRI_doc_mptr_t& element,
-                          VocShaper* shaper) const {
+                                        TRI_document_collection_t* collection,
+                                        CollectionNameResolver* resolver) const {
+  DocumentAccessor accessor(resolver, collection, &element);
+  if (recursiveCheck(varAccess, accessor)) {
+    triagens::basics::Json result = accessor.toJson();
+    return TRI_CompareValuesJson(result.json(), compareTo->json(), false) == 0;
+  }
   return false;
 }

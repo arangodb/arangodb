@@ -109,6 +109,7 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
     }
     _traverser.reset(new triagens::arango::traverser::DepthFirstTraverser(edgeCollections,
                                                                           opts,
+                                                                          _resolver,
                                                                           _expressions));
   }
   if (!ep->usesInVariable()) {
