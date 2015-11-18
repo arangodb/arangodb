@@ -678,7 +678,7 @@ function processQuery (query, explain) {
 }
 
 /* the exposed function */
-function explain (data, options, shouldPrint) {
+function explain (data, options, shouldPrint, bindVars) {
   'use strict';
   if (typeof data === "string") {
     data = { query: data };
@@ -687,10 +687,20 @@ function explain (data, options, shouldPrint) {
     throw "ArangoStatement needs initial data";
   }
 
+  if (options === undefined) {
+    options = data.options;
+  }
   options = options || { };
   setColors(options.colors === undefined ? true : options.colors);
 
   var stmt = db._createStatement(data);
+
+  if (typeof bindVars === 'object') {
+    Object.keys(bindVars).forEach(function(key) {
+      stmt.bind(key, bindVars[key]);
+    });
+  }
+
   var result = stmt.explain(options);
 
   stringBuilder.clearOutput();
