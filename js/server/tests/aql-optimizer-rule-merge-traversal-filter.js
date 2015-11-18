@@ -115,9 +115,8 @@ function optimizerRuleTestSuite () {
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[1].theTruth == true return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[2].theTruth == true return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[*].theTruth == true return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[*].theTruth == true FILTER p.edges[1].label == 'bar' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[*].theTruth == true AND    p.edges[1].label == 'bar' return {v:v,e:e,p:p}"
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[2].theTruth == true AND    p.edges[1].label == 'bar' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true FILTER p.edges[1].label == 'bar' return {v:v,e:e,p:p}"
       ];
 
       queries.forEach(function(query) {
@@ -134,14 +133,10 @@ function optimizerRuleTestSuite () {
       var queries = [ 
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].label == 'foo' return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[*].label == 'foo' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 2    OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[*].label == 'foo' return {v:v,e:e,p:p}", /// TODO: check for circles[D,E] to be _the_ result
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true FILTER p.edges[0].label == 'foo' return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true FILTER p.edges[*].label == 'foo' return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true FILTER p.edges[0].label == 'foo' return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[1].theTruth == true FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[*].theTruth == true FILTER p.edges[*].label == 'foo' return {v:v,e:e,p:p}"
       ];
 
       queries.forEach(function(query) {
@@ -165,7 +160,7 @@ function optimizerRuleTestSuite () {
 
     testNoResults : function () {
       var queries = [ 
-         // shure shot: 5 < 7
+         // sure shot: 5 < 7
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[7].label == 'foo' return {v:v,e:e,p:p}",
         // indexed access starts with 0 - this is also forbidden since it will look for the 6th!
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[5].label == 'foo' return {v:v,e:e,p:p}",
