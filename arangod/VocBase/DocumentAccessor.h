@@ -37,7 +37,7 @@
 #include "VocBase/shaped-json.h"
 #include "VocBase/Shaper.h"
 
-class TRI_doc_mptr_t;
+struct TRI_doc_mptr_t;
 
 namespace triagens {
   namespace arango {
