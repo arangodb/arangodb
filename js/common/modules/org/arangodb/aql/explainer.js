@@ -840,6 +840,9 @@ function explain (data, options, shouldPrint, bindVars) {
     throw "ArangoStatement needs initial data";
   }
 
+  if (options === undefined) {
+    options = data.options;
+  }
   options = options || { };
   setColors(options.colors === undefined ? true : options.colors);
 
