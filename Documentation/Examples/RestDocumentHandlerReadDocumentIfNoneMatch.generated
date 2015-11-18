@@ -1,2 +1,2 @@
-shell&gt; curl --header <span class="hljs-string">'If-None-Match: "721419997"'</span> --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/721419997</span>
+shell&gt; curl --header <span class="hljs-string">'If-None-Match: "726073481"'</span> --dump - http:<span class="hljs-comment">//localhost:8529/_api/document/products/726073481</span>
 

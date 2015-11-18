@@ -10,7 +10,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"lastProcessedContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"lastAvailableContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"progress"</span> : { 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-11-10T09:14:51Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-11-18T06:30:22Z"</span>, 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"applier shut down"</span>, 
       <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">1</span> 
     }, 
@@ -21,11 +21,11 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"lastError"</span> : { 
       <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">0</span> 
     }, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-11-10T09:14:51Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2015-11-18T06:30:22Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.6.10"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"172234453399063"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.6.11"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"241238507679217"</span> 
   }, 
   <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:8529"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 

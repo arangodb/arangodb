@@ -1,4 +1,4 @@
-v2.6.11 (XXXX-XX-XX)
+v2.6.11 (2015-11-18)
 --------------------
 
 * fixed potentially invalid pointer access in shaper when the currently accessed
