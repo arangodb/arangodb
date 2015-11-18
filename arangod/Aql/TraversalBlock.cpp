@@ -320,6 +320,7 @@ int TraversalBlock::initializeCursor (AqlItemBlock* items,
 }
 
 bool TraversalBlock::executeExpressions (AqlValue& pathValue) {
+  return true;
   TRI_ASSERT(_condition != nullptr);
 
   auto& toReplace = _nonConstExpressions[0];
@@ -329,7 +330,8 @@ bool TraversalBlock::executeExpressions (AqlValue& pathValue) {
 
   AqlItemBlock b(1, 3);
   b.setValue(0, 2, pathValue);
-  AqlValue a = exp->execute(_trx, &b, 0, _inVars[0], _inRegs[0], &myCollection);
+  std::vector<Variable const*> outVars({_vertexVar, _edgeVar, _pathVar});
+  AqlValue a = exp->execute(_trx, &b, 0, outVars, _inRegs[0], &myCollection);
   b.eraseValue(0, 2);
 
   bool rc = a.isTrue();
