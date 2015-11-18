@@ -80,8 +80,10 @@ namespace triagens {
 
             json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
                 ("comparisonType", triagens::basics::Json(operatorStr))
-                ("varAccess", varAccess->toJson(zone, true))
-                ("compareTo", *compareTo);
+                ("varAccess", varAccess->toJson(zone, true));
+            if (compareTo != nullptr) {
+              json("compareTo", *compareTo);
+            }
           }
 
       };
