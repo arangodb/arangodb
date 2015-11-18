@@ -292,18 +292,6 @@ namespace triagens {
         public:
 
           DepthFirstTraverser (
-            TRI_document_collection_t* edgeCollection,
-            TRI_edge_direction_e& direction,
-            uint64_t minDepth,
-            uint64_t maxDepth
-          );
-
-          DepthFirstTraverser (
-            std::vector<TRI_document_collection_t*> const& edgeCollections,
-            TraverserOptions& _opts
-          );
-
-          DepthFirstTraverser (
             std::vector<TRI_document_collection_t*> const& edgeCollections,
             TraverserOptions& _opts,
             CollectionNameResolver*,

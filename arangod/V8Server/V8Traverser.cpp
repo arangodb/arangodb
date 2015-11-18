@@ -804,24 +804,6 @@ Json* SingleServerTraversalPath::vertexToJson (Transaction* trx,
 // -----------------------------------------------------------------------------
 
 DepthFirstTraverser::DepthFirstTraverser (
-    TRI_document_collection_t* edgeCollection,
-    TRI_edge_direction_e& direction,
-    uint64_t minDepth,
-    uint64_t maxDepth
-  ) : Traverser(), _resolver(nullptr) {
-  _opts.minDepth = minDepth;
-  _opts.maxDepth = maxDepth;
-  _opts.direction = direction;
-  _defInternalFunctions();
-}
-
-DepthFirstTraverser::DepthFirstTraverser (
-  std::vector<TRI_document_collection_t*> const& edgeCollections,
-  TraverserOptions& opts
-) : DepthFirstTraverser(edgeCollections, opts, nullptr, nullptr) {
-}
-
-DepthFirstTraverser::DepthFirstTraverser (
   std::vector<TRI_document_collection_t*> const& edgeCollections,
   TraverserOptions& opts,
   CollectionNameResolver* resolver,
@@ -941,6 +923,9 @@ void DepthFirstTraverser::_defInternalFunctions () {
               // Retry with the next element
               _getEdge(startVertex, edges, last, eColIdx, dir);
               return;
+            }
+            if (! exp->isEdgeAccess) {
+              
             }
           }
         }
