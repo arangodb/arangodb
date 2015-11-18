@@ -107,20 +107,20 @@ bool TraverserExpression::matchesCheck (TRI_doc_mptr_t& element,
                                         TRI_document_collection_t* collection,
                                         CollectionNameResolver* resolver) const {
   DocumentAccessor accessor(resolver, collection, &element);
-  recursiveCheck(varAccess, accessor)
+  recursiveCheck(varAccess, accessor);
   triagens::basics::Json result = accessor.toJson();
   switch (comparisonType) {
-    case triagens::aql::NODE_TYPE_BINARY_EQ:
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), false) == 0;
-    case triagens::aql::NODE_TYPE_BINARY_NE:
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_NE:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), false) != 0;
-    case triagens::aql::NODE_TYPE_BINARY_LT:
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), false) < 0;
-    case triagens::aql::NODE_TYPE_BINARY_LE:
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), false) <= 0;
-    case triagens::aql::NODE_TYPE_BINARY_GE:
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), false) >= 0;
-    case triagens::aql::NODE_TYPE_BINARY_GT:
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), false) > 0;
     default:
       TRI_ASSERT(false);
