@@ -103,6 +103,9 @@ v2.8.0 (XXXX-XX-XX)
 v2.7.2 (XXXX-XX-XX)
 -------------------
 
+* fixed undefined behavior when accessing the top level of a document with the `[*]`
+  operator
+
 * fixed potentially invalid pointer access in shaper when the currently accessed
   document got re-located by the WAL collector at the very same time
 
