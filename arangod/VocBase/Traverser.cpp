@@ -87,7 +87,6 @@ bool TraverserExpression::recursiveCheck (triagens::aql::AstNode const* node,
         return false;
       }
       auto idx = index->getIntValue();
-        // TODO check for Number
       if (! accessor.isArray()) {
         return false;
       }
@@ -108,9 +107,22 @@ bool TraverserExpression::matchesCheck (TRI_doc_mptr_t& element,
                                         TRI_document_collection_t* collection,
                                         CollectionNameResolver* resolver) const {
   DocumentAccessor accessor(resolver, collection, &element);
-  if (recursiveCheck(varAccess, accessor)) {
-    triagens::basics::Json result = accessor.toJson();
-    return TRI_CompareValuesJson(result.json(), compareTo->json(), false) == 0;
+  recursiveCheck(varAccess, accessor)
+  triagens::basics::Json result = accessor.toJson();
+  switch (comparisonType) {
+    case triagens::aql::NODE_TYPE_BINARY_EQ:
+      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) == 0;
+    case triagens::aql::NODE_TYPE_BINARY_NE:
+      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) != 0;
+    case triagens::aql::NODE_TYPE_BINARY_LT:
+      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) < 0;
+    case triagens::aql::NODE_TYPE_BINARY_LE:
+      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) <= 0;
+    case triagens::aql::NODE_TYPE_BINARY_GE:
+      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) >= 0;
+    case triagens::aql::NODE_TYPE_BINARY_GT:
+      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) > 0;
+    default:
+      TRI_ASSERT(false);
   }
-  return false;
 }
