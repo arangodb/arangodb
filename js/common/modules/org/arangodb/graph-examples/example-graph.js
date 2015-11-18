@@ -325,6 +325,40 @@ var dropWorldCountryUnManaged = function() {
 };
 
 
+var createTraversalGraph = function() {
+    var graph_module = require("org/arangodb/general-graph");
+    
+    var graph = graph_module._create("traversalGraph", [
+        graph_module._relation("edges", "circles", ["circles"])]);
+    
+    // Add circle circles
+    graph.circles.save({"_key": "A", "label":  '1'});
+    graph.circles.save({"_key": "B", "label":  '2'});
+    graph.circles.save({"_key": "C", "label":  '3'});
+    graph.circles.save({"_key": "D", "label":  '4'});
+    graph.circles.save({"_key": "E", "label":  '5'});
+    graph.circles.save({"_key": "F", "label":  '6'});
+    graph.circles.save({"_key": "G", "label":  '7'});
+    graph.circles.save({"_key": "H", "label":  '8'});
+    graph.circles.save({"_key": "I", "label":  '9'});
+    graph.circles.save({"_key": "J", "label": '10'});
+    graph.circles.save({"_key": "K", "label": '11'});
+   
+    // Add relevant edges - left branch:
+    graph.edges.save("circles/A", "circles/B", {theFalse: false, theTruth: true, "label": 'left_bar'});
+    graph.edges.save("circles/B", "circles/C", {theFalse: false, theTruth: true, "label": 'left_blarg'});
+    graph.edges.save("circles/C", "circles/D", {theFalse: false, theTruth: true, "label": 'left_blorg'});
+    graph.edges.save("circles/B", "circles/E", {theFalse: false, theTruth: true, "label": 'left_blub'});
+    graph.edges.save("circles/E", "circles/F", {theFalse: false, theTruth: true, "label": 'left_schubi'});
+    
+    // Add relevant edges - right branch:
+    graph.edges.save("circles/A", "circles/G", {theFalse: false, theTruth: true, "label": 'right_foo'});
+    graph.edges.save("circles/G", "circles/H", {theFalse: false, theTruth: true, "label": 'right_blob'});
+    graph.edges.save("circles/H", "circles/I", {theFalse: false, theTruth: true, "label": 'right_blub'});
+    graph.edges.save("circles/G", "circles/J", {theFalse: false, theTruth: true, "label": 'right_zip'});
+    graph.edges.save("circles/J", "circles/K", {theFalse: false, theTruth: true, "label": 'right_zup'});
+};
+
 
 var createMoviesGraph = function (prefixed) {
   let Person = "Person";
@@ -939,12 +973,13 @@ var createMoviesGraph = function (prefixed) {
 
 
 var knownGraphs = {
-  "knows_graph" : createTraversalExample,
-  "routeplanner" : createRoutePlannerGraph,
-  "social" : createSocialGraph,
-  "worldCountry" : createWorldCountryGraph,
+  "knows_graph"           : createTraversalExample,
+  "routeplanner"          : createRoutePlannerGraph,
+  "social"                : createSocialGraph,
+  "worldCountry"          : createWorldCountryGraph,
   "worldCountryUnManaged" : createWorldCountryGraphUnManaged,
-  "movies" : createMoviesGraph
+  "traversalGraph"        : createTraversalGraph,
+  "movies"                : createMoviesGraph
 };
 
 var unManagedGraphs = {
