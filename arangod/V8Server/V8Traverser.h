@@ -284,6 +284,12 @@ namespace triagens {
           std::vector<TRI_document_collection_t*> _edgeCols;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Outer top level transaction
+////////////////////////////////////////////////////////////////////////////////
+
+          Transaction* _trx;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to define the _getVertex and _getEdge functions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -292,10 +298,11 @@ namespace triagens {
         public:
 
           DepthFirstTraverser (
-            std::vector<TRI_document_collection_t*> const& edgeCollections,
-            TraverserOptions& _opts,
+            std::vector<TRI_document_collection_t*> const&,
+            TraverserOptions&,
             CollectionNameResolver*,
-            std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expressions
+            Transaction*,
+            std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
           );
 
 ////////////////////////////////////////////////////////////////////////////////
