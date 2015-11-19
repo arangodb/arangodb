@@ -27,7 +27,7 @@
 #ifndef VELOCYPACK_ITERATOR_H
 #define VELOCYPACK_ITERATOR_H 1
 
-#include <ostream>
+#include <iosfwd>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"

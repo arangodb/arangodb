@@ -24,6 +24,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <ostream>
+
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Iterator.h"
 
