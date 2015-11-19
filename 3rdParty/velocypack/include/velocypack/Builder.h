@@ -306,6 +306,9 @@ namespace arangodb {
         // whether or not a specific key is present in an Object value
         bool hasKey (std::string const& key) const;
 
+        // return an attribute from an Object value
+        Slice getKey (std::string const& key) const;
+
         // Syntactic sugar for add:
         Builder& operator() (std::string const& attrName, Value sub) {
           add(attrName, sub);
@@ -448,7 +451,7 @@ namespace arangodb {
             // check if a translation for the attribute name exists
             uint8_t const* translated = options->attributeTranslator->translate(attrName);
             if (translated != nullptr) {
-              set(Slice(options->attributeTranslator->translate(attrName)));
+              set(Slice(options->attributeTranslator->translate(attrName), options));
               return set(sub);
             }
             // otherwise fall through to regular behavior

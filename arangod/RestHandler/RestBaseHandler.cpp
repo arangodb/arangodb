@@ -31,10 +31,13 @@
 
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
-#include "Basics/StringBufferAdapter.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+
+#include <velocypack/Dumper.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace std;
 using namespace triagens::basics;
@@ -113,7 +116,7 @@ void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
   _response = createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
 
-  StringBufferAdapter buffer(_response->body().stringBuffer());
+  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
 
   VPackDumper dumper(&buffer);
   try {
@@ -190,7 +193,7 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
     builder.add("errorNum", VPackValue(errorCode));
     builder.close();
     VPackSlice slice(builder.start());
-    StringBufferAdapter buffer(_response->body().stringBuffer());
+    VPackStringBufferAdapter buffer(_response->body().stringBuffer());
     VPackDumper dumper(&buffer);
     dumper.dump(slice);
   }

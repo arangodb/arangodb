@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 // -----------------------------------------------------------------------------
@@ -40,7 +41,6 @@
 
 struct TRI_json_t;
 struct TRI_memory_zone_s;
-
 
 namespace triagens {
   namespace rest {

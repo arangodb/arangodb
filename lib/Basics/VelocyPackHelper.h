@@ -30,6 +30,7 @@
 
 #include "Basics/JsonHelper.h"
 
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
@@ -90,8 +91,6 @@ namespace triagens {
         static bool getBooleanValue (VPackSlice const&,
                                      char const*,
                                      bool);
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or throws if <name> does not exist

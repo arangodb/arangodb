@@ -31,12 +31,18 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/StringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/CollectionExport.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Wal/LogfileManager.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace triagens::arango;
 using namespace triagens::rest;
@@ -540,7 +546,7 @@ void RestExportHandler::deleteCursor () {
   result.add("code", VPackValue(_response->responseCode()));
   result.close();
   VPackSlice s = result.slice();
-  triagens::basics::StringBufferAdapter buffer(_response->body().stringBuffer());
+  triagens::basics::VPackStringBufferAdapter buffer(_response->body().stringBuffer());
   VPackDumper dumper(&buffer);
   dumper.dump(s);
 }

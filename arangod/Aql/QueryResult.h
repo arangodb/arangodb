@@ -32,6 +32,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
+
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace triagens {

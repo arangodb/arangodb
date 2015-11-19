@@ -30,14 +30,29 @@
 #include "velocypack/Version.h"
 
 using namespace arangodb::velocypack;
-  
-int const Version::major = 0;      
-int const Version::minor = 1;      
-int const Version::patch = 0;
 
-std::string Version::toString () {
+Version const Version::BuildVersion(0, 0, 1);
+
+std::string Version::toString () const {
   std::stringstream version;
-  version << major << "." << minor << "." << patch;
+  version << majorValue << "." << minorValue << "." << patchValue;
   return version.str();
+}
+
+int Version::compare (Version const& other) const {
+  if (majorValue != other.majorValue) {
+    return majorValue < other.majorValue ? -1 : 1;
+  }
+  if (minorValue != other.minorValue) {
+    return minorValue < other.minorValue ? -1 : 1;
+  } 
+  if (patchValue != other.patchValue) {
+    return patchValue < other.patchValue ? -1 : 1;
+  } 
+  return 0;
+}
+
+int Version::compare (Version const& lhs, Version const& rhs) {
+  return lhs.compare(rhs);
 }
 

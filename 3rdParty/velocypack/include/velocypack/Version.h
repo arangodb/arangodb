@@ -36,12 +36,24 @@ namespace arangodb {
 
     struct Version {
       Version () = delete;
+      Version (Version const&) = delete;
+      Version& operator = (Version const&) = delete;
 
-      static std::string toString ();
+      Version (int majorValue, int minorValue, int patchValue)
+        : majorValue(majorValue), minorValue(minorValue), patchValue(patchValue) {
+      }
 
-      static int const major;
-      static int const minor;
-      static int const patch;
+      std::string toString () const;
+
+      int compare (Version const& other) const;
+
+      static int compare (Version const& lhs, Version const& rhs);
+
+      int const majorValue;
+      int const minorValue;
+      int const patchValue;
+
+      static Version const BuildVersion;
     };
 
   }  // namespace arangodb::velocypack

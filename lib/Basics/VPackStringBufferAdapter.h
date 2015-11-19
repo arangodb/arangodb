@@ -26,16 +26,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "string-buffer.h"
-#include <velocypack/vpack.h>
+#include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
   namespace basics {
 
-    class StringBufferAdapter final : public VPackSink {
+    class VPackStringBufferAdapter final : public VPackSink {
 
       public: 
-        StringBufferAdapter (TRI_string_buffer_t* buffer) 
+        VPackStringBufferAdapter (TRI_string_buffer_t* buffer) 
           : _buffer(buffer) {
         }
 

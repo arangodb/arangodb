@@ -121,7 +121,6 @@ add_library(
     Basics/SpinLocker.cpp
     Basics/ssl-helper.cpp
     Basics/string-buffer.cpp
-    Basics/StringBufferAdapter.cpp
     Basics/StringUtils.cpp
     Basics/structures.cpp
     Basics/system-functions.cpp
@@ -135,6 +134,7 @@ add_library(
     Basics/VelocyPackHelper.cpp
     Basics/voc-errors.cpp
     Basics/voc-mimetypes.cpp
+    Basics/VPackStringBufferAdapter.cpp
     Basics/WriteLocker.cpp
     Basics/WriteUnlocker.cpp
     Basics/xxhash.cpp

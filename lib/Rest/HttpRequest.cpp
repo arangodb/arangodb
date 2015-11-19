@@ -36,6 +36,11 @@
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Options.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;

@@ -32,6 +32,12 @@
 #include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------

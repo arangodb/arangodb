@@ -31,7 +31,16 @@
 #define ARANGODB_STORAGE_OPTIONS_H 1
 
 #include "Basics/Common.h"
+
+#include <velocypack/AttributeTranslator.h>
+#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
+
+namespace triagens {
+  namespace arango {
+    class CollectionNameResolver;
+  }
+}
 
 namespace arangodb {
   class StorageOptions {
@@ -45,6 +54,7 @@ namespace arangodb {
       static VPackOptions getDocumentToJsonTemplate ();
       static VPackOptions getJsonToDocumentTemplate ();
       static VPackOptions getNonDocumentTemplate ();
+      static VPackCustomTypeHandler* createCustomHandler (triagens::arango::CollectionNameResolver const*);
 
     private:
 

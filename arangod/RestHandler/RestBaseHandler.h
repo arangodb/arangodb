@@ -31,12 +31,11 @@
 #define ARANGODB_ADMIN_REST_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "HttpServer/HttpHandler.h"
-
 #include "Basics/json.h"
+#include "HttpServer/HttpHandler.h"
 #include "Rest/HttpResponse.h"
 
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 // -----------------------------------------------------------------------------
@@ -107,8 +106,6 @@ namespace triagens {
 
         virtual void generateResult (rest::HttpResponse::HttpResponseCode,
                                      VPackSlice const& slice);
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a cancel message

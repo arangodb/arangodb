@@ -388,6 +388,28 @@ bool Builder::hasKey (std::string const& key) const {
   return false; 
 }
 
+// return an attribute from an Object value
+Slice Builder::getKey (std::string const& key) const {
+  if (_stack.empty()) {
+    throw Exception(Exception::BuilderNeedOpenObject);
+  }
+  ValueLength const& tos = _stack.back();
+  if (_start[tos] != 0x0b && _start[tos] != 0x14) {
+    throw Exception(Exception::BuilderNeedOpenObject);
+  }
+  std::vector<ValueLength> const& index = _index[_stack.size() - 1];
+  if (index.empty()) {
+    return Slice();
+  }
+  for (size_t i = 0; i < index.size(); ++i) {
+    Slice s(_start + tos + index[i], options);
+    if (s.isString() && s.isEqualString(key)) {
+      return s;
+    }
+  }
+  return Slice(); 
+}
+
 uint8_t* Builder::set (Value const& item) {
   auto const oldPos = _start + _pos;
   auto ctype = item.cType();

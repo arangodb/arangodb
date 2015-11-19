@@ -32,6 +32,7 @@
 #include "Basics/Exceptions.h"
 #include "V8/v8-utils.h"
 
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 // -----------------------------------------------------------------------------
@@ -127,16 +128,18 @@ v8::Handle<v8::Value> TRI_VPackToV8 (v8::Isolate* isolate,
       return v8::Undefined(isolate);
   }
 }
-
+  
 struct BuilderContext {
   BuilderContext (v8::Isolate* isolate, VPackBuilder& builder, bool keepTopLevelOpen)
     : isolate(isolate), builder(builder), keepTopLevelOpen(keepTopLevelOpen) {
+
   }
 
   v8::Isolate* isolate;
   VPackBuilder& builder;
-  std::set<int> seenHashes;
+  std::unordered_set<int> seenHashes;
   std::vector<v8::Handle<v8::Object>> seenObjects;
+
   bool keepTopLevelOpen;
 };
 

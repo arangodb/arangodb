@@ -40,6 +40,7 @@
 #include "Rest/ConnectionInfo.h"
 #include "Rest/RequestContext.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 // -----------------------------------------------------------------------------

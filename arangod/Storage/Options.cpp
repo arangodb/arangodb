@@ -27,10 +27,16 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 #include "Storage/Options.h"
 #include "Basics/Exceptions.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/Dumper.h>
+#include <velocypack/Slice.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -65,22 +71,25 @@ struct ExcludeHandlerImpl : public VPackAttributeExcludeHandler {
 };
 
 struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
-  CustomTypeHandlerImpl (triagens::arango::CollectionNameResolver const* resolver,
-                         TRI_voc_cid_t cid)
-    : resolver(resolver), 
-      cid(cid) {
+  CustomTypeHandlerImpl (triagens::arango::CollectionNameResolver const* resolver) 
+    : resolver(resolver) { 
   }
 
   void toJson (VPackSlice const& value, VPackDumper* dumper, VPackSlice const& base) {
+    std::cout << "TOJSON. VALUE.HEAD(): " << (int) value.head() << "\n";
     if (value.head() == 0xf0) {
+      std::cout << "0xf0\n";
       // _id
       if (! base.isObject()) {
+      std::cout << "NO OBJECT. " << base << "\n";
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid value type"); 
       }
+      uint64_t cid = arangodb::velocypack::readUInt64(value.start() + 1);
+      std::cout << "HAVE READ CID: " << cid << "\n";
       char buffer[512]; // TODO: check if size is appropriate
       size_t len = resolver->getCollectionName(&buffer[0], cid); 
       buffer[len] = '/';
-      VPackSlice key = base.get("_key");
+      VPackSlice key = base.get(TRI_VOC_ATTRIBUTE_KEY);
       
       VPackValueLength keyLength;
       char const* p = key.getString(keyLength);
@@ -89,41 +98,37 @@ struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
       }
       memcpy(&buffer[len + 1], p, keyLength);
       dumper->appendString(&buffer[0], len + 1 + keyLength);
+      return;
     }
 
     if (value.head() == 0xf1) {
+      std::cout << "0xf1\n";
       // _rev
-      uint64_t rev = 0;
-      uint8_t const* start = value.start() + 1;
-      uint8_t const* end = start + value.byteSize();
-      do {
-        rev <<= 8;
-        rev += static_cast<uint64_t>(*start++);
-      }
-      while (start < end);
       dumper->sink()->push_back('"');
-      dumper->appendUInt(rev);
+      dumper->appendUInt(arangodb::velocypack::readUInt64(value.start() + 1));
       dumper->sink()->push_back('"');
       return;
     }
 
     if (value.head() == 0xf2) {
+      std::cout << "0xf2\n";
       // _from, _to
       // TODO
       return;
     }
+      std::cout << "OOPS\n";
     throw "unknown type!";
   }
 
   VPackValueLength byteSize (VPackSlice const& value) {
     if (value.head() == 0xf0) {
-      // _id. this type uses 1 byte only
-      return 1; 
+      // _id
+      return 1 + 8;  // 0xf0 + 8 bytes for collection id
     }
     
     if (value.head() == 0xf1) {
       // _rev
-      return 8;
+      return 1 + 8;  // 0xf1 + 8 bytes for tick value
     }
 
     if (value.head() == 0xf2) {
@@ -131,23 +136,25 @@ struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
       // TODO!!
       return 1;
     }
+
     throw "unknown type!";
   }
 
   triagens::arango::CollectionNameResolver const* resolver;
   TRI_voc_cid_t cid;
 };
-      
+
 StorageOptions::StorageOptions () 
   : _translator(new VPackAttributeTranslator),
     _excludeHandler(new ExcludeHandlerImpl) {
 
   // these attribute names will be translated into short integer values
-  _translator->add("_key",  1);
-  _translator->add("_rev",  2);
-  _translator->add("_id",   3);
-  _translator->add("_from", 4);
-  _translator->add("_to",   5);
+  _translator->add(TRI_VOC_ATTRIBUTE_KEY,  1);
+  _translator->add(TRI_VOC_ATTRIBUTE_REV,  2);
+  _translator->add(TRI_VOC_ATTRIBUTE_ID,   3);
+  _translator->add(TRI_VOC_ATTRIBUTE_FROM, 4);
+  _translator->add(TRI_VOC_ATTRIBUTE_TO,   5);
+
   _translator->seal();
 
   // set options for JSON to document conversion
@@ -193,6 +200,10 @@ VPackOptions StorageOptions::getJsonToDocumentTemplate () {
 
 VPackOptions StorageOptions::getNonDocumentTemplate () {
   return NonDocumentTemplate;
+}
+
+VPackCustomTypeHandler* StorageOptions::createCustomHandler (triagens::arango::CollectionNameResolver const* resolver) {
+  return new CustomTypeHandlerImpl(resolver);
 }
 
 // -----------------------------------------------------------------------------

@@ -35,6 +35,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 struct TRI_json_t;

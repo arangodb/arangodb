@@ -50,6 +50,9 @@
 #include "VocBase/KeyGenerator.h"
 #include "Wal/LogfileManager.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/HexDump.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "unicode/timezone.h"
@@ -972,7 +975,6 @@ static void ReplaceVocbaseCol (bool useCollection,
 /// @brief inserts a document
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 static void InsertVocbaseCol (TRI_vocbase_col_t* col,
                               const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -1005,25 +1007,6 @@ static void InsertVocbaseCol (TRI_vocbase_col_t* col,
     // invalid value type. must be a document
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
-
-  VPackOptions vOptions = arangodb::StorageOptions::getDocumentToJsonTemplate();
-  VPackBuilder builder(&vOptions);
-  int res2 = TRI_V8ToVPack(isolate, builder, args[0]->ToObject(), true);
-
-  if (res2 || builder.hasKey("_key")) {
-  }
-  else {
-  }
-
-  builder.close();
-
-  VPackSlice slice(builder.slice());
-  for (auto const& it : VPackObjectIterator(slice)) {
-    std::cout << "KEY: " << it.key.copyString() << "\n";
-  }
-
-  // std::cout << "GOT: " << VPackHexDump(slice) << "\n\n";
-
 
   // set document key
   std::unique_ptr<char[]> key;
@@ -1092,6 +1075,163 @@ static void InsertVocbaseCol (TRI_vocbase_col_t* col,
 
     TRI_V8_RETURN(result);
   }
+}
+
+
+#include <iostream>
+
+static int AddSystemAttributes (Transaction* trx, 
+                                TRI_voc_cid_t cid, 
+                                TRI_document_collection_t* document,
+                                VPackBuilder& builder) {
+  // generate a new tick value
+  uint64_t const tick = TRI_NewTickServer();
+
+  if (! builder.hasKey(TRI_VOC_ATTRIBUTE_KEY)) {
+    // "_key" attribute not present in object
+    std::string const keyString = document->_keyGenerator->generate(tick);
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(keyString)); 
+  }
+  else {
+    // "_key" attribute is present in object
+    VPackSlice key(builder.getKey(TRI_VOC_ATTRIBUTE_KEY));
+    if (! key.isString() ) {
+      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    }
+
+    int res = document->_keyGenerator->validate(key.copyString(), false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // invalid key value
+      return res;
+    }
+  }
+  
+  // now add _id attribute
+  uint8_t* p = builder.add(TRI_VOC_ATTRIBUTE_ID, VPackValuePair(9ULL, VPackValueType::Custom));
+  *p++ = 0xf0;
+      std::cout << "STORING AT " << (void*) p << ": " << cid << "\n";
+  arangodb::velocypack::storeUInt64(p, cid);
+
+  // now add _rev attribute
+  p = builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValuePair(9ULL, VPackValueType::Custom));
+  *p++ = 0xf1;
+      std::cout << "STORING AT " << (void*) p << ": " << tick << "\n";
+  arangodb::velocypack::storeUInt64(p, tick);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts a document
+////////////////////////////////////////////////////////////////////////////////
+  
+static void InsertVocbaseVPack (TRI_vocbase_col_t* col,
+                                v8::FunctionCallbackInfo<v8::Value> const& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  uint32_t const argLength = args.Length();
+  TRI_GET_GLOBALS();
+
+  if (argLength < 1 || argLength > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("insert(<data>, [<waitForSync>])");
+  }
+
+  InsertOptions options;
+  if (argLength > 1 && args[1]->IsObject()) {
+    v8::Handle<v8::Object> optionsObject = args[1].As<v8::Object>();
+    TRI_GET_GLOBAL_STRING(WaitForSyncKey);
+    if (optionsObject->Has(WaitForSyncKey)) {
+      options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(WaitForSyncKey));
+    }
+    TRI_GET_GLOBAL_STRING(SilentKey);
+    if (optionsObject->Has(SilentKey)) {
+      options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
+    }
+  }
+  else {
+    options.waitForSync = ExtractWaitForSync(args, 2);
+  }
+  
+  
+  if (! args[0]->IsObject() || args[0]->IsArray()) {
+    // invalid value type. must be a document
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  
+  // load collection
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+
+  int res = trx.begin(); // TODO: postpone locking from here to later
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+  
+  TRI_document_collection_t* document = trx.documentCollection();
+  triagens::arango::CollectionNameResolver resolver(col->_vocbase);
+
+  VPackOptions vOptions = arangodb::StorageOptions::getDocumentToJsonTemplate();
+  std::unique_ptr<VPackCustomTypeHandler> customTypeHandler(arangodb::StorageOptions::createCustomHandler(&resolver));
+  vOptions.customTypeHandler = customTypeHandler.get();
+
+  VPackBuilder builder(&vOptions);
+  res = TRI_V8ToVPack(isolate, builder, args[0]->ToObject(), true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  res = AddSystemAttributes(&trx, col->_cid, document, builder);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+  
+  builder.close();
+
+  VPackSlice slice(builder.slice());
+
+std::cout << "JSON: " << slice.toJson() << "\n";
+
+  std::cout << "GOT: " << VPackHexDump(slice) << "\n\n";
+
+  // fetch a barrier so nobody unlinks datafiles with the shapes & attributes we might
+  // need for this document
+  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+
+  TRI_doc_mptr_copy_t mptr;
+//  res = document->insert(trx, &mptr, &slice, options.waitForSync);
+  res = TRI_ERROR_INTERNAL;
+  res = trx.finish(res);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+//  TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
+
+  if (options.silent) {
+    TRI_V8_RETURN_TRUE();
+  }
+  
+  return TRI_V8_RETURN_TRUE();
+  /*  
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
+
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  TRI_GET_GLOBAL_STRING(_IdKey);
+  TRI_GET_GLOBAL_STRING(_RevKey);
+  TRI_GET_GLOBAL_STRING(_KeyKey);
+  result->Set(_IdKey,  V8DocumentId(isolate, trx.resolver()->getCollectionName(col->_cid), docKey));
+  result->Set(_RevKey, V8RevisionId(isolate, mptr._rid));
+  result->Set(_KeyKey, TRI_V8_STRING(docKey));
+
+  TRI_V8_RETURN(result);
+  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3296,6 +3436,37 @@ static void JS_InsertVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_InsertVocbaseVPack (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    // coordinator case
+    if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
+      InsertVocbaseColCoordinator(collection, args);
+      return;
+    }
+
+    InsertEdgeColCoordinator(collection, args);
+    return;
+  }
+    
+  // single server case
+  if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
+    InsertVocbaseVPack(collection, args);
+  }
+  else {
+    InsertEdgeCol(collection, args);
+  }
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of a collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -4482,6 +4653,7 @@ void TRI_InitV8collection (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("exists"), JS_ExistsVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("figures"), JS_FiguresVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("insert"), JS_InsertVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("insertv"), JS_InsertVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("load"), JS_LoadVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("name"), JS_NameVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("planId"), JS_PlanIdVocbaseCol);

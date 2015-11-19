@@ -155,6 +155,27 @@ namespace arangodb {
       return v >= shift2 ? (static_cast<int64_t>(v - shift2) - shift) - 1
                          : static_cast<int64_t>(v);
     }
+
+    static inline uint64_t readUInt64 (uint8_t const* start) throw() {
+      uint64_t value = 0;
+      uint64_t x = 0;
+      uint8_t const* end = start + 8;
+      do {
+        value += static_cast<uint64_t>(*start++) << x;
+        x += 8;
+      }
+      while (start < end);
+      return value;
+    }
+    
+    static inline void storeUInt64 (uint8_t* start, uint64_t value) throw() {
+      uint8_t const* end = start + 8;
+      do {
+        *start++ = static_cast<uint8_t>(value & 0xff);
+        value >>= 8;
+      }
+      while (start < end);
+    }
        
   }  // namespace arangodb::velocypack
 }  // namespace arangodb

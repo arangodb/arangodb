@@ -39,6 +39,10 @@
 #include "Utils/CursorRepository.h"
 #include "V8Server/ApplicationV8.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace triagens::arango;
 using namespace triagens::rest;
 
