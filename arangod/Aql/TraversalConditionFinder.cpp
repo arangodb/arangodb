@@ -103,9 +103,11 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
           (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LT ) ||
           (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LE ) ||
           (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GT ) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GE ) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_IN ) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GE )
+          //  || As long as we need to twist the access, this is impossible:
+          // (oneNode->type == NODE_TYPE_OPERATOR_BINARY_IN ) ||
+          // (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NIN))
+          ){
         compareNode = oneNode;
       }
     }
@@ -113,12 +115,18 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
     if (compareNode != NULL) {
       AstNode const * pathAccessNode;
       AstNode const * filterByNode;
+      bool flipOperator = false;
       
       if (compareNode->getMember(0) == accessNodeBranch) {
         pathAccessNode = accessNodeBranch;
         filterByNode = compareNode->getMember(1);
       }
       else {
+        flipOperator = (compareNode->type == NODE_TYPE_OPERATOR_BINARY_LT ) ||
+          (compareNode->type == NODE_TYPE_OPERATOR_BINARY_LE ) ||
+          (compareNode->type == NODE_TYPE_OPERATOR_BINARY_GT ) ||
+          (compareNode->type == NODE_TYPE_OPERATOR_BINARY_GE );
+
         pathAccessNode = accessNodeBranch;
         filterByNode = compareNode->getMember(0);
       }
@@ -141,8 +149,11 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
         AstNode *newNode = pathAccessNode->clone(ast);
 
         // since we just copied one path, we should only find one. 
+        currentPath.clear();
+        clonePath.clear();
         newNode->findVariableAccess(currentPath, clonePath, var);
         if (clonePath.size() != 1) {
+
           return false;
         }
         auto len = clonePath[0].size();
@@ -161,9 +172,24 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
         varRefNode->setData(isEdgeAccess ? tn->edgeOutVariable(): tn->vertexOutVariable());
         firstRefNode->changeMember(0, varRefNode);
 
+        auto expressionOperator = compareNode->type;
+        if (flipOperator) {
+          if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_LT ) {
+            expressionOperator = NODE_TYPE_OPERATOR_BINARY_GE;
+          }
+          else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_LE ) {
+            expressionOperator = NODE_TYPE_OPERATOR_BINARY_GT;
+          }
+          else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_GT ) { 
+            expressionOperator = NODE_TYPE_OPERATOR_BINARY_LE;
+          }
+          else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_GE ) {
+            expressionOperator = NODE_TYPE_OPERATOR_BINARY_LT;
+          }
+        }
         tn->storeSimpleExpression(isEdgeAccess,
                                   attrAccessTo,
-                                  compareNode->type,
+                                  expressionOperator,
                                   newNode,
                                   filterByNode);
       }
