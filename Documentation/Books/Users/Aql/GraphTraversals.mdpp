@@ -15,7 +15,7 @@ Can work on managed graphs
 
 `FOR ` vertex[, edge[, path]]
  `IN` `MIN`[..`MAX`]
- `OUTBOUND` startVertex
+ `OUTBOUND|INBOUND|ANY` startVertex
  `GRAPH` graphName [`FILTER` ...]
  `RETURN` {v: vertex[, e: edge[, p: path]]}
 
@@ -26,6 +26,7 @@ Can work on managed graphs
      - `vertices`: an array of all vertices already visited 
      - `edges`: an array of all edges already visited 
  - `IN` `MIN`..`MAX` `OUTBOUND` startVertex `GRAPH` graphName
+   - `OUTBOUND|INBOUND|ANY` traversal will be done for outbound / inbound / inbound+outbound pointing edges
    - **startVertex**: a vertex at which the traversal will originate from
    - **graphName**: the name of a managed graph. Its vertex and edge collections will be looked up.
    - `MIN`: edges and vertices returned by this query will start at the traversal depth of `MIN` (thus edges and vertices below will not be returned). If not specified, defaults to `1`.
@@ -38,7 +39,7 @@ Can work on managed graphs
 
 `FOR ` vertex[, edge[, path]]
  `IN` `MIN`[..`MAX`]
- `OUTBOUND` startVertex edeCollection1, .., edgeCollectionN
+ `OUTBOUND|INBOUND|ANY` startVertex edeCollection1, .., edgeCollectionN
  [`FILTER` ...]
  `RETURN` {v: vertex[, e: edge[, p: path]]}
 
@@ -101,7 +102,7 @@ If we don't want to use the graph management facilities we specify a list of edg
 Now we only want the elements of a specific depth - 2 - th ones that are right behind th fork:
 
     @startDocuBlockInline GRAPHTRAV_03_traverse_3
-    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_02_traverse_3}
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_03_traverse_3}
     db._query("FOR v IN 2..2 OUTBOUND 'circles/A' GRAPH 'traversalGraph' return v._key");
     db._query("FOR v IN 2 OUTBOUND 'circles/A' GRAPH 'traversalGraph' return v._key");
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -137,20 +138,40 @@ We may combine several filters so we filter out the right (*G*) branch, and the 
 
 As you can see combining two `FILTER` statements with an `AND` has the same result.
 
+!SUBSECTION Comparing OUTBOUND / INBOUND / ANY
+All our previous examples traversed the graph into outbound edge directions.
+You may however want to also traverse in reverse direction (`INBOUND`) or both (`ANY`),
+Since `circles/A` only has outbound edges, we start our queries from `circles/E`:
+
+    @startDocuBlockInline GRAPHTRAV_06_traverse_reverse_6
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_06_traverse_reverse_6}
+    db._query("FOR v IN 0..3 OUTBOUND 'circles/E' GRAPH 'traversalGraph' return v._key");
+    db._query("FOR v IN 0..3 INBOUND 'circles/E' GRAPH 'traversalGraph' return v._key");
+    db._query("FOR v IN 0..3 ANY 'circles/E' GRAPH 'traversalGraph' return v._key");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock GRAPHTRAV_06_traverse_reverse_6
+
+The first traversal will only walk into the forward (`OUTBOUND`) direction. Therefore from *E* we only can see *F*.
+Walking into reverse direction (`INBOUND`) we see the path to *A*: *B*, *A*.
+Walking in forward and reverse direction (`ANY`) we can see a more diverse result. It will also walk back the path it just came.
+We will see all nodes up to 3 hops away from *E*, outmost this is *D* and behind *A* we found *G*. Due to it walking back again
+we also will see duplicate nodes.
+
 !SUBSUBSECTION Explain whats usefull
 
 Now lets have a look what the optimizer does behind the curtains and inspect traversal queries using [the explainer](Optimizer.md):
 
 
-    @startDocuBlockInline GRAPHTRAV_04_traverse_6
-    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_04_traverse_6}
-    db._explain("FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' LET localScopeVar = RAND() > 0.5 FILTER p.edges[0].theTruth != localScopeVar return v._key", {}, {colors:false});
+    @startDocuBlockInline GRAPHTRAV_07_traverse_7
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_07_traverse_7}
+    db._explain("FOR v,e,p IN 1..3 OUTBOUND 'circles/' GRAPH 'traversalGraph' LET localScopeVar = RAND() > 0.5 FILTER p.edges[0].theTruth != localScopeVar return v._key", {}, {colors:false});
     db._explain("FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.edges[0].label == 'right_foo' return v._key", {}, {colors:false});
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock GRAPHTRAV_04_traverse_6
+    @endDocuBlock GRAPHTRAV_07_traverse_7
 
 We now see two queries, in one we add a variable `localScopeVar` which is outside the scope of the traversal itself - it is not known inside of the traverser. Therefore this filter can only executed after the traversal, which may be undesired in large graphs.
 The second query on the other hand only operates on the path, and therefore this condition can be used during the execution of the traversal, paths that are filtered out by ths condition won't be processed at all.
+
 
 
 
