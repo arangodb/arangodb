@@ -34,7 +34,6 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
-#include "Basics/vector.h"
 #include "Basics/JsonHelper.h"
 
 #include <functional>
