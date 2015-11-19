@@ -31,7 +31,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
-#include <ostream>
+#include <iosfwd>
 #include <algorithm>
 
 #include "velocypack/velocypack-common.h"

@@ -24,6 +24,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <ostream>
+
 #include "velocypack/ValueType.h"
 
 using namespace arangodb::velocypack;

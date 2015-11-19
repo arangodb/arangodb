@@ -29,7 +29,7 @@
 
 #include <exception>
 #include <string>
-#include <ostream>
+#include <iosfwd>
 
 #include "velocypack/velocypack-common.h"
 

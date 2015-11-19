@@ -27,7 +27,7 @@
 #ifndef VELOCYPACK_HEXDUMP_H
 #define VELOCYPACK_HEXDUMP_H 1
 
-#include <ostream>
+#include <iosfwd>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Slice.h"

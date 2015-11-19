@@ -27,7 +27,7 @@
 #ifndef VELOCYPACK_VALUETYPE_H
 #define VELOCYPACK_VALUETYPE_H
 
-#include <ostream>
+#include <iosfwd>
 
 #include "velocypack-common.h"
 
