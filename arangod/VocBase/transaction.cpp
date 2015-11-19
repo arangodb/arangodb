@@ -1080,24 +1080,23 @@ bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t const* trxC
 /// @brief add a WAL operation for a transaction collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
+int TRI_AddOperationTransaction (TRI_transaction_t* trx,
+                                 triagens::wal::DocumentOperation& operation,
                                  bool& waitForSync) {
-  TRI_transaction_collection_t* trxCollection = operation.trxCollection;
-  TRI_transaction_t* trx = trxCollection->_transaction;
 
   TRI_ASSERT(operation.header != nullptr);
 
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
   // upgrade the info for the transaction
-  if (waitForSync || trxCollection->_waitForSync) {
+  if (waitForSync || operation.document->_info._waitForSync) {
     trx->_waitForSync = true;
   }
 
   // default is false
   waitForSync = false;
   if (isSingleOperationTransaction) {
-    waitForSync |= trxCollection->_waitForSync;
+    waitForSync |= operation.document->_info._waitForSync;
   }
   
 
@@ -1121,7 +1120,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   void const* position = nullptr;
 
   int64_t sizeChanged = 0;
-  TRI_document_collection_t* document = operation.trxCollection->_collection->_collection;
+  TRI_document_collection_t* document = operation.document;
 
   if (operation.marker->fid() == 0) {
     // this is a "real" marker that must be written into the logfiles
@@ -1140,7 +1139,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
       triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(oldmarker, operation.marker->size(), false, cid, sid, 0, oldLegend);
       if (slotInfo.errorCode == TRI_ERROR_LEGEND_NOT_IN_WAL_FILE) {
         // Oh dear, we have to build a legend and patch the marker:
-        triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
+        triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx 
         int res = legend.addShape(sid, oldmarker + oldm->_offsetJson,
                                        oldm->_size - oldm->_offsetJson);
         if (res != TRI_ERROR_NO_ERROR) {
@@ -1260,6 +1259,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   }
   else {
     // operation is buffered and might be rolled back
+    TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(trx, document->_info._cid, TRI_TRANSACTION_WRITE);
     if (trxCollection->_operations == nullptr) {
       trxCollection->_operations = new std::vector<triagens::wal::DocumentOperation*>;
       trx->_hasOperations = true;

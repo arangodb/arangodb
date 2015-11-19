@@ -1554,6 +1554,9 @@ char const* TRI_NameMarkerDatafile (TRI_df_marker_t const* marker) {
     case TRI_WAL_MARKER_DROP_DATABASE:
       return "drop database (wal)";
 
+    case TRI_WAL_MARKER_VPACK_DOCUMENT:
+      return "document (vpack)";
+
     default:
       return "unused/unknown";
   }

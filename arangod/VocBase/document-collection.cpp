@@ -608,7 +608,7 @@ VocShaper* TRI_document_collection_t::getShaper () const {
 /// @brief add a WAL operation for a transaction collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AddOperationTransaction (triagens::wal::DocumentOperation&, bool&);
+int TRI_AddOperationTransaction (TRI_transaction_t*, triagens::wal::DocumentOperation&, bool&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -1078,7 +1078,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  res = TRI_AddOperationTransaction(operation, waitForSync);
+  res = TRI_AddOperationTransaction(trxCollection->_transaction, operation, waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1179,7 +1179,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  res = TRI_AddOperationTransaction(operation, syncRequested);
+  res = TRI_AddOperationTransaction(trxCollection->_transaction, operation, syncRequested);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // write new header into result
@@ -5150,7 +5150,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
 
-    triagens::wal::DocumentOperation operation(marker, freeMarker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_REMOVE, rid);
+    triagens::wal::DocumentOperation operation(marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_REMOVE, rid);
 
     res = LookupDocument(document, key, policy, header);
 
@@ -5191,7 +5191,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    res = TRI_AddOperationTransaction(operation, forceSync);
+    res = TRI_AddOperationTransaction(trxCollection->_transaction, operation, forceSync);
     
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert();
@@ -5291,7 +5291,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
 
-    triagens::wal::DocumentOperation operation(marker, freeMarker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
+    triagens::wal::DocumentOperation operation(marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
 
     TRI_IF_FAILURE("InsertDocumentNoHeader") {
       // test what happens if no header can be acquired
@@ -5419,7 +5419,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
     TRI_ASSERT(marker != nullptr);
 
-    triagens::wal::DocumentOperation operation(marker, freeMarker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_UPDATE, rid);
+    triagens::wal::DocumentOperation operation(marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_UPDATE, rid);
     operation.header = oldHeader;
     operation.init();
 
@@ -5445,6 +5445,96 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
   return res;
 }
+  
+int TRI_document_collection_t::insert (Transaction* trx, 
+                                       TRI_doc_mptr_t* mptr, 
+                                       VPackSlice* slice, 
+                                       bool lock,
+                                       bool waitForSync) {
+
+  TRI_ASSERT(mptr != nullptr);
+  mptr->setDataPtr(nullptr); 
+
+  VPackSlice const key(slice->get(TRI_VOC_ATTRIBUTE_KEY));
+  std::string const keyString(key.copyString()); // TODO: use slice.hash()
+  uint64_t const hash = primaryIndex()->calculateHash(keyString.c_str(), keyString.size()); // TODO: remove here
+
+  std::unique_ptr<triagens::wal::Marker> marker(createVPackInsertMarker(trx, slice));
+  
+  TRI_voc_tick_t markerTick = 0;
+  int res = TRI_ERROR_NO_ERROR;
+  // now insert into indexes
+  {
+    TRI_IF_FAILURE("InsertDocumentNoLock") {
+      // test what happens if no lock can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+
+    triagens::arango::CollectionWriteLocker collectionLocker(this, lock);
+
+    triagens::wal::DocumentOperation operation(marker.get(), true, this, TRI_VOC_DOCUMENT_OPERATION_INSERT, 0 /*rid*/); // TODO: fix rid
+
+    TRI_IF_FAILURE("InsertDocumentNoHeader") {
+      // test what happens if no header can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+
+    TRI_IF_FAILURE("InsertDocumentNoHeaderExcept") {
+      // test what happens if no header can be acquired
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    // create a new header
+    TRI_doc_mptr_t* header = operation.header = _headersPtr->request(marker->size());  // PROTECTED by trx in trxCollection
+
+    if (header == nullptr) {
+      // out of memory. no harm done here. just return the error
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    // update the header we got
+    void* mem = operation.marker->mem();
+    header->_rid = 0; // TODO: fix revision id 
+    header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
+    header->_hash = hash;
+    
+    // insert into indexes
+    // TODO
+    // res = InsertDocument(trxCollection, header, operation, mptr, forceSync);
+    res = TRI_ERROR_INTERNAL;
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    }
+    else {
+      TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
+
+      if (waitForSync) {
+        markerTick = operation.tick;
+      }
+    }
+    
+    // TODO: fix this
+    marker.release();
+  }
+
+  if (markerTick > 0) {
+    // need to wait for tick, outside the lock
+    triagens::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
+  }
+
+  return res;
+}
+
+triagens::wal::Marker* TRI_document_collection_t::createVPackInsertMarker (Transaction* trx,
+                                                                           VPackSlice const* slice) {
+  auto marker = new triagens::wal::VPackDocumentMarker(_vocbase->_id,
+                                                       _info._cid,
+                                                       trx->getInternals()->_id,
+                                                       slice);
+  return marker;
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

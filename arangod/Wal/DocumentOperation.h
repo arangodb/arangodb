@@ -25,11 +25,11 @@ namespace triagens {
 
       DocumentOperation (Marker* marker,
                          bool freeMarker,
-                         struct TRI_transaction_collection_s* trxCollection,
+                         TRI_document_collection_t* document,
                          TRI_voc_document_operation_e type,
                          TRI_voc_rid_t rid)
         : marker(marker),
-          trxCollection(trxCollection),
+          document(document),
           header(nullptr),
           rid(rid),
           tick(0),
@@ -43,8 +43,7 @@ namespace triagens {
       ~DocumentOperation () {
         if (status == StatusType::HANDLED) {
           if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-            TRI_document_collection_t* document = trxCollection->_collection->_collection;
-            document->_headersPtr->release(header, false);  // PROTECTED by trx in trxCollection
+            document->_headersPtr->release(header, false);  // PROTECTED by trx
           }
         }
         else if (status != StatusType::REVERTED) {
@@ -57,7 +56,7 @@ namespace triagens {
       }
 
       DocumentOperation* swap () {
-        DocumentOperation* copy = new DocumentOperation(marker, freeMarker, trxCollection, type, rid);
+        DocumentOperation* copy = new DocumentOperation(marker, freeMarker, document, type, rid);
         copy->tick = tick;
         copy->header = header;
         copy->oldHeader = oldHeader;
@@ -90,11 +89,9 @@ namespace triagens {
         TRI_ASSERT(header != nullptr);
         TRI_ASSERT(status == StatusType::INDEXED);
 
-        TRI_document_collection_t* document = trxCollection->_collection->_collection;
-
         if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
           // move header to the end of the list
-          document->_headersPtr->moveBack(header, &oldHeader);  // PROTECTED by trx in trxCollection
+          document->_headersPtr->moveBack(header, &oldHeader);  // PROTECTED by trx
         }
 
         // free the local marker buffer
@@ -107,22 +104,20 @@ namespace triagens {
           return;
         }
 
-        TRI_document_collection_t* document = trxCollection->_collection->_collection;
-
         if (status == StatusType::INDEXED || status == StatusType::HANDLED) {
           TRI_RollbackOperationDocumentCollection(document, type, header, &oldHeader);
         }
 
         if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
-          document->_headersPtr->release(header, true);  // PROTECTED by trx in trxCollection
+          document->_headersPtr->release(header, true);  // PROTECTED by trx
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
-          document->_headersPtr->move(header, &oldHeader);  // PROTECTED by trx in trxCollection
+          document->_headersPtr->move(header, &oldHeader);  // PROTECTED by trx
           header->copy(oldHeader);
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
           if (status != StatusType::CREATED) {
-            document->_headersPtr->relink(header, &oldHeader); // PROTECTED by trx in trxCollection 
+            document->_headersPtr->relink(header, &oldHeader); // PROTECTED by trx
           }
         }
 
@@ -130,7 +125,7 @@ namespace triagens {
       }
 
       Marker*                               marker;
-      struct TRI_transaction_collection_s*  trxCollection;
+      TRI_document_collection_t*            document;
       TRI_doc_mptr_t*                       header;
       TRI_doc_mptr_copy_t                   oldHeader;
       TRI_voc_rid_t const                   rid;

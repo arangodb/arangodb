@@ -301,7 +301,7 @@ bool TraditionalKeyGenerator::validateKey (char const* key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TraditionalKeyGenerator::generate (TRI_voc_tick_t tick) {
-  return triagens::basics::StringUtils::itoa(tick);
+  return std::move(triagens::basics::StringUtils::itoa(tick));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,7 +437,7 @@ std::string AutoIncrementKeyGenerator::generate (TRI_voc_tick_t tick) {
     _lastValue = keyValue;
   }
 
-  return triagens::basics::StringUtils::itoa(keyValue);
+  return std::move(triagens::basics::StringUtils::itoa(keyValue));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

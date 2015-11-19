@@ -42,6 +42,9 @@
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include <regex.h>
 
 // -----------------------------------------------------------------------------
@@ -66,6 +69,7 @@ namespace triagens {
     class Index;
     class PrimaryIndex;
     class SkiplistIndex;
+    class Transaction;
   }
 }
 
@@ -457,6 +461,12 @@ public:
   TRI_document_collection_t ();
 
   ~TRI_document_collection_t ();
+
+  int insert (triagens::arango::Transaction*, TRI_doc_mptr_t*, VPackSlice*, bool, bool);
+
+private:
+  triagens::wal::Marker* createVPackInsertMarker (triagens::arango::Transaction*,
+                                                  VPackSlice const*);
 };
 
 // -----------------------------------------------------------------------------

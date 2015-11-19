@@ -27,7 +27,6 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 #include "Storage/Options.h"
 #include "Basics/Exceptions.h"
 #include "Utils/CollectionNameResolver.h"
@@ -76,16 +75,12 @@ struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
   }
 
   void toJson (VPackSlice const& value, VPackDumper* dumper, VPackSlice const& base) {
-    std::cout << "TOJSON. VALUE.HEAD(): " << (int) value.head() << "\n";
     if (value.head() == 0xf0) {
-      std::cout << "0xf0\n";
       // _id
       if (! base.isObject()) {
-      std::cout << "NO OBJECT. " << base << "\n";
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid value type"); 
       }
       uint64_t cid = arangodb::velocypack::readUInt64(value.start() + 1);
-      std::cout << "HAVE READ CID: " << cid << "\n";
       char buffer[512]; // TODO: check if size is appropriate
       size_t len = resolver->getCollectionName(&buffer[0], cid); 
       buffer[len] = '/';
@@ -102,7 +97,6 @@ struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
     }
 
     if (value.head() == 0xf1) {
-      std::cout << "0xf1\n";
       // _rev
       dumper->sink()->push_back('"');
       dumper->appendUInt(arangodb::velocypack::readUInt64(value.start() + 1));
@@ -111,12 +105,11 @@ struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
     }
 
     if (value.head() == 0xf2) {
-      std::cout << "0xf2\n";
       // _from, _to
       // TODO
       return;
     }
-      std::cout << "OOPS\n";
+    
     throw "unknown type!";
   }
 

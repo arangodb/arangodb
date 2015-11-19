@@ -27,8 +27,6 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/Exceptions.h"
-#include <velocypack/vpack.h>
-#include <velocypack/velocypack-aliases.h>
 
 using VelocyPackHelper = triagens::basics::VelocyPackHelper;
 
