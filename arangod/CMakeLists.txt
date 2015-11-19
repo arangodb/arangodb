@@ -241,6 +241,7 @@ add_executable(
     VocBase/datafile.cpp
     VocBase/Ditch.cpp
     VocBase/document-collection.cpp
+    VocBase/DocumentAccessor.cpp
     VocBase/ExampleMatcher.cpp
     VocBase/edge-collection.cpp
     VocBase/headers.cpp

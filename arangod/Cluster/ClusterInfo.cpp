@@ -34,7 +34,6 @@
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
-#include "Basics/vector.h"
 #include "Basics/json-utilities.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"
@@ -403,8 +402,8 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID,
 /// @brief get list of databases in the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<DatabaseID> ClusterInfo::listDatabases (bool reload) {
-  vector<DatabaseID> result;
+std::vector<DatabaseID> ClusterInfo::listDatabases (bool reload) {
+  std::vector<DatabaseID> result;
 
   if (reload ||
       ! _plannedDatabasesProt.isValid ||
@@ -712,18 +711,18 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       (*it).second._json = nullptr;
 
       shared_ptr<CollectionInfo> collectionData (new CollectionInfo(json));
-      vector<string>* shardKeys = new vector<string>;
+      std::vector<std::string>* shardKeys = new std::vector<std::string>;
       *shardKeys = collectionData->shardKeys();
       newShardKeys.insert(
-             make_pair(collection, shared_ptr<vector<string> > (shardKeys)));
+             make_pair(collection, shared_ptr<std::vector<std::string> > (shardKeys)));
       map<ShardID, ServerID> shardIDs = collectionData->shardIds();
-      vector<string>* shards = new vector<string>;
+      std::vector<std::string>* shards = new std::vector<std::string>;
       map<ShardID, ServerID>::iterator it3;
       for (it3 = shardIDs.begin(); it3 != shardIDs.end(); ++it3) {
         shards->push_back(it3->first);
       }
       newShards.emplace(
-              std::make_pair(collection, shared_ptr<vector<string> >(shards)));
+              std::make_pair(collection, shared_ptr<std::vector<std::string> >(shards)));
 
       // insert the collection into the existing map, insert it under its
       // ID as well as under its name, so that a lookup can be done with
@@ -2260,7 +2259,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers () {
 /// our id
 ////////////////////////////////////////////////////////////////////////////////
 
-static const std::string prefixTargetServerEndoint = "Target/MapIDToEndpoint/";
+static const std::string prefixTargetServerEndpoint = "Target/MapIDToEndpoint/";
 
 std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
 
@@ -2271,12 +2270,12 @@ std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
     AgencyCommLocker locker("Target", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues(prefixTargetServerEndoint + serverID, false);
+      result = _agency.getValues(prefixTargetServerEndpoint + serverID, false);
     }
   }
 
   if (result.successful()) {
-    result.parse(prefixTargetServerEndoint, false);
+    result.parse(prefixTargetServerEndpoint, false);
 
     // check if we can find ourselves in the list returned by the agency
     std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.find(serverID);
@@ -2357,9 +2356,9 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   }
 
   int tries = 0;
-  shared_ptr<vector<string> > shardKeysPtr;
+  shared_ptr<std::vector<std::string> > shardKeysPtr;
   char const** shardKeys = nullptr;
-  shared_ptr<vector<ShardID> > shards;
+  shared_ptr<std::vector<ShardID> > shards;
   bool found = false;
 
   while (true) {

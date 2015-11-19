@@ -168,12 +168,12 @@ function getIndexMap (shard) {
 function writeLocked (lockInfo, cb, args) {
   var timeout = lockInfo.timeout;
   if (timeout === undefined) {
-    timeout = 5;
+    timeout = 60;
   }
 
   var ttl = lockInfo.ttl;
   if (ttl === undefined) {
-    ttl = 10;
+    ttl = 120;
   }
   if (require("internal").coverage || require("internal").valgrind) {
     ttl *= 10;
