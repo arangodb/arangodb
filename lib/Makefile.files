@@ -10,7 +10,7 @@
 
 lib_libarango_a_CPPFLAGS = \
 	$(AM_CPPFLAGS) \
-	$(CONSOLE_CPPFLAGS)
+	$(CONSOLE_CPPFLAGS) 
 
 lib_libarango_a_SOURCES = \
 	lib/Basics/application-exit.cpp \

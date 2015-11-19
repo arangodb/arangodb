@@ -33,8 +33,12 @@ js-*.h
 3rdParty/libev/ARCH.ia32/
 3rdParty/zlib-1.2.7/
 
-Build32/
 Build64/
+Build32/
+Debug64/
+Debug32/
+Release64/
+Release32/
 WindowsLibraries
 
 Makefile
