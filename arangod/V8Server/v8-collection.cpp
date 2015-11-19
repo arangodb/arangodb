@@ -1095,6 +1095,7 @@ static int AddSystemAttributes (Transaction* trx,
   else {
     // "_key" attribute is present in object
     VPackSlice key(builder.getKey(TRI_VOC_ATTRIBUTE_KEY));
+
     if (! key.isString() ) {
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     }
@@ -1110,13 +1111,11 @@ static int AddSystemAttributes (Transaction* trx,
   // now add _id attribute
   uint8_t* p = builder.add(TRI_VOC_ATTRIBUTE_ID, VPackValuePair(9ULL, VPackValueType::Custom));
   *p++ = 0xf0;
-      std::cout << "STORING AT " << (void*) p << ": " << cid << "\n";
   arangodb::velocypack::storeUInt64(p, cid);
 
   // now add _rev attribute
   p = builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValuePair(9ULL, VPackValueType::Custom));
   *p++ = 0xf1;
-      std::cout << "STORING AT " << (void*) p << ": " << tick << "\n";
   arangodb::velocypack::storeUInt64(p, tick);
 
   return TRI_ERROR_NO_ERROR;
@@ -1160,16 +1159,6 @@ static void InsertVocbaseVPack (TRI_vocbase_col_t* col,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   
-  // load collection
-  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
-
-  int res = trx.begin(); // TODO: postpone locking from here to later
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-  
-  TRI_document_collection_t* document = trx.documentCollection();
   triagens::arango::CollectionNameResolver resolver(col->_vocbase);
 
   VPackOptions vOptions = arangodb::StorageOptions::getDocumentToJsonTemplate();
@@ -1177,12 +1166,25 @@ static void InsertVocbaseVPack (TRI_vocbase_col_t* col,
   vOptions.customTypeHandler = customTypeHandler.get();
 
   VPackBuilder builder(&vOptions);
-  res = TRI_V8ToVPack(isolate, builder, args[0]->ToObject(), true);
+  int res = TRI_V8ToVPack(isolate, builder, args[0]->ToObject(), true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
+  
+  // load collection
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
+  res = trx.begin(); // TODO: postpone locking from here to later
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+  
+  TRI_document_collection_t* document = trx.documentCollection();
+
+  // the AddSystemAttributes() needs the collection already loaded because it references the
+  // collection's key generator
   res = AddSystemAttributes(&trx, col->_cid, document, builder);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1204,8 +1206,7 @@ std::cout << "JSON: " << slice.toJson() << "\n";
   }
 
   TRI_doc_mptr_copy_t mptr;
-//  res = document->insert(trx, &mptr, &slice, options.waitForSync);
-  res = TRI_ERROR_INTERNAL;
+  res = document->insert(&trx, &mptr, &slice, true /* TODO: locking */, options.waitForSync);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
