@@ -91,12 +91,16 @@ triagens::aql::Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbas
     SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), vocbase, collName);
     int res = trx.begin();
     if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
+      THROW_ARANGO_EXCEPTION_FORMAT(res,
+                                    "while looking up graph '%s' in _graphs",
+                                    name.c_str());
     }
     TRI_doc_mptr_copy_t mptr;
     res = trx.read(&mptr, name);
     if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
+      THROW_ARANGO_EXCEPTION_FORMAT(res,
+                                    "while looking up graph '%s' in _graphs",
+                                    name.c_str());
     }
     TRI_shaped_json_t document;
     TRI_EXTRACT_SHAPED_JSON_MARKER(document, mptr.getDataPtr());
