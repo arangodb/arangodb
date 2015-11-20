@@ -94,6 +94,10 @@
             font-weight: 100;
           }
 
+          tr {
+            border-bottom: 1px solid rgba(0, 0, 0, .025);
+          }
+
           td:first-child {
             width: 100px;
           }
