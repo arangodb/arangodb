@@ -58,6 +58,109 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
+    testUseIndexMultipleFilters1 : function () {
+      c.insert({ value: "one" });
+      c.insert({ value: "one" });
+      c.insert({ value: "two" });
+      c.insert({ value: "two" });
+      var query = "FOR i IN " + c.name() + " FILTER i.value IN ['one', 'two'] FILTER i.value == 'one' RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 'one', 'one' ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseIndexMultipleFilters2 : function () {
+      c.insert({ value: "one" });
+      c.insert({ value: "one" });
+      c.insert({ value: "two" });
+      c.insert({ value: "two" });
+      var query = "FOR i IN " + c.name() + " FILTER i.value IN ['one', 'two'] FILTER i.value == 'three' RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(0, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseIndexMultipleFilters3 : function () {
+      c.insert({ value: "one" });
+      c.insert({ value: "one" });
+      c.insert({ value: "two" });
+      c.insert({ value: "two" });
+      var query = "FOR i IN " + c.name() + " FILTER i.value IN ['one', 'two'] LIMIT 0, 4 FILTER i.value == 'one' RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("LimitNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 'one', 'one' ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseIndexMultipleFilters4 : function () {
+      c.insert({ value: "one" });
+      c.insert({ value: "one" });
+      c.insert({ value: "two" });
+      c.insert({ value: "two" });
+      var query = "FOR i IN " + c.name() + " FILTER i.value IN ['one', 'two'] LIMIT 0, 4 FILTER i.value == 'three' RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("LimitNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
     testValuePropagation : function () {
       var queries = [
         "FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER i.value == 10 && i.value == j.value RETURN i.value",
