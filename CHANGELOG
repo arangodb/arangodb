@@ -1,6 +1,8 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* web interface: queries in aql editor now cancelable
+
 * web interface: dashboard - added replication information
 
 * web interface: aql editor now supports bind parameters
