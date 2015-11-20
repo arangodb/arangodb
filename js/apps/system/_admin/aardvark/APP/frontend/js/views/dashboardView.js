@@ -420,13 +420,27 @@
       $('#repl-numbers table tr:nth-child(2) > td:nth-child(2)').html(object.state.totalRequests);
       $('#repl-numbers table tr:nth-child(3) > td:nth-child(2)').html(object.state.totalFailedConnects);
 
-      $('#repl-ticks table tr:nth-child(1) > td:nth-child(2)').html(object.state.lastAppliedContinuousTick);
-      $('#repl-ticks table tr:nth-child(2) > td:nth-child(2)').html(object.state.lastProcessedContinuousTick);
-      $('#repl-ticks table tr:nth-child(3) > td:nth-child(2)').html(object.state.lastAvailableContinuousTick);
+      if (object.state.lastAppliedContinuousTick) {
+        $('#repl-ticks table tr:nth-child(1) > td:nth-child(2)').html(object.state.lastAppliedContinuousTick);
+      }
+      else {
+        $('#repl-ticks table tr:nth-child(1) > td:nth-child(2)').html("no data available").addClass('no-data');
+      }
+      if (object.state.lastProcessedContinuousTick) {
+        $('#repl-ticks table tr:nth-child(2) > td:nth-child(2)').html(object.state.lastProcessedContinuousTick);
+      }
+      else {
+        $('#repl-ticks table tr:nth-child(2) > td:nth-child(2)').html("no data available").addClass('no-data');
+      }
+      if (object.state.lastAvailableContinuousTick) {
+        $('#repl-ticks table tr:nth-child(3) > td:nth-child(2)').html(object.state.lastAvailableContinuousTick);
+      }
+      else {
+        $('#repl-ticks table tr:nth-child(3) > td:nth-child(2)').html("no data available").addClass('no-data');
+      }
 
       $('#repl-progress table tr:nth-child(1) > td:nth-child(2)').html(object.state.progress.message);
-      $('#repl-progress table tr:nth-child(2) > td:nth-child(2)').html(object.state.progress.time);
-      $('#repl-progress table tr:nth-child(3) > td:nth-child(2)').html(object.state.progress.failedConnects);
+      $('#repl-progress table tr:nth-child(2) > td:nth-child(2)').html(object.state.progress.failedConnects);
     },
 
     getReplicationStatistics: function() {
@@ -441,10 +455,10 @@
           if (d.hasOwnProperty('state')) {
             var running;
             if (d.state.running) {
-              running = "Enabled";
+              running = "active";
             }
             else {
-              running = "Disabled";
+              running = "inactive";
             }
             running = '<span class="state">' + running + '</span>';
             $('#replication-chart .dashboard-sub-bar').html("Replication " + running);
