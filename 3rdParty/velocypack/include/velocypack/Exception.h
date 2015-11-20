@@ -124,13 +124,13 @@ namespace arangodb {
             case KeyNotFound:
               return "Key not found";
             case BuilderNotSealed:
-              return "Builder object not yet sealed";
+              return "Builder value not yet sealed";
             case BuilderNeedOpenObject:
               return "Need open Object";
             case BuilderNeedOpenArray:
               return "Need open Array";
             case BuilderNeedSubvalue:
-              return "Need subvalue in current object or array";
+              return "Need subvalue in current Object or Array";
             case BuilderNeedOpenCompound:
               return "Need open compound value (Array or Object)";
             case BuilderUnexpectedType:

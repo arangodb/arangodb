@@ -325,3 +325,88 @@ Builder Collection::merge (Slice const& left, Slice const& right, bool mergeValu
   return b;
 }
 
+template<Collection::VisitationOrder order>
+static bool doVisit (Slice const& slice, std::function<bool(Slice const& key, Slice const& value)> const& func);
+
+template<Collection::VisitationOrder order>
+static bool visitObject (Slice const& value, std::function<bool(Slice const& key, Slice const& value)> const& func) {
+  ObjectIterator it(value);
+
+  while (it.valid()) {
+    // sub-object?
+    Slice v = it.value();
+    bool const isCompound = (v.isObject() || v.isArray());
+
+    if (isCompound && order == Collection::PreOrder) {
+      if (! doVisit<order>(v, func)) {
+        return false;
+      }
+    }
+
+    if (! func(it.key(), v)) {
+      return false;
+    }
+
+    if (isCompound && order == Collection::PostOrder) {
+      if (! doVisit<order>(v, func)) {
+        return false;
+      }
+    }
+
+    it.next();
+  }
+  return true;
+}
+
+template<Collection::VisitationOrder order>
+static bool visitArray (Slice const& value, std::function<bool(Slice const& key, Slice const& value)> const& func) {
+  ArrayIterator it(value);
+
+  while (it.valid()) {
+    // sub-object?
+    Slice v = it.value();
+    bool const isCompound = (v.isObject() || v.isArray());
+
+    if (isCompound && order == Collection::PreOrder) {
+      if (! doVisit<order>(v, func)) {
+        return false;
+      }
+    }
+
+    if (! func(Slice(), v)) {
+      return false;
+    }
+
+    if (isCompound && order == Collection::PostOrder) {
+      if (! doVisit<order>(v, func)) {
+        return false;
+      }
+    }
+
+    it.next();
+  }
+
+  return true; 
+}
+
+template<Collection::VisitationOrder order>
+static bool doVisit (Slice const& slice, std::function<bool(Slice const& key, Slice const& value)> const& func) {
+  if (slice.isObject()) {
+    return visitObject<order>(slice, func);
+  }
+  if (slice.isArray()) {
+    return visitArray<order>(slice, func);
+  }
+
+  throw Exception(Exception::InvalidValueType, "Expecting type Object or Array");
+}
+
+void Collection::visitRecursive (Slice const& slice, Collection::VisitationOrder order, std::function<bool(Slice const&, Slice const&)> const& func) { 
+  if (order == Collection::PreOrder) {
+    doVisit<Collection::PreOrder>(slice, func);
+  }
+  else {
+    doVisit<Collection::PostOrder>(slice, func);
+  }
+}
+

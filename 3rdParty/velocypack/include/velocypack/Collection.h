@@ -43,7 +43,14 @@ namespace arangodb {
 
       public:
 
+        enum VisitationOrder {
+          PreOrder  = 1,
+          PostOrder = 2
+        };
+
         Collection () = delete;
+        Collection (Collection const&) = delete;
+        Collection& operator= (Collection const&) = delete;
 
         static void forEach (Slice const& slice, std::function<bool(Slice const&, ValueLength)> const& cb);
         
@@ -133,6 +140,12 @@ namespace arangodb {
 
         static Builder merge (Slice const* left, Slice const* right, bool mergeValues) {
           return merge(*left, *right, mergeValues);
+        }
+
+        static void visitRecursive (Slice const& slice, VisitationOrder order, std::function<bool(Slice const&, Slice const&)> const& func);
+
+        static void visitRecursive (Slice const* slice, VisitationOrder order, std::function<bool(Slice const&, Slice const&)> const& func) {
+          visitRecursive(*slice, order, func);
         }
     };
 

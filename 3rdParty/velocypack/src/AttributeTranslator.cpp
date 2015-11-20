@@ -40,6 +40,7 @@ void AttributeTranslator::add (std::string const& key, uint64_t id) {
   }
 
   _builder->add(key, Value(id));
+  _count++;
 }
 
 void AttributeTranslator::seal () {
@@ -52,6 +53,7 @@ void AttributeTranslator::seal () {
   Slice s(_builder->slice());
 
   ObjectIterator it(s);
+
   while (it.valid()) {
     _keyToId.emplace(it.key().copyString(), it.value().begin());
     _idToKey.emplace(it.value().getUInt(), it.key().begin());
@@ -62,6 +64,17 @@ void AttributeTranslator::seal () {
 // translate from string to id
 uint8_t const* AttributeTranslator::translate (std::string const& key) const {
   auto it = _keyToId.find(key);
+
+  if (it == _keyToId.end()) {
+    return nullptr;
+  }
+
+  return (*it).second;
+}
+
+// translate from string to id
+uint8_t const* AttributeTranslator::translate (char const* key, ValueLength length) const {
+  auto it = _keyToId.find(std::string(key, length));
 
   if (it == _keyToId.end()) {
     return nullptr;

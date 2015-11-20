@@ -144,6 +144,7 @@ void Parser::parseNumber () {
     }
     return;
   }
+
   double fractionalPart;
   if (i == '.') {
     // fraction. skip over '.'
@@ -479,16 +480,35 @@ void Parser::parseObject () {
 
     _b.reportAdd(base);
     bool excludeAttribute = false;
+    auto const lastPos = _b._pos;
     if (options->attributeExcludeHandler == nullptr) {
       parseString();
     }
     else {
-      auto lastPos = _b._pos;
       parseString();
       if (options->attributeExcludeHandler->shouldExclude(Slice(_b._start + lastPos, options), _nesting)) {
         excludeAttribute = true;
       }
     }
+
+    if (! excludeAttribute && options->attributeTranslator != nullptr) {
+      // check if a translation for the attribute name exists
+      Slice key(_b._start + lastPos, options);
+
+      if (key.isString()) {
+        ValueLength keyLength;
+        char const* p = key.getString(keyLength);
+        uint8_t const* translated = options->attributeTranslator->translate(p, keyLength);
+
+        if (translated != nullptr) {
+          // found translation... now reset position to old key position
+          // and simply overwrite the existing key with the numeric translation id
+          _b._pos = lastPos;
+          _b.addUInt(Slice(translated, options).getUInt());
+        }
+      }
+    }
+
     i = skipWhiteSpace("Expecting ':'");
     // always expecting the ':' here
     if (i != ':') {

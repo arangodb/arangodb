@@ -745,24 +745,24 @@ uint8_t* Builder::add (std::string const& attrName, Value const& sub) {
   return addInternal<Value>(attrName, sub);
 }
 
-uint8_t* Builder::add (std::string const& attrName, Slice const& sub) {
-  return addInternal<Slice>(attrName, sub);
-}
-
 uint8_t* Builder::add (std::string const& attrName, ValuePair const& sub) {
   return addInternal<ValuePair>(attrName, sub);
+}
+
+uint8_t* Builder::add (std::string const& attrName, Slice const& sub) {
+  return addInternal<Slice>(attrName, sub);
 }
 
 uint8_t* Builder::add (Value const& sub) {
   return addInternal<Value>(sub);
 }
 
-uint8_t* Builder::add (Slice const& sub) {
-  return addInternal<Slice>(sub);
-}
-
 uint8_t* Builder::add (ValuePair const& sub) {
   return addInternal<ValuePair>(sub);
+}
+
+uint8_t* Builder::add (Slice const& sub) {
+  return addInternal<Slice>(sub);
 }
 
 static_assert(sizeof(double) == 8, "double is not 8 bytes");

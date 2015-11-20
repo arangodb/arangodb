@@ -101,21 +101,21 @@ namespace arangodb {
           : _start(nullptr), _size(0), _pos(0), _nesting(0), options(options) {
           
           VELOCYPACK_ASSERT(options != nullptr);
+
           if (options == nullptr) {
             throw Exception(Exception::InternalError, "Options cannot be a nullptr");
           }
+          _b.options = options;
         }
 
         static Builder fromJson (std::string const& json, Options const* options = &Options::Defaults) {
-          Parser parser;
-          parser.options = options;
+          Parser parser(options);
           parser.parse(json);
           return parser.steal();
         }
         
         static Builder fromJson (uint8_t const* start, size_t size, Options const* options = &Options::Defaults) {
-          Parser parser;
-          parser.options = options;
+          Parser parser(options);
           parser.parse(start, size);
           return parser.steal();
         }
