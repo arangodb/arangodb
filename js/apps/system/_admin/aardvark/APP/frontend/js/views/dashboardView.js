@@ -451,7 +451,6 @@
         {async: true}
       ).done(
         function (d) {
-          console.log(d);
           if (d.hasOwnProperty('state')) {
             var running;
             if (d.state.running) {
