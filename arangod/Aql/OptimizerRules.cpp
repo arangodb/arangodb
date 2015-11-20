@@ -3198,7 +3198,7 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
 
         // TODO: this is not prepared for OR conditions
         for (auto const& it : ranges) {
-          for (auto it2 : it) {
+          for (auto const& it2 : it) {
             if (condition.isFullyCoveredBy(it2)) {
               toUnlink.emplace(setter);
               toUnlink.emplace(n);
@@ -3210,6 +3210,9 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
             break;
           }
         }
+      }
+      else if (current->getType() == EN::LIMIT) {
+        break;
       }
 
       if (handled) {
