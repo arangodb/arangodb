@@ -2278,17 +2278,16 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
         }
       }
 
-      if (handled) {
-        break;
-      }
-
-      if (! current->hasDependency()) {
+      if (handled ||
+          current->getType() == EN::LIMIT ||
+          ! current->hasDependency()) {
         break;
       }
 
       current = current->getFirstDependency();
     }
   }
+
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     plan->findVarUsage();

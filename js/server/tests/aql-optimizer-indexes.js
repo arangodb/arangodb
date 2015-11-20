@@ -58,6 +58,40 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
+    testUseIndexMultipleFiltersWithLimit : function () {
+      c.insert({ value: "one" });
+      c.insert({ value: "two" });
+      c.insert({ value: "one" });
+      c.insert({ value: "two" });
+      var query = "FOR i IN " + c.name() + " FILTER i.value IN ['one', 'two'] SORT i.value DESC LIMIT 0, 2 FILTER i.value == 'one' RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
+
+      // retry without index
+      var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
+      c.dropIndex(idx);
+      
+      results = AQL_EXECUTE(query);
+      assertEqual([ ], results.json, query);
+      assertTrue(results.stats.scannedFull > 0);
+      assertEqual(0, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
     testUseIndexMultipleFilters1 : function () {
       c.insert({ value: "one" });
       c.insert({ value: "one" });
@@ -77,31 +111,14 @@ function optimizerIndexesTestSuite () {
       assertEqual([ 'one', 'one' ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertTrue(results.stats.scannedIndex > 0);
-    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseIndexMultipleFilters2 : function () {
-      c.insert({ value: "one" });
-      c.insert({ value: "one" });
-      c.insert({ value: "two" });
-      c.insert({ value: "two" });
-      var query = "FOR i IN " + c.name() + " FILTER i.value IN ['one', 'two'] FILTER i.value == 'three' RETURN i.value";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-
-      assertEqual("SingletonNode", nodeTypes[0], query);
-      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
-
-      var results = AQL_EXECUTE(query);
-      assertEqual([ ], results.json, query);
-      assertEqual(0, results.stats.scannedFull);
+      // retry without index
+      var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
+      c.dropIndex(idx);
+      
+      results = AQL_EXECUTE(query);
+      assertEqual([ 'one', 'one' ], results.json, query);
+      assertTrue(results.stats.scannedFull > 0);
       assertEqual(0, results.stats.scannedIndex);
     },
 
@@ -109,7 +126,7 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseIndexMultipleFilters3 : function () {
+    testUseIndexMultipleFilters2 : function () {
       c.insert({ value: "one" });
       c.insert({ value: "one" });
       c.insert({ value: "two" });
@@ -129,13 +146,57 @@ function optimizerIndexesTestSuite () {
       assertEqual([ 'one', 'one' ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertTrue(results.stats.scannedIndex > 0);
+      
+      // retry without index
+      var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
+      c.dropIndex(idx);
+      
+      results = AQL_EXECUTE(query);
+      assertEqual([ 'one', 'one' ], results.json, query);
+      assertTrue(results.stats.scannedFull > 0);
+      assertEqual(0, results.stats.scannedIndex);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseIndexMultipleFilters4 : function () {
+    testUseIndexMultipleFiltersInvalid1 : function () {
+      c.insert({ value: "one" });
+      c.insert({ value: "one" });
+      c.insert({ value: "two" });
+      c.insert({ value: "two" });
+      var query = "FOR i IN " + c.name() + " FILTER i.value IN ['one', 'two'] FILTER i.value == 'three' RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(0, results.stats.scannedIndex);
+      
+      // retry without index
+      var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
+      c.dropIndex(idx);
+      
+      results = AQL_EXECUTE(query);
+      assertEqual([ ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(0, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseIndexMultipleFiltersInvalid2 : function () {
       c.insert({ value: "one" });
       c.insert({ value: "one" });
       c.insert({ value: "two" });
@@ -148,13 +209,20 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
-      assertNotEqual(-1, nodeTypes.indexOf("LimitNode"), query);
+      assertEqual(1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
+      
+      // retry without index
+      var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
+      c.dropIndex(idx);
+      
+      results = AQL_EXECUTE(query);
+      assertEqual([ ], results.json, query);
+      assertTrue(results.stats.scannedFull > 0);
       assertEqual(0, results.stats.scannedIndex);
     },
 
