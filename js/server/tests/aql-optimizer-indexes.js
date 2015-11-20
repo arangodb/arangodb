@@ -71,7 +71,7 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ 'one', 'one' ], results.json, query);
@@ -96,7 +96,7 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
       assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
 
       var results = AQL_EXECUTE(query);
@@ -122,7 +122,7 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
       assertNotEqual(-1, nodeTypes.indexOf("LimitNode"), query);
 
       var results = AQL_EXECUTE(query);
@@ -148,13 +148,14 @@ function optimizerIndexesTestSuite () {
       });
 
       assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
       assertNotEqual(-1, nodeTypes.indexOf("LimitNode"), query);
 
       var results = AQL_EXECUTE(query);
       assertEqual([ ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
-      assertTrue(results.stats.scannedIndex > 0);
+      assertEqual(0, results.stats.scannedIndex);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
