@@ -59,6 +59,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
     case EN::LIMIT:           
       // LIMIT invalidates the sort expression we already found
       _sorts.clear();
+      _filters.clear();
       break;
 
     case EN::SINGLETON:
