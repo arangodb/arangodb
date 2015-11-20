@@ -678,7 +678,7 @@ function processQuery (query, explain) {
 }
 
 /* the exposed function */
-function explain (data, options, shouldPrint, bindVars) {
+function explain (data, options, shouldPrint) {
   'use strict';
   if (typeof data === "string") {
     data = { query: data };
@@ -694,12 +694,6 @@ function explain (data, options, shouldPrint, bindVars) {
   setColors(options.colors === undefined ? true : options.colors);
 
   var stmt = db._createStatement(data);
-
-  if (typeof bindVars === 'object') {
-    Object.keys(bindVars).forEach(function(key) {
-      stmt.bind(key, bindVars[key]);
-    });
-  }
 
   var result = stmt.explain(options);
 
