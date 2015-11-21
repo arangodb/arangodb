@@ -2,7 +2,10 @@
 
 echo '$0: loading precompiled libraries'
 
-wget -q -O - "https://www.arangodb.com/support-files/travisCI/precompiled-libraries-4.1.0.27.tar.gz" | tar xzvf - 
+wget \
+  -q --show-progress --progress=dot \
+  -O - \
+  "https://www.arangodb.com/support-files/travisCI/precompiled-libraries-4.1.0.27.tar.gz" | tar xzvf - 
 
 echo
 echo '$0: setup make-system'
