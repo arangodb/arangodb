@@ -1,6 +1,10 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* web interface: queries in aql editor now cancelable
+
+* web interface: dashboard - added replication information
+
 * web interface: aql editor now supports bind parameters
 
 * added startup option `--server.hide-product-header` to make the server not send
@@ -24,10 +28,10 @@ v2.8.0 (XXXX-XX-XX)
   - ABS
   - APPEND
   - COLLECTIONS
-  - CONTAINS
   - CURRENT_DATABASE
   - DOCUMENT
   - EDGES
+  - FIRST
   - FIRST_DOCUMENT
   - FIRST_LIST
   - FLATTEN

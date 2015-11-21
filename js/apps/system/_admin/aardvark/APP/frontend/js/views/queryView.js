@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console */
+/*global Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console, btoa*/
 /*global _, arangoHelper, templateEngine, jQuery, Joi, d3*/
 
 (function () {
@@ -329,7 +329,7 @@
     },
 
     getCachedQuery: function() {
-      if(typeof(Storage) !== "undefined") {
+      if (Storage !== "undefined") {
         var cache = localStorage.getItem("cachedQuery");
         if (cache !== undefined) {
           var query = JSON.parse(cache);
@@ -339,7 +339,7 @@
     },
 
     setCachedQuery: function(query, vars) {
-      if (typeof(Storage) !== "undefined") {
+      if (Storage !== "undefined") {
         var myObject = {
           query: query,
           parameter: vars
@@ -392,7 +392,7 @@
 
     exportCustomQueries: function () {
       var name, toExport = {}, exportArray = [];
-      _.each(this.customQueries, function(value, key) {
+      _.each(this.customQueries, function(value) {
         exportArray.push({name: value.name, value: value.value, parameter: value.parameter});
       });
       toExport = {
@@ -577,7 +577,7 @@
           success: function (data) {
             self.queries = data;
           },
-          error: function (data) {
+          error: function () {
             arangoHelper.arangoNotification("Query", "Error while loading system templates");
           }
         });
@@ -856,10 +856,6 @@
       },
       */
 
-      resize: function() {
-        // this.drawTree();
-      },
-
       /*
       showExplainPlan: function(plan) {
         $("svg#explainOutput").html();
@@ -976,6 +972,107 @@
         }
       },
 
+      resize: function() {
+        // this.drawTree();
+      },
+
+      checkQueryTimer: undefined,
+
+      queryCallbackFunction: function(queryID, callback) {
+
+        var self = this;
+        var outputEditor = ace.edit("queryOutput");
+
+        var cancelRunningQuery = function() {
+
+          $.ajax({
+            url: '/_api/job/'+ encodeURIComponent(queryID) + "/cancel",
+            type: 'PUT',
+            success: function() {
+              window.clearTimeout(self.checkQueryTimer);
+              arangoHelper.arangoNotification("Query", "Query canceled.");
+              window.progressView.hide();
+            }
+          });
+        };
+
+        window.progressView.show(
+          "Query is operating...",
+          cancelRunningQuery,
+          "Cancel Query"
+        );
+
+        $('.queryExecutionTime').text('');
+        self.timer.start();
+        this.execPending = false;
+
+        var time = "Execution time: " + self.timer.getTimeAndReset()/1000 + " s";
+        $('.queryExecutionTime').text(time);
+
+        var warningsFunc = function(data) {
+          var warnings = "";
+          if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
+            warnings += "Warnings:" + "\r\n\r\n";
+            data.extra.warnings.forEach(function(w) {
+              warnings += "[" + w.code + "], '" + w.message + "'\r\n";
+            });
+          }
+          if (warnings !== "") {
+            warnings += "\r\n" + "Result:" + "\r\n\r\n";
+          }
+          outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
+        };
+
+        var fetchQueryResult = function(data) {
+          warningsFunc(data);
+          self.switchTab("result-switch");
+          window.progressView.hide();
+          self.deselect(outputEditor);
+          $('#downloadQueryResult').show();
+
+          if (typeof callback === "function") {
+            callback();
+          }
+        };
+
+        //check if async query is finished
+        var checkQueryStatus = function() {
+          $.ajax({
+            type: "PUT",
+            url: "/_api/job/" + encodeURIComponent(queryID),
+            contentType: "application/json",
+            processData: false,
+            success: function (data, textStatus, xhr) {
+
+              //query finished, now fetch results
+              if (xhr.status === 201) {
+                fetchQueryResult(data);
+              }
+              //query not ready yet, retry
+              else if (xhr.status === 204) {
+                self.checkQueryTimer = window.setTimeout(function() {
+                  checkQueryStatus(); 
+                }, 500);
+              }
+            },
+            error: function (resp) {
+              try {
+                var error = JSON.parse(resp.responseText);
+                if (error.errorMessage) {
+                  arangoHelper.arangoError("Query", error.errorMessage);
+                }
+              }
+              catch (e) {
+                arangoHelper.arangoError("Query", "Something went wrong.");
+              }
+
+              window.progressView.hide();
+            }
+          });
+        };
+        checkQueryStatus();
+      },
+
       fillResult: function(callback) {
         var self = this;
         var outputEditor = ace.edit("queryOutput");
@@ -984,44 +1081,21 @@
 
         var queryData = this.readQueryData();
         if (queryData) {
-
-          window.progressView.show(
-            "Query is operating..."
-          );
-
-          $('.queryExecutionTime').text('');
-          self.timer.start();
-
-          this.execPending = false;
+console.log(2);
           $.ajax({
             type: "POST",
             url: "/_api/cursor",
+            headers: {
+              'x-arango-async': 'store' 
+            },
             data: queryData,
             contentType: "application/json",
             processData: false,
-            success: function (data) {
+            success: function (data, textStatus, xhr) {
+              if (xhr.getResponseHeader('x-arango-async-id')) {
+                self.queryCallbackFunction(xhr.getResponseHeader('x-arango-async-id'), callback);
+              }
 
-              var time = "Execution time: " + self.timer.getTimeAndReset()/1000 + " s";
-              $('.queryExecutionTime').text(time);
-
-              var warnings = "";
-              if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
-                warnings += "Warnings:" + "\r\n\r\n";
-                data.extra.warnings.forEach(function(w) {
-                  warnings += "[" + w.code + "], '" + w.message + "'\r\n";
-                });
-              }
-              if (warnings !== "") {
-                warnings += "\r\n" + "Result:" + "\r\n\r\n";
-              }
-              outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
-              self.switchTab("result-switch");
-              window.progressView.hide();
-              self.deselect(outputEditor);
-              $('#downloadQueryResult').show();
-              if (typeof callback === "function") {
-                callback();
-              }
             },
             error: function (data) {
               self.switchTab("result-switch");
