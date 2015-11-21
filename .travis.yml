@@ -1,6 +1,9 @@
 branches:
   only:
-    - master
-    - "2.3"
-    - "2.4"
-    - devel
+    - "1.0"
+
+language: cpp
+compiler: g++
+
+script:
+ - true
