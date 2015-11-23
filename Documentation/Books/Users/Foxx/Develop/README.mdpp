@@ -41,7 +41,7 @@ The tools contain:
   * [Queries](../Develop/Queries.md)
   * [Background Tasks](../Develop/Queues.md)
   * [Console API](../Develop/Console.md)
-  * you may use [Javascript Modules](../../ModuleJavaScript/README.md) and [install node modules using npm](../../ModuleJavaScript/README.md#installing-npm-modules) in the same directory as your `manifest.json` is.
+  * you may use [Javascript Modules](../../ModuleJavaScript/README.md) and [install node modules using npm](../../ModuleJavaScript/README.md#installing-npm-modules) in the directory containing your `manifest.json`.
 
 Finally we want to apply some meta information to the Foxx.
 How this is done is described in the [Meta information](../Develop/Manifest.md) chapter.
