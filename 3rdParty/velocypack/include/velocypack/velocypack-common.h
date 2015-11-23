@@ -156,16 +156,23 @@ namespace arangodb {
                          : static_cast<int64_t>(v);
     }
 
-    static inline uint64_t readUInt64 (uint8_t const* start) throw() {
+    // read an unsigned little endian integer value of the
+    // specified length, starting at the specified byte offset
+    template<typename T>
+    static inline T readInteger (uint8_t const* start, ValueLength length) throw() {
       uint64_t value = 0;
       uint64_t x = 0;
-      uint8_t const* end = start + 8;
+      uint8_t const* end = start + length;
       do {
-        value += static_cast<uint64_t>(*start++) << x;
+        value += static_cast<T>(*start++) << x;
         x += 8;
       }
       while (start < end);
       return value;
+    }
+
+    static inline uint64_t readUInt64 (uint8_t const* start) throw() {
+      return readInteger<uint64_t>(start, 8);
     }
     
     static inline void storeUInt64 (uint8_t* start, uint64_t value) throw() {

@@ -231,7 +231,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (int code) {
 
     case TRI_ERROR_REQUEST_CANCELED:
     case TRI_ERROR_QUERY_KILLED:
-      return REQUEST_TIMEOUT;
+      return GONE;
 
     case TRI_ERROR_ARANGO_CONFLICT:
     case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:

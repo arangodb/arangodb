@@ -14687,7 +14687,7 @@ n = 0;}return new Array(n).join(" ");}function wrap(str,width){'use strict';var 
 return "[ " + node.subNodes.slice(0,20).map(buildExpression).join(", ") + " ... ]";}return "[ " + node.subNodes.map(buildExpression).join(", ") + " ]";}return "[ ]";case "unary not":return "! " + buildExpression(node.subNodes[0]);case "unary plus":return "+ " + buildExpression(node.subNodes[0]);case "unary minus":return "- " + buildExpression(node.subNodes[0]);case "array limit":return buildExpression(node.subNodes[0]) + ", " + buildExpression(node.subNodes[1]);case "attribute access":return buildExpression(node.subNodes[0]) + "." + attribute(node.name);case "indexed access":return buildExpression(node.subNodes[0]) + "[" + buildExpression(node.subNodes[1]) + "]";case "range":return buildExpression(node.subNodes[0]) + " .. " + buildExpression(node.subNodes[1]) + "   " + annotation("/* range */");case "expand":case "expansion":if(node.subNodes.length > 2){ // [FILTER ...]
 references[node.subNodes[0].subNodes[0].name] = [node.levels,node.subNodes[0].subNodes[1],node.subNodes[2],node.subNodes[3],node.subNodes[4]];}else { // [*]
 references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];}_x = node.subNodes[1];_again = true;continue _function;case "user function call":return func(node.name) + "(" + (node.subNodes && node.subNodes[0].subNodes || []).map(buildExpression).join(", ") + ")" + "   " + annotation("/* user-defined function */");case "function call":return func(node.name) + "(" + (node.subNodes && node.subNodes[0].subNodes || []).map(buildExpression).join(", ") + ")";case "plus":return buildExpression(node.subNodes[0]) + " + " + buildExpression(node.subNodes[1]);case "minus":return buildExpression(node.subNodes[0]) + " - " + buildExpression(node.subNodes[1]);case "times":return buildExpression(node.subNodes[0]) + " * " + buildExpression(node.subNodes[1]);case "division":return buildExpression(node.subNodes[0]) + " / " + buildExpression(node.subNodes[1]);case "modulus":return buildExpression(node.subNodes[0]) + " % " + buildExpression(node.subNodes[1]);case "compare not in":return buildExpression(node.subNodes[0]) + " not in " + buildExpression(node.subNodes[1]);case "compare in":return buildExpression(node.subNodes[0]) + " in " + buildExpression(node.subNodes[1]);case "compare ==":return buildExpression(node.subNodes[0]) + " == " + buildExpression(node.subNodes[1]);case "compare !=":return buildExpression(node.subNodes[0]) + " != " + buildExpression(node.subNodes[1]);case "compare >":return buildExpression(node.subNodes[0]) + " > " + buildExpression(node.subNodes[1]);case "compare >=":return buildExpression(node.subNodes[0]) + " >= " + buildExpression(node.subNodes[1]);case "compare <":return buildExpression(node.subNodes[0]) + " < " + buildExpression(node.subNodes[1]);case "compare <=":return buildExpression(node.subNodes[0]) + " <= " + buildExpression(node.subNodes[1]);case "logical or":return buildExpression(node.subNodes[0]) + " || " + buildExpression(node.subNodes[1]);case "logical and":return buildExpression(node.subNodes[0]) + " && " + buildExpression(node.subNodes[1]);case "ternary":return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);case "n-ary or":if(node.hasOwnProperty("subNodes")){return node.subNodes.map(function(sub){return buildExpression(sub);}).join(" || ");}return "";case "n-ary and":if(node.hasOwnProperty("subNodes")){return node.subNodes.map(function(sub){return buildExpression(sub);}).join(" && ");}return "";default:return "unhandled node type (" + node.type + ")";}}};var buildBound=function buildBound(attr,operators,bound){var boundValue=bound.isConstant?value(JSON.stringify(bound.bound)):buildExpression(bound.bound);return attribute(attr) + " " + operators[bound.include?1:0] + " " + boundValue;};var buildRanges=function buildRanges(ranges){var results=[];ranges.forEach(function(range){var attr=range.attr;if(range.lowConst.hasOwnProperty("bound") && range.highConst.hasOwnProperty("bound") && JSON.stringify(range.lowConst.bound) === JSON.stringify(range.highConst.bound)){range.equality = true;}if(range.equality){if(range.lowConst.hasOwnProperty("bound")){results.push(buildBound(attr,["==","=="],range.lowConst));}else if(range.hasOwnProperty("lows")){range.lows.forEach(function(bound){results.push(buildBound(attr,["==","=="],bound));});}}else {if(range.lowConst.hasOwnProperty("bound")){results.push(buildBound(attr,[">",">="],range.lowConst));}if(range.highConst.hasOwnProperty("bound")){results.push(buildBound(attr,["<","<="],range.highConst));}if(range.hasOwnProperty("lows")){range.lows.forEach(function(bound){results.push(buildBound(attr,[">",">="],bound));});}if(range.hasOwnProperty("highs")){range.highs.forEach(function(bound){results.push(buildBound(attr,["<","<="],bound));});}}});if(results.length > 1){return "(" + results.join(" && ") + ")";}return results[0];};var label=function label(node){switch(node.type){case "SingletonNode":return keyword("ROOT");case "NoResultsNode":return keyword("EMPTY") + "   " + annotation("/* empty result set */");case "EnumerateCollectionNode":collectionVariables[node.outVariable.id] = node.collection;return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* full collection scan" + (node.random?", random order":"") + " */");case "EnumerateListNode":return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + variableName(node.inVariable) + "   " + annotation("/* list iteration */");case "IndexNode":collectionVariables[node.outVariable.id] = node.collection;var types=[];node.indexes.forEach(function(idx,i){types.push((idx.reverse?"reverse ":"") + idx.type + " index scan");idx.collection = node.collection;idx.node = node.id;if(node.condition.type && node.condition.type === 'n-ary or'){idx.condition = buildExpression(node.condition.subNodes[i]);}else {idx.condition = "*"; // empty condition. this is likely an index used for sorting only
-}indexes.push(idx);});return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");case "IndexRangeNode":collectionVariables[node.outVariable.id] = node.collection;var index=node.index;index.ranges = node.ranges.map(buildRanges).join(" || ");index.collection = node.collection;index.node = node.id;indexes.push(index);return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse?"reverse ":"") + node.index.type + " index scan */");case "CalculationNode":return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");case "FilterNode":return keyword("FILTER") + " " + variableName(node.inVariable);case "AggregateNode":return keyword("COLLECT") + " " + node.aggregates.map(function(node){return variableName(node.outVariable) + " = " + variableName(node.inVariable);}).join(", ") + (node.count?" " + keyword("WITH COUNT"):"") + (node.outVariable?" " + keyword("INTO") + " " + variableName(node.outVariable):"") + (node.keepVariables?" " + keyword("KEEP") + " " + node.keepVariables.map(function(variable){return variableName(variable);}).join(", "):"") + "   " + annotation("/* " + node.aggregationOptions.method + "*/");case "SortNode":return keyword("SORT") + " " + node.elements.map(function(node){return variableName(node.inVariable) + " " + keyword(node.ascending?"ASC":"DESC");}).join(", ");case "LimitNode":return keyword("LIMIT") + " " + value(JSON.stringify(node.offset)) + ", " + value(JSON.stringify(node.limit));case "ReturnNode":return keyword("RETURN") + " " + variableName(node.inVariable);case "SubqueryNode":return keyword("LET") + " " + variableName(node.outVariable) + " = ...   " + annotation("/* subquery */");case "InsertNode":modificationFlags = node.modificationFlags;return keyword("INSERT") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpdateNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("UPDATE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("UPDATE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "ReplaceNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("REPLACE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("REPLACE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpsertNode":modificationFlags = node.modificationFlags;return keyword("UPSERT") + " " + variableName(node.inDocVariable) + " " + keyword("INSERT") + " " + variableName(node.insertVariable) + " " + keyword(node.isReplace?"REPLACE":"UPDATE") + " " + variableName(node.updateVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoveNode":modificationFlags = node.modificationFlags;return keyword("REMOVE") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoteNode":return keyword("REMOTE");case "DistributeNode":return keyword("DISTRIBUTE");case "ScatterNode":return keyword("SCATTER");case "GatherNode":return keyword("GATHER");}return "unhandled node type (" + node.type + ")";};var level=0,subqueries=[];var indent=function indent(level,isRoot){return pad(1 + level + level) + (isRoot?"* ":"- ");};var preHandle=function preHandle(node){usedVariables = {};isConst = true;if(node.type === "SubqueryNode"){subqueries.push(level);}};var postHandle=function postHandle(node){if(["EnumerateCollectionNode","EnumerateListNode","IndexRangeNode","IndexNode","SubqueryNode"].indexOf(node.type) !== -1){level++;}else if(node.type === "ReturnNode" && subqueries.length > 0){level = subqueries.pop();}else if(node.type === "SingletonNode"){level++;}};var constNess=function constNess(){if(isConst){return "   " + annotation("/* const assignment */");}return "";};var variablesUsed=function variablesUsed(){var used=[];for(var a in usedVariables) {if(usedVariables.hasOwnProperty(a)){used.push(variable(a) + " : " + collection(usedVariables[a]));}}if(used.length > 0){return "   " + annotation("/* collections used:") + " " + used.join(", ") + " " + annotation("*/");}return "";};var printNode=function printNode(node){preHandle(node);var line=" " + pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " + keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   " + pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + "   " + indent(level,node.type === "SingletonNode") + label(node);if(node.type === "CalculationNode"){line += variablesUsed() + constNess();}stringBuilder.appendLine(line);postHandle(node);};printQuery(query);stringBuilder.appendLine(section("Execution plan:"));var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   " + pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " + header("Comment");stringBuilder.appendLine(line);var walk=[rootNode];while(walk.length > 0) {var id=walk.pop();var node=nodes[id];printNode(node);if(parents.hasOwnProperty(id)){walk = walk.concat(parents[id]);}if(node.type === "SubqueryNode"){walk = walk.concat([node.subquery.nodes[0].id]);}}stringBuilder.appendLine();printIndexes(indexes);stringBuilder.appendLine();printRules(plan.rules);printModificationFlags(modificationFlags);printWarnings(explain.warnings);} /* the exposed function */function explain(data,options,shouldPrint){'use strict';if(typeof data === "string"){data = {query:data};}if(!(data instanceof Object)){throw "ArangoStatement needs initial data";}options = options || {};setColors(options.colors === undefined?true:options.colors);var stmt=db._createStatement(data);var result=stmt.explain(options);stringBuilder.clearOutput();processQuery(data.query,result,true);if(shouldPrint === undefined || shouldPrint){print(stringBuilder.getOutput());}else {return stringBuilder.getOutput();}}exports.explain = explain;});module.define("org/arangodb/aql/functions",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+}indexes.push(idx);});return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");case "IndexRangeNode":collectionVariables[node.outVariable.id] = node.collection;var index=node.index;index.ranges = node.ranges.map(buildRanges).join(" || ");index.collection = node.collection;index.node = node.id;indexes.push(index);return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse?"reverse ":"") + node.index.type + " index scan */");case "CalculationNode":return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");case "FilterNode":return keyword("FILTER") + " " + variableName(node.inVariable);case "AggregateNode":return keyword("COLLECT") + " " + node.aggregates.map(function(node){return variableName(node.outVariable) + " = " + variableName(node.inVariable);}).join(", ") + (node.count?" " + keyword("WITH COUNT"):"") + (node.outVariable?" " + keyword("INTO") + " " + variableName(node.outVariable):"") + (node.keepVariables?" " + keyword("KEEP") + " " + node.keepVariables.map(function(variable){return variableName(variable);}).join(", "):"") + "   " + annotation("/* " + node.aggregationOptions.method + "*/");case "SortNode":return keyword("SORT") + " " + node.elements.map(function(node){return variableName(node.inVariable) + " " + keyword(node.ascending?"ASC":"DESC");}).join(", ");case "LimitNode":return keyword("LIMIT") + " " + value(JSON.stringify(node.offset)) + ", " + value(JSON.stringify(node.limit));case "ReturnNode":return keyword("RETURN") + " " + variableName(node.inVariable);case "SubqueryNode":return keyword("LET") + " " + variableName(node.outVariable) + " = ...   " + annotation("/* subquery */");case "InsertNode":modificationFlags = node.modificationFlags;return keyword("INSERT") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpdateNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("UPDATE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("UPDATE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "ReplaceNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("REPLACE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("REPLACE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpsertNode":modificationFlags = node.modificationFlags;return keyword("UPSERT") + " " + variableName(node.inDocVariable) + " " + keyword("INSERT") + " " + variableName(node.insertVariable) + " " + keyword(node.isReplace?"REPLACE":"UPDATE") + " " + variableName(node.updateVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoveNode":modificationFlags = node.modificationFlags;return keyword("REMOVE") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoteNode":return keyword("REMOTE");case "DistributeNode":return keyword("DISTRIBUTE");case "ScatterNode":return keyword("SCATTER");case "GatherNode":return keyword("GATHER");}return "unhandled node type (" + node.type + ")";};var level=0,subqueries=[];var indent=function indent(level,isRoot){return pad(1 + level + level) + (isRoot?"* ":"- ");};var preHandle=function preHandle(node){usedVariables = {};isConst = true;if(node.type === "SubqueryNode"){subqueries.push(level);}};var postHandle=function postHandle(node){if(["EnumerateCollectionNode","EnumerateListNode","IndexRangeNode","IndexNode","SubqueryNode"].indexOf(node.type) !== -1){level++;}else if(node.type === "ReturnNode" && subqueries.length > 0){level = subqueries.pop();}else if(node.type === "SingletonNode"){level++;}};var constNess=function constNess(){if(isConst){return "   " + annotation("/* const assignment */");}return "";};var variablesUsed=function variablesUsed(){var used=[];for(var a in usedVariables) {if(usedVariables.hasOwnProperty(a)){used.push(variable(a) + " : " + collection(usedVariables[a]));}}if(used.length > 0){return "   " + annotation("/* collections used:") + " " + used.join(", ") + " " + annotation("*/");}return "";};var printNode=function printNode(node){preHandle(node);var line=" " + pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " + keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   " + pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + "   " + indent(level,node.type === "SingletonNode") + label(node);if(node.type === "CalculationNode"){line += variablesUsed() + constNess();}stringBuilder.appendLine(line);postHandle(node);};printQuery(query);stringBuilder.appendLine(section("Execution plan:"));var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   " + pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " + header("Comment");stringBuilder.appendLine(line);var walk=[rootNode];while(walk.length > 0) {var id=walk.pop();var node=nodes[id];printNode(node);if(parents.hasOwnProperty(id)){walk = walk.concat(parents[id]);}if(node.type === "SubqueryNode"){walk = walk.concat([node.subquery.nodes[0].id]);}}stringBuilder.appendLine();printIndexes(indexes);stringBuilder.appendLine();printRules(plan.rules);printModificationFlags(modificationFlags);printWarnings(explain.warnings);} /* the exposed function */function explain(data,options,shouldPrint){'use strict';if(typeof data === "string"){data = {query:data};}if(!(data instanceof Object)){throw "ArangoStatement needs initial data";}if(options === undefined){options = data.options;}options = options || {};setColors(options.colors === undefined?true:options.colors);var stmt=db._createStatement(data);var result=stmt.explain(options);stringBuilder.clearOutput();processQuery(data.query,result,true);if(shouldPrint === undefined || shouldPrint){print(stringBuilder.getOutput());}else {return stringBuilder.getOutput();}}exports.explain = explain;});module.define("org/arangodb/aql/functions",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL user functions management
 ///
 /// @file
@@ -24137,6 +24137,58 @@ window.ArangoUsers = Backbone.Collection.extend({
                          cuts[counter] : cuts[counter - 1] + " - " + cuts[counter];
     },
 
+    renderReplicationStatistics: function(object) {
+      $('#repl-numbers table tr:nth-child(1) > td:nth-child(2)').html(object.state.totalEvents);
+      $('#repl-numbers table tr:nth-child(2) > td:nth-child(2)').html(object.state.totalRequests);
+      $('#repl-numbers table tr:nth-child(3) > td:nth-child(2)').html(object.state.totalFailedConnects);
+
+      if (object.state.lastAppliedContinuousTick) {
+        $('#repl-ticks table tr:nth-child(1) > td:nth-child(2)').html(object.state.lastAppliedContinuousTick);
+      }
+      else {
+        $('#repl-ticks table tr:nth-child(1) > td:nth-child(2)').html("no data available").addClass('no-data');
+      }
+      if (object.state.lastProcessedContinuousTick) {
+        $('#repl-ticks table tr:nth-child(2) > td:nth-child(2)').html(object.state.lastProcessedContinuousTick);
+      }
+      else {
+        $('#repl-ticks table tr:nth-child(2) > td:nth-child(2)').html("no data available").addClass('no-data');
+      }
+      if (object.state.lastAvailableContinuousTick) {
+        $('#repl-ticks table tr:nth-child(3) > td:nth-child(2)').html(object.state.lastAvailableContinuousTick);
+      }
+      else {
+        $('#repl-ticks table tr:nth-child(3) > td:nth-child(2)').html("no data available").addClass('no-data');
+      }
+
+      $('#repl-progress table tr:nth-child(1) > td:nth-child(2)').html(object.state.progress.message);
+      $('#repl-progress table tr:nth-child(2) > td:nth-child(2)').html(object.state.progress.failedConnects);
+    },
+
+    getReplicationStatistics: function() {
+      var self = this;
+
+      $.ajax(
+        '/_api/replication/applier-state',
+        {async: true}
+      ).done(
+        function (d) {
+          if (d.hasOwnProperty('state')) {
+            var running;
+            if (d.state.running) {
+              running = "active";
+            }
+            else {
+              running = "inactive";
+            }
+            running = '<span class="state">' + running + '</span>';
+            $('#replication-chart .dashboard-sub-bar').html("Replication " + running);
+
+            self.renderReplicationStatistics(d);
+          }
+      });
+    },
+
     getStatistics: function (callback) {
       var self = this;
       var url = "/_db/_system/_admin/aardvark/statistics/short";
@@ -24175,6 +24227,8 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
           self.updateCharts();
       });
+
+      this.getReplicationStatistics();
     },
 
     getHistoryStatistics: function (figure) {
@@ -28527,7 +28581,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     performAction: function() {
-      //this.action();
+      this.action();
       window.progressView.hide();
     },
 
@@ -28546,11 +28600,23 @@ window.ArangoUsers = Backbone.Collection.extend({
       }, self.lastDelay);
     },
 
-    show: function(msg, action, button) {
+    show: function(msg, callback, buttonText) {
       $(this.el).html(this.template.render({}));
       $(".progress-text").text(msg);
-      $(".progress-action").html('<button class="button-danger">Cancel</button>');
-      this.action = this.hide();
+
+      if (!buttonText) {
+        $(".progress-action").html('<button class="button-danger">Cancel</button>');
+      }
+      else {
+        $(".progress-action").html('<button class="button-danger">' + buttonText + '</button>');
+      }
+
+      if (!callback) {
+        this.action = this.hide();
+      }
+      else {
+        this.action = callback; 
+      }
       //$(".progress-action").html(button);
       //this.action = action;
 
@@ -28781,7 +28847,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console */
+/*global Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console, btoa*/
 /*global _, arangoHelper, templateEngine, jQuery, Joi, d3*/
 
 (function () {
@@ -29110,7 +29176,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     getCachedQuery: function() {
-      if(typeof(Storage) !== "undefined") {
+      if (Storage !== "undefined") {
         var cache = localStorage.getItem("cachedQuery");
         if (cache !== undefined) {
           var query = JSON.parse(cache);
@@ -29120,7 +29186,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     setCachedQuery: function(query, vars) {
-      if (typeof(Storage) !== "undefined") {
+      if (Storage !== "undefined") {
         var myObject = {
           query: query,
           parameter: vars
@@ -29173,7 +29239,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     exportCustomQueries: function () {
       var name, toExport = {}, exportArray = [];
-      _.each(this.customQueries, function(value, key) {
+      _.each(this.customQueries, function(value) {
         exportArray.push({name: value.name, value: value.value, parameter: value.parameter});
       });
       toExport = {
@@ -29358,7 +29424,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           success: function (data) {
             self.queries = data;
           },
-          error: function (data) {
+          error: function () {
             arangoHelper.arangoNotification("Query", "Error while loading system templates");
           }
         });
@@ -29637,10 +29703,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       },
       */
 
-      resize: function() {
-        // this.drawTree();
-      },
-
       /*
       showExplainPlan: function(plan) {
         $("svg#explainOutput").html();
@@ -29757,6 +29819,107 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
       },
 
+      resize: function() {
+        // this.drawTree();
+      },
+
+      checkQueryTimer: undefined,
+
+      queryCallbackFunction: function(queryID, callback) {
+
+        var self = this;
+        var outputEditor = ace.edit("queryOutput");
+
+        var cancelRunningQuery = function() {
+
+          $.ajax({
+            url: '/_api/job/'+ encodeURIComponent(queryID) + "/cancel",
+            type: 'PUT',
+            success: function() {
+              window.clearTimeout(self.checkQueryTimer);
+              arangoHelper.arangoNotification("Query", "Query canceled.");
+              window.progressView.hide();
+            }
+          });
+        };
+
+        window.progressView.show(
+          "Query is operating...",
+          cancelRunningQuery,
+          "Cancel Query"
+        );
+
+        $('.queryExecutionTime').text('');
+        self.timer.start();
+        this.execPending = false;
+
+        var time = "Execution time: " + self.timer.getTimeAndReset()/1000 + " s";
+        $('.queryExecutionTime').text(time);
+
+        var warningsFunc = function(data) {
+          var warnings = "";
+          if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
+            warnings += "Warnings:" + "\r\n\r\n";
+            data.extra.warnings.forEach(function(w) {
+              warnings += "[" + w.code + "], '" + w.message + "'\r\n";
+            });
+          }
+          if (warnings !== "") {
+            warnings += "\r\n" + "Result:" + "\r\n\r\n";
+          }
+          outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
+        };
+
+        var fetchQueryResult = function(data) {
+          warningsFunc(data);
+          self.switchTab("result-switch");
+          window.progressView.hide();
+          self.deselect(outputEditor);
+          $('#downloadQueryResult').show();
+
+          if (typeof callback === "function") {
+            callback();
+          }
+        };
+
+        //check if async query is finished
+        var checkQueryStatus = function() {
+          $.ajax({
+            type: "PUT",
+            url: "/_api/job/" + encodeURIComponent(queryID),
+            contentType: "application/json",
+            processData: false,
+            success: function (data, textStatus, xhr) {
+
+              //query finished, now fetch results
+              if (xhr.status === 201) {
+                fetchQueryResult(data);
+              }
+              //query not ready yet, retry
+              else if (xhr.status === 204) {
+                self.checkQueryTimer = window.setTimeout(function() {
+                  checkQueryStatus(); 
+                }, 500);
+              }
+            },
+            error: function (resp) {
+              try {
+                var error = JSON.parse(resp.responseText);
+                if (error.errorMessage) {
+                  arangoHelper.arangoError("Query", error.errorMessage);
+                }
+              }
+              catch (e) {
+                arangoHelper.arangoError("Query", "Something went wrong.");
+              }
+
+              window.progressView.hide();
+            }
+          });
+        };
+        checkQueryStatus();
+      },
+
       fillResult: function(callback) {
         var self = this;
         var outputEditor = ace.edit("queryOutput");
@@ -29765,44 +29928,21 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         var queryData = this.readQueryData();
         if (queryData) {
-
-          window.progressView.show(
-            "Query is operating..."
-          );
-
-          $('.queryExecutionTime').text('');
-          self.timer.start();
-
-          this.execPending = false;
+console.log(2);
           $.ajax({
             type: "POST",
             url: "/_api/cursor",
+            headers: {
+              'x-arango-async': 'store' 
+            },
             data: queryData,
             contentType: "application/json",
             processData: false,
-            success: function (data) {
+            success: function (data, textStatus, xhr) {
+              if (xhr.getResponseHeader('x-arango-async-id')) {
+                self.queryCallbackFunction(xhr.getResponseHeader('x-arango-async-id'), callback);
+              }
 
-              var time = "Execution time: " + self.timer.getTimeAndReset()/1000 + " s";
-              $('.queryExecutionTime').text(time);
-
-              var warnings = "";
-              if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
-                warnings += "Warnings:" + "\r\n\r\n";
-                data.extra.warnings.forEach(function(w) {
-                  warnings += "[" + w.code + "], '" + w.message + "'\r\n";
-                });
-              }
-              if (warnings !== "") {
-                warnings += "\r\n" + "Result:" + "\r\n\r\n";
-              }
-              outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
-              self.switchTab("result-switch");
-              window.progressView.hide();
-              self.deselect(outputEditor);
-              $('#downloadQueryResult').show();
-              if (typeof callback === "function") {
-                callback();
-              }
             },
             error: function (data) {
               self.switchTab("result-switch");
@@ -31089,6 +31229,9 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     queryManagement: function () {
+      if (!this.checkUser()) {
+        return;
+      }
       if (!this.queryManagementView) {
         this.queryManagementView = new window.queryManagementView({
           collection: undefined

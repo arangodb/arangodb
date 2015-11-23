@@ -45,10 +45,14 @@ namespace arangodb {
         AttributeTranslator& operator= (AttributeTranslator const&) = delete;
 
         AttributeTranslator () 
-          : _builder() {
+          : _builder(), _count(0) {
         }
 
         ~AttributeTranslator () {
+        }
+
+        size_t count () const {
+          return _count;
         }
 
         void add (std::string const& key, uint64_t id);
@@ -58,14 +62,18 @@ namespace arangodb {
         // translate from string to id
         uint8_t const* translate (std::string const& key) const;
 
+        // translate from string to id
+        uint8_t const* translate (char const* key, ValueLength length) const;
+
         // translate from id to string
         uint8_t const* translate (uint64_t id) const;
-    
+
       private:
 
         std::unique_ptr<Builder> _builder;
         std::unordered_map<std::string, uint8_t const*> _keyToId;
         std::unordered_map<uint64_t, uint8_t const*> _idToKey;
+        size_t _count;
     };
 
   }  // namespace arangodb::velocypack

@@ -138,13 +138,13 @@ void RestBaseHandler::generateCanceled () {
   try {
     builder.add(VPackValue(VPackValueType::Object));
     builder.add("error", VPackValue(true));
-    builder.add("code", VPackValue((int32_t) HttpResponse::REQUEST_TIMEOUT));
+    builder.add("code", VPackValue((int32_t) HttpResponse::GONE));
     builder.add("errorNum", VPackValue((int32_t) TRI_ERROR_REQUEST_CANCELED));
     builder.add("errorMessage", VPackValue("request canceled"));
     builder.close();
 
     VPackSlice slice(builder.start());
-    generateResult(HttpResponse::REQUEST_TIMEOUT, slice);
+    generateResult(HttpResponse::GONE, slice);
   } 
   catch (...) {
     generateError(HttpResponse::SERVER_ERROR,

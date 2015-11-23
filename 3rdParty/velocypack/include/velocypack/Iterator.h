@@ -28,6 +28,7 @@
 #define VELOCYPACK_ITERATOR_H 1
 
 #include <iosfwd>
+#include <functional>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"

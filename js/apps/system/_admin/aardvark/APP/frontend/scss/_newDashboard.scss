@@ -84,16 +84,26 @@
 
 
         table {
-          margin-top: 10px;
           margin-bottom: 10px;
+          margin-top: 10px;
+          table-layout: fixed;
           width: 100%;
 
-          td {
-            white-space: nowrap;
+          .no-data {
+            font-style: italic;
+            font-weight: 100;
+          }
+
+          tr {
+            border-bottom: 1px solid rgba(0, 0, 0, .025);
           }
 
           td:first-child {
             width: 100px;
+          }
+
+          td:last-child {
+            text-align: right;
           }
         }
       }
@@ -111,8 +121,8 @@
     border-radius: 5px;
     color: $c-black;
     margin-left: 5px;
-    padding-left: 3px;
-    padding-right: 5px;
+    padding-left: 6px;
+    padding-right: 4px;
   }
 }
 

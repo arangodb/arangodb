@@ -1,7 +1,18 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
-* web interface: aql editor now supports bind parameters
+* return HTTP status code 410 (gone) instead of HTTP 408 (request timeout) for
+  server-side operations that are canceled / killed. Sending 410 instead of 408
+  prevents clients from re-starting the same (canceled) operation. Google Chrome
+  for example sends the HTTP request again in case it is responded with an HTTP
+  408, and this is exactly the opposite of the desired behavior when an operation
+  is canceled / killed by the user.
+
+* web interface: queries in AQL editor now cancelable
+
+* web interface: dashboard - added replication information
+
+* web interface: AQL editor now supports bind parameters
 
 * added startup option `--server.hide-product-header` to make the server not send
   the HTTP response header `"Server: ArangoDB"` in its HTTP responses. By default,
@@ -24,10 +35,10 @@ v2.8.0 (XXXX-XX-XX)
   - ABS
   - APPEND
   - COLLECTIONS
-  - CONTAINS
   - CURRENT_DATABASE
   - DOCUMENT
   - EDGES
+  - FIRST
   - FIRST_DOCUMENT
   - FIRST_LIST
   - FLATTEN

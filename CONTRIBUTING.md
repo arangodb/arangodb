@@ -7,53 +7,23 @@ for details.
 
 Please follow these guidelines if you want to contribute to ArangoDB:
 
-Getting started
----------------
-
-* Please make sure you have a GitHub account
-
-* Please look into the ArangoDB issue tracker on GitHub for similar/identical
-  issues.
-
-* For bugs: if the bug you found is not yet described in an existing
-  issue, please file a new one. The new issue should include a clear
-  description of the bug and how to reproduce it (including your
-  environment).
-
-* For feature requests: please clearly describe the proposed feature, additional
-  configuration options, and side effects.
-
-* Please let us know if you plan to work on a ticket. This way we can make sure
-  we avoid redundant work.
-
-* Create a fork of our repository. You can use GitHub to do this.
-
-* Clone the fork to your development box and pull the latest changes from the
-  ArangoDB repository. Please make sure to use the appropriate branch:
-
-  * the **devel** branch is normally used for new features 
-
-  * bug fixes should be done in the **devel** branch first, before being applied to
-    master or other branches.
-
-* If missing, install the required prerequisites. They are listed
-  [in the manual](https://docs.arangodb.com/Installing/Compiling.html).
-
-* configure and make your local clone. If you intend to modify the parser files,
-  please make sure to activate the --enable-maintainer-mode configure option. In
-  this case, you also need to have Python installed.
-
-* Make sure the unmodified clone works locally before making any code
-  changes. You can do so by running the included test suite (i.e. make
-  unittests)
-
-* If you intend to do documentation changes, you also must install Doxygen in
-  the most recent version.
-
-Making Changes
+Reporting Bugs
 --------------
 
-* Create a new branch in your fork
+When reporting bugs, please use our issue tracker on GitHub.  Please make sure
+to include the version number of ArangoDB in your bug report, along with the
+platform you are using (e.g. `Linux OpenSuSE x86_64`).  Please also include the
+ArangoDB startup mode (daemon, console, supervisor mode) plus any special
+configuration.  This will help us reproducing and finding bugs.
+
+Please also take the time to check there are no similar/identical issues open
+yet.
+
+
+Contributing features, documentation, tests
+-------------------------------------------
+
+* Create a new branch in your fork, based on the **devel** branch
 
 * Develop and test your modifications there
 
@@ -70,22 +40,20 @@ Making Changes
   editor or a browser. We recently agreed that future documentation should be
   written in American English (AE).
 
-* When done, run the complete test suite and make sure all tests pass.
+* When done, run the complete test suite and make sure all tests pass. You can
+  check [README_maintainers.md](README_maintainers.md) for test run instructions.
 
 * When finished, push the changes to your GitHub repository and send a pull
   request from your fork to the ArangoDB repository. Please make sure to select
   the appropriate branches there. This will most likely be **devel**.
 
-* You must use the Apache License for your changes.
+* You must use the Apache License for your changes and have signed our 
+  [CLA](https://www.arangodb.com/documents/cla.pdf). We cannot accept pull requests
+  from contributors that didn't sign the CLA.
 
-Reporting Bugs
---------------
+* Please let us know if you plan to work on a ticket. This way we can make sure
+  redundant work is avoided.
 
-When reporting bugs, please use our issue tracker on GitHub.  Please make sure
-to include the version number of ArangoDB in your bug report, along with the
-platform you are using (e.g. `Linux OpenSuSE x86_64`).  Please also include the
-ArangoDB startup mode (daemon, console, supervisor mode) plus any special
-configuration.  This will help us reproducing and finding bugs.
 
 Additional Resources
 --------------------

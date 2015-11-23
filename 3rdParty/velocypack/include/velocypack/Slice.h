@@ -33,6 +33,7 @@
 #include <vector>
 #include <iosfwd>
 #include <algorithm>
+#include <type_traits>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
@@ -719,24 +720,6 @@ namespace arangodb {
           VELOCYPACK_ASSERT(this->type() == type);
         }
 #endif
-          
-        // read an unsigned little endian integer value of the
-        // specified length, starting at the specified byte offset
-        template <typename T>
-        T readInteger (uint8_t const* start, ValueLength numBytes) const {
-          T value = 0;
-          uint8_t const* p = start;
-          uint8_t const* e = p + numBytes;
-          T digit = 0;
-
-          while (p < e) {
-            value += static_cast<T>(*p) << (digit * 8);
-            ++digit;
-            ++p;
-          }
-
-          return value;
-        }
 
         // extracts a value from the slice and converts it into a 
         // built-in type

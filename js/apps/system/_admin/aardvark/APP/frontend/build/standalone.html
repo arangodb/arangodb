@@ -558,6 +558,84 @@
     <% mediumChart("pageFaultsChart", "Major Page Faults") %>
     <% mediumChart("systemUserTimeChart", "Used CPU Time per Second") %>
   </div>
+
+  <div class="dashboard-headerbar headerBar">
+    <a class="arangoHeader">Replication</a>
+  </div>
+
+  <div class="dashboard-row">
+    <div class="dashboard-full-width-chart" id="replication-chart">
+      <div class="dashboard-full-width-chart-inner">
+        <div id="repl-numbers" class="dashboard-interior-chart">
+          <div class="inner">
+            <div class="top dashboard-subtitle-bar">Numbers</div>
+            <div class="bottom">
+              <table>
+                <tbody>
+                  <tr>
+                    <td>Events</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td>Requests</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td>Failed</td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div id="repl-ticks" class="dashboard-interior-chart">
+          <div class="inner">
+            <div class="top dashboard-subtitle-bar">Ticks</div>
+            <div class="bottom">
+              <table>
+                <tbody>
+                  <tr>
+                    <td>Applied</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td>Processed</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td>Available</td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div id="repl-progress" class="dashboard-interior-chart">
+          <div class="inner">
+            <div class="top dashboard-subtitle-bar">Progress</div>
+            <div class="bottom">
+              <table>
+                <tbody>
+                  <tr>
+                    <td>Message</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td>Failed</td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    <div class="dashboard-sub-bar"">Replication</div>
+    </div>
+  </div>
+
 </script>
 
 <script id="databaseView.ejs" type="text/template">
@@ -2864,9 +2942,9 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="sharedLibs.js?version=1447765025003"></script>
-<script src="libs.js?version=1447765025003"></script>
-<script src="app.js?version=1447765025003"></script>
+<script src="sharedLibs.js?version=1448051164122"></script>
+<script src="libs.js?version=1448051164122"></script>
+<script src="app.js?version=1448051164122"></script>
 
   </body>
 </html>
