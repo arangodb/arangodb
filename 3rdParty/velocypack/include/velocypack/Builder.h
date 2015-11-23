@@ -240,6 +240,8 @@ namespace arangodb {
 
           return _buffer.get()->data();
         }
+
+        std::string toString () const;
         
         // get a non-const reference to the Builder's Buffer object
         std::shared_ptr<Buffer<uint8_t>>& buffer () {

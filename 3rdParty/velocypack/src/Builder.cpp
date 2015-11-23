@@ -28,9 +28,18 @@
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Dumper.h"
+#include "velocypack/Sink.h"
 
 using namespace arangodb::velocypack;
-        
+    
+std::string Builder::toString () const {
+  std::string buffer;
+  StringSink sink(&buffer);
+  Dumper::dump(slice(), &sink, options);
+  return std::move(buffer);
+}
+
 void Builder::doActualSort (std::vector<SortEntry>& entries) {
   VELOCYPACK_ASSERT(entries.size() > 1);
   std::sort(entries.begin(), entries.end(), 
