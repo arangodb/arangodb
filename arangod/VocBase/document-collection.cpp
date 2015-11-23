@@ -5447,7 +5447,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 }
   
 int TRI_document_collection_t::insert (Transaction* trx, 
-                                       TRI_doc_mptr_t* mptr, 
+                                       TRI_doc_mptr_copy_t* mptr, 
                                        VPackSlice* slice, 
                                        bool lock,
                                        bool waitForSync) {
@@ -5499,9 +5499,7 @@ int TRI_document_collection_t::insert (Transaction* trx,
     header->_hash = hash;
     
     // insert into indexes
-    // TODO
-    // res = InsertDocument(trxCollection, header, operation, mptr, forceSync);
-    res = TRI_ERROR_INTERNAL;
+    res = insertDocument(trx, header, operation, mptr, waitForSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert();
@@ -5535,6 +5533,217 @@ triagens::wal::Marker* TRI_document_collection_t::createVPackInsertMarker (Trans
   return marker;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert a document
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::insertDocument (triagens::arango::Transaction* trx,
+                                               TRI_doc_mptr_t* header,
+                                               triagens::wal::DocumentOperation& operation,
+                                               TRI_doc_mptr_copy_t* mptr,
+                                               bool& waitForSync) {
+
+  TRI_ASSERT(header != nullptr);
+  TRI_ASSERT(mptr != nullptr);
+
+  // .............................................................................
+  // insert into indexes
+  // .............................................................................
+
+  // insert into primary index first
+  int res = insertPrimaryIndex(trx, header);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // insert has failed
+    return res;
+  }
+
+  // insert into secondary indexes
+  res = insertSecondaryIndexes(trx, header, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    deleteSecondaryIndexes(trx, header, true);
+    deletePrimaryIndex(trx, header);
+    return res;
+  }
+
+  _numberDocuments++;
+
+  operation.indexed();
+
+  TRI_IF_FAILURE("InsertDocumentNoOperation") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_IF_FAILURE("InsertDocumentNoOperationExcept") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+// TODO
+//  res = TRI_AddOperationTransaction(trxCollection->_transaction, operation, waitForSync);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  *mptr = *header;
+
+  res = postInsertIndexes(trx, header);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new entry in the primary index
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::insertPrimaryIndex (triagens::arango::Transaction* trx,
+                                                   TRI_doc_mptr_t* header) {
+  TRI_IF_FAILURE("InsertPrimaryIndex") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_doc_mptr_t* found;
+
+  TRI_ASSERT(header != nullptr);
+  TRI_ASSERT(header->getDataPtr() != nullptr);  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+  // insert into primary index
+  int res = primaryIndex()->insertKey(header, (void const**) &found);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  if (found == nullptr) {
+    // success
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // we found a previous revision in the index
+  // the found revision is still alive
+  LOG_TRACE("document '%s' already existed with revision %llu while creating revision %llu",
+            TRI_EXTRACT_MARKER_KEY(header),  // ONLY IN INDEX, PROTECTED by RUNTIME
+            (unsigned long long) found->_rid,
+            (unsigned long long) header->_rid);
+
+  return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new entry in the secondary indexes
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::insertSecondaryIndexes (triagens::arango::Transaction* trx,
+                                                       TRI_doc_mptr_t const* header,
+                                                       bool isRollback) {
+  TRI_IF_FAILURE("InsertSecondaryIndexes") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  if (! useSecondaryIndexes()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  int result = TRI_ERROR_NO_ERROR;
+
+  auto const& indexes = allIndexes();
+  size_t const n = indexes.size();
+
+  for (size_t i = 1; i < n; ++i) {
+    auto idx = indexes[i];
+    int res = idx->insert(header, isRollback);
+
+    // in case of no-memory, return immediately
+    if (res == TRI_ERROR_OUT_OF_MEMORY) {
+      return res;
+    }
+    else if (res != TRI_ERROR_NO_ERROR) {
+      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
+          result == TRI_ERROR_NO_ERROR) {
+        // "prefer" unique constraint violated
+        result = res;
+      }
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes an entry from the primary index
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::deletePrimaryIndex (triagens::arango::Transaction* trx,
+                                                   TRI_doc_mptr_t const* header) {
+  TRI_IF_FAILURE("DeletePrimaryIndex") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  auto found = primaryIndex()->removeKey(TRI_EXTRACT_MARKER_KEY(header)); // ONLY IN INDEX, PROTECTED by RUNTIME
+
+  if (found == nullptr) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes an entry from the secondary indexes
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::deleteSecondaryIndexes (triagens::arango::Transaction* trx,
+                                                       TRI_doc_mptr_t const* header,
+                                                       bool isRollback) {
+  if (! useSecondaryIndexes()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_IF_FAILURE("DeleteSecondaryIndexes") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  int result = TRI_ERROR_NO_ERROR;
+
+  auto const& indexes = allIndexes();
+  size_t const n = indexes.size();
+
+  for (size_t i = 1; i < n; ++i) {
+    auto idx = indexes[i];
+    int res = idx->remove(header, isRollback);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // an error occurred
+      result = res;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief post-insert operation
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::postInsertIndexes (triagens::arango::Transaction* trx,
+                                                  TRI_doc_mptr_t* header) {
+  if (! useSecondaryIndexes()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  auto const& indexes = allIndexes();
+  size_t const n = indexes.size();
+  TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(trx->getInternals(), _info._cid, TRI_TRANSACTION_WRITE);
+
+  for (size_t i = 1; i < n; ++i) {
+    auto idx = indexes[i];
+    idx->postInsert(trxCollection, header);
+  }
+  
+  // post-insert will never return an error
+  return TRI_ERROR_NO_ERROR;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

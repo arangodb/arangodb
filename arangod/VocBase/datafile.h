@@ -636,7 +636,9 @@ void TRI_FreeDatafile (TRI_datafile_t*);
 static inline bool TRI_IsWalDataMarkerDatafile (void const* marker) {
   TRI_df_marker_t const* m = static_cast<TRI_df_marker_t const*>(marker);
 
-  return (m->_type == TRI_WAL_MARKER_DOCUMENT || m->_type == TRI_WAL_MARKER_EDGE || m->_type == TRI_WAL_MARKER_VPACK_DOCUMENT);
+  return (m->_type == TRI_WAL_MARKER_DOCUMENT || 
+          m->_type == TRI_WAL_MARKER_EDGE || 
+          m->_type == TRI_WAL_MARKER_VPACK_DOCUMENT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
