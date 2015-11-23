@@ -80,9 +80,6 @@ the server. The "level" is specified as a string and can be one of
 the following values: fatal, error, warning, info, debug or trace.  For
 more information see [here](../ConfigureArango/Logging.md).
 
-
-@startDocuBlock serverEndpoint
-
 <!-- ArangoServer.h -->
 
 @startDocuBlock server_authentication
@@ -90,6 +87,8 @@ more information see [here](../ConfigureArango/Logging.md).
 <!-- ApplicationEndpointServer.h -->
 
 @startDocuBlock keep_alive_timeout
+
+<!-- ApplicationEndpointServer.h -->
 
 @startDocuBlock serverEndpoint
 
