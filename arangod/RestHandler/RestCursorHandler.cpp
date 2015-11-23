@@ -185,7 +185,12 @@ void RestCursorHandler::processQuery (VPackSlice const& slice) {
       }
     
       result.set("cached", triagens::basics::Json(queryResult.cached));
-      result.set("extra", extra);
+      if (queryResult.cached) {
+        result.set("extra", triagens::basics::Json(triagens::basics::Json::Object));
+      }
+      else {
+        result.set("extra", extra);
+      }
       result.set("error", triagens::basics::Json(false));
       result.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
 
