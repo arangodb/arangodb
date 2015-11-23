@@ -47,6 +47,7 @@
 #include "V8Server/v8-vocindex.h"
 #include "V8Server/v8-wrapshapedjson.h"
 #include "VocBase/auth.h"
+#include "VocBase/DocumentAccessor.h"
 #include "VocBase/KeyGenerator.h"
 #include "Wal/LogfileManager.h"
 
@@ -1159,23 +1160,17 @@ static void InsertVocbaseVPack (TRI_vocbase_col_t* col,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   
-  triagens::arango::CollectionNameResolver resolver(col->_vocbase);
-
-  VPackOptions vOptions = arangodb::StorageOptions::getDocumentToJsonTemplate();
-  std::unique_ptr<VPackCustomTypeHandler> customTypeHandler(arangodb::StorageOptions::createCustomHandler(&resolver));
-  vOptions.customTypeHandler = customTypeHandler.get();
-
-  VPackBuilder builder(&vOptions);
-  int res = TRI_V8ToVPack(isolate, builder, args[0]->ToObject(), true);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-  
   // load collection
   SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
-  res = trx.begin(); // TODO: postpone locking from here to later
+  int res = trx.openCollections();
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  VPackBuilder builder(trx.vpackOptions());
+  res = TRI_V8ToVPack(isolate, builder, args[0]->ToObject(), true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1195,8 +1190,7 @@ static void InsertVocbaseVPack (TRI_vocbase_col_t* col,
 
   VPackSlice slice(builder.slice());
 
-std::cout << "JSON: " << slice.toJson() << "\n";
-
+  std::cout << "JSON: " << slice.toJson() << "\n";
   std::cout << "GOT: " << VPackHexDump(slice) << "\n\n";
 
   // fetch a barrier so nobody unlinks datafiles with the shapes & attributes we might
@@ -1204,35 +1198,38 @@ std::cout << "JSON: " << slice.toJson() << "\n";
   if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
+  
+  res = trx.begin();
 
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+  
   TRI_doc_mptr_copy_t mptr;
-  res = document->insert(&trx, &mptr, &slice, true /* TODO: locking */, options.waitForSync);
+  res = document->insert(&trx, &mptr, &slice, ! trx.isLocked(document, TRI_TRANSACTION_WRITE), options.waitForSync);
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-//  TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
+  TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
 
   if (options.silent) {
     TRI_V8_RETURN_TRUE();
   }
   
-  return TRI_V8_RETURN_TRUE();
-  /*  
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
+  std::string key = std::move(TRI_EXTRACT_MARKER_KEY(&trx, &mptr));  // PROTECTED by trx here
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   TRI_GET_GLOBAL_STRING(_IdKey);
   TRI_GET_GLOBAL_STRING(_RevKey);
   TRI_GET_GLOBAL_STRING(_KeyKey);
-  result->Set(_IdKey,  V8DocumentId(isolate, trx.resolver()->getCollectionName(col->_cid), docKey));
-  result->Set(_RevKey, V8RevisionId(isolate, mptr._rid));
-  result->Set(_KeyKey, TRI_V8_STRING(docKey));
+  result->Set(_IdKey,  V8DocumentId(isolate, trx.resolver()->getCollectionName(col->_cid), key));
+  result->Set(_RevKey, V8RevisionId(isolate, TRI_EXTRACT_MARKER_RID(&trx, &mptr)));
+  result->Set(_KeyKey, TRI_V8_STD_STRING(key));
 
   TRI_V8_RETURN(result);
-  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////

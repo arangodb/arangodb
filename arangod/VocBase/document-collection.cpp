@@ -5579,8 +5579,7 @@ int TRI_document_collection_t::insertDocument (triagens::arango::Transaction* tr
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-// TODO
-//  res = TRI_AddOperationTransaction(trxCollection->_transaction, operation, waitForSync);
+  res = TRI_AddOperationTransaction(trx->getInternals(), operation, waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;

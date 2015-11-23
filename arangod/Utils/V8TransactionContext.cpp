@@ -27,6 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Utils/V8TransactionContext.h"
+#include "Storage/Options.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/transaction.h"
 
@@ -47,8 +48,10 @@ V8TransactionContext::V8TransactionContext (bool embeddable)
   : TransactionContext(),
      _sharedTransactionContext(static_cast<V8TransactionContext*>(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData(V8DataSlot))->_transactionContext)),
     _resolver(nullptr),
+    _options(),
     _currentTransaction(nullptr),
     _ownResolver(false),
+    _ownOptions(false),
     _embeddable(embeddable) {
   // std::cout << TRI_CurrentThreadId() << ", V8TRANSACTIONCONTEXT " << this << " CTOR\r\n";
 }
@@ -69,6 +72,15 @@ CollectionNameResolver const* V8TransactionContext::getResolver () const {
   TRI_ASSERT_EXPENSIVE(_sharedTransactionContext != nullptr);
   TRI_ASSERT_EXPENSIVE(_sharedTransactionContext->_resolver != nullptr);
   return _sharedTransactionContext->_resolver;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the VPackOptions
+////////////////////////////////////////////////////////////////////////////////
+
+VPackOptions const* V8TransactionContext::getVPackOptions () const { 
+  TRI_ASSERT_EXPENSIVE(_sharedTransactionContext != nullptr);
+  return &_sharedTransactionContext->_options;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,6 +108,12 @@ int V8TransactionContext::registerTransaction (TRI_transaction_t* trx) {
     _ownResolver = true;
   }
 
+  if (_sharedTransactionContext->_options.customTypeHandler == nullptr) {
+    _sharedTransactionContext->_options = arangodb::StorageOptions::getJsonToDocumentTemplate();
+    _sharedTransactionContext->_options.customTypeHandler = arangodb::StorageOptions::createCustomHandler(_sharedTransactionContext->_resolver);
+    _ownOptions = true;
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -114,6 +132,12 @@ int V8TransactionContext::unregisterTransaction () {
     delete _sharedTransactionContext->_resolver;
     _sharedTransactionContext->_resolver = nullptr;
   }
+  
+  if (_ownOptions && _sharedTransactionContext->_options.customTypeHandler != nullptr) {
+    _ownOptions = false;
+    delete _sharedTransactionContext->_options.customTypeHandler;
+    _sharedTransactionContext->_options.customTypeHandler = nullptr;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -128,6 +152,7 @@ bool V8TransactionContext::isEmbeddable () const {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief make this context a global context
+/// this is only called upon V8 context initialization
 ////////////////////////////////////////////////////////////////////////////////
 
 void V8TransactionContext::makeGlobal () {

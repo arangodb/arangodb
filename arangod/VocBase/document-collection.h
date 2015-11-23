@@ -42,6 +42,7 @@
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
 
+#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 

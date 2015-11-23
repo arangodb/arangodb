@@ -27,6 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Utils/StandaloneTransactionContext.h"
+#include "Storage/Options.h"
 #include "Utils/CollectionNameResolver.h"
 
 using namespace triagens::arango;
@@ -41,7 +42,8 @@ using namespace triagens::arango;
 
 StandaloneTransactionContext::StandaloneTransactionContext () 
   : TransactionContext(),
-    _resolver(nullptr) {
+    _resolver(nullptr),
+    _options() {
   // std::cout << TRI_CurrentThreadId() << ", STANDALONETRANSACTIONCONTEXT CTOR\r\n";
 }
 
@@ -63,6 +65,14 @@ CollectionNameResolver const* StandaloneTransactionContext::getResolver () const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the VPackOptions
+////////////////////////////////////////////////////////////////////////////////
+
+VPackOptions const* StandaloneTransactionContext::getVPackOptions () const { 
+  return &_options;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get parent transaction (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -77,6 +87,9 @@ TRI_transaction_t* StandaloneTransactionContext::getParentTransaction () const {
 int StandaloneTransactionContext::registerTransaction (TRI_transaction_t* trx) {
   if (_resolver == nullptr) {
     _resolver = new CollectionNameResolver(trx->_vocbase);
+
+    _options = arangodb::StorageOptions::getJsonToDocumentTemplate();
+    _options.customTypeHandler = arangodb::StorageOptions::createCustomHandler(_resolver);
   }
   // std::cout << TRI_CurrentThreadId() << ", STANDALONETRANSACTIONCONTEXT REGISTER: " << trx << "\r\n";
 
@@ -91,6 +104,11 @@ int StandaloneTransactionContext::unregisterTransaction () {
   if (_resolver != nullptr) {
     delete _resolver;
     _resolver = nullptr;
+  }
+
+  if (_options.customTypeHandler != nullptr) {
+    delete _options.customTypeHandler;
+    _options.customTypeHandler = nullptr;
   }
   // std::cout << TRI_CurrentThreadId() << ", STANDALONETRANSACTIONCONTEXT UNREGISTER\r\n";
 

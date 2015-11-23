@@ -49,6 +49,13 @@
 #include "VocBase/VocShaper.h"
 #include "VocBase/voc-types.h"
 
+namespace arangodb {
+  namespace velocypack {
+    struct Options;
+  }
+}
+using VPackOptions = arangodb::velocypack::Options;
+ 
 namespace triagens {
   namespace arango {
 
@@ -214,6 +221,16 @@ namespace triagens {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection name resolver
+////////////////////////////////////////////////////////////////////////////////
+
+          VPackOptions const* vpackOptions () const {
+            VPackOptions const* o = this->_transactionContext->getVPackOptions();
+            TRI_ASSERT(o != nullptr);
+            return o;
+          }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the transaction is embedded
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -235,6 +252,28 @@ namespace triagens {
 
           int nestingLevel () const {
             return _nestingLevel;
+          }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief opens the declared collections of the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+          int openCollections () {
+            if (_trx == nullptr) {
+              return TRI_ERROR_TRANSACTION_INTERNAL;
+            }
+
+            if (_setupState != TRI_ERROR_NO_ERROR) {
+              return _setupState;
+            }
+
+            if (! _isReal) {
+              return TRI_ERROR_NO_ERROR;
+            }
+
+            int res = TRI_EnsureCollectionsTransaction(_trx, _nestingLevel);
+
+            return res;
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -375,7 +414,7 @@ namespace triagens {
          triagens::arango::DocumentDitch* orderDitch (TRI_transaction_collection_t* trxCollection) {
            TRI_ASSERT(_trx != nullptr);
            TRI_ASSERT(trxCollection != nullptr);
-           TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+           TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING || getStatus() == TRI_TRANSACTION_CREATED);
            TRI_ASSERT(trxCollection->_collection != nullptr);
 
            TRI_document_collection_t* document = trxCollection->_collection->_collection;
@@ -558,6 +597,33 @@ namespace triagens {
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test if a collection is already locked
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isLocked (TRI_transaction_collection_t const* trxCollection,
+                       TRI_transaction_type_e type) {
+          if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
+            return false;
+          }
+
+          return TRI_IsLockedCollectionTransaction(trxCollection, type, _nestingLevel);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test if a collection is already locked
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isLocked (TRI_document_collection_t* document,
+                       TRI_transaction_type_e type) {
+          if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
+            return false;
+          }
+    
+          TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_trx, document->_info._cid, type);
+          return isLocked(trxCollection, type);
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
@@ -704,19 +770,6 @@ namespace triagens {
           }
 
           return TRI_UnlockCollectionTransaction(trxCollection, type, _nestingLevel);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read- or write-unlock a collection
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isLocked (TRI_transaction_collection_t* const trxCollection,
-                       TRI_transaction_type_e type) {
-          if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-            return false;
-          }
-
-          return TRI_IsLockedCollectionTransaction(trxCollection, type, _nestingLevel);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

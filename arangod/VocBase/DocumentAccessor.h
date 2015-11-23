@@ -32,10 +32,16 @@
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
+#include "Utils/Transaction.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/shape-accessor.h"
 #include "VocBase/shaped-json.h"
 #include "VocBase/Shaper.h"
+#include "Wal/Marker.h"
+
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 struct TRI_doc_mptr_t;
 
@@ -117,6 +123,66 @@ class DocumentAccessor {
     TRI_json_t* _current; // the JSON that we point to
 
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the pointer to the key from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline std::string TRI_EXTRACT_MARKER_KEY (triagens::arango::Transaction* trx,
+                                                  TRI_df_marker_t const* marker) {
+  if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
+    auto b = reinterpret_cast<char const*>(marker) + sizeof(triagens::wal::vpack_document_marker_t);
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(b), trx->vpackOptions());
+    return slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
+  return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the pointer to the key from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline std::string TRI_EXTRACT_MARKER_KEY (triagens::arango::Transaction* trx,
+                                                  TRI_doc_mptr_t const* mptr) {
+  return TRI_EXTRACT_MARKER_KEY(trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the revision id from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID (triagens::arango::Transaction* trx,
+                                                    TRI_df_marker_t const* marker) {
+  if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
+    auto b = reinterpret_cast<char const*>(marker) + sizeof(triagens::wal::vpack_document_marker_t);
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(b), trx->vpackOptions());
+    VPackSlice value = slice.get(TRI_VOC_ATTRIBUTE_REV);
+    return arangodb::velocypack::readUInt64(value.start() + 1);
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the revision id from a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID (triagens::arango::Transaction* trx,
+                                                    TRI_doc_mptr_t const* mptr) {
+  return TRI_EXTRACT_MARKER_RID(trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
+}
+
 
 #endif
 
