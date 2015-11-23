@@ -28,6 +28,7 @@
 #define VELOCYPACK_ATTRIBUTETRANSLATOR_H 1
 
 #include <cstdint>
+#include <string>
 #include <unordered_map>
 #include <memory>
 
@@ -58,6 +59,10 @@ namespace arangodb {
         void add (std::string const& key, uint64_t id);
 
         void seal ();
+
+        Builder* builder () {
+          return _builder.get();
+        }
 
         // translate from string to id
         uint8_t const* translate (std::string const& key) const;

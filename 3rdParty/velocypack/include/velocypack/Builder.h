@@ -232,6 +232,14 @@ namespace arangodb {
         std::shared_ptr<Buffer<uint8_t>> const& buffer () const {
           return _buffer;
         }
+
+        uint8_t const* data () const {
+          if (_buffer == nullptr) {
+            throw Exception(Exception::InternalError, "Buffer of Builder is already gone");
+          }
+
+          return _buffer.get()->data();
+        }
         
         // get a non-const reference to the Builder's Buffer object
         std::shared_ptr<Buffer<uint8_t>>& buffer () {
