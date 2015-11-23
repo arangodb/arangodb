@@ -197,15 +197,16 @@
       });
 
       var outputEditor = ace.edit("queryOutput");
+      outputEditor.setValue('');
+      outputEditor.setFontSize("16px");
       outputEditor.setReadOnly(true);
       outputEditor.setHighlightActiveLine(false);
       outputEditor.getSession().setMode("ace/mode/json");
-      outputEditor.setFontSize("16px");
-      outputEditor.setValue('');
 
       var inputEditor = ace.edit("aqlEditor");
-      inputEditor.getSession().setMode("ace/mode/aql");
+      inputEditor.setValue('');
       inputEditor.setFontSize("16px");
+      inputEditor.getSession().setMode("ace/mode/aql");
       inputEditor.commands.addCommand({
         name: "togglecomment",
         bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
@@ -217,7 +218,12 @@
 
       //get cached query if available
       var query = this.getCachedQuery();
-      if (query !== null && query !== undefined && query !== "") {
+      if (typeof query === 'object' && query.hasOwnProperty('query')) {
+        // in version 2.8, an object will be stored for query, and we need to retrieve its
+        // 'query' property
+        query = query.query;
+      }
+      if (query !== null && query !== undefined && query !== "" && typeof query === 'string') {
         inputEditor.setValue(query);
       }
 
