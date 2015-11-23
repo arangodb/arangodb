@@ -225,8 +225,8 @@ describe ArangoDB do
       sleep 5
 
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-408", cmd)
-      doc.code.should eq(408)
+      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-410", cmd)
+      doc.code.should eq(410)
     end
     
     it "checks whether we can cancel an AQL query" do
@@ -253,8 +253,8 @@ describe ArangoDB do
       sleep 5
 
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-408", cmd)
-      doc.code.should eq(408)
+      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-410", cmd)
+      doc.code.should eq(410)
     end
 
     it "checks whether we can cancel an AQL query" do
@@ -279,8 +279,8 @@ describe ArangoDB do
       sleep 5
 
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-408", cmd)
-      doc.code.should eq(408)
+      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-410", cmd)
+      doc.code.should eq(410)
     end
 
     it "checks whether we can cancel a transaction" do
@@ -309,8 +309,8 @@ describe ArangoDB do
       sleep 5
 
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_put("#{prefix}-create-transaction-check-status-408", cmd)
-      doc.code.should eq(408)
+      doc = ArangoDB.log_put("#{prefix}-create-transaction-check-status-410", cmd)
+      doc.code.should eq(410)
     end
   end
 end
