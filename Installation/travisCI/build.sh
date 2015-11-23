@@ -5,8 +5,10 @@ echo
 echo "$0: loading precompiled libraries"
 
 wget \
-  -O - --progress=dot --show-progress \
-  "https://www.arangodb.com/support-files/travisCI/precompiled-libraries-4.3.61.tar.gz" | tar xzf -
+  -O 3rdParty.tar.gz --progress=dot --show-progress \
+  "https://www.arangodb.com/support-files/travisCI/precompiled-libraries-4.3.61.tar.gz"
+
+tar xzf 3rdParty.tar.gz
 
 echo
 echo "$0: setup make-system"
