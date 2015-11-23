@@ -4,9 +4,8 @@ set -e
 echo
 echo "$0: loading precompiled libraries"
 
-wget --help
 wget \
-  -O 3rdParty.tar.gz --progress=dot --show-progress \
+  -O 3rdParty.tar.gz \
   "https://www.arangodb.com/support-files/travisCI/precompiled-libraries-4.3.61.tar.gz"
 
 tar xzf 3rdParty.tar.gz
