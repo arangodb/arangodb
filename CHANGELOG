@@ -110,6 +110,8 @@ v2.8.0 (XXXX-XX-XX)
 * added convenience function `db._explain(query)` for human-readable explanation
   of AQL queries
 
+* module resolution as used by `require` now behaves more like in node.js
+
 * the `org/arangodb/request` module now returns response bodies for error responses
   by default. The old behaviour of not returning bodies for error responses can be
   re-enabled by explicitly setting the option `returnBodyOnError` to `false` (#1437)

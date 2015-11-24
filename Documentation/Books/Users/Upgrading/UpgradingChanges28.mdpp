@@ -6,6 +6,28 @@ upgrading to ArangoDB 2.8, and adjust any client programs if necessary.
 
 !SECTION Miscellaneous changes
 
+!SUBSECTION Module resolution
+
+The behaviour of the JavaScript module resolution used by the `require` function has
+been modified to improve compatibility with modules written for Node.js.
+
+Specifically
+
+* absolute paths (e.g. `/some/absolute/path`) are now always interpreted as absolute
+  file system paths, relative to the file system root
+
+* global names (e.g. `global/name`) are now first intepreted as references to modules
+  residing in a relevant `node_modules` folder, a built-in module or a matching
+  document in the internal `_modules` collection, and only resolved to local file paths
+  if no other match is found
+
+Previously the two formats were treated interchangeably and would be resolved to local
+file paths first, leading to problems when local files used the same names as other
+modules (e.g. a local file `chai.js` would cause problems when trying to load the
+`chai` module installed in `node_modules`).
+
+For more information see the [blog announcement of this change](https://www.arangodb.com/blog/).
+
 !SUBSECTION Module `org/arangodb/request`
 
 The module now always returns response bodies, even for error responses. In versions
