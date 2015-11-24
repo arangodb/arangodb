@@ -292,12 +292,6 @@ bool RestEdgesHandler::readEdges () {
     const_cast<char*>(start.key)
   );
 
-  res = trx.finish(res);
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res);
-    return false;
-  }
-
 
   // generate result
   triagens::basics::Json documents(triagens::basics::Json::Array);
@@ -307,6 +301,18 @@ bool RestEdgesHandler::readEdges () {
     DocumentAccessor da(trx.resolver(), collection->_collection->_collection, &e);
     documents.add(da.toJson());
   }
+
+  res = trx.finish(res);
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res);
+    return false;
+  }
+
+  triagens::basics::Json result(triagens::basics::Json::Object);
+  result("edges", documents);
+
+  // and generate a response
+  generateResult(result.json());
 
   return true;
 }
