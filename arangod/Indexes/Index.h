@@ -38,6 +38,8 @@
 #include "VocBase/VocShaper.h"
 #include "VocBase/voc-types.h"
 
+#include <iosfwd>
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -54,6 +56,9 @@ namespace triagens {
     struct AstNode;
     class SortCondition;
     struct Variable;
+  }
+  namespace arango {
+    class Transaction;
   }
 }
 

@@ -35,6 +35,7 @@
 #include "v8-buffer.h"
 
 #include <regex.h>
+#include <fstream>
 #include <iostream>
 
 #include "Basics/Dictionary.h"
@@ -1193,8 +1194,8 @@ static void JS_Getline (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  string line;
-  getline(cin, line);
+  std::string line;
+  getline(std::cin, line);
 
   TRI_V8_RETURN_STD_STRING(line);
   TRI_V8_TRY_CATCH_END

@@ -39,7 +39,8 @@
 #include "Basics/StringUtils.h"
 #include "VocBase/server.h"
 #include "VocBase/VocShaper.h"
-#include <iostream>
+
+#include <ostream>
 
 using namespace triagens::arango;
 

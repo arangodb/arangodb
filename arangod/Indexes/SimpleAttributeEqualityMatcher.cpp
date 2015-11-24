@@ -36,7 +36,6 @@
 
 using namespace triagens::arango;
 
-#include <iostream>
 // -----------------------------------------------------------------------------
 // --SECTION--                              class SimpleAttributeEqualityMatcher
 // -----------------------------------------------------------------------------

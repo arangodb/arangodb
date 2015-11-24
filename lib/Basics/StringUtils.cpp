@@ -32,8 +32,6 @@
 #include <math.h>
 #include <time.h>
 
-#include <iostream>
-
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
