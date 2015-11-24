@@ -9,6 +9,9 @@ v2.7.2 (XXXX-XX-XX)
 * fixed potentially invalid pointer access in shaper when the currently accessed
   document got re-located by the WAL collector at the very same time
 
+* Foxx: optional configuration options no longer log validation errors when assigned
+  empty values (#1495)
+
 
 v2.7.1 (2015-11-07)
 -------------------
