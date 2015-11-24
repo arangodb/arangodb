@@ -76,7 +76,7 @@ static uint64_t HashElementEdgeFrom (void const* data,
   }
   else {
     TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
-    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
       TRI_doc_edge_key_marker_t const* edge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -116,7 +116,7 @@ static uint64_t HashElementEdgeTo (void const* data,
   }
   else {
     TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
-    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
       TRI_doc_edge_key_marker_t const* edge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -156,7 +156,7 @@ static bool IsEqualKeyEdgeFrom (void const* left,
   char const* lKey = l->_key;
 
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* rEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -192,7 +192,7 @@ static bool IsEqualKeyEdgeTo (void const* left,
   char const* lKey = l->_key;
 
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* rEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -240,7 +240,7 @@ static bool IsEqualElementEdgeFromByKey (void const* left,
 
   // left element
   TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
-  marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* lEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -255,7 +255,7 @@ static bool IsEqualElementEdgeFromByKey (void const* left,
 
   // right element
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* rEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -294,7 +294,7 @@ static bool IsEqualElementEdgeToByKey (void const* left,
 
   // left element
   TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
-  marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* lEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -309,7 +309,7 @@ static bool IsEqualElementEdgeToByKey (void const* left,
 
   // right element
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* rEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -506,7 +506,8 @@ triagens::basics::Json EdgeIndex::toJsonFigures (TRI_memory_zone_t* zone) const 
   return json;
 }
 
-int EdgeIndex::insert (TRI_doc_mptr_t const* doc, 
+int EdgeIndex::insert (triagens::arango::Transaction*,
+                       TRI_doc_mptr_t const* doc, 
                        bool isRollback) {
   auto element = const_cast<TRI_doc_mptr_t*>(doc);
   _edgesFrom->insert(element, true, isRollback);
@@ -522,7 +523,8 @@ int EdgeIndex::insert (TRI_doc_mptr_t const* doc,
   return TRI_ERROR_NO_ERROR;
 }
          
-int EdgeIndex::remove (TRI_doc_mptr_t const* doc, 
+int EdgeIndex::remove (triagens::arango::Transaction*,
+                       TRI_doc_mptr_t const* doc, 
                        bool) {
   _edgesFrom->remove(doc);
   _edgesTo->remove(doc);
@@ -530,7 +532,8 @@ int EdgeIndex::remove (TRI_doc_mptr_t const* doc,
   return TRI_ERROR_NO_ERROR;
 }
         
-int EdgeIndex::batchInsert (std::vector<TRI_doc_mptr_t const*> const* documents, 
+int EdgeIndex::batchInsert (triagens::arango::Transaction*,
+                            std::vector<TRI_doc_mptr_t const*> const* documents, 
                             size_t numThreads) {
   _edgesFrom->batchInsert(reinterpret_cast<std::vector<TRI_doc_mptr_t *> const*>(documents), numThreads);
   _edgesTo->batchInsert(reinterpret_cast<std::vector<TRI_doc_mptr_t *> const*>(documents), numThreads);

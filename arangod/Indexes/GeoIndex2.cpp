@@ -181,7 +181,8 @@ triagens::basics::Json GeoIndex2::toJsonFigures (TRI_memory_zone_t* zone) const 
   return json;
 }
   
-int GeoIndex2::insert (TRI_doc_mptr_t const* doc, 
+int GeoIndex2::insert (triagens::arango::Transaction*,
+                       TRI_doc_mptr_t const* doc, 
                        bool) {
   auto shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
@@ -236,8 +237,9 @@ int GeoIndex2::insert (TRI_doc_mptr_t const* doc,
   return TRI_ERROR_NO_ERROR;
 }
          
-int GeoIndex2::remove (TRI_doc_mptr_t const* doc, 
-                      bool) {
+int GeoIndex2::remove (triagens::arango::Transaction*,
+                       TRI_doc_mptr_t const* doc, 
+                       bool) {
   TRI_shaped_json_t shapedJson;
 
   auto shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME

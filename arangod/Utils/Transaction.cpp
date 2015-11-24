@@ -33,25 +33,6 @@
 using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the following is for the runtime protection check, number of
-/// transaction objects in scope in the current thread
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-thread_local int TransactionBase::_numberTrxInScope = 0;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the following is for the runtime protection check, number of
-/// transaction objects in the current thread that are active (between
-/// begin and commit()/abort().
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-thread_local int TransactionBase::_numberTrxActive = 0;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief if this pointer is set to an actual set, then for each request
 /// sent to a shardId using the ClusterComm library, an X-Arango-Nolock
 /// header is generated.

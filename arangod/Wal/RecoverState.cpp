@@ -33,6 +33,8 @@
 #include "Basics/files.h"
 #include "Basics/Exceptions.h"
 #include "Basics/memory-map.h"
+#include "Utils/SingleCollectionWriteTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/VocShaper.h"
@@ -716,11 +718,11 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         } 
 
         TRI_doc_mptr_copy_t mptr;
-        int res = TRI_InsertShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, nullptr, false, false, true);
+        int res = TRI_InsertShapedJsonDocumentCollection(trx, trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, nullptr, false, false, true);
 
         if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
           state->policy.setExpectedRevision(m->_revisionId);
-          res = TRI_UpdateShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &state->policy, false, false);
+          res = TRI_UpdateShapedJsonDocumentCollection(trx, trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &state->policy, false, false);
         }
 
         return res;
@@ -773,11 +775,11 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         } 
  
         TRI_doc_mptr_copy_t mptr;
-        int res = TRI_InsertShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &edge, false, false, true);
+        int res = TRI_InsertShapedJsonDocumentCollection(trx, trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &edge, false, false, true);
 
         if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
           state->policy.setExpectedRevision(m->_revisionId);
-          res = TRI_UpdateShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &state->policy, false, false);
+          res = TRI_UpdateShapedJsonDocumentCollection(trx, trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &state->policy, false, false);
         }
 
         return res;
@@ -823,7 +825,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
         // remove the document and ignore any potential errors
         state->policy.setExpectedRevision(m->_revisionId);
-        TRI_RemoveShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &state->policy, false, false);
+        TRI_RemoveShapedJsonDocumentCollection(trx, trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &state->policy, false, false);
 
         return TRI_ERROR_NO_ERROR;
       });
@@ -1041,9 +1043,6 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return state->canContinue();
       }
 
-      // fake transaction to satisfy assertions
-      triagens::arango::TransactionBase trx(true); 
-      
       std::string collectionDirectory = GetCollectionDirectory(vocbase, collectionId);
       char* idString = TRI_StringUInt64(indexId);
       char* indexName = TRI_Concatenate3String("index-", idString, ".json");
@@ -1140,9 +1139,6 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_FromJsonCollectionInfo(&info, json);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       
-      // fake transaction to satisfy assertions
-      triagens::arango::TransactionBase trx(true); 
-
       WaitForDeletion(vocbase, collectionId, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   
       if (state->willBeDropped(collectionId)) {
@@ -1225,9 +1221,6 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_vocbase_defaults_t defaults;
       TRI_GetDatabaseDefaultsServer(state->server, &defaults);
       
-      // fake transaction to satisfy assertions
-      triagens::arango::TransactionBase trx(true); 
-
       vocbase = nullptr;
       WaitForDeletion(state->server, databaseId, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
       int res = TRI_CreateDatabaseServer(state->server, databaseId, nameString.c_str(), &defaults, &vocbase, false);
@@ -1269,9 +1262,6 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return true;
       }
       
-      // fake transaction to satisfy assertions
-      triagens::arango::TransactionBase trx(true); 
-
       // ignore any potential error returned by this call
       TRI_DropIndexDocumentCollection(document, indexId, false);
       TRI_RemoveFileIndexCollection(document, indexId);
@@ -1312,9 +1302,6 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       }
 
       if (collection != nullptr) {
-        // fake transaction to satisfy assertions
-        triagens::arango::TransactionBase trx(true); 
-
         int statusCode = TRI_DropCollectionVocBase(vocbase, collection, false);
         WaitForDeletion(vocbase, collectionId, statusCode);
       }
@@ -1331,9 +1318,6 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_vocbase_t* vocbase = state->releaseDatabase(databaseId);
 
       if (vocbase != nullptr) {
-        // fake transaction to satisfy assertions
-        triagens::arango::TransactionBase trx(true); 
-  
         // ignore any potential error returned by this call
         TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
       }
@@ -1467,13 +1451,9 @@ int RecoverState::removeEmptyLogfiles () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int RecoverState::fillIndexes () {
-  // fake transaction to allow populating the secondary indexes
-  triagens::arango::TransactionBase trx(true);
-
   // release all collections
   for (auto it = openedCollections.begin(); it != openedCollections.end(); ++it) {
     TRI_vocbase_col_t* collection = (*it).second;
-
     TRI_document_collection_t* document = collection->_collection;
 
     TRI_ASSERT(document != nullptr);
@@ -1481,7 +1461,9 @@ int RecoverState::fillIndexes () {
     // activate secondary indexes
     document->useSecondaryIndexes(true);
 
-    int res = TRI_FillIndexesDocumentCollection(collection, document);
+    triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), collection->_vocbase, document->_info._cid);
+    
+    int res = TRI_FillIndexesDocumentCollection(&trx, collection, document);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

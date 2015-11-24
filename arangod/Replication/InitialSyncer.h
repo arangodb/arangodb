@@ -195,7 +195,8 @@ namespace triagens {
 /// @brief apply the data from a collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-        int applyCollectionDump (struct TRI_transaction_collection_s*,
+        int applyCollectionDump (triagens::arango::Transaction*,     
+                                 struct TRI_transaction_collection_s*,
                                  httpclient::SimpleHttpResult*,
                                  uint64_t&,
                                  std::string&);
@@ -205,7 +206,8 @@ namespace triagens {
 /// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int handleCollectionDump (std::string const&, 
+        int handleCollectionDump (triagens::arango::Transaction*,
+                                  std::string const&, 
                                   struct TRI_transaction_collection_s*,
                                   std::string const&,
                                   TRI_voc_tick_t,

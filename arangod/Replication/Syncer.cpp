@@ -203,7 +203,8 @@ TRI_voc_cid_t Syncer::getCid (TRI_json_t const* json) const {
 /// @brief apply the data from a collection dump or the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollection,
+int Syncer::applyCollectionDumpMarker (triagens::arango::Transaction* trx,
+                                       TRI_transaction_collection_t* trxCollection,
                                        TRI_replication_operation_e type,
                                        const TRI_voc_key_t key,
                                        const TRI_voc_rid_t rid,
@@ -230,7 +231,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
       TRI_doc_mptr_copy_t mptr;
 
       bool const isLocked = TRI_IsLockedCollectionTransaction(trxCollection);
-      int res = TRI_ReadShapedJsonDocumentCollection(trxCollection, key, &mptr, ! isLocked);
+      int res = TRI_ReadShapedJsonDocumentCollection(trx, trxCollection, key, &mptr, ! isLocked);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
@@ -261,7 +262,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &edge, ! isLocked, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, &edge, ! isLocked, false, true);
           }
         }
         else {
@@ -270,13 +271,13 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, ! isLocked, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, ! isLocked, false, true);
           }
         }
       }
       else {
         // update
-        res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &_policy, ! isLocked, false);
+        res = TRI_UpdateShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, &_policy, ! isLocked, false);
       }
 
       TRI_FreeShapedJson(zone, shaped);
@@ -300,7 +301,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
     bool const isLocked = TRI_IsLockedCollectionTransaction(trxCollection);
 
     try {
-      res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &_policy, ! isLocked, false);
+      res = TRI_RemoveShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &_policy, ! isLocked, false);
 
       if (res != TRI_ERROR_NO_ERROR && res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore this error
@@ -486,7 +487,7 @@ int Syncer::createIndex (TRI_json_t const* json) {
     }
 
     triagens::arango::Index* idx = nullptr;
-    res = TRI_FromJsonIndexDocumentCollection(document, indexJson, &idx);
+    res = TRI_FromJsonIndexDocumentCollection(&trx, document, indexJson, &idx);
 
     if (res == TRI_ERROR_NO_ERROR) {
       res = TRI_SaveIndex(document, idx, true);

@@ -11,6 +11,10 @@
 struct TRI_transaction_collection_s;
 
 namespace triagens {
+  namespace arango {
+    class Transaction;
+  }
+
   namespace wal {
     class Marker;
 
@@ -23,12 +27,14 @@ namespace triagens {
         REVERTED
       };
 
-      DocumentOperation (Marker* marker,
+      DocumentOperation (triagens::arango::Transaction* trx,
+                         Marker* marker,
                          bool freeMarker,
                          TRI_document_collection_t* document,
                          TRI_voc_document_operation_e type,
                          TRI_voc_rid_t rid)
-        : marker(marker),
+        : trx(trx),
+          marker(marker),
           document(document),
           header(nullptr),
           rid(rid),
@@ -56,7 +62,7 @@ namespace triagens {
       }
 
       DocumentOperation* swap () {
-        DocumentOperation* copy = new DocumentOperation(marker, freeMarker, document, type, rid);
+        DocumentOperation* copy = new DocumentOperation(trx, marker, freeMarker, document, type, rid);
         copy->tick = tick;
         copy->header = header;
         copy->oldHeader = oldHeader;
@@ -105,7 +111,7 @@ namespace triagens {
         }
 
         if (status == StatusType::INDEXED || status == StatusType::HANDLED) {
-          TRI_RollbackOperationDocumentCollection(document, type, header, &oldHeader);
+          TRI_RollbackOperationDocumentCollection(trx, document, type, header, &oldHeader);
         }
 
         if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
@@ -124,6 +130,7 @@ namespace triagens {
         status = StatusType::REVERTED;
       }
 
+      triagens::arango::Transaction*        trx;
       Marker*                               marker;
       TRI_document_collection_t*            document;
       TRI_doc_mptr_t*                       header;

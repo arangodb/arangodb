@@ -113,9 +113,6 @@ class MultiCollectionEdgeExpander {
 
     void operator() (VertexId& source,
                      vector<ArangoDBPathFinder::Step*>& result) {
-      TransactionBase fake(true); // Fake a transaction to please checks. 
-                                  // This is due to multi-threading
-
       equal_to<VertexId> eq;
       for (auto const& edgeCollection : _edgeCollections) { 
         auto edges = edgeCollection->getEdges(_direction, source); 
@@ -182,8 +179,6 @@ class SimpleEdgeExpander {
 
     void operator() (VertexId& source,
                      vector<ArangoDBPathFinder::Step*>& result) {
-      TransactionBase fake(true); // Fake a transaction to please checks. 
-                                  // This is due to multi-threading
       auto edges = _edgeCollection->getEdges(_direction, source); 
 
       equal_to<VertexId> eq;

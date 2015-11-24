@@ -457,7 +457,8 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    int res = applyCollectionDumpMarker(trxCollection,
+    int res = applyCollectionDumpMarker(trx,
+                                        trxCollection,
                                         type,
                                         (const TRI_voc_key_t) keyJson->_value._string.data,
                                         rid,
@@ -491,7 +492,8 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    res = applyCollectionDumpMarker(trxCollection,
+    res = applyCollectionDumpMarker(&trx,
+                                    trxCollection,
                                     type,
                                     (const TRI_voc_key_t) keyJson->_value._string.data,
                                     rid,

@@ -63,7 +63,7 @@ namespace triagens {
 // --SECTION--                                                 class Transaction
 // -----------------------------------------------------------------------------
 
-      class Transaction : public TransactionBase {
+      class Transaction {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transaction
@@ -299,11 +299,6 @@ namespace triagens {
               return _setupState;
             }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-            TRI_ASSERT(_numberTrxActive == _numberTrxInScope - 1);
-            _numberTrxActive++;  // Every transaction gets here at most once
-#endif
-
             if (! _isReal) {
               if (_nestingLevel == 0) {
                 _trx->_status = TRI_TRANSACTION_RUNNING;
@@ -331,21 +326,10 @@ namespace triagens {
               if (_nestingLevel == 0) {
                 _trx->_status = TRI_TRANSACTION_COMMITTED;
               }
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-              TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
-              TRI_ASSERT(_numberTrxActive > 0);
-              _numberTrxActive--;  // Every transaction gets here at most once
-#endif
               return TRI_ERROR_NO_ERROR;
             }
 
             int res = TRI_CommitTransaction(_trx, _nestingLevel);
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-            TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
-            TRI_ASSERT(_numberTrxActive > 0);
-            _numberTrxActive--;  // Every transaction gets here at most once
-#endif
 
             return res;
           }
@@ -365,21 +349,10 @@ namespace triagens {
                 _trx->_status = TRI_TRANSACTION_ABORTED;
               }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-              TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
-              TRI_ASSERT(_numberTrxActive > 0);
-              _numberTrxActive--;  // Every transaction gets here at most once
-#endif
               return TRI_ERROR_NO_ERROR;
             }
 
             int res = TRI_AbortTransaction(_trx, _nestingLevel);
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-            TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
-            TRI_ASSERT(_numberTrxActive > 0);
-            _numberTrxActive--;  // Every transaction gets here at most once
-#endif
 
             return res;
           }
@@ -485,7 +458,8 @@ namespace triagens {
           TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
 
           try {
-            return TRI_RemoveShapedJsonDocumentCollection(trxCollection,
+            return TRI_RemoveShapedJsonDocumentCollection(this,
+                                                          trxCollection,
                                                           (TRI_voc_key_t) key.c_str(),
                                                           rid,
                                                           nullptr,
@@ -594,7 +568,8 @@ namespace triagens {
           }
 
           try {
-            return TRI_ReadShapedJsonDocumentCollection(trxCollection,
+            return TRI_ReadShapedJsonDocumentCollection(this,
+                                                        trxCollection,
                                                         (TRI_voc_key_t) key.c_str(),
                                                         mptr,
                                                         ! isLocked(trxCollection, TRI_TRANSACTION_READ));
@@ -893,7 +868,8 @@ namespace triagens {
           bool lock = ! isLocked(trxCollection, TRI_TRANSACTION_WRITE);
 
           try {
-            return TRI_InsertShapedJsonDocumentCollection(trxCollection,
+            return TRI_InsertShapedJsonDocumentCollection(this,
+                                                          trxCollection,
                                                           key,
                                                           rid,
                                                           nullptr,
@@ -933,7 +909,8 @@ namespace triagens {
           }
 
           try {
-            return TRI_UpdateShapedJsonDocumentCollection(trxCollection,
+            return TRI_UpdateShapedJsonDocumentCollection(this,
+                                                          trxCollection,
                                                           (const TRI_voc_key_t) key.c_str(),
                                                           rid,
                                                           nullptr,
@@ -975,7 +952,8 @@ namespace triagens {
 
           try {
             for (auto const& it : ids) {
-              res = TRI_RemoveShapedJsonDocumentCollection(trxCollection,
+              res = TRI_RemoveShapedJsonDocumentCollection(this,
+                                                           trxCollection,
                                                            (TRI_voc_key_t) it.c_str(),
                                                            0,
                                                            nullptr, // marker 

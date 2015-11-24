@@ -186,7 +186,8 @@ triagens::basics::Json FulltextIndex::toJsonFigures (TRI_memory_zone_t* zone) co
   return json;
 }
 
-int FulltextIndex::insert (TRI_doc_mptr_t const* doc, 
+int FulltextIndex::insert (triagens::arango::Transaction*,
+                           TRI_doc_mptr_t const* doc, 
                            bool isRollback) {
 
   int res = TRI_ERROR_NO_ERROR;
@@ -212,7 +213,8 @@ int FulltextIndex::insert (TRI_doc_mptr_t const* doc,
   return res;
 }
          
-int FulltextIndex::remove (TRI_doc_mptr_t const* doc, 
+int FulltextIndex::remove (triagens::arango::Transaction*,
+                           TRI_doc_mptr_t const* doc, 
                            bool) {
   TRI_DeleteDocumentFulltextIndex(_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) doc));
 

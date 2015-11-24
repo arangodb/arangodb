@@ -195,12 +195,14 @@ triagens::basics::Json PrimaryIndex::toJsonFigures (TRI_memory_zone_t* zone) con
   return json;
 }
 
-int PrimaryIndex::insert (TRI_doc_mptr_t const*, 
+int PrimaryIndex::insert (triagens::arango::Transaction*,
+                          TRI_doc_mptr_t const*, 
                           bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
          
-int PrimaryIndex::remove (TRI_doc_mptr_t const*, 
+int PrimaryIndex::remove (triagens::arango::Transaction*,
+                          TRI_doc_mptr_t const*, 
                           bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

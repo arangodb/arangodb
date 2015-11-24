@@ -677,9 +677,6 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
   TRI_ASSERT(collection != nullptr);
 
-  // create a fake transaction while accessing the collection
-  triagens::arango::TransactionBase trx(true);
-
   TRI_document_collection_t* document = collection->_collection;
 
   // first try to read-lock the compactor-lock, afterwards try to write-lock the collection

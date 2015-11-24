@@ -55,8 +55,6 @@ CapConstraint::CapConstraint (TRI_idx_iid_t iid,
   : Index(iid, collection, std::vector<std::vector<triagens::basics::AttributeName>>(), false, false),
     _count(count),
     _size(static_cast<int64_t>(size)) {
-
-  initialize();
 }
 
 CapConstraint::~CapConstraint () {
@@ -96,7 +94,8 @@ triagens::basics::Json CapConstraint::toJsonFigures (TRI_memory_zone_t* zone) co
   return json;
 }
   
-int CapConstraint::insert (TRI_doc_mptr_t const* doc, 
+int CapConstraint::insert (triagens::arango::Transaction*,
+                           TRI_doc_mptr_t const* doc, 
                            bool) {
   if (_size > 0) {
     // there is a size restriction
@@ -111,27 +110,25 @@ int CapConstraint::insert (TRI_doc_mptr_t const* doc,
   return TRI_ERROR_NO_ERROR;
 }
          
-int CapConstraint::remove (TRI_doc_mptr_t const*, 
+int CapConstraint::remove (triagens::arango::Transaction*,
+                           TRI_doc_mptr_t const*, 
                            bool) {
   return TRI_ERROR_NO_ERROR;
 }
         
-int CapConstraint::postInsert (TRI_transaction_collection_t* trxCollection, 
+int CapConstraint::postInsert (triagens::arango::Transaction* trx,
+                               TRI_transaction_collection_t* trxCollection, 
                                TRI_doc_mptr_t const*) {
   TRI_ASSERT(_count > 0 || _size > 0);
 
-  return apply(trxCollection->_collection->_collection, trxCollection);
+  return apply(trx, trxCollection->_collection->_collection, trxCollection);
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-int CapConstraint::initialize () {
+int CapConstraint::initialize (triagens::arango::Transaction* trx) {
   TRI_ASSERT(_count > 0 || _size > 0);
 
   TRI_headers_t* headers = _collection->_headersPtr;  // ONLY IN INDEX (CAP)
@@ -160,7 +157,7 @@ int CapConstraint::initialize () {
     }
 
     TRI_transaction_collection_t* trxCollection = trx.trxCollection();
-    res = apply(_collection, trxCollection);
+    res = apply(&trx, _collection, trxCollection);
 
     res = trx.finish(res);
 
@@ -168,11 +165,16 @@ int CapConstraint::initialize () {
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the cap constraint for the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int CapConstraint::apply (TRI_document_collection_t* document,
+int CapConstraint::apply (triagens::arango::Transaction* trx,
+                          TRI_document_collection_t* document,
                           TRI_transaction_collection_t* trxCollection) {
   TRI_headers_t* headers = document->_headersPtr;  // PROTECTED by trx in trxCollection
   int64_t currentCount   = static_cast<int64_t>(headers->count());
@@ -192,7 +194,7 @@ int CapConstraint::apply (TRI_document_collection_t* document,
       TRI_ASSERT(oldSize > 0);
 
       if (trxCollection != nullptr) {
-        res = TRI_DeleteDocumentDocumentCollection(trxCollection, nullptr, oldest);
+        res = TRI_DeleteDocumentDocumentCollection(trx, trxCollection, nullptr, oldest);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_WARNING("cannot cap collection: %s", TRI_errno_string(res));

@@ -174,20 +174,7 @@ struct TRI_doc_mptr_t {
 /// @brief return a pointer to the beginning of the marker
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRI_ENABLE_MAINTAINER_MODE
     inline void const* getDataPtr () const {
-      return _dataptr;
-    }
-#else
-    // The actual code has an assertion about transactions!
-    virtual void const* getDataPtr () const;
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the beginning of the marker, without checking
-////////////////////////////////////////////////////////////////////////////////
-    
-    inline void const* getDataPtrUnchecked () const {
       return _dataptr;
     }
 
@@ -195,14 +182,9 @@ struct TRI_doc_mptr_t {
 /// @brief set the pointer to the beginning of the memory for the marker
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TRI_ENABLE_MAINTAINER_MODE
     inline void setDataPtr (void const* d) {
       _dataptr = d;
     }
-#else
-    // The actual code has an assertion about transactions!
-    virtual void setDataPtr (void const* d);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to the beginning of the shaped json stored in the
@@ -259,9 +241,6 @@ struct TRI_doc_mptr_copy_t final : public TRI_doc_mptr_t {
     }
 
     TRI_doc_mptr_copy_t const& operator= (TRI_doc_mptr_t const& that) {
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-      triagens::arango::TransactionBase::assertCurrentTrxActive();
-#endif
       copy(that);
       return *this;
     }
@@ -277,23 +256,13 @@ struct TRI_doc_mptr_copy_t final : public TRI_doc_mptr_t {
       return std::move(*this);
     }
 
-#ifndef TRI_ENABLE_MAINTAINER_MODE
     inline void const* getDataPtr () const {
       return _dataptr;
     }
-#else
-    // The actual code has an assertion about transactions!
-    virtual void const* getDataPtr () const;
-#endif
     
-#ifndef TRI_ENABLE_MAINTAINER_MODE
     inline void setDataPtr (void const* d) {
       _dataptr = d;
     }
-#else
-    // The actual code has an assertion about transactions!
-    virtual void setDataPtr (void const* d);
-#endif
 
 };
 
@@ -508,11 +477,11 @@ TRI_doc_datafile_info_t* TRI_FindDatafileInfoDocumentCollection (TRI_document_co
 /// to ensure the collection is properly locked
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_DocumentIteratorDocumentCollection (triagens::arango::TransactionBase const*,
-                                              TRI_document_collection_t*,
-                                              void*,
-                                              bool (*callback)(TRI_doc_mptr_t const*,
-                                              TRI_document_collection_t*, void*));
+size_t TRI_DocumentIteratorDocumentCollection (triagens::arango::Transaction*,
+                                               TRI_document_collection_t*,
+                                               void*,
+                                               bool (*callback)(TRI_doc_mptr_t const*,
+                                               TRI_document_collection_t*, void*));
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               DOCUMENT COLLECTION
@@ -816,7 +785,8 @@ bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t*);
 /// @brief create an index, based on a JSON description
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t*,
+int TRI_FromJsonIndexDocumentCollection (triagens::arango::Transaction*,
+                                         TRI_document_collection_t*,
                                          struct TRI_json_t const*,
                                          triagens::arango::Index**);
 
@@ -824,7 +794,8 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t*,
 /// @brief rolls back a document operation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t*,
+int TRI_RollbackOperationDocumentCollection (triagens::arango::Transaction*,
+                                             TRI_document_collection_t*,
                                              TRI_voc_document_operation_e,
                                              TRI_doc_mptr_t*,
                                              TRI_doc_mptr_copy_t const*);
@@ -850,7 +821,8 @@ bool TRI_CloseDatafileDocumentCollection (TRI_document_collection_t*,
 /// @brief fill the additional (non-primary) indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t*,
+int TRI_FillIndexesDocumentCollection (triagens::arango::Transaction*,
+                                       TRI_vocbase_col_t*,
                                        TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -919,7 +891,8 @@ triagens::arango::Index* TRI_LookupCapConstraintDocumentCollection (TRI_document
 /// @brief ensures that a cap constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t*,
+triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection (triagens::arango::Transaction*,
+                                                                    TRI_document_collection_t*,
                                                                     TRI_idx_iid_t,
                                                                     size_t,
                                                                     int64_t,
@@ -957,7 +930,8 @@ triagens::arango::Index* TRI_LookupGeoIndex2DocumentCollection (TRI_document_col
 /// @brief ensures that a geo index exists, list style
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t*,
+triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection (triagens::arango::Transaction*,
+                                                                TRI_document_collection_t*,
                                                                 TRI_idx_iid_t,
                                                                 std::string const&,
                                                                 bool,
@@ -967,7 +941,8 @@ triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_col
 /// @brief ensures that a geo index exists, attribute style
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t*,
+triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection (triagens::arango::Transaction*,
+                                                                TRI_document_collection_t*,
                                                                 TRI_idx_iid_t,
                                                                 std::string const&,
                                                                 std::string const&,
@@ -998,7 +973,8 @@ triagens::arango::Index* TRI_LookupHashIndexDocumentCollection (TRI_document_col
 /// @brief ensures that a hash index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t*,
+triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                                                TRI_document_collection_t*,
                                                                 TRI_idx_iid_t,
                                                                 std::vector<std::string> const&,
                                                                 bool,
@@ -1028,7 +1004,8 @@ triagens::arango::Index* TRI_LookupSkiplistIndexDocumentCollection (TRI_document
 /// @brief ensures that a skiplist index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t*,
+triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                                                    TRI_document_collection_t*,
                                                                     TRI_idx_iid_t,
                                                                     std::vector<std::string> const&,
                                                                     bool,
@@ -1057,7 +1034,8 @@ triagens::arango::Index* TRI_LookupFulltextIndexDocumentCollection (TRI_document
 /// @brief ensures that a fulltext index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t*,
+triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                                                    TRI_document_collection_t*,
                                                                     TRI_idx_iid_t,
                                                                     std::string const&,
                                                                     int,
@@ -1071,10 +1049,8 @@ triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection (TRI_document
 /// @brief executes a select-by-example query
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
-                          struct TRI_transaction_collection_s*,
-                          triagens::arango::ExampleMatcher& matcher
-                        );
+std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (struct TRI_transaction_collection_s*,
+                                                      triagens::arango::ExampleMatcher& matcher);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a select-by-example query
@@ -1105,7 +1081,8 @@ struct ShapedJsonEq {
 /// @brief deletes a documet given by a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DeleteDocumentDocumentCollection (struct TRI_transaction_collection_s*,
+int TRI_DeleteDocumentDocumentCollection (triagens::arango::Transaction*,
+                                          struct TRI_transaction_collection_s*,
                                           TRI_doc_update_policy_t const*,
                                           TRI_doc_mptr_t*);
 
@@ -1124,7 +1101,8 @@ int TRI_RotateJournalDocumentCollection (TRI_document_collection_t*);
 /// @brief reads an element from the document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t*,
+int TRI_ReadShapedJsonDocumentCollection (triagens::arango::Transaction*,
+                                          TRI_transaction_collection_t*,
                                           const TRI_voc_key_t,
                                           TRI_doc_mptr_copy_t*,
                                           bool);
@@ -1133,7 +1111,8 @@ int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t*,
 /// @brief removes a shaped-json document (or edge)
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t*,
+int TRI_RemoveShapedJsonDocumentCollection (triagens::arango::Transaction*,
+                                            TRI_transaction_collection_t*,
                                             const TRI_voc_key_t,
                                             TRI_voc_rid_t,
                                             triagens::wal::Marker*,
@@ -1146,7 +1125,8 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t*,
 /// note: key might be NULL. in this case, a key is auto-generated
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t*,
+int TRI_InsertShapedJsonDocumentCollection (triagens::arango::Transaction*,
+                                            TRI_transaction_collection_t*,
                                             const TRI_voc_key_t,
                                             TRI_voc_rid_t,
                                             triagens::wal::Marker*,
@@ -1161,7 +1141,8 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t*,
 /// @brief updates a document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t*,
+int TRI_UpdateShapedJsonDocumentCollection (triagens::arango::Transaction*,
+                                            TRI_transaction_collection_t*,
                                             const TRI_voc_key_t,
                                             TRI_voc_rid_t,
                                             triagens::wal::Marker*,

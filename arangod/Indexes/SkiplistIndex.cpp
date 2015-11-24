@@ -834,7 +834,7 @@ size_t SkiplistIndex::memory () const {
 ////////////////////////////////////////////////////////////////////////////////
         
 triagens::basics::Json SkiplistIndex::toJson (TRI_memory_zone_t* zone,
-                                               bool withFigures) const {
+                                              bool withFigures) const {
   auto json = Index::toJson(zone, withFigures);
 
   json("unique", triagens::basics::Json(zone, _unique))
@@ -859,8 +859,9 @@ triagens::basics::Json SkiplistIndex::toJsonFigures (TRI_memory_zone_t* zone) co
 /// @brief inserts a document into a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
   
-int SkiplistIndex::insert (TRI_doc_mptr_t const* doc, 
-                            bool) {
+int SkiplistIndex::insert (triagens::arango::Transaction*, 
+                           TRI_doc_mptr_t const* doc, 
+                           bool) {
 
   std::vector<TRI_index_element_t*> elements;
 
@@ -909,8 +910,9 @@ int SkiplistIndex::insert (TRI_doc_mptr_t const* doc,
 /// @brief removes a document from a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
          
-int SkiplistIndex::remove (TRI_doc_mptr_t const* doc, 
-                            bool) {
+int SkiplistIndex::remove (triagens::arango::Transaction*,
+                           TRI_doc_mptr_t const* doc, 
+                           bool) {
 
   std::vector<TRI_index_element_t*> elements;
 
@@ -989,8 +991,6 @@ int SkiplistIndex::KeyElementComparator::operator() (TRI_skiplist_index_key_t co
 
   return 0;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares two elements in a skip list, this is the generic callback

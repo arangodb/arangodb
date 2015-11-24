@@ -662,7 +662,8 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::GeoIndex2*>(TRI_EnsureGeoIndex1DocumentCollection(document,
+        idx = static_cast<triagens::arango::GeoIndex2*>(TRI_EnsureGeoIndex1DocumentCollection(&trx,
+                                                                                              document,
                                                                                               iid,
                                                                                               attributes[0],
                                                                                               geoJson,
@@ -682,7 +683,8 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
       
       if (create) {
-        idx = static_cast<triagens::arango::GeoIndex2*>(TRI_EnsureGeoIndex2DocumentCollection(document,
+        idx = static_cast<triagens::arango::GeoIndex2*>(TRI_EnsureGeoIndex2DocumentCollection(&trx,
+                                                                                              document,
                                                                                               iid,
                                                                                               attributes[0],
                                                                                               attributes[1],
@@ -702,7 +704,8 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::HashIndex*>(TRI_EnsureHashIndexDocumentCollection(document,
+        idx = static_cast<triagens::arango::HashIndex*>(TRI_EnsureHashIndexDocumentCollection(&trx, 
+                                                                                              document,
                                                                                               iid,
                                                                                               attributes,
                                                                                               sparse,
@@ -725,18 +728,19 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_EnsureSkiplistIndexDocumentCollection(document,
-                                                                                                       iid,
-                                                                                                       attributes,
-                                                                                                       sparse,
-                                                                                                       unique,
-                                                                                                       &created));
+        idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_EnsureSkiplistIndexDocumentCollection(&trx,
+                                                                                                      document,
+                                                                                                      iid,
+                                                                                                      attributes,
+                                                                                                      sparse,
+                                                                                                      unique,
+                                                                                                      &created));
       }
       else {
         idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_LookupSkiplistIndexDocumentCollection(document,
-                                                                                                       attributes,
-                                                                                                       sparsity,
-                                                                                                       unique));
+                                                                                                      attributes,
+                                                                                                      sparsity,
+                                                                                                      unique));
       }
       break;
     }
@@ -757,7 +761,8 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::FulltextIndex*>(TRI_EnsureFulltextIndexDocumentCollection(document,
+        idx = static_cast<triagens::arango::FulltextIndex*>(TRI_EnsureFulltextIndexDocumentCollection(&trx,
+                                                                                                      document,
                                                                                                       iid,
                                                                                                       attributes[0],
                                                                                                       minWordLength,
@@ -785,7 +790,8 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::Index*>(TRI_EnsureCapConstraintDocumentCollection(document,
+        idx = static_cast<triagens::arango::Index*>(TRI_EnsureCapConstraintDocumentCollection(&trx,
+                                                                                              document,
                                                                                               iid,
                                                                                               size,
                                                                                               byteSize,

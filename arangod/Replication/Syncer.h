@@ -61,6 +61,7 @@ namespace triagens {
   }
 
   namespace arango {
+    class Transaction;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            Syncer
@@ -113,7 +114,8 @@ namespace triagens {
 /// @brief apply a single marker from the collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-        int applyCollectionDumpMarker (struct TRI_transaction_collection_s*,
+        int applyCollectionDumpMarker (triagens::arango::Transaction*,
+                                       struct TRI_transaction_collection_s*,
                                        TRI_replication_operation_e,
                                        const TRI_voc_key_t,
                                        const TRI_voc_rid_t,

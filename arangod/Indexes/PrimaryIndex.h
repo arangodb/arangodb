@@ -137,9 +137,9 @@ namespace triagens {
         triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
         triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
-        int insert (TRI_doc_mptr_t const*, bool) override final;
+        int insert (triagens::arango::Transaction*, TRI_doc_mptr_t const*, bool) override final;
 
-        int remove (TRI_doc_mptr_t const*, bool) override final;
+        int remove (triagens::arango::Transaction*, TRI_doc_mptr_t const*, bool) override final;
 
         TRI_doc_mptr_t* lookupKey (char const*) const;
 

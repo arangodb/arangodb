@@ -49,6 +49,7 @@ struct TRI_vocbase_col_s;
 
 namespace triagens {
   namespace arango {
+    class Transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication request handler
@@ -258,7 +259,8 @@ namespace triagens {
 /// @brief apply a single marker from the collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-        int applyCollectionDumpMarker (CollectionNameResolver const&,
+        int applyCollectionDumpMarker (triagens::arango::Transaction*,
+                                       CollectionNameResolver const&,
                                        struct TRI_transaction_collection_s*,
                                        TRI_replication_operation_e,
                                        const TRI_voc_key_t,
@@ -270,7 +272,8 @@ namespace triagens {
 /// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreDataBatch (CollectionNameResolver const&,
+        int processRestoreDataBatch (triagens::arango::Transaction*,
+                                     CollectionNameResolver const&,
                                      struct TRI_transaction_collection_s*,
                                      bool,
                                      bool,

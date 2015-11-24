@@ -147,11 +147,12 @@ namespace triagens {
         triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
         triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
-        int insert (struct TRI_doc_mptr_t const*, bool) override final;
+        int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
          
-        int remove (struct TRI_doc_mptr_t const*, bool) override final;
+        int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
         
-        int batchInsert (std::vector<TRI_doc_mptr_t const*> const*,
+        int batchInsert (triagens::arango::Transaction*,
+                         std::vector<TRI_doc_mptr_t const*> const*,
                          size_t) override final;
 
 ////////////////////////////////////////////////////////////////////////////////

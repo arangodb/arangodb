@@ -451,7 +451,9 @@ double Index::selectivityEstimate () const {
 /// @brief default implementation for selectivityEstimate
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::batchInsert (std::vector<TRI_doc_mptr_t const*> const*, size_t) {
+int Index::batchInsert (triagens::arango::Transaction*,
+                        std::vector<TRI_doc_mptr_t const*> const*, 
+                        size_t) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -459,7 +461,8 @@ int Index::batchInsert (std::vector<TRI_doc_mptr_t const*> const*, size_t) {
 /// @brief default implementation for postInsert
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::postInsert (struct TRI_transaction_collection_s*,
+int Index::postInsert (triagens::arango::Transaction*,
+                       struct TRI_transaction_collection_s*,
                        struct TRI_doc_mptr_t const*) {
   // do nothing
   return TRI_ERROR_NO_ERROR;

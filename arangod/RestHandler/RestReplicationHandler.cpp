@@ -2326,7 +2326,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
 
-      res = TRI_FromJsonIndexDocumentCollection(document, idxDef, &idx);
+      res = TRI_FromJsonIndexDocumentCollection(&trx, document, idxDef, &idx);
 
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "could not create index: " + string(TRI_errno_string(res));
@@ -2438,7 +2438,8 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
 /// @brief apply the data from a collection dump or the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver const& resolver,
+int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transaction* trx,
+                                                       CollectionNameResolver const& resolver,
                                                        TRI_transaction_collection_t* trxCollection,
                                                        TRI_replication_operation_e type,
                                                        const TRI_voc_key_t key,
@@ -2465,7 +2466,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     try {
       TRI_doc_mptr_copy_t mptr;
 
-      int res = TRI_ReadShapedJsonDocumentCollection(trxCollection, key, &mptr, false);
+      int res = TRI_ReadShapedJsonDocumentCollection(trx, trxCollection, key, &mptr, false);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
@@ -2494,7 +2495,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
             }
 
             if (res == TRI_ERROR_NO_ERROR) {
-              res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &edge, false, false, true);
+              res = TRI_InsertShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, &edge, false, false, true);
             }
           }
         }
@@ -2504,7 +2505,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, false, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, false, false, true);
           }
         }
       }
@@ -2513,7 +2514,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
 
         // init the update policy
         TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
-        res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &policy, false, false);
+        res = TRI_UpdateShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, &policy, false, false);
       }
 
       TRI_FreeShapedJson(zone, shaped);
@@ -2538,7 +2539,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     int res = TRI_ERROR_INTERNAL;
 
     try {
-      res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &policy, false, false);
+      res = TRI_RemoveShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &policy, false, false);
 
       if (res != TRI_ERROR_NO_ERROR && res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore this error
@@ -2570,7 +2571,8 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
 /// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver const& resolver,
+int RestReplicationHandler::processRestoreDataBatch (triagens::arango::Transaction* trx,
+                                                     CollectionNameResolver const& resolver,
                                                      TRI_transaction_collection_t* trxCollection,
                                                      bool useRevision,
                                                      bool force,
@@ -2658,7 +2660,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
         return TRI_ERROR_HTTP_BAD_PARAMETER;
       }
 
-      int res = applyCollectionDumpMarker(resolver, trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
+      int res = applyCollectionDumpMarker(trx, resolver, trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
 
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
@@ -2705,7 +2707,7 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
     trxCollection->_waitForSync = false;
 
     // create a fake transaction to avoid assertion failures. TODO: use proper transaction here
-    res = processRestoreDataBatch(resolver, trxCollection, useRevision, force, errorMsg);
+    res = processRestoreDataBatch(&trx, resolver, trxCollection, useRevision, force, errorMsg);
   }
 
   res = trx.finish(res);

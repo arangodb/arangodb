@@ -491,9 +491,6 @@ static int AppendDocument (triagens::wal::document_marker_t const* marker,
   if (*((uint64_t*) legend) == 0ULL) {
     // marker has no legend
 
-    // create a fake transaction so no assertion fails
-    triagens::arango::TransactionBase trx(true);
-      
     // try to open the collection and use the shaper
     TRI_vocbase_t* vocbase = TRI_UseDatabaseByIdServer(dump->_vocbase->_server, marker->_databaseId);
 
@@ -1186,14 +1183,6 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   bool hasMore;
   bool bufferFull;
   bool ignoreMarkers;
-
-  // The following fake transaction allows us to access data pointers
-  // and shapers, essentially disabling the runtime checks. This is OK,
-  // since the dump only considers data files (and not WAL files), so
-  // the collector has no trouble. Also, the data files of the collection
-  // are protected from the compactor by a barrier and the dump only goes
-  // until a certain tick.
-  triagens::arango::TransactionBase trx(true);
 
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu",
             (unsigned long long) document->_info._cid,

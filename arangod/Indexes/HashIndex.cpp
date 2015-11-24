@@ -417,11 +417,13 @@ triagens::basics::Json HashIndex::toJsonFigures (TRI_memory_zone_t* zone) const 
   return json;
 }
   
-int HashIndex::insert (TRI_doc_mptr_t const* doc, 
+int HashIndex::insert (triagens::arango::Transaction*,
+                       TRI_doc_mptr_t const* doc, 
                        bool isRollback) {
   if (_unique) {
     return insertUnique(doc, isRollback);
   }
+
   return insertMulti(doc, isRollback);
 }
 
@@ -429,22 +431,26 @@ int HashIndex::insert (TRI_doc_mptr_t const* doc,
 /// @brief removes an entry from the hash array part of the hash index
 ////////////////////////////////////////////////////////////////////////////////
          
-int HashIndex::remove (TRI_doc_mptr_t const* doc, 
+int HashIndex::remove (triagens::arango::Transaction*,
+                       TRI_doc_mptr_t const* doc, 
                        bool isRollback) {
 
   if (_unique) {
     return removeUnique(doc, isRollback);
   }
+
   return removeMulti(doc, isRollback);
 }
 
 
-int HashIndex::batchInsert (std::vector<TRI_doc_mptr_t const*> const* documents, 
+int HashIndex::batchInsert (triagens::arango::Transaction* trx,
+                            std::vector<TRI_doc_mptr_t const*> const* documents, 
                             size_t numThreads) {
   if (_unique) {
-    return batchInsertUnique(documents, numThreads);
+    return batchInsertUnique(trx, documents, numThreads);
   }
-  return batchInsertMulti(documents, numThreads);
+
+  return batchInsertMulti(trx, documents, numThreads);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -612,7 +618,8 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
   return res;
 }
 
-int HashIndex::batchInsertUnique (std::vector<TRI_doc_mptr_t const*> const* documents, 
+int HashIndex::batchInsertUnique (triagens::arango::Transaction*,
+                                  std::vector<TRI_doc_mptr_t const*> const* documents, 
                                   size_t numThreads) {
   std::vector<TRI_index_element_t*> elements;
   elements.reserve(documents->size());
@@ -704,7 +711,8 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
   return TRI_ERROR_NO_ERROR;
 }
 
-int HashIndex::batchInsertMulti (std::vector<TRI_doc_mptr_t const*> const* documents, 
+int HashIndex::batchInsertMulti (triagens::arango::Transaction*,
+                                 std::vector<TRI_doc_mptr_t const*> const* documents, 
                                  size_t numThreads) {
 
   std::vector<TRI_index_element_t*> elements;

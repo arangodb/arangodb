@@ -769,10 +769,6 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   size_t const n = TRI_LengthVector(compactions);
   TRI_ASSERT(n > 0);
 
-  // create a fake transaction
-  triagens::arango::TransactionBase trx(true);
-
-
   initial = InitCompaction(document, compactions);
 
   if (initial._failed) {
