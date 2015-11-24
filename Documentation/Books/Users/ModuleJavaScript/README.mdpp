@@ -100,9 +100,14 @@ The following [NPM modules](https://npmjs.org) are preinstalled.
 
 * ["underscore"](http://underscorejs.org)
 
-Other node modules can be installed and used in ArangoDB, too. However,
-only those modules will work in ArangoDB that do not refer to node.js-internal
-variables or methods and do not include further node modules that do so.
+!SUBSECTION Installing NPM Modules
+
+You can install additional modules using `npm install`. Note the following limitations in ArangoDB's compatibility with node or browser modules:
+
+* modules must be implemented in pure JavaScript (no native extensions)
+* modules must be strictly synchronous (e.g. no setTimeout or promises)
+* only a subset of node's built-in modules are supported (see above)
+* the same limitations apply to each module's dependencies
 
 !SUBSECTION require
 

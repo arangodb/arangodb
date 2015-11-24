@@ -29,124 +29,125 @@
 // this header can be included multiple times
 
 namespace {
-  // unconditional typedefs
+// unconditional typedefs
 #ifndef VELOCYPACK_ALIAS_VPACKVALUELENGTH
 #define VELOCYPACK_ALIAS_VPACKVALUELENGTH
-  using VPackValueLength             = arangodb::velocypack::ValueLength;
+using VPackValueLength = arangodb::velocypack::ValueLength;
 #endif
-  
-  // conditional typedefs, only used when the respective headers are already included
+
+// conditional typedefs, only used when the respective headers are already
+// included
 
 #ifdef VELOCYPACK_ITERATOR_H
 #ifndef VELOCYPACK_ALIAS_ITERATOR
 #define VELOCYPACK_ALIAS_ITERATOR
-  using VPackArrayIterator           = arangodb::velocypack::ArrayIterator;
-  using VPackObjectIterator          = arangodb::velocypack::ObjectIterator;
+using VPackArrayIterator = arangodb::velocypack::ArrayIterator;
+using VPackObjectIterator = arangodb::velocypack::ObjectIterator;
 #endif
 #endif
 
 #ifdef VELOCYPACK_BUILDER_H
 #ifndef VELOCYPACK_ALIAS_BUILDER
 #define VELOCYPACK_ALIAS_BUILDER
-  using VPackBuilder                 = arangodb::velocypack::Builder;
+using VPackBuilder = arangodb::velocypack::Builder;
 #endif
 #endif
 
 #ifdef VELOCYPACK_BUFFER_H
 #ifndef VELOCYPACK_ALIAS_BUFFER
 #define VELOCYPACK_ALIAS_BUFFER
-  using VPackCharBuffer              = arangodb::velocypack::CharBuffer;
+using VPackCharBuffer = arangodb::velocypack::CharBuffer;
 #endif
 #endif
 
 #ifdef VELOCYPACK_SINK_H
 #ifndef VELOCYPACK_ALIAS_SINK
 #define VELOCYPACK_ALIAS_SINK
-  using VPackSink                    = arangodb::velocypack::Sink;
-  using VPackCharBufferSink          = arangodb::velocypack::CharBufferSink;
-  using VPackStringSink              = arangodb::velocypack::StringSink;
-  using VPackStringStreamSink        = arangodb::velocypack::StringStreamSink;
+using VPackSink = arangodb::velocypack::Sink;
+using VPackCharBufferSink = arangodb::velocypack::CharBufferSink;
+using VPackStringSink = arangodb::velocypack::StringSink;
+using VPackStringStreamSink = arangodb::velocypack::StringStreamSink;
 #endif
 #endif
 
 #ifdef VELOCYPACK_COLLECTION_H
 #ifndef VELOCYPACK_ALIAS_COLLECTION
 #define VELOCYPACK_ALIAS_COLLECTION
-  using VPackCollection              = arangodb::velocypack::Collection;
+using VPackCollection = arangodb::velocypack::Collection;
 #endif
 #endif
 
 #ifdef VELOCYPACK_ATTRIBUTETRANSLATOR_H
 #ifndef VELOCYPACK_ALIAS_ATTRIBUTETRANSLATOR
 #define VELOCYPACK_ALIAS_ATTRIBUTETRANSLATOR
-  using VPackAttributeTranslator     = arangodb::velocypack::AttributeTranslator;
+using VPackAttributeTranslator = arangodb::velocypack::AttributeTranslator;
 #endif
 #endif
 
 #ifdef VELOCYPACK_DUMPER_H
 #ifndef VELOCYPACK_ALIAS_DUMPER
 #define VELOCYPACK_ALIAS_DUMPER
-  using VPackDumper                  = arangodb::velocypack::Dumper;
+using VPackDumper = arangodb::velocypack::Dumper;
 #endif
 #endif
 
 #ifdef VELOCYPACK_EXCEPTION_H
 #ifndef VELOCYPACK_ALIAS_EXCEPTION
 #define VELOCYPACK_ALIAS_EXCEPTION
-  using VPackException               = arangodb::velocypack::Exception;
+using VPackException = arangodb::velocypack::Exception;
 #endif
 #endif
 
 #ifdef VELOCYPACK_HEXDUMP_H
 #ifndef VELOCYPACK_ALIAS_HEXDUMP
 #define VELOCYPACK_ALIAS_HEXDUMP
-  using VPackHexDump                 = arangodb::velocypack::HexDump;
+using VPackHexDump = arangodb::velocypack::HexDump;
 #endif
 #endif
 
 #ifdef VELOCYPACK_OPTIONS_H
 #ifndef VELOCYPACK_ALIAS_OPTIONS
 #define VELOCYPACK_ALIAS_OPTIONS
-  using VPackOptions                 = arangodb::velocypack::Options;
-  using VPackAttributeExcludeHandler = arangodb::velocypack::AttributeExcludeHandler;
-  using VPackCustomTypeHandler       = arangodb::velocypack::CustomTypeHandler;
+using VPackOptions = arangodb::velocypack::Options;
+using VPackAttributeExcludeHandler =
+    arangodb::velocypack::AttributeExcludeHandler;
+using VPackCustomTypeHandler = arangodb::velocypack::CustomTypeHandler;
 #endif
 #endif
 
 #ifdef VELOCYPACK_PARSER_H
 #ifndef VELOCYPACK_ALIAS_PARSER
 #define VELOCYPACK_ALIAS_PARSER
-  using VPackParser                  = arangodb::velocypack::Parser;
+using VPackParser = arangodb::velocypack::Parser;
 #endif
 #endif
 
 #ifdef VELOCYPACK_SLICE_H
 #ifndef VELOCYPACK_ALIAS_SLICE
 #define VELOCYPACK_ALIAS_SLICE
-  using VPackSlice                   = arangodb::velocypack::Slice;
+using VPackSlice = arangodb::velocypack::Slice;
 #endif
 #endif
 
 #ifdef VELOCYPACK_VALUE_H
 #ifndef VELOCYPACK_ALIAS_VALUE
 #define VELOCYPACK_ALIAS_VALUE
-  using VPackValue                   = arangodb::velocypack::Value;
-  using VPackValuePair               = arangodb::velocypack::ValuePair;
+using VPackValue = arangodb::velocypack::Value;
+using VPackValuePair = arangodb::velocypack::ValuePair;
 #endif
 #endif
 
 #ifdef VELOCYPACK_VALUETYPE_H
 #ifndef VELOCYPACK_ALIAS_VALUETYPE
 #define VELOCYPACK_ALIAS_VALUETYPE
-  using VPackValueType               = arangodb::velocypack::ValueType;
+using VPackValueType = arangodb::velocypack::ValueType;
 #endif
 #endif
 
 #ifdef VELOCYPACK_VERSION_H
 #ifndef VELOCYPACK_ALIAS_VERSION
 #define VELOCYPACK_ALIAS_VERSION
-  using VPackVersion                 = arangodb::velocypack::Version;
+using VPackVersion = arangodb::velocypack::Version;
 #endif
 #endif
 }
-

@@ -30,8 +30,8 @@
 #include "velocypack/HexDump.h"
 
 using namespace arangodb::velocypack;
-      
-std::string HexDump::toHex (uint8_t value) {
+
+std::string HexDump::toHex(uint8_t value) {
   std::string result("0x");
 
   uint8_t x = value / 16;
@@ -41,8 +41,8 @@ std::string HexDump::toHex (uint8_t value) {
 
   return std::move(result);
 }
-        
-std::ostream& operator<< (std::ostream& stream, HexDump const* hexdump) {
+
+std::ostream& operator<<(std::ostream& stream, HexDump const* hexdump) {
   int current = 0;
 
   for (uint8_t it : hexdump->slice) {
@@ -62,7 +62,6 @@ std::ostream& operator<< (std::ostream& stream, HexDump const* hexdump) {
   return stream;
 }
 
-std::ostream& operator<< (std::ostream& stream, HexDump const& hexdump) {
+std::ostream& operator<<(std::ostream& stream, HexDump const& hexdump) {
   return operator<<(stream, &hexdump);
 }
-

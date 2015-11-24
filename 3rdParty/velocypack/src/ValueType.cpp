@@ -30,31 +30,48 @@
 
 using namespace arangodb::velocypack;
 
-char const* arangodb::velocypack::valueTypeName (ValueType type) {
+char const* arangodb::velocypack::valueTypeName(ValueType type) {
   switch (type) {
-    case ValueType::None:        return "none";
-    case ValueType::Null:        return "null";
-    case ValueType::Bool:        return "bool";
-    case ValueType::Array:       return "array";
-    case ValueType::Object:      return "object";
-    case ValueType::Double:      return "double";
-    case ValueType::UTCDate:     return "utc-date";
-    case ValueType::External:    return "external";
-    case ValueType::MinKey:      return "min-key";
-    case ValueType::MaxKey:      return "max-key";
-    case ValueType::Int:         return "int";
-    case ValueType::UInt:        return "uint";
-    case ValueType::SmallInt:    return "smallint";
-    case ValueType::String:      return "string";
-    case ValueType::Binary:      return "binary";
-    case ValueType::BCD:         return "bcd";
-    case ValueType::Custom:      return "custom";
+    case ValueType::None:
+      return "none";
+    case ValueType::Null:
+      return "null";
+    case ValueType::Bool:
+      return "bool";
+    case ValueType::Array:
+      return "array";
+    case ValueType::Object:
+      return "object";
+    case ValueType::Double:
+      return "double";
+    case ValueType::UTCDate:
+      return "utc-date";
+    case ValueType::External:
+      return "external";
+    case ValueType::MinKey:
+      return "min-key";
+    case ValueType::MaxKey:
+      return "max-key";
+    case ValueType::Int:
+      return "int";
+    case ValueType::UInt:
+      return "uint";
+    case ValueType::SmallInt:
+      return "smallint";
+    case ValueType::String:
+      return "string";
+    case ValueType::Binary:
+      return "binary";
+    case ValueType::BCD:
+      return "bcd";
+    case ValueType::Custom:
+      return "custom";
   }
 
   return "unknown";
 }
 
-std::ostream& operator<< (std::ostream& stream, ValueType type) {
+std::ostream& operator<<(std::ostream& stream, ValueType type) {
   stream << valueTypeName(type);
   return stream;
 }

@@ -33,17 +33,18 @@ using namespace arangodb::velocypack;
 
 #ifndef VELOCYPACK_64BIT
 // check if the length is beyond the size of a SIZE_MAX on this platform
-void checkValueLength (ValueLength length) {
+void checkValueLength(ValueLength length) {
   if (length > static_cast<ValueLength>(SIZE_MAX)) {
     throw Exception(Exception::NumberOutOfRange);
-  }  
+  }
 }
 #endif
 
-int64_t arangodb::velocypack::currentUTCDateValue () {
-  return static_cast<int64_t>(std::chrono::system_clock::now().time_since_epoch().count() / std::chrono::milliseconds(1).count());
+int64_t arangodb::velocypack::currentUTCDateValue() {
+  return static_cast<int64_t>(
+      std::chrono::system_clock::now().time_since_epoch().count() /
+      std::chrono::milliseconds(1).count());
 }
 
 static_assert(sizeof(arangodb::velocypack::ValueLength) >= sizeof(SIZE_MAX),
               "invalid value for SIZE_MAX");
-

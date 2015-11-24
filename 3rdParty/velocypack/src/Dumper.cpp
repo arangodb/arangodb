@@ -30,47 +30,84 @@
 #include "velocypack/Dumper.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/ValueType.h"
-    
+
 using namespace arangodb::velocypack;
 
 // forward for fpconv function declared elsewhere
 namespace arangodb {
-  namespace velocypack {
-    int fpconv_dtoa (double fp, char dest[24]);
-  }
+namespace velocypack {
+int fpconv_dtoa(double fp, char dest[24]);
+}
 };
 
-void Dumper::appendUInt (uint64_t v) {
-  if (10000000000000000000ULL <= v) { _sink->push_back('0' + (v / 10000000000000000000ULL) % 10); }
-  if ( 1000000000000000000ULL <= v) { _sink->push_back('0' + (v /  1000000000000000000ULL) % 10); }
-  if (  100000000000000000ULL <= v) { _sink->push_back('0' + (v /   100000000000000000ULL) % 10); }
-  if (   10000000000000000ULL <= v) { _sink->push_back('0' + (v /    10000000000000000ULL) % 10); }
-  if (    1000000000000000ULL <= v) { _sink->push_back('0' + (v /     1000000000000000ULL) % 10); }
-  if (     100000000000000ULL <= v) { _sink->push_back('0' + (v /      100000000000000ULL) % 10); }
-  if (      10000000000000ULL <= v) { _sink->push_back('0' + (v /       10000000000000ULL) % 10); }
-  if (       1000000000000ULL <= v) { _sink->push_back('0' + (v /        1000000000000ULL) % 10); }
-  if (        100000000000ULL <= v) { _sink->push_back('0' + (v /         100000000000ULL) % 10); }
-  if (         10000000000ULL <= v) { _sink->push_back('0' + (v /          10000000000ULL) % 10); }
-  if (          1000000000ULL <= v) { _sink->push_back('0' + (v /           1000000000ULL) % 10); }
-  if (           100000000ULL <= v) { _sink->push_back('0' + (v /            100000000ULL) % 10); }
-  if (            10000000ULL <= v) { _sink->push_back('0' + (v /             10000000ULL) % 10); }
-  if (             1000000ULL <= v) { _sink->push_back('0' + (v /              1000000ULL) % 10); }
-  if (              100000ULL <= v) { _sink->push_back('0' + (v /               100000ULL) % 10); }
-  if (               10000ULL <= v) { _sink->push_back('0' + (v /                10000ULL) % 10); }
-  if (                1000ULL <= v) { _sink->push_back('0' + (v /                 1000ULL) % 10); }
-  if (                 100ULL <= v) { _sink->push_back('0' + (v /                  100ULL) % 10); }
-  if (                  10ULL <= v) { _sink->push_back('0' + (v /                   10ULL) % 10); }
+void Dumper::appendUInt(uint64_t v) {
+  if (10000000000000000000ULL <= v) {
+    _sink->push_back('0' + (v / 10000000000000000000ULL) % 10);
+  }
+  if (1000000000000000000ULL <= v) {
+    _sink->push_back('0' + (v / 1000000000000000000ULL) % 10);
+  }
+  if (100000000000000000ULL <= v) {
+    _sink->push_back('0' + (v / 100000000000000000ULL) % 10);
+  }
+  if (10000000000000000ULL <= v) {
+    _sink->push_back('0' + (v / 10000000000000000ULL) % 10);
+  }
+  if (1000000000000000ULL <= v) {
+    _sink->push_back('0' + (v / 1000000000000000ULL) % 10);
+  }
+  if (100000000000000ULL <= v) {
+    _sink->push_back('0' + (v / 100000000000000ULL) % 10);
+  }
+  if (10000000000000ULL <= v) {
+    _sink->push_back('0' + (v / 10000000000000ULL) % 10);
+  }
+  if (1000000000000ULL <= v) {
+    _sink->push_back('0' + (v / 1000000000000ULL) % 10);
+  }
+  if (100000000000ULL <= v) {
+    _sink->push_back('0' + (v / 100000000000ULL) % 10);
+  }
+  if (10000000000ULL <= v) {
+    _sink->push_back('0' + (v / 10000000000ULL) % 10);
+  }
+  if (1000000000ULL <= v) {
+    _sink->push_back('0' + (v / 1000000000ULL) % 10);
+  }
+  if (100000000ULL <= v) {
+    _sink->push_back('0' + (v / 100000000ULL) % 10);
+  }
+  if (10000000ULL <= v) {
+    _sink->push_back('0' + (v / 10000000ULL) % 10);
+  }
+  if (1000000ULL <= v) {
+    _sink->push_back('0' + (v / 1000000ULL) % 10);
+  }
+  if (100000ULL <= v) {
+    _sink->push_back('0' + (v / 100000ULL) % 10);
+  }
+  if (10000ULL <= v) {
+    _sink->push_back('0' + (v / 10000ULL) % 10);
+  }
+  if (1000ULL <= v) {
+    _sink->push_back('0' + (v / 1000ULL) % 10);
+  }
+  if (100ULL <= v) {
+    _sink->push_back('0' + (v / 100ULL) % 10);
+  }
+  if (10ULL <= v) {
+    _sink->push_back('0' + (v / 10ULL) % 10);
+  }
 
   _sink->push_back('0' + (v % 10));
 }
-    
-void Dumper::dumpInteger (Slice const* slice) {
+
+void Dumper::dumpInteger(Slice const* slice) {
   if (slice->isType(ValueType::UInt)) {
     uint64_t v = slice->getUInt();
 
     appendUInt(v);
-  } 
-  else if (slice->isType(ValueType::Int)) {
+  } else if (slice->isType(ValueType::Int)) {
     int64_t v = slice->getInt();
     if (v == INT64_MIN) {
       _sink->append("-9223372036854775808", 20);
@@ -80,61 +117,109 @@ void Dumper::dumpInteger (Slice const* slice) {
       _sink->push_back('-');
       v = -v;
     }
-  
-    if (1000000000000000000LL <= v) { _sink->push_back('0' + (v / 1000000000000000000LL) % 10); }
-    if ( 100000000000000000LL <= v) { _sink->push_back('0' + (v /  100000000000000000LL) % 10); }
-    if (  10000000000000000LL <= v) { _sink->push_back('0' + (v /   10000000000000000LL) % 10); }
-    if (   1000000000000000LL <= v) { _sink->push_back('0' + (v /    1000000000000000LL) % 10); }
-    if (    100000000000000LL <= v) { _sink->push_back('0' + (v /     100000000000000LL) % 10); }
-    if (     10000000000000LL <= v) { _sink->push_back('0' + (v /      10000000000000LL) % 10); }
-    if (      1000000000000LL <= v) { _sink->push_back('0' + (v /       1000000000000LL) % 10); }
-    if (       100000000000LL <= v) { _sink->push_back('0' + (v /        100000000000LL) % 10); }
-    if (        10000000000LL <= v) { _sink->push_back('0' + (v /         10000000000LL) % 10); }
-    if (         1000000000LL <= v) { _sink->push_back('0' + (v /          1000000000LL) % 10); }
-    if (          100000000LL <= v) { _sink->push_back('0' + (v /           100000000LL) % 10); }
-    if (           10000000LL <= v) { _sink->push_back('0' + (v /            10000000LL) % 10); }
-    if (            1000000LL <= v) { _sink->push_back('0' + (v /             1000000LL) % 10); }
-    if (             100000LL <= v) { _sink->push_back('0' + (v /              100000LL) % 10); }
-    if (              10000LL <= v) { _sink->push_back('0' + (v /               10000LL) % 10); }
-    if (               1000LL <= v) { _sink->push_back('0' + (v /                1000LL) % 10); }
-    if (                100LL <= v) { _sink->push_back('0' + (v /                 100LL) % 10); }
-    if (                 10LL <= v) { _sink->push_back('0' + (v /                  10LL) % 10); }
+
+    if (1000000000000000000LL <= v) {
+      _sink->push_back('0' + (v / 1000000000000000000LL) % 10);
+    }
+    if (100000000000000000LL <= v) {
+      _sink->push_back('0' + (v / 100000000000000000LL) % 10);
+    }
+    if (10000000000000000LL <= v) {
+      _sink->push_back('0' + (v / 10000000000000000LL) % 10);
+    }
+    if (1000000000000000LL <= v) {
+      _sink->push_back('0' + (v / 1000000000000000LL) % 10);
+    }
+    if (100000000000000LL <= v) {
+      _sink->push_back('0' + (v / 100000000000000LL) % 10);
+    }
+    if (10000000000000LL <= v) {
+      _sink->push_back('0' + (v / 10000000000000LL) % 10);
+    }
+    if (1000000000000LL <= v) {
+      _sink->push_back('0' + (v / 1000000000000LL) % 10);
+    }
+    if (100000000000LL <= v) {
+      _sink->push_back('0' + (v / 100000000000LL) % 10);
+    }
+    if (10000000000LL <= v) {
+      _sink->push_back('0' + (v / 10000000000LL) % 10);
+    }
+    if (1000000000LL <= v) {
+      _sink->push_back('0' + (v / 1000000000LL) % 10);
+    }
+    if (100000000LL <= v) {
+      _sink->push_back('0' + (v / 100000000LL) % 10);
+    }
+    if (10000000LL <= v) {
+      _sink->push_back('0' + (v / 10000000LL) % 10);
+    }
+    if (1000000LL <= v) {
+      _sink->push_back('0' + (v / 1000000LL) % 10);
+    }
+    if (100000LL <= v) {
+      _sink->push_back('0' + (v / 100000LL) % 10);
+    }
+    if (10000LL <= v) {
+      _sink->push_back('0' + (v / 10000LL) % 10);
+    }
+    if (1000LL <= v) {
+      _sink->push_back('0' + (v / 1000LL) % 10);
+    }
+    if (100LL <= v) {
+      _sink->push_back('0' + (v / 100LL) % 10);
+    }
+    if (10LL <= v) {
+      _sink->push_back('0' + (v / 10LL) % 10);
+    }
 
     _sink->push_back('0' + (v % 10));
-  }
-  else if (slice->isType(ValueType::SmallInt)) {
+  } else if (slice->isType(ValueType::SmallInt)) {
     int64_t v = slice->getSmallInt();
     if (v < 0) {
       _sink->push_back('-');
       v = -v;
     }
     _sink->push_back('0' + static_cast<char>(v));
-  }
-  else {
-    throw Exception(Exception::InternalError, "Unexpected number type");
+  } else {
+    // we should never get here
+    throw Exception(Exception::InvalidValueType, "Unexpected number type");
   }
 }
 
-void Dumper::dumpString (char const* src, ValueLength len) {
+void Dumper::dumpString(char const* src, ValueLength len) {
   static char const EscapeTable[256] = {
-    //0    1    2    3    4    5    6    7    8    9    A    B    C    D    E    F
-    'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f', 'r', 'u', 'u', // 00
-    'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', // 10
-      0,   0, '"',   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, '/', // 20
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, // 30~4F
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,'\\',   0,   0,   0, // 50
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, // 60~FF
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0
-  };
+      // 0    1    2    3    4    5    6    7    8    9    A    B    C    D    E
+      // F
+      'u',  'u', 'u', 'u', 'u', 'u', 'u', 'u', 'b', 't', 'n', 'u', 'f', 'r',
+      'u',
+      'u',  // 00
+      'u',  'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u', 'u',
+      'u',
+      'u',  // 10
+      0,    0,   '"', 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,
+      '/',  // 20
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,
+      0,  // 30~4F
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      '\\', 0,   0,   0,  // 50
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,
+      0,  // 60~FF
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,    0,   0,   0};
 
   uint8_t const* p = reinterpret_cast<uint8_t const*>(src);
   uint8_t const* e = p + len;
@@ -152,20 +237,20 @@ void Dumper::dumpString (char const* src, ValueLength len) {
         }
         _sink->push_back(static_cast<char>(esc));
 
-        if (esc == 'u') { 
-          uint16_t i1 = (((uint16_t) c) & 0xf0) >> 4;
-          uint16_t i2 = (((uint16_t) c) & 0x0f);
+        if (esc == 'u') {
+          uint16_t i1 = (((uint16_t)c) & 0xf0) >> 4;
+          uint16_t i2 = (((uint16_t)c) & 0x0f);
 
           _sink->append("00", 2);
-          _sink->push_back(static_cast<char>((i1 < 10) ? ('0' + i1) : ('A' + i1 - 10)));
-          _sink->push_back(static_cast<char>((i2 < 10) ? ('0' + i2) : ('A' + i2 - 10)));
+          _sink->push_back(
+              static_cast<char>((i1 < 10) ? ('0' + i1) : ('A' + i1 - 10)));
+          _sink->push_back(
+              static_cast<char>((i2 < 10) ? ('0' + i2) : ('A' + i2 - 10)));
         }
-      }
-      else {
+      } else {
         _sink->push_back(static_cast<char>(c));
       }
-    }
-    else if ((c & 0xe0) == 0xc0) {
+    } else if ((c & 0xe0) == 0xc0) {
       // two-byte sequence
       if (p + 1 >= e) {
         throw Exception(Exception::InvalidUtf8Sequence);
@@ -173,8 +258,7 @@ void Dumper::dumpString (char const* src, ValueLength len) {
 
       _sink->append(reinterpret_cast<char const*>(p), 2);
       ++p;
-    }
-    else if ((c & 0xf0) == 0xe0) {
+    } else if ((c & 0xf0) == 0xe0) {
       // three-byte sequence
       if (p + 2 >= e) {
         throw Exception(Exception::InvalidUtf8Sequence);
@@ -182,8 +266,7 @@ void Dumper::dumpString (char const* src, ValueLength len) {
 
       _sink->append(reinterpret_cast<char const*>(p), 3);
       p += 2;
-    }
-    else if ((c & 0xf8) == 0xf0) {
+    } else if ((c & 0xf8) == 0xf0) {
       // four-byte sequence
       if (p + 3 >= e) {
         throw Exception(Exception::InvalidUtf8Sequence);
@@ -196,17 +279,17 @@ void Dumper::dumpString (char const* src, ValueLength len) {
     ++p;
   }
 }
-        
-void Dumper::dumpValue (Slice const* slice, Slice const* base) {
+
+void Dumper::dumpValue(Slice const* slice, Slice const* base) {
   if (base == nullptr) {
     base = slice;
     VELOCYPACK_ASSERT(base != nullptr);
   }
-  
+
   switch (slice->type()) {
     case ValueType::None: {
       handleUnsupportedType(slice);
-      break; 
+      break;
     }
 
     case ValueType::Null: {
@@ -217,8 +300,7 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
     case ValueType::Bool: {
       if (slice->getBool()) {
         _sink->append("true", 4);
-      } 
-      else {
+      } else {
         _sink->append("false", 5);
       }
       break;
@@ -233,7 +315,7 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
         while (it.valid()) {
           indent();
           dumpValue(it.value(), base);
-          if (! it.isLast()) {
+          if (!it.isLast()) {
             _sink->push_back(',');
           }
           _sink->push_back('\n');
@@ -241,10 +323,9 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
         }
         --_indentation;
         indent();
-      }
-      else {
+      } else {
         while (it.valid()) {
-          if (! it.isFirst()) {
+          if (!it.isFirst()) {
             _sink->push_back(',');
           }
           dumpValue(it.value(), base);
@@ -266,7 +347,7 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
           dumpValue(it.key().makeKey(), base);
           _sink->append(" : ", 3);
           dumpValue(it.value(), base);
-          if (! it.isLast()) {
+          if (!it.isLast()) {
             _sink->push_back(',');
           }
           _sink->push_back('\n');
@@ -274,10 +355,9 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
         }
         --_indentation;
         indent();
-      }
-      else {
+      } else {
         while (it.valid()) {
-          if (! it.isFirst()) {
+          if (!it.isFirst()) {
             _sink->push_back(',');
           }
           dumpValue(it.key().makeKey(), base);
@@ -289,20 +369,19 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
       _sink->push_back('}');
       break;
     }
-    
+
     case ValueType::Double: {
       double const v = slice->getDouble();
-      if (std::isnan(v) || ! std::isfinite(v)) {
+      if (std::isnan(v) || !std::isfinite(v)) {
         handleUnsupportedType(slice);
-      }
-      else {
+      } else {
         char temp[24];
         int len = fpconv_dtoa(v, &temp[0]);
         _sink->append(&temp[0], static_cast<ValueLength>(len));
       }
-      break; 
+      break;
     }
-    
+
     case ValueType::UTCDate: {
       handleUnsupportedType(slice);
       break;
@@ -313,13 +392,13 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
       dumpValue(&external, base);
       break;
     }
-    
+
     case ValueType::MinKey:
     case ValueType::MaxKey: {
       handleUnsupportedType(slice);
       break;
     }
-    
+
     case ValueType::Int:
     case ValueType::UInt:
     case ValueType::SmallInt: {
@@ -341,17 +420,16 @@ void Dumper::dumpValue (Slice const* slice, Slice const* base) {
       handleUnsupportedType(slice);
       break;
     }
-    
+
     case ValueType::BCD: {
       // TODO
       throw Exception(Exception::NotImplemented);
     }
-    
+
     case ValueType::Custom: {
       if (options->customTypeHandler == nullptr) {
         handleUnsupportedType(slice);
-      }
-      else {
+      } else {
         options->customTypeHandler->toJson(*slice, this, *base);
       }
       break;

@@ -35,53 +35,43 @@
 #include "velocypack/velocypack-common.h"
 
 namespace arangodb {
-  namespace velocypack {
-    class Builder;
+namespace velocypack {
+class Builder;
 
-    class AttributeTranslator {
+class AttributeTranslator {
+ public:
+  AttributeTranslator(AttributeTranslator const&) = delete;
+  AttributeTranslator& operator=(AttributeTranslator const&) = delete;
 
-      public:
+  AttributeTranslator() : _builder(), _count(0) {}
 
-        AttributeTranslator (AttributeTranslator const&) = delete;
-        AttributeTranslator& operator= (AttributeTranslator const&) = delete;
+  ~AttributeTranslator() {}
 
-        AttributeTranslator () 
-          : _builder(), _count(0) {
-        }
+  size_t count() const { return _count; }
 
-        ~AttributeTranslator () {
-        }
+  void add(std::string const& key, uint64_t id);
 
-        size_t count () const {
-          return _count;
-        }
+  void seal();
 
-        void add (std::string const& key, uint64_t id);
+  Builder* builder() { return _builder.get(); }
 
-        void seal ();
+  // translate from string to id
+  uint8_t const* translate(std::string const& key) const;
 
-        Builder* builder () {
-          return _builder.get();
-        }
+  // translate from string to id
+  uint8_t const* translate(char const* key, ValueLength length) const;
 
-        // translate from string to id
-        uint8_t const* translate (std::string const& key) const;
+  // translate from id to string
+  uint8_t const* translate(uint64_t id) const;
 
-        // translate from string to id
-        uint8_t const* translate (char const* key, ValueLength length) const;
+ private:
+  std::unique_ptr<Builder> _builder;
+  std::unordered_map<std::string, uint8_t const*> _keyToId;
+  std::unordered_map<uint64_t, uint8_t const*> _idToKey;
+  size_t _count;
+};
 
-        // translate from id to string
-        uint8_t const* translate (uint64_t id) const;
-
-      private:
-
-        std::unique_ptr<Builder> _builder;
-        std::unordered_map<std::string, uint8_t const*> _keyToId;
-        std::unordered_map<uint64_t, uint8_t const*> _idToKey;
-        size_t _count;
-    };
-
-  }  // namespace arangodb::velocypack
+}  // namespace arangodb::velocypack
 }  // namespace arangodb
 
 #endif

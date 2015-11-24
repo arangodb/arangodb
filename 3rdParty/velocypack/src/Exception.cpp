@@ -31,12 +31,11 @@
 
 using namespace arangodb::velocypack;
 
-std::ostream& operator<< (std::ostream& stream, Exception const* ex) {
+std::ostream& operator<<(std::ostream& stream, Exception const* ex) {
   stream << "[Exception " << ex->what() << "]";
   return stream;
 }
 
-std::ostream& operator<< (std::ostream& stream, Exception const& ex) { 
+std::ostream& operator<<(std::ostream& stream, Exception const& ex) {
   return operator<<(stream, &ex);
 }
-

@@ -36,125 +36,117 @@
 #include "velocypack/Slice.h"
 
 namespace arangodb {
-  namespace velocypack {
+namespace velocypack {
 
-    // Dumps VPack into a JSON output string
-    class Dumper {
+// Dumps VPack into a JSON output string
+class Dumper {
+ public:
+  Options const* options;
 
-      public:
+  Dumper(Dumper const&) = delete;
+  Dumper& operator=(Dumper const&) = delete;
 
-        Options const* options;        
-    
-        Dumper (Dumper const&) = delete;
-        Dumper& operator= (Dumper const&) = delete;
+  Dumper(Sink* sink, Options const* options = &Options::Defaults)
+      : options(options), _sink(sink), _indentation(0) {
+    if (sink == nullptr) {
+      throw Exception(Exception::InternalError, "Sink cannot be a nullptr");
+    }
+    if (options == nullptr) {
+      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+    }
+  }
 
-        Dumper (Sink* sink, Options const* options = &Options::Defaults)
-          : options(options), _sink(sink), _indentation(0) {
-          
-          if (options == nullptr) {
-            throw Exception(Exception::InternalError, "Options cannot be a nullptr");
-          }
-        }
+  ~Dumper() {}
 
-        ~Dumper () {
-        }
+  Sink* sink() const { return _sink; }
 
-        Sink* sink () const {
-          return _sink;
-        }
+  void dump(Slice const& slice) {
+    _indentation = 0;
+    _sink->reserve(slice.byteSize());
+    dumpValue(&slice);
+  }
 
-        void dump (Slice const& slice) {
-          _indentation = 0;
-          _sink->reserve(slice.byteSize());
-          dumpValue(&slice);
-        }
+  void dump(Slice const* slice) { dump(*slice); }
 
-        void dump (Slice const* slice) {
-          dump(*slice);
-        }
+  static void dump(Slice const& slice, Sink* sink,
+                   Options const* options = &Options::Defaults) {
+    Dumper dumper(sink, options);
+    dumper.dump(slice);
+  }
 
-        static void dump (Slice const& slice, Sink* sink, Options const* options = &Options::Defaults) {
-          Dumper dumper(sink, options);
-          dumper.dump(slice);
-        }
+  static void dump(Slice const* slice, Sink* sink,
+                   Options const* options = &Options::Defaults) {
+    dump(*slice, sink, options);
+  }
 
-        static void dump (Slice const* slice, Sink* sink, Options const* options = &Options::Defaults) {
-          dump(*slice, sink, options);
-        }
+  static std::string toString(Slice const& slice,
+                              Options const* options = &Options::Defaults) {
+    std::string buffer;
+    StringSink sink(&buffer);
+    dump(slice, &sink, options);
+    return std::move(buffer);
+  }
 
-        static std::string toString (Slice const& slice, Options const* options = &Options::Defaults) {
-          std::string buffer;
-          StringSink sink(&buffer);
-          dump(slice, &sink, options);
-          return std::move(buffer);
-        }
+  static std::string toString(Slice const* slice,
+                              Options const* options = &Options::Defaults) {
+    return std::move(toString(*slice, options));
+  }
 
-        static std::string toString (Slice const* slice, Options const* options = &Options::Defaults) {
-          return std::move(toString(*slice, options));
-        }
+  void append(Slice const& slice) { dumpValue(&slice); }
 
-        void append (Slice const& slice) {
-          dumpValue(&slice);
-        }
+  void append(Slice const* slice) { dumpValue(slice); }
 
-        void append (Slice const* slice) {
-          dumpValue(slice);
-        }
+  void appendString(char const* src, ValueLength len) {
+    _sink->reserve(2 + len);
+    _sink->push_back('"');
+    dumpString(src, len);
+    _sink->push_back('"');
+  }
 
-        void appendString (char const* src, ValueLength len) {
-          _sink->reserve(2 + len);
-          _sink->push_back('"');
-          dumpString(src, len);
-          _sink->push_back('"');
-        }
+  void appendString(std::string const& str) {
+    _sink->reserve(2 + str.size());
+    _sink->push_back('"');
+    dumpString(str.c_str(), str.size());
+    _sink->push_back('"');
+  }
 
-        void appendString (std::string const& str) {
-          _sink->reserve(2 + str.size());
-          _sink->push_back('"');
-          dumpString(str.c_str(), str.size());
-          _sink->push_back('"');
-        }
-        
-        void appendUInt (uint64_t);
+  void appendUInt(uint64_t);
 
-      private:
+ private:
+  void dumpInteger(Slice const*);
 
-        void dumpInteger (Slice const*);
+  void dumpString(char const*, ValueLength);
 
-        void dumpString (char const*, ValueLength);
-        
-        void dumpValue (Slice const& slice, Slice const* base = nullptr) {
-          dumpValue(&slice, base);
-        }
+  void dumpValue(Slice const& slice, Slice const* base = nullptr) {
+    dumpValue(&slice, base);
+  }
 
-        void dumpValue (Slice const*, Slice const* = nullptr);
+  void dumpValue(Slice const*, Slice const* = nullptr);
 
-        void indent () {
-          size_t n = _indentation;
-          _sink->reserve(n);
-          for (size_t i = 0; i < n; ++i) {
-            _sink->append("  ", 2);
-          }
-        }
+  void indent() {
+    size_t n = _indentation;
+    _sink->reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      _sink->append("  ", 2);
+    }
+  }
 
-        void handleUnsupportedType (Slice const*) {
-          if (options->unsupportedTypeBehavior == Options::NullifyUnsupportedType) {
-            _sink->append("null", 4);
-            return;
-          }
+  void handleUnsupportedType(Slice const*) {
+    if (options->unsupportedTypeBehavior == Options::NullifyUnsupportedType) {
+      _sink->append("null", 4);
+      return;
+    }
 
-          throw Exception(Exception::NoJsonEquivalent);
-        }
-        
-      private:
+    throw Exception(Exception::NoJsonEquivalent);
+  }
 
-        Sink* _sink;
-          
-        int _indentation;
+ private:
+  Sink* _sink;
 
-    };
+  int _indentation;
+};
 
-  }  // namespace arangodb::velocypack
+}  // namespace arangodb::velocypack
 }  // namespace arangodb
 
 #endif

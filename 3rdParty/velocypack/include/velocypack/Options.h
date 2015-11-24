@@ -33,81 +33,83 @@
 #include "velocypack/velocypack-common.h"
 
 namespace arangodb {
-  namespace velocypack {
-    class AttributeTranslator;
-    class Dumper;
-    class Slice;
+namespace velocypack {
+class AttributeTranslator;
+class Dumper;
+class Slice;
 
-    struct AttributeExcludeHandler {
-      virtual ~AttributeExcludeHandler () {
-      }
+struct AttributeExcludeHandler {
+  virtual ~AttributeExcludeHandler() {}
 
-      virtual bool shouldExclude (Slice const& key, int nesting) = 0;
-    };
-       
-    struct CustomTypeHandler {
-      virtual ~CustomTypeHandler () {
-      }
+  virtual bool shouldExclude(Slice const& key, int nesting) = 0;
+};
 
-      virtual void toJson (Slice const& value, Dumper* dumper, Slice const& base) = 0;
-      virtual ValueLength byteSize (Slice const& value) = 0;
-    }; 
-        
-    struct Options {
-      enum UnsupportedTypeBehavior {
-        NullifyUnsupportedType,
-        FailOnUnsupportedType
-      };
+struct CustomTypeHandler {
+  virtual ~CustomTypeHandler() {}
 
-      Options () {
-      }
-      
-      // Dumper behavior when a VPack value is serialized to JSON that
-      // has no JSON equivalent
-      UnsupportedTypeBehavior unsupportedTypeBehavior = FailOnUnsupportedType;
-     
-      // callback for excluding attributes from being built by the Parser
-      AttributeExcludeHandler* attributeExcludeHandler = nullptr;
+  virtual void toJson(Slice const& value, Dumper* dumper,
+                      Slice const& base) = 0;
+  virtual ValueLength byteSize(Slice const& value) = 0;
+};
 
-      AttributeTranslator* attributeTranslator = nullptr;
+struct Options {
+  enum UnsupportedTypeBehavior {
+    NullifyUnsupportedType,
+    FailOnUnsupportedType
+  };
 
-      // custom type handler used for processing custom types by Dumper and Slicer
-      CustomTypeHandler* customTypeHandler = nullptr;
+  Options() {}
 
-      // allow building Arrays without index table?
-      bool buildUnindexedArrays     = false;
+  // Dumper behavior when a VPack value is serialized to JSON that
+  // has no JSON equivalent
+  UnsupportedTypeBehavior unsupportedTypeBehavior = FailOnUnsupportedType;
 
-      // allow building Objects without index table?
-      bool buildUnindexedObjects    = false;
+  // callback for excluding attributes from being built by the Parser
+  AttributeExcludeHandler* attributeExcludeHandler = nullptr;
 
-      // pretty-print JSON output when dumping with Dumper
-      bool prettyPrint              = false;
-      
-      // keep top-level object/array open when building objects with the Parser
-      bool keepTopLevelOpen         = false;
+  AttributeTranslator* attributeTranslator = nullptr;
 
-      // validate UTF-8 strings when JSON-parsing with Parser
-      bool validateUtf8Strings      = false;
+  // custom type handler used for processing custom types by Dumper and Slicer
+  CustomTypeHandler* customTypeHandler = nullptr;
 
-      // validate that attribute names in Object values are actually
-      // unique when creating objects via Builder. This also includes
-      // creation of Object values via a Parser
-      bool checkAttributeUniqueness = false;
+  // allow building Arrays without index table?
+  bool buildUnindexedArrays = false;
 
-      // whether or not attribute names should be sorted in Object
-      // values created with a Builder. This also includes creation of
-      // Object values via a Parser
-      bool sortAttributeNames       = true;
+  // allow building Objects without index table?
+  bool buildUnindexedObjects = false;
 
-      // escape forward slashes when serializing VPack values into
-      // JSON with a Dumper
-      bool escapeForwardSlashes     = false;
+  // pretty-print JSON output when dumping with Dumper
+  bool prettyPrint = false;
 
-      // default options with the above settings
-      static Options Defaults;
-    };
-          
-  }  // namespace arangodb::velocypack
+  // keep top-level object/array open when building objects with the Parser
+  bool keepTopLevelOpen = false;
+
+  // validate UTF-8 strings when JSON-parsing with Parser
+  bool validateUtf8Strings = false;
+
+  // validate that attribute names in Object values are actually
+  // unique when creating objects via Builder. This also includes
+  // creation of Object values via a Parser
+  bool checkAttributeUniqueness = false;
+
+  // whether or not attribute names should be sorted in Object
+  // values created with a Builder. This also includes creation of
+  // Object values via a Parser
+  bool sortAttributeNames = true;
+
+  // escape forward slashes when serializing VPack values into
+  // JSON with a Dumper
+  bool escapeForwardSlashes = false;
+
+  // disallow using type External (to prevent injection of arbitrary pointer
+  // values as a security precaution)
+  bool disallowExternals = false;
+
+  // default options with the above settings
+  static Options Defaults;
+};
+
+}  // namespace arangodb::velocypack
 }  // namespace arangodb
 
 #endif
