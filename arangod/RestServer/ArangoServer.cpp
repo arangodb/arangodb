@@ -67,6 +67,7 @@
 #include "RestHandler/RestDebugHelperHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
+#include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestExportHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
@@ -152,6 +153,10 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/edge" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH,
                             RestHandlerCreator<RestEdgeHandler>::createNoData);
+
+  // add "/edges" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::EDGES_PATH,
+                            RestHandlerCreator<RestEdgesHandler>::createNoData);
   
   // add "/export" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::EXPORT_PATH,
