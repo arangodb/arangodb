@@ -35,31 +35,31 @@
 #include "velocypack/ValueType.h"
 
 namespace arangodb {
-  namespace velocypack {
+namespace velocypack {
 
-    struct HexDump {
-      HexDump () = delete;
+struct HexDump {
+  HexDump() = delete;
 
-      HexDump (Slice const& slice, int valuesPerLine = 16, std::string const& separator = " ")
-        : slice(slice), valuesPerLine(valuesPerLine), separator(separator) {
-      }
+  HexDump(Slice const& slice, int valuesPerLine = 16,
+          std::string const& separator = " ")
+      : slice(slice), valuesPerLine(valuesPerLine), separator(separator) {}
 
-      HexDump (Slice const* slice, int valuesPerLine = 16, std::string const& separator = " ")
-        : HexDump(*slice, valuesPerLine, separator) {
-      }
+  HexDump(Slice const* slice, int valuesPerLine = 16,
+          std::string const& separator = " ")
+      : HexDump(*slice, valuesPerLine, separator) {}
 
-      static std::string toHex (uint8_t value);
+  static std::string toHex(uint8_t value);
 
-      Slice const slice;
-      int valuesPerLine;
-      std::string separator;
-    };
+  Slice const slice;
+  int valuesPerLine;
+  std::string separator;
+};
 
-  }  // namespace arangodb::velocypack
+}  // namespace arangodb::velocypack
 }  // namespace arangodb
 
-std::ostream& operator<< (std::ostream&, arangodb::velocypack::HexDump const*);
+std::ostream& operator<<(std::ostream&, arangodb::velocypack::HexDump const*);
 
-std::ostream& operator<< (std::ostream&, arangodb::velocypack::HexDump const&);
+std::ostream& operator<<(std::ostream&, arangodb::velocypack::HexDump const&);
 
 #endif

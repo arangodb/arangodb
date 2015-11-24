@@ -34,123 +34,118 @@
 #include "velocypack/velocypack-common.h"
 
 namespace arangodb {
-  namespace velocypack {
+namespace velocypack {
 
-    // base exception class
-    struct Exception : std::exception {
-      public:
-        enum ExceptionType {
-          InternalError               = 1,
-          NotImplemented              = 2,
+// base exception class
+struct Exception : std::exception {
+ public:
+  enum ExceptionType {
+    InternalError = 1,
+    NotImplemented = 2,
 
-          NoJsonEquivalent            = 10,  
-          ParseError                  = 11, 
-          UnexpectedControlCharacter  = 12,
-          IndexOutOfBounds            = 13,
-          NumberOutOfRange            = 14,
-          InvalidUtf8Sequence         = 15,
-          InvalidAttributePath        = 16,
-          InvalidValueType            = 17,
-          DuplicateAttributeName      = 18,
-          NeedCustomTypeHandler       = 19,
-          NeedAttributeTranslator     = 20,
-          CannotTranslateKey          = 21,
-          KeyNotFound                 = 22,
+    NoJsonEquivalent = 10,
+    ParseError = 11,
+    UnexpectedControlCharacter = 12,
+    IndexOutOfBounds = 13,
+    NumberOutOfRange = 14,
+    InvalidUtf8Sequence = 15,
+    InvalidAttributePath = 16,
+    InvalidValueType = 17,
+    DuplicateAttributeName = 18,
+    NeedCustomTypeHandler = 19,
+    NeedAttributeTranslator = 20,
+    CannotTranslateKey = 21,
+    KeyNotFound = 22,
 
-          BuilderNotSealed            = 30,
-          BuilderNeedOpenObject       = 31,
-          BuilderNeedOpenArray        = 32,
-          BuilderNeedOpenCompound     = 33,
-          BuilderUnexpectedType       = 34,
-          BuilderUnexpectedValue      = 35,
-          BuilderNeedSubvalue         = 36,
+    BuilderNotSealed = 30,
+    BuilderNeedOpenObject = 31,
+    BuilderNeedOpenArray = 32,
+    BuilderNeedOpenCompound = 33,
+    BuilderUnexpectedType = 34,
+    BuilderUnexpectedValue = 35,
+    BuilderNeedSubvalue = 36,
+    BuilderExternalsDisallowed = 37,
 
-          UnknownError                = 999 
-        };
+    UnknownError = 999
+  };
 
-      private:
-        ExceptionType _type;
-        std::string _msg;
+ private:
+  ExceptionType _type;
+  std::string _msg;
 
-      public:
+ public:
+  Exception(ExceptionType type, std::string const& msg)
+      : _type(type), _msg(msg) {}
 
-        Exception (ExceptionType type, std::string const& msg) : _type(type), _msg(msg) {
-        }
-        
-        Exception (ExceptionType type, char const* msg) : _type(type), _msg(msg) {
-        }
-        
-        explicit Exception (ExceptionType type) : Exception(type, message(type)) {
-        }
-      
-        char const* what() const throw() {
-          return _msg.c_str();
-        }
+  Exception(ExceptionType type, char const* msg) : _type(type), _msg(msg) {}
 
-        ExceptionType errorCode () const throw() {
-          return _type;
-        }
+  explicit Exception(ExceptionType type) : Exception(type, message(type)) {}
 
-        static char const* message (ExceptionType type) throw() {
-          switch (type) {
-            case InternalError:
-              return "Internal error";
-            case NotImplemented:
-              return "Not implemented";
-            case NoJsonEquivalent:
-              return "Type has no equivalent in JSON";
-            case ParseError:
-              return "Parse error";
-            case UnexpectedControlCharacter:
-              return "Unexpected control character";
-            case DuplicateAttributeName:
-              return "Duplicate attribute name";
-            case IndexOutOfBounds:
-              return "Index out of bounds";
-            case NumberOutOfRange:
-              return "Number out of range";
-            case InvalidUtf8Sequence:
-              return "Invalid UTF-8 sequence";
-            case InvalidAttributePath:
-              return "Invalid attribute path";
-            case InvalidValueType:
-              return "Invalid value type for operation";
-            case NeedCustomTypeHandler:
-              return "Cannot execute operation without custom type handler";
-            case NeedAttributeTranslator:
-              return "Cannot execute operation without attribute translator";
-            case CannotTranslateKey:
-              return "Cannot translate key";
-            case KeyNotFound:
-              return "Key not found";
-            case BuilderNotSealed:
-              return "Builder value not yet sealed";
-            case BuilderNeedOpenObject:
-              return "Need open Object";
-            case BuilderNeedOpenArray:
-              return "Need open Array";
-            case BuilderNeedSubvalue:
-              return "Need subvalue in current Object or Array";
-            case BuilderNeedOpenCompound:
-              return "Need open compound value (Array or Object)";
-            case BuilderUnexpectedType:
-              return "Unexpected type";
-            case BuilderUnexpectedValue:
-              return "Unexpected value";
+  char const* what() const throw() { return _msg.c_str(); }
 
-            case UnknownError:
-            default:
-              return "Unknown error";
-          }
-        }
+  ExceptionType errorCode() const throw() { return _type; }
 
-    };
+  static char const* message(ExceptionType type) throw() {
+    switch (type) {
+      case InternalError:
+        return "Internal error";
+      case NotImplemented:
+        return "Not implemented";
+      case NoJsonEquivalent:
+        return "Type has no equivalent in JSON";
+      case ParseError:
+        return "Parse error";
+      case UnexpectedControlCharacter:
+        return "Unexpected control character";
+      case DuplicateAttributeName:
+        return "Duplicate attribute name";
+      case IndexOutOfBounds:
+        return "Index out of bounds";
+      case NumberOutOfRange:
+        return "Number out of range";
+      case InvalidUtf8Sequence:
+        return "Invalid UTF-8 sequence";
+      case InvalidAttributePath:
+        return "Invalid attribute path";
+      case InvalidValueType:
+        return "Invalid value type for operation";
+      case NeedCustomTypeHandler:
+        return "Cannot execute operation without custom type handler";
+      case NeedAttributeTranslator:
+        return "Cannot execute operation without attribute translator";
+      case CannotTranslateKey:
+        return "Cannot translate key";
+      case KeyNotFound:
+        return "Key not found";
+      case BuilderNotSealed:
+        return "Builder value not yet sealed";
+      case BuilderNeedOpenObject:
+        return "Need open Object";
+      case BuilderNeedOpenArray:
+        return "Need open Array";
+      case BuilderNeedSubvalue:
+        return "Need subvalue in current Object or Array";
+      case BuilderNeedOpenCompound:
+        return "Need open compound value (Array or Object)";
+      case BuilderUnexpectedType:
+        return "Unexpected type";
+      case BuilderUnexpectedValue:
+        return "Unexpected value";
+      case BuilderExternalsDisallowed:
+        return "Externals are not allowed in this configuration";
 
-  }  // namespace arangodb::velocypack
+      case UnknownError:
+      default:
+        return "Unknown error";
+    }
+  }
+};
+
+}  // namespace arangodb::velocypack
 }  // namespace arangodb
-        
-std::ostream& operator<< (std::ostream&, arangodb::velocypack::Exception const*);
 
-std::ostream& operator<< (std::ostream&, arangodb::velocypack::Exception const&);
+std::ostream& operator<<(std::ostream&, arangodb::velocypack::Exception const*);
+
+std::ostream& operator<<(std::ostream&, arangodb::velocypack::Exception const&);
 
 #endif

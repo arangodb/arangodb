@@ -38,252 +38,231 @@
 #include "velocypack/ValueType.h"
 
 namespace arangodb {
-  namespace velocypack {
+namespace velocypack {
 
-    class Parser {
+class Parser {
+  // This class can parse JSON very rapidly, but only from contiguous
+  // blocks of memory. It builds the result using the Builder.
 
-      // This class can parse JSON very rapidly, but only from contiguous
-      // blocks of memory. It builds the result using the Builder.
+  struct ParsedNumber {
+    ParsedNumber() : intValue(0), doubleValue(0.0), isInteger(true) {}
 
-        struct ParsedNumber {
-          ParsedNumber ()
-            : intValue(0),
-              doubleValue(0.0),
-              isInteger(true) {
-          }
-
-          void addDigit (int i) {
-            if (isInteger) {
-              // check if adding another digit to the int will make it overflow
-              if (intValue < 1844674407370955161ULL ||
-                  (intValue == 1844674407370955161ULL && (i - '0') <= 5)) {
-                // int won't overflow
-                intValue = intValue * 10 + (i - '0');
-                return;
-              }
-              // int would overflow
-              doubleValue = static_cast<double>(intValue);
-              isInteger = false;
-            }
-
-            doubleValue = doubleValue * 10.0 + (i - '0');
-            if (std::isnan(doubleValue) || ! std::isfinite(doubleValue)) {
-              throw Exception(Exception::NumberOutOfRange);
-            }
-          }
-
-          double asDouble () const {
-            if (isInteger) {
-              return static_cast<double>(intValue);
-            }
-            return doubleValue;
-          }
-
-          uint64_t intValue;
-          double doubleValue;
-          bool isInteger;
-        };
-
-        Builder        _b;
-        uint8_t const* _start;
-        size_t         _size;
-        size_t         _pos;
-        int            _nesting;
-
-      public:
-
-        Options const* options;        
-
-        Parser (Parser const&) = delete;
-        Parser& operator= (Parser const&) = delete;
-
-        Parser (Options const* options = &Options::Defaults) 
-          : _start(nullptr), _size(0), _pos(0), _nesting(0), options(options) {
-          
-          VELOCYPACK_ASSERT(options != nullptr);
-
-          if (options == nullptr) {
-            throw Exception(Exception::InternalError, "Options cannot be a nullptr");
-          }
-          _b.options = options;
+    void addDigit(int i) {
+      if (isInteger) {
+        // check if adding another digit to the int will make it overflow
+        if (intValue < 1844674407370955161ULL ||
+            (intValue == 1844674407370955161ULL && (i - '0') <= 5)) {
+          // int won't overflow
+          intValue = intValue * 10 + (i - '0');
+          return;
         }
+        // int would overflow
+        doubleValue = static_cast<double>(intValue);
+        isInteger = false;
+      }
 
-        static Builder fromJson (std::string const& json, Options const* options = &Options::Defaults) {
-          Parser parser(options);
-          parser.parse(json);
-          return parser.steal();
-        }
-        
-        static Builder fromJson (uint8_t const* start, size_t size, Options const* options = &Options::Defaults) {
-          Parser parser(options);
-          parser.parse(start, size);
-          return parser.steal();
-        }
+      doubleValue = doubleValue * 10.0 + (i - '0');
+      if (std::isnan(doubleValue) || !std::isfinite(doubleValue)) {
+        throw Exception(Exception::NumberOutOfRange);
+      }
+    }
 
-        ValueLength parse (std::string const& json, bool multi = false) {
-          return parse(reinterpret_cast<uint8_t const*>(json.c_str()), json.size(), multi);
-        }
+    double asDouble() const {
+      if (isInteger) {
+        return static_cast<double>(intValue);
+      }
+      return doubleValue;
+    }
 
-        ValueLength parse (char const* start, size_t size,
-                           bool multi = false) {
-          return parse(reinterpret_cast<uint8_t const*>(start), size, multi);
-        }
+    uint64_t intValue;
+    double doubleValue;
+    bool isInteger;
+  };
 
-        ValueLength parse (uint8_t const* start, size_t size,
-                           bool multi = false) {
-          _start = start;
-          _size = size;
-          _pos = 0;
-          _b.clear();
-          _b.options = options;
-          return parseInternal(multi);
-        }
+  Builder _b;
+  uint8_t const* _start;
+  size_t _size;
+  size_t _pos;
+  int _nesting;
 
-        // We probably want a parse from stream at some stage...
-        // Not with this high-performance two-pass approach. :-(
-        
-        Builder&& steal () {
-          if (_b._buffer == nullptr) {
-            throw Exception(Exception::InternalError, "Buffer of Builder is already gone");
-          }
-          return std::move(_b);
-        }
+ public:
+  Options const* options;
 
-        // Beware, only valid as long as you do not parse more, use steal
-        // to move the data out!
-        uint8_t const* start () {
-          return _b.start();
-        }
+  Parser(Parser const&) = delete;
+  Parser& operator=(Parser const&) = delete;
 
-        // Returns the position at the time when the just reported error
-        // occurred, only use when handling an exception.
-        size_t errorPos () const {
-          return _pos > 0 ? _pos - 1 : _pos;
-        }
+  Parser(Options const* options = &Options::Defaults)
+      : _start(nullptr), _size(0), _pos(0), _nesting(0), options(options) {
+    VELOCYPACK_ASSERT(options != nullptr);
 
-        void clear () {
-          _b.clear();
-        }
+    if (options == nullptr) {
+      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+    }
+    _b.options = options;
+  }
 
-      private:
+  static Builder fromJson(std::string const& json,
+                          Options const* options = &Options::Defaults) {
+    Parser parser(options);
+    parser.parse(json);
+    return parser.steal();
+  }
 
-        inline int peek () const {
-          if (_pos >= _size) {
-            return -1;
-          }
-          return static_cast<int>(_start[_pos]);
-        }
+  static Builder fromJson(uint8_t const* start, size_t size,
+                          Options const* options = &Options::Defaults) {
+    Parser parser(options);
+    parser.parse(start, size);
+    return parser.steal();
+  }
 
-        inline int consume () {
-          if (_pos >= _size) {
-            return -1;
-          }
-          return static_cast<int>(_start[_pos++]);
-        }
+  ValueLength parse(std::string const& json, bool multi = false) {
+    return parse(reinterpret_cast<uint8_t const*>(json.c_str()), json.size(),
+                 multi);
+  }
 
-        inline void unconsume () {
-          --_pos;
-        }
+  ValueLength parse(char const* start, size_t size, bool multi = false) {
+    return parse(reinterpret_cast<uint8_t const*>(start), size, multi);
+  }
 
-        inline void reset () {
-          _pos = 0;
-        }
+  ValueLength parse(uint8_t const* start, size_t size, bool multi = false) {
+    _start = start;
+    _size = size;
+    _pos = 0;
+    _b.clear();
+    _b.options = options;
+    return parseInternal(multi);
+  }
 
-        ValueLength parseInternal (bool multi);
+  // We probably want a parse from stream at some stage...
+  // Not with this high-performance two-pass approach. :-(
 
-        inline bool isWhiteSpace (uint8_t i) const throw() {
-          return (i == ' ' || i == '\t' || i == '\n' || i == '\r');
-        }
+  Builder&& steal() {
+    if (_b._buffer == nullptr) {
+      throw Exception(Exception::InternalError,
+                      "Buffer of Builder is already gone");
+    }
+    return std::move(_b);
+  }
 
-        // skips over all following whitespace tokens but does not consume the
-        // byte following the whitespace
-        int skipWhiteSpace (char const*);
+  // Beware, only valid as long as you do not parse more, use steal
+  // to move the data out!
+  uint8_t const* start() { return _b.start(); }
 
-        void parseTrue () {
-          // Called, when main mode has just seen a 't', need to see "rue" next
-          if (consume() != 'r' || consume() != 'u' || consume() != 'e') {
-            throw Exception(Exception::ParseError, "Expecting 'true'");
-          }
-          _b.addTrue();
-        }
+  // Returns the position at the time when the just reported error
+  // occurred, only use when handling an exception.
+  size_t errorPos() const { return _pos > 0 ? _pos - 1 : _pos; }
 
-        void parseFalse () {
-          // Called, when main mode has just seen a 'f', need to see "alse" next
-          if (consume() != 'a' || consume() != 'l' || consume() != 's' ||
-              consume() != 'e') {
-            throw Exception(Exception::ParseError, "Expecting 'false'");
-          }
-          _b.addFalse();
-        }
+  void clear() { _b.clear(); }
 
-        void parseNull () {
-          // Called, when main mode has just seen a 'n', need to see "ull" next
-          if (consume() != 'u' || consume() != 'l' || consume() != 'l') {
-            throw Exception(Exception::ParseError, "Expecting 'null'");
-          }
-          _b.addNull();
-        }
-        
-        void scanDigits (ParsedNumber& value) {
-          while (true) {
-            int i = consume();
-            if (i < 0) {
-              return;
-            }
-            if (i < '0' || i > '9') {
-              unconsume();
-              return;
-            }
-            value.addDigit(i);
-          }
-        }
+ private:
+  inline int peek() const {
+    if (_pos >= _size) {
+      return -1;
+    }
+    return static_cast<int>(_start[_pos]);
+  }
 
-        double scanDigitsFractional () {
-          double pot = 0.1;
-          double x = 0.0;
-          while (true) {
-            int i = consume();
-            if (i < 0) {
-              return x;
-            }
-            if (i < '0' || i > '9') {
-              unconsume();
-              return x;
-            }
-            x = x + pot * (i - '0');
-            pot /= 10.0;
-          }
-        }
+  inline int consume() {
+    if (_pos >= _size) {
+      return -1;
+    }
+    return static_cast<int>(_start[_pos++]);
+  }
 
-        inline int getOneOrThrow (char const* msg) {
-          int i = consume();
-          if (i < 0) {
-            throw Exception(Exception::ParseError, msg);
-          }
-          return i;
-        }
+  inline void unconsume() { --_pos; }
 
-        inline void increaseNesting () {
-          ++_nesting;
-        }
-        
-        inline void decreaseNesting () {
-          --_nesting;
-        }
+  inline void reset() { _pos = 0; }
 
-        void parseNumber ();
+  ValueLength parseInternal(bool multi);
 
-        void parseString ();
+  inline bool isWhiteSpace(uint8_t i) const throw() {
+    return (i == ' ' || i == '\t' || i == '\n' || i == '\r');
+  }
 
-        void parseArray ();
+  // skips over all following whitespace tokens but does not consume the
+  // byte following the whitespace
+  int skipWhiteSpace(char const*);
 
-        void parseObject ();
+  void parseTrue() {
+    // Called, when main mode has just seen a 't', need to see "rue" next
+    if (consume() != 'r' || consume() != 'u' || consume() != 'e') {
+      throw Exception(Exception::ParseError, "Expecting 'true'");
+    }
+    _b.addTrue();
+  }
 
-        void parseJson ();
+  void parseFalse() {
+    // Called, when main mode has just seen a 'f', need to see "alse" next
+    if (consume() != 'a' || consume() != 'l' || consume() != 's' ||
+        consume() != 'e') {
+      throw Exception(Exception::ParseError, "Expecting 'false'");
+    }
+    _b.addFalse();
+  }
 
-    };
+  void parseNull() {
+    // Called, when main mode has just seen a 'n', need to see "ull" next
+    if (consume() != 'u' || consume() != 'l' || consume() != 'l') {
+      throw Exception(Exception::ParseError, "Expecting 'null'");
+    }
+    _b.addNull();
+  }
 
-  }  // namespace arangodb::velocypack
+  void scanDigits(ParsedNumber& value) {
+    while (true) {
+      int i = consume();
+      if (i < 0) {
+        return;
+      }
+      if (i < '0' || i > '9') {
+        unconsume();
+        return;
+      }
+      value.addDigit(i);
+    }
+  }
+
+  double scanDigitsFractional() {
+    double pot = 0.1;
+    double x = 0.0;
+    while (true) {
+      int i = consume();
+      if (i < 0) {
+        return x;
+      }
+      if (i < '0' || i > '9') {
+        unconsume();
+        return x;
+      }
+      x = x + pot * (i - '0');
+      pot /= 10.0;
+    }
+  }
+
+  inline int getOneOrThrow(char const* msg) {
+    int i = consume();
+    if (i < 0) {
+      throw Exception(Exception::ParseError, msg);
+    }
+    return i;
+  }
+
+  inline void increaseNesting() { ++_nesting; }
+
+  inline void decreaseNesting() { --_nesting; }
+
+  void parseNumber();
+
+  void parseString();
+
+  void parseArray();
+
+  void parseObject();
+
+  void parseJson();
+};
+
+}  // namespace arangodb::velocypack
 }  // namespace arangodb
 
 #endif

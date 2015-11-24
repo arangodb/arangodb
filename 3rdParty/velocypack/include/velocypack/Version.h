@@ -32,31 +32,32 @@
 #include "velocypack/velocypack-common.h"
 
 namespace arangodb {
-  namespace velocypack {
+namespace velocypack {
 
-    struct Version {
-      Version () = delete;
-      Version (Version const&) = delete;
-      Version& operator = (Version const&) = delete;
+struct Version {
+  Version() = delete;
+  Version(Version const&) = delete;
+  Version& operator=(Version const&) = delete;
 
-      Version (int majorValue, int minorValue, int patchValue)
-        : majorValue(majorValue), minorValue(minorValue), patchValue(patchValue) {
-      }
+  Version(int majorValue, int minorValue, int patchValue)
+      : majorValue(majorValue),
+        minorValue(minorValue),
+        patchValue(patchValue) {}
 
-      std::string toString () const;
+  std::string toString() const;
 
-      int compare (Version const& other) const;
+  int compare(Version const& other) const;
 
-      static int compare (Version const& lhs, Version const& rhs);
+  static int compare(Version const& lhs, Version const& rhs);
 
-      int const majorValue;
-      int const minorValue;
-      int const patchValue;
+  int const majorValue;
+  int const minorValue;
+  int const patchValue;
 
-      static Version const BuildVersion;
-    };
+  static Version const BuildVersion;
+};
 
-  }  // namespace arangodb::velocypack
+}  // namespace arangodb::velocypack
 }  // namespace arangodb
 
 #endif

@@ -31,21 +31,20 @@
 
 using namespace arangodb::velocypack;
 
-std::ostream& operator<< (std::ostream& stream, ArrayIterator const* it) {
+std::ostream& operator<<(std::ostream& stream, ArrayIterator const* it) {
   stream << "[ArrayIterator " << it->index() << " / " << it->size() << "]";
   return stream;
 }
 
-std::ostream& operator<< (std::ostream& stream, ArrayIterator const& it) {
+std::ostream& operator<<(std::ostream& stream, ArrayIterator const& it) {
   return operator<<(stream, &it);
 }
 
-std::ostream& operator<< (std::ostream& stream, ObjectIterator const* it) {
+std::ostream& operator<<(std::ostream& stream, ObjectIterator const* it) {
   stream << "[ObjectIterator " << it->index() << " / " << it->size() << "]";
   return stream;
 }
 
-std::ostream& operator<< (std::ostream& stream, ObjectIterator const& it) {
+std::ostream& operator<<(std::ostream& stream, ObjectIterator const& it) {
   return operator<<(stream, &it);
 }
-

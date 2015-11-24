@@ -29,6 +29,5 @@
 
 using namespace arangodb::velocypack;
 
-// default options instance        
+// default options instance
 Options Options::Defaults;
-

@@ -32,33 +32,33 @@
 #include "velocypack-common.h"
 
 namespace arangodb {
-  namespace velocypack {
+namespace velocypack {
 
-    enum class ValueType {
-      None,           // not yet initialized
-      Null,           // JSON null
-      Bool,
-      Array,
-      Object,
-      Double,
-      UTCDate,
-      External,
-      MinKey,
-      MaxKey,
-      Int,
-      UInt,
-      SmallInt,
-      String,
-      Binary,
-      BCD,
-      Custom
-    };
+enum class ValueType {
+  None,  // not yet initialized
+  Null,  // JSON null
+  Bool,
+  Array,
+  Object,
+  Double,
+  UTCDate,
+  External,
+  MinKey,
+  MaxKey,
+  Int,
+  UInt,
+  SmallInt,
+  String,
+  Binary,
+  BCD,
+  Custom
+};
 
-    char const* valueTypeName (ValueType);
+char const* valueTypeName(ValueType);
 
-  }  // namespace arangodb::velocypack
+}  // namespace arangodb::velocypack
 }  // namespace arangodb
 
-std::ostream& operator<< (std::ostream&, arangodb::velocypack::ValueType);
+std::ostream& operator<<(std::ostream&, arangodb::velocypack::ValueType);
 
 #endif
