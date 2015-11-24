@@ -304,7 +304,7 @@ namespace triagens {
 /// the path to a server certificate using the \-\-server.keyfile option.
 ///
 /// Endpoints can also be changed at runtime.
-/// Please refer to HTTP Interface for Endpoints for more details.
+/// Please refer to [HTTP Interface for Endpoints](../HttpEndpoints/README.md) for more details.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

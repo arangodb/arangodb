@@ -425,7 +425,7 @@ namespace arangodb {
         int64_t getSmallInt () const;
 
         template<typename T>
-        T getNumericValue () const {
+        T getNumber () const {
           if (std::is_integral<T>()) {
             if (std::is_signed<T>()) {
               // signed integral type
@@ -478,6 +478,12 @@ namespace arangodb {
           }
 
           throw Exception(Exception::InvalidValueType, "Expecting numeric type");
+        }
+
+        // an alias for getNumber<T>
+        template<typename T>
+        T getNumericValue () const {
+          return getNumber<T>(); 
         }
         
         // return the value for a UTCDate object
