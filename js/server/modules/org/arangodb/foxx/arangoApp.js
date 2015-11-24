@@ -325,7 +325,11 @@ ArangoApp.prototype.configure = function(config) {
       var schema = utils.parameterTypes[type];
       var error;
       var result;
-      if (expected[name].required !== false) {
+      if (expected[name].required === false) {
+        if (value === '' || value === null) {
+          value = undefined;
+        }
+      } else {
         result = joi.any().required().validate(value);
         if (result.error) {
           error = result.error.message.replace(/^"value"/, '"' + name + '"');
@@ -333,7 +337,7 @@ ArangoApp.prototype.configure = function(config) {
       }
       if (!error) {
         if (schema.isJoi) {
-          schema = schema.optional().allow(null);
+          schema = schema.optional();
           if (expected[name].default !== undefined) {
             schema = schema.default(expected[name].default);
           }
