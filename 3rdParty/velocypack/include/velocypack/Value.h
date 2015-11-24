@@ -31,6 +31,7 @@
 #include <string>
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/Exception.h"
 #include "velocypack/ValueType.h"
 
 namespace arangodb {
