@@ -1,0 +1,23 @@
+!CHAPTER Incompatible changes in ArangoDB 2.8
+
+It is recommended to check the following list of incompatible changes **before**
+upgrading to ArangoDB 2.8, and adjust any client programs if necessary.
+
+
+!SECTION Miscellaneous changes
+
+!SUBSECTION Module `org/arangodb/request`
+
+The module now always returns response bodies, even for error responses. In versions
+prior to 2.8 the module would silently drop response bodies if the response header
+indicated an error.
+
+The old behaviour of not returning bodies for error responses can be restored by
+explicitly setting the option `returnBodyOnError` to `false`:
+
+```js
+let response = request({
+  //...
+  returnBodyOnError: false
+});
+```
