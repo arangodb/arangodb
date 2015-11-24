@@ -108,7 +108,7 @@ void RestBaseHandler::generateCanceled () {
                        "error", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
-                       "code", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (int32_t) HttpResponse::REQUEST_TIMEOUT));
+                       "code", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (int32_t) HttpResponse::GONE));
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
                        "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (int32_t) TRI_ERROR_REQUEST_CANCELED));
@@ -116,7 +116,7 @@ void RestBaseHandler::generateCanceled () {
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
                        "errorMessage", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, msg, strlen(msg)));
 
-  generateResult(HttpResponse::REQUEST_TIMEOUT, json);
+  generateResult(HttpResponse::GONE, json);
 
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 }

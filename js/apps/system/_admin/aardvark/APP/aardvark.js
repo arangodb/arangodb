@@ -176,7 +176,10 @@ controller.post("/query/explain", function(req, res) {
   if (query.length > 0) {
     try {
       if (bindVars) {
-        explain = require("org/arangodb/aql/explainer").explain(query, {colors: false}, false, bindVars);
+        explain = require("org/arangodb/aql/explainer").explain({
+          query: query,
+          bindVars: bindVars
+        }, {colors: false}, false, bindVars);
       }
       else {
         explain = require("org/arangodb/aql/explainer").explain(query, {colors: false}, false);

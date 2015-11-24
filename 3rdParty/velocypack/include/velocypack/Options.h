@@ -1,0 +1,115 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Library to build up VPack documents.
+///
+/// DISCLAIMER
+///
+/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Max Neunhoeffer
+/// @author Jan Steemann
+/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef VELOCYPACK_OPTIONS_H
+#define VELOCYPACK_OPTIONS_H 1
+
+#include <string>
+#include <cstdint>
+
+#include "velocypack/velocypack-common.h"
+
+namespace arangodb {
+namespace velocypack {
+class AttributeTranslator;
+class Dumper;
+class Slice;
+
+struct AttributeExcludeHandler {
+  virtual ~AttributeExcludeHandler() {}
+
+  virtual bool shouldExclude(Slice const& key, int nesting) = 0;
+};
+
+struct CustomTypeHandler {
+  virtual ~CustomTypeHandler() {}
+
+  virtual void toJson(Slice const& value, Dumper* dumper,
+                      Slice const& base) = 0;
+  virtual ValueLength byteSize(Slice const& value) = 0;
+};
+
+struct Options {
+  enum UnsupportedTypeBehavior {
+    NullifyUnsupportedType,
+    FailOnUnsupportedType
+  };
+
+  Options() {}
+
+  // Dumper behavior when a VPack value is serialized to JSON that
+  // has no JSON equivalent
+  UnsupportedTypeBehavior unsupportedTypeBehavior = FailOnUnsupportedType;
+
+  // callback for excluding attributes from being built by the Parser
+  AttributeExcludeHandler* attributeExcludeHandler = nullptr;
+
+  AttributeTranslator* attributeTranslator = nullptr;
+
+  // custom type handler used for processing custom types by Dumper and Slicer
+  CustomTypeHandler* customTypeHandler = nullptr;
+
+  // allow building Arrays without index table?
+  bool buildUnindexedArrays = false;
+
+  // allow building Objects without index table?
+  bool buildUnindexedObjects = false;
+
+  // pretty-print JSON output when dumping with Dumper
+  bool prettyPrint = false;
+
+  // keep top-level object/array open when building objects with the Parser
+  bool keepTopLevelOpen = false;
+
+  // validate UTF-8 strings when JSON-parsing with Parser
+  bool validateUtf8Strings = false;
+
+  // validate that attribute names in Object values are actually
+  // unique when creating objects via Builder. This also includes
+  // creation of Object values via a Parser
+  bool checkAttributeUniqueness = false;
+
+  // whether or not attribute names should be sorted in Object
+  // values created with a Builder. This also includes creation of
+  // Object values via a Parser
+  bool sortAttributeNames = true;
+
+  // escape forward slashes when serializing VPack values into
+  // JSON with a Dumper
+  bool escapeForwardSlashes = false;
+
+  // disallow using type External (to prevent injection of arbitrary pointer
+  // values as a security precaution)
+  bool disallowExternals = false;
+
+  // default options with the above settings
+  static Options Defaults;
+};
+
+}  // namespace arangodb::velocypack
+}  // namespace arangodb
+
+#endif

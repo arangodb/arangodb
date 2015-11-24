@@ -24,7 +24,7 @@
     },
 
     performAction: function() {
-      //this.action();
+      this.action();
       window.progressView.hide();
     },
 
@@ -43,11 +43,23 @@
       }, self.lastDelay);
     },
 
-    show: function(msg, action, button) {
+    show: function(msg, callback, buttonText) {
       $(this.el).html(this.template.render({}));
       $(".progress-text").text(msg);
-      $(".progress-action").html('<button class="button-danger">Cancel</button>');
-      this.action = this.hide();
+
+      if (!buttonText) {
+        $(".progress-action").html('<button class="button-danger">Cancel</button>');
+      }
+      else {
+        $(".progress-action").html('<button class="button-danger">' + buttonText + '</button>');
+      }
+
+      if (!callback) {
+        this.action = this.hide();
+      }
+      else {
+        this.action = callback; 
+      }
       //$(".progress-action").html(button);
       //this.action = action;
 

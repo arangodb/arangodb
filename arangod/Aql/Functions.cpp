@@ -4135,6 +4135,8 @@ AqlValue Functions::Percentile (triagens::aql::Query* query,
     return AqlValue(new Json(values[0]));
   }
 
+  TRI_ASSERT(l > 1);
+
   if (useInterpolation) {
     double idx = p * (l + 1) / 100;
     double pos = floor(idx);
@@ -4143,15 +4145,22 @@ AqlValue Functions::Percentile (triagens::aql::Query* query,
       return AqlValue(new Json(values[l - 1]));
     }
 
+    if (pos <= 0) {
+      return AqlValue(new Json(Json::Null));
+    }
+
     double delta = idx - pos;
-    return AqlValue(new Json(delta * (values[pos] - values[pos - 1]) + values[pos - 1]));
+    return AqlValue(new Json(delta * (values[static_cast<size_t>(pos)] - values[static_cast<size_t>(pos) - 1]) + values[static_cast<size_t>(pos) - 1]));
   }
   double idx = p * l / 100;
   double pos = ceil(idx);
   if (pos >= l) {
     return AqlValue(new Json(values[l - 1]));
   }
-  return AqlValue(new Json(values[pos - 1]));
+  if (pos <= 0) {
+    return AqlValue(new Json(Json::Null));
+  }
+  return AqlValue(new Json(values[static_cast<size_t>(pos) - 1]));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
