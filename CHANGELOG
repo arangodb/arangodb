@@ -3,6 +3,9 @@ v2.6.12 (XXXX-XX-XX)
 
 * fixed issue #1583
 
+* Foxx: optional configuration options no longer log validation errors when assigned
+  empty values (#1495)
+
 
 v2.6.11 (2015-11-18)
 --------------------
