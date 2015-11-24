@@ -111,13 +111,13 @@ def getRestReplyBodyParam(param):
 
 SIMPL_REPL_DICT = {
 "@RESTDESCRIPTION"      : "",
-"@RESTURLPARAMETERS"    : "\n**URL Parameters**\n",
+"@RESTURLPARAMETERS"    : "\n**Path Parameters**\n",
 "@RESTQUERYPARAMETERS"  : "\n**Query Parameters**\n",
 "@RESTHEADERPARAMETERS" : "\n**Header Parameters**\n",
 "@RESTRETURNCODES"      : "\n**Return Codes**\n",
 "@PARAMS"               : "\n**Parameters**\n",
 "@RESTPARAMS"           : "",
-"@RESTURLPARAMS"        : "\n**URL Parameters**\n",
+"@RESTURLPARAMS"        : "\n**Path Parameters**\n",
 "@RESTQUERYPARAMS"      : "\n**Query Parameters**\n",
 "@RESTBODYPARAM"        : getRestBodyParam,
 "@RESTREPLYBODY"        : getRestReplyBodyParam,
@@ -131,7 +131,7 @@ SIMPL_REPL_DICT = {
 SIMPLE_RX = re.compile(
 r'''
 @RESTDESCRIPTION|                   # -> <empty>
-@RESTURLPARAMETERS|                 # -> \n**URL Parameters**\n
+@RESTURLPARAMETERS|                 # -> \n**Path Parameters**\n
 @RESTQUERYPARAMETERS|               # -> \n**Query Parameters**\n
 @RESTHEADERPARAMETERS|              # -> \n**Header Parameters**\n
 @RESTBODYPARAM|                     # -> call post body param

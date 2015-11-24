@@ -751,7 +751,7 @@ class Controller {
 ///
 /// Mounts the API documentation (Swagger) at the given `path`.
 ///
-/// Note that the `path` can use URL parameters as usual but must not use any
+/// Note that the `path` can use path parameters as usual but must not use any
 /// wildcard (`*`) or optional (`:name?`) parameters.
 ///
 /// The optional **opts** can be an object with any of the following properties:

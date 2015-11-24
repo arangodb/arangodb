@@ -436,7 +436,7 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
   const char* value = _request->value("chunkSize", found);
 
   if (found) {
-    // url parameter "chunkSize" was specified
+    // query parameter "chunkSize" was specified
     chunkSize = StringUtils::uint64(value);
 
     // don't allow overly big allocations
@@ -787,7 +787,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 ///
 /// - *id*: the id of the batch
 ///
-/// **Note**: on a coordinator, this request must have the URL parameter
+/// **Note**: on a coordinator, this request must have the query parameter
 /// *DBserver* which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
@@ -828,7 +828,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 ///
 /// If the batch's ttl can be extended successfully, the response is empty.
 ///
-/// **Note**: on a coordinator, this request must have the URL parameter
+/// **Note**: on a coordinator, this request must have the query parameter
 /// *DBserver* which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
@@ -862,7 +862,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 /// @RESTDESCRIPTION
 /// Deletes the existing dump batch, allowing compaction and cleanup to resume.
 ///
-/// **Note**: on a coordinator, this request must have the URL parameter
+/// **Note**: on a coordinator, this request must have the query parameter
 /// *DBserver* which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
@@ -1081,20 +1081,20 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 /// from the logger server. In this case, they should provide the *from* value so
 /// they will only get returned the log events since their last fetch.
 ///
-/// When the *from* URL parameter is not used, the logger server will return log
+/// When the *from* query parameter is not used, the logger server will return log
 /// entries starting at the beginning of its replication log. When the *from*
 /// parameter is used, the logger server will only return log entries which have
 /// higher tick values than the specified *from* value (note: the log entry with a
 /// tick value equal to *from* will be excluded). Use the *from* value when
 /// incrementally fetching log data.
 ///
-/// The *to* URL parameter can be used to optionally restrict the upper bound of
+/// The *to* query parameter can be used to optionally restrict the upper bound of
 /// the result to a certain tick value. If used, the result will contain only log events
 /// with tick values up to (including) *to*. In incremental fetching, there is no
 /// need to use the *to* parameter. It only makes sense in special situations,
 /// when only parts of the change log are required.
 ///
-/// The *chunkSize* URL parameter can be used to control the size of the result.
+/// The *chunkSize* query parameter can be used to control the size of the result.
 /// It must be specified in bytes. The *chunkSize* value will only be honored
 /// approximately. Otherwise a too low *chunkSize* value could cause the server
 /// to not be able to put just one log entry into the result and return it.
@@ -1539,7 +1539,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
 ///   response will be empty and clients can go to sleep for a while and try again
 ///   later.
 ///
-/// **Note**: on a coordinator, this request must have the URL parameter
+/// **Note**: on a coordinator, this request must have the query parameter
 /// *DBserver* which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
@@ -3421,16 +3421,16 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
 /// @RESTDESCRIPTION
 /// Returns the data from the collection for the requested range.
 ///
-/// When the *from* URL parameter is not used, collection events are returned from
+/// When the *from* query parameter is not used, collection events are returned from
 /// the beginning. When the *from* parameter is used, the result will only contain
 /// collection entries which have higher tick values than the specified *from* value
 /// (note: the log entry with a tick value equal to *from* will be excluded).
 ///
-/// The *to* URL parameter can be used to optionally restrict the upper bound of
+/// The *to* query parameter can be used to optionally restrict the upper bound of
 /// the result to a certain tick value. If used, the result will only contain
 /// collection entries with tick values up to (including) *to*.
 ///
-/// The *chunkSize* URL parameter can be used to control the size of the result.
+/// The *chunkSize* query parameter can be used to control the size of the result.
 /// It must be specified in bytes. The *chunkSize* value will only be honored
 /// approximately. Otherwise a too low *chunkSize* value could cause the server
 /// to not be able to put just one entry into the result and return it.
@@ -4624,7 +4624,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
 
   TRI_voc_tick_t initialTick = 0;
   if (found) {
-    // url parameter "from" specified
+    // query parameter "from" specified
     initialTick = (TRI_voc_tick_t) StringUtils::uint64(value);
   }
 

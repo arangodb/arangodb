@@ -72,7 +72,7 @@ describe ArangoDB do
         doc.parsed_response['requestType'].should eq("GET")
       end
       
-      it "using GET, with URL parameter" do
+      it "using GET, with query parameter" do
         cmd = "/_admin/echo?a=1"
         doc = ArangoDB.log_get("#{prefix}-echo", cmd)
 
@@ -83,7 +83,7 @@ describe ArangoDB do
         doc.parsed_response['requestType'].should eq("GET")
       end
       
-      it "using POST, with URL parameters" do
+      it "using POST, with query parameters" do
         cmd = "/_admin/echo?a=1&b=2&foo[]=bar&foo[]=baz"
         body = "{\"foo\": \"bar\", \"baz\": { \"bump\": true, \"moo\": [ ] } }"
         doc = ArangoDB.log_post("#{prefix}-echo", cmd, :body => body)

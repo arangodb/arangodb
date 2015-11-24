@@ -451,7 +451,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// - `ignored`: number of failed but ignored insert operations (in case
 ///   `onDuplicate` was set to `ignore`).
 ///
-/// - `details`: if URL parameter `details` is set to true, the result will
+/// - `details`: if query parameter `details` is set to true, the result will
 ///   contain a `details` attribute which is an array with more detailed
 ///   information about which documents could not be inserted.
 ///
@@ -1012,7 +1012,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 /// - `ignored`: number of failed but ignored insert operations (in case
 ///   `onDuplicate` was set to `ignore`).
 ///
-/// - `details`: if URL parameter `details` is set to true, the result will
+/// - `details`: if query parameter `details` is set to true, the result will
 ///   contain a `details` attribute which is an array with more detailed
 ///   information about which documents could not be inserted.
 ///
