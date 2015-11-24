@@ -29,9 +29,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var Graph = require("org/arangodb/general-graph");
+var db = require("internal").db;
 
+var arangodb = require("org/arangodb");
+var ArangoError = arangodb.ArangoError;
+
+// we create a graph with 'knows' pointing from 'persons' to 'persons'
 var createTraversalExample = function() {
-  // we create a graph with 'knows' pointing from 'persons' to 'persons'
   var g = Graph._create("knows_graph",
     [Graph._relation("knows", "persons", "persons")]
   );
@@ -48,8 +52,8 @@ var createTraversalExample = function() {
   return g;
 };
 
+// we create a graph with 'relation' pointing from 'female' to 'male' and 'male
 var createSocialGraph = function() {
-  // we create a graph with 'relation' pointing from 'female' to 'male' and 'male
   var edgeDefinition = [];
   edgeDefinition.push(Graph._relation("relation", ["female", "male"], ["female", "male"]));
   var g = Graph._create("social", edgeDefinition);
@@ -75,6 +79,7 @@ var createRoutePlannerGraph = function() {
   edgeDefinition.push(Graph._relation(
     "internationalHighway", ["frenchCity", "germanCity"], ["frenchCity", "germanCity"])
   );
+
   var g = Graph._create("routeplanner", edgeDefinition);
   var berlin = g.germanCity.save({_key: "Berlin", population : 3000000, isCapital : true});
   var cologne = g.germanCity.save({_key: "Cologne", population : 1000000, isCapital : false});
@@ -973,13 +978,13 @@ var createMoviesGraph = function (prefixed) {
 
 
 var knownGraphs = {
-  "knows_graph"           : createTraversalExample,
-  "routeplanner"          : createRoutePlannerGraph,
-  "social"                : createSocialGraph,
-  "worldCountry"          : createWorldCountryGraph,
-  "worldCountryUnManaged" : createWorldCountryGraphUnManaged,
-  "traversalGraph"        : createTraversalGraph,
-  "movies"                : createMoviesGraph
+  "knows_graph"           : {create: createTraversalExample, dependencies: ["knows", "persons"]},
+  "routeplanner"          : {create: createRoutePlannerGraph, dependencies: ["frenchHighway", "frenchCity", "germanCity", "germanHighway", "internationalHighway"]},
+  "social"                : {create: createSocialGraph, dependencies: ["relation", "female", "male"]},
+  "worldCountry"          : {create: createWorldCountryGraph, dependencies: ["worldVertices", "worldEdges"]},
+  "worldCountryUnManaged" : {create: createWorldCountryGraphUnManaged, dependencies: ["worldVertices", "worldEdges"]},
+  "traversalGraph"        : {create: createTraversalGraph, dependencies: ["edges", "circles"]},
+  "movies"                : {create: createMoviesGraph, dependencies: ["Person", "Movie", "ACTED_IN" ,"DIRECTED", "PRODUCED", "WROTE", "REVIEWED", "FOLLOWS"]}
 };
 
 var unManagedGraphs = {
@@ -1010,9 +1015,34 @@ var loadGraph = function (name, prefixed) {
     // trying to drop an unknown graph - better not do it
     return false;
   }
+  else {
+    var collections = [];
+
+    db._collections().forEach(function(c) {
+      collections.push(c.name());
+    });
+
+    var dependencies = [];
+
+    knownGraphs[name].dependencies.forEach(function(val) {
+      collections.forEach(function (c) {
+        if (val === c) {
+          dependencies.push(val);
+        }
+      });
+    });
+
+    if (dependencies.length > 0) {
+      var err = new ArangoError();
+      err.errorNum = arangodb.ERROR_ARANGO_DUPLICATE_NAME;
+      err.errorMessage = "the collections: " + JSON.stringify(dependencies) + " already exists. Please clean up and try again.";
+      throw err;
+      return false;
+    }
+  }
 
   dropGraph(name);
-  return knownGraphs[name](prefixed);
+  return knownGraphs[name].create(prefixed);
 };
 
 exports.loadGraph = loadGraph;
