@@ -214,7 +214,9 @@ unsigned int const Slice::FirstSubMap[32] = {
 
 // translates an integer key into a string
 Slice Slice::translate() const {
-  VELOCYPACK_ASSERT(isSmallInt() || isUInt());
+  if (!isSmallInt() && !isUInt()) {
+    throw Exception(Exception::NeedAttributeTranslator);
+  }
   uint64_t id = getUInt();
 
   if (options->attributeTranslator == nullptr) {
@@ -287,7 +289,7 @@ Slice Slice::get(std::string const& attribute) const {
       if (!key.isEqualString(attribute)) {
         return Slice();
       }
-    } else if (key.isInteger()) {
+    } else if (key.isSmallInt() || key.isUInt()) {
       // translate key
       if (!key.translate().isEqualString(attribute)) {
         return Slice();
@@ -435,7 +437,7 @@ Slice Slice::getFromCompactObject(std::string const& attribute) const {
       if (key.isEqualString(attribute)) {
         return Slice(key.start() + key.byteSize(), options);
       }
-    } else if (key.isInteger()) {
+    } else if (key.isSmallInt() || key.isUInt()) {
       if (key.translate().isEqualString(attribute)) {
         return Slice(key.start() + key.byteSize(), options);
       }
@@ -536,7 +538,7 @@ Slice Slice::makeKey() const {
   if (isString()) {
     return *this;
   }
-  if (isInteger()) {
+  if (isSmallInt() || isUInt()) {
     return translate();
   }
 
@@ -580,7 +582,7 @@ Slice Slice::searchObjectKeyLinear(std::string const& attribute,
       if (!key.isEqualString(attribute)) {
         continue;
       }
-    } else if (key.isInteger()) {
+    } else if (key.isSmallInt() || key.isUInt()) {
       // translate key
       if (!key.translate().isEqualString(attribute)) {
         continue;
@@ -618,7 +620,7 @@ Slice Slice::searchObjectKeyBinary(std::string const& attribute,
     int res;
     if (key.isString()) {
       res = key.compareString(attribute);
-    } else if (key.isInteger()) {
+    } else if (key.isSmallInt() || key.isUInt()) {
       // translate key
       res = key.translate().compareString(attribute);
     } else {

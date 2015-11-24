@@ -110,16 +110,20 @@ class Builder {
   // at position base, also determine the length len of the attribute.
   // This takes into account the different possibilities for the format
   // of attribute names:
-  static uint8_t const* findAttrName(uint8_t const* base, uint64_t& len);
+  static uint8_t const* findAttrName(uint8_t const* base, uint64_t& len,
+                                     Options const*);
 
   static void sortObjectIndexShort(uint8_t* objBase,
-                                   std::vector<ValueLength>& offsets);
+                                   std::vector<ValueLength>& offsets,
+                                   Options const*);
 
   static void sortObjectIndexLong(uint8_t* objBase,
-                                  std::vector<ValueLength>& offsets);
+                                  std::vector<ValueLength>& offsets,
+                                  Options const*);
 
   static void sortObjectIndex(uint8_t* objBase,
-                              std::vector<ValueLength>& offsets);
+                              std::vector<ValueLength>& offsets,
+                              Options const*);
 
  public:
   Options const* options;
