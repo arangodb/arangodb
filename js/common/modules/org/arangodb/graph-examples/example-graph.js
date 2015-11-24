@@ -1035,7 +1035,12 @@ var loadGraph = function (name, prefixed) {
     if (dependencies.length > 0) {
       var err = new ArangoError();
       err.errorNum = arangodb.ERROR_ARANGO_DUPLICATE_NAME;
-      err.errorMessage = "the collections: " + JSON.stringify(dependencies) + " already exists. Please clean up and try again.";
+      if (dependencies.loadGraph > 1) {
+        err.errorMessage = "the collections: " + JSON.stringify(dependencies) + " already exist. Please clean up and try again.";
+      }
+      else {
+        err.errorMessage = "the collection: " + JSON.stringify(dependencies) + " already exists. Please clean up and try again.";
+      }
       throw err;
       return false;
     }
