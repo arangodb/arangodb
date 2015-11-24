@@ -221,13 +221,23 @@ namespace triagens {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection name resolver
+/// @brief return the vpack options
 ////////////////////////////////////////////////////////////////////////////////
 
           VPackOptions const* vpackOptions () const {
             VPackOptions const* o = this->_transactionContext->getVPackOptions();
             TRI_ASSERT(o != nullptr);
             return o;
+          }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a copy of the vpack options
+////////////////////////////////////////////////////////////////////////////////
+
+          VPackOptions copyVPackOptions () const {
+            VPackOptions const* o = this->_transactionContext->getVPackOptions();
+            TRI_ASSERT(o != nullptr);
+            return *o;
           }
 
 ////////////////////////////////////////////////////////////////////////////////

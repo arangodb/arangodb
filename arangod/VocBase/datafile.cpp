@@ -1556,6 +1556,8 @@ char const* TRI_NameMarkerDatafile (TRI_df_marker_t const* marker) {
 
     case TRI_WAL_MARKER_VPACK_DOCUMENT:
       return "document (vpack)";
+    case TRI_WAL_MARKER_VPACK_REMOVE:
+      return "remove (vpack)";
 
     default:
       return "unused/unknown";

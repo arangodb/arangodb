@@ -463,10 +463,13 @@ public:
 
   ~TRI_document_collection_t ();
 
-  int insert (triagens::arango::Transaction*, TRI_doc_mptr_copy_t*, VPackSlice*, bool, bool);
+  int insert (triagens::arango::Transaction*, VPackSlice const*, TRI_doc_mptr_copy_t*, bool, bool);
+  int remove (triagens::arango::Transaction*, VPackSlice const*, TRI_doc_update_policy_t const*, bool, bool);
 
 private:
   triagens::wal::Marker* createVPackInsertMarker (triagens::arango::Transaction*, VPackSlice const*);
+  triagens::wal::Marker* createVPackRemoveMarker (triagens::arango::Transaction*, VPackSlice const*);
+  int lookupDocument (triagens::arango::Transaction*, VPackSlice const*, TRI_doc_update_policy_t const*, TRI_doc_mptr_t*&);
   int insertDocument (triagens::arango::Transaction*, TRI_doc_mptr_t*, triagens::wal::DocumentOperation&, TRI_doc_mptr_copy_t*, bool&);
   int insertPrimaryIndex (triagens::arango::Transaction*, TRI_doc_mptr_t*);
   int insertSecondaryIndexes (triagens::arango::Transaction*, TRI_doc_mptr_t const*, bool);

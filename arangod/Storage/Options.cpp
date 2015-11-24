@@ -45,6 +45,9 @@ VPackOptions StorageOptions::JsonToDocumentTemplate;
 VPackOptions StorageOptions::DocumentToJsonTemplate;
 // global options used for other conversions
 VPackOptions StorageOptions::NonDocumentTemplate;
+
+// this will initialize the global static objects
+static StorageOptions Instance;
   
 struct ExcludeHandlerImpl : public VPackAttributeExcludeHandler {
   bool shouldExclude (VPackSlice const& key, int nesting) override final {

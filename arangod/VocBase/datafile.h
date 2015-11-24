@@ -184,6 +184,7 @@ typedef enum {
   TRI_WAL_MARKER_DROP_DATABASE             = 4041,
   
   TRI_WAL_MARKER_VPACK_DOCUMENT            = 5000,
+  TRI_WAL_MARKER_VPACK_REMOVE              = 5001,
   
   TRI_MARKER_MAX                            // again, this is not a real
                                             // marker, but we use it for

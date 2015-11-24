@@ -1109,6 +1109,39 @@ VPackDocumentMarker::~VPackDocumentMarker () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 VPackRemoveMarker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+
+VPackRemoveMarker::VPackRemoveMarker (TRI_voc_tick_t databaseId,
+                                      TRI_voc_cid_t collectionId,
+                                      TRI_voc_tid_t transactionId,
+                                      VPackSlice const* slice) 
+  : Marker(TRI_WAL_MARKER_VPACK_REMOVE, sizeof(vpack_remove_marker_t) + VPackSlice(*slice).byteSize()) {
+  auto* m = reinterpret_cast<vpack_remove_marker_t*>(begin());
+  m->_databaseId    = databaseId;
+  m->_collectionId  = collectionId;
+  m->_transactionId = transactionId;
+
+  // store vpack
+  memcpy(vpack(), slice->begin(), slice->byteSize());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy marker
+////////////////////////////////////////////////////////////////////////////////
+
+VPackRemoveMarker::~VPackRemoveMarker () {
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    DocumentMarker
 // -----------------------------------------------------------------------------
 
