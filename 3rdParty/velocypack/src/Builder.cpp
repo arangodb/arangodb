@@ -42,8 +42,8 @@ std::string Builder::toString() const {
 
 void Builder::doActualSort(std::vector<SortEntry>& entries) {
   VELOCYPACK_ASSERT(entries.size() > 1);
-  std::sort(entries.begin(), entries.end(),
-            [](SortEntry const& a, SortEntry const& b) {
+  std::sort(entries.begin(), entries.end(), [](SortEntry const& a,
+                                               SortEntry const& b) {
     // return true iff a < b:
     uint8_t const* pa = a.nameStart;
     uint64_t sizea = a.nameSize;
@@ -56,7 +56,8 @@ void Builder::doActualSort(std::vector<SortEntry>& entries) {
   });
 };
 
-uint8_t const* Builder::findAttrName(uint8_t const* base, uint64_t& len) {
+uint8_t const* Builder::findAttrName(uint8_t const* base, uint64_t& len,
+                                     Options const* options) {
   uint8_t const b = *base;
   if (b >= 0x40 && b <= 0xbe) {
     // short UTF-8 string
@@ -72,11 +73,15 @@ uint8_t const* Builder::findAttrName(uint8_t const* base, uint64_t& len) {
     }
     return base + 1 + 8;  // string starts here
   }
-  throw Exception(Exception::NotImplemented, "Invalid Object key type");
+
+  // translate attribute name
+  Slice s(base, options);
+  return findAttrName(s.makeKey().start(), len, options);
 }
 
 void Builder::sortObjectIndexShort(uint8_t* objBase,
-                                   std::vector<ValueLength>& offsets) {
+                                   std::vector<ValueLength>& offsets,
+                                   Options const* options) {
   auto cmp = [&](ValueLength a, ValueLength b) -> bool {
     uint8_t const* aa = objBase + a;
     uint8_t const* bb = objBase + b;
@@ -88,8 +93,8 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
     } else {
       uint64_t lena;
       uint64_t lenb;
-      aa = findAttrName(aa, lena);
-      bb = findAttrName(bb, lenb);
+      aa = findAttrName(aa, lena, options);
+      bb = findAttrName(bb, lenb, options);
       uint64_t m = (std::min)(lena, lenb);
       int c = memcmp(aa, bb, m);
       return (c < 0 || (c == 0 && lena < lenb));
@@ -99,7 +104,8 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
 }
 
 void Builder::sortObjectIndexLong(uint8_t* objBase,
-                                  std::vector<ValueLength>& offsets) {
+                                  std::vector<ValueLength>& offsets,
+                                  Options const* options) {
 // on some platforms we can use a thread-local vector
 #if __llvm__ == 1
   // nono thread local
@@ -116,7 +122,7 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
   for (ValueLength i = 0; i < offsets.size(); i++) {
     SortEntry e;
     e.offset = offsets[i];
-    e.nameStart = findAttrName(objBase + e.offset, e.nameSize);
+    e.nameStart = findAttrName(objBase + e.offset, e.nameSize, options);
     entries.push_back(e);
   }
   VELOCYPACK_ASSERT(entries.size() == offsets.size());
@@ -129,11 +135,12 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
 }
 
 void Builder::sortObjectIndex(uint8_t* objBase,
-                              std::vector<ValueLength>& offsets) {
+                              std::vector<ValueLength>& offsets,
+                              Options const* options) {
   if (offsets.size() > 32) {
-    sortObjectIndexLong(objBase, offsets);
+    sortObjectIndexLong(objBase, offsets, options);
   } else {
-    sortObjectIndexShort(objBase, offsets);
+    sortObjectIndexShort(objBase, offsets, options);
   }
 }
 
@@ -304,7 +311,7 @@ void Builder::close() {
       if (!options->sortAttributeNames) {
         _start[tos] = 0x0f;  // unsorted
       } else if (index.size() >= 2 && options->sortAttributeNames) {
-        sortObjectIndex(_start + tos, index);
+        sortObjectIndex(_start + tos, index, options);
       }
     }
     for (size_t i = 0; i < index.size(); i++) {
@@ -376,7 +383,7 @@ bool Builder::hasKey(std::string const& key) const {
   }
   for (size_t i = 0; i < index.size(); ++i) {
     Slice s(_start + tos + index[i], options);
-    if (s.isString() && s.isEqualString(key)) {
+    if (s.makeKey().isEqualString(key)) {
       return true;
     }
   }
@@ -398,10 +405,7 @@ Slice Builder::getKey(std::string const& key) const {
   }
   for (size_t i = 0; i < index.size(); ++i) {
     Slice s(_start + tos + index[i], options);
-    if (!s.isString()) {
-      s = s.makeKey();
-    }
-    if (s.isString() && s.isEqualString(key)) {
+    if (s.makeKey().isEqualString(key)) {
       return Slice(s.start() + s.byteSize(), options);
     }
   }
@@ -742,6 +746,7 @@ void Builder::checkAttributeUniqueness(Slice const& obj) const {
     std::unordered_set<std::string> keys;
 
     for (size_t i = 0; i < n; ++i) {
+      // note: keyAt() already translates integer attributes
       Slice key = obj.keyAt(i);
       if (!key.isString()) {
         throw Exception(Exception::BuilderUnexpectedType,
