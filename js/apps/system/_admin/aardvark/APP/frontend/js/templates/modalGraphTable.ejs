@@ -1,122 +1,158 @@
 <script id="modalGraphTable.ejs" type="text/template">
-  <%
-  var createTR = function(row, disableSubmitOnEnter) {
-    var mandatory = '';
-    if (row.mandatory) {
-      mandatory = '*';
-    }
 
-    %>
-      <tr class="tableRow" id="<%='row_' + row.id%>">
-        <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
-        <th class="collectionTh">
-          <%
-            switch(row.type) {
-              case "text":
-          %>
-          <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
-          <%
-              break;
-            case "password":
-          %>
-          <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
-          <%
-              break;
-            case "readonly":
-          %>
-          <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>" disabled></input>
-          <%
-              break;
-              case "checkbox":
-                var checked = '',
-                  disabled = '';
-                if (row.checked) {
-                  checked = 'checked';
-                }
-                if (row.disabled) {
-                  disabled = 'disabled';
-                }
-          %>
-          <input type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
-          <%
-              break;
-              case "select":
-          %>
-          <select id="<%=row.id%>" class="modalSelect">
-          <%
-                _.each(row.options, function(opt) {
-          %>
-            <option value="<%=opt.value%>" <%=row.selected === opt.value?"selected":""%>><%=opt.label%></option>
-          <%
-                });
-          %>
-          </select>
-          <%
-              break;
-              case "select2":
-          %>
-          <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
-          <% if (row.addAdd) {%>
-            <button id="<%='addAfter_' + row.id%>" class="graphViewer-icon-button gv-icon-small add"></button>
-          <% } %>
-          <% if (row.addDelete) {%>
-            <button id="<%='remove_' + row.id%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
-          <% } %>
-          <%
-              break;
-            }
+  <ul id="graphTab" class="nav nav-tabs">
+    <li class="active"><a href="#createGraph" data-toggle="tab" id="tab-createGraph">Create Graph</a></li>
+    <li><a href="#exampleGraphs" data-toggle="tab" id="tab-exampleGraphs">Example Graphs</a></li>
+  </ul>
 
-            if (row.info) {
-          %>
-        <th>
-          <a class="modalTooltips" title="<%=row.info%>">
-            <span class="arangoicon icon_arangodb_info"></span>
-          </a>
-        </th>
-      <%
-        }
-      %>
-      </tr>
+  <div class="tab-content" id="tab-content-create-graph">
+
+    <div class="tab-pane" id="exampleGraphs">
+      <table>
+        <tbody>
+          <tr>
+            <td>Knows Graph</td>
+            <td>
+              <button style="float: right" graph-id="knows_graph" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Social Graph</td>
+            <td>
+              <button style="float: right" graph-id="social" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Routeplanner Graph</td>
+            <td>
+              <button style="float: right" graph-id="routeplanner" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="active tab-pane" id="createGraph">
     <%
-  }//createTR
-  %>
+    var createTR = function(row, disableSubmitOnEnter) {
+      var mandatory = '';
+      if (row.mandatory) {
+        mandatory = '*';
+      }
 
-  <table>
-    <tbody>
-      <%
-      _.each(content, function(row) {
-        createTR(row);
-      });
       %>
+        <tr class="tableRow" id="<%='row_' + row.id%>">
+          <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
+          <th class="collectionTh">
+            <%
+              switch(row.type) {
+                case "text":
+            %>
+            <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+            <%
+                break;
+              case "password":
+            %>
+            <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+            <%
+                break;
+              case "readonly":
+            %>
+            <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>" disabled></input>
+            <%
+                break;
+                case "checkbox":
+                  var checked = '',
+                    disabled = '';
+                  if (row.checked) {
+                    checked = 'checked';
+                  }
+                  if (row.disabled) {
+                    disabled = 'disabled';
+                  }
+            %>
+            <input type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
+            <%
+                break;
+                case "select":
+            %>
+            <select id="<%=row.id%>" class="modalSelect">
+            <%
+                  _.each(row.options, function(opt) {
+            %>
+              <option value="<%=opt.value%>" <%=row.selected === opt.value?"selected":""%>><%=opt.label%></option>
+            <%
+                  });
+            %>
+            </select>
+            <%
+                break;
+                case "select2":
+            %>
+            <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+            <% if (row.addAdd) {%>
+              <button id="<%='addAfter_' + row.id%>" class="graphViewer-icon-button gv-icon-small add"></button>
+            <% } %>
+            <% if (row.addDelete) {%>
+              <button id="<%='remove_' + row.id%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
+            <% } %>
+            <%
+                break;
+              }
 
-    </tbody>
-  </table>
-    <%
-    if (advancedContent) {
+              if (row.info) {
+            %>
+          <th>
+            <a class="modalTooltips" title="<%=row.info%>">
+              <span class="arangoicon icon_arangodb_info"></span>
+            </a>
+          </th>
+        <%
+          }
+        %>
+        </tr>
+      <%
+    }//createTR
     %>
-    <div class="accordion" id="accordion2">
-      <div class="accordion-group">
-        <div class="accordion-heading">
-          <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
-            <span><%=advancedContent.header%></span><span><b class="caret"></b></span>
-          </a>
-        </div>
-        <div id="collapseOne" class="accordion-body collapse out">
-          <div class="accordion-inner">
-            <table>
-              <tbody>
-                <%
-                _.each(advancedContent.content, function(row) {
-                  createTR(row);
-                });
-                %>
-              </tbody>
-            </table>
+
+    <table>
+      <tbody>
+        <%
+        _.each(content, function(row) {
+          createTR(row);
+        });
+        %>
+
+      </tbody>
+    </table>
+      <%
+      if (advancedContent) {
+      %>
+      <div class="accordion" id="accordion2">
+        <div class="accordion-group">
+          <div class="accordion-heading">
+            <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
+              <span><%=advancedContent.header%></span><span><b class="caret"></b></span>
+            </a>
+          </div>
+          <div id="collapseOne" class="accordion-body collapse out">
+            <div class="accordion-inner">
+              <table>
+                <tbody>
+                  <%
+                  _.each(advancedContent.content, function(row) {
+                    createTR(row);
+                  });
+                  %>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
+      <%
+      }
+      %>
     </div>
-    <%
-    }
-    %>
+  </div>
 </script>
