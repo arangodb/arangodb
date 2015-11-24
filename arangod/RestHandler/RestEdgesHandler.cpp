@@ -239,7 +239,7 @@ bool RestEdgesHandler::readEdges () {
 
   if (! found || *startVertex == '\0') {
     generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                   "illegal document handle");
     return false;
   }
