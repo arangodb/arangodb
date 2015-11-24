@@ -84,12 +84,6 @@ namespace triagens {
   namespace arango {
     namespace traverser {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper function to convert an _id string into a VertexId
-////////////////////////////////////////////////////////////////////////////////
-      VertexId IdStringToVertexId (triagens::arango::CollectionNameResolver const* resolver,
-                                   std::string const& vertex);
-
       // A collection of shared options used in several functions.
       // Should not be used directly, use specialization instead.
       struct BasicOptions {

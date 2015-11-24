@@ -29,8 +29,35 @@
 
 #include "Traverser.h"
 #include "Basics/json-utilities.h"
+#include "VocBase/KeyGenerator.h"
 
 using TraverserExpression = triagens::arango::traverser::TraverserExpression;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper to transform a vertex _id string to VertexId struct.
+/// NOTE:  Make sure the given string is not freed as long as the resulting
+///        VertexId is in use
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::arango::traverser::VertexId triagens::arango::traverser::IdStringToVertexId (
+    CollectionNameResolver const* resolver,
+    std::string const& vertex
+  ) {
+  size_t split;
+  char const* str = vertex.c_str();
+
+  if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
+  std::string const collectionName = vertex.substr(0, split);
+  auto cid = resolver->getCollectionIdCluster(collectionName);
+
+  if (cid == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  return VertexId(cid, const_cast<char *>(str + split + 1));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transforms the expression into json

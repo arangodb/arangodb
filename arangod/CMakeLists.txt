@@ -175,6 +175,7 @@ add_executable(
     RestHandler/RestCursorHandler.cpp
     RestHandler/RestDocumentHandler.cpp
     RestHandler/RestEdgeHandler.cpp
+    RestHandler/RestEdgesHandler.cpp
     RestHandler/RestExportHandler.cpp
     RestHandler/RestImportHandler.cpp
     RestHandler/RestJobHandler.cpp

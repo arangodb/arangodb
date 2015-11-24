@@ -136,6 +136,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestHandler/RestDebugHelperHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
+	arangod/RestHandler/RestEdgesHandler.cpp \
 	arangod/RestHandler/RestExportHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
 	arangod/RestHandler/RestJobHandler.cpp \

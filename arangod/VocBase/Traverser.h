@@ -43,48 +43,6 @@ namespace triagens {
     namespace traverser {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        struct TraverserExpression
-// -----------------------------------------------------------------------------
-
-      class TraverserExpression {
-        public:
-
-          bool                           isEdgeAccess;
-          triagens::aql::AstNodeType     comparisonType;
-          triagens::aql::AstNode const*  varAccess;
-          triagens::basics::Json*        compareTo;
-
-          TraverserExpression (
-            bool pisEdgeAccess,
-            triagens::aql::AstNodeType pcomparisonType,
-            triagens::aql::AstNode const* pvarAccess
-          ) : isEdgeAccess(pisEdgeAccess),
-              comparisonType(pcomparisonType),
-              varAccess(pvarAccess),
-              compareTo(nullptr) {
-          }
-
-          virtual ~TraverserExpression () {
-            if (compareTo != nullptr) {
-              delete compareTo;
-            }
-          }
-
-          void toJson (triagens::basics::Json& json,
-                       TRI_memory_zone_t* zone) const;
-
-          bool matchesCheck (TRI_doc_mptr_t& element,
-                             TRI_document_collection_t* collection,
-                             CollectionNameResolver* resolver) const;
-
-        private:
-
-          bool recursiveCheck (triagens::aql::AstNode const*,
-                               DocumentAccessor&) const;               
-
-      };
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                   struct VertexId
 // -----------------------------------------------------------------------------
 
@@ -126,6 +84,55 @@ namespace triagens {
       // EdgeId and VertexId are similar here. both have a key and a cid
       typedef VertexId EdgeId; 
 
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Helper function to convert an _id string into a VertexId
+////////////////////////////////////////////////////////////////////////////////
+      VertexId IdStringToVertexId (triagens::arango::CollectionNameResolver const* resolver,
+                                   std::string const& vertex);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        struct TraverserExpression
+// -----------------------------------------------------------------------------
+
+      class TraverserExpression {
+        public:
+
+          bool                           isEdgeAccess;
+          triagens::aql::AstNodeType     comparisonType;
+          triagens::aql::AstNode const*  varAccess;
+          triagens::basics::Json*        compareTo;
+
+          TraverserExpression (
+            bool pisEdgeAccess,
+            triagens::aql::AstNodeType pcomparisonType,
+            triagens::aql::AstNode const* pvarAccess
+          ) : isEdgeAccess(pisEdgeAccess),
+              comparisonType(pcomparisonType),
+              varAccess(pvarAccess),
+              compareTo(nullptr) {
+          }
+
+          virtual ~TraverserExpression () {
+            if (compareTo != nullptr) {
+              delete compareTo;
+            }
+          }
+
+          void toJson (triagens::basics::Json& json,
+                       TRI_memory_zone_t* zone) const;
+
+          bool matchesCheck (TRI_doc_mptr_t& element,
+                             TRI_document_collection_t* collection,
+                             CollectionNameResolver* resolver) const;
+
+        private:
+
+          bool recursiveCheck (triagens::aql::AstNode const*,
+                               DocumentAccessor&) const;               
+
+      };
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class TraversalPath
 // -----------------------------------------------------------------------------

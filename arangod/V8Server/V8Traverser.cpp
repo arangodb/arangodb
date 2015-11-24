@@ -63,34 +63,6 @@ static VertexId ExtractToId (TRI_doc_mptr_copy_t const& ptr) {
                   TRI_EXTRACT_MARKER_TO_KEY(&ptr));
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper to transform a vertex _id string to VertexId struct.
-/// NOTE:  Make sure the given string is not freed as long as the resulting
-///        VertexId is in use
-////////////////////////////////////////////////////////////////////////////////
-
-VertexId triagens::arango::traverser::IdStringToVertexId (
-    CollectionNameResolver const* resolver,
-    string const& vertex
-  ) {
-  size_t split;
-  char const* str = vertex.c_str();
-
-  if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
-    throw TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR;
-  }
-
-  string const collectionName = vertex.substr(0, split);
-  auto cid = resolver->getCollectionIdCluster(collectionName);
-
-  if (cid == 0) {
-    throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-  return VertexId(cid, const_cast<char *>(str + split + 1));
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Expander for Multiple edge collections
 ////////////////////////////////////////////////////////////////////////////////
