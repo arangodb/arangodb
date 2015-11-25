@@ -35,6 +35,8 @@
 #include "Basics/StringBuffer.h"
 #include "Scheduler/SocketTask.h"
 
+#include <deque>
+
 namespace triagens {
   namespace rest {
     class HttpCommTask;

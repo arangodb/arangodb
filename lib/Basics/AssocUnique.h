@@ -29,8 +29,8 @@
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HASH_INDEX_HASH__ARRAY_H
-#define ARANGODB_HASH_INDEX_HASH__ARRAY_H 1
+#ifndef ARANGODB_BASICS_ASSOC_UNIQUE_H
+#define ARANGODB_BASICS_ASSOC_UNIQUE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/gcd.h"
@@ -40,6 +40,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/prime-numbers.h"
 #include "Basics/random.h"
+
+#include <thread>
 
 namespace triagens {
   namespace basics {

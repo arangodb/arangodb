@@ -39,9 +39,10 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-
 #include "Basics/string-buffer.h"
 #include "Zip/zip.h"
+
+#include <sstream>
 
 // -----------------------------------------------------------------------------
 // string buffer with formatting routines

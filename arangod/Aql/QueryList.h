@@ -34,6 +34,8 @@
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
+#include <list>
+
 struct TRI_vocbase_t;
 
 namespace triagens {

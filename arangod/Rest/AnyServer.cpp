@@ -43,6 +43,8 @@
 #include "Basics/logging.h"
 #include "Basics/process-utils.h"
 
+#include <fstream>
+
 using namespace std;
 using namespace triagens;
 using namespace triagens::basics;

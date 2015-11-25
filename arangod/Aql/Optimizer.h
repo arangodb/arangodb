@@ -29,11 +29,11 @@
 #define ARANGOD_AQL_OPTIMIZER_H 1
 
 #include "Basics/Common.h"
+#include "Aql/ExecutionPlan.h"
 #include "Basics/MutexLocker.h"
 
-#include "Aql/ExecutionPlan.h"
-
 #include <velocypack/velocypack-aliases.h>
+#include <deque>
 
 namespace triagens {
   namespace aql {

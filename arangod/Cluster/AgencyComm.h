@@ -36,6 +36,8 @@
 #include "Basics/json.h"
 #include "Rest/HttpRequest.h"
 
+#include <list>
+
 namespace triagens {
   namespace httpclient {
     class GeneralClientConnection;

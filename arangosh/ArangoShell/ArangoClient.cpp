@@ -27,7 +27,6 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 #include "ArangoClient.h"
 
 #include "Basics/files.h"
@@ -38,6 +37,9 @@
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/ProgramOptions.h"
+
+#include <iostream>
+#include <sstream>
 
 using namespace std;
 using namespace triagens::basics;
@@ -404,9 +406,9 @@ void ArangoClient::parse (ProgramOptions& options,
 
   if (! help.empty()) {
     if (! example.empty()) {
-      cout << "USAGE:  " << argv[0] << " " << example << endl << endl;
+      std::cout << "USAGE:  " << argv[0] << " " << example << endl << endl;
     }
-    cout << description.usage(help) << endl;
+    std::cout << description.usage(help) << endl;
 
     // check for program-specific help
     std::string const progname(argv[0]);
@@ -414,7 +416,7 @@ void ArangoClient::parse (ProgramOptions& options,
         progname.size() >= _specificHelp.progname.size() && 
         progname.substr(progname.size() - _specificHelp.progname.size(), _specificHelp.progname.size()) == _specificHelp.progname) {
       // found a program-specific help
-      cout << _specificHelp.message << endl;
+      std::cout << _specificHelp.message << endl;
     }
 
     // --help always returns success

@@ -40,6 +40,8 @@
 #include "Basics/tri-strings.h"
 #include "VocBase/server.h"
 
+#include <sstream>
+
 // #define DEBUG_DATAFILE 1
 
 using namespace std;

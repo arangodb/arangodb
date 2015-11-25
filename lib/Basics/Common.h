@@ -130,26 +130,15 @@ typedef long suseconds_t;
 // -----------------------------------------------------------------------------
 
 #include <algorithm>
-#include <deque>
-#include <list>
 #include <map>
-#include <queue>
 #include <set>
-#include <sstream>
-#include <fstream>
-#include <stack>
 #include <string>
 #include <vector>
-
 // C++11!!
-#include <array>
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
 #include <atomic>
-#include <mutex>
-#include <condition_variable>
-#include <thread>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            basic triAGENS headers
@@ -160,7 +149,6 @@ typedef long suseconds_t;
 #include "Basics/error.h"
 #include "Basics/debugging.h"
 #include "Basics/memory.h"
-#include "Basics/mimetypes.h"
 #include "Basics/structures.h"
 #undef TRI_WITHIN_COMMON
 

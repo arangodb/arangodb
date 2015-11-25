@@ -32,6 +32,7 @@
 #define ARANGODB_BASICS_ATTRIBUTENAMEPARSER_H 1
 
 #include "Common.h"
+#include <iosfwd>
 
 namespace triagens {
   namespace basics {

@@ -30,10 +30,6 @@
 #ifndef ARANGODB_BASICS_C_MIMETYPES_H
 #define ARANGODB_BASICS_C_MIMETYPES_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -46,13 +42,13 @@
 /// @brief register a mimetype for an extension
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RegisterMimetype (const char*, const char*, bool);
+bool TRI_RegisterMimetype (char const*, char const*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the mimetype for an extension
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetMimetype (const char*);
+char* TRI_GetMimetype (char const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
@@ -66,13 +62,13 @@ char* TRI_GetMimetype (const char*);
 /// @brief initializes mimetypes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeMimetypes (void);
+void TRI_InitializeMimetypes ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down mimetypes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownMimetypes (void);
+void TRI_ShutdownMimetypes ();
 
 #endif
 

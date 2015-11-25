@@ -37,6 +37,7 @@
 #include "Basics/JsonHelper.h"
 
 #include <functional>
+#include <iosfwd>
 
 namespace triagens {
   namespace basics {

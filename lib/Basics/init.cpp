@@ -32,6 +32,7 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/logging.h"
+#include "Basics/mimetypes.h"
 #include "Basics/process-utils.h"
 #include "Basics/random.h"
 

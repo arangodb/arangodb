@@ -36,6 +36,7 @@
 #include "Basics/JsonHelper.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include <iosfwd>
 
 namespace triagens {
   namespace aql {

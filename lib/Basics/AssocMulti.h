@@ -43,6 +43,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/prime-numbers.h"
 
+#include <thread>
+
 namespace triagens {
   namespace basics {
 

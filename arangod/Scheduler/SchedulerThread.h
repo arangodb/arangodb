@@ -38,6 +38,8 @@
 #include "Scheduler/Task.h"
 #include "Scheduler/TaskManager.h"
 
+#include <deque>
+
 // #define TRI_USE_SPIN_LOCK_SCHEDULER_THREAD 1
 
 // -----------------------------------------------------------------------------

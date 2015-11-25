@@ -39,6 +39,7 @@
 #include "Basics/Utf8Helper.h"
 
 #include <openssl/ssl.h>
+#include <sstream>
 
 using namespace triagens::rest;
 
