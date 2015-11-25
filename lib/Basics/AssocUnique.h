@@ -87,11 +87,11 @@ namespace triagens {
 
         public:
           
-          typedef std::function<uint64_t(Key const*)> HashKeyFuncType;
-          typedef std::function<uint64_t(Element const*)> HashElementFuncType;
-          typedef std::function<bool(Key const*, uint64_t hash, Element const*)> 
+          typedef std::function<uint64_t(UserData*, Key const*)> HashKeyFuncType;
+          typedef std::function<uint64_t(UserData*, Element const*)> HashElementFuncType;
+          typedef std::function<bool(UserData*, Key const*, uint64_t hash, Element const*)> 
             IsEqualKeyElementFuncType;
-          typedef std::function<bool(Element const*, Element const*)> 
+          typedef std::function<bool(UserData*, Element const*, Element const*)> 
             IsEqualElementElementFuncType;
 
           typedef std::function<void(Element*)> CallbackElementFuncType;
@@ -269,7 +269,7 @@ namespace triagens {
 
                 if (element != nullptr) {
                   uint64_t i, k;
-                  i = k = _hashElement(element) % n;
+                  i = k = _hashElement(userData, element) % n;
 
                   for (; i < n && b._table[i] != nullptr; ++i);
                   if (i == n) {
@@ -350,10 +350,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr &&
-                 ! _isEqualElementElementByKey(element, b._table[i]); ++i);
+                 ! _isEqualElementElementByKey(userData, element, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                   ! _isEqualElementElementByKey(element, b._table[i]); ++i);
+                   ! _isEqualElementElementByKey(userData, element, b._table[i]); ++i);
             }
 
             Element* arrayElement = b._table[i];
@@ -455,7 +455,7 @@ namespace triagens {
 
           Element* find (UserData* userData,
                          Element const* element) const {
-            uint64_t i = _hashElement(element);
+            uint64_t i = _hashElement(userData, element);
             Bucket const& b = _buckets[i & _bucketsMask];
 
             uint64_t const n = b._nrAlloc;
@@ -463,10 +463,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualElementElementByKey(element, b._table[i]); ++i);
+                ! _isEqualElementElementByKey(userData, element, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualElementElementByKey(element, b._table[i]); ++i);
+                  ! _isEqualElementElementByKey(userData, element, b._table[i]); ++i);
             }
 
             // ...........................................................................
@@ -483,7 +483,7 @@ namespace triagens {
 
           Element* findByKey (UserData* userData,
                               Key const* key) const {
-            uint64_t hash = _hashKey(key);
+            uint64_t hash = _hashKey(userData, key);
             uint64_t i = hash;
             uint64_t bucketId = i & _bucketsMask;
             Bucket const& b = _buckets[bucketId];
@@ -493,10 +493,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                ! _isEqualKeyElement(userData, key, hash, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                  ! _isEqualKeyElement(userData, key, hash, b._table[i]); ++i);
             }
             
             // ...........................................................................
@@ -517,7 +517,7 @@ namespace triagens {
                               Key const* key,
                               BucketPosition& position,
                               uint64_t& hash) const {
-            hash = _hashKey(key);
+            hash = _hashKey(userData, key);
             uint64_t i = hash;
             uint64_t bucketId = i & _bucketsMask;
             Bucket const& b = _buckets[bucketId];
@@ -527,10 +527,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                ! _isEqualKeyElement(userData, key, hash, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                  ! _isEqualKeyElement(userData, key, hash, b._table[i]); ++i);
             }
             
             // if requested, pass the position of the found element back
@@ -552,7 +552,7 @@ namespace triagens {
 
           int insert (UserData* userData,
                       Element* element) {
-            uint64_t hash = _hashElement(element);
+            uint64_t hash = _hashElement(userData, element);
             Bucket& b = _buckets[hash & _bucketsMask];
 
             if (! checkResize(userData, b, 0)) {
@@ -622,7 +622,7 @@ namespace triagens {
                   std::unordered_map<uint64_t, DocumentsPerBucket> partitions;
 
                   for (size_t i = lower; i < upper; ++i) {
-                    uint64_t hash = _hashElement(elements[i]);
+                    uint64_t hash = _hashElement(userData, elements[i]);
                     auto bucketId = hash & _bucketsMask;
 
                     auto it = partitions.find(bucketId);
@@ -771,7 +771,7 @@ namespace triagens {
             uint64_t k = TRI_IncModU64(i, n);
 
             while (b._table[k] != nullptr) {
-              uint64_t j = _hashElement(b._table[k]) % n;
+              uint64_t j = _hashElement(userData, b._table[k]) % n;
 
               if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
                 b._table[i] = b._table[k];
@@ -796,7 +796,7 @@ namespace triagens {
 
           Element* removeByKey (UserData* userData,
                                 Key const* key) {
-            uint64_t hash = _hashKey(key);
+            uint64_t hash = _hashKey(userData, key);
             uint64_t i = hash;
             Bucket& b = _buckets[i & _bucketsMask];
 
@@ -805,10 +805,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                ! _isEqualKeyElement(userData, key, hash, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                  ! _isEqualKeyElement(userData, key, hash, b._table[i]); ++i);
             }
 
             Element* old = b._table[i];
@@ -826,7 +826,7 @@ namespace triagens {
 
           Element* remove (UserData* userData,
                            Element const* element) {
-            uint64_t i = _hashElement(element);
+            uint64_t i = _hashElement(userData, element);
             Bucket& b = _buckets[i & _bucketsMask];
 
             uint64_t const n = b._nrAlloc;
@@ -834,10 +834,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualElementElement(element, b._table[i]); ++i);
+                ! _isEqualElementElement(userData, element, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualElementElement(element, b._table[i]); ++i);
+                  ! _isEqualElementElement(userData, element, b._table[i]); ++i);
             }
 
             Element* old = b._table[i];

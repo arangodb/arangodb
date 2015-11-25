@@ -268,7 +268,8 @@ namespace triagens {
               : _numFields(n) {
             }
 
-            uint64_t operator() (TRI_index_element_t const* element,
+            uint64_t operator() (void* userData, 
+                                 TRI_index_element_t const* element,
                                  bool byKey = true) {
               uint64_t hash = 0x0123456789abcdef;
 
@@ -306,7 +307,8 @@ namespace triagens {
               : _numFields(n) {
             }
 
-            bool operator() (TRI_index_element_t const* left,
+            bool operator() (void* userData,
+                             TRI_index_element_t const* left,
                              TRI_index_element_t const* right) {
               TRI_ASSERT_EXPENSIVE(left->document() != nullptr);
               TRI_ASSERT_EXPENSIVE(right->document() != nullptr);

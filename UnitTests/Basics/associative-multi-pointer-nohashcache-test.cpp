@@ -59,13 +59,13 @@ struct data_container_t {
   data_container_t (int key, int value) : value(value), key(key) {};
 };
 
-static uint64_t HashKey (void const* e) {
+static uint64_t HashKey (void* userData, void const* e) {
   int const* key = (int const*) e;
 
   return fasthash64(key, sizeof(int), 0x12345678);
 }
 
-static uint64_t HashElement (void const* e, bool byKey) {
+static uint64_t HashElement (void* userData, void const* e, bool byKey) {
   data_container_t const* element = (data_container_t const*) e;
 
   if (byKey) {
@@ -76,21 +76,21 @@ static uint64_t HashElement (void const* e, bool byKey) {
   }
 }
 
-static bool IsEqualKeyElement (void const* k, void const* r) {
+static bool IsEqualKeyElement (void* userData, void const* k, void const* r) {
   int const* key = (int const*) k;
   data_container_t const* element = (data_container_t const*) r;
 
   return *key == element->key;
 }
 
-static bool IsEqualElementElement (void const* l, void const* r) {
+static bool IsEqualElementElement (void* userData, void const* l, void const* r) {
   data_container_t const* left = (data_container_t const*) l;
   data_container_t const* right = (data_container_t const*) r;
 
   return left->value == right->value;
 }
 
-static bool IsEqualElementElementByKey (void const* l, void const* r) {
+static bool IsEqualElementElementByKey (void* userData, void const* l, void const* r) {
   data_container_t const* left = (data_container_t const*) l;
   data_container_t const* right = (data_container_t const*) r;
 

@@ -49,7 +49,8 @@ using namespace triagens::arango;
 /// @brief hashes an edge key
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementKey (void const* data) {
+static uint64_t HashElementKey (void* userData,
+                                TRI_edge_header_t const* data) {
   TRI_ASSERT_EXPENSIVE(data != nullptr);
 
   TRI_edge_header_t const* h = static_cast<TRI_edge_header_t const*>(data);
@@ -65,7 +66,8 @@ static uint64_t HashElementKey (void const* data) {
 /// @brief hashes an edge (_from case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementEdgeFrom (void const* data,
+static uint64_t HashElementEdgeFrom (void* userData,
+                                     TRI_doc_mptr_t const* data,
                                      bool byKey) {
   TRI_ASSERT_EXPENSIVE(data != nullptr);
 
@@ -105,7 +107,8 @@ static uint64_t HashElementEdgeFrom (void const* data,
 /// @brief hashes an edge (_to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementEdgeTo (void const* data,
+static uint64_t HashElementEdgeTo (void* userData,
+                                   TRI_doc_mptr_t const* data,
                                    bool byKey) {
   TRI_ASSERT_EXPENSIVE(data != nullptr);
 
@@ -145,8 +148,9 @@ static uint64_t HashElementEdgeTo (void const* data,
 /// @brief checks if key and element match (_from case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyEdgeFrom (void const* left,
-                                void const* right) {
+static bool IsEqualKeyEdgeFrom (void* userData,
+                                TRI_edge_header_t const* left,
+                                TRI_doc_mptr_t const* right) {
   TRI_ASSERT_EXPENSIVE(left != nullptr);
   TRI_ASSERT_EXPENSIVE(right != nullptr);
 
@@ -181,8 +185,9 @@ static bool IsEqualKeyEdgeFrom (void const* left,
 /// @brief checks if key and element match (_to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyEdgeTo (void const* left,
-                              void const* right) {
+static bool IsEqualKeyEdgeTo (void* userData,
+                              TRI_edge_header_t const* left,
+                              TRI_doc_mptr_t const* right) {
   TRI_ASSERT_EXPENSIVE(left != nullptr);
   TRI_ASSERT_EXPENSIVE(right != nullptr);
 
@@ -218,8 +223,9 @@ static bool IsEqualKeyEdgeTo (void const* left,
 /// @brief checks for elements are equal (_from and _to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementEdge (void const* left,
-                                void const* right) {
+static bool IsEqualElementEdge (void* userData,
+                                TRI_doc_mptr_t const* left,
+                                TRI_doc_mptr_t const* right) {
   return left == right;
 }
 
@@ -227,8 +233,9 @@ static bool IsEqualElementEdge (void const* left,
 /// @brief checks for elements are equal (_from case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementEdgeFromByKey (void const* left,
-                                         void const* right) {
+static bool IsEqualElementEdgeFromByKey (void* userData,
+                                         TRI_doc_mptr_t const* left,
+                                         TRI_doc_mptr_t const* right) {
   TRI_ASSERT_EXPENSIVE(left != nullptr);
   TRI_ASSERT_EXPENSIVE(right != nullptr);
 
@@ -281,8 +288,9 @@ static bool IsEqualElementEdgeFromByKey (void const* left,
 /// @brief checks for elements are equal (_to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementEdgeToByKey (void const* left,
-                                       void const* right) {
+static bool IsEqualElementEdgeToByKey (void* userData,
+                                       TRI_doc_mptr_t const* left,
+                                       TRI_doc_mptr_t const* right) {
   TRI_ASSERT_EXPENSIVE(left != nullptr);
   TRI_ASSERT_EXPENSIVE(right != nullptr);
 

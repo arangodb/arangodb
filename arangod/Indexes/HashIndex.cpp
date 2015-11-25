@@ -54,7 +54,8 @@ static void FreeElement(TRI_index_element_t* element) {
 /// @brief determines if two elements are equal
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementElement (TRI_index_element_t const* left,
+static bool IsEqualElementElement (void* userData,
+                                   TRI_index_element_t const* left,
                                    TRI_index_element_t const* right) {
   return left->document() == right->document();
 }
@@ -63,7 +64,8 @@ static bool IsEqualElementElement (TRI_index_element_t const* left,
 /// @brief given a key generates a hash integer
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKey (TRI_hash_index_search_value_t const* key) {
+static uint64_t HashKey (void* userData,
+                         TRI_hash_index_search_value_t const* key) {
   uint64_t hash = 0x0123456789abcdef;
 
   for (size_t j = 0;  j < key->_length;  ++j) {
@@ -78,7 +80,8 @@ static uint64_t HashKey (TRI_hash_index_search_value_t const* key) {
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyElement (TRI_hash_index_search_value_t const* left,
+static bool IsEqualKeyElement (void* userData,
+                               TRI_hash_index_search_value_t const* left,
                                TRI_index_element_t const* right) {
   TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
 
@@ -108,10 +111,11 @@ static bool IsEqualKeyElement (TRI_hash_index_search_value_t const* left,
   return true;
 }
 
-static bool IsEqualKeyElementHash (TRI_hash_index_search_value_t const* left,
+static bool IsEqualKeyElementHash (void* userData,
+                                   TRI_hash_index_search_value_t const* left,
                                    uint64_t const hash, // Has been computed but is not used here
                                    TRI_index_element_t const* right) {
-  return IsEqualKeyElement(left, right);
+  return IsEqualKeyElement(userData, left, right);
 }
 
 // -----------------------------------------------------------------------------

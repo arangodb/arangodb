@@ -44,11 +44,13 @@ using namespace triagens::arango;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-static inline uint64_t HashKey (char const* key) {
+static inline uint64_t HashKey (void* userData,
+                                char const* key) {
   return TRI_FnvHashString(key);
 }
 
-static inline uint64_t HashElement (TRI_doc_mptr_t const* element) {
+static inline uint64_t HashElement (void* userData,
+                                    TRI_doc_mptr_t const* element) {
   return element->_hash;
 }
 
@@ -56,7 +58,8 @@ static inline uint64_t HashElement (TRI_doc_mptr_t const* element) {
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyElement (char const* key,
+static bool IsEqualKeyElement (void* userData,
+                               char const* key,
                                uint64_t const hash,
                                TRI_doc_mptr_t const* element) {
 
@@ -68,7 +71,8 @@ static bool IsEqualKeyElement (char const* key,
 /// @brief determines if two elements are equal
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
+static bool IsEqualElementElement (void* userData,
+                                   TRI_doc_mptr_t const* left,
                                    TRI_doc_mptr_t const* right) {
   return left->_hash == right->_hash
          && strcmp(TRI_EXTRACT_MARKER_KEY(left), TRI_EXTRACT_MARKER_KEY(right)) == 0;
@@ -317,12 +321,12 @@ int PrimaryIndex::resize (triagens::arango::Transaction* trx,
   return _primaryIndex->resize(trx, targetSize);
 }
 
-uint64_t PrimaryIndex::calculateHash (triagens::arango::Transaction*,
+uint64_t PrimaryIndex::calculateHash (triagens::arango::Transaction* trx,
                                       char const* key) {
-  return HashKey(key);
+  return HashKey(trx, key);
 }
 
-uint64_t PrimaryIndex::calculateHash (triagens::arango::Transaction*,
+uint64_t PrimaryIndex::calculateHash (triagens::arango::Transaction* trx,
                                       char const* key,
                                       size_t length) {
   return TRI_FnvHashPointer(static_cast<void const*>(key), length);
