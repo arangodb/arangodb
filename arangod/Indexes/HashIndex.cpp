@@ -466,7 +466,7 @@ int HashIndex::sizeHint (triagens::arango::Transaction* trx,
   }
 
   if (_unique) {
-    return _uniqueArray->_hashArray->resize(size);
+    return _uniqueArray->_hashArray->resize(trx, size);
   }
   else {
     return _multiArray->_hashArray->resize(trx, size);
@@ -482,7 +482,7 @@ int HashIndex::lookup (triagens::arango::Transaction* trx,
                        std::vector<TRI_doc_mptr_t*>& documents) const {
 
   if (_unique) {
-    TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(searchValue);
+    TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(trx, searchValue);
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
@@ -526,7 +526,7 @@ int HashIndex::lookup (triagens::arango::Transaction* trx,
 
   if (_unique) {
     next = nullptr;
-    TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(searchValue);
+    TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(trx, searchValue);
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
@@ -598,11 +598,11 @@ int HashIndex::insertUnique (triagens::arango::Transaction* trx,
     return res;
   }
   
-  auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
+  auto work = [this, trx] (TRI_index_element_t* element, bool isRollback) -> int {
     TRI_IF_FAILURE("InsertHashIndex") {
       return TRI_ERROR_DEBUG;
     }
-    return _uniqueArray->_hashArray->insert(element);
+    return _uniqueArray->_hashArray->insert(trx, element);
   };
 
   size_t const n = elements.size();
@@ -641,7 +641,7 @@ int HashIndex::batchInsertUnique (triagens::arango::Transaction* trx,
     }
   }
 
-  int res = _uniqueArray->_hashArray->batchInsert(&elements, numThreads);
+  int res = _uniqueArray->_hashArray->batchInsert(trx, &elements, numThreads);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO check leaks
@@ -744,7 +744,7 @@ int HashIndex::removeUniqueElement (triagens::arango::Transaction* trx,
   TRI_IF_FAILURE("RemoveHashIndex") {
     return TRI_ERROR_DEBUG;
   }
-  TRI_index_element_t* old = _uniqueArray->_hashArray->remove(element);
+  TRI_index_element_t* old = _uniqueArray->_hashArray->remove(trx, element);
 
   // this might happen when rolling back
   if (old == nullptr) {

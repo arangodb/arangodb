@@ -211,9 +211,9 @@ int PrimaryIndex::remove (triagens::arango::Transaction*,
 /// @brief looks up an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupKey (triagens::arango::Transaction*,
+TRI_doc_mptr_t* PrimaryIndex::lookupKey (triagens::arango::Transaction* trx,
                                          char const* key) const {
-  return _primaryIndex->findByKey(key);
+  return _primaryIndex->findByKey(trx, key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,11 +222,11 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey (triagens::arango::Transaction*,
 /// parameter. also returns the hash value for the object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupKey (triagens::arango::Transaction*,
+TRI_doc_mptr_t* PrimaryIndex::lookupKey (triagens::arango::Transaction* trx,
                                          char const* key,
                                          triagens::basics::BucketPosition& position,
                                          uint64_t& hash) const {
-  return _primaryIndex->findByKey(key, position, hash);
+  return _primaryIndex->findByKey(trx, key, position, hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,12 +236,12 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey (triagens::arango::Transaction*,
 ///        Convention: step === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupRandom (triagens::arango::Transaction*,
+TRI_doc_mptr_t* PrimaryIndex::lookupRandom (triagens::arango::Transaction* trx,
                                             triagens::basics::BucketPosition& initialPosition,
                                             triagens::basics::BucketPosition& position,
                                             uint64_t& step,
                                             uint64_t& total) {
-  return _primaryIndex->findRandom(initialPosition, position, step, total);
+  return _primaryIndex->findRandom(trx, initialPosition, position, step, total);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,10 +251,10 @@ TRI_doc_mptr_t* PrimaryIndex::lookupRandom (triagens::arango::Transaction*,
 ///        Convention: position === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupSequential (triagens::arango::Transaction*,
+TRI_doc_mptr_t* PrimaryIndex::lookupSequential (triagens::arango::Transaction* trx,
                                                 triagens::basics::BucketPosition& position,
                                                 uint64_t& total) {
-  return _primaryIndex->findSequential(position, total);
+  return _primaryIndex->findSequential(trx, position, total);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -264,9 +264,9 @@ TRI_doc_mptr_t* PrimaryIndex::lookupSequential (triagens::arango::Transaction*,
 ///        Convention: position === UINT64_MAX indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse (triagens::arango::Transaction*,
+TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse (triagens::arango::Transaction* trx,
                                                        triagens::basics::BucketPosition& position) {
-  return _primaryIndex->findSequentialReverse(position);
+  return _primaryIndex->findSequentialReverse(trx, position);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,14 +274,14 @@ TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse (triagens::arango::Transac
 /// returns a status code, and *found will contain a found element (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::insertKey (triagens::arango::Transaction*,
+int PrimaryIndex::insertKey (triagens::arango::Transaction* trx,
                              TRI_doc_mptr_t* header,
                              void const** found) {
   *found = nullptr;
-  int res = _primaryIndex->insert(header);
+  int res = _primaryIndex->insert(trx, header);
 
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-    *found = _primaryIndex->find(header);
+    *found = _primaryIndex->find(trx, header);
   }
 
   return res;
@@ -293,28 +293,28 @@ int PrimaryIndex::insertKey (triagens::arango::Transaction*,
 /// from a previous lookupKey call
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::insertKey (triagens::arango::Transaction*,
+int PrimaryIndex::insertKey (triagens::arango::Transaction* trx,
                              TRI_doc_mptr_t* header,
                              triagens::basics::BucketPosition const& position) {
-  return _primaryIndex->insertAtPosition(header, position);
+  return _primaryIndex->insertAtPosition(trx, header, position);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an key/element from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::removeKey (triagens::arango::Transaction*,
+TRI_doc_mptr_t* PrimaryIndex::removeKey (triagens::arango::Transaction* trx,
                                          char const* key) {
-  return _primaryIndex->removeByKey(key);
+  return _primaryIndex->removeByKey(trx, key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the index
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::resize (triagens::arango::Transaction*,
+int PrimaryIndex::resize (triagens::arango::Transaction* trx,
                           size_t targetSize) {
-  return _primaryIndex->resize(targetSize);
+  return _primaryIndex->resize(trx, targetSize);
 }
 
 uint64_t PrimaryIndex::calculateHash (triagens::arango::Transaction*,

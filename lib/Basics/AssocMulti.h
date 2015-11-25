@@ -137,6 +137,7 @@ namespace triagens {
     template <class Key, class Element, class IndexType = size_t,
               bool useHashCache = true>
     class AssocMulti {
+
       private:
 
         typedef void UserData;
@@ -546,12 +547,15 @@ namespace triagens {
 
         void invokeOnAllElements (CallbackElementFuncType callback) {
           for (auto& b : _buckets) {
-            if (b._table != nullptr) {
-              for (size_t i = 0; i < b._nrAlloc; ++i) {
-                if (b._table[i].ptr != nullptr) {
-                  callback(b._table[i].ptr);
-                }
+            if (b._table == nullptr) {
+              continue;
+            }
+
+            for (size_t i = 0; i < b._nrAlloc; ++i) {
+              if (b._table[i].ptr == nullptr) {
+                continue;
               }
+              callback(b._table[i].ptr);
             }
           }
         }
