@@ -131,6 +131,9 @@ v2.7.2 (XXXX-XX-XX)
 * Foxx: optional configuration options no longer log validation errors when assigned
   empty values (#1495)
 
+* Foxx: constructors provided to Repository and Model sub-classes via extend are
+  now correctly called (#1592)
+
 v2.7.1 (2015-11-07)
 -------------------
 
