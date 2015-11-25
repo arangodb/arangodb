@@ -236,7 +236,7 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
     case EN::DISTRIBUTE:
     case EN::GATHER:
     case EN::REMOTE:
-    case EN::SUBQUERY
+    case EN::SUBQUERY:
     case EN::INDEX:
     case EN::INSERT:
     case EN::REMOVE:
