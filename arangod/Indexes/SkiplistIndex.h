@@ -306,7 +306,7 @@ namespace triagens {
 /// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkiplistIterator* lookup (TRI_index_operator_t*, bool) const;
+        SkiplistIterator* lookup (triagens::arango::Transaction*, TRI_index_operator_t*, bool) const;
 
         bool supportsFilterCondition (triagens::aql::AstNode const*,
                                       triagens::aql::Variable const*,

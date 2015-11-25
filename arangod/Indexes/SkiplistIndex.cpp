@@ -745,7 +745,7 @@ TRI_doc_mptr_t* SkiplistIndexIterator::next () {
       return nullptr;
     }
     // We restart the lookup
-    _iterator = _index->lookup(_operators[_currentOperator], _reverse);
+    _iterator = _index->lookup(_trx, _operators[_currentOperator], _reverse);
     if (_iterator == nullptr) {
       // This iterator was not created.
       _currentOperator++;
@@ -762,7 +762,7 @@ TRI_doc_mptr_t* SkiplistIndexIterator::next () {
     }
     // Free the former iterator and get the next one
     delete _iterator;
-    _iterator = _index->lookup(_operators[_currentOperator], _reverse);
+    _iterator = _index->lookup(_trx, _operators[_currentOperator], _reverse);
     res = _iterator->next();
   }
   return res->document();
@@ -937,7 +937,8 @@ int SkiplistIndex::remove (triagens::arango::Transaction*,
 /// the TRI_index_operator_t* and the SkiplistIterator* results
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
+SkiplistIterator* SkiplistIndex::lookup (triagens::arango::Transaction* trx,
+                                         TRI_index_operator_t* slOperator,
                                          bool reverse) const {
   TRI_ASSERT(slOperator != nullptr);
 

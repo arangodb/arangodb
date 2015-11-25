@@ -158,16 +158,6 @@ namespace triagens {
                          std::vector<TRI_doc_mptr_t const*> const*,
                          size_t) override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up edges using the index, restarting at the edge pointed at
-/// by next
-////////////////////////////////////////////////////////////////////////////////
-      
-        void lookup (TRI_edge_index_iterator_t const*,
-                     std::vector<TRI_doc_mptr_copy_t>&,
-                     TRI_doc_mptr_copy_t*&,
-                     size_t);
-
         int sizeHint (triagens::arango::Transaction*, size_t) override final;
         
         bool hasBatchInsert () const override final {

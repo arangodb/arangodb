@@ -2565,6 +2565,7 @@ AqlValue Functions::Near (triagens::aql::Query* query,
   }
   
   GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(index)->nearQuery(
+    trx,
     latitude.json()->_value._number, 
     longitude.json()->_value._number, 
     limitValue
@@ -2733,6 +2734,7 @@ AqlValue Functions::Within (triagens::aql::Query* query,
   }
 
   GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(index)->withinQuery(
+    trx,
     latitude.json()->_value._number, 
     longitude.json()->_value._number, 
     radius.json()->_value._number

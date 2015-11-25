@@ -590,7 +590,7 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  std::unique_ptr<SkiplistIterator> skiplistIterator(static_cast<triagens::arango::SkiplistIndex*>(idx)->lookup(skiplistOperator, reverse));
+  std::unique_ptr<SkiplistIterator> skiplistIterator(static_cast<triagens::arango::SkiplistIndex*>(idx)->lookup(&trx, skiplistOperator, reverse));
   delete skiplistOperator;
 
   if (! skiplistIterator) {
@@ -1988,7 +1988,7 @@ static void NearQuery (SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->nearQuery(latitude, longitude, limit);
+  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->nearQuery(&trx, latitude, longitude, limit);
 
   if (cors != nullptr) {
     int res = StoreGeoResult(isolate, trx, collection, cors, documents, distances);
@@ -2084,7 +2084,7 @@ static void WithinQuery (SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->withinQuery(latitude, longitude, radius);
+  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->withinQuery(&trx, latitude, longitude, radius);
 
   if (cors != nullptr) {
     int res = StoreGeoResult(isolate, trx, collection, cors, documents, distances);

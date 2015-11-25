@@ -276,7 +276,8 @@ int GeoIndex2::remove (triagens::arango::Transaction*,
 /// @brief looks up all points within a given radius
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::withinQuery (double lat,
+GeoCoordinates* GeoIndex2::withinQuery (triagens::arango::Transaction* trx,
+                                        double lat,
                                         double lon,
                                         double radius) const {
   GeoCoordinate gc;
@@ -290,7 +291,8 @@ GeoCoordinates* GeoIndex2::withinQuery (double lat,
 /// @brief looks up the nearest points
 ////////////////////////////////////////////////////////////////////////////////
 
-GeoCoordinates* GeoIndex2::nearQuery (double lat,
+GeoCoordinates* GeoIndex2::nearQuery (triagens::arango::Transaction* trx,
+                                      double lat,
                                       double lon,
                                       size_t count) const {
   GeoCoordinate gc;
@@ -299,7 +301,6 @@ GeoCoordinates* GeoIndex2::nearQuery (double lat,
 
   return GeoIndex_NearestCountPoints(_geoIndex, &gc, static_cast<int>(count));
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
