@@ -377,7 +377,7 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
     // (this saves us from writing our own compare function
     // for array AstNodes)
     auto lJson = lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
-    auto rJson = lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+    auto rJson = rhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
 
     int res = TRI_CompareValuesJson(lJson, rJson, compareUtf8);
 

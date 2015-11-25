@@ -325,7 +325,7 @@ bool Expression::findInArray (AqlValue const& left,
  
   size_t const n = right.arraySize();
 
-  if (node->getMember(1)->isSorted()) {
+  if (n > 3 && node->getMember(1)->isSorted()) {
     // node values are sorted. can use binary search
     size_t l = 0;
     size_t r = n - 1;

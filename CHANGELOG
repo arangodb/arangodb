@@ -1,6 +1,8 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1589
+
 * return HTTP status code 410 (gone) instead of HTTP 408 (request timeout) for
   server-side operations that are canceled / killed. Sending 410 instead of 408
   prevents clients from re-starting the same (canceled) operation. Google Chrome
