@@ -469,7 +469,7 @@ int HashIndex::sizeHint (triagens::arango::Transaction* trx,
     return _uniqueArray->_hashArray->resize(size);
   }
   else {
-    return _multiArray->_hashArray->resize(size);
+    return _multiArray->_hashArray->resize(trx, size);
   }
 }
 
@@ -494,7 +494,7 @@ int HashIndex::lookup (triagens::arango::Transaction* trx,
 
   std::vector<TRI_index_element_t*>* results = nullptr;
   try {
-    results = _multiArray->_hashArray->lookupByKey(searchValue);
+    results = _multiArray->_hashArray->lookupByKey(trx, searchValue);
   }
   catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -539,7 +539,7 @@ int HashIndex::lookup (triagens::arango::Transaction* trx,
 
   if (next == nullptr) {
     try {
-      results = _multiArray->_hashArray->lookupByKey(searchValue, batchSize);
+      results = _multiArray->_hashArray->lookupByKey(trx, searchValue, batchSize);
     }
     catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -547,7 +547,7 @@ int HashIndex::lookup (triagens::arango::Transaction* trx,
   }
   else {
     try {
-      results = _multiArray->_hashArray->lookupByKeyContinue(next, batchSize);
+      results = _multiArray->_hashArray->lookupByKeyContinue(trx, next, batchSize);
     }
     catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -668,12 +668,12 @@ int HashIndex::insertMulti (triagens::arango::Transaction* trx,
     return res;
   }
 
-  auto work = [this] (TRI_index_element_t*& element, bool isRollback) {
+  auto work = [this, trx] (TRI_index_element_t*& element, bool isRollback) {
     TRI_IF_FAILURE("InsertHashIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   
-    TRI_index_element_t* found = _multiArray->_hashArray->insert(element, false, true);
+    TRI_index_element_t* found = _multiArray->_hashArray->insert(trx, element, false, true);
 
     if (found != nullptr) { 
       // already got the exact same index entry. now free our local element...
@@ -735,7 +735,7 @@ int HashIndex::batchInsertMulti (triagens::arango::Transaction* trx,
       return res;
     }
   }
-  return _multiArray->_hashArray->batchInsert(&elements, numThreads);
+  return _multiArray->_hashArray->batchInsert(trx, &elements, numThreads);
 }
 
 int HashIndex::removeUniqueElement (triagens::arango::Transaction* trx,
@@ -788,7 +788,7 @@ int HashIndex::removeMultiElement (triagens::arango::Transaction* trx,
     return TRI_ERROR_DEBUG;
   }
 
-  TRI_index_element_t* old = _multiArray->_hashArray->remove(element);
+  TRI_index_element_t* old = _multiArray->_hashArray->remove(trx, element);
       
   if (old == nullptr) {
     // not found

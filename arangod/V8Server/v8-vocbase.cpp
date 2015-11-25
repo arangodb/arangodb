@@ -2318,6 +2318,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       auto cid = resolver->getCollectionId(it);
       auto colObj = ditches.find(cid)->second.col->_collection->_collection;
       edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
+        trx.get(),
         cid,
         colObj,
         AttributeWeightCalculator(
@@ -2331,6 +2332,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       auto cid = resolver->getCollectionId(it);
       auto colObj = ditches.find(cid)->second.col->_collection->_collection;
       edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
+        trx.get(),
         cid,
         colObj,
         HopWeightCalculator()
@@ -2655,6 +2657,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     auto cid = resolver->getCollectionId(it);
     auto colObj = ditches.find(cid)->second.col->_collection->_collection;
     edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
+      trx.get(),
       cid,
       colObj,
       HopWeightCalculator()

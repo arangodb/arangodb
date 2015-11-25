@@ -820,7 +820,7 @@ static void EdgesQuery (TRI_edge_direction_e direction,
         continue;
       }
 
-      std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key.get());
+      std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(&trx, document, direction, cid, key.get());
 
       for (size_t j = 0;  j < edges.size();  ++j) {
         v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, edges[j].getDataPtr());
@@ -855,7 +855,7 @@ static void EdgesQuery (TRI_edge_direction_e direction,
       TRI_V8_THROW_EXCEPTION(res);
     }
 
-    std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key.get());
+    std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(&trx, document, direction, cid, key.get());
 
     trx.finish(res);
 

@@ -2413,6 +2413,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   auto wc = [](TRI_doc_mptr_copy_t&) -> double { return 1; };
 
   std::unique_ptr<EdgeCollectionInfo> eci(new EdgeCollectionInfo(
+    trx,
     eCid,
     trx->documentCollection(eCid),
     wc
@@ -3249,6 +3250,7 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
 
   char* key = const_cast<char*>(parts[1].c_str());
   std::vector<TRI_doc_mptr_copy_t> edges = TRI_LookupEdgesDocumentCollection(
+    trx,
     collection->_collection->_collection,
     direction,
     startCid,

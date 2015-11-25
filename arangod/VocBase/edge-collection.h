@@ -112,6 +112,7 @@ struct TRI_edge_index_iterator_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
+                                                  triagens::arango::Transaction*,
                                                   struct TRI_document_collection_t*,
                                                   TRI_edge_direction_e,
                                                   TRI_voc_cid_t,

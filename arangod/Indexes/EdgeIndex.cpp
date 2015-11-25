@@ -351,7 +351,7 @@ TRI_doc_mptr_t* EdgeIndexIterator::next () {
       TRI_ASSERT(_position == 0);
       _posInBuffer = 0;
       _last = nullptr;
-      _buffer = _index->lookupByKey(&_keys[_position], _batchSize);
+      _buffer = _index->lookupByKey(_trx, &_keys[_position], _batchSize);
       // fallthrough intentional
     }
     else if (_posInBuffer >= _buffer->size()) {
@@ -361,10 +361,10 @@ TRI_doc_mptr_t* EdgeIndexIterator::next () {
 
       _posInBuffer = 0;
       if (_last != nullptr) {
-        _buffer = _index->lookupByKeyContinue(_last, _batchSize);
+        _buffer = _index->lookupByKeyContinue(_trx, _last, _batchSize);
       }
       else {
-        _buffer = _index->lookupByKey(&_keys[_position], _batchSize);
+        _buffer = _index->lookupByKey(_trx, &_keys[_position], _batchSize);
       }
     }
 
@@ -506,37 +506,37 @@ triagens::basics::Json EdgeIndex::toJsonFigures (TRI_memory_zone_t* zone) const 
   return json;
 }
 
-int EdgeIndex::insert (triagens::arango::Transaction*,
+int EdgeIndex::insert (triagens::arango::Transaction* trx,
                        TRI_doc_mptr_t const* doc, 
                        bool isRollback) {
   auto element = const_cast<TRI_doc_mptr_t*>(doc);
-  _edgesFrom->insert(element, true, isRollback);
+  _edgesFrom->insert(trx, element, true, isRollback);
 
   try {
-    _edgesTo->insert(element, true, isRollback);
+    _edgesTo->insert(trx, element, true, isRollback);
   }
   catch (...) {
-    _edgesFrom->remove(element);
+    _edgesFrom->remove(trx, element);
     throw;
   }
   
   return TRI_ERROR_NO_ERROR;
 }
          
-int EdgeIndex::remove (triagens::arango::Transaction*,
+int EdgeIndex::remove (triagens::arango::Transaction* trx,
                        TRI_doc_mptr_t const* doc, 
                        bool) {
-  _edgesFrom->remove(doc);
-  _edgesTo->remove(doc);
+  _edgesFrom->remove(trx, doc);
+  _edgesTo->remove(trx, doc);
   
   return TRI_ERROR_NO_ERROR;
 }
         
-int EdgeIndex::batchInsert (triagens::arango::Transaction*,
+int EdgeIndex::batchInsert (triagens::arango::Transaction* trx,
                             std::vector<TRI_doc_mptr_t const*> const* documents, 
                             size_t numThreads) {
-  _edgesFrom->batchInsert(reinterpret_cast<std::vector<TRI_doc_mptr_t *> const*>(documents), numThreads);
-  _edgesTo->batchInsert(reinterpret_cast<std::vector<TRI_doc_mptr_t *> const*>(documents), numThreads);
+  _edgesFrom->batchInsert(trx, reinterpret_cast<std::vector<TRI_doc_mptr_t *> const*>(documents), numThreads);
+  _edgesTo->batchInsert(trx, reinterpret_cast<std::vector<TRI_doc_mptr_t *> const*>(documents), numThreads);
   
   return TRI_ERROR_NO_ERROR;
 }
@@ -553,7 +553,7 @@ int EdgeIndex::sizeHint (triagens::arango::Transaction* trx,
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  int err = _edgesFrom->resize(static_cast<uint32_t>(size + 2049));
+  int err = _edgesFrom->resize(trx, static_cast<uint32_t>(size + 2049));
 
   if (err != TRI_ERROR_NO_ERROR) {
     return err;
@@ -565,7 +565,7 @@ int EdgeIndex::sizeHint (triagens::arango::Transaction* trx,
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  return _edgesTo->resize(static_cast<uint32_t>(size + 2049));
+  return _edgesTo->resize(trx, static_cast<uint32_t>(size + 2049));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
