@@ -1221,7 +1221,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
 
   // find the matches
   std::vector<TRI_doc_mptr_t*> list;
-  static_cast<triagens::arango::HashIndex*>(idx)->lookup(&searchValue, list);
+  static_cast<triagens::arango::HashIndex*>(idx)->lookup(&trx, &searchValue, list);
 
   // convert result
   size_t total = list.size();

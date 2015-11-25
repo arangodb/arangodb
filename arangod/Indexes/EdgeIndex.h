@@ -168,7 +168,7 @@ namespace triagens {
                      TRI_doc_mptr_copy_t*&,
                      size_t);
 
-        int sizeHint (size_t) override final;
+        int sizeHint (triagens::arango::Transaction*, size_t) override final;
         
         bool hasBatchInsert () const override final {
           return true;

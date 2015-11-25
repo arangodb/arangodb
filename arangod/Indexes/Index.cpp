@@ -481,7 +481,7 @@ int Index::cleanup () {
 /// @brief default implementation for sizeHint
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::sizeHint (size_t) {
+int Index::sizeHint (triagens::arango::Transaction*, size_t) {
   // do nothing
   return TRI_ERROR_NO_ERROR;
 }

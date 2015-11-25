@@ -348,7 +348,7 @@ namespace triagens {
         virtual int cleanup ();
 
         // give index a hint about the expected size
-        virtual int sizeHint (size_t);
+        virtual int sizeHint (triagens::arango::Transaction*, size_t);
 
         virtual bool hasBatchInsert () const;
 

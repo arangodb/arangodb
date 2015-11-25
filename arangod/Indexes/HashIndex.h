@@ -161,7 +161,7 @@ namespace triagens {
                          std::vector<TRI_doc_mptr_t const*> const*,
                          size_t) override final;
 
-        int sizeHint (size_t) override final;
+        int sizeHint (triagens::arango::Transaction*, size_t) override final;
 
         bool hasBatchInsert () const override final {
           return true;
@@ -175,14 +175,16 @@ namespace triagens {
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lookup (TRI_hash_index_search_value_t*,
+        int lookup (triagens::arango::Transaction*,
+                    TRI_hash_index_search_value_t*,
                     std::vector<TRI_doc_mptr_t*>&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lookup (TRI_hash_index_search_value_t*,
+        int lookup (triagens::arango::Transaction*,
+                    TRI_hash_index_search_value_t*,
                     std::vector<TRI_doc_mptr_copy_t>&,
                     TRI_index_element_t*&,
                     size_t batchSize) const;
@@ -209,21 +211,37 @@ namespace triagens {
 
       private:
 
-        int insertUnique (struct TRI_doc_mptr_t const*, bool);
+        int insertUnique (triagens::arango::Transaction*,
+                          struct TRI_doc_mptr_t const*, 
+                          bool);
 
-        int batchInsertUnique (triagens::arango::Transaction*, std::vector<TRI_doc_mptr_t const*> const*, size_t);
+        int batchInsertUnique (triagens::arango::Transaction*, 
+                               std::vector<TRI_doc_mptr_t const*> const*, 
+                               size_t);
 
-        int insertMulti (struct TRI_doc_mptr_t const*, bool);
+        int insertMulti (triagens::arango::Transaction*,
+                         struct TRI_doc_mptr_t const*, 
+                         bool);
 
-        int batchInsertMulti (triagens::arango::Transaction*, std::vector<TRI_doc_mptr_t const*> const*, size_t);
+        int batchInsertMulti (triagens::arango::Transaction*, 
+                              std::vector<TRI_doc_mptr_t const*> const*, 
+                              size_t);
 
-        int removeUniqueElement (TRI_index_element_t*, bool);
+        int removeUniqueElement (triagens::arango::Transaction*,
+                                 TRI_index_element_t*, 
+                                 bool);
 
-        int removeUnique (struct TRI_doc_mptr_t const*, bool);
+        int removeUnique (triagens::arango::Transaction*,
+                          struct TRI_doc_mptr_t const*, 
+                          bool);
 
-        int removeMultiElement (TRI_index_element_t*, bool);
+        int removeMultiElement (triagens::arango::Transaction*,
+                                TRI_index_element_t*, 
+                                bool);
 
-        int removeMulti (struct TRI_doc_mptr_t const*, bool);
+        int removeMulti (triagens::arango::Transaction*,
+                         struct TRI_doc_mptr_t const*, 
+                         bool);
 
         bool accessFitsIndex (triagens::aql::AstNode const* access,
                               triagens::aql::AstNode const* other,

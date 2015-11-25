@@ -601,7 +601,8 @@ void EdgeIndex::lookup (TRI_edge_index_iterator_t const* edgeIndexIterator,
 /// @brief provides a size hint for the edge index
 ////////////////////////////////////////////////////////////////////////////////
         
-int EdgeIndex::sizeHint (size_t size) {
+int EdgeIndex::sizeHint (triagens::arango::Transaction* trx,
+                         size_t size) {
   // we assume this is called when setting up the index and the index
   // is still empty
   TRI_ASSERT(_edgesFrom->size() == 0);

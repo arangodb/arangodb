@@ -134,7 +134,7 @@ TRI_doc_mptr_t* HashIndexIterator::next () {
       _buffer.clear();
       _posInBuffer = 0;
 
-      int res = _index->lookup(_keys[_position++], _buffer);
+      int res = _index->lookup(_trx, _keys[_position++], _buffer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -417,29 +417,29 @@ triagens::basics::Json HashIndex::toJsonFigures (TRI_memory_zone_t* zone) const 
   return json;
 }
   
-int HashIndex::insert (triagens::arango::Transaction*,
+int HashIndex::insert (triagens::arango::Transaction* trx,
                        TRI_doc_mptr_t const* doc, 
                        bool isRollback) {
   if (_unique) {
-    return insertUnique(doc, isRollback);
+    return insertUnique(trx, doc, isRollback);
   }
 
-  return insertMulti(doc, isRollback);
+  return insertMulti(trx, doc, isRollback);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an entry from the hash array part of the hash index
 ////////////////////////////////////////////////////////////////////////////////
          
-int HashIndex::remove (triagens::arango::Transaction*,
+int HashIndex::remove (triagens::arango::Transaction* trx,
                        TRI_doc_mptr_t const* doc, 
                        bool isRollback) {
 
   if (_unique) {
-    return removeUnique(doc, isRollback);
+    return removeUnique(trx, doc, isRollback);
   }
 
-  return removeMulti(doc, isRollback);
+  return removeMulti(trx, doc, isRollback);
 }
 
 
@@ -457,7 +457,8 @@ int HashIndex::batchInsert (triagens::arango::Transaction* trx,
 /// @brief provides a size hint for the hash index
 ////////////////////////////////////////////////////////////////////////////////
   
-int HashIndex::sizeHint (size_t size) {
+int HashIndex::sizeHint (triagens::arango::Transaction* trx,
+                         size_t size) {
   if (_sparse) {
     // for sparse indexes, we assume that we will have less index entries
     // than if the index would be fully populated
@@ -476,7 +477,8 @@ int HashIndex::sizeHint (size_t size) {
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
+int HashIndex::lookup (triagens::arango::Transaction* trx,
+                       TRI_hash_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_t*>& documents) const {
 
   if (_unique) {
@@ -486,6 +488,7 @@ int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
       // unique hash index: maximum number is 1
       documents.emplace_back(found->document());
     }
+
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -515,7 +518,8 @@ int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
+int HashIndex::lookup (triagens::arango::Transaction* trx,
+                       TRI_hash_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_copy_t>& documents,
                        TRI_index_element_t*& next,
                        size_t batchSize) const {
@@ -578,7 +582,8 @@ int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
+int HashIndex::insertUnique (triagens::arango::Transaction* trx,
+                             TRI_doc_mptr_t const* doc,
                              bool isRollback) {
 
   std::vector<TRI_index_element_t*> elements;
@@ -618,7 +623,7 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
   return res;
 }
 
-int HashIndex::batchInsertUnique (triagens::arango::Transaction*,
+int HashIndex::batchInsertUnique (triagens::arango::Transaction* trx,
                                   std::vector<TRI_doc_mptr_t const*> const* documents, 
                                   size_t numThreads) {
   std::vector<TRI_index_element_t*> elements;
@@ -649,7 +654,8 @@ int HashIndex::batchInsertUnique (triagens::arango::Transaction*,
   return res;
 }
 
-int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
+int HashIndex::insertMulti (triagens::arango::Transaction* trx,
+                            TRI_doc_mptr_t const* doc,
                             bool isRollback) {
 
   std::vector<TRI_index_element_t*> elements;
@@ -700,7 +706,7 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
       for (size_t j = 0; j < i; ++j) {
         // Remove all allready indexed elements and free them
         if (elements[j] != nullptr) {
-          removeMultiElement(elements[j], isRollback);
+          removeMultiElement(trx, elements[j], isRollback);
         }
       }
 
@@ -711,7 +717,7 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
   return TRI_ERROR_NO_ERROR;
 }
 
-int HashIndex::batchInsertMulti (triagens::arango::Transaction*,
+int HashIndex::batchInsertMulti (triagens::arango::Transaction* trx,
                                  std::vector<TRI_doc_mptr_t const*> const* documents, 
                                  size_t numThreads) {
 
@@ -732,7 +738,9 @@ int HashIndex::batchInsertMulti (triagens::arango::Transaction*,
   return _multiArray->_hashArray->batchInsert(&elements, numThreads);
 }
 
-int HashIndex::removeUniqueElement (TRI_index_element_t* element, bool isRollback) {
+int HashIndex::removeUniqueElement (triagens::arango::Transaction* trx,
+                                    TRI_index_element_t* element, 
+                                    bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") {
     return TRI_ERROR_DEBUG;
   }
@@ -753,7 +761,9 @@ int HashIndex::removeUniqueElement (TRI_index_element_t* element, bool isRollbac
   return TRI_ERROR_NO_ERROR;
 }
 
-int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
+int HashIndex::removeUnique (triagens::arango::Transaction* trx,
+                             TRI_doc_mptr_t const* doc, 
+                             bool isRollback) {
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(elements, doc);
 
@@ -765,13 +775,15 @@ int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
   }
 
   for (auto& hashElement : elements) {
-    res = removeUniqueElement(hashElement, isRollback);
+    res = removeUniqueElement(trx, hashElement, isRollback);
     FreeElement(hashElement);
   }
   return res;
 }
 
-int HashIndex::removeMultiElement (TRI_index_element_t* element, bool isRollback) {
+int HashIndex::removeMultiElement (triagens::arango::Transaction* trx,
+                                   TRI_index_element_t* element, 
+                                   bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") {
     return TRI_ERROR_DEBUG;
   }
@@ -792,7 +804,9 @@ int HashIndex::removeMultiElement (TRI_index_element_t* element, bool isRollback
   return TRI_ERROR_NO_ERROR;
 }
 
-int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
+int HashIndex::removeMulti (triagens::arango::Transaction* trx,
+                            TRI_doc_mptr_t const* doc, 
+                            bool isRollback) {
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(elements, doc);
 
@@ -803,7 +817,7 @@ int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
   }
 
   for (auto& hashElement : elements) {
-    res = removeMultiElement(hashElement, isRollback);
+    res = removeMultiElement(trx, hashElement, isRollback);
     FreeElement(hashElement);
   }
                  

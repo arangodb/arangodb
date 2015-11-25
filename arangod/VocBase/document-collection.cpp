@@ -3248,7 +3248,7 @@ static int FillIndexBatch (triagens::arango::Transaction* trx,
 
   auto nrUsed = primaryIndex->size();
 
-  idx->sizeHint(nrUsed);
+  idx->sizeHint(trx, nrUsed);
 
   // process documents a million at a time
   size_t blockSize = 1024 * 1024; 
@@ -3325,7 +3325,7 @@ static int FillIndexSequential (triagens::arango::Transaction* trx,
   auto primaryIndex = document->primaryIndex();
   size_t nrUsed = primaryIndex->size();
 
-  idx->sizeHint(nrUsed);
+  idx->sizeHint(trx, nrUsed);
 
   if (nrUsed > 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
