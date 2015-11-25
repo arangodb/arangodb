@@ -569,6 +569,30 @@ void Condition::normalize (ExecutionPlan* plan) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize the condition
+/// this will convert the condition into its disjunctive normal form
+/// in this case we don't re-run the optimizer. Its expected that you 
+/// don't want to remove eventually unneccessary filters.
+////////////////////////////////////////////////////////////////////////////////
+
+void Condition::normalize () {
+  if (_isNormalized) {
+    // already normalized
+    return;
+  }
+
+  _root = transformNode(_root);
+  _root = fixRoot(_root, 0);
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  if (_root != nullptr) {
+    // _root->dump(0);
+    validateAst(_root, 0);
+  }
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief removes condition parts from another
 ////////////////////////////////////////////////////////////////////////////////
 
