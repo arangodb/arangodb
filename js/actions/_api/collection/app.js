@@ -399,7 +399,7 @@ function post_api_collection (req, res) {
 /// available in the *names* as an object with the collection names
 /// as keys.
 ///
-/// By providing the optional URL parameter *excludeSystem* with a value of
+/// By providing the optional query parameter *excludeSystem* with a value of
 /// *true*, all system collections will be excluded from the response.
 ///
 /// @RESTRETURNCODES
@@ -903,10 +903,10 @@ function get_api_collections (req, res) {
 /// of the documents contained in the collection. For edge collections, the system
 /// attributes *_from* and *_to* will also be included in the calculation.
 ///
-/// By setting the optional URL parameter *withRevisions* to *true*, then revision
+/// By setting the optional query parameter *withRevisions* to *true*, then revision
 /// ids (*_rev* system attributes) are included in the checksumming.
 ///
-/// By providing the optional URL parameter *withData* with a value of *true*,
+/// By providing the optional query parameter *withData* with a value of *true*,
 /// the user-defined document attributes will be included in the calculation too.
 /// **Note**: Including user-defined attributes will make the checksumming slower.
 ///

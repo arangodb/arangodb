@@ -35,7 +35,6 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/delete_object.h"
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/ssl-helper.h"
@@ -134,7 +133,9 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
   // overloaded class operator is a little unwieldy.
   // ..........................................................................
 
-  for_each(_servers.begin(), _servers.end(), triagens::basics::DeleteObjectAny());
+  for (auto& it : _servers) {
+    delete it;
+  }
   _servers.clear();
 
   if (_handlerFactory != nullptr) {

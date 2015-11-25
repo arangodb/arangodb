@@ -108,7 +108,7 @@ bool RestAdminLogHandler::isDirect () const {
 /// The default value is *info*.
 ///
 /// @RESTQUERYPARAM{level,string,optional}
-/// Returns all log entries of log level *level*. Note that the URL parameters
+/// Returns all log entries of log level *level*. Note that the query parameters
 /// *upto* and *level* are mutually exclusive.
 ///
 /// @RESTQUERYPARAM{start,number,optional}

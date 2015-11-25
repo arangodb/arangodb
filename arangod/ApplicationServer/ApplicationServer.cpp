@@ -44,7 +44,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
-#include "Basics/delete_object.h"
 #include "Basics/conversions.h"
 #include "Basics/logging.h"
 #include "Basics/files.h"
@@ -129,7 +128,9 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
 
 ApplicationServer::~ApplicationServer () {
   Random::shutdown();
-  for_each(_features.begin(), _features.end(), DeleteObjectAny());
+  for (auto& it : _features) {
+    delete it;
+  }
 }
 
 // -----------------------------------------------------------------------------

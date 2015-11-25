@@ -390,7 +390,7 @@ clear or disable the browser cache in some cases to see your changes in effect.
 !SUBSECTION Data types
 
 When processing the request data in an action, please be aware that the data
-type of all URL parameters is *string*. This is because the whole URL is a
+type of all query parameters is *string*. This is because the whole URL is a
 string and when the individual parts are extracted, they will also be strings.
 
 For example, when calling the URL http:// localhost:8529/hello/world?value=5
