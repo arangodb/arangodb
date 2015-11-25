@@ -144,7 +144,7 @@ void CollectionKeys::create (TRI_voc_tick_t maxTick) {
     uint64_t total = 0;
 
     while (true) {
-      auto ptr = idx->lookupSequential(position, total);
+      auto ptr = idx->lookupSequential(&trx, position, total);
 
       if (ptr == nullptr) {
         // done

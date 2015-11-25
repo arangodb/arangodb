@@ -363,7 +363,8 @@ namespace triagens {
                                             size_t,
                                             double&) const;
 
-        virtual IndexIterator* iteratorForCondition (IndexIteratorContext*,
+        virtual IndexIterator* iteratorForCondition (triagens::arango::Transaction*,
+                                                     IndexIteratorContext*,
                                                      triagens::aql::Ast*,
                                                      triagens::aql::AstNode const*,
                                                      triagens::aql::Variable const*,

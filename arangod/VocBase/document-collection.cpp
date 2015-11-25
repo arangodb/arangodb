@@ -697,7 +697,7 @@ static int InsertPrimaryIndex (triagens::arango::Transaction* trx,
 
   // insert into primary index
   auto primaryIndex = document->primaryIndex();
-  int res = primaryIndex->insertKey(header, (void const**) &found);
+  int res = primaryIndex->insertKey(trx, header, (void const**) &found);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -772,7 +772,7 @@ static int DeletePrimaryIndex (triagens::arango::Transaction* trx,
   }
 
   auto primaryIndex = document->primaryIndex();
-  auto found = primaryIndex->removeKey(TRI_EXTRACT_MARKER_KEY(header)); // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto found = primaryIndex->removeKey(trx, TRI_EXTRACT_MARKER_KEY(header)); // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (found == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1068,7 +1068,7 @@ static int LookupDocument (triagens::arango::Transaction* trx,
                            TRI_doc_update_policy_t const* policy,
                            TRI_doc_mptr_t*& header) {
   auto primaryIndex = document->primaryIndex();
-  header = primaryIndex->lookupKey(key);
+  header = primaryIndex->lookupKey(trx, key);
 
   if (header == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1401,7 +1401,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   // no primary index lock required here because we are the only ones reading from the index ATM
   triagens::basics::BucketPosition slot;
   uint64_t hash;
-  auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key, slot, hash));
+  auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(trx, key, slot, hash));
 
   // it is a new entry
   if (found == nullptr) {
@@ -1420,7 +1420,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     // insert into primary index
     if (state->_initialCount != -1) {
       // we can now use an optimized insert method
-      res = primaryIndex->insertKey(header, slot);
+      res = primaryIndex->insertKey(trx, header, slot);
 
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
@@ -1542,7 +1542,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
 
   // no primary index lock required here because we are the only ones reading from the index ATM
   auto primaryIndex = document->primaryIndex();
-  found = static_cast<TRI_doc_mptr_t*>(primaryIndex->lookupKey(key));
+  found = static_cast<TRI_doc_mptr_t*>(primaryIndex->lookupKey(trx, key));
 
   // it is a new entry, so we missed the create
   if (found == nullptr) {
@@ -2249,7 +2249,7 @@ static int IterateMarkersCollection (triagens::arango::Transaction* trx,
   if (collection->_info._initialCount != -1) {
     auto primaryIndex = document->primaryIndex();
 
-    int res = primaryIndex->resize(static_cast<size_t>(collection->_info._initialCount * 1.1));
+    int res = primaryIndex->resize(trx, static_cast<size_t>(collection->_info._initialCount * 1.1));
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -2652,7 +2652,7 @@ size_t TRI_DocumentIteratorDocumentCollection (triagens::arango::Transaction* tr
     uint64_t total = 0;
 
     while (true) {
-      TRI_doc_mptr_t const* mptr = idx->lookupSequential(position, total);
+      TRI_doc_mptr_t const* mptr = idx->lookupSequential(trx, position, total);
 
       if (mptr == nullptr || ! callback(mptr, document, data)) {
         break;
@@ -3269,7 +3269,7 @@ static int FillIndexBatch (triagens::arango::Transaction* trx,
     triagens::basics::BucketPosition position;
     uint64_t total = 0;
     while (true) {
-      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(position, total);
+      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(trx, position, total);
 
       if (mptr == nullptr) {
         break;
@@ -3338,7 +3338,7 @@ static int FillIndexSequential (triagens::arango::Transaction* trx,
     uint64_t total = 0;
 
     while (true) {
-      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(position, total);
+      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(trx, position, total);
 
       if (mptr == nullptr) {
         break;
@@ -5263,7 +5263,7 @@ int TRI_InsertShapedJsonDocumentCollection (triagens::arango::Transaction* trx,
     keyString = key;
   }
 
-  uint64_t const hash = document->primaryIndex()->calculateHash(keyString.c_str(), keyString.size());
+  uint64_t const hash = document->primaryIndex()->calculateHash(trx, keyString.c_str(), keyString.size());
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -5468,7 +5468,7 @@ int TRI_document_collection_t::insert (Transaction* trx,
 
   VPackSlice const key(slice->get(TRI_VOC_ATTRIBUTE_KEY));
   std::string const keyString(key.copyString()); // TODO: use slice.hash()
-  uint64_t const hash = primaryIndex()->calculateHash(keyString.c_str(), keyString.size()); // TODO: remove here
+  uint64_t const hash = primaryIndex()->calculateHash(trx, keyString.c_str(), keyString.size()); // TODO: remove here
 
   std::unique_ptr<triagens::wal::Marker> marker(createVPackInsertMarker(trx, slice));
   
@@ -5672,7 +5672,7 @@ int TRI_document_collection_t::lookupDocument (triagens::arango::Transaction* tr
   memcpy(&buffer[0], p, length);
   buffer[length] = '\0';
 
-  header = primaryIndex()->lookupKey(&buffer[0]);
+  header = primaryIndex()->lookupKey(trx, &buffer[0]);
 
   if (header == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -5760,7 +5760,7 @@ int TRI_document_collection_t::insertPrimaryIndex (triagens::arango::Transaction
   TRI_ASSERT(header->getDataPtr() != nullptr);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   // insert into primary index
-  int res = primaryIndex()->insertKey(header, (void const**) &found);
+  int res = primaryIndex()->insertKey(trx, header, (void const**) &found);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -5831,7 +5831,7 @@ int TRI_document_collection_t::deletePrimaryIndex (triagens::arango::Transaction
     return TRI_ERROR_DEBUG;
   }
 
-  auto found = primaryIndex()->removeKey(TRI_EXTRACT_MARKER_KEY(header)); // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto found = primaryIndex()->removeKey(trx, TRI_EXTRACT_MARKER_KEY(header)); // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (found == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;

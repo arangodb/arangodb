@@ -58,6 +58,7 @@ namespace triagens {
   }
 
   namespace arango {
+    class Transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for skip list. We require a start and stop node
@@ -179,10 +180,12 @@ namespace triagens {
 
       public:
         
-        SkiplistIndexIterator (SkiplistIndex const* index,
+        SkiplistIndexIterator (triagens::arango::Transaction* trx,
+                               SkiplistIndex const* index,
                                std::vector<TRI_index_operator_t*> op,
                                bool reverse)
-        : _index(index),
+        : _trx(trx),
+          _index(index),
           _operators(op),
           _reverse(reverse),
           _currentOperator(0),
@@ -203,6 +206,7 @@ namespace triagens {
 
       private:
 
+        triagens::arango::Transaction*       _trx; 
         SkiplistIndex const*                 _index;
         std::vector<TRI_index_operator_t*>   _operators;
         bool                                 _reverse;
@@ -315,7 +319,8 @@ namespace triagens {
                                     size_t,
                                     double&) const override;
 
-        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+        IndexIterator* iteratorForCondition (triagens::arango::Transaction*,
+                                             IndexIteratorContext*,
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*,

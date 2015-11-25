@@ -61,9 +61,11 @@ namespace triagens {
 
         void reset () override;
 
-        EdgeIndexIterator (TRI_EdgeIndexHash_t const* index,
+        EdgeIndexIterator (triagens::arango::Transaction* trx,
+                           TRI_EdgeIndexHash_t const* index,
                            std::vector<TRI_edge_header_t>& searchValues) 
-        : _index(index),
+        : _trx(trx),
+          _index(index),
           _keys(std::move(searchValues)),
           _position(0),
           _last(nullptr),
@@ -79,6 +81,7 @@ namespace triagens {
 
       private:
 
+        triagens::arango::Transaction*     _trx;
         TRI_EdgeIndexHash_t const*         _index;
         std::vector<TRI_edge_header_t>     _keys;
         size_t                             _position;
@@ -185,7 +188,8 @@ namespace triagens {
                                       size_t&,
                                       double&) const override;
 
-        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+        IndexIterator* iteratorForCondition (triagens::arango::Transaction*,
+                                             IndexIteratorContext*,
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*,
@@ -204,7 +208,8 @@ namespace triagens {
 /// @brief create the iterator
 ////////////////////////////////////////////////////////////////////////////////
     
-        IndexIterator* createIterator (IndexIteratorContext*,
+        IndexIterator* createIterator (triagens::arango::Transaction*,
+                                       IndexIteratorContext*,
                                        triagens::aql::AstNode const*,
                                        std::vector<triagens::aql::AstNode const*> const&) const;
 

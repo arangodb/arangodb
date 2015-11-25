@@ -859,7 +859,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
     uint64_t total = 0;
     while (true) {
-      auto ptr = idx->lookupSequential(position, total);
+      auto ptr = idx->lookupSequential(&trx, position, total);
 
       if (ptr == nullptr) {
         // done
@@ -1131,7 +1131,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         }
 
         auto ridJson = static_cast<TRI_json_t const*>(TRI_AtVector(&chunk->_value._objects, 1));
-        auto mptr = idx->lookupKey(keyJson->_value._string.data);
+        auto mptr = idx->lookupKey(&trx, keyJson->_value._string.data);
 
         if (mptr == nullptr) {
           // key not found locally
@@ -1261,7 +1261,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           TRI_doc_mptr_copy_t result;
 
           int res = TRI_ERROR_NO_ERROR;
-          auto mptr = idx->lookupKey(documentKey.c_str());
+          auto mptr = idx->lookupKey(&trx, documentKey.c_str());
 
           if (mptr == nullptr || isEdge) {
             // in case of an edge collection we must always update

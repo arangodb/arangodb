@@ -186,7 +186,8 @@ namespace triagens {
 /// @brief get an iterator for the index
 ////////////////////////////////////////////////////////////////////////////////
 
-      triagens::arango::IndexIterator* getIterator (triagens::arango::IndexIteratorContext*, 
+      triagens::arango::IndexIterator* getIterator (triagens::arango::Transaction*,
+                                                    triagens::arango::IndexIteratorContext*, 
                                                     triagens::aql::Ast*,
                                                     triagens::aql::AstNode const*,
                                                     triagens::aql::Variable const*,

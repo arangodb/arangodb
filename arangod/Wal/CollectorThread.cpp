@@ -38,6 +38,7 @@
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -685,16 +686,24 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   if (! TRI_TryReadLockReadWriteLock(&document->_compactionLock)) {
     return TRI_ERROR_LOCK_TIMEOUT;
   }
+  
+  triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), document->_vocbase, document->_info._cid);
+  trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
+  trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
+  trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, true);
 
-  // try to acquire the write lock on the collection
-  if (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document)) {
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // this includes TRI_ERROR_LOCK_TIMEOUT!
     TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
-    LOG_TRACE("wal collector couldn't acquire write lock for collection '%llu'", (unsigned long long) document->_info._cid);
 
-    return TRI_ERROR_LOCK_TIMEOUT;
+    LOG_TRACE("wal collector couldn't acquire write lock for collection '%llu': %s", 
+              (unsigned long long) document->_info._cid,
+              TRI_errno_string(res));
+
+    return res;
   }
-
-  int res;
 
   try {
     // now we have the write lock on the collection
@@ -719,7 +728,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         wal::document_marker_t const* m = reinterpret_cast<wal::document_marker_t const*>(walMarker);
         char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
 
-        auto found = primaryIndex->lookupKey(key);
+        auto found = primaryIndex->lookupKey(&trx, key);
 
         if (found == nullptr || found->_rid != m->_revisionId || found->getDataPtr() != walMarker) {
           // somebody inserted a new revision of the document or the revision was already moved by the compactor
@@ -743,7 +752,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         wal::edge_marker_t const* m = reinterpret_cast<wal::edge_marker_t const*>(walMarker);
         char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
 
-        auto found = primaryIndex->lookupKey(key);
+        auto found = primaryIndex->lookupKey(&trx, key);
 
         if (found == nullptr || found->_rid != m->_revisionId || found->getDataPtr() != walMarker) {
           // somebody inserted a new revision of the document or the revision was already moved by the compactor
@@ -767,7 +776,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         wal::remove_marker_t const* m = reinterpret_cast<wal::remove_marker_t const*>(walMarker);
         char const* key = reinterpret_cast<char const*>(m) + sizeof(wal::remove_marker_t);
 
-        auto found = primaryIndex->lookupKey(key);
+        auto found = primaryIndex->lookupKey(&trx, key);
 
         if (found != nullptr && found->_rid > m->_revisionId) {
           // somebody re-created the document with a newer revision
@@ -811,7 +820,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   }
 
   // always release the locks
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+  trx.finish(res);
 
   TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 

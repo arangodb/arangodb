@@ -79,7 +79,7 @@ int Transaction::readIncremental (TRI_transaction_collection_t* trxCollection,
     uint64_t count = 0;
 
     while (count < batchSize || skip > 0) {
-      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(internalSkip, total);
+      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(this, internalSkip, total);
 
       if (mptr == nullptr) {
         break;
@@ -135,7 +135,7 @@ int Transaction::readRandom (TRI_transaction_collection_t* trxCollection,
   TRI_ASSERT(batchSize > 0);
 
   while (numRead < batchSize) { 
-    auto mptr = document->primaryIndex()->lookupRandom(initialPosition, position, step, total);
+    auto mptr = document->primaryIndex()->lookupRandom(this, initialPosition, position, step, total);
     if (mptr == nullptr) {
       // Read all documents randomly
       break;
@@ -173,7 +173,7 @@ int Transaction::readAny (TRI_transaction_collection_t* trxCollection,
   uint64_t step = 0;
   uint64_t total = 0;
 
-  TRI_doc_mptr_t* found = idx->lookupRandom(intPos, pos, step, total);
+  TRI_doc_mptr_t* found = idx->lookupRandom(this, intPos, pos, step, total);
   if (found != nullptr) {
     *mptr = *found;
   }
@@ -211,7 +211,7 @@ int Transaction::readAll (TRI_transaction_collection_t* trxCollection,
     uint64_t total = 0;
 
     while (true) {
-      TRI_doc_mptr_t const* mptr = idx->lookupSequential(step, total);
+      TRI_doc_mptr_t const* mptr = idx->lookupSequential(this, step, total);
 
       if (mptr == nullptr) {
         break;
@@ -263,7 +263,7 @@ int Transaction::readSlice (TRI_transaction_collection_t* trxCollection,
   if (skip < 0) {
     triagens::basics::BucketPosition position;
     do {
-      mptr = idx->lookupSequentialReverse(position);
+      mptr = idx->lookupSequentialReverse(this, position);
       ++skip;
     }
     while (skip < 0 && mptr != nullptr);
@@ -275,7 +275,7 @@ int Transaction::readSlice (TRI_transaction_collection_t* trxCollection,
     }
 
     do {
-      mptr = idx->lookupSequentialReverse(position);
+      mptr = idx->lookupSequentialReverse(this, position);
 
       if (mptr == nullptr) {
         break;
@@ -291,7 +291,7 @@ int Transaction::readSlice (TRI_transaction_collection_t* trxCollection,
   triagens::basics::BucketPosition position;
 
   while (skip > 0) {
-    mptr = idx->lookupSequential(position, total);
+    mptr = idx->lookupSequential(this, position, total);
     --skip;
     if (mptr == nullptr) {
       // To few elements, skipped all
@@ -301,7 +301,7 @@ int Transaction::readSlice (TRI_transaction_collection_t* trxCollection,
   }
 
   do {
-    mptr = idx->lookupSequential(position, total);
+    mptr = idx->lookupSequential(this, position, total);
     if (mptr == nullptr) {
       break;
     }
@@ -311,6 +311,7 @@ int Transaction::readSlice (TRI_transaction_collection_t* trxCollection,
   while (count < limit);
 
   this->unlock(trxCollection, TRI_TRANSACTION_READ);
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -338,7 +339,7 @@ int Transaction::readSlice (TRI_transaction_collection_t* trxCollection,
   docs.reserve(idx->size());
 
   while (true) {
-    TRI_doc_mptr_t const* mptr = idx->lookupSequential(position, total);
+    TRI_doc_mptr_t const* mptr = idx->lookupSequential(this, position, total);
 
     if (mptr == nullptr) {
       break;

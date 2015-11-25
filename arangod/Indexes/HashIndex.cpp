@@ -827,7 +827,8 @@ bool HashIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
 /// @brief creates an IndexIterator for the given Condition
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
+IndexIterator* HashIndex::iteratorForCondition (triagens::arango::Transaction* trx,
+                                                IndexIteratorContext* context,
                                                 triagens::aql::Ast* ast,
                                                 triagens::aql::AstNode const* node,
                                                 triagens::aql::Variable const* reference,
@@ -971,7 +972,8 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
   TRI_IF_FAILURE("HashIndex::noIterator")  {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new HashIndexIterator(this, searchValues);
+
+  return new HashIndexIterator(trx, this, searchValues);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

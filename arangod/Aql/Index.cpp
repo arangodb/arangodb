@@ -107,13 +107,14 @@ bool Index::supportsSortCondition (triagens::aql::SortCondition const* sortCondi
 /// @brief get an iterator for the index
 ////////////////////////////////////////////////////////////////////////////////
       
-triagens::arango::IndexIterator* Index::getIterator (triagens::arango::IndexIteratorContext* context, 
+triagens::arango::IndexIterator* Index::getIterator (triagens::arango::Transaction* trx,
+                                                     triagens::arango::IndexIteratorContext* context, 
                                                      triagens::aql::Ast* ast,
                                                      triagens::aql::AstNode const* condition,
                                                      triagens::aql::Variable const* reference,
                                                      bool reverse) const {
   TRI_ASSERT(hasInternals());
-  return getInternals()->iteratorForCondition(context, ast, condition, reference, reverse);
+  return getInternals()->iteratorForCondition(trx, context, ast, condition, reference, reverse);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

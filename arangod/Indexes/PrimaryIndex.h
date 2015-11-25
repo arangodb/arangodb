@@ -52,14 +52,17 @@ namespace triagens {
   }
 
   namespace arango {
+    class Transaction;
 
     class PrimaryIndexIterator final : public IndexIterator {
  
       public:
 
-        PrimaryIndexIterator (PrimaryIndex const* index,
+        PrimaryIndexIterator (triagens::arango::Transaction* trx,
+                              PrimaryIndex const* index,
                               std::vector<char const*>& keys) 
-          : _index(index),
+          : _trx(trx),
+            _index(index),
             _keys(std::move(keys)),
             _position(0) {
         }
@@ -73,9 +76,10 @@ namespace triagens {
 
       private:
 
-        PrimaryIndex const*       _index;
-        std::vector<char const*>  _keys;
-        size_t                    _position;
+        triagens::arango::Transaction* _trx;
+        PrimaryIndex const*            _index;
+        std::vector<char const*>       _keys;
+        size_t                         _position;
 
     };
 
@@ -141,7 +145,7 @@ namespace triagens {
 
         int remove (triagens::arango::Transaction*, TRI_doc_mptr_t const*, bool) override final;
 
-        TRI_doc_mptr_t* lookupKey (char const*) const;
+        TRI_doc_mptr_t* lookupKey (triagens::arango::Transaction*, char const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an element given a key
@@ -149,7 +153,10 @@ namespace triagens {
 /// parameter. also returns the hash value for the object
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupKey (char const*, triagens::basics::BucketPosition&, uint64_t&) const;
+        TRI_doc_mptr_t* lookupKey (triagens::arango::Transaction*, 
+                                   char const*, 
+                                   triagens::basics::BucketPosition&, 
+                                   uint64_t&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a method to iterate over all elements in the index in
@@ -158,7 +165,8 @@ namespace triagens {
 ///        Convention: step === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupRandom (triagens::basics::BucketPosition& initialPosition,
+        TRI_doc_mptr_t* lookupRandom (triagens::arango::Transaction*,
+                                      triagens::basics::BucketPosition& initialPosition,
                                       triagens::basics::BucketPosition& position,
                                       uint64_t& step,
                                       uint64_t& total);
@@ -170,7 +178,8 @@ namespace triagens {
 ///        Convention: position === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupSequential (triagens::basics::BucketPosition& position,
+        TRI_doc_mptr_t* lookupSequential (triagens::arango::Transaction*,
+                                          triagens::basics::BucketPosition& position,
                                           uint64_t& total);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,9 +189,12 @@ namespace triagens {
 ///        Convention: position === UINT64_MAX indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_doc_mptr_t* lookupSequentialReverse (triagens::basics::BucketPosition& position);
+        TRI_doc_mptr_t* lookupSequentialReverse (triagens::arango::Transaction*,
+                                                 triagens::basics::BucketPosition& position);
 
-        int insertKey (TRI_doc_mptr_t*, void const**);
+        int insertKey (triagens::arango::Transaction*, 
+                       TRI_doc_mptr_t*, 
+                       void const**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a key/element to the index
@@ -190,15 +202,18 @@ namespace triagens {
 /// from a previous lookupKey call
 ////////////////////////////////////////////////////////////////////////////////
 
-        int insertKey (struct TRI_doc_mptr_t*, triagens::basics::BucketPosition const&);
+        int insertKey (triagens::arango::Transaction*,
+                       struct TRI_doc_mptr_t*, 
+                       triagens::basics::BucketPosition const&);
 
-        TRI_doc_mptr_t* removeKey (char const*);
+        TRI_doc_mptr_t* removeKey (triagens::arango::Transaction*, 
+                                   char const*);
 
-        int resize (size_t);
+        int resize (triagens::arango::Transaction*, size_t);
 
-        static uint64_t calculateHash (char const*); 
+        static uint64_t calculateHash (triagens::arango::Transaction*, char const*); 
         
-        static uint64_t calculateHash (char const*, size_t);
+        static uint64_t calculateHash (triagens::arango::Transaction*, char const*, size_t);
 
         void invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)>);
 
@@ -208,7 +223,8 @@ namespace triagens {
                                       size_t&,
                                       double&) const override;
         
-        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+        IndexIterator* iteratorForCondition (triagens::arango::Transaction*,
+                                             IndexIteratorContext*,
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*,
@@ -227,7 +243,8 @@ namespace triagens {
 /// @brief create the iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-        IndexIterator* createIterator (IndexIteratorContext*,
+        IndexIterator* createIterator (triagens::arango::Transaction*,
+                                       IndexIteratorContext*,
                                        triagens::aql::AstNode const*,
                                        std::vector<triagens::aql::AstNode const*> const&) const;
 

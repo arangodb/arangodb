@@ -1304,7 +1304,8 @@ bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* s
   return false;
 }        
 
-IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* context,
+IndexIterator* SkiplistIndex::iteratorForCondition (triagens::arango::Transaction* trx,
+                                                    IndexIteratorContext* context,
                                                     triagens::aql::Ast* ast,
                                                     triagens::aql::AstNode const* node,
                                                     triagens::aql::Variable const* reference,
@@ -1317,13 +1318,13 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     nullArray.add(Json(Json::Null));
     std::unique_ptr<TRI_index_operator_t> unboundOperator(TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr,
                                                           nullptr, nullArray.steal(), _shaper, 1));
-    std::vector<TRI_index_operator_t*> searchValues({unboundOperator.get()});
+    std::vector<TRI_index_operator_t*> searchValues({ unboundOperator.get() });
     unboundOperator.release();
 
     TRI_IF_FAILURE("SkiplistIndex::noSortIterator")  {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    return new SkiplistIndexIterator(this, searchValues, reverse);
+    return new SkiplistIndexIterator(trx, this, searchValues, reverse);
   }
 
   std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
@@ -1559,7 +1560,8 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
   TRI_IF_FAILURE("SkiplistIndex::noIterator")  {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new SkiplistIndexIterator(this, searchValues, reverse);
+
+  return new SkiplistIndexIterator(trx, this, searchValues, reverse);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

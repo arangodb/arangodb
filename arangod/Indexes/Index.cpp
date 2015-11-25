@@ -531,7 +531,8 @@ bool Index::supportsSortCondition (triagens::aql::SortCondition const*,
 /// @brief default iterator factory method. does not create an iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* Index::iteratorForCondition (IndexIteratorContext*,
+IndexIterator* Index::iteratorForCondition (triagens::arango::Transaction*,
+                                            IndexIteratorContext*,
                                             triagens::aql::Ast*,
                                             triagens::aql::AstNode const*,
                                             triagens::aql::Variable const*,

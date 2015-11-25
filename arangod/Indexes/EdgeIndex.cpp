@@ -643,7 +643,8 @@ bool EdgeIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
 /// @brief creates an IndexIterator for the given Condition
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
+IndexIterator* EdgeIndex::iteratorForCondition (triagens::arango::Transaction* trx,
+                                                IndexIteratorContext* context,
                                                 triagens::aql::Ast* ast,
                                                 triagens::aql::AstNode const* node,
                                                 triagens::aql::Variable const* reference,
@@ -672,9 +673,10 @@ IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createIterator(context, attrNode, std::vector<triagens::aql::AstNode const*>({ valNode }));
+    return createIterator(trx, context, attrNode, std::vector<triagens::aql::AstNode const*>({ valNode }));
   }
-  else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+
+  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
     if (! valNode->isArray()) {
       return nullptr;
@@ -690,7 +692,7 @@ IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
       }
     }
 
-    return createIterator(context, attrNode, valNodes);
+    return createIterator(trx, context, attrNode, valNodes);
   }
 
   // operator type unsupported
@@ -719,7 +721,8 @@ triagens::aql::AstNode* EdgeIndex::specializeCondition (triagens::aql::AstNode* 
 /// @brief create the iterator
 ////////////////////////////////////////////////////////////////////////////////
     
-IndexIterator* EdgeIndex::createIterator (IndexIteratorContext* context,
+IndexIterator* EdgeIndex::createIterator (triagens::arango::Transaction* trx,
+                                          IndexIteratorContext* context,
                                           triagens::aql::AstNode const* attrNode,
                                           std::vector<triagens::aql::AstNode const*> const& valNodes) const {
 
@@ -766,7 +769,8 @@ IndexIterator* EdgeIndex::createIterator (IndexIteratorContext* context,
   TRI_IF_FAILURE("EdgeIndex::noIterator")  {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new EdgeIndexIterator(isFrom ? _edgesFrom : _edgesTo, keys);
+
+  return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, keys);
 }
 
 // -----------------------------------------------------------------------------

@@ -70,14 +70,17 @@ namespace triagens {
     class SortCondition;
   }
   namespace arango {
+    class Transaction;
 
     class HashIndexIterator final : public IndexIterator {
 
       public:
 
-        HashIndexIterator (HashIndex const* index,
+        HashIndexIterator (triagens::arango::Transaction* trx,
+                           HashIndex const* index,
                            std::vector<TRI_hash_index_search_value_t*>& keys)
-        : _index(index),
+        : _trx(trx),
+          _index(index),
           _keys(keys),
           _position(0),
           _buffer(),
@@ -96,6 +99,7 @@ namespace triagens {
 
       private:
 
+        triagens::arango::Transaction*               _trx;
         HashIndex const*                             _index;
         std::vector<TRI_hash_index_search_value_t*>  _keys;
         size_t                                       _position;
@@ -189,7 +193,8 @@ namespace triagens {
                                       size_t&,
                                       double&) const override;
 
-        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+        IndexIterator* iteratorForCondition (triagens::arango::Transaction*,
+                                             IndexIteratorContext*,
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*,
