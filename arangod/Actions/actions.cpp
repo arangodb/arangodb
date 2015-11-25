@@ -33,7 +33,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/delete_object.h"
 #include "Basics/logging.h"
 #include "Rest/HttpRequest.h"
 
@@ -48,13 +47,13 @@ using namespace triagens::basics;
 /// @brief actions
 ////////////////////////////////////////////////////////////////////////////////
 
-static map<string, TRI_action_t*> Actions;
+static std::map<string, TRI_action_t*> Actions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prefix actions
 ////////////////////////////////////////////////////////////////////////////////
 
-static map<string, TRI_action_t*> PrefixActions;
+static std::map<string, TRI_action_t*> PrefixActions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions lock
@@ -180,10 +179,14 @@ TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CleanupActions () {
-  for_each(Actions.begin(), Actions.end(), DeleteObjectValue());
+  for (auto& it: Actions) {
+    delete it.second;
+  }
   Actions.clear();
 
-  for_each(PrefixActions.begin(), PrefixActions.end(), DeleteObjectValue());
+  for (auto& it: PrefixActions) {
+    delete it.second;
+  }
   PrefixActions.clear();
 }
 
