@@ -1,6 +1,8 @@
 v2.7.2 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1589
+
 * fixed issue #1583
 
 * fixed undefined behavior when accessing the top level of a document with the `[*]`
