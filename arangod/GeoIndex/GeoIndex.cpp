@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// @brief geo index
 ///
 /// @file
@@ -35,7 +35,7 @@
 #include "GeoIndex.h"
 
     /* Radius of the earth used for distances  */
-#define EARTHRADIUS 6371000.0
+#define EARTHRADIAN 6371000.0
 
 #define GEOSLOTSTART 50
 #define GEOPOTSTART 100
@@ -292,7 +292,7 @@ double GeoIndex_distance(GeoCoordinate * c1, GeoCoordinate * c2)
     y2=cos(c2->latitude*M_PI/180.0)*sin(c2->longitude*M_PI/180.0);
     mole=sqrt((xx1-x2)*(xx1-x2) + (yy1-y2)*(yy1-y2) + (z1-z2)*(z1-z2));
     if(mole >  2.0) mole = 2.0; /* make sure arcsin succeeds! */
-    return 2.0 * EARTHRADIUS * asin(mole/2.0);
+    return 2.0 * EARTHRADIAN * asin(mole/2.0);
 }
 /* =================================================== */
 /*          GeoIndexFreePot                            */
@@ -740,10 +740,21 @@ void GeoMkDetail(GeoIx * gix, GeoDetailedPoint * gd, GeoCoordinate * c)
 double GeoMetersToSNMD(double meters)
 {
     double angle,hnmd;
-    angle=0.5*meters/EARTHRADIUS;
+    angle=0.5*meters/EARTHRADIAN;
     hnmd=sin(angle);   /* half normalized mole distance  */
     if(angle>=M_PI/2.0) return 4.0;
     else               return hnmd*hnmd*4.0;
+}
+
+double GeoFixtoSNMD(GeoFix gf)
+{
+    double x;
+    x=gf;
+    x=x/ARCSINFIX;
+    x=sin(x);
+    x=x*x;
+    x=x*4.0;
+    return x;
 }
 /* =================================================== */
 /*                     GeoSetDistance                  */
@@ -1033,7 +1044,7 @@ GeoCoordinates * GeoAnswers (GeoIx * gix, GeoResults * gr)
                      (gix->gc)[slot].data;
         mole=sqrt(gr->snmd[i]);
         if(mole >  2.0) mole = 2.0; /* make sure arcsin succeeds! */
-        gr->snmd[j]= 2.0 * EARTHRADIUS * asin(mole/2.0);
+        gr->snmd[j]= 2.0 * EARTHRADIAN * asin(mole/2.0);
         j++;
     }
     ans->distances = gr->snmd;
@@ -2129,6 +2140,193 @@ void GeoIndex_CoordinatesFree(GeoCoordinates * clist)
 int GeoIndex_hint(GeoIndex * gi, int hint)
 {
     return 0;
+}
+
+/* =================================================== */
+/*                 GeoCr structure                     */
+/* This is the REAL GeoCursor structure - the one in   */
+/* the GeoIndex.h file is just a sham (it says it is   */
+/* a char!) to keep the structure private so that the  */
+/* GeoIndex.h is short and contains only data of       */
+/* interest to the user.                               */
+/* =================================================== */
+
+typedef struct {
+  int pot;
+  GeoFix dist;
+}  hpot;      // pot for putting on the heap
+
+bool hpotcompare(hpot a, hpot b)
+{
+    if(a.dist<b.dist) return true;
+    else return false;
+}
+
+typedef struct {
+  int slot;
+  double snmd;
+}  hslot;      // pot for putting on the heap
+
+bool hslotcompare(hslot a, hslot b)
+{
+    if(a.snmd<b.snmd) return true;
+    else return false;
+}
+
+typedef struct {
+  GeoIx * Ix;           /* GeoIndex          */
+  GeoDetailedPoint gd;
+  double potsnmd;
+  double slotsnmd;
+  std::vector<hpot> potheap;
+  std::vector<hslot> slotheap;
+} GeoCr;
+
+GeoFix makedist(GeoPot * pot, GeoDetailedPoint * gd)
+{
+    GeoFix dist,d1;
+    int i;
+    dist=0;
+    for(i=0;i<GeoIndexFIXEDPOINTS;i++)
+    {
+        if(gd->fixdist[i]>pot->maxdist[i])
+            d1=gd->fixdist[i]-pot->maxdist[i];
+        else d1=0;
+        if(d1>dist) dist=d1;
+    }
+    return dist;
+}
+
+GeoCursor * GeoIndex_NewCursor(GeoIndex * gi, GeoCoordinate * c)
+{
+    GeoIx * gix;
+    GeoCr * gcr;
+    hpot hp;
+    gix = (GeoIx *) gi;
+    gcr = static_cast<GeoCr*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoCr), false));
+
+    if (gcr == NULL) {
+      return (GeoCursor *) gcr;
+    }
+    GeoMkDetail(gix,&(gcr->gd),c);
+    hp.pot=1;
+    hp.dist = makedist(gix->pots+1,&(gcr->gd));
+    gcr->potsnmd=GeoFixtoSNMD(hp.dist);
+    gcr->slotsnmd=20.0;
+    gcr->potheap.push_back(hp);
+    std::push_heap(gcr->potheap.begin(), gcr->potheap.end(),hpotcompare);
+    return (GeoCursor *) gcr; 
+}
+
+GeoCoordinates * GeoIndex_ReadCursor(GeoCursor * gc, int count)
+{
+    int i,j,r;
+    GeoCoordinate * ct;
+    GeoResults * gr;
+    GeoCoordinates * gcts;
+    double snmd;
+    GeoCr * gcr;
+    gcr=(GeoCr *) gc;
+    GeoPot * pot;
+    int slox;
+    hslot hs;
+    hpot hp;
+    gr=GeoResultsCons(count);
+    if(gr==NULL) return NULL;
+    while(gr->pointsct<count)
+    {
+        if(gcr->potsnmd < gcr->slotsnmd*1.000001)
+        {
+// smash top pot - if there is one 
+            if(gcr->potheap.size()==0) break; // that's all there is
+            pot=(gcr->Ix)->pots+(gcr->potheap.front().pot);
+// anyway remove top from heap
+            std::pop_heap(gcr->potheap.begin(),
+                   gcr->potheap.end(),hpotcompare);
+            if(pot->LorLeaf==0)
+            {
+// leaf pot - put all the points into the points heap
+                for(i=0;i<pot->RorPoints;i++)
+                {
+                    j=pot->points[i];
+                    ct=((gcr->Ix)->gc+j);
+                    hs.slot=j;
+                    hs.snmd=GeoSNMD(&(gcr->gd),ct);
+                    gcr->slotheap.push_back(hs);
+                    std::push_heap(gcr->slotheap.begin(),
+                        gcr->slotheap.end(),hslotcompare);
+                }
+                if(gcr->slotheap.size()!=0)
+                {
+                    slox=gcr->slotheap.front().slot;
+                    snmd=GeoSNMD(&gcr->gd,(gcr->Ix)->gc+slox);
+                }
+            }
+            else
+            {
+                hp.pot=pot->LorLeaf;
+                hp.dist = makedist((gcr->Ix)->pots+pot->LorLeaf,&(gcr->gd));
+                gcr->potheap.push_back(hp);
+                std::push_heap(gcr->potheap.begin(),
+                     gcr->potheap.end(),hpotcompare);
+                hp.pot=pot->RorPoints;
+                hp.dist = makedist((gcr->Ix)->pots+pot->RorPoints,&(gcr->gd));
+                gcr->potheap.push_back(hp);
+                std::push_heap(gcr->potheap.begin(),
+                     gcr->potheap.end(),hpotcompare);
+            }
+            gcr->potsnmd=10.0;
+            if(gcr->potheap.size()!=0)
+            {
+                pot=(gcr->Ix)->pots+(gcr->potheap.front().pot);
+                gcr->potsnmd=GeoFixtoSNMD(makedist(pot,&(gcr->gd)));
+            }
+        }
+        else
+        {
+            if(gcr->slotheap.size()==0) break; // that's all there is
+            slox=gcr->slotheap.front().slot;
+            snmd=GeoSNMD(&gcr->gd,(gcr->Ix)->gc+slox);
+            r = GeoResultsGrow(gr);
+            if(r==-1)
+            {
+                TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr->snmd);
+                TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr->slot);
+                TRI_Free(TRI_UNKNOWN_MEM_ZONE, gr);
+                return NULL;
+            }
+            gr->slot[gr->pointsct]=slox;
+            gr->snmd[gr->pointsct]=snmd;
+            gr->pointsct++;
+        }
+    }
+    gcts=GeoAnswers(gcr->Ix,gr);
+    return gcts;
+}
+#ifdef NEVER
+            for(i=0;i<gp->RorPoints;i++)
+            {
+                slot=gp->points[i];
+                if(snmd > (maxsnmd * 1.00000000000001)) continue;
+typedef struct {
+  GeoIx * Ix;           /* GeoIndex          */
+  GeoDetailedPoint gd;
+  double potsnmd;
+  double pointsnmd;
+  std::vector<hpot> potheap;
+  std::vector<hslot> pointheap;
+} GeoCr;
+#endif
+
+void GeoIndex_CursorFree(GeoCursor * gc)
+{
+    GeoCr * cr;
+    if(gc == NULL) {
+      return;
+    }
+    cr = (GeoCr *) gc;
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cr);
+    return;
 }
 
 /* =================================================== */
