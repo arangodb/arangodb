@@ -92,7 +92,7 @@ namespace triagens {
 ///        Might be nullptr for no filtering
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool readEdges (traverser::TraverserExpression const*);
+        bool readEdges (std::vector<traverser::TraverserExpression*> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all edges in given direction for given vertex

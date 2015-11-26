@@ -51,6 +51,13 @@ struct TRI_vector_pointer_s;
 namespace triagens {
   namespace arango {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+    namespace traverser {
+      class TraverserExpression;
+    }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge headers of a DB server response into the current response
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,14 +186,16 @@ namespace triagens {
                  std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all edges in a coordinator
+/// @brief get a filtered set of edges on Coordinator.
+///        Also returns the result in Json
 ////////////////////////////////////////////////////////////////////////////////
 
-    int getAllEdgesOnCoordinator (
+    int getFilteredEdgesOnCoordinator (
                  std::string const& dbname,
                  std::string const& collname,
                  std::string const& vertex,
                  TRI_edge_direction_e const& direction,
+                 std::vector<traverser::TraverserExpression*> const& expressions, 
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  std::string& contentType,
                  triagens::basics::Json& resultBody);

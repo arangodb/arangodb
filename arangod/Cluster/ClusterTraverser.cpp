@@ -92,6 +92,7 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     // Nothing to do, caller has set a defined state already.
     return;
   }
+  size_t depth = result.size();
   if (last == nullptr) {
     TRI_ASSERT(_traverser->_iteratorCache.size() == result.size());
     // We have to request the next level
@@ -99,14 +100,20 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     triagens::rest::HttpResponse::HttpResponseCode responseCode;
     std::string contentType;
     std::string collName = _traverser->_edgeCols[eColIdx];
+    std::vector<TraverserExpression*> expTmp;
+    auto found = _traverser->_expressions->find(depth);
+    if (found != _traverser->_expressions->end()) {
+      expTmp = found->second;
+    }
 
-    int res = getAllEdgesOnCoordinator(_traverser->_dbname,
-                                       collName,
-                                       startVertex,
-                                       _traverser->_opts.direction,
-                                       responseCode,
-                                       contentType,
-                                       resultEdges);
+    int res = getFilteredEdgesOnCoordinator(_traverser->_dbname,
+                                            collName,
+                                            startVertex,
+                                            _traverser->_opts.direction,
+                                            expTmp,
+                                            responseCode,
+                                            contentType,
+                                            resultEdges);
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }

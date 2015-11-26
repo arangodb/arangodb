@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgesHandler.h"
+#include "Basics/ScopeGuard.h"
 #include "VocBase/Traverser.h"
 
 using namespace triagens::rest;
@@ -60,9 +61,11 @@ HttpHandler::status_t RestEdgesHandler::execute () {
 
   // execute one of the CRUD methods
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_GET:
-      readEdges(nullptr);
+    case HttpRequest::HTTP_REQUEST_GET: {
+      std::vector<traverser::TraverserExpression*> empty;
+      readEdges(empty);
       break;
+    }
     case HttpRequest::HTTP_REQUEST_PUT:
       readFilteredEdges();
       break;
@@ -195,7 +198,7 @@ HttpHandler::status_t RestEdgesHandler::execute () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestEdgesHandler::readEdges (traverser::TraverserExpression const* expression) {
+bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> const& expressions) {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (! (suffix.size() == 1)) {
@@ -298,7 +301,7 @@ bool RestEdgesHandler::readEdges (traverser::TraverserExpression const* expressi
   documents.reserve(edges.size());
   TRI_document_collection_t* docCol = collection->_collection->_collection;
 
-  if (expression == nullptr) {
+  if (expressions.empty()) {
     for (auto& e : edges) {
       DocumentAccessor da(trx.resolver(), docCol, &e);
       documents.add(da.toJson());
@@ -306,7 +309,15 @@ bool RestEdgesHandler::readEdges (traverser::TraverserExpression const* expressi
   }
   else {
     for (auto& e : edges) {
-      if (expression->matchesCheck(e, docCol, trx.resolver())) {
+      bool add = true;
+      // Expressions symbolize an and, so all have to be matched
+      for (auto& exp : expressions) {
+        if (! exp->matchesCheck(e, docCol, trx.resolver())) {
+          add = false;
+          break;
+        }
+      }
+      if (add) {
         DocumentAccessor da(trx.resolver(), docCol, &e);
         documents.add(da.toJson());
       }
@@ -335,21 +346,41 @@ bool RestEdgesHandler::readEdges (traverser::TraverserExpression const* expressi
 /// Not publicly documented on purpose.
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 bool RestEdgesHandler::readFilteredEdges () {
-  std::unique_ptr<TRI_json_t> json(parseJsonBody());
+  std::vector<traverser::TraverserExpression*> expressions;
+  TRI_json_t* json = parseJsonBody();
+  triagens::basics::ScopeGuard guard{
+    []() -> void { },
+    [&json, &expressions]() -> void {
+      for (auto& e : expressions) {
+        delete e;
+      }
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+  };
   if (json == nullptr) {
-    return readEdges(nullptr);
+    return readEdges(expressions);
   }
 
-  if (json->_type != TRI_JSON_OBJECT) {
+  if (! TRI_IsArrayJson(json)) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "Expected a traverser expression as body parameter");
+                  "Expected a list of traverser expressions as body parameter");
     return false;
   }
+  std::cout << json << std::endl;
 
-  std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(json.get()));
-  json.release();
+  size_t length = TRI_LengthArrayJson(json); 
+  expressions.reserve(length);
 
-  return readEdges(expression.get());
+  for (size_t i = 0; i < length; ++i) {
+    TRI_json_t* exp = TRI_LookupArrayJson(json, i);
+    if (TRI_IsObjectJson(exp)) {
+      std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(exp));
+      expressions.emplace_back(expression.get());
+      expression.release();
+    }
+  }
+  return readEdges(expressions);
 }
