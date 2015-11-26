@@ -935,8 +935,7 @@ AqlValue Expression::executeSimpleExpressionFCall (AstNode const* node,
         parameters.emplace_back(AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, arg->getStringValue(), arg->getStringLength())), nullptr);
       }
       else {
-        auto value = executeSimpleExpression(arg, &myCollection, trx, argv, startPos, vars, regs, false);
-        parameters.emplace_back(value, myCollection);
+        parameters.emplace_back(executeSimpleExpression(arg, &myCollection, trx, argv, startPos, vars, regs, false), myCollection);
       }
     }
 
