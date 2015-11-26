@@ -346,7 +346,6 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
 /// Not publicly documented on purpose.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 bool RestEdgesHandler::readFilteredEdges () {
   std::vector<traverser::TraverserExpression*> expressions;
   TRI_json_t* json = parseJsonBody();
@@ -369,7 +368,6 @@ bool RestEdgesHandler::readFilteredEdges () {
                   "Expected a list of traverser expressions as body parameter");
     return false;
   }
-  std::cout << json << std::endl;
 
   size_t length = TRI_LengthArrayJson(json); 
   expressions.reserve(length);
