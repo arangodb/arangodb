@@ -99,10 +99,10 @@ namespace triagens {
       class TraverserExpression {
         public:
 
-          bool                           isEdgeAccess;
-          triagens::aql::AstNodeType     comparisonType;
-          triagens::aql::AstNode const*  varAccess;
-          triagens::basics::Json*        compareTo;
+          bool                                           isEdgeAccess;
+          triagens::aql::AstNodeType                     comparisonType;
+          triagens::aql::AstNode const*                  varAccess;
+          std::unique_ptr<triagens::basics::Json>        compareTo;
 
           TraverserExpression (
             bool pisEdgeAccess,
@@ -111,12 +111,17 @@ namespace triagens {
           ) : isEdgeAccess(pisEdgeAccess),
               comparisonType(pcomparisonType),
               varAccess(pvarAccess),
-              compareTo(nullptr) {
+              compareTo(nullptr),
+              _freeVarAccess(false) {
           }
 
+          TraverserExpression (
+            TRI_json_t const*
+          );
+
           virtual ~TraverserExpression () {
-            if (compareTo != nullptr) {
-              delete compareTo;
+            if (_freeVarAccess) {
+              delete varAccess;
             }
           }
 
@@ -125,12 +130,18 @@ namespace triagens {
 
           bool matchesCheck (TRI_doc_mptr_t& element,
                              TRI_document_collection_t* collection,
-                             CollectionNameResolver* resolver) const;
+                             CollectionNameResolver const* resolver) const;
 
         private:
 
           bool recursiveCheck (triagens::aql::AstNode const*,
-                               DocumentAccessor&) const;               
+                               DocumentAccessor&) const;
+
+
+          // Required when creating this expression without AST
+          std::vector<std::unique_ptr<triagens::aql::AstNode const>>  _nodeRegister;
+          std::vector<std::string>                                    _stringRegister;
+          bool                                                        _freeVarAccess;
 
       };
 // -----------------------------------------------------------------------------
