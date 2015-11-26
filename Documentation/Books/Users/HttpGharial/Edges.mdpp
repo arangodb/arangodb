@@ -1,6 +1,6 @@
 !CHAPTER Handling Edges
 
-Examples will explain the API on the [knows graph](../Graphs/README.md#the_knows_graph):
+Examples will explain the API on the [knows graph](../Graphs/README.md#the-knowsgraph):
 
 ![Social Example Graph](../Graphs/knows_graph.png)
 
@@ -8,7 +8,7 @@ Examples will explain the API on the [knows graph](../Graphs/README.md#the_knows
 
 @startDocuBlock JSF_general_graph_edge_get_http_examples
 
-Examples will explain the API on the [social graph](../Graphs/README.md#the_social_graph):
+Examples will explain the API on the [social graph](../Graphs/README.md#the-social-graph):
 
 ![Social Example Graph](../Graphs/social_graph.png)
 
