@@ -471,7 +471,7 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
         generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting string for <collection>");
         return;
       }
-      collectionName = slice.copyString();
+      collectionName = value.copyString();
 
       if (! collectionName.empty()) {
         auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
@@ -554,6 +554,10 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
   catch (triagens::basics::Exception const& ex) {
     unregisterQuery(); 
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+  }
+  catch (std::exception const& ex) {
+    unregisterQuery(); 
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   }
   catch (...) {
     unregisterQuery(); 
