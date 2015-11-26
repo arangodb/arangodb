@@ -250,7 +250,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       AstNode (std::function<void (AstNode*)> registerNode,
-               std::function<char* (std::string const&)> registerString,
+               std::function<char const* (std::string const&)> registerString,
                triagens::basics::Json const& json); 
 
 ////////////////////////////////////////////////////////////////////////////////
