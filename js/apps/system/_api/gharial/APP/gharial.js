@@ -436,15 +436,12 @@
 /// @EXAMPLE_ARANGOSH_RUN{HttpGharialDrop}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
-///   var url = "/_api/gharial/social";
+///   var url = "/_api/gharial/social?dropCollections=true";
 ///   var response = logCurlRequest('DELETE', url);
 ///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
-///   db._drop("male");
-///   db._drop("female");
-///   db._drop("relation");
 /// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock

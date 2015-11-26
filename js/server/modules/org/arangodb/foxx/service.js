@@ -208,7 +208,7 @@ class FoxxService {
         return;
       }
 
-      if (def.required === false && (rawValue === undefined || rawValue === null)) {
+      if (def.required === false && (rawValue === undefined || rawValue === null || rawValue === '')) {
         delete this.options.configuration[name];
         this.configuration[name] = def.default;
         return;

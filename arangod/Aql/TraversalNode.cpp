@@ -306,10 +306,10 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
   if (_expressions.size() > 0) {
     triagens::basics::Json expressionObject = triagens::basics::Json(triagens::basics::Json::Object,
                                                                      _expressions.size());
-    for (auto map : _expressions) {
+    for (auto const & map : _expressions) {
       triagens::basics::Json expressionArray = triagens::basics::Json(triagens::basics::Json::Array,
                                                                       map.second.size());
-      for (auto x : map.second) {
+      for (auto const & x : map.second) {
         triagens::basics::Json exp(zone, triagens::basics::Json::Object);
         x->toJson(exp, zone);
         expressionArray(exp);

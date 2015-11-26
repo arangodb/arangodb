@@ -261,11 +261,11 @@ function printIndexes (indexes) {
 /* print indexes used */
 function printTraversalDetails (traversals) {
   'use strict';
-  if (traversals.length == 0) {
+  if (traversals.length === 0) {
     return;
   }
 
-  stringBuilder.appendLine()
+  stringBuilder.appendLine();
   stringBuilder.appendLine(section("Traversals on graphs:"));
 
   var maxIdLen = String("Id").length;
@@ -325,7 +325,7 @@ function printTraversalDetails (traversals) {
 
     }
     else {
-        pad(maxVertexCollectionNameStrLen) + "   ";
+      line += pad(maxVertexCollectionNameStrLen) + "   ";
     }
 
     if (traversals[i].hasOwnProperty('edgeCollectionNameStr')) {
@@ -333,7 +333,7 @@ function printTraversalDetails (traversals) {
         pad(1 + maxEdgeCollectionNameStrLen - traversals[i].edgeCollectionNameStrLen) + "   ";
     }
     else {
-        pad(maxEdgeCollectionNameStrLen) + "   ";
+        line += pad(maxEdgeCollectionNameStrLen) + "   ";
     }
 
     if (traversals[i].hasOwnProperty('ConditionStr')) {
@@ -401,7 +401,7 @@ function processQuery (query, explain) {
     }
     catch(x) {
       print(node);
-      throw(x)
+      throw(x);
     }
     
     if (collectionVariables.hasOwnProperty(node.id)) {
@@ -413,7 +413,6 @@ function processQuery (query, explain) {
   var buildExpression = function (node) {
     isConst = isConst && ([ "value", "object", "object element", "array" ].indexOf(node.type) !== -1);
 
-    print (node.type)
     switch (node.type) {
       case "reference": 
         if (references.hasOwnProperty(node.name)) {
@@ -534,6 +533,35 @@ function processQuery (query, explain) {
     }
   };
 
+  var buildSimpleExpression = function (simpleExpressions) {
+    var rc = "";
+
+    for (var indexNo in simpleExpressions) {
+      if (simpleExpressions.hasOwnProperty(indexNo)) {
+        if (rc.length > 0) {
+          rc += " AND ";
+        }
+        for (var i = 0; i < simpleExpressions[indexNo].length; i++) {
+          var item = simpleExpressions[indexNo][i];
+          rc += attribute("Path") + ".";
+          if (item.isEdgeAccess) {
+            rc += attribute("edges");
+          }
+          else {
+            rc += attribute("vertices");
+          }
+          rc += "[" + value(indexNo) + "] -> ";
+          rc += buildExpression(item.varAccess);
+          rc += " " + item.comparisonType + " ";
+          rc += buildExpression(item.compareTo);
+        }
+      }
+      
+    }
+    return rc;
+  };
+
+
   var buildBound = function (attr, operators, bound) {
     var boundValue = bound.isConstant ? value(JSON.stringify(bound.bound)) : buildExpression(bound.bound);
     return attribute(attr) + " " + operators[bound.include ? 1 : 0] + " " + boundValue;
@@ -646,10 +674,11 @@ function processQuery (query, explain) {
         keyword("GRAPH") +  " '" + node.graph + "'";
 
       traversalDetails.push(node);
-      if (node.hasOwnProperty('condition')) {
-        node.ConditionStr = buildExpression(node.condition);
+      if (node.hasOwnProperty('simpleExpressions')) {
+        node.ConditionStr = buildSimpleExpression(node.simpleExpressions);
       }
 
+      var e = [];
       if (node.hasOwnProperty('graphDefinition')) {
         var v = [];
         node.graphDefinition.vertexCollectionNames.forEach(function(vcn) {
@@ -658,7 +687,6 @@ function processQuery (query, explain) {
         node.vertexCollectionNameStr = v.join(", ");
         node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(", ").length;
 
-        var e = [];
         node.graphDefinition.edgeCollectionNames.forEach(function(ecn) {
           e.push(collection(ecn));
         });
@@ -667,7 +695,6 @@ function processQuery (query, explain) {
       }
       else {
         var edgeCols = JSON.parse(node.graph);
-        var e = [];
         edgeCols.forEach(function(ecn) {
           e.push(collection(ecn));
         });

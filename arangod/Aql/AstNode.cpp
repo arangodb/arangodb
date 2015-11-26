@@ -1137,6 +1137,35 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
   return node;
 }
 
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterates whether a node of type "searchType" can be found
+////////////////////////////////////////////////////////////////////////////////
+bool AstNode::containsNodeType (AstNodeType searchType) const {
+
+  if (type == searchType)
+    return true;
+
+  // iterate sub-nodes
+  size_t const n = members.size();
+
+  if (n > 0) {
+    for (size_t i = 0; i < n; ++i) {
+      AstNode* member = getMemberUnchecked(i);
+      if (member != nullptr) {
+        if (member->containsNodeType(searchType)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the node's value to a boolean value
 /// this may create a new node or return the node itself if it is already a
@@ -2262,6 +2291,8 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
   }
     break;
 
+    case NODE_TYPE_OPERATOR_NARY_AND:
+    case NODE_TYPE_OPERATOR_NARY_OR:
     case NODE_TYPE_OBJECT: // yes, keys can't be vars, but... 
     case NODE_TYPE_ARRAY: {
       size_t const n = numMembers();
@@ -2358,8 +2389,6 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
-    case NODE_TYPE_OPERATOR_NARY_AND:
-    case NODE_TYPE_OPERATOR_NARY_OR:
       break;
   }
 

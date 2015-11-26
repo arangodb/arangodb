@@ -32,8 +32,8 @@
 #include "velocypack/Value.h"
 
 using namespace arangodb::velocypack;
-        
-void AttributeTranslator::add (std::string const& key, uint64_t id) {
+
+void AttributeTranslator::add(std::string const& key, uint64_t id) {
   if (_builder == nullptr) {
     _builder.reset(new Builder);
     _builder->add(Value(ValueType::Object));
@@ -43,7 +43,7 @@ void AttributeTranslator::add (std::string const& key, uint64_t id) {
   _count++;
 }
 
-void AttributeTranslator::seal () {
+void AttributeTranslator::seal() {
   if (_builder == nullptr) {
     return;
   }
@@ -62,7 +62,7 @@ void AttributeTranslator::seal () {
 }
 
 // translate from string to id
-uint8_t const* AttributeTranslator::translate (std::string const& key) const {
+uint8_t const* AttributeTranslator::translate(std::string const& key) const {
   auto it = _keyToId.find(key);
 
   if (it == _keyToId.end()) {
@@ -73,7 +73,8 @@ uint8_t const* AttributeTranslator::translate (std::string const& key) const {
 }
 
 // translate from string to id
-uint8_t const* AttributeTranslator::translate (char const* key, ValueLength length) const {
+uint8_t const* AttributeTranslator::translate(char const* key,
+                                              ValueLength length) const {
   auto it = _keyToId.find(std::string(key, length));
 
   if (it == _keyToId.end()) {
@@ -84,7 +85,7 @@ uint8_t const* AttributeTranslator::translate (char const* key, ValueLength leng
 }
 
 // translate from id to string
-uint8_t const* AttributeTranslator::translate (uint64_t id) const {
+uint8_t const* AttributeTranslator::translate(uint64_t id) const {
   auto it = _idToKey.find(id);
 
   if (it == _idToKey.end()) {
@@ -93,4 +94,3 @@ uint8_t const* AttributeTranslator::translate (uint64_t id) const {
 
   return (*it).second;
 }
-

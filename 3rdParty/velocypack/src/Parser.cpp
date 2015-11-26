@@ -29,7 +29,7 @@
 #include "asm-functions.h"
 
 using namespace arangodb::velocypack;
-       
+
 // The following function does the actual parse. It gets bytes
 // via peek, consume and reset appends the result to the Builder
 // in _b. Errors are reported via an exception.
@@ -37,13 +37,11 @@ using namespace arangodb::velocypack;
 // check for parse errors (scan phase) and then one to actually
 // build the result (build phase).
 
-ValueLength Parser::parseInternal (bool multi) {
-  _b.options = options; // copy over options
+ValueLength Parser::parseInternal(bool multi) {
+  _b.options = options;  // copy over options
 
   // skip over optional BOM
-  if (_size >= 3 &&
-      _start[0] == 0xef &&
-      _start[1] == 0xbb &&
+  if (_size >= 3 && _start[0] == 0xef && _start[1] == 0xbb &&
       _start[2] == 0xbf) {
     // found UTF-8 BOM. simply skip over it
     _pos += 3;
@@ -53,36 +51,34 @@ ValueLength Parser::parseInternal (bool multi) {
   do {
     parseJson();
     nr++;
-    while (_pos < _size && 
-           isWhiteSpace(_start[_pos])) {
+    while (_pos < _size && isWhiteSpace(_start[_pos])) {
       ++_pos;
     }
-    if (! multi && _pos != _size) {
+    if (!multi && _pos != _size) {
       consume();  // to get error reporting right
       throw Exception(Exception::ParseError, "Expecting EOF");
     }
-  } 
-  while (multi && _pos < _size);
+  } while (multi && _pos < _size);
   return nr;
 }
 
 // skips over all following whitespace tokens but does not consume the
 // byte following the whitespace
-int Parser::skipWhiteSpace (char const* err) {
+int Parser::skipWhiteSpace(char const* err) {
   if (_pos >= _size) {
     throw Exception(Exception::ParseError, err);
   }
   uint8_t c = _start[_pos];
-  if (! isWhiteSpace(c)) {
+  if (!isWhiteSpace(c)) {
     return c;
   }
   if (c == ' ') {
-    if (_pos+1 >= _size) {
+    if (_pos + 1 >= _size) {
       _pos++;
       throw Exception(Exception::ParseError, err);
     }
-    c = _start[_pos+1];
-    if (! isWhiteSpace(c)) {
+    c = _start[_pos + 1];
+    if (!isWhiteSpace(c)) {
       _pos++;
       return c;
     }
@@ -97,7 +93,7 @@ int Parser::skipWhiteSpace (char const* err) {
 }
 
 // parses a number value
-void Parser::parseNumber () {
+void Parser::parseNumber() {
   ParsedNumber numberValue;
   bool negative = false;
   int i = consume();
@@ -110,7 +106,7 @@ void Parser::parseNumber () {
   if (i < '0' || i > '9') {
     throw Exception(Exception::ParseError, "Expecting digit");
   }
-  
+
   if (i != '0') {
     unconsume();
     scanDigits(numberValue);
@@ -120,26 +116,21 @@ void Parser::parseNumber () {
     if (i >= 0) {
       unconsume();
     }
-    if (! numberValue.isInteger) {
+    if (!numberValue.isInteger) {
       if (negative) {
         _b.addDouble(-numberValue.doubleValue);
-      }
-      else {
+      } else {
         _b.addDouble(numberValue.doubleValue);
       }
-    }
-    else if (negative) {
+    } else if (negative) {
       if (numberValue.intValue <= static_cast<uint64_t>(INT64_MAX)) {
         _b.addInt(-static_cast<int64_t>(numberValue.intValue));
-      }
-      else if (numberValue.intValue == toUInt64(INT64_MIN)) {
+      } else if (numberValue.intValue == toUInt64(INT64_MIN)) {
         _b.addInt(INT64_MIN);
-      }
-      else {
+      } else {
         _b.addDouble(-static_cast<double>(numberValue.intValue));
       }
-    }
-    else {
+    } else {
       _b.addUInt(numberValue.intValue);
     }
     return;
@@ -155,9 +146,8 @@ void Parser::parseNumber () {
     unconsume();
     fractionalPart = scanDigitsFractional();
     if (negative) {
-      fractionalPart = - numberValue.asDouble() - fractionalPart;
-    }
-    else {
+      fractionalPart = -numberValue.asDouble() - fractionalPart;
+    } else {
       fractionalPart = numberValue.asDouble() + fractionalPart;
     }
     i = consume();
@@ -165,12 +155,10 @@ void Parser::parseNumber () {
       _b.addDouble(fractionalPart);
       return;
     }
-  }
-  else {
+  } else {
     if (negative) {
-      fractionalPart = - numberValue.asDouble();
-    }
-    else {
+      fractionalPart = -numberValue.asDouble();
+    } else {
       fractionalPart = numberValue.asDouble();
     }
   }
@@ -193,17 +181,16 @@ void Parser::parseNumber () {
   scanDigits(exponent);
   if (negative) {
     fractionalPart *= pow(10, -exponent.asDouble());
-  }
-  else {
+  } else {
     fractionalPart *= pow(10, exponent.asDouble());
   }
-  if (std::isnan(fractionalPart) || ! std::isfinite(fractionalPart)) {
+  if (std::isnan(fractionalPart) || !std::isfinite(fractionalPart)) {
     throw Exception(Exception::NumberOutOfRange);
   }
   _b.addDouble(fractionalPart);
 }
 
-void Parser::parseString () {
+void Parser::parseString() {
   // When we get here, we have seen a " character and now want to
   // find the end of the string and parse the string value to its
   // VPack representation. We assume that the string is short and
@@ -212,7 +199,7 @@ void Parser::parseString () {
 
   ValueLength const base = _b._pos;
   _b.reserveSpace(1);
-  _b._start[_b._pos++] = 0x40;   // correct this later
+  _b._start[_b._pos++] = 0x40;  // correct this later
 
   bool large = false;          // set to true when we reach 128 bytes
   uint32_t highSurrogate = 0;  // non-zero if high-surrogate was seen
@@ -225,30 +212,27 @@ void Parser::parseString () {
       if (options->validateUtf8Strings) {
         count = JSONStringCopyCheckUtf8(_b._start + _b._pos, _start + _pos,
                                         remainder);
-      }
-      else {
+      } else {
         count = JSONStringCopy(_b._start + _b._pos, _start + _pos, remainder);
       }
       _pos += count;
       _b._pos += count;
     }
     int i = getOneOrThrow("Unfinished string");
-    if (! large && _b._pos - (base + 1) > 126) {
+    if (!large && _b._pos - (base + 1) > 126) {
       large = true;
       _b.reserveSpace(8);
-      memmove(_b._start + base + 9, _b._start + base + 1,
-              _b._pos - (base + 1));
+      memmove(_b._start + base + 9, _b._start + base + 1, _b._pos - (base + 1));
       _b._pos += 8;
     }
     switch (i) {
       case '"':
         ValueLength len;
-        if (! large) {
+        if (!large) {
           len = _b._pos - (base + 1);
           _b._start[base] = 0x40 + static_cast<uint8_t>(len);
           // String is ready
-        }
-        else {
+        } else {
           len = _b._pos - (base + 9);
           _b._start[base] = 0xbf;
           for (ValueLength i = 1; i <= 8; i++) {
@@ -301,37 +285,32 @@ void Parser::parseString () {
             for (int j = 0; j < 4; j++) {
               i = consume();
               if (i < 0) {
-                throw Exception(Exception::ParseError, "Unfinished \\uXXXX escape sequence");
+                throw Exception(Exception::ParseError,
+                                "Unfinished \\uXXXX escape sequence");
               }
               if (i >= '0' && i <= '9') {
                 v = (v << 4) + i - '0';
-              }
-              else if (i >= 'a' && i <= 'f') {
+              } else if (i >= 'a' && i <= 'f') {
                 v = (v << 4) + i - 'a' + 10;
-              }
-              else if (i >= 'A' && i <= 'F') {
+              } else if (i >= 'A' && i <= 'F') {
                 v = (v << 4) + i - 'A' + 10;
-              }
-              else {
-                throw Exception(Exception::ParseError, "Illegal \\uXXXX escape sequence");
+              } else {
+                throw Exception(Exception::ParseError,
+                                "Illegal \\uXXXX escape sequence");
               }
             }
             if (v < 0x80) {
               _b.reserveSpace(1);
               _b._start[_b._pos++] = static_cast<uint8_t>(v);
               highSurrogate = 0;
-            }
-            else if (v < 0x800) {
+            } else if (v < 0x800) {
               _b.reserveSpace(2);
               _b._start[_b._pos++] = 0xc0 + (v >> 6);
               _b._start[_b._pos++] = 0x80 + (v & 0x3f);
               highSurrogate = 0;
-            }
-            else if (v >= 0xdc00 && v < 0xe000 &&
-                     highSurrogate != 0) {
+            } else if (v >= 0xdc00 && v < 0xe000 && highSurrogate != 0) {
               // Low surrogate, put the two together:
-              v = 0x10000 + ((highSurrogate - 0xd800) << 10)
-                          + v - 0xdc00;
+              v = 0x10000 + ((highSurrogate - 0xd800) << 10) + v - 0xdc00;
               _b._pos -= 3;
               _b.reserveSpace(4);
               _b._start[_b._pos++] = 0xf0 + (v >> 18);
@@ -339,13 +318,11 @@ void Parser::parseString () {
               _b._start[_b._pos++] = 0x80 + ((v >> 6) & 0x3f);
               _b._start[_b._pos++] = 0x80 + (v & 0x3f);
               highSurrogate = 0;
-            }
-            else {
+            } else {
               if (v >= 0xd800 && v < 0xdc00) {
                 // High surrogate:
                 highSurrogate = v;
-              }
-              else {
+              } else {
                 highSurrogate = 0;
               }
               _b.reserveSpace(3);
@@ -369,32 +346,26 @@ void Parser::parseString () {
           highSurrogate = 0;
           _b.reserveSpace(1);
           _b._start[_b._pos++] = static_cast<uint8_t>(i);
-        }
-        else {
-          if (! options->validateUtf8Strings) {
+        } else {
+          if (!options->validateUtf8Strings) {
             highSurrogate = 0;
             _b.reserveSpace(1);
             _b._start[_b._pos++] = static_cast<uint8_t>(i);
-          }
-          else {
+          } else {
             // multi-byte UTF-8 sequence!
             int follow = 0;
             if ((i & 0xe0) == 0x80) {
               throw Exception(Exception::InvalidUtf8Sequence);
-            }
-            else if ((i & 0xe0) == 0xc0) {
+            } else if ((i & 0xe0) == 0xc0) {
               // two-byte sequence
               follow = 1;
-            }
-            else if ((i & 0xf0) == 0xe0) {
+            } else if ((i & 0xf0) == 0xe0) {
               // three-byte sequence
               follow = 2;
-            }
-            else if ((i & 0xf8) == 0xf0) {
+            } else if ((i & 0xf8) == 0xf0) {
               // four-byte sequence
               follow = 3;
-            }
-            else {
+            } else {
               throw Exception(Exception::InvalidUtf8Sequence);
             }
 
@@ -416,14 +387,14 @@ void Parser::parseString () {
   }
 }
 
-void Parser::parseArray () {
+void Parser::parseArray() {
   ValueLength base = _b._pos;
   _b.addArray();
 
   int i = skipWhiteSpace("Expecting item or ']'");
   if (i == ']') {
     // empty array
-    ++_pos;   // the closing ']'
+    ++_pos;  // the closing ']'
     _b.close();
     return;
   }
@@ -452,16 +423,16 @@ void Parser::parseArray () {
   // should never get here
   VELOCYPACK_ASSERT(false);
 }
-                       
-void Parser::parseObject () {
+
+void Parser::parseObject() {
   ValueLength base = _b._pos;
   _b.addObject();
 
   int i = skipWhiteSpace("Expecting item or '}'");
   if (i == '}') {
     // empty object
-    consume();   // the closing ']'
-    if (_nesting != 0 || ! options->keepTopLevelOpen) {
+    consume();  // the closing ']'
+    if (_nesting != 0 || !options->keepTopLevelOpen) {
       // only close if we've not been asked to keep top level open
       _b.close();
     }
@@ -483,26 +454,28 @@ void Parser::parseObject () {
     auto const lastPos = _b._pos;
     if (options->attributeExcludeHandler == nullptr) {
       parseString();
-    }
-    else {
+    } else {
       parseString();
-      if (options->attributeExcludeHandler->shouldExclude(Slice(_b._start + lastPos, options), _nesting)) {
+      if (options->attributeExcludeHandler->shouldExclude(
+              Slice(_b._start + lastPos, options), _nesting)) {
         excludeAttribute = true;
       }
     }
 
-    if (! excludeAttribute && options->attributeTranslator != nullptr) {
+    if (!excludeAttribute && options->attributeTranslator != nullptr) {
       // check if a translation for the attribute name exists
       Slice key(_b._start + lastPos, options);
 
       if (key.isString()) {
         ValueLength keyLength;
         char const* p = key.getString(keyLength);
-        uint8_t const* translated = options->attributeTranslator->translate(p, keyLength);
+        uint8_t const* translated =
+            options->attributeTranslator->translate(p, keyLength);
 
         if (translated != nullptr) {
           // found translation... now reset position to old key position
-          // and simply overwrite the existing key with the numeric translation id
+          // and simply overwrite the existing key with the numeric translation
+          // id
           _b._pos = lastPos;
           _b.addUInt(Slice(translated, options).getUInt());
         }
@@ -514,7 +487,7 @@ void Parser::parseObject () {
     if (i != ':') {
       throw Exception(Exception::ParseError, "Expecting ':'");
     }
-    ++_pos; // skip over the colon
+    ++_pos;  // skip over the colon
 
     parseJson();
 
@@ -526,7 +499,7 @@ void Parser::parseObject () {
     if (i == '}') {
       // end of object
       ++_pos;  // the closing '}'
-      if (_nesting != 1 || ! options->keepTopLevelOpen) {
+      if (_nesting != 1 || !options->keepTopLevelOpen) {
         // only close if we've not been asked to keep top level open
         _b.close();
       }
@@ -535,40 +508,40 @@ void Parser::parseObject () {
     }
     if (i != ',') {
       throw Exception(Exception::ParseError, "Expecting ',' or '}'");
-    } 
+    }
     // skip over ','
     ++_pos;  // the ','
     i = skipWhiteSpace("Expecting '\"' or '}'");
   }
-  
+
   // should never get here
   VELOCYPACK_ASSERT(false);
 }
-                       
-void Parser::parseJson () {
+
+void Parser::parseJson() {
   skipWhiteSpace("Expecting item");
 
   int i = consume();
   if (i < 0) {
-    return; 
+    return;
   }
   switch (i) {
-    case '{': 
+    case '{':
       parseObject();  // this consumes the closing '}' or throws
       break;
     case '[':
-      parseArray();   // this consumes the closing ']' or throws
+      parseArray();  // this consumes the closing ']' or throws
       break;
     case 't':
-      parseTrue();    // this consumes "rue" or throws
+      parseTrue();  // this consumes "rue" or throws
       break;
     case 'f':
-      parseFalse();   // this consumes "alse" or throws
+      parseFalse();  // this consumes "alse" or throws
       break;
     case 'n':
-      parseNull();    // this consumes "ull" or throws
+      parseNull();  // this consumes "ull" or throws
       break;
-    case '"': 
+    case '"':
       parseString();
       break;
     default: {
@@ -581,4 +554,3 @@ void Parser::parseJson () {
     }
   }
 }
-
