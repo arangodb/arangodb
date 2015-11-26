@@ -1208,7 +1208,7 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally select a document based on a target revision id by
-/// using the `rev` URL parameter.
+/// using the `rev` query parameter.
 ///
 /// @RESTQUERYPARAM{lang,string,optional}
 /// Language of the data.
@@ -1300,7 +1300,7 @@ function get_api_structure(req, res)  {
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally select a document based on a target revision id by
-/// using the `rev` URL parameter.
+/// using the `rev` query parameter.
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -1368,7 +1368,7 @@ function head_api_structure(req, res)  {
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally delete a document based on a target revision id by
-/// using the `rev` URL parameter.
+/// using the `rev` query parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
@@ -1392,7 +1392,7 @@ function head_api_structure(req, res)  {
 ///
 /// If the `waitForSync` parameter is not specified or set to
 /// `false`, then the collection's default `waitForSync` behavior is
-/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// applied. The `waitForSync` query parameter cannot be used to disable
 /// synchronization for collections that have a default `waitForSync` value
 /// of `true`.
 ///
@@ -1473,7 +1473,7 @@ function delete_api_structure (req, res) {
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally patch a document based on a target revision id by
-/// using the `rev` URL parameter.
+/// using the `rev` query parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
@@ -1501,14 +1501,14 @@ function delete_api_structure (req, res) {
 /// Setting an attribute value to `null` in the patch document will cause a
 /// value of `null` be saved for the attribute by default.
 ///
-/// Optionally, the URL parameter `waitForSync` can be used to force
+/// Optionally, the query parameter `waitForSync` can be used to force
 /// synchronization of the document update operation to disk even in case
 /// that the `waitForSync` flag had been disabled for the entire collection.
-/// Thus, the `waitForSync` URL parameter can be used to force synchronization
+/// Thus, the `waitForSync` query parameter can be used to force synchronization
 /// of just specific operations. To use this, set the `waitForSync` parameter
 /// to `true`. If the `waitForSync` parameter is not specified or set to
 /// `false`, then the collection's default `waitForSync` behavior is
-/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// applied. The `waitForSync` query parameter cannot be used to disable
 /// synchronization for collections that have a default `waitForSync` value
 /// of `true`.
 ///
@@ -1521,7 +1521,7 @@ function delete_api_structure (req, res) {
 /// body of the response contains an error document.
 ///
 /// You can conditionally update a document based on a target revision id by
-/// using either the `rev` URL parameter or the `if-match` HTTP header.
+/// using either the `rev` query parameter or the `if-match` HTTP header.
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the `policy` parameter. This is the same as when replacing
 /// documents (see replacing documents for details).
@@ -1602,7 +1602,7 @@ function patch_api_structure (req, res) {
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally replace a document based on a target revision id by
-/// using the `rev` URL parameter.
+/// using the `rev` query parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
@@ -1631,14 +1631,14 @@ function patch_api_structure (req, res) {
 /// these attributes will be ignored. Only the URI and the "ETag" header are
 /// relevant in order to avoid confusion when using proxies.
 ///
-/// Optionally, the URL parameter `waitForSync` can be used to force
+/// Optionally, the query parameter `waitForSync` can be used to force
 /// synchronization of the document replacement operation to disk even in case
 /// that the `waitForSync` flag had been disabled for the entire collection.
-/// Thus, the `waitForSync` URL parameter can be used to force synchronization
+/// Thus, the `waitForSync` query parameter can be used to force synchronization
 /// of just specific operations. To use this, set the `waitForSync` parameter
 /// to `true`. If the `waitForSync` parameter is not specified or set to
 /// `false`, then the collection's default `waitForSync` behavior is
-/// applied. The `waitForSync` URL parameter cannot be used to disable
+/// applied. The `waitForSync` query parameter cannot be used to disable
 /// synchronization for collections that have a default `waitForSync` value
 /// of `true`.
 ///
@@ -1658,7 +1658,7 @@ function patch_api_structure (req, res) {
 /// - specifying the target revision in the `if-match` HTTP header
 ///
 /// Specifying a target revision is optional, however, if done, only one of the
-/// described mechanisms must be used (either the `rev` URL parameter or the
+/// described mechanisms must be used (either the `rev` query parameter or the
 /// `if-match` HTTP header).
 /// Regardless which mechanism is used, the parameter needs to contain the target
 /// document revision id as returned in the `_rev` attribute of a document or
@@ -1794,14 +1794,14 @@ function put_api_structure (req, res) {
 /// as soon as the document has been accepted. It will not wait, until the
 /// documents has been sync to disk.
 ///
-/// Optionally, the URL parameter `waitForSync` can be used to force
+/// Optionally, the query parameter `waitForSync` can be used to force
 /// synchronization of the document creation operation to disk even in case that
 /// the `waitForSync` flag had been disabled for the entire collection.  Thus,
-/// the `waitForSync` URL parameter can be used to force synchronization of just
+/// the `waitForSync` query parameter can be used to force synchronization of just
 /// this specific operations. To use this, set the `waitForSync` parameter to
 /// `true`. If the `waitForSync` parameter is not specified or set to `false`,
 /// then the collection's default `waitForSync` behavior is applied. The
-/// `waitForSync` URL parameter cannot be used to disable synchronization for
+/// `waitForSync` query parameter cannot be used to disable synchronization for
 /// collections that have a default `waitForSync` value of `true`.
 ///
 /// @RESTRETURNCODES

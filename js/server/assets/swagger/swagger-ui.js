@@ -14909,7 +14909,7 @@ jQuery.extend({
 		// Remove hash character (#7531: and string promotion)
 		// Add protocol if not provided (prefilters might expect it)
 		// Handle falsy url in the settings object (#10093: consistency with old signature)
-		// We also use the url parameter if available
+		// We also use the query parameter if available
 		s.url = ( ( url || s.url || ajaxLocation ) + "" ).replace( rhash, "" )
 			.replace( rprotocol, ajaxLocParts[ 1 ] + "//" );
 

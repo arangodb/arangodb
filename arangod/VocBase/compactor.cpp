@@ -740,7 +740,15 @@ static compaction_initial_context_t InitCompaction (TRI_document_collection_t* d
 
     context._keepDeletions = compaction->_keepDeletions;
 
-    bool ok = TRI_IterateDatafile(df, CalculateSize, &context);
+    TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+    bool ok;
+    try {
+      ok = TRI_IterateDatafile(df, CalculateSize, &context);
+    }
+    catch (...) {
+      ok = false;
+    }
+    TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
     if (df->isPhysical(df)) {
       TRI_MMFileAdvise(df->_data, df->_maximalSize, TRI_MADVISE_RANDOM);

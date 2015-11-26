@@ -122,7 +122,7 @@ actions.defineHttp({
 ///
 /// - *requestType*: the HTTP request method (e.g. GET)
 ///
-/// - *parameters*: object with URL parameters received
+/// - *parameters*: object with query parameters received
 ///
 /// @RESTRETURNCODES
 ///
@@ -157,7 +157,7 @@ actions.defineHttp({
 ///
 /// - *requestType*: the HTTP request method (e.g. GET)
 ///
-/// - *parameters*: object with URL parameters received
+/// - *parameters*: object with query parameters received
 ///
 /// @RESTRETURNCODES
 ///

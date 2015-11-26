@@ -170,7 +170,7 @@ class RequestContext {
 /// ```js
 /// app.get("/foxx/:name", function {
 ///   // Do something
-/// }).pathParam("name", joi.number().integer().required().description("Name of the Foxx"));
+/// }).pathParam("name", joi.string().required().description("Name of the Foxx"));
 /// ```
 ///
 /// You can also pass in a configuration object instead:
@@ -179,7 +179,7 @@ class RequestContext {
 /// app.get("/foxx/:name", function {
 ///   // Do something
 /// }).pathParam("name", {
-///   type: joi.number().integer(),
+///   type: joi.string(),
 ///   required: true,
 ///   description: "Name of the Foxx"
 /// });
@@ -280,7 +280,7 @@ class RequestContext {
 /// app.get("/foxx", function {
 ///   // Do something
 /// }).queryParam("id",
-///   joi.number().integer()
+///   joi.string()
 ///   .required()
 ///   .description("Id of the Foxx")
 ///   .meta({allowMultiple: false})
@@ -293,7 +293,7 @@ class RequestContext {
 /// app.get("/foxx", function {
 ///   // Do something
 /// }).queryParam("id", {
-///   type: joi.number().integer().required().description("Id of the Foxx"),
+///   type: joi.string().required().description("Id of the Foxx"),
 ///   allowMultiple: false
 /// });
 /// ```
@@ -752,7 +752,7 @@ _.each([
 /// *Examples*
 ///
 /// ```js
-/// app.allRoutes.pathParam("id", joi.number().integer().required().description("Id of the Foxx"));
+/// app.allRoutes.pathParam("id", joi.string().required().description("Id of the Foxx"));
 ///
 /// app.get("/foxx/:id", function {
 ///   // Secured by pathParam
@@ -763,7 +763,7 @@ _.each([
 ///
 /// ```js
 /// app.allRoutes.pathParam("id", {
-///   type: joi.number().integer(),
+///   type: joi.string(),
 ///   required: true,
 ///   description: "Id of the Foxx"
 /// });
@@ -786,7 +786,7 @@ _.each([
 ///
 /// ```js
 /// app.allroutes.queryParam("id",
-///   joi.number().integer()
+///   joi.string()
 ///   .required()
 ///   .description("Id of the Foxx")
 ///   .meta({allowMultiple: false})
@@ -801,7 +801,7 @@ _.each([
 ///
 /// ```js
 /// app.allroutes.queryParam("id", {
-///   type: joi.number().integer().required().description("Id of the Foxx"),
+///   type: joi.string().required().description("Id of the Foxx"),
 ///   allowMultiple: false
 /// });
 ///

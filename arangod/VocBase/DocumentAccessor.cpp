@@ -140,12 +140,46 @@ DocumentAccessor& DocumentAccessor::at (int64_t index) {
     
 triagens::basics::Json DocumentAccessor::toJson () {
   if (_current == nullptr) {
-    return triagens::basics::Json(triagens::basics::Json::Null);
+    // we're still pointing to the original document
+    auto shaper = _document->getShaper();
+
+    // fetch document from mptr
+    TRI_shaped_json_t shaped;
+    TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _mptr->getDataPtr());
+    triagens::basics::Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
+
+    // add internal attributes
+
+    // _id, _key, _rev
+    char const* key = TRI_EXTRACT_MARKER_KEY(_mptr);
+    std::string id(_resolver->getCollectionName(_document->_info._cid));
+    id.push_back('/');
+    id.append(key);
+    json(TRI_VOC_ATTRIBUTE_ID, triagens::basics::Json(id));
+    json(TRI_VOC_ATTRIBUTE_REV, triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(_mptr))));
+    json(TRI_VOC_ATTRIBUTE_KEY, triagens::basics::Json(key));
+      
+    if (TRI_IS_EDGE_MARKER(_mptr)) {
+      // _from
+      std::string from(_resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_mptr)));
+      from.push_back('/');
+      from.append(TRI_EXTRACT_MARKER_FROM_KEY(_mptr));
+      json(TRI_VOC_ATTRIBUTE_FROM, triagens::basics::Json(from));
+        
+      // _to
+      std::string to(_resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_mptr)));
+      to.push_back('/');
+      to.append(TRI_EXTRACT_MARKER_TO_KEY(_mptr));
+      json(TRI_VOC_ATTRIBUTE_TO, triagens::basics::Json(to));
+    }
+
+    return json;
   }
 
-  // should always be true
   if (_current == _json.get()) {
     // _current points at the JSON that we own
+
+    // steal the JSON
     TRI_json_t* value = _json.release();
     setToNull();
     return triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, value);
@@ -168,14 +202,22 @@ triagens::basics::Json DocumentAccessor::toJson () {
 
 void DocumentAccessor::setToNull () {
   // check if already null
-  if (! TRI_IsNullJson(_current)) {
-    _json.reset(TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
-    _current = _json.get();
+  if (_current != nullptr && _current->_type == TRI_JSON_NULL) {
+    // already null. done!
+    return;
   }
+
+  _json.reset(TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
+  _current = _json.get();
 }
 
 void DocumentAccessor::lookupJsonAttribute (char const* name, size_t nameLength) {
   TRI_ASSERT(_current != nullptr);
+
+  if (! isObject()) {
+    setToNull();
+    return;
+  }
 
   TRI_json_t* value = TRI_LookupObjectJson(_current, name);
 
@@ -231,40 +273,42 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
       return;
     }
 
-    if (name[1] == 'f' && nameLength == 5 && memcmp(name, TRI_VOC_ATTRIBUTE_FROM, nameLength) == 0) {
-      // _from
-      char buffer[512]; // big enough for max key length + max collection name length
-      size_t pos = _resolver->getCollectionNameCluster(&buffer[0], TRI_EXTRACT_MARKER_FROM_CID(_mptr));
-      buffer[pos++] = '/';
-      char const* key = TRI_EXTRACT_MARKER_FROM_KEY(_mptr);
-      if (key == nullptr) {
-        setToNull();
+    if (TRI_IS_EDGE_MARKER(_mptr)) {
+      if (name[1] == 'f' && nameLength == 5 && memcmp(name, TRI_VOC_ATTRIBUTE_FROM, nameLength) == 0) {
+        // _from
+        char buffer[512]; // big enough for max key length + max collection name length
+        size_t pos = _resolver->getCollectionNameCluster(&buffer[0], TRI_EXTRACT_MARKER_FROM_CID(_mptr));
+        buffer[pos++] = '/';
+        char const* key = TRI_EXTRACT_MARKER_FROM_KEY(_mptr);
+        if (key == nullptr) {
+          setToNull();
+          return;
+        }
+        size_t len = strlen(key);
+        memcpy(&buffer[pos], key, len);
+        buffer[pos + len] = '\0';
+        _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], pos + len));
+        _current = _json.get();
         return;
       }
-      size_t len = strlen(key);
-      memcpy(&buffer[pos], key, len);
-      buffer[pos + len] = '\0';
-      _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], pos + len));
-      _current = _json.get();
-      return;
-    }
 
-    if (name[1] == 't' && nameLength == 3 && memcmp(name, TRI_VOC_ATTRIBUTE_TO, nameLength) == 0) {
-      // to
-      char buffer[512]; // big enough for max key length + max collection name length
-      size_t pos = _resolver->getCollectionNameCluster(&buffer[0], TRI_EXTRACT_MARKER_TO_CID(_mptr));
-      buffer[pos++] = '/';
-      char const* key = TRI_EXTRACT_MARKER_TO_KEY(_mptr);
-      if (key == nullptr) {
-        setToNull();
+      if (name[1] == 't' && nameLength == 3 && memcmp(name, TRI_VOC_ATTRIBUTE_TO, nameLength) == 0) {
+        // to
+        char buffer[512]; // big enough for max key length + max collection name length
+        size_t pos = _resolver->getCollectionNameCluster(&buffer[0], TRI_EXTRACT_MARKER_TO_CID(_mptr));
+        buffer[pos++] = '/';
+        char const* key = TRI_EXTRACT_MARKER_TO_KEY(_mptr);
+        if (key == nullptr) {
+          setToNull();
+          return;
+        }
+        size_t len = strlen(key);
+        memcpy(&buffer[pos], key, len);
+        buffer[pos + len] = '\0';
+        _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], pos + len));
+        _current = _json.get();
         return;
       }
-      size_t len = strlen(key);
-      memcpy(&buffer[pos], key, len);
-      buffer[pos + len] = '\0';
-      _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], pos + len));
-      _current = _json.get();
-      return;
     }
 
     // fall-through intentional
