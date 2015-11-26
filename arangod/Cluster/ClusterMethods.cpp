@@ -36,6 +36,7 @@
 #include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "Indexes/Index.h"
+#include "VocBase/Traverser.h"
 #include "VocBase/server.h"
 
 using namespace std;
@@ -1087,16 +1088,18 @@ int getAllEdgesOnCoordinator (
                  string& contentType,
                  string& resultBody ) {
   triagens::basics::Json result(triagens::basics::Json::Object);
-  int res = getAllEdgesOnCoordinator(dbname, collname, vertex, direction, responseCode, contentType, result);
+  std::vector<traverser::TraverserExpression*> expTmp;
+  int res = getFilteredEdgesOnCoordinator(dbname, collname, vertex, direction, expTmp, responseCode, contentType, result);
   resultBody = triagens::basics::JsonHelper::toString(result.json()); 
   return res;
 }
 
-int getAllEdgesOnCoordinator (
+int getFilteredEdgesOnCoordinator (
                  string const& dbname,
                  string const& collname,
                  string const& vertex,
                  TRI_edge_direction_e const& direction,
+                 std::vector<traverser::TraverserExpression*> const& expressions, 
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  string& contentType,
                  triagens::basics::Json& result ) {
@@ -1125,13 +1128,23 @@ int getAllEdgesOnCoordinator (
   else if (direction == TRI_EDGE_OUT) {
     queryParameters += "&direction=out";
   }
+  std::string reqBodyString = "";
+  if (! expressions.empty()) {
+    triagens::basics::Json body(Json::Array, expressions.size());
+    for (auto& e : expressions) {
+      triagens::basics::Json tmp(Json::Object);
+      e->toJson(tmp, TRI_UNKNOWN_MEM_ZONE);
+      body.add(tmp.steal());
+    }
+    reqBodyString = body.toString();
+  }
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headers = new map<string, string>;
 
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
-                           triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                           triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" + it->first + queryParameters,
-                           0, false, headers, nullptr, 3600.0);
+                           &reqBodyString, false, headers, nullptr, 3600.0);
     delete res;
   }
   // Now listen to the results:
