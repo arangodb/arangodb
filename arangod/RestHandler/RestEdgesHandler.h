@@ -42,6 +42,13 @@ namespace triagens {
   namespace arango {
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+    namespace traverser {
+      class TraverserExpression;
+    }
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -81,9 +88,18 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all edges in given direction for given vertex
+///        Uses the TraverserExpression for filtering.
+///        Might be nullptr for no filtering
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool readEdges ();
+        bool readEdges (traverser::TraverserExpression const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads all edges in given direction for given vertex
+///        Also parses the body into an TraverserExpression
+////////////////////////////////////////////////////////////////////////////////
+
+        bool readFilteredEdges ();
     };
 
   }
