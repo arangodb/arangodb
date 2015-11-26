@@ -311,7 +311,10 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
                                                                       map.second.size());
       for (auto const & x : map.second) {
         triagens::basics::Json exp(zone, triagens::basics::Json::Object);
-        x->toJson(exp, zone);
+        auto tmp = dynamic_cast<SimpleTraverserExpression*>(x);
+        if (tmp != nullptr) {
+          tmp->toJson(exp, zone);
+        }
         expressionArray(exp);
       }
       expressionObject.set(std::to_string(map.first), expressionArray);

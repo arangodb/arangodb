@@ -125,8 +125,8 @@ namespace triagens {
             }
           }
 
-          virtual void toJson (triagens::basics::Json& json,
-                               TRI_memory_zone_t* zone) const;
+          void toJson (triagens::basics::Json& json,
+                       TRI_memory_zone_t* zone) const;
 
           bool matchesCheck (TRI_doc_mptr_t& element,
                              TRI_document_collection_t* collection,
