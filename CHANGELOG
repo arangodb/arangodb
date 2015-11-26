@@ -1,6 +1,8 @@
 v2.7.2 (XXXX-XX-XX)
 -------------------
 
+* added missing lock instruction for primary index in compactor size calculation
+
 * fixed issue #1589
 
 * fixed issue #1583
