@@ -37,7 +37,11 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
+#include "FulltextIndex/fulltext-index.h"
+#include "FulltextIndex/fulltext-result.h"
+#include "FulltextIndex/fulltext-query.h"
 #include "Indexes/Index.h"
+#include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
 #include "Rest/SslInterface.h"
 #include "V8Server/V8Traverser.h"
@@ -4250,7 +4254,159 @@ AqlValue Functions::Position (triagens::aql::Query* query,
   return AqlValue(new Json(false));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function FULLTEXT
+////////////////////////////////////////////////////////////////////////////////
 
+AqlValue Functions::Fulltext (triagens::aql::Query* query,
+                              triagens::arango::AqlTransaction* trx,
+                              FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 3 || n > 4) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "FULLTEXT", (int) 3, (int) 4);
+  }
+
+  auto resolver = trx->resolver();
+
+  Json collectionJson = ExtractFunctionParameter(trx, parameters, 0, false);
+
+  if (! collectionJson.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+  }
+
+  std::string colName = basics::JsonHelper::getStringValue(collectionJson.json(), "");
+
+  Json attribute = ExtractFunctionParameter(trx, parameters, 1, false);
+  
+  if (! attribute.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+  }
+
+  std::string attributeName = basics::JsonHelper::getStringValue(attribute.json(), "");
+
+  Json queryString = ExtractFunctionParameter(trx, parameters, 2, false);
+  
+  if (! queryString.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+  }
+  
+  std::string queryValue = basics::JsonHelper::getStringValue(queryString.json(), "");
+
+  size_t maxResults = 0; // 0 means "all results"
+  if (n >= 4) {
+    Json limit = ExtractFunctionParameter(trx, parameters, 3, false);
+    if (! limit.isNull() && ! limit.isNumber()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    }
+    else if (limit.isNumber()) {
+      int64_t value = basics::JsonHelper::getNumericValue<int64_t>(limit.json(), 0);
+      if (value > 0) {
+        maxResults = static_cast<size_t>(value);
+      }
+    }
+  }
+  
+  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  auto collection = trx->trxCollection(cid);
+
+  // ensure the collection is loaded
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), 
+                                           cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(),
+                                           true,
+                                           true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_FORMAT(res, "'%s'", colName.c_str());
+    }
+
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                    "'%s'",
+                                    colName.c_str());
+    }
+  }
+
+  auto document = trx->documentCollection(cid);
+    
+  if (document == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  triagens::arango::Index* index = nullptr;
+ 
+  std::vector<std::vector<triagens::basics::AttributeName>> const search({ { triagens::basics::AttributeName(attributeName, false) } });
+
+  for (auto const& idx : document->allIndexes()) {
+    if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      // test if index is on the correct field
+      if (triagens::basics::AttributeName::isIdentical(idx->fields(), search, false)) {
+        // match!
+        index = idx;
+        break;
+      }
+    } 
+  }
+
+  if (index == nullptr) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING, colName.c_str());
+  }
+  
+  if (trx->orderDitch(collection) == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  TRI_fulltext_query_t* ft = TRI_CreateQueryFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
+
+  if (ft == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  bool isSubstringQuery = false;
+  int res = TRI_ParseQueryFulltextIndex(ft, queryValue.c_str(), &isSubstringQuery);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeQueryFulltextIndex(ft);
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  auto fulltextIndex = static_cast<triagens::arango::FulltextIndex*>(index);
+  // note: the following call will free "ft"!
+  TRI_fulltext_result_t* queryResult = TRI_QueryFulltextIndex(fulltextIndex->internals(), ft);
+
+  if (queryResult == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  auto shaper = collection->_collection->_collection->getShaper();
+  size_t const numResults = queryResult->_numDocuments;
+
+  try {
+    Json array(Json::Array, numResults);
+
+    for (size_t i = 0; i < numResults; ++i) {
+      auto j = ExpandShapedJson(
+        shaper,
+        resolver,
+        cid,
+        (TRI_doc_mptr_t const*) queryResult->_documents[i]
+      );
+      array.add(j);
+    }
+    TRI_FreeResultFulltextIndex(queryResult);
+
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, array.steal()));
+  }
+  catch (...) {
+    TRI_FreeResultFulltextIndex(queryResult);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
