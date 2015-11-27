@@ -201,7 +201,7 @@ HttpHandler::status_t RestEdgesHandler::execute () {
 bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> const& expressions) {
   std::vector<std::string> const& suffix = _request->suffix();
 
-  if (! (suffix.size() == 1)) {
+  if (suffix.size() != 1) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected GET " + EDGES_PATH +
@@ -332,6 +332,8 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
 
   triagens::basics::Json result(triagens::basics::Json::Object);
   result("edges", documents);
+  result("error", triagens::basics::Json(false));
+  result("code", triagens::basics::Json(200));
 
   // and generate a response
   generateResult(result.json());
@@ -348,32 +350,33 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
 
 bool RestEdgesHandler::readFilteredEdges () {
   std::vector<traverser::TraverserExpression*> expressions;
-  TRI_json_t* json = parseJsonBody();
+  std::unique_ptr<TRI_json_t> json(parseJsonBody());
   triagens::basics::ScopeGuard guard{
     []() -> void { },
-    [&json, &expressions]() -> void {
+    [&expressions]() -> void {
       for (auto& e : expressions) {
         delete e;
       }
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
   };
   if (json == nullptr) {
+    delete _response;
+    _response = nullptr;
     return readEdges(expressions);
   }
 
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsArrayJson(json.get())) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "Expected a list of traverser expressions as body parameter");
     return false;
   }
 
-  size_t length = TRI_LengthArrayJson(json); 
+  size_t length = TRI_LengthArrayJson(json.get()); 
   expressions.reserve(length);
 
   for (size_t i = 0; i < length; ++i) {
-    TRI_json_t* exp = TRI_LookupArrayJson(json, i);
+    TRI_json_t* exp = TRI_LookupArrayJson(json.get(), i);
     if (TRI_IsObjectJson(exp)) {
       std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(exp));
       expressions.emplace_back(expression.get());
