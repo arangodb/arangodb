@@ -21,7 +21,7 @@ ArangoDB provides the following index types:
 !SUBSECTION Primary Index
 
 For each collection there will always be a *primary index* which is a hash index 
-for the [document keys](../Glossary/index.html#document_key) (`_key` attribute)
+for the [document keys](../Glossary/README.md#document-key) (`_key` attribute)
 of all documents in the collection. The primary index allows quick selection
 of documents in the collection using either the `_key` or `_id` attributes. It will
 be used from within AQL queries automatically when performing equality lookups on
@@ -44,7 +44,7 @@ mechanism to create user-defined primary indexes.
 
 !SUBSECTION Edges Index
 
-Every [edge collection](../Glossary/index.html#edge_collection) also has an 
+Every [edge collection](../Glossary/README.md#edge-collection) also has an 
 automatically created *edges index*. The edges index provides quick access to
 documents by either their `_from` or `_to` attributes. It can therefore be
 used to quickly find connections between vertex documents and is invoked when 
@@ -269,7 +269,8 @@ way.
 To make an index insert the individual array members into the index instead of the entire array
 value, a special array index needs to be created for the attribute. Array indexes can be set up 
 like regular hash or skiplist indexes using the `collection.ensureIndex()` function. To make a 
-hash or skiplist index an array index, the index attribute name needs to be extended with <i>[\*]</i>.
+hash or skiplist index an array index, the index attribute name needs to be extended with <i>[\*]</i>
+when creating the index and when filtering in an AQL query using the `IN` operator.
 
 The following example creates an array hash index on the `tags` attribute in a collection named
 `posts`:
@@ -369,3 +370,8 @@ db.posts.insert({tags: [1, 2, 3], name: "alice"})
 db.posts.insert({tags: [null], name: "bob"})
 // Will be indexed for [null, "bob"] 
 ```
+
+Please note that filtering using array indexes only works from within AQL queries and
+only if the query filters on the indexed attribute using the `IN` operator. The other
+comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`) currently cannot use array
+indexes.

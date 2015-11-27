@@ -92,6 +92,7 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     // Nothing to do, caller has set a defined state already.
     return;
   }
+  size_t depth = result.size();
   if (last == nullptr) {
     TRI_ASSERT(_traverser->_iteratorCache.size() == result.size());
     // We have to request the next level
@@ -99,14 +100,20 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     triagens::rest::HttpResponse::HttpResponseCode responseCode;
     std::string contentType;
     std::string collName = _traverser->_edgeCols[eColIdx];
+    std::vector<TraverserExpression*> expEdges;
+    auto found = _traverser->_expressions->find(depth);
+    if (found != _traverser->_expressions->end()) {
+      expEdges = found->second;
+    }
 
-    int res = getAllEdgesOnCoordinator(_traverser->_dbname,
-                                       collName,
-                                       startVertex,
-                                       _traverser->_opts.direction,
-                                       responseCode,
-                                       contentType,
-                                       resultEdges);
+    int res = getFilteredEdgesOnCoordinator(_traverser->_dbname,
+                                            collName,
+                                            startVertex,
+                                            _traverser->_opts.direction,
+                                            expEdges,
+                                            responseCode,
+                                            contentType,
+                                            resultEdges);
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -134,25 +141,21 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
       }
       _traverser->_edges.emplace(edgeId, edge.copy().steal());
     }
+
+    std::vector<TraverserExpression*> expVertices;
+    found = _traverser->_expressions->find(depth + 1);
+    if (found != _traverser->_expressions->end()) {
+      expVertices = found->second;
+    }
+
     std::map<std::string, std::string> headers;
-    std::map<std::string, std::string> resultHeaders;
-    for (auto it : verticesToFetch) {
-      std::vector<std::string> splitId = triagens::basics::StringUtils::split(it, '/'); 
-      TRI_ASSERT(splitId.size() == 2);
-      std::string vertexResult;
-      int res = getDocumentOnCoordinator(_traverser->_dbname,
-                                         splitId[0],
-                                         splitId[1],
-                                         0,
-                                         headers,
-                                         true,
-                                         responseCode,
-                                         resultHeaders,
-                                         vertexResult);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      _traverser->_vertices.emplace(it, triagens::basics::JsonHelper::fromString(vertexResult));
+    res = getFilteredDocumentsOnCoordinator(_traverser->_dbname,
+                                            expVertices,
+                                            headers,
+                                            verticesToFetch,
+                                            _traverser->_vertices);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
     }
     std::string next = stack.top();
     stack.pop();

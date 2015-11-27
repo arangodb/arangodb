@@ -439,7 +439,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally fetch an edge document based on a target revision id by
-/// using the *rev* URL parameter.
+/// using the *rev* query parameter.
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -498,7 +498,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally replace an edge document based on a target revision id by
-/// using the *rev* URL parameter.
+/// using the *rev* query parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
@@ -522,14 +522,14 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// **Note**: The attributes
 /// *_from* and *_to* of an edge are immutable and cannot be updated either.
 ///
-/// Optionally, the URL parameter *waitForSync* can be used to force
+/// Optionally, the query parameter *waitForSync* can be used to force
 /// synchronization of the edge document replacement operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* URL parameter can be used to force synchronization
+/// Thus, the *waitForSync* query parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* URL parameter cannot be used to disable
+/// applied. The *waitForSync* query parameter cannot be used to disable
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
@@ -550,7 +550,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// - specifying the target revision in the *if-match* HTTP header
 ///
 /// Specifying a target revision is optional, however, if done, only one of the
-/// described mechanisms must be used (either the *rev* URL parameter or the
+/// described mechanisms must be used (either the *rev* query parameter or the
 /// *if-match* HTTP header).
 /// Regardless which mechanism is used, the parameter needs to contain the target
 /// revision id as returned in the *_rev* attribute of an edge document or
@@ -640,7 +640,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally patch an edge document based on a target revision id by
-/// using the *rev* URL parameter.
+/// using the *rev* query parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
@@ -665,14 +665,14 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// **Note**: Internal attributes such as *_key*, *_from* and *_to* are immutable
 /// once set and cannot be updated.
 ///
-/// Optionally, the URL parameter *waitForSync* can be used to force
+/// Optionally, the query parameter *waitForSync* can be used to force
 /// synchronization of the edge document update operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* URL parameter can be used to force synchronization
+/// Thus, the *waitForSync* query parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* URL parameter cannot be used to disable
+/// applied. The *waitForSync* query parameter cannot be used to disable
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
@@ -686,7 +686,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// body of the response contains an error document.
 ///
 /// You can conditionally update an edge document based on a target revision id by
-/// using either the *rev* URL parameter or the *if-match* HTTP header.
+/// using either the *rev* query parameter or the *if-match* HTTP header.
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the *policy* parameter. This is the same as when replacing
 /// edge documents (see replacing documents for details).
@@ -732,7 +732,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally delete an edge document based on a target revision id by
-/// using the *rev* URL parameter.
+/// using the *rev* query parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
@@ -757,7 +757,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* URL parameter cannot be used to disable
+/// applied. The *waitForSync* query parameter cannot be used to disable
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///

@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgesHandler.h"
+#include "Basics/ScopeGuard.h"
 #include "VocBase/Traverser.h"
 
 using namespace triagens::rest;
@@ -60,12 +61,14 @@ HttpHandler::status_t RestEdgesHandler::execute () {
 
   // execute one of the CRUD methods
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_GET:    readEdges(); break;
-    // case HttpRequest::HTTP_REQUEST_PUT:    readEdges(); break;
-
-
+    case HttpRequest::HTTP_REQUEST_GET: {
+      std::vector<traverser::TraverserExpression*> empty;
+      readEdges(empty);
+      break;
+    }
     case HttpRequest::HTTP_REQUEST_PUT:
-    case HttpRequest::HTTP_REQUEST_PATCH:
+      readFilteredEdges();
+      break;
     case HttpRequest::HTTP_REQUEST_HEAD:
     case HttpRequest::HTTP_REQUEST_POST:
     case HttpRequest::HTTP_REQUEST_DELETE:
@@ -195,10 +198,10 @@ HttpHandler::status_t RestEdgesHandler::execute () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestEdgesHandler::readEdges () {
+bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> const& expressions) {
   std::vector<std::string> const& suffix = _request->suffix();
 
-  if (! (suffix.size() == 1)) {
+  if (suffix.size() != 1) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected GET " + EDGES_PATH +
@@ -296,10 +299,29 @@ bool RestEdgesHandler::readEdges () {
   // generate result
   triagens::basics::Json documents(triagens::basics::Json::Array);
   documents.reserve(edges.size());
+  TRI_document_collection_t* docCol = collection->_collection->_collection;
 
-  for (auto& e : edges) {
-    DocumentAccessor da(trx.resolver(), collection->_collection->_collection, &e);
-    documents.add(da.toJson());
+  if (expressions.empty()) {
+    for (auto& e : edges) {
+      DocumentAccessor da(trx.resolver(), docCol, &e);
+      documents.add(da.toJson());
+    }
+  }
+  else {
+    for (auto& e : edges) {
+      bool add = true;
+      // Expressions symbolize an and, so all have to be matched
+      for (auto& exp : expressions) {
+        if (! exp->matchesCheck(e, docCol, trx.resolver())) {
+          add = false;
+          break;
+        }
+      }
+      if (add) {
+        DocumentAccessor da(trx.resolver(), docCol, &e);
+        documents.add(da.toJson());
+      }
+    }
   }
 
   res = trx.finish(res);
@@ -310,6 +332,8 @@ bool RestEdgesHandler::readEdges () {
 
   triagens::basics::Json result(triagens::basics::Json::Object);
   result("edges", documents);
+  result("error", triagens::basics::Json(false));
+  result("code", triagens::basics::Json(200));
 
   // and generate a response
   generateResult(result.json());
@@ -317,3 +341,47 @@ bool RestEdgesHandler::readEdges () {
   return true;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// Internal function for optimized edge retrieval.
+/// Allows to send an TraverserExpression for filtering in the body
+/// Not publicly documented on purpose.
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestEdgesHandler::readFilteredEdges () {
+  std::vector<traverser::TraverserExpression*> expressions;
+  std::unique_ptr<TRI_json_t> json(parseJsonBody());
+  triagens::basics::ScopeGuard guard{
+    []() -> void { },
+    [&expressions]() -> void {
+      for (auto& e : expressions) {
+        delete e;
+      }
+    }
+  };
+  if (json == nullptr) {
+    delete _response;
+    _response = nullptr;
+    return readEdges(expressions);
+  }
+
+  if (! TRI_IsArrayJson(json.get())) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Expected a list of traverser expressions as body parameter");
+    return false;
+  }
+
+  size_t length = TRI_LengthArrayJson(json.get()); 
+  expressions.reserve(length);
+
+  for (size_t i = 0; i < length; ++i) {
+    TRI_json_t* exp = TRI_LookupArrayJson(json.get(), i);
+    if (TRI_IsObjectJson(exp)) {
+      std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(exp));
+      expressions.emplace_back(expression.get());
+      expression.release();
+    }
+  }
+  return readEdges(expressions);
+}

@@ -258,6 +258,94 @@ function printIndexes (indexes) {
   }
 }
 
+
+/* print indexes used */
+function printTraversalDetails (traversals) {
+  'use strict';
+  if (traversals.length === 0) {
+    return;
+  }
+
+  stringBuilder.appendLine();
+  stringBuilder.appendLine(section("Traversals on graphs:"));
+
+  var maxIdLen = String("Id").length;
+  var maxMinMaxDepth = String("traversal depth").length;
+  var maxVertexCollectionNameStrLen = String("Vertex collections").length;
+  var maxEdgeCollectionNameStrLen = String("Edge collections").length;
+  var maxConditionsLen = String("Filter conditions").length;
+
+  traversals.forEach(function(node) {
+    var l = String(node.id).length;
+    if (l > maxIdLen) {
+      maxIdLen = l;
+    }
+
+    if (node.minMaxDepthLen > maxMinMaxDepth) {
+      maxMinMaxDepth = node.minMaxDepthLen;
+    }
+
+    if (node.hasOwnProperty('ConditionStr')) {
+      if (node.ConditionStr.length > maxConditionsLen) {
+        maxConditionsLen = node.ConditionStr.length;
+      }
+    }
+
+    if (node.hasOwnProperty('vertexCollectionNameStr')) {
+      if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
+        maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;
+      }
+    }
+    if (node.hasOwnProperty('edgeCollectionNameStr')) {
+      if (node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen) {
+        maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;
+      }
+    }
+
+  });
+
+  var line = " " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " +
+    header("traversal depth") +  pad(1 + maxMinMaxDepth - String("traversal depth").length) + "   " +
+    header("Vertex collections") + pad(1 + maxVertexCollectionNameStrLen - "Vertex collections".length) + "   " +
+    header("Edge collections") + pad(1 + maxEdgeCollectionNameStrLen - "Edge collections".length) + "   " +
+    header("Filter conditions");
+
+  stringBuilder.appendLine(line);
+
+  for (var i = 0; i < traversals.length; ++i) {
+    line = '';
+
+    line += " " + pad(1 + maxIdLen - String(traversals[i].id).length) + 
+      traversals[i].id + "  ";
+
+    line += " " + traversals[i].minMaxDepth + pad(1 + maxMinMaxDepth - traversals[i].minMaxDepthLen) +  "   ";
+
+    if (traversals[i].hasOwnProperty('vertexCollectionNameStr')) {
+      line += traversals[i].vertexCollectionNameStr + 
+        pad(1 + maxVertexCollectionNameStrLen - traversals[i].vertexCollectionNameStrLen) + "   ";
+
+    }
+    else {
+      line += pad(maxVertexCollectionNameStrLen) + "   ";
+    }
+
+    if (traversals[i].hasOwnProperty('edgeCollectionNameStr')) {
+      line += traversals[i].edgeCollectionNameStr + 
+        pad(1 + maxEdgeCollectionNameStrLen - traversals[i].edgeCollectionNameStrLen) + "   ";
+    }
+    else {
+        line += pad(maxEdgeCollectionNameStrLen) + "   ";
+    }
+
+    if (traversals[i].hasOwnProperty('ConditionStr')) {
+      line += traversals[i].ConditionStr;
+    }
+
+    stringBuilder.appendLine(line);
+  }
+
+}
+
 /* analzye and print execution plan */
 function processQuery (query, explain) {
   'use strict';
@@ -301,7 +389,8 @@ function processQuery (query, explain) {
   var references = { }, 
     collectionVariables = { }, 
     usedVariables = { },
-    indexes = [ ], 
+    indexes = [ ],
+    traversalDetails = [],
     modificationFlags,
     isConst = true;
 
@@ -313,7 +402,7 @@ function processQuery (query, explain) {
     }
     catch(x) {
       print(node);
-      throw(x)
+      throw(x);
     }
     
     if (collectionVariables.hasOwnProperty(node.id)) {
@@ -325,7 +414,6 @@ function processQuery (query, explain) {
   var buildExpression = function (node) {
     isConst = isConst && ([ "value", "object", "object element", "array" ].indexOf(node.type) !== -1);
 
-    print (node.type)
     switch (node.type) {
       case "reference": 
         if (references.hasOwnProperty(node.name)) {
@@ -446,6 +534,33 @@ function processQuery (query, explain) {
     }
   };
 
+  var buildSimpleExpression = function (simpleExpressions) {
+    var rc = "";
+
+    for (var indexNo in simpleExpressions) {
+      if (simpleExpressions.hasOwnProperty(indexNo)) {
+        if (rc.length > 0) {
+          rc += " AND ";
+        }
+        for (var i = 0; i < simpleExpressions[indexNo].length; i++) {
+          var item = simpleExpressions[indexNo][i];
+          if (item.isEdgeAccess) {
+            rc += "Path.edges[" + indexNo + "].";
+          }
+          else {
+            rc += "Path.vertices[" + indexNo + "].";
+          }
+          rc += buildExpression(item.varAccess);
+          rc += " " + item.comparisonType + " ";
+          rc += buildExpression(item.compareTo);
+        }
+      }
+      
+    }
+    return rc;
+  };
+
+
   var buildBound = function (attr, operators, bound) {
     var boundValue = bound.isConstant ? value(JSON.stringify(bound.bound)) : buildExpression(bound.bound);
     return attribute(attr) + " " + operators[bound.include ? 1 : 0] + " " + boundValue;
@@ -534,15 +649,59 @@ function processQuery (query, explain) {
         return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse ? "reverse " : "") + node.index.type + " index scan */");
 
       case "TraversalNode":
-        return keyword("FOR") + " [firstEdge: " +
-          variableName(node.edgeOutVariable) + ", firstVertex: " +
-          variableName(node.vertexOutVariable) + ", Paths: " +
-          variableName(node.pathOutVariable) + "] " + 
-          keyword("IN") +
-          " maxPathDepth: " + node.maxDepth + " " +
-          keyword("OUTBOUND") +
-          " Startnode: '" + node.vertexId + "' " +
-          keyword("GRAPH") +  " " + node.graph;
+
+      node.minMaxDepth = node.minDepth + ".." + node.maxDepth;
+      node.minMaxDepthLen = node.minMaxDepth.length;
+
+      var rc = keyword("FOR ") + 
+        variableName(node.vertexOutVariable) + 
+        "  " + annotation("/* vertex */");
+      
+      if (node.hasOwnProperty('edgeOutVariable')) {
+        rc += "  , " + variableName(node.edgeOutVariable) +
+          "  " + annotation("/* edge */");
+      }
+      if (node.hasOwnProperty('pathOutVariable')) {
+        rc += "  , " + variableName(node.pathOutVariable) +
+          "  " + annotation("/* paths */");
+      }
+      rc += "  " +
+        keyword("IN") + " " +
+        node.minMaxDepth + "  " + annotation("/* min..maxPathDepth */") + "  " +
+        keyword("OUTBOUND") +
+        " '" + node.vertexId + "'  " + annotation("/* Startnode */") + "  " +
+        keyword("GRAPH") +  " '" + node.graph + "'";
+
+      traversalDetails.push(node);
+      if (node.hasOwnProperty('simpleExpressions')) {
+        node.ConditionStr = buildSimpleExpression(node.simpleExpressions);
+      }
+
+      var e = [];
+      if (node.hasOwnProperty('graphDefinition')) {
+        var v = [];
+        node.graphDefinition.vertexCollectionNames.forEach(function(vcn) {
+          v.push(collection(vcn));
+        });
+        node.vertexCollectionNameStr = v.join(", ");
+        node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(", ").length;
+
+        node.graphDefinition.edgeCollectionNames.forEach(function(ecn) {
+          e.push(collection(ecn));
+        });
+        node.edgeCollectionNameStr = e.join(", ");
+        node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;
+      }
+      else {
+        var edgeCols = JSON.parse(node.graph);
+        edgeCols.forEach(function(ecn) {
+          e.push(collection(ecn));
+        });
+        node.edgeCollectionNameStr = e.join(", ");
+        node.edgeCollectionNameStrLen = edgeCols.join(", ").length;
+        node.graph = "<anonymous>";
+      }
+        return rc;
 
       case "CalculationNode":
         return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");
@@ -690,6 +849,7 @@ function processQuery (query, explain) {
 
   stringBuilder.appendLine();
   printIndexes(indexes);
+  printTraversalDetails (traversalDetails);
   stringBuilder.appendLine();
   printRules(plan.rules);
   printModificationFlags(modificationFlags);

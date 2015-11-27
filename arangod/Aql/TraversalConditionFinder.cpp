@@ -40,17 +40,22 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
                                       bool &conditionIsImpossible,
                                       Ast* ast) {
   auto node = cn->expression()->node();
+
+  if (node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_OR) ||
+      node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_IN) ||
+      node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_NIN)) {
+    return false;
+  }
+
   std::vector<AstNode const*> currentPath;
   std::vector<std::vector<AstNode const*>> paths;
-  std::vector<std::vector<AstNode const*>> clonePath;
-                                 
+
   node->findVariableAccess(currentPath, paths, var);
 
   for (auto onePath : paths) {
     size_t len = onePath.size();
     bool isEdgeAccess = false;
     bool isVertexAccess = false;
-    size_t attrAccessTo = 0;
 
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       isEdgeAccess   = strcmp(onePath[len - 2]->getStringValue(),    "edges") == 0;
@@ -67,7 +72,7 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
       }
     }
 
-      // we now need to check for p.edges[n] whether n is >= 0
+    // we now need to check for p.edges[n] whether n is >= 0
     if (onePath[len - 3]->type == NODE_TYPE_INDEXED_ACCESS) {
       auto indexAccessNode = onePath[len - 3]->getMember(1);
       if ((indexAccessNode->type != NODE_TYPE_VALUE) ||
@@ -76,7 +81,6 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
         return false;
       }
       conditionIsImpossible = !tn->isInRange(indexAccessNode->value.value._int);
-      attrAccessTo = indexAccessNode->value.value._int;
     }
     else if ((onePath[len - 3]->type == NODE_TYPE_ITERATOR) &&
              (onePath[len - 4]->type == NODE_TYPE_EXPANSION)){
@@ -86,14 +90,40 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
     else {
       return false;
     }
+  }
 
-    // OR? don't know howto continue.
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool extractSimplePathAccesses (AstNode const* node,
+                                TraversalNode* tn,
+                                Ast* ast) {
+
+  std::vector<AstNode const*> currentPath;
+  std::vector<std::vector<AstNode const*>> paths;
+  std::vector<std::vector<AstNode const*>> clonePath;
+
+  node->findVariableAccess(currentPath, paths, tn->pathOutVariable());
+
+  for (auto onePath : paths) {
+    size_t len = onePath.size();
+    bool isEdgeAccess = false;
+    size_t attrAccessTo = 0;
+
+    if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      isEdgeAccess   = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
+    }
+    // we now need to check for p.edges[n] whether n is >= 0
+    if (onePath[len - 3]->type == NODE_TYPE_INDEXED_ACCESS) {
+      auto indexAccessNode = onePath[len - 3]->getMember(1);
+      attrAccessTo = indexAccessNode->value.value._int;
+    }
+
     AstNode const* compareNode = nullptr;
     AstNode const* accessNodeBranch = nullptr;
     for (auto oneNode : onePath) {
-      if (oneNode->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-        return false; 
-      }
+
       if (compareNode != nullptr && accessNodeBranch == nullptr) {
         accessNodeBranch = oneNode;
       }
@@ -116,7 +146,7 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
       AstNode const * pathAccessNode;
       AstNode const * filterByNode;
       bool flipOperator = false;
-      
+
       if (compareNode->getMember(0) == accessNodeBranch) {
         pathAccessNode = accessNodeBranch;
         filterByNode = compareNode->getMember(1);
@@ -132,35 +162,27 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
       }
 
       if (accessNodeBranch->isSimple() && filterByNode->isDeterministic()) {
-        
-        std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
-        if (filterByNode->isAttributeAccessForVariable(result)) {
-          /*
-          for (auto v : result) {
-            if ((v.first->id == tn->edgeOutVariable()->id)   ||
-                (v.first->id == tn->vertexOutVariable()->id) ||
-                (v.first->id == tn->pathOutVariable()->id))     {
-              // The RHS also has one of our variables, we can't evaluate that!
-              return false;
-            }
-          }
-          */
+
+        currentPath.clear();
+        clonePath.clear();
+        filterByNode->findVariableAccess(currentPath, clonePath, tn->pathOutVariable());
+        if (clonePath.size() > 0) {
+          // Path variable access on the RHS? can't do that.
+          continue;
         }
+
         AstNode *newNode = pathAccessNode->clone(ast);
 
         // since we just copied one path, we should only find one. 
         currentPath.clear();
         clonePath.clear();
-        newNode->findVariableAccess(currentPath, clonePath, var);
+        newNode->findVariableAccess(currentPath, clonePath, tn->pathOutVariable());
         if (clonePath.size() != 1) {
-
-          return false;
+          continue;
         }
         auto len = clonePath[0].size();
         if (len < 4) {
-          // well, if we've gotten here, we can't cluster filter, but 
-          // usual early filtering should be fine.
-          return true;
+          continue;
         }
 
         AstNode* firstRefNode = (AstNode*) clonePath[0][len - 4];
@@ -198,7 +220,7 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
 
   return true;
 }
-    
+
 bool TraversalConditionFinder::before (ExecutionNode* en) {
   if (! _variableDefinitions.empty() && en->canThrow()) {
     // we already found a FILTER and
@@ -214,7 +236,7 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
     case EN::DISTRIBUTE:
     case EN::GATHER:
     case EN::REMOTE:
-    case EN::SUBQUERY:        
+    case EN::SUBQUERY:
     case EN::INDEX:
     case EN::INSERT:
     case EN::REMOVE:
@@ -224,12 +246,11 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
     case EN::RETURN:
     case EN::SORT:
     case EN::ENUMERATE_COLLECTION:
-    case EN::LIMIT:           
+    case EN::LIMIT:
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
       break;
-    
 
     case EN::SINGLETON:
     case EN::NORESULTS:
@@ -298,13 +319,13 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
             }
 
             for (auto conditionVar: varsUsedByCondition) {
-              // check whether conditionVar is one of those we emit 
+              // check whether conditionVar is one of those we emit
               int variableType = node->checkIsOutVariable(conditionVar->id);
               if (variableType >= 0) {
                 if ((variableType == 2) &&
                     checkPathVariableAccessFeasible(cn, node, conditionVar, conditionIsImpossible, _plan->getAst()))
                   {
-                    condition->andCombine(it.second->expression()->node());
+                    condition->andCombine(it.second->expression()->node()->clone(_plan->getAst()));
                     foundCondition = true;
                     node->setCalculationNodeId(cn->id());
                   }
@@ -339,6 +360,11 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
         break;
       }
       if (foundCondition) {
+        condition->normalize();
+        TRI_IF_FAILURE("ConditionFinder::normalizePlan") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        extractSimplePathAccesses(condition->root(), node, _plan->getAst());
         node->setCondition(condition.release());
         *_planAltered = true;
       }

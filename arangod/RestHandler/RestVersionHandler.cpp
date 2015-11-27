@@ -102,7 +102,7 @@ bool RestVersionHandler::isDirect () const {
 ///
 /// @RESTREPLYBODY{details,object,optional,}
 /// an optional JSON object with additional details. This is
-/// returned only if the *details* URL parameter is set to *true* in the
+/// returned only if the *details* query parameter is set to *true* in the
 /// request.
 ///
 /// @EXAMPLES

@@ -1,6 +1,8 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1589
+
 * return HTTP status code 410 (gone) instead of HTTP 408 (request timeout) for
   server-side operations that are canceled / killed. Sending 410 instead of 408
   prevents clients from re-starting the same (canceled) operation. Google Chrome
@@ -43,6 +45,7 @@ v2.8.0 (XXXX-XX-XX)
   - FIRST_LIST
   - FLATTEN
   - FLOOR
+  - FULLTEXT
   - LAST
   - MEDIAN
   - MERGE_RECURSIVE
@@ -110,6 +113,12 @@ v2.8.0 (XXXX-XX-XX)
 * added convenience function `db._explain(query)` for human-readable explanation
   of AQL queries
 
+* module resolution as used by `require` now behaves more like in node.js
+
+* the `org/arangodb/request` module now returns response bodies for error responses
+  by default. The old behaviour of not returning bodies for error responses can be
+  re-enabled by explicitly setting the option `returnBodyOnError` to `false` (#1437)
+
 
 v2.7.2 (XXXX-XX-XX)
 -------------------
@@ -120,6 +129,11 @@ v2.7.2 (XXXX-XX-XX)
 * fixed potentially invalid pointer access in shaper when the currently accessed
   document got re-located by the WAL collector at the very same time
 
+* Foxx: optional configuration options no longer log validation errors when assigned
+  empty values (#1495)
+
+* Foxx: constructors provided to Repository and Model sub-classes via extend are
+  now correctly called (#1592)
 
 v2.7.1 (2015-11-07)
 -------------------

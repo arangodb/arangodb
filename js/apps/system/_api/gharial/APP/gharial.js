@@ -274,7 +274,7 @@
 /// @RESTRETURNCODE{409}
 /// Returned if there is a conflict storing the graph.
 /// This can occur either if a graph with this name is already stored, or if there is one edge definition with a
-/// the same [edge collection](../Glossary/index.html#edge_collection)
+/// the same [edge collection](../Glossary/index.html#edge-collection)
 /// but a different signature used in any other graph.
 /// 
 /// @EXAMPLES
@@ -1626,7 +1626,7 @@
 /// Creates a new edge in the collection.
 /// Within the body the has to contain a *\_from* and *\_to* value referencing to valid vertices in the graph.
 /// Furthermore the edge has to be valid in the definition of this
-/// [edge collection](../Glossary/index.html#edge_collection).
+/// [edge collection](../Glossary/index.html#edge-collection).
 /// 
 /// @RESTURLPARAMETERS
 /// 

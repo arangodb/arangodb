@@ -250,12 +250,9 @@ void TraversalBlock::executeExpressions () {
       SimpleTraverserExpression* it = dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
       TRI_document_collection_t const* myCollection = nullptr; 
       if (it->expression != nullptr) {
-        if (it->compareTo != nullptr) {
-          delete it->compareTo;
-        }
         // inVars and inRegs needs fixx
         AqlValue a = it->expression->execute(_trx, cur, _pos, _inVars[i], _inRegs[i], &myCollection);
-        it->compareTo = new Json(a.toJson(_trx, myCollection, true));
+        it->compareTo.reset(new Json(a.toJson(_trx, myCollection, true)));
         a.destroy();
       }
     }

@@ -678,7 +678,7 @@ std::string TRI_ObjectToString (v8::Handle<v8::Value> const value) {
     return "";
   }
   
-  return std::string(*utf8Value, utf8Value.length());
+  return std::move(std::string(*utf8Value, utf8Value.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

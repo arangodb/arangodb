@@ -16,7 +16,7 @@ opaque strings when they store or use it locally.
 
 !SUBSECTION Collection Name
 
-A collection name identifies a collection in a database. It is a string and is unique within the database. Unlike the collection identifier it is supplied by the creator of the collection. The collection name must consist of letters, digits, and the _ (underscore) and - (dash) characters only. Please refer to [NamingConventions](../NamingConventions/CollectionNames.html) for more information on valid collection names.
+A collection name identifies a collection in a database. It is a string and is unique within the database. Unlike the collection identifier it is supplied by the creator of the collection. The collection name must consist of letters, digits, and the _ (underscore) and - (dash) characters only. Please refer to [NamingConventions](../NamingConventions/CollectionNames.md) for more information on valid collection names.
 
 !SUBSECTION Database
 
@@ -26,7 +26,7 @@ A database contains its own collections (which cannot be accessed from other dat
 
 There will always be at least one database in ArangoDB. This is the default database, named _system. This database cannot be dropped, and provides special operations for creating, dropping, and enumerating databases. Users can create additional databases and give them unique names to access them later. Database management operations cannot be initiated from out of user-defined databases.
 
-When ArangoDB is accessed via its HTTP REST API, the database name is read from the first part of the request URI path (e.g. /_db/_system/...). If the request URI does not contain a database name, the database name is automatically derived from the endpoint. Please refer to [DatabaseEndpoint](../HttpDatabase/DatabaseEndpoint.html) for more information.
+When ArangoDB is accessed via its HTTP REST API, the database name is read from the first part of the request URI path (e.g. /_db/_system/...). If the request URI does not contain a database name, the database name is automatically derived from the endpoint. Please refer to [DatabaseEndpoint](../HttpDatabase/DatabaseEndpoint.md) for more information.
 
 !SUBSECTION Database Name
 
@@ -71,29 +71,33 @@ apps/                   # the instance's application directory
 
 !SUBSECTION Document
 
-Documents in ArangoDB are JSON objects. These objects can be nested (to any depth) and may contains lists. Each document is uniquely identified by its document handle.
+Documents in ArangoDB are JSON objects. These objects can be nested (to any depth) and may contain arrays. Each document is uniquely identified by its document handle.
 
 !SUBSECTION Document ETag
 
-The document revision enclosed in double quotes. The revision is returned by several HTTP API methods in the Etag HTTP header.
+The document revision (`_rev` value) enclosed in double quotes. The revision is returned by several HTTP API methods in the Etag HTTP header.
 
 !SUBSECTION Document Handle
 
-A document handle uniquely identifies a document in the database. It is a string and consists of the collection's name and the document key (_key attribute) separated by /.
+A document handle uniquely identifies a document in the database. It is a string and consists of the collection's name and the document key (`_key` attribute) separated by /. The document handle is stored in a document's `_id` attribute.
 
 !SUBSECTION Document Key
 
-A document key uniquely identifies a document in a given collection. It can and should be used by clients when specific documents are searched. Document keys are stored in the _key attribute of documents. The key values are automatically indexed by ArangoDB in a collection's primary index. Thus looking up a document by its key is regularly a fast operation. The _key value of a document is immutable once the document has been created.
+A document key is a string that uniquely identifies a document in a given collection. It can and should be used by clients when specific documents are searched. Document keys are stored in the `_key` attribute of documents. The key values are automatically indexed by ArangoDB in a collection's primary index. Thus looking up a document by its key is regularly a fast operation. The `_key` value of a document is immutable once the document has been created.
 
-By default, ArangoDB will auto-generate a document key if no _key attribute is specified, and use the user-specified _key otherwise.
+By default, ArangoDB will auto-generate a document key if no `_key` attribute is specified, and use the user-specified `_key` value otherwise.
 
-This behavior can be changed on a per-collection level by creating collections with the keyOptions attribute.
+This behavior can be changed on a per-collection level by creating collections with the `keyOptions` attribute.
 
-Using keyOptions it is possible to disallow user-specified keys completely, or to force a specific regime for auto-generating the _key values.
+Using `keyOptions` it is possible to disallow user-specified keys completely, or to force a specific regime for auto-generating the `_key` values.
+
+There are some restrictions for user-defined keys (see [NamingConventions for document keys](../NamingConventions/DocumentKeys.html).
 
 !SUBSECTION Document Revision
 
 As ArangoDB supports MVCC, documents can exist in more than one revision. The document revision is the MVCC token used to identify a particular revision of a document. It is a string value currently containing an integer number and is unique within the list of document revisions for a single document. Document revisions can be used to conditionally update, replace or delete documents in the database. In order to find a particular revision of a document, you need the document handle and the document revision.
+
+The document revision is stored in the `_rev` attribute of a document, and is set and updated by ArangoDB automatically. The `_rev` value cannot be set from the outside.
 
 ArangoDB currently uses 64bit unsigned integer values to maintain document revisions internally. When returning document revisions to clients, ArangoDB will put them into a string to ensure the revision id is not clipped by clients that do not support big integers. Clients should treat the revision id returned by ArangoDB as an opaque string when they store or use it locally. This will allow ArangoDB to change the format of revision ids later if this should be required. Clients can use revisions ids to perform simple equality/non-equality comparisons (e.g. to check whether a document has changed or not), but they should not use revision ids to perform greater/less than comparisons with them to check if a document revision is older than one another, even if this might work for some cases.
 

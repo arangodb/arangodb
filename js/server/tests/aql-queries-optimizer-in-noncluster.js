@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, in
@@ -1254,17 +1254,197 @@ function ahuacatlQueryOptimizerInTestSuite () {
       ruleIsUsed(query);
     }
 
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlQueryOptimizerInWithLongArraysTestSuite () {
+  var c = null;
+  var cn = "UnitTestsAhuacatlOptimizerInWithLongArrays";
+  
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      internal.db._drop(cn);
+      c = internal.db._create(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check long array with numbers
+////////////////////////////////////////////////////////////////////////////////
+
+    testInLongArrayWithNumbersForward : function () {
+      var i, comp = [ ];
+      for (i = 0; i < 1000; ++i) {
+        c.insert({ value: i });
+        comp.push(i);
+      }
+      
+      var result;
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER doc.value IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(1000, result.length);
+      
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER doc.value NOT IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(0, result.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check long array with numbers
+////////////////////////////////////////////////////////////////////////////////
+
+    testInLongArrayWithNumbersBackward : function () {
+      var i, comp = [ ];
+      for (i = 0; i < 1000; ++i) {
+        c.insert({ value: i });
+        comp.push(1000 - 1 - i);
+      }
+      
+      var result;
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER doc.value IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(1000, result.length);
+      
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER doc.value NOT IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(0, result.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check long array with strings
+////////////////////////////////////////////////////////////////////////////////
+
+    testInLongArrayWithStringsForward : function () {
+      var i, comp = [ ];
+      for (i = 0; i < 1000; ++i) {
+        c.insert({ value: "test" + i });
+        comp.push("test" + i);
+      }
+      
+      var result;
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER doc.value IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(1000, result.length);
+      
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER doc.value NOT IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(0, result.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check long array with strings
+////////////////////////////////////////////////////////////////////////////////
+
+    testInLongArrayWithStringsBackward : function () {
+      var i, comp = [ ];
+      for (i = 0; i < 1000; ++i) {
+        c.insert({ value: "test" + i });
+        comp.push("test" + (1000 - 1 - i));
+      }
+      
+      var result;
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER doc.value IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(1000, result.length);
+      
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER doc.value NOT IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(0, result.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check long array with objects
+////////////////////////////////////////////////////////////////////////////////
+
+    testInLongArrayWithObjectsForward1 : function () {
+      var i, comp = [ ];
+      for (i = 0; i < 1000; ++i) {
+        c.insert({ value1: "test" + i, value2: i });
+        comp.push({ value1: "test" + i, value2: i });
+      }
+      
+      var result;
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER { value1: doc.value1, value2: doc.value2 } IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(1000, result.length);
+      
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER { value1: doc.value1, value2: doc.value2 } NOT IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(0, result.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check long array with objects
+////////////////////////////////////////////////////////////////////////////////
+
+    testInLongArrayWithObjectsForward2 : function () {
+      var i, comp = [ ];
+      for (i = 0; i < 1000; ++i) {
+        c.insert({ value1: "test" + i, value2: 1000 - 1 - i });
+        comp.push({ value1: "test" + i, value2: 1000 - 1 - i });
+      }
+      
+      var result;
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER { value1: doc.value1, value2: doc.value2 } IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(1000, result.length);
+      
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER { value1: doc.value1, value2: doc.value2 } NOT IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(0, result.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check long array with objects
+////////////////////////////////////////////////////////////////////////////////
+
+    testInLongArrayWithObjectsBackward1 : function () {
+      var i, comp = [ ];
+      for (i = 0; i < 1000; ++i) {
+        c.insert({ value1: "test" + (1000 - 1 - i), value2: 1000 - 1 - i });
+        comp.push({ value1: "test" + (1000 - 1 - i), value2: 1000 - 1 - i });
+      }
+      
+      var result;
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER { value1: doc.value1, value2: doc.value2 } IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(1000, result.length);
+      
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER { value1: doc.value1, value2: doc.value2 } NOT IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(0, result.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check long array with objects
+////////////////////////////////////////////////////////////////////////////////
+
+    testInLongArrayWithObjectsBackward2 : function () {
+      var i, comp = [ ];
+      for (i = 0; i < 1000; ++i) {
+        c.insert({ value1: "test" + (1000 - 1 - i), value2: i });
+        comp.push({ value1: "test" + (1000 - 1 - i), value2: i });
+      }
+      
+      var result;
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER { value1: doc.value1, value2: doc.value2 } IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(1000, result.length);
+      
+      result = AQL_EXECUTE("FOR doc IN @@cn FILTER { value1: doc.value1, value2: doc.value2 } NOT IN @comp RETURN 1", { "@cn": cn, comp: comp }).json;
+      assertEqual(0, result.length);
+    }
 
   };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
+/// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryOptimizerInTestSuite);
+jsunity.run(ahuacatlQueryOptimizerInWithLongArraysTestSuite);
 
 return jsunity.done();
 
