@@ -275,10 +275,11 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
   }
 
   triagens::arango::traverser::VertexId start;
+  std::string startVertexString(startVertex);
   try {
     start = triagens::arango::traverser::IdStringToVertexId (
       trx.resolver(),
-      startVertex
+      startVertexString
     );
   }
   catch (triagens::basics::Exception& e) {
@@ -312,7 +313,8 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
       bool add = true;
       // Expressions symbolize an and, so all have to be matched
       for (auto& exp : expressions) {
-        if (! exp->matchesCheck(e, docCol, trx.resolver())) {
+        if (exp->isEdgeAccess && ! exp->matchesCheck(e, docCol, trx.resolver())) {
+
           add = false;
           break;
         }
