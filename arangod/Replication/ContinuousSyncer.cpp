@@ -34,6 +34,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/WriteLocker.h"
+#include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -100,15 +101,7 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 ContinuousSyncer::~ContinuousSyncer () {
-  // abort all running transactions
-  for (auto& it : _ongoingTransactions) {
-    auto trx = it.second;
-
-    if (trx != nullptr) {
-      trx->abort();
-      delete trx;
-    }
-  }
+  abortOngoingTransactions();
 }
 
 // -----------------------------------------------------------------------------
@@ -126,6 +119,7 @@ int ContinuousSyncer::run () {
     return TRI_ERROR_INTERNAL;
   }
 
+retry:
   string errorMsg;
 
   int res = TRI_ERROR_NO_ERROR;
@@ -198,6 +192,64 @@ int ContinuousSyncer::run () {
     // stop ourselves
     _applier->stop(false);
 
+    if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) {
+      LOG_WARNING("replication applier stopped for database '%s' because required tick is not present on master",
+                  _vocbase->_name);
+
+      if (! _configuration._autoResync) {
+        return res;
+      }
+  
+      // remove previous applier state
+      abortOngoingTransactions();
+
+      TRI_RemoveStateReplicationApplier(_vocbase);
+
+      {
+        WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+
+        _applier->_state._lastProcessedContinuousTick = 0;
+        _applier->_state._lastAppliedContinuousTick = 0;
+        _applier->_state._safeResumeTick = 0;
+        _applier->_state._failedConnects = 0;
+        _applier->_state._totalRequests = 0;
+        _applier->_state._totalFailedConnects = 0;
+
+        saveApplierState();
+      }
+      
+      // do an automatic full resync
+      LOG_WARNING("restarting initial synchronization for database '%s' because autoResync option is set", 
+                  _vocbase->_name);
+    
+      // start initial synchronization
+      errorMsg = "";
+
+      try {
+        InitialSyncer syncer(_vocbase, 
+            &_configuration, 
+            _configuration._restrictCollections, 
+            _configuration._restrictType, 
+            _configuration._verbose);
+
+        res = syncer.run(errorMsg, true);
+
+        if (res == TRI_ERROR_NO_ERROR) {
+          TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
+          res =_applier->start(lastLogTick, true);
+
+          if (res == TRI_ERROR_NO_ERROR) {
+            goto retry;
+          }
+        }
+        // fall through otherwise
+      }
+      catch (...) {
+        errorMsg = "caught an exception";
+        res = TRI_ERROR_INTERNAL;
+      }
+    }
+
     return res;
   }
 
@@ -207,6 +259,29 @@ int ContinuousSyncer::run () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abort all ongoing transactions
+////////////////////////////////////////////////////////////////////////////////
+
+void ContinuousSyncer::abortOngoingTransactions () {  
+  try {
+    // abort all running transactions
+    for (auto& it : _ongoingTransactions) {
+      auto trx = it.second;
+
+      if (trx != nullptr) {
+        trx->abort();
+        delete trx;
+      }
+    }
+
+    _ongoingTransactions.clear();
+  }
+  catch (...) {
+    // ignore errors here
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the applier progress

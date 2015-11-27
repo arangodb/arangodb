@@ -67,6 +67,9 @@ namespace triagens {
         _nextChunkedSize(0),
         _result(nullptr),
         _maxPacketSize(128 * 1024 * 1024),
+        _maxRetries(3),
+        _retryWaitTime(1 * 1000 * 1000),
+        _retryMessage(),
         _keepConnectionOnDestruction(false),
         _warn(warn),
         _keepAlive(true),
@@ -105,6 +108,51 @@ namespace triagens {
       _state = IN_CONNECT;
 
       clearReadBuffer();
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send out a request, creating a new HttpResult object
+/// this version does not allow specifying custom headers
+/// if the request fails because of connection problems, the request will be
+/// retried until it either succeeds (at least no connection problem) or there
+/// have been _maxRetries retries
+////////////////////////////////////////////////////////////////////////////////
+
+    SimpleHttpResult* SimpleHttpClient::retryRequest (rest::HttpRequest::HttpRequestType method,
+                                                      std::string const& location,
+                                                      char const* body,
+                                                      size_t bodyLength) {
+      SimpleHttpResult* result = nullptr;
+      size_t tries = 0;
+
+      while (true) {
+        TRI_ASSERT(result == nullptr);
+
+        result = doRequest(method, location, body, bodyLength, NoHeaders);
+
+        if (result != nullptr && result->isComplete()) {
+          break;
+        }
+
+        delete result;
+        result = nullptr;
+
+        if (tries++ >= _maxRetries) {
+          break;
+        }
+        
+        if (! _retryMessage.empty()) {
+          LOG_WARNING("%s - retries left: %d", _retryMessage.c_str(), (int) (_maxRetries - tries));
+        }
+
+#ifdef _WIN32
+        usleep((unsigned long) _retryWaitTime);
+#else
+        usleep((useconds_t) _retryWaitTime);
+#endif
+      }
+
+      return result;
     }
 
 ////////////////////////////////////////////////////////////////////////////////

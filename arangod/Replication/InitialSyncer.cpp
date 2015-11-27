@@ -230,10 +230,10 @@ int InitialSyncer::run (string& errorMsg,
   string const progress = "fetching master inventory from " + url;
   setProgress(progress);
 
-  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
-                                                              url,
-                                                              nullptr,
-                                                              0));
+  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_GET,
+                                                                   url,
+                                                                   nullptr,
+                                                                   0));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -293,10 +293,10 @@ int InitialSyncer::sendFlush (std::string& errorMsg) {
   string const progress = "send WAL flush command to url " + url;
   setProgress(progress);
 
-  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
-                                                              url,
-                                                              body.c_str(),
-                                                              body.size()));
+  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_PUT,
+                                                                   url,
+                                                                   body.c_str(),
+                                                                   body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -335,10 +335,10 @@ int InitialSyncer::sendStartBatch (std::string& errorMsg) {
   std::string const progress = "send batch start command to url " + url;
   setProgress(progress);
 
-  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_POST,
-                                                              url,
-                                                              body.c_str(),
-                                                              body.size()));
+  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_POST,
+                                                                   url,
+                                                                   body.c_str(),
+                                                                   body.size()));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -441,10 +441,10 @@ int InitialSyncer::sendFinishBatch () {
   string const progress = "send batch finish command to url " + url;
   setProgress(progress);
 
-  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_DELETE,
-                                                              url,
-                                                              nullptr,
-                                                              0));
+  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_DELETE,
+                                                                   url,
+                                                                   nullptr,
+                                                                   0));
 
   if (response == nullptr || ! response->isComplete()) {
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -627,10 +627,10 @@ int InitialSyncer::handleCollectionDump (string const& cid,
 
     setProgress(progress.c_str());
 
-    std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
-                                                                url,
-                                                                nullptr,
-                                                                0));
+    std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_GET,
+                                                                     url,
+                                                                     nullptr,
+                                                                     0));
 
     if (response == nullptr || ! response->isComplete()) {
       errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -729,10 +729,10 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   std::string progress = "fetching collection keys from " + url;
   setProgress(progress);
    
-  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_POST,
-                                                              url,
-                                                              nullptr,
-                                                              0));
+  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_POST,
+                                                                   url,
+                                                                   nullptr,
+                                                                   0));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -780,10 +780,10 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
     setProgress(progress);
 
     // now delete the keys we ordered
-    std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_DELETE,
-                                                                url,
-                                                                nullptr,
-                                                                0));
+    std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_DELETE,
+                                                                     url,
+                                                                     nullptr,
+                                                                     0));
   };
 
   TRI_DEFER(shutdown());
@@ -889,10 +889,10 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   progress = "fetching remote keys chunks from " + url;
   setProgress(progress);
    
-  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
-                                                              url,
-                                                              nullptr,
-                                                              0));
+  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_GET,
+                                                                   url,
+                                                                   nullptr,
+                                                                   0));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -1029,10 +1029,10 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       progress = "fetching keys from " + url;
       setProgress(progress);
 
-      std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
-                                                                  url,
-                                                                  nullptr,
-                                                                  0));
+      std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_PUT,
+                                                                       url,
+                                                                       nullptr,
+                                                                       0));
 
       if (response == nullptr || ! response->isComplete()) {
         errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -1182,10 +1182,10 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
         auto const keyJsonString = triagens::basics::JsonHelper::toString(keysJson.json());
 
-        std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_PUT,
-                                                                    url,
-                                                                    keyJsonString.c_str(),
-                                                                    keyJsonString.size()));
+        std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_PUT,
+                                                                         url,
+                                                                         keyJsonString.c_str(),
+                                                                         keyJsonString.size()));
 
         if (response == nullptr || ! response->isComplete()) {
           errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
