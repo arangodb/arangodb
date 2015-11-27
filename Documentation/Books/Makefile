@@ -47,6 +47,14 @@ ppbook-check-html-link:
 		exit 1; \
 	fi
 
+ppbook-check-directory-link:
+	@if test "`egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME)  |grep -v html |grep -v http://|grep -v https:// |grep -v header.css |grep -v node_modules |grep -v node_modules | grep -v '\.md' | wc -l`" -gt 0; then \
+		echo "Found links to .html files inside of the document! use <foo>.md instead!"; \
+		echo; \
+		egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME)  |grep -v html |grep -v http://|grep -v https:// |grep -v header.css |grep -v node_modules |grep -v node_modules | grep -v '\.md' ; \
+		exit 1; \
+	fi
+
 book-check-markdown-leftovers:
 	@if test "`find books/$(NAME) -name '*.html' -exec grep -- '##' {} \; -print | wc -l`" -gt 0; then \
 		echo "found these unconverted markdown titles: "; \
@@ -136,6 +144,7 @@ build-book:
 	make book-check-restheader-leftovers
 	make book-check-mdpp-leftovers
 	make ppbook-check-html-link
+	make ppbook-check-directory-link
 
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
