@@ -161,6 +161,20 @@ namespace triagens {
                  std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a list of filtered documents in a coordinator
+///        All found documents will be inserted into result.
+///        After execution the documentIds will contain only all those
+///        ids that could not be found.
+////////////////////////////////////////////////////////////////////////////////
+
+    int getFilteredDocumentsOnCoordinator (
+                 std::string const& dbname,
+                 std::vector<traverser::TraverserExpression*> const& expressions, 
+                 std::map<std::string, std::string> const& headers,
+                 std::unordered_set<std::string>& documentIds,
+                 std::unordered_map<std::string, TRI_json_t*>& result);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get all documents in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -198,7 +212,7 @@ namespace triagens {
                  std::vector<traverser::TraverserExpression*> const& expressions, 
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  std::string& contentType,
-                 triagens::basics::Json& resultBody);
+                 triagens::basics::Json& resultJson);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator

@@ -983,6 +983,54 @@ int getDocumentOnCoordinator (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a list of filtered documents in a coordinator
+///        All found documents will be inserted into result.
+///        After execution the documentIds will contain only all those
+///        ids that could not be found.
+////////////////////////////////////////////////////////////////////////////////
+
+int getFilteredDocumentsOnCoordinator (
+             std::string const& dbname,
+             std::vector<traverser::TraverserExpression*> const& expressions, 
+             std::map<std::string, std::string> const& headers,
+             std::unordered_set<std::string>& documentIds,
+             std::unordered_map<std::string, TRI_json_t*>& result) {
+
+  // TODO Proper implementation
+  for (auto it = documentIds.begin(); it != documentIds.end(); /* noop */) {
+    triagens::rest::HttpResponse::HttpResponseCode responseCode;
+    std::map<std::string, std::string> resultHeaders;
+    std::vector<std::string> splitId = triagens::basics::StringUtils::split(*it, '/'); 
+    TRI_ASSERT(splitId.size() == 2);
+    std::string vertexResult;
+    int res = getDocumentOnCoordinator(dbname,
+                                       splitId[0],
+                                       splitId[1],
+                                       0,
+                                       headers,
+                                       true,
+                                       responseCode,
+                                       resultHeaders,
+                                       vertexResult);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    if (responseCode == triagens::rest::HttpResponse::HttpResponseCode::NOT_FOUND) {
+      result.emplace(*it, nullptr);
+      ++it;
+    }
+    else {
+      result.emplace(*it, triagens::basics::JsonHelper::fromString(vertexResult));
+      documentIds.erase(it++);
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get all documents in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1140,11 +1188,16 @@ int getFilteredEdgesOnCoordinator (
   }
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headers = new map<string, string>;
-
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
+                           triagens::rest::HttpRequest::HTTP_REQUEST_GET,
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" + it->first + queryParameters,
+                           0, false, headers, nullptr, 3600.0);
+/*
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" + it->first + queryParameters,
                            &reqBodyString, false, headers, nullptr, 3600.0);
+                           */
     delete res;
   }
   // Now listen to the results:
