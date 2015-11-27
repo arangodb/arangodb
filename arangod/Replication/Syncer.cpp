@@ -127,6 +127,10 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
 
         _client->setUserNamePassword("/", username, password);
         _client->setLocationRewriter(this, &rewriteLocation);
+
+        _client->_maxRetries = 15;
+        _client->_retryWaitTime = static_cast<uint64_t>(2 * 1000 * 1000);
+        _client->_retryMessage = std::string("retrying failed HTTP request for endpoint '") + _configuration._endpoint + std::string(" ' for replication applier in database '" + std::string(_vocbase->_name) + "'");
       }
     }
   }
@@ -552,10 +556,10 @@ int Syncer::dropIndex (TRI_json_t const* json) {
 int Syncer::getMasterState (string& errorMsg) {
   string const url = BaseUrl + "/logger-state?serverId=" + _localServerIdString;
 
-  std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
-                                                url,
-                                                nullptr,
-                                                0));
+  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_GET,
+                                             url,
+                                             nullptr,
+                                             0));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + std::string(_masterInfo._endpoint) +
