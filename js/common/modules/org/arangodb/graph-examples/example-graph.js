@@ -978,13 +978,27 @@ var createMoviesGraph = function (prefixed) {
 
 
 var knownGraphs = {
-  "knows_graph"           : {create: createTraversalExample, dependencies: ["knows", "persons"]},
-  "routeplanner"          : {create: createRoutePlannerGraph, dependencies: ["frenchHighway", "frenchCity", "germanCity", "germanHighway", "internationalHighway"]},
-  "social"                : {create: createSocialGraph, dependencies: ["relation", "female", "male"]},
-  "worldCountry"          : {create: createWorldCountryGraph, dependencies: ["worldVertices", "worldEdges"]},
-  "worldCountryUnManaged" : {create: createWorldCountryGraphUnManaged, dependencies: ["worldVertices", "worldEdges"]},
-  "traversalGraph"        : {create: createTraversalGraph, dependencies: ["edges", "circles"]},
-  "movies"                : {create: createMoviesGraph, dependencies: ["Person", "Movie", "ACTED_IN" ,"DIRECTED", "PRODUCED", "WROTE", "REVIEWED", "FOLLOWS"]}
+  "knows_graph"           : {create: createTraversalExample, dependencies: [
+    "knows", "persons"
+  ]},
+  "routeplanner"          : {create: createRoutePlannerGraph, dependencies: [
+    "frenchHighway", "frenchCity", "germanCity", "germanHighway", "internationalHighway"
+  ]},
+  "social"                : {create: createSocialGraph, dependencies: [
+    "relation", "female", "male"
+  ]},
+  "worldCountry"          : {create: createWorldCountryGraph, dependencies: [
+    "worldVertices", "worldEdges"
+  ]},
+  "worldCountryUnManaged" : {create: createWorldCountryGraphUnManaged, dependencies: [
+    "worldVertices", "worldEdges"
+  ]},
+  "traversalGraph"        : {create: createTraversalGraph, dependencies: [
+    "edges", "circles"
+  ]},
+  "movies"                : {create: createMoviesGraph, dependencies: [
+    "Person", "Movie", "ACTED_IN" ,"DIRECTED", "PRODUCED", "WROTE", "REVIEWED", "FOLLOWS"
+  ]}
 };
 
 var unManagedGraphs = {
@@ -1042,7 +1056,6 @@ var loadGraph = function (name, prefixed) {
         err.errorMessage = "the collection: " + JSON.stringify(dependencies) + " already exists. Please clean up and try again.";
       }
       throw err;
-      return false;
     }
   }
 
