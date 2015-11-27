@@ -680,7 +680,11 @@
         }
         
         $('#graphTab').hide(); 
-        $('#modal-dialog .modal-delete-confirmation').append('<fieldset><input type="checkbox" id="dropGraphCollections" name="" value=""><label for="mc">also drop collections?</label></fieldset>');
+        $('#modal-dialog .modal-delete-confirmation').append(
+          '<fieldset><input type="checkbox" id="dropGraphCollections" name="" value="">' + 
+            '<label for="mc">also drop collections?</label>' +
+          '</fieldset>'
+        );
       }
 
     },
