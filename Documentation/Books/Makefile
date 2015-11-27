@@ -46,15 +46,49 @@ book-check-markdown-leftovers:
 		find books/$(NAME) -name '*.html' -exec grep '##' {} \; -print; \
 		exit 1; \
 	fi
-	@if test "`find books/Users/ -name '*.html' -exec grep '\.md\"' {} \; | grep -v data-filepath | wc -l`" -gt 0; then \
-		echo "found dangling markdown links: "; \
-		find books/$(NAME) -name '*.html' -exec grep '\.md"' {} \; -print | grep -v data-filepath \
+	@if test "`find books/$(NAME) -name '*.html' -exec grep '\.md\"' {} \; | grep -v data-filepath | wc -l`" -gt 0; then \
+		find books/$(NAME) -name '*.html' -exec grep '\.md"' {} \; -print | grep -v data-filepath; \
+		echo "found dangling markdown links; see the list above "; \
 		exit 1; \
 	fi
 	@if test "`find books/$(NAME) -name '*.html' -exec grep '\.md#' {} \; -print | wc -l`" -gt 0; then \
 		echo "found dangling markdown links: "; \
 		find books/$(NAME) -name '*.html' -exec grep '\.md#' {} \; -print; \
 		exit 1; \
+	fi
+
+book-check-dangling-anchors:
+	grep -R "a href" books/$(NAME) | \
+		grep -v styles/header.js | \
+		grep -v /app.js | \
+		grep -v navigation| \
+		grep -v 'http://' | \
+		grep -v 'https://' | \
+		grep '#'  |sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' > /tmp/anchorlist.txt
+
+	NO=0; \
+	for i in `cat /tmp/anchorlist.txt`; do \
+	    ANCHOR=`echo $$i | cut '-d,' -f 3`; \
+	    FN=`echo $$i | cut '-d,' -f 2`; \
+	    SFN=`echo $$i | cut '-d,' -f 1`; \
+	    if test -z "$$FN"; then \
+	        FN=$$SFN; \
+	    else \
+	        SFNP=`echo $$SFN | sed 's;/[a-zA-Z]*.html;;'`; \
+	        FN="$${SFNP}/$${FN}"; \
+	    fi; \
+	    if test -n "$$ANCHOR"; then \
+	        if grep -q "id=\"$$ANCHOR\">" $$FN; then \
+	            /bin/true; \
+	        else \
+	            echo "$$i"; \
+	            NO=$$((NO + 1)); \
+	        fi; \
+	    fi; \
+	done; \
+	if test "$${NO}" -gt 0; then \
+	    echo "$${NO} Dangling anchors found!"; \
+	    exit 1; \
 	fi
 
 build-book-symlinks:
@@ -100,6 +134,7 @@ build-book:
 	python deprecated.py
 
 	make book-check-markdown-leftovers
+	make book-check-dangling-anchors
 
 clean-book:
 	@rm -rvf books/$(NAME) ppbooks/$(NAME)

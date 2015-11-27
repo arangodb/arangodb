@@ -16,8 +16,9 @@ if a lockfile is already present.
 
 The following command starts the ArangoDB database in server mode. You will
 be able to access the server using HTTP requests on port 8529. Look 
-[here](#frequently_used_options) for a list of 
-frequently used options – see [here](../ConfigureArango/README.md) for a complete list.
+[here](#frequently-used-options) for a list of 
+frequently used options – see 
+[here](../ConfigureArango/README.md) for a complete list.
 
 ```
 unix> /usr/local/sbin/arangod /tmp/vocbase

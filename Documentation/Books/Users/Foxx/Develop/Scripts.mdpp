@@ -32,7 +32,7 @@ queue.push(
 );
 ```
 
-For more information the Foxx job queue, see [the chapter about queues](./Queues.html).
+For more information the Foxx job queue, see [the chapter about queues](./Queues.md).
 
 !SECTION Script arguments and return values
 
