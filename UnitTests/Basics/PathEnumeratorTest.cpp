@@ -51,7 +51,7 @@ static int internalCounter = 0;
 static int first = 0;
 static int second = 0;
 static int third = 0;
-auto integerEdgeEnumerator = [] (int& start, std::vector<int>& result, int*& next, size_t&, bool&) {
+auto integerEdgeEnumerator = [] (int const& start, std::vector<int>& result, int*& next, size_t&, bool&) {
   if (result.size() >= 3) {
     next = nullptr;
   } else if (next == nullptr) {
@@ -105,8 +105,9 @@ auto integerEdgeEnumerator = [] (int& start, std::vector<int>& result, int*& nex
   }
 };
 
-auto integerVertexEnumerator = [] (int& edge, int& vertex) -> int {
-  return 1;
+auto integerVertexEnumerator = [] (int const& edge, int const& vertex, size_t depth, int& result) -> bool {
+  result = 1;
+  return true;
 };
 
 // -----------------------------------------------------------------------------

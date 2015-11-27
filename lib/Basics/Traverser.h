@@ -1295,8 +1295,9 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Function to get the connected vertex from index.
+///        Returns false if the vertex does not match the filter
 ////////////////////////////////////////////////////////////////////////////////
-       std::function<vertexIdentifier (edgeIdentifier&, vertexIdentifier&)> _getVertex;
+       std::function<bool (edgeIdentifier const&, vertexIdentifier const&, size_t, vertexIdentifier&)> _getVertex;
 
       public: 
 
@@ -1305,8 +1306,8 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
         PathEnumerator (
-          std::function<void(vertexIdentifier&, std::vector<edgeIdentifier>&, edgeItem*&, size_t&, bool&)> getEdge,
-          std::function<vertexIdentifier (edgeIdentifier&, vertexIdentifier&)> getVertex,
+          std::function<void(vertexIdentifier const&, std::vector<edgeIdentifier>&, edgeItem*&, size_t&, bool&)> getEdge,
+          std::function<bool (edgeIdentifier const&, vertexIdentifier const&, size_t, vertexIdentifier&)> getVertex,
           vertexIdentifier& startVertex
         ) : _getEdge(getEdge),
             _getVertex(getVertex) {
@@ -1341,9 +1342,14 @@ namespace triagens {
           _lastEdges.push(nullptr); 
           _lastEdgesDir.push(false);
           _lastEdgesIdx.push(0);
-          vertexIdentifier v = _getVertex(_enumeratedPath.edges.back(), _enumeratedPath.vertices.back());
+          vertexIdentifier v;
+          bool isValid = _getVertex(_enumeratedPath.edges.back(), _enumeratedPath.vertices.back(), _enumeratedPath.vertices.size(), v);
           _enumeratedPath.vertices.push_back(v);
           TRI_ASSERT(_enumeratedPath.vertices.size() == _enumeratedPath.edges.size() + 1);
+          if (! isValid) {
+            prune();
+            return next();
+          }
         } else {
           if (_enumeratedPath.edges.size() == 0) {
             // We are done with enumerating paths
