@@ -64,6 +64,8 @@ class DocumentAccessor {
                       TRI_document_collection_t* document,
                       TRI_doc_mptr_t const* mptr);
 
+    explicit DocumentAccessor (TRI_json_t* json);
+
     ~DocumentAccessor ();
 
 // -----------------------------------------------------------------------------

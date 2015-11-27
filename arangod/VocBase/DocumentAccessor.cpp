@@ -51,6 +51,15 @@ DocumentAccessor::DocumentAccessor (triagens::arango::CollectionNameResolver con
     _current(nullptr) {
 }
 
+DocumentAccessor::DocumentAccessor (TRI_json_t* json)
+  : _resolver(nullptr),
+    _document(nullptr),
+    _mptr(nullptr),
+    _json(),
+    _current(json) {
+  TRI_ASSERT(json != nullptr);
+}
+
 DocumentAccessor::~DocumentAccessor () {
 }
 
