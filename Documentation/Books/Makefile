@@ -39,6 +39,13 @@ book-check-mdpp-leftovers:
 		exit 1; \
 	fi
 
+ppbook-check-html-link:
+	@if test "`grep -r '\[.*\]\(.*\)' ppbooks/$(NAME)  |grep html |grep -v http://|grep -v https:// |grep -v header.css |wc -l`" -gt 0; then \
+		echo "Found links to .html files inside of the document! use <foo>.md instead!"; \
+		echo; \
+		grep -r '\[.*\]\(.*\)' ppbooks/$(NAME)  |grep html |grep -v http://|grep -v https:// |grep -v header.css ; \
+		exit 1; \
+	fi
 
 book-check-markdown-leftovers:
 	@if test "`find books/$(NAME) -name '*.html' -exec grep -- '##' {} \; -print | wc -l`" -gt 0; then \
@@ -58,7 +65,7 @@ book-check-markdown-leftovers:
 	fi
 
 book-check-dangling-anchors:
-	grep -R "a href" books/$(NAME) | \
+	@grep -R "a href" books/$(NAME) | \
 		grep -v styles/header.js | \
 		grep -v /app.js | \
 		grep -v navigation| \
@@ -66,7 +73,7 @@ book-check-dangling-anchors:
 		grep -v 'https://' | \
 		grep '#'  |sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' > /tmp/anchorlist.txt
 
-	NO=0; \
+	@NO=0; \
 	for i in `cat /tmp/anchorlist.txt`; do \
 	    ANCHOR=`echo $$i | cut '-d,' -f 3`; \
 	    FN=`echo $$i | cut '-d,' -f 2`; \
@@ -128,6 +135,7 @@ build-book:
 	make book-check-leftover-docublocks
 	make book-check-restheader-leftovers
 	make book-check-mdpp-leftovers
+	make ppbook-check-html-link
 
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
