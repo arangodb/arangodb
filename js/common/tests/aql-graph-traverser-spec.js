@@ -564,6 +564,40 @@
  
       });
 
+      describe("filter optimization", function () {
+
+        it("should be able to prune early on vertex conditions", function () {
+          let query = "FOR v, e, p IN 100 OUTBOUND @start @@eCol FILTER p.vertices[1]._key == 'wrong' RETURN v";
+          let bindVars = {
+            "@eCol": en,
+            "start": vertex.A
+          };
+          let result = db._query(query, bindVars).toArray();
+          expect(result.length).toEqual(0);
+        });
+
+        it("should be able to prune early on vertex conditions for start vertex", function () {
+          let query = "FOR v, e, p IN 100 OUTBOUND @start @@eCol FILTER p.vertices[0]._key == 'wrong' RETURN v";
+          let bindVars = {
+            "@eCol": en,
+            "start": vertex.A
+          };
+          let result = db._query(query, bindVars).toArray();
+          expect(result.length).toEqual(0);
+        });
+
+        it("should be able to prune early on edge conditions", function () {
+          let query = "FOR v, e, p IN 100 OUTBOUND @start @@eCol FILTER p.edges[0]._key == 'wrong' RETURN v";
+          let bindVars = {
+            "@eCol": en,
+            "start": vertex.A
+          };
+          let result = db._query(query, bindVars).toArray();
+          expect(result.length).toEqual(0);
+        });
+
+      });
+
     });
 
 

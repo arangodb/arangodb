@@ -83,6 +83,16 @@ bool ClusterTraverser::VertexGetter::operator() (std::string const& edgeId,
       std::string to = triagens::basics::JsonHelper::getStringValue(it->second, "_to", def);
       result = to;
     }
+    auto exp = _traverser->_expressions->find(depth);
+    if (exp != _traverser->_expressions->end()) {
+      auto v = _traverser->_vertices.find(result);
+      if (v == _traverser->_vertices.end()) {
+        return false;
+      }
+      if (! _traverser->vertexMatchesCondition(v->second, exp->second)) {
+        return false;
+      }
+    }
     return true;
   }
   TRI_ASSERT(false);
