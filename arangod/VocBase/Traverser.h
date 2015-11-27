@@ -132,6 +132,10 @@ namespace triagens {
                              TRI_document_collection_t* collection,
                              CollectionNameResolver const* resolver) const;
 
+          bool matchesCheck (TRI_json_t* element) const;
+
+          bool matchesCheck (DocumentAccessor& accessor) const;
+
         private:
 
           bool recursiveCheck (triagens::aql::AstNode const*,

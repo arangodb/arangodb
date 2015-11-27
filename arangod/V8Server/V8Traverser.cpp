@@ -789,18 +789,21 @@ DepthFirstTraverser::DepthFirstTraverser (
 }
 
 void DepthFirstTraverser::_defInternalFunctions () {
-  _getVertex = [] (EdgeInfo& edge, VertexId& vertex) -> VertexId {
+  _getVertex = [] (EdgeInfo const& edge, VertexId const& vertex, size_t depth, VertexId& result) -> bool {
     auto mptr = edge.mptr;
     // TODO fill Statistics
     if (strcmp(TRI_EXTRACT_MARKER_FROM_KEY(&mptr), vertex.key) == 0 &&
         TRI_EXTRACT_MARKER_FROM_CID(&mptr) == vertex.cid) {
-      return VertexId(TRI_EXTRACT_MARKER_TO_CID(&mptr), TRI_EXTRACT_MARKER_TO_KEY(&mptr));
+      result = VertexId(TRI_EXTRACT_MARKER_TO_CID(&mptr), TRI_EXTRACT_MARKER_TO_KEY(&mptr));
     }
-    return VertexId(TRI_EXTRACT_MARKER_FROM_CID(&mptr), TRI_EXTRACT_MARKER_FROM_KEY(&mptr));
+    else {
+      result = VertexId(TRI_EXTRACT_MARKER_FROM_CID(&mptr), TRI_EXTRACT_MARKER_FROM_KEY(&mptr));
+    }
+    return true;
   };
 
   if (_opts.direction == TRI_EDGE_ANY) {
-    _getEdge = [&] (VertexId& startVertex, std::vector<EdgeInfo>& edges, TRI_doc_mptr_copy_t*& last, size_t& eColIdx, bool& dir) {
+    _getEdge = [&] (VertexId const& startVertex, std::vector<EdgeInfo>& edges, TRI_doc_mptr_copy_t*& last, size_t& eColIdx, bool& dir) {
       std::vector<TRI_doc_mptr_copy_t> tmp;
       TRI_ASSERT(eColIdx < _edgeCols.size());
       // TODO fill Statistics
@@ -864,7 +867,9 @@ void DepthFirstTraverser::_defInternalFunctions () {
               return;
             }
             if (! exp->isEdgeAccess) {
-              VertexId other = _getVertex(e, startVertex);
+              VertexId other;
+              // This always returns true and third parameter is ignored
+              _getVertex(e, startVertex, 0, other);
               auto collection = _trx->trxCollection(other.cid);
               if (collection == nullptr) {
                 int res = TRI_AddCollectionTransaction(_trx->getInternals(), 
@@ -902,7 +907,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
       }
     };
   } else {
-    _getEdge = [&] (VertexId& startVertex, std::vector<EdgeInfo>& edges, TRI_doc_mptr_copy_t*& last, size_t& eColIdx, bool& dir) {
+    _getEdge = [&] (VertexId const& startVertex, std::vector<EdgeInfo>& edges, TRI_doc_mptr_copy_t*& last, size_t& eColIdx, bool& dir) {
       std::vector<TRI_doc_mptr_copy_t> tmp;
       TRI_ASSERT(eColIdx < _edgeCols.size());
       // Do not touch the bool parameter, as long as it is default the first encountered nullptr is final
@@ -936,7 +941,9 @@ void DepthFirstTraverser::_defInternalFunctions () {
               return;
             }
             if (! exp->isEdgeAccess) {
-              VertexId other = _getVertex(e, startVertex);
+              VertexId other;
+              // This always returns true, third parameter is ignored
+              _getVertex(e, startVertex, 0, other);
               auto collection = _trx->trxCollection(other.cid);
               if (collection == nullptr) {
                 int res = TRI_AddCollectionTransaction(_trx->getInternals(), 

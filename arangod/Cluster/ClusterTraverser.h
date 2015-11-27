@@ -54,7 +54,7 @@ namespace triagens {
           ) : Traverser(opts, expressions),
             _edgeCols(edgeCollections),
             _dbname(dbname),
-            _vertexGetter(&_edges),
+            _vertexGetter(this),
             _edgeGetter(this),
             _resolver(resolver) {
           }
@@ -73,6 +73,12 @@ namespace triagens {
         private:
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+          bool vertexMatchesCondition (TRI_json_t*, std::vector<TraverserExpression*> const&);
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   private classes
 // -----------------------------------------------------------------------------
 
@@ -80,15 +86,15 @@ namespace triagens {
 
             public:
 
-              VertexGetter (std::unordered_map<std::string, TRI_json_t*> const* edges)
-                : _edges(edges) {
+              VertexGetter (ClusterTraverser* traverser)
+                : _traverser(traverser) {
                 }
 
-              std::string operator() (std::string const&, std::string const&);
+              bool operator() (std::string const&, std::string const&, size_t, std::string&);
 
             private:
 
-              std::unordered_map<std::string, TRI_json_t*> const* _edges;
+              ClusterTraverser* _traverser;
 
           };
 

@@ -261,15 +261,17 @@ namespace triagens {
 /// @brief internal function to extract an edge
 ////////////////////////////////////////////////////////////////////////////////
 
-          std::function<void(VertexId&, std::vector<EdgeInfo>&,
+          std::function<void(VertexId const&,
+                             std::vector<EdgeInfo>&,
                              TRI_doc_mptr_copy_t*&,
-                             size_t&, bool&)>              _getEdge;
+                             size_t&,
+                             bool&)>              _getEdge;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to extract vertex information
 ////////////////////////////////////////////////////////////////////////////////
 
-          std::function<VertexId (EdgeInfo&, VertexId&)> _getVertex;
+          std::function<bool (EdgeInfo const&, VertexId const&, size_t, VertexId&)> _getVertex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a vector containing all required edge collection structures

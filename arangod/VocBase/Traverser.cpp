@@ -145,10 +145,7 @@ bool TraverserExpression::recursiveCheck (triagens::aql::AstNode const* node,
 /// @brief evalutes if an element matches the given expression
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraverserExpression::matchesCheck (TRI_doc_mptr_t& element,
-                                        TRI_document_collection_t* collection,
-                                        CollectionNameResolver const* resolver) const {
-  DocumentAccessor accessor(resolver, collection, &element);
+bool TraverserExpression::matchesCheck (DocumentAccessor& accessor) const {
   recursiveCheck(varAccess, accessor);
   triagens::basics::Json result = accessor.toJson();
   switch (comparisonType) {
@@ -167,4 +164,26 @@ bool TraverserExpression::matchesCheck (TRI_doc_mptr_t& element,
     default:
       TRI_ASSERT(false);
   }
+  return false;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief evalutes if an element matches the given expression
+////////////////////////////////////////////////////////////////////////////////
+
+bool TraverserExpression::matchesCheck (TRI_json_t* element) const {
+  DocumentAccessor accessor(element);
+  return matchesCheck(accessor);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief evalutes if an element matches the given expression
+////////////////////////////////////////////////////////////////////////////////
+
+bool TraverserExpression::matchesCheck (TRI_doc_mptr_t& element,
+                                        TRI_document_collection_t* collection,
+                                        CollectionNameResolver const* resolver) const {
+  DocumentAccessor accessor(resolver, collection, &element);
+  return matchesCheck(accessor);
 }
