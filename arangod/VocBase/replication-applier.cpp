@@ -170,6 +170,11 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
   
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
+                       "autoResync",
+                       TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_autoResync));
+  
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
+                       json,
                        "includeSystem",
                        TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_includeSystem));
   
@@ -202,6 +207,21 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
                          "restrictCollections",
                          collections);
   }
+  
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
+                       json,
+                       "connectionRetryWaitTime",
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_connectionRetryWaitTime / (1000 * 1000)));
+  
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
+                       json,
+                       "idleMinWaitTime",
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_idleMinWaitTime / (1000 * 1000)));
+  
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
+                       json,
+                       "idleMaxWaitTime",
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_idleMaxWaitTime / (1000 * 1000)));
 
   return json;
 }
@@ -323,6 +343,12 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
     config->_adaptivePolling = value->_value._boolean;
   }
   
+  value = TRI_LookupObjectJson(json.get(), "autoResync");
+
+  if (TRI_IsBooleanJson(value)) {
+    config->_autoResync = value->_value._boolean;
+  }
+  
   value = TRI_LookupObjectJson(json.get(), "includeSystem");
 
   if (TRI_IsBooleanJson(value)) {
@@ -373,6 +399,24 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
         config->_restrictCollections.emplace(std::string(collection->_value._string.data), true);
       }
     }
+  }
+  
+  value = TRI_LookupObjectJson(json.get(), "connectionRetryWaitTime");
+
+  if (TRI_IsNumberJson(value)) {
+    config->_connectionRetryWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
+  }
+  
+  value = TRI_LookupObjectJson(json.get(), "idleMinWaitTime");
+
+  if (TRI_IsNumberJson(value)) {
+    config->_idleMinWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
+  }
+  
+  value = TRI_LookupObjectJson(json.get(), "idleMaxWaitTime");
+
+  if (TRI_IsNumberJson(value)) {
+    config->_idleMaxWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
   }
   
   // read the endpoint
@@ -910,24 +954,28 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configuration_t* config) {
-  config->_endpoint            = nullptr;
-  config->_database            = nullptr;
-  config->_username            = nullptr;
-  config->_password            = nullptr;
+  config->_endpoint                = nullptr;
+  config->_database                = nullptr;
+  config->_username                = nullptr;
+  config->_password                = nullptr;
 
-  config->_requestTimeout      = 300.0;
-  config->_connectTimeout      = 10.0;
-  config->_ignoreErrors        = 0;
-  config->_maxConnectRetries   = 100;
-  config->_chunkSize           = 0;
-  config->_sslProtocol         = 0;
-  config->_autoStart           = false;
-  config->_adaptivePolling     = true;
-  config->_includeSystem       = true;
-  config->_requireFromPresent  = false;
-  config->_verbose             = false;
-  config->_restrictType        = "";
+  config->_requestTimeout          = 300.0;
+  config->_connectTimeout          = 10.0;
+  config->_ignoreErrors            = 0;
+  config->_maxConnectRetries       = 100;
+  config->_chunkSize               = 0;
+  config->_sslProtocol             = 0;
+  config->_autoStart               = false;
+  config->_adaptivePolling         = true;
+  config->_autoResync              = false;
+  config->_includeSystem           = true;
+  config->_requireFromPresent      = false;
+  config->_verbose                 = false;
+  config->_restrictType            = "";
   config->_restrictCollections.clear();
+  config->_connectionRetryWaitTime = 30 * 1000 * 1000;
+  config->_idleMinWaitTime         = 500 * 1000;
+  config->_idleMaxWaitTime         = 5 * 500 * 1000;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -990,19 +1038,23 @@ void TRI_CopyConfigurationReplicationApplier (TRI_replication_applier_configurat
     dst->_password = nullptr;
   }
 
-  dst->_requestTimeout      = src->_requestTimeout;
-  dst->_connectTimeout      = src->_connectTimeout;
-  dst->_ignoreErrors        = src->_ignoreErrors;
-  dst->_maxConnectRetries   = src->_maxConnectRetries;
-  dst->_sslProtocol         = src->_sslProtocol;
-  dst->_chunkSize           = src->_chunkSize;
-  dst->_autoStart           = src->_autoStart;
-  dst->_adaptivePolling     = src->_adaptivePolling;
-  dst->_includeSystem       = src->_includeSystem;
-  dst->_requireFromPresent  = src->_requireFromPresent;
-  dst->_verbose             = src->_verbose;
-  dst->_restrictType        = src->_restrictType;
-  dst->_restrictCollections = src->_restrictCollections;
+  dst->_requestTimeout          = src->_requestTimeout;
+  dst->_connectTimeout          = src->_connectTimeout;
+  dst->_ignoreErrors            = src->_ignoreErrors;
+  dst->_maxConnectRetries       = src->_maxConnectRetries;
+  dst->_sslProtocol             = src->_sslProtocol;
+  dst->_chunkSize               = src->_chunkSize;
+  dst->_autoStart               = src->_autoStart;
+  dst->_adaptivePolling         = src->_adaptivePolling;
+  dst->_autoResync              = src->_autoResync;
+  dst->_includeSystem           = src->_includeSystem;
+  dst->_requireFromPresent      = src->_requireFromPresent;
+  dst->_verbose                 = src->_verbose;
+  dst->_restrictType            = src->_restrictType;
+  dst->_restrictCollections     = src->_restrictCollections;
+  dst->_connectionRetryWaitTime = src->_connectionRetryWaitTime;
+  dst->_idleMinWaitTime         = src->_idleMinWaitTime;
+  dst->_idleMaxWaitTime         = src->_idleMaxWaitTime;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

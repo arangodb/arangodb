@@ -500,6 +500,12 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
       }
     }
     
+    if (object->Has(TRI_V8_ASCII_STRING("autoResync"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("autoResync"))->IsBoolean()) {
+        config._autoResync = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("autoResync")));
+      }
+    }
+    
     if (object->Has(TRI_V8_ASCII_STRING("includeSystem"))) {
       if (object->Get(TRI_V8_ASCII_STRING("includeSystem"))->IsBoolean()) {
         config._includeSystem = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("includeSystem")));
@@ -542,6 +548,33 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
         (! config._restrictType.empty() && config._restrictType != "include" && config._restrictType != "exclude")) {
       TRI_DestroyConfigurationReplicationApplier(&config);
       TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <restrictCollections> or <restrictType>");
+    }
+    
+    if (object->Has(TRI_V8_ASCII_STRING("connectionRetryWaitTime"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("connectionRetryWaitTime"))->IsNumber()) {
+        double value = TRI_ObjectToDouble(object->Get(TRI_V8_ASCII_STRING("connectionRetryWaitTime")));
+        if (value > 0.0) {
+          config._connectionRetryWaitTime = static_cast<uint64_t>(value * 1000.0 * 1000.0); 
+        }
+      }
+    }
+    
+    if (object->Has(TRI_V8_ASCII_STRING("idleMinWaitTime"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("idleMinWaitTime"))->IsNumber()) {
+        double value = TRI_ObjectToDouble(object->Get(TRI_V8_ASCII_STRING("idleMinWaitTime")));
+        if (value > 0.0) {
+          config._idleMinWaitTime = static_cast<uint64_t>(value * 1000.0 * 1000.0); 
+        }
+      }
+    }
+    
+    if (object->Has(TRI_V8_ASCII_STRING("idleMaxWaitTime"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("idleMaxWaitTime"))->IsNumber()) {
+        double value = TRI_ObjectToDouble(object->Get(TRI_V8_ASCII_STRING("idleMaxWaitTime")));
+        if (value > 0.0) {
+          config._idleMaxWaitTime = static_cast<uint64_t>(value * 1000.0 * 1000.0); 
+        }
+      }
     }
 
     int res = TRI_ConfigureReplicationApplier(vocbase->_replicationApplier, &config);

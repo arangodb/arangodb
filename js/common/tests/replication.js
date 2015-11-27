@@ -2001,6 +2001,9 @@ function ReplicationApplierSuite () {
       assertTrue(properties.includeSystem);
       assertEqual("", properties.restrictType);
       assertEqual([ ], properties.restrictCollections);
+      assertEqual(30, properties.connectionRetryWaitTime);
+      assertEqual(0.5, properties.idleMinWaitTime);
+      assertEqual(2.5, properties.idleMaxWaitTime);
 
       try {
         replication.applier.properties({ });
@@ -2022,6 +2025,9 @@ function ReplicationApplierSuite () {
       assertEqual(0, properties.chunkSize);
       assertFalse(properties.autoStart);
       assertTrue(properties.adaptivePolling);
+      assertEqual(30, properties.connectionRetryWaitTime);
+      assertEqual(0.5, properties.idleMinWaitTime);
+      assertEqual(2.5, properties.idleMaxWaitTime);
 
       replication.applier.properties({
         endpoint: "tcp://9.9.9.9:9998",
@@ -2033,7 +2039,10 @@ function ReplicationApplierSuite () {
         chunkSize: 65536,
         includeSystem: false,
         restrictType: "include",
-        restrictCollections: [ "_users" ]
+        restrictCollections: [ "_users" ],
+        connectionRetryWaitTime: 60.2,
+        idleMinWaitTime: 0.1,
+        idleMaxWaitTime: 42.44
       });
 
       properties = replication.applier.properties();
@@ -2047,6 +2056,9 @@ function ReplicationApplierSuite () {
       assertFalse(properties.includeSystem);
       assertEqual("include", properties.restrictType);
       assertEqual([ "_users" ], properties.restrictCollections);
+      assertEqual(60.2, properties.connectionRetryWaitTime);
+      assertEqual(0.1, properties.idleMinWaitTime);
+      assertEqual(42.44, properties.idleMaxWaitTime);
       
       replication.applier.properties({
         endpoint: "tcp://9.9.9.9:9998",
@@ -2055,7 +2067,8 @@ function ReplicationApplierSuite () {
         chunkSize: 128 * 1024,
         includeSystem: true,
         restrictType: "exclude",
-        restrictCollections: [ "foo", "bar", "baz" ]
+        restrictCollections: [ "foo", "bar", "baz" ],
+        idleMinWaitTime: 7
       });
       
       properties = replication.applier.properties();
@@ -2069,15 +2082,22 @@ function ReplicationApplierSuite () {
       assertTrue(properties.includeSystem);
       assertEqual("exclude", properties.restrictType);
       assertEqual([ "bar", "baz", "foo" ], properties.restrictCollections.sort());
+      assertEqual(60.2, properties.connectionRetryWaitTime);
+      assertEqual(7, properties.idleMinWaitTime);
+      assertEqual(42.44, properties.idleMaxWaitTime);
       
       replication.applier.properties({
         restrictType: "",
-        restrictCollections: [ ]
+        restrictCollections: [ ],
+        idleMaxWaitTime: 33
       });
       
       properties = replication.applier.properties();
       assertEqual("", properties.restrictType);
       assertEqual([ ], properties.restrictCollections);
+      assertEqual(60.2, properties.connectionRetryWaitTime);
+      assertEqual(7, properties.idleMinWaitTime);
+      assertEqual(33, properties.idleMaxWaitTime);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
