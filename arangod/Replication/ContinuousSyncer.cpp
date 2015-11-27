@@ -978,7 +978,14 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     if (res == TRI_ERROR_REPLICATION_NO_RESPONSE ||
         res == TRI_ERROR_REPLICATION_MASTER_ERROR) {
       // master error. try again after a sleep period
-      sleepTime = 30 * 1000 * 1000;
+      if (_configuration._connectionRetryWaitTime > 0) {
+        sleepTime = _configuration._connectionRetryWaitTime;
+      }
+      else {
+        // default to prevent spinning too busy here
+        sleepTime = 30 * 1000 * 1000;
+      }
+      
       connectRetries++;
 
       {
@@ -1016,12 +1023,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
         sleepTime      = 0;
       }
       else {
-        if (masterActive) {
-          sleepTime = 500 * 1000;
-        }
-        else {
-          sleepTime = 5 * 1000 * 1000;
-        }
+        sleepTime = _configuration._idleMinWaitTime;
 
         if (_configuration._adaptivePolling) {
           inactiveCycles++;
@@ -1033,6 +1035,10 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
           }
           if (inactiveCycles > 15) {
             sleepTime *= 2;
+          }
+       
+          if (sleepTime > _configuration._idleMaxWaitTime) {
+            sleepTime = _configuration._idleMaxWaitTime;
           }
         }
       }
