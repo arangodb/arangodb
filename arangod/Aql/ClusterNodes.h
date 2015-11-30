@@ -80,7 +80,8 @@ namespace triagens {
         }
  
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not this node will forward initializeCursor requests
+/// @brief whether or not this node will forward initializeCursor or shutDown
+/// requests
 ////////////////////////////////////////////////////////////////////////////////
 
         void isResponsibleForInitCursor (bool value) {
@@ -88,7 +89,8 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not this node will forward initializeCursor requests
+/// @brief whether or not this node will forward initializeCursor or shutDown
+/// requests
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isResponsibleForInitCursor () const {
@@ -239,7 +241,8 @@ namespace triagens {
         std::string _queryId;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not this node will forward initializeCursor requests
+/// @brief whether or not this node will forward initializeCursor and shutDown
+/// requests
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _isResponsibleForInitCursor;
