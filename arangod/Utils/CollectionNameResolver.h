@@ -158,11 +158,13 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief look up a cluster collection type for a cluster collection name
+/// @brief look up a cluster collection type for a cluster collection name on the
+///        coordinator and for a shard name on the db server
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_col_type_t const getCollectionTypeCluster (std::string const& name) const {
-          if (! ServerState::instance()->isRunningInCluster()) {
+          // This fires in Single server case as well
+          if (! ServerState::instance()->isCoordinator()) {
             return getCollectionType(name);
           }
           if (name[0] >= '0' && name[0] <= '9') {

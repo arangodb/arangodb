@@ -198,6 +198,7 @@ HttpHandler::status_t RestEdgesHandler::execute () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> const& expressions) {
   std::vector<std::string> const& suffix = _request->suffix();
 
@@ -210,7 +211,17 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
   }
 
   std::string collectionName = suffix[0];
-  // TODO check if collection exists
+  CollectionNameResolver resolver(_vocbase);
+  TRI_col_type_t colType = resolver.getCollectionTypeCluster(collectionName);
+  if (colType == TRI_COL_TYPE_UNKNOWN) {
+    std::cout << "Unknown type\n";
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return false;
+  }
+  else if (colType != TRI_COL_TYPE_EDGE) {
+    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    return false;
+  }
 
   bool found;
   char const* dir = _request->value("direction", found);
