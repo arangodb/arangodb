@@ -2654,6 +2654,7 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
       continue;
     }
 
+    std::unordered_set<Variable const*> varsSetHere;
     auto parents = n->getParents();
 
     while (true) {
@@ -2667,9 +2668,13 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
         case EN::REMOVE:
         case EN::REPLACE:
         case EN::UPDATE:
-        case EN::UPSERT:
+        case EN::UPSERT: {
+          for (auto& v : inspectNode->getVariablesSetHere()) {
+            varsSetHere.emplace(v);
+          }
           parents = inspectNode->getParents();
           continue;
+        }
 
         case EN::AGGREGATE:
         case EN::SUBQUERY:
@@ -2698,15 +2703,25 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
           // intentionally fall through here
         }
         case EN::FILTER:
-          // remember our cursor...
-          parents = inspectNode->getParents();
-          // then unlink the filter/calculator from the plan
-          plan->unlinkNode(inspectNode);
-          // and re-insert into plan in front of the remoteNode
-          plan->insertDependency(rn, inspectNode);
+          for (auto& v : inspectNode->getVariablesUsedHere()) {
+            if (varsSetHere.find(v) != varsSetHere.end()) {
+              // do not move over the definition of variables that we need
+              stopSearching = true;
+              break;
+            }
+          }
 
-          modified = true;
-          //ready to rumble!
+          if (! stopSearching) {
+            // remember our cursor...
+            parents = inspectNode->getParents();
+            // then unlink the filter/calculator from the plan
+            plan->unlinkNode(inspectNode);
+            // and re-insert into plan in front of the remoteNode
+            plan->insertDependency(rn, inspectNode);
+
+            modified = true;
+            //ready to rumble!
+          }
           break;
       }
 
