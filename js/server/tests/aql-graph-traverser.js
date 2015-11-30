@@ -39,19 +39,21 @@
   const gm = require("org/arangodb/general-graph");
   const vn = "UnitTestVertexCollection";
   const en = "UnitTestEdgeCollection";
-  let vertex = {};
-  let edge = {};
+  var vertex = {};
+  var edge = {};
+  var vc;
+  var ec;
 
-  let cleanup = function () {
+  var cleanup = function () {
     db._drop(vn);
     db._drop(en);
     vertex = {};
     edge = {};
   };
 
-  let createBaseGraph = function () {
-    let vc = db._create(vn, {numberOfShards: 4});
-    let ec = db._createEdgeCollection(en, {numberOfShards: 4});
+  var createBaseGraph = function () {
+    vc = db._create(vn, {numberOfShards: 4});
+    ec = db._createEdgeCollection(en, {numberOfShards: 4});
     vertex.A = vc.save({_key: "A"})._id;
     vertex.B = vc.save({_key: "B"})._id;
     vertex.C = vc.save({_key: "C"})._id;
@@ -67,7 +69,7 @@
     edge.FE = ec.save(vertex.F, vertex.E, {})._id;
   };
 
-  let namedGraphSuite = function() {
+  function namedGraphSuite () {
 
     /***********************************************************************
      * Graph under test:
@@ -90,12 +92,12 @@
      *
      ***********************************************************************/
 
-    let g;
+    var g;
     const gn = "UnitTestGraph";
 
     return {
 
-      setup: function() {
+      setUp: function() {
         cleanup();
         createBaseGraph();
         try {
@@ -111,37 +113,37 @@
         cleanup();
       },
 
-      firstEntryIsVertexTest: function () {
-        let query = "FOR x IN OUTBOUND @startId GRAPH @graph RETURN x";
-        let bindVars = {
+      testFirstEntryIsVertex: function () {
+        var query = "FOR x IN OUTBOUND @startId GRAPH @graph RETURN x";
+        var bindVars = {
           graph: gn,
           startId: vertex.B
         };
-        let result = db._query(query, bindVars).toArray();
+        var result = db._query(query, bindVars).toArray();
         assertEqual(result.length, 1);
         assertEqual(result[0]._id, vertex.C);
       },
 
-      secondEntryIsEdgeTest: function () {
-        let query = "FOR x, e IN OUTBOUND @startId GRAPH @graph RETURN e";
-        let bindVars = {
+      testSecondEntryIsEdge: function () {
+        var query = "FOR x, e IN OUTBOUND @startId GRAPH @graph RETURN e";
+        var bindVars = {
           graph: gn,
           startId: vertex.B
         };
-        let result = db._query(query, bindVars).toArray();
+        var result = db._query(query, bindVars).toArray();
         assertEqual(result.length, 1);
         assertEqual(result[0]._id, edge.BC);
       },
 
-      thirdEntryIsPathTest: function () {
-        let query = "FOR x, e, p IN OUTBOUND @startId GRAPH @graph RETURN p";
-        let bindVars = {
+      testThirdEntryIsPath: function () {
+        var query = "FOR x, e, p IN OUTBOUND @startId GRAPH @graph RETURN p";
+        var bindVars = {
           graph: gn,
           startId: vertex.B
         };
-        let result = db._query(query, bindVars).toArray();
+        var result = db._query(query, bindVars).toArray();
         assertEqual(result.length, 1);
-        let entry = result[0];
+        var entry = result[0];
         assertEqual(entry.vertices.length, 2);
         assertEqual(entry.vertices[0]._id, vertex.B);
         assertEqual(entry.vertices[1]._id, vertex.C);
@@ -149,39 +151,39 @@
         assertEqual(entry.edges[0]._id, edge.BC);
       },
 
-      outboundDirectionTest: function () {
-        let query = "FOR x IN OUTBOUND @startId GRAPH @graph RETURN x._id";
-        let bindVars = {
+      testOutboundDirection: function () {
+        var query = "FOR x IN OUTBOUND @startId GRAPH @graph RETURN x._id";
+        var bindVars = {
           graph: gn,
           startId: vertex.B
         };
-        let result = db._query(query, bindVars).toArray();
+        var result = db._query(query, bindVars).toArray();
         assertEqual(result.length, 1);
-        let entry = result[0];
+        var entry = result[0];
         assertEqual(entry, vertex.C);
       },
 
-      inboundDirectionTest: function () {
-        let query = "FOR x IN INBOUND @startId GRAPH @graph RETURN x._id";
-        let bindVars = {
+      testInboundDirection: function () {
+        var query = "FOR x IN INBOUND @startId GRAPH @graph RETURN x._id";
+        var bindVars = {
           graph: gn,
           startId: vertex.C
         };
-        let result = db._query(query, bindVars).toArray();
+        var result = db._query(query, bindVars).toArray();
         assertEqual(result.length, 1);
-        let entry = result[0];
+        var entry = result[0];
         assertEqual(entry, vertex.B);
       },
 
-      anyDirectionTest: function () {
-        let query = "FOR x IN ANY @startId GRAPH @graph SORT x._id ASC RETURN x._id";
-        let bindVars = {
+      testAnyDirection: function () {
+        var query = "FOR x IN ANY @startId GRAPH @graph SORT x._id ASC RETURN x._id";
+        var bindVars = {
           graph: gn,
           startId: vertex.B
         };
-        let result = db._query(query, bindVars).toArray();
+        var result = db._query(query, bindVars).toArray();
         assertEqual(result.length, 3);
-        let entry = result[0];
+        var entry = result[0];
         assertEqual(entry, vertex.A);
         entry = result[1];
         assertEqual(entry, vertex.C);
@@ -189,26 +191,26 @@
         assertEqual(entry, vertex.E);
       },
 
-      exactNumberStepsTest: function () {
-        let query = "FOR x IN 2 OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id";
-        let bindVars = {
+      testExactNumberSteps: function () {
+        var query = "FOR x IN 2 OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id";
+        var bindVars = {
           graph: gn,
           startId: vertex.B
         };
-        let result = db._query(query, bindVars).toArray();
+        var result = db._query(query, bindVars).toArray();
         assertEqual(result.length, 2);
 
         assertEqual(result[0], vertex.D);
         assertEqual(result[1], vertex.F);
       },
 
-      rangeNumberStepsTest: function () {
-        let query = "FOR x IN 2..3 OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id";
-        let bindVars = {
+      testRangeNumberSteps: function () {
+        var query = "FOR x IN 2..3 OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id";
+        var bindVars = {
           graph: gn,
           startId: vertex.B
         };
-        let result = db._query(query, bindVars).toArray();
+        var result = db._query(query, bindVars).toArray();
         assertEqual(result.length, 3);
 
         assertEqual(result[0], vertex.D);
@@ -216,26 +218,26 @@
         assertEqual(result[2], vertex.F);
       },
 
-      computedNumberStepsTest: function () {
-        let query = "FOR x IN LENGTH([1,2]) OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id";
-        let bindVars = {
+      testComputedNumberSteps: function () {
+        var query = "FOR x IN LENGTH([1,2]) OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id";
+        var bindVars = {
           graph: gn,
           startId: vertex.B
         };
-        let result = db._query(query, bindVars).toArray();
+        var result = db._query(query, bindVars).toArray();
         assertEqual(result.length, 2);
 
         assertEqual(result[0], vertex.D);
       },
 
-      sortTest: function () {
-          let query = "FOR x IN OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id";
-          let bindVars = {
+      testSort: function () {
+          var query = "FOR x IN OUTBOUND @startId GRAPH @graph SORT x._id ASC RETURN x._id";
+          var bindVars = {
             graph: gn,
             startId: vertex.C
           };
 
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 2);
           assertEqual(result[0], vertex.D);
           assertEqual(result[1], vertex.F);
@@ -252,7 +254,7 @@
       };
     };
 
-    let multiCollectionGraphSuite = function () {
+    function multiCollectionGraphSuite () {
 
       /***********************************************************************
        * Graph under test:
@@ -265,15 +267,15 @@
        *
        ***********************************************************************/
  
-      let g;
+      var g;
       const gn = "UnitTestGraph";
       const vn2 = "UnitTestVertexCollection2";
       const en2 = "UnitTestEdgeCollection2";
 
       // We always use the same query, the result should be identical.
-      let validateResult = function (result) {
+      var validateResult = function (result) {
         assertEqual(result.length, 1);
-        let entry = result[0];
+        var entry = result[0];
         assertEqual(entry.vertex._id, vertex.C);
         assertEqual(entry.path.vertices.length, 2);
         assertEqual(entry.path.vertices[0]._id, vertex.B);
@@ -284,7 +286,7 @@
 
       return {
 
-        setup: function() {
+        setUp: function() {
           cleanup();
           try {
             gm._drop(gn);
@@ -306,76 +308,76 @@
           cleanup();
         },
 
-        noBindParameterTest: function () {
-          let query = "FOR x, p IN OUTBOUND '" + vertex.B + "' " + en + " RETURN {vertex: x, path: p}";
+        testNoBindParameter: function () {
+          var query = "FOR x, e, p IN OUTBOUND '" + vertex.B + "' " + en + " RETURN {vertex: x, path: p}";
           validateResult(db._query(query).toArray());
         },
 
-        startBindParameterTest: function () {
-          let query = "FOR x, p IN OUTBOUND @startId " + en + " RETURN {vertex: x, path: p}";
-          let bindVars = {
+        testStartBindParameter: function () {
+          var query = "FOR x, e, p IN OUTBOUND @startId " + en + " RETURN {vertex: x, path: p}";
+          var bindVars = {
             startId: vertex.B
           };
           validateResult(db._query(query, bindVars).toArray());
         },
 
-        edgeCollectionBindParameterTest: function () {
-          let query = "FOR x, p IN OUTBOUND '" + vertex.B + "' @@eCol RETURN {vertex: x, path: p}";
-          let bindVars = {
+        testEdgeCollectionBindParameter: function () {
+          var query = "FOR x, e, p IN OUTBOUND '" + vertex.B + "' @@eCol RETURN {vertex: x, path: p}";
+          var bindVars = {
             "@eCol": en
           };
           validateResult(db._query(query, bindVars).toArray());
         },
 
-        stepsBindParameterTest: function () {
-          let query = "FOR x, p IN @steps OUTBOUND '" + vertex.B + "' " + en + " RETURN {vertex: x, path: p}";
-          let bindVars = {
+        testStepsBindParameter: function () {
+          var query = "FOR x, e, p IN @steps OUTBOUND '" + vertex.B + "' " + en + " RETURN {vertex: x, path: p}";
+          var bindVars = {
             steps: 1
           };
           validateResult(db._query(query, bindVars).toArray());
         },
 
-        stepsRangeBindParameterTest: function () {
-          let query = "FOR x, p IN @lsteps..@rsteps OUTBOUND '" + vertex.B
+        testStepsRangeBindParameter: function () {
+          var query = "FOR x, e, p IN @lsteps..@rsteps OUTBOUND '" + vertex.B
                     + "' " + en + " RETURN {vertex: x, path: p}";
-          let bindVars = {
+          var bindVars = {
             lsteps: 1,
             rsteps: 1
           };
           validateResult(db._query(query, bindVars).toArray());
         },
 
-        firstEntryIsVertexTest: function () {
-          let query = "FOR x IN OUTBOUND @startId @@eCol RETURN x";
-          let bindVars = {
+        testFirstEntryIsVertex: function () {
+          var query = "FOR x IN OUTBOUND @startId @@eCol RETURN x";
+          var bindVars = {
             "@eCol": en,
             startId: vertex.B
           };
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 1);
           assertEqual(result[0]._id, vertex.C);
         },
 
-        secondEntryIsEdgeTest: function () {
-          let query = "FOR x, e IN OUTBOUND @startId @@eCol RETURN e";
-          let bindVars = {
+        testSecondEntryIsEdge: function () {
+          var query = "FOR x, e IN OUTBOUND @startId @@eCol RETURN e";
+          var bindVars = {
             "@eCol": en,
             startId: vertex.B
           };
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 1);
           assertEqual(result[0]._id, edge.BC);
         },
 
-        thirdEntryIsPathTest: function () {
-          let query = "FOR x, e, p IN OUTBOUND @startId @@eCol RETURN p";
-          let bindVars = {
+        testThirdEntryIsPath: function () {
+          var query = "FOR x, e, p IN OUTBOUND @startId @@eCol RETURN p";
+          var bindVars = {
             "@eCol": en,
             startId: vertex.B
           };
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 1);
-          let entry = result[0];
+          var entry = result[0];
           assertEqual(entry.vertices.length, 2);
           assertEqual(entry.vertices[0]._id, vertex.B);
           assertEqual(entry.vertices[1]._id, vertex.C);
@@ -383,39 +385,39 @@
           assertEqual(entry.edges[0]._id, edge.BC);
         },
 
-        outboundDirectionTest: function () {
-          let query = "FOR x IN OUTBOUND @startId @@eCol RETURN x._id";
-          let bindVars = {
+        testOutboundDirection: function () {
+          var query = "FOR x IN OUTBOUND @startId @@eCol RETURN x._id";
+          var bindVars = {
             "@eCol": en,
             startId: vertex.B
           };
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 1);
-          let entry = result[0];
+          var entry = result[0];
           assertEqual(entry, vertex.C);
         },
 
-        inboundDirectionTest: function () {
-          let query = "FOR x IN INBOUND @startId @@eCol RETURN x._id";
-          let bindVars = {
+        testInboundDirection: function () {
+          var query = "FOR x IN INBOUND @startId @@eCol RETURN x._id";
+          var bindVars = {
             "@eCol": en,
             startId: vertex.C
           };
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 1);
-          let entry = result[0];
+          var entry = result[0];
           assertEqual(entry, vertex.B);
         },
 
-        anyDirectionTest: function () {
-          let query = "FOR x IN ANY @startId @@eCol SORT x._id ASC RETURN x._id";
-          let bindVars = {
+        testAnyDirection: function () {
+          var query = "FOR x IN ANY @startId @@eCol SORT x._id ASC RETURN x._id";
+          var bindVars = {
             "@eCol": en,
             startId: vertex.B
           };
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 3);
-          let entry = result[0];
+          var entry = result[0];
           assertEqual(entry, vertex.A);
           entry = result[1];
           assertEqual(entry, vertex.C);
@@ -423,26 +425,26 @@
           assertEqual(entry, vertex.E);
         },
 
-        exactNumberStepsTest: function () {
-          let query = "FOR x IN 2 OUTBOUND @startId @@eCol  SORT x._id ASC RETURN x._id";
-          let bindVars = {
+        testExactNumberSteps: function () {
+          var query = "FOR x IN 2 OUTBOUND @startId @@eCol  SORT x._id ASC RETURN x._id";
+          var bindVars = {
             "@eCol": en,
             startId: vertex.B
           };
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 2);
 
           assertEqual(result[0], vertex.D);
           assertEqual(result[1], vertex.F);
         },
 
-        rangeNumberStepsTest: function () {
-          let query = "FOR x IN 2..3 OUTBOUND @startId @@eCol SORT x._id ASC RETURN x._id";
-          let bindVars = {
+        testRangeNumberSteps: function () {
+          var query = "FOR x IN 2..3 OUTBOUND @startId @@eCol SORT x._id ASC RETURN x._id";
+          var bindVars = {
             "@eCol": en,
             startId: vertex.B
           };
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 3);
 
           assertEqual(result[0], vertex.D);
@@ -450,32 +452,32 @@
           assertEqual(result[2], vertex.F);
         },
 
-        computedNumberStepsTest: function () {
-          let query = "FOR x IN LENGTH([1,2]) OUTBOUND @startId @@eCol SORT x._id ASC RETURN x._id";
-          let bindVars = {
+        testComputedNumberSteps: function () {
+          var query = "FOR x IN LENGTH([1,2]) OUTBOUND @startId @@eCol SORT x._id ASC RETURN x._id";
+          var bindVars = {
             "@eCol": en,
             startId: vertex.B
           };
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 2);
 
           assertEqual(result[0], vertex.D);
         },
 
-        sortTest: function () {
-          let query = "FOR x IN OUTBOUND @startId @@eCol SORT x._id ASC RETURN x._id";
-          let bindVars = {
+        testSort: function () {
+          var query = "FOR x IN OUTBOUND @startId @@eCol SORT x._id ASC RETURN x._id";
+          var bindVars = {
             "@eCol": en,
             startId: vertex.C
           };
 
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 2);
           assertEqual(result[0], vertex.D);
           assertEqual(result[1], vertex.F);
 
           // Reverse ordering
-          query = "FOR x IN OUTBOUND @startId GRAPH @graph SORT x._id DESC RETURN x._id";
+          query = "FOR x IN OUTBOUND @startId @@eCol SORT x._id DESC RETURN x._id";
 
           result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 2);
@@ -483,28 +485,28 @@
           assertEqual(result[1], vertex.D);
         },
 
-        singleDocumentInputTest: function () {
-          let query = "FOR y IN @@vCol FILTER y._id == @startId "
+        testSingleDocumentInput: function () {
+          var query = "FOR y IN @@vCol FILTER y._id == @startId "
                     + "FOR x IN OUTBOUND y @@eCol RETURN x";
-          let bindVars = {
+          var bindVars = {
             startId: vertex.B,
             "@eCol": en,
             "@vCol": vn
           };
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 1);
           assertEqual(result[0]._id, vertex.C);
         },
 
-        listDocumentInputTest: function () {
-          let query = "FOR y IN @@vCol "
+        testListDocumentInput: function () {
+          var query = "FOR y IN @@vCol "
                     + "FOR x IN OUTBOUND y @@eCol SORT x._id ASC RETURN x._id";
-          let bindVars = {
+          var bindVars = {
             "@eCol": en,
             "@vCol": vn
           };
-          let result = db._query(query, bindVars).toArray();
-          assertEqual(result.length).toEqual(6);
+          var result = db._query(query, bindVars).toArray();
+          assertEqual(result.length, 6);
           assertEqual(result[0], vertex.B);
           assertEqual(result[1], vertex.B);
           assertEqual(result[2], vertex.C);
@@ -516,12 +518,12 @@
       };
     };
 
-    let potentialErrorsSuite = function () {
-      let vc, ec;
+    var potentialErrorsSuite = function () {
+      var vc, ec;
 
       return {
 
-        setup: function () {
+        setUp: function () {
           cleanup();
           vc = db._create(vn);
           ec = db._createEdgeCollection(en);
@@ -531,8 +533,8 @@
         tearDown: cleanup,
 
         testNonIntegerSteps: function () {
-          let query = "FOR x IN 2.5 OUTBOUND @startId @@eCol RETURN x";
-          let bindVars = {
+          var query = "FOR x IN 2.5 OUTBOUND @startId @@eCol RETURN x";
+          var bindVars = {
             "@eCol": en,
             "startId": vertex.A
           };
@@ -545,8 +547,8 @@
         },
 
         testNonNumberSteps: function () {
-          let query = "FOR x IN 'invalid' OUTBOUND @startId @@eCol RETURN x";
-          let bindVars = {
+          var query = "FOR x IN 'invalid' OUTBOUND @startId @@eCol RETURN x";
+          var bindVars = {
             "@eCol": en,
             "startId": vertex.A
           };
@@ -559,8 +561,8 @@
         },
 
         testMultiDirections: function () {
-          let query = "FOR x IN OUTBOUND ANY @startId @@eCol RETURN x";
-          let bindVars = {
+          var query = "FOR x IN OUTBOUND ANY @startId @@eCol RETURN x";
+          var bindVars = {
             "@eCol": en,
             "startId": vertex.A
           };
@@ -573,8 +575,8 @@
         },
 
         testNoCollections: function () {
-          let query = "FOR x IN OUTBOUND @startId RETURN x";
-          let bindVars = {
+          var query = "FOR x IN OUTBOUND @startId RETURN x";
+          var bindVars = {
             "startId": vertex.A
           };
           try {
@@ -586,8 +588,8 @@
         },
 
         testNoStartVertex: function () {
-          let query = "FOR x IN OUTBOUND @@eCol RETURN x";
-          let bindVars = {
+          var query = "FOR x IN OUTBOUND @@eCol RETURN x";
+          var bindVars = {
             "@eCol": en
           };
           try {
@@ -599,8 +601,8 @@
         },
 
         testTooManyOutputParameters: function () {
-          let query = "FOR x, y, z, f IN OUTBOUND @startId @@eCol RETURN x";
-          let bindVars = {
+          var query = "FOR x, y, z, f IN OUTBOUND @startId @@eCol RETURN x";
+          var bindVars = {
             "@eCol": en,
             "startId": vertex.A
           };
@@ -613,8 +615,8 @@
         },
 
         testTraverseVertexCollection: function () {
-          let query = "FOR x IN OUTBOUND @startId @@eCol, @@vCol RETURN x";
-          let bindVars = {
+          var query = "FOR x IN OUTBOUND @startId @@eCol, @@vCol RETURN x";
+          var bindVars = {
             "@eCol": en,
             "@vCol": vn,
             "startId": vertex.A
@@ -628,8 +630,8 @@
         },
 
         testStartWithSubquery: function () {
-          let query = "FOR x IN OUTBOUND (FOR y IN @@vCol SORT y._id LIMIT 3 RETURN y) @@eCol SORT x._id RETURN x";
-          let bindVars = {
+          var query = "FOR x IN OUTBOUND (FOR y IN @@vCol SORT y._id LIMIT 3 RETURN y) @@eCol SORT x._id RETURN x";
+          var bindVars = {
             "@eCol": en,
             "@vCol": vn
           };
@@ -639,7 +641,7 @@
             assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
           }
           /*
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           expect(result.length).toEqual(4);
           expect(result[0]._id).toEqual(vertex.B);
           expect(result[1]._id).toEqual(vertex.C);
@@ -649,8 +651,8 @@
         },
 
         testStepsSubquery: function() {
-          let query = "FOR x IN (FOR y IN 1..1 RETURN y) OUTBOUND @startId @@eCol RETURN x";
-          let bindVars = {
+          var query = "FOR x IN (FOR y IN 1..1 RETURN y) OUTBOUND @startId @@eCol RETURN x";
+          var bindVars = {
             "@eCol": en,
             "startId": vertex.A
           };
@@ -660,7 +662,7 @@
             assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
           }
           /*
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           expect(result.length).toEqual(1);
           expect(result[0]._id).toEqual(vertex.B);
           */
@@ -669,12 +671,11 @@
       };
     };
 
-    let complexInternaSuite = function () {
-      let vc, ec;
+    var complexInternaSuite = function () {
 
       return {
 
-        setup: function () {
+        setUp: function () {
           cleanup();
           createBaseGraph();
         },
@@ -688,81 +689,81 @@
           vc.save({_key: "1"});
           vc2.save({_key: "1"});
           ec.save(vn + "/1", vn2 + "/1", {});
-          let query = "FOR x IN OUTBOUND @startId @@eCol RETURN x";
-          let bindVars = {
+          var query = "FOR x IN OUTBOUND @startId @@eCol RETURN x";
+          var bindVars = {
             "@eCol": en,
             "startId": vn + "/1"
           };
           // NOTE: vn2 is not explicitly named in AQL
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 1);
           assertEqual(result[0]._id, vn2 + "/1");
           db._drop(vn2);
         },
 
         testStepsFromLet: function () {
-          let query = "LET s = 1 FOR x IN s OUTBOUND @startId @@eCol RETURN x";
-          let bindVars = {
+          var query = "LET s = 1 FOR x IN s OUTBOUND @startId @@eCol RETURN x";
+          var bindVars = {
             "@eCol": en,
             "startId": vertex.A
           };
 
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           assertEqual(result.length, 1);
           assertEqual(result[0]._id, vertex.B);
         },
 
         testMultipleBlocksResult: function () {
-          let query = "FOR x IN OUTBOUND @startId @@eCol RETURN x";
-          let amount = 10000;
-          let startId = vn + "/test";
-          let bindVars = {
+          var query = "FOR x IN OUTBOUND @startId @@eCol RETURN x";
+          var amount = 10000;
+          var startId = vn + "/test";
+          var bindVars = {
             "@eCol": en,
             "startId": startId
           };
           vc.save({_key: startId.split("/")[1]});
           
           // Insert amount many edges and vertices into the collections.
-          for (let i = 0; i < amount; ++i) {
-            let tmp = vc.save({_key: "" + i})._id;
+          for (var i = 0; i < amount; ++i) {
+            var tmp = vc.save({_key: "" + i})._id;
             ec.save(startId, tmp, {});
           }
 
           // Check that we can get all of them out again.
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           // Internally: The Query selects elements in chunks, check that nothing is lost.
           assertEqual(result.length, amount);
         },
 
         testSkipSome: function () {
-          let query = "FOR x, e, p IN 1..2 OUTBOUND @startId @@eCol LIMIT 4, 100 RETURN p.vertices[1]._key";
-          let startId = vn + "/test";
-          let bindVars = {
+          var query = "FOR x, e, p IN 1..2 OUTBOUND @startId @@eCol LIMIT 4, 100 RETURN p.vertices[1]._key";
+          var startId = vn + "/test";
+          var bindVars = {
             "@eCol": en,
             "startId": startId
           };
           vc.save({_key: startId.split("/")[1]});
           
           // Insert amount many edges and vertices into the collections.
-          for (let i = 0; i < 3; ++i) {
-            let tmp = vc.save({_key: "" + i})._id;
+          for (var i = 0; i < 3; ++i) {
+            var tmp = vc.save({_key: "" + i})._id;
             ec.save(startId, tmp, {});
-            for (let k = 0; k < 3; ++k) {
-              let tmp2 = vc.save({_key: "" + i + "_" + k})._id;
+            for (var k = 0; k < 3; ++k) {
+              var tmp2 = vc.save({_key: "" + i + "_" + k})._id;
               ec.save(tmp, tmp2, {});
             }
           }
 
           // Check that we can get all of them out again.
-          let result = db._query(query, bindVars).toArray();
+          var result = db._query(query, bindVars).toArray();
           // Internally: The Query selects elements in chunks, check that nothing is lost.
           assertEqual(result.length, 8);
 
           // Each of the 3 parts of this graph contains of 4 nodes, one connected to the start.
           // And 3 connected to the first one. As we do a depth first traversal we expect to skip
           // exactly one sub-tree. Therefor we expect exactly two sub-trees to be traversed.
-          let seen = {};
-          for (let r of result) {
+          var seen = {};
+          for (var r of result) {
             if (!seen.hasOwnProperty(r)) {
               seen[r] = true;
             }
@@ -771,20 +772,20 @@
         },
 
         testManyResults: function () {
-          let query = "FOR x IN OUTBOUND @startId @@eCol RETURN x._key";
-          let startId = vn + "/many";
-          let bindVars = {
+          var query = "FOR x IN OUTBOUND @startId @@eCol RETURN x._key";
+          var startId = vn + "/many";
+          var bindVars = {
             "@eCol": en,
             "startId": startId
           };
           vc.save({_key: startId.split("/")[1]});
-          let amount = 10000;
-          for (let i = 0; i < amount; ++i) {
-            let _id = vc.save({});
+          var amount = 10000;
+          for (var i = 0; i < amount; ++i) {
+            var _id = vc.save({});
             ec.save(startId, _id, {});
           }
-          let result = db._query(query, bindVars);
-          let found = 0;
+          var result = db._query(query, bindVars);
+          var found = 0;
           // Count has to be correct
           assertEqual(result.count(), amount);
           while (result.hasNext()) {
@@ -799,7 +800,7 @@
 
   };
 
-  let complexFilteringSuite = function() {
+  var complexFilteringSuite = function() {
 
     /***********************************************************************
      * Graph under test:
@@ -819,10 +820,10 @@
      ***********************************************************************/
 
     return {
-      setup: function() {
+      setUp: function() {
         cleanup();
-        let vc = db._create(vn, {numberOfShards: 4});
-        let ec = db._createEdgeCollection(en, {numberOfShards: 4});
+        var vc = db._create(vn, {numberOfShards: 4});
+        var ec = db._createEdgeCollection(en, {numberOfShards: 4});
         vertex.A = vc.save({_key: "A", left: false, right: false})._id;
         vertex.B = vc.save({_key: "B", left: true, right: false})._id;
         vertex.C = vc.save({_key: "C", left: true, right: false})._id;
@@ -850,44 +851,44 @@
       tearDown: cleanup,
 
       testVertexEarlyPruneHighDepth: function () {
-        let query = "FOR v, e, p IN 100 OUTBOUND @start @@eCol FILTER p.vertices[1]._key == 'wrong' RETURN v";
-        let bindVars = {
+        var query = "FOR v, e, p IN 100 OUTBOUND @start @@eCol FILTER p.vertices[1]._key == 'wrong' RETURN v";
+        var bindVars = {
           "@eCol": en,
           "start": vertex.A
         };
-        let result = db._query(query, bindVars).toArray();
+        var result = db._query(query, bindVars).toArray();
         assertEqual(result.length, 0);
       },
 
       testStartVertexEarlyPruneHighDepth: function () {
-        let query = "FOR v, e, p IN 100 OUTBOUND @start @@eCol FILTER p.vertices[0]._key == 'wrong' RETURN v";
-        let bindVars = {
+        var query = "FOR v, e, p IN 100 OUTBOUND @start @@eCol FILTER p.vertices[0]._key == 'wrong' RETURN v";
+        var bindVars = {
           "@eCol": en,
           "start": vertex.A
         };
-        let result = db._query(query, bindVars).toArray();
+        var result = db._query(query, bindVars).toArray();
         assertEqual(result.length, 0);
       },
 
       testEdgesEarlyPruneHighDepth: function () {
-        let query = "FOR v, e, p IN 100 OUTBOUND @start @@eCol FILTER p.edges[0]._key == 'wrong' RETURN v";
-        let bindVars = {
+        var query = "FOR v, e, p IN 100 OUTBOUND @start @@eCol FILTER p.edges[0]._key == 'wrong' RETURN v";
+        var bindVars = {
           "@eCol": en,
           "start": vertex.A
         };
-        let result = db._query(query, bindVars).toArray();
+        var result = db._query(query, bindVars).toArray();
         assertEqual(result.length, 0);
       },
 
       testVertexLevel0: function () {
-        let query = `FOR v, e, p IN 1..2 OUTBOUND @start @@ecol
+        var query = `FOR v, e, p IN 1..2 OUTBOUND @start @@ecol
                      FILTER p.vertices[0].left == true
                      RETURN v`;
-        let bindVars = {
+        var bindVars = {
           "@ecol": en,
           start: vertex.A
         };
-        let cursor = db._query(query, bindVars);
+        var cursor = db._query(query, bindVars);
         assertEqual(cursor.count(), 0);
         assertEqual(cursor.getExtra().stats.scannedFull, 0);
         assertEqual(cursor.getExtra().stats.scannedIndex, 2);
