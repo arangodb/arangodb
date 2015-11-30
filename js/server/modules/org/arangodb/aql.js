@@ -7427,11 +7427,11 @@ function AQL_NEIGHBORS (vertexCollection,
   vertex = TO_ID(vertex, vertexCollection);
   var collectionFromVertex = vertex.slice(0, vertexCollection.length);
   if (collectionFromVertex !== vertexCollection) {
-    THROW("AQL_NEIGBORS",
+    THROW("NEIGHBORS",
           INTERNAL.errors.ERROR_GRAPH_INVALID_PARAMETER,
           "",
-          "You specified vertex collection `" + collectionFromVertex +
-          "...` for start vertext from the collection `" + vertexCollection + "`");
+          "specified vertex collection '" + collectionFromVertex +
+          "' does not match start vertex collection '" + vertexCollection + "'");
 
   } 
   options = CLONE(options) || {};
