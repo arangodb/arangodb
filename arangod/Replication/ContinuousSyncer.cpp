@@ -148,7 +148,7 @@ retry:
 
       if (connectRetries <= _configuration._maxConnectRetries) {
         // check if we are aborted externally
-        if (_applier->wait(10 * 1000 * 1000)) {
+        if (_applier->wait(_configuration._connectionRetryWaitTime)) {
           continue;
         }
 
