@@ -76,7 +76,7 @@ TraverserExpression::TraverserExpression (TRI_json_t const* json)
   };
   triagens::basics::Json varNode(TRI_UNKNOWN_MEM_ZONE, basics::JsonHelper::checkAndGetObjectValue(json, "varAccess"));
 
-  compareTo.reset(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, basics::JsonHelper::checkAndGetObjectValue(json, "compareTo")));
+  compareTo.reset(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, basics::JsonHelper::getObjectElement(json, "compareTo")));
   // If this fails everything before does not leak
   varAccess = new aql::AstNode(registerNode, registerString, varNode);
 }
