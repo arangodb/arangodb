@@ -1,6 +1,8 @@
 v2.7.2 (XXXX-XX-XX)
 -------------------
 
+* fixed non-deterministic query results in some cluster queries
+
 * added missing lock instruction for primary index in compactor size calculation
 
 * fixed issue #1589
@@ -18,6 +20,9 @@ v2.7.2 (XXXX-XX-XX)
 
 * Foxx: constructors provided to Repository and Model sub-classes via extend are
   now correctly called (#1592)
+
+* Foxx: services generated with the admin frontend now use unambiguous require paths.
+  See https://www.arangodb.com/2015/11/foxx-module-resolution-will-change-in-2-8/
 
 v2.7.1 (2015-11-07)
 -------------------
