@@ -34,6 +34,7 @@
 #include "Basics/json.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "VocBase/Traverser.h"
 #include "V8Server/ApplicationV8.h"
 
 using namespace triagens::arango;
@@ -515,7 +516,52 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
       }
 
       triagens::basics::Json result(triagens::basics::Json::Object, 3);
-      result.set("documents", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
+
+      // This is for internal use of AQL Traverser only.
+      // Should not be documented
+
+      auto const postFilter = TRI_LookupObjectJson(json, "filter");
+      if (postFilter != nullptr && TRI_IsArrayJson(postFilter)) {
+        std::vector<triagens::arango::traverser::TraverserExpression*> expressions;
+        triagens::basics::ScopeGuard guard{
+          []() -> void { },
+          [&expressions]() -> void {
+            for (auto& e : expressions) {
+              delete e;
+            }
+          }
+        };
+        size_t length = TRI_LengthArrayJson(postFilter);
+        expressions.reserve(length);
+
+        for (size_t j = 0; j < length; ++j) {
+          TRI_json_t* exp = TRI_LookupArrayJson(postFilter, j);
+          if (TRI_IsObjectJson(exp)) {
+            std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(exp));
+            expressions.emplace_back(expression.get());
+            expression.release();
+          }
+        }
+
+        triagens::basics::Json filteredDocuments(triagens::basics::Json::Array, n);
+        for (size_t i = 0; i < n; ++i) {
+          TRI_json_t* tmp = TRI_LookupArrayJson(queryResult.json, i);
+          bool add = true;
+          for (auto& e : expressions) {
+            if (! e->matchesCheck(tmp)) {
+              add = false;
+              break;
+            }
+          }
+          if (add) {
+            filteredDocuments.add(tmp);
+          }
+        }
+        result.set("documents", filteredDocuments);
+      }
+      else {
+        result.set("documents", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
+      }
       queryResult.json = nullptr;
       
       result.set("error", triagens::basics::Json(false));
