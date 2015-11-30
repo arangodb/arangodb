@@ -33,7 +33,7 @@
 #include "Basics/logging.h"
 #include "Basics/StringUtils.h"
 #include "GeneralClientConnection.h"
-#include "SimpleHttpResult.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;

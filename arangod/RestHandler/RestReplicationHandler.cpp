@@ -3543,6 +3543,7 @@ void RestReplicationHandler::handleCommandDump () {
   bool flush                  = true; // flush WAL before dumping?
   bool withTicks              = true;
   bool translateCollectionIds = true;
+  uint64_t flushWait          = 0;
 
   bool found;
   char const* value;
@@ -3552,6 +3553,16 @@ void RestReplicationHandler::handleCommandDump () {
 
   if (found) {
     flush = StringUtils::boolean(value);
+  }
+  
+  // determine flush WAL wait time value
+  value = _request->value("flushWait", found);
+
+  if (found) {
+    flushWait = StringUtils::uint64(value);
+    if (flushWait > 60) {
+      flushWait = 60;
+    }
   }
 
   // determine start tick for dump
@@ -3611,6 +3622,11 @@ void RestReplicationHandler::handleCommandDump () {
   try {
     if (flush) {
       triagens::wal::LogfileManager::instance()->flush(true, true, false);
+ 
+      // additionally wait for the collector 
+      if (flushWait > 0) {
+        triagens::wal::LogfileManager::instance()->waitForCollectorQueue(c->_cid, static_cast<double>(flushWait));
+      }
     }
 
     triagens::arango::CollectionGuard guard(_vocbase, c->_cid, false);

@@ -556,10 +556,22 @@ int Syncer::dropIndex (TRI_json_t const* json) {
 int Syncer::getMasterState (string& errorMsg) {
   string const url = BaseUrl + "/logger-state?serverId=" + _localServerIdString;
 
+  // store old settings
+  uint64_t maxRetries = _client->_maxRetries; 
+  uint64_t retryWaitTime = _client->_retryWaitTime;
+
+  // apply settings that prevent endless waiting here
+  _client->_maxRetries    = 1;
+  _client->_retryWaitTime = 500 * 1000;
+
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_GET,
                                              url,
                                              nullptr,
                                              0));
+
+  // restore old settings
+  _client->_maxRetries = maxRetries;
+  _client->_retryWaitTime = retryWaitTime;
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + std::string(_masterInfo._endpoint) +

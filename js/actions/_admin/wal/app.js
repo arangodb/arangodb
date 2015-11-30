@@ -100,8 +100,7 @@ actions.defineHttp({
     
     internal.wal.flush({ 
       waitForSync:           getParam("waitForSync"),
-      waitForCollector:      getParam("waitForCollector"),
-      waitForCollectorQueue: getParam("waitForCollectorQueue")
+      waitForCollector:      getParam("waitForCollector")
     });
 
     actions.resultOk(req, res, actions.HTTP_OK);

@@ -183,7 +183,6 @@ int InitialSyncer::run (string& errorMsg,
 
     return TRI_ERROR_INTERNAL;
   }
-
   int res = _vocbase->_replicationApplier->preventStart();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -622,7 +621,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
   }
   else {
     // only flush WAL once
-    appendix = "&flush=true";
+    appendix = "&flush=true&flushWait=1";
     _hasFlushed = true;
   }
 
