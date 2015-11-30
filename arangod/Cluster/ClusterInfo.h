@@ -244,6 +244,21 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if the default shard key is used
+////////////////////////////////////////////////////////////////////////////////
+
+        bool usesDefaultShardKeys () const {
+          TRI_json_t* const node = triagens::basics::JsonHelper::getObjectElement(_json, "shardKeys");
+          if (TRI_LengthArrayJson(node) != 1) {
+            return false;
+          }
+          TRI_json_t* firstKey = TRI_LookupArrayJson(node, 0);
+          TRI_ASSERT(TRI_IsStringJson(firstKey));
+          std::string shardKey = triagens::basics::JsonHelper::getStringValue(firstKey, "");
+          return shardKey == TRI_VOC_ATTRIBUTE_KEY;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the shard ids
 ////////////////////////////////////////////////////////////////////////////////
 
