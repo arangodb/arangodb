@@ -128,7 +128,7 @@ void ExecutionNode::getSortElements (SortElementVector& elements,
   for (size_t i = 0; i < len; i++) {
     triagens::basics::Json oneJsonElement = jsonElements.at(static_cast<int>(i));
     bool ascending = JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
-    Variable *v = varFromJson(plan->getAst(), oneJsonElement, "inVariable");
+    Variable* v = varFromJson(plan->getAst(), oneJsonElement, "inVariable");
     elements.emplace_back(v, ascending);
   }
 }
@@ -288,7 +288,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     RegisterId registerId = JsonHelper::checkAndGetNumericValue<RegisterId>      (jsonVarInfo.json(), "RegisterId");
     unsigned int    depth = JsonHelper::checkAndGetNumericValue<unsigned int>(jsonVarInfo.json(), "depth");
   
-    _registerPlan->varInfo.emplace(make_pair(variableId, VarInfo(depth, registerId)));
+    _registerPlan->varInfo.emplace(variableId, VarInfo(depth, registerId));
   }
 
   auto jsonNrRegsList = json.get("nrRegs");
@@ -1469,8 +1469,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
   bool before (ExecutionNode* en) override final {
     // Add variables used here to _usedLater:
-    auto&& usedHere = en->getVariablesUsedHere();
-    for (auto const& v : usedHere) {
+    for (auto const& v : en->getVariablesUsedHere()) {
       _usedLater.emplace(v);
     }
     return false;
@@ -1478,8 +1477,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
   void after (ExecutionNode* en) override final {
     // Add variables set here to _valid:
-    auto&& setHere = en->getVariablesSetHere();
-    for (auto const& v : setHere) {
+    for (auto& v : en->getVariablesSetHere()) {
       _valid.emplace(v);
     }
   }
@@ -1494,7 +1492,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
     // create the set difference. note: cannot use std::set_difference as our sets are NOT sorted
     for (auto it = subfinder._usedLater.begin(); it != subfinder._usedLater.end(); ++it) {
       if (_valid.find(*it) != _valid.end()) {
-        _usedLater.emplace((*it));
+        _usedLater.emplace(*it);
       }
     }
     return false;
@@ -1512,7 +1510,7 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () const {
   std::vector<Variable const*> v;
   for (auto it = finder._usedLater.begin(); it != finder._usedLater.end(); ++it) {
     if (finder._valid.find(*it) == finder._valid.end()) {
-      v.emplace_back((*it));
+      v.emplace_back(*it);
     }
   }
 
@@ -1529,7 +1527,7 @@ void SubqueryNode::getVariablesUsedHere (std::unordered_set<Variable const*>& va
       
   for (auto it = finder._usedLater.begin(); it != finder._usedLater.end(); ++it) {
     if (finder._valid.find(*it) == finder._valid.end()) {
-      vars.emplace((*it));
+      vars.emplace(*it);
     }
   }
 }

@@ -613,7 +613,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             = triagens::basics::StringUtils::itoa(info.idOfRemoteNode)
             + ":" + res->shardID;
           if (info.part == triagens::aql::PART_MAIN) {
-            queryIds.emplace(theID, queryId+"*");
+            queryIds.emplace(theID, queryId + "*");
           }
           else {
             queryIds.emplace(theID, queryId);
@@ -771,7 +771,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         engine->root(eb);
    
         // put it into our cache:
-        cache.emplace(std::make_pair((*en), eb));
+        cache.emplace(*en, eb);
       }
 
       TRI_ASSERT(engine->root() != nullptr);

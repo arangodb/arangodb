@@ -143,7 +143,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
   int maxRuleLevel = _rules.rbegin()->first;
 
   // which optimizer rules are disabled?
-  std::unordered_set<int> const&& disabledIds = getDisabledRuleIds(rulesSpecification);
+  std::unordered_set<int> disabledIds(getDisabledRuleIds(rulesSpecification));
 
   // _plans contains the previous optimisation result
   _plans.clear();

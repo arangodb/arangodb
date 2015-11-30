@@ -398,7 +398,7 @@ namespace triagens {
             s = (TRI_vocbase_col_status_e) triagens::basics::JsonHelper::getNumericValue
                           <int>
                           (_json, "status", (int) TRI_VOC_COL_STATUS_CORRUPTED);
-            m.insert(make_pair(it->first,s));
+            m.insert(make_pair(it->first, s));
           }
           return m;
         }
@@ -613,7 +613,7 @@ namespace triagens {
             TRI_json_t* _json = it->second;
             s = triagens::basics::JsonHelper::getNumericValue
                           <int> (_json, "errorNum", 0);
-            m.insert(make_pair(it->first,s));
+            m.insert(make_pair(it->first, s));
           }
           return m;
         }

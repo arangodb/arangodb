@@ -199,8 +199,8 @@ void RestVocbaseBaseHandler::generate20x (HttpResponse::HttpResponseCode respons
                                           TRI_voc_key_t key,
                                           TRI_voc_rid_t rid,
                                           TRI_col_type_e type) {
-  string const&& handle = DocumentHelper::assembleDocumentId(collectionName, key);
-  string const&& rev = StringUtils::itoa(rid);
+  string handle(std::move(DocumentHelper::assembleDocumentId(collectionName, key)));
+  string rev(std::move(StringUtils::itoa(rid)));
 
   _response = createResponse(responseCode);
   _response->setContentType("application/json; charset=utf-8");
@@ -210,7 +210,7 @@ void RestVocbaseBaseHandler::generate20x (HttpResponse::HttpResponseCode respons
     // in these cases we do not return etag nor location
     _response->setHeader("etag", 4, "\"" + rev + "\"");
 
-    string const&& escapedHandle = DocumentHelper::assembleDocumentId(collectionName, key, true);
+    string escapedHandle(std::move(DocumentHelper::assembleDocumentId(collectionName, key, true)));
 
     if (_request->compatibility() < 10400L) {
       // pre-1.4 location header (e.g. /_api/document/xyz)
@@ -265,7 +265,7 @@ void RestVocbaseBaseHandler::generateForbidden () {
 void RestVocbaseBaseHandler::generatePreconditionFailed (string const& collectionName,
                                                          TRI_voc_key_t key,
                                                          TRI_voc_rid_t rid) {
-  string const&& rev = StringUtils::itoa(rid);
+  string rev(std::move(StringUtils::itoa(rid)));
 
   _response = createResponse(HttpResponse::PRECONDITION_FAILED);
   _response->setContentType("application/json; charset=utf-8");
@@ -292,10 +292,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (string const& collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotModified (TRI_voc_rid_t rid) {
-  string const&& rev = StringUtils::itoa(rid);
-
   _response = createResponse(HttpResponse::NOT_MODIFIED);
-  _response->setHeader("etag", 4, "\"" + rev + "\"");
+  _response->setHeader("etag", 4, "\"" + StringUtils::itoa(rid) + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -311,7 +309,7 @@ void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransacti
   CollectionNameResolver const* resolver = trx.resolver();
 
   char const* key = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx from above
-  string const&& id = DocumentHelper::assembleDocumentId(resolver->getCollectionName(cid), key);
+  std::string id(std::move(DocumentHelper::assembleDocumentId(resolver->getCollectionName(cid), key)));
 
   TRI_json_t augmented;
   TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, 5);
@@ -323,7 +321,7 @@ void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransacti
   }
 
   // convert rid from uint64_t to string
-  string const&& rid = StringUtils::itoa(mptr._rid);
+  string rid(std::move(StringUtils::itoa(mptr._rid)));
   TRI_json_t* rev = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
 
   if (rev != nullptr) {
@@ -340,16 +338,16 @@ void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransacti
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* marker = static_cast<TRI_doc_edge_key_marker_t const*>(mptr.getDataPtr());  // PROTECTED by trx passed from above
-    string const&& from = DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
-    string const&& to = DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
+    string from(std::move(DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey))));
+    string to(std::move(DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey))));
 
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_TO, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
   }
   else if (type == TRI_WAL_MARKER_EDGE) {
     triagens::wal::edge_marker_t const* marker = static_cast<triagens::wal::edge_marker_t const*>(mptr.getDataPtr());  // PROTECTED by trx passed from above
-    string const&& from = DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey));
-    string const&& to = DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey));
+    string from(std::move(DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey))));
+    string to(std::move(DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey))));
 
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_TO, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));

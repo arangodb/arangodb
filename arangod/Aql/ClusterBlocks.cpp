@@ -1164,7 +1164,7 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
       if (! hasCreatedKeyAttribute && 
           TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) == nullptr) {
         // there is no _key attribute present, so we are responsible for creating one
-        std::string const&& keyString(createKey());
+        std::string keyString(createKey());
 
         TRI_json_t* obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
       
@@ -1192,7 +1192,7 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
       }
 
       // no _key given. now create one
-      std::string const&& keyString(createKey());
+      std::string keyString(createKey());
 
       TRI_json_t* obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -1389,7 +1389,7 @@ ClusterCommResult* RemoteBlock::sendRequest (
   CoordTransactionID const coordTransactionId = TRI_NewTickServer(); //1;
   std::map<std::string, std::string> headers;
   if (! _ownName.empty()) {
-    headers.emplace(make_pair("Shard-Id", _ownName));
+    headers.emplace("Shard-Id", _ownName);
   }
 
   auto currentThread = triagens::rest::DispatcherThread::currentDispatcherThread;
