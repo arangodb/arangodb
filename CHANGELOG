@@ -1,6 +1,8 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* fixed non-deterministic query results in some cluster queries
+
 * fixed issue #1589
 
 * return HTTP status code 410 (gone) instead of HTTP 408 (request timeout) for
