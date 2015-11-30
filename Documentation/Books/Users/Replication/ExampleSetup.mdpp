@@ -68,9 +68,12 @@ require("org/arangodb/replication").applier.properties({
   username: "myuser",
   password: "mypasswd",
   autoStart: true,
+  autoResync: true,
   adaptivePolling: true,
   includeSystem: false,
   requireFromPresent: false,
+  idleMinWaitTime: 0.5,
+  idleMaxWaitTime: 1.5,
   verbose: false
 });
 ```
@@ -90,6 +93,13 @@ and when the replication is re-started after a longer pause. When *requireFromPr
 or resumes replication is still present on the master. If not, then there would be data loss. If 
 *requireFromPresent* is *true*, the replication applier will abort with an appropriate error message. 
 If set to *false*, then the replication applier will still start, and ignore the data loss.
+
+The *autoResync* option can be used in conjunction with the *requireFromPresent* option as follows:
+when both *requireFromPresent* and *autoResync* are set to *true* and the master cannot provide the 
+log data the slave had requested, the replication applier will stop as usual. But due to the fact
+that *autoResync* is set to true, the slave will automatically trigger a full resync of all data with 
+the master. After that, the replication applier will go into continuous replication mode again.
+If *requireFromPresent* is set to *false*, then the *autoResync* option will not have any effect.
 
 Now it's time to start the replication applier on the slave using the last log tick we got
 before:

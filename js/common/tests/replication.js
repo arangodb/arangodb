@@ -64,6 +64,10 @@ function ReplicationLoggerSuite () {
       var found = false;
       entries.forEach(function(e) {
         if (! found) {
+          if ((e.type === 2300 || e.type === 2301) && e.cname.substr(0, 11) === '_statistics') {
+            // exclude statistics markers here
+            return;
+          }
           if (e.type === type[0]) {
             found = true;
           }
@@ -75,6 +79,10 @@ function ReplicationLoggerSuite () {
     }
     else {
       entries.forEach(function(e) {
+        if ((e.type === 2300 || e.type === 2301) && e.cname.substr(0, 11) === '_statistics') {
+          // exclude statistics markers here
+          return;
+        }
         if (e.type === type) {
           result.push(e);
         }
@@ -1862,10 +1870,11 @@ function ReplicationApplierSuite () {
       // configure && start
       replication.applier.properties({
         endpoint: "tcp://9.9.9.9:9999", // should not exist
-        connectTimeout: 3,
-        maxConnectRetries: 1
+        connectTimeout: 2,
+        maxConnectRetries: 0,
+        connectionRetryWaitTime: 1
       });
-
+      
       replication.applier.start();
       state = replication.applier.state();
       assertEqual(errors.ERROR_NO_ERROR.code, state.state.lastError.errorNum);
@@ -1911,8 +1920,9 @@ function ReplicationApplierSuite () {
       // configure && start
       replication.applier.properties({
         endpoint: "tcp://www.arangodb.com:7999", // should not exist
-        connectTimeout: 3,
-        maxConnectRetries: 1
+        connectTimeout: 2,
+        maxConnectRetries: 0,
+        connectionRetryWaitTime: 1
       });
 
       replication.applier.start();
@@ -1961,7 +1971,10 @@ function ReplicationApplierSuite () {
 
       // configure && start
       replication.applier.properties({
-        endpoint: "tcp://9.9.9.9:9999" // should not exist
+        endpoint: "tcp://9.9.9.9:9999", // should not exist
+        connectTimeout: 2,
+        maxConnectRetries: 0,
+        connectionRetryWaitTime: 1
       });
 
       replication.applier.start();
@@ -1991,7 +2004,7 @@ function ReplicationApplierSuite () {
 
       properties = replication.applier.properties();
 
-      assertEqual(300, properties.requestTimeout);
+      assertEqual(600, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
       assertEqual(100, properties.maxConnectRetries);
       assertEqual(0, properties.chunkSize);
@@ -2001,7 +2014,7 @@ function ReplicationApplierSuite () {
       assertTrue(properties.includeSystem);
       assertEqual("", properties.restrictType);
       assertEqual([ ], properties.restrictCollections);
-      assertEqual(30, properties.connectionRetryWaitTime);
+      assertEqual(15, properties.connectionRetryWaitTime);
       assertEqual(0.5, properties.idleMinWaitTime);
       assertEqual(2.5, properties.idleMaxWaitTime);
 
@@ -2019,13 +2032,13 @@ function ReplicationApplierSuite () {
 
       properties = replication.applier.properties();
       assertEqual(properties.endpoint, "tcp://9.9.9.9:9999");
-      assertEqual(300, properties.requestTimeout);
+      assertEqual(600, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
       assertEqual(100, properties.maxConnectRetries);
       assertEqual(0, properties.chunkSize);
       assertFalse(properties.autoStart);
       assertTrue(properties.adaptivePolling);
-      assertEqual(30, properties.connectionRetryWaitTime);
+      assertEqual(15, properties.connectionRetryWaitTime);
       assertEqual(0.5, properties.idleMinWaitTime);
       assertEqual(2.5, properties.idleMaxWaitTime);
 
@@ -2107,7 +2120,12 @@ function ReplicationApplierSuite () {
     testApplierPropertiesChange : function () {
       var state;
 
-      replication.applier.properties({ endpoint: "tcp://9.9.9.9:9999" });
+      replication.applier.properties({ 
+        endpoint: "tcp://9.9.9.9:9999",
+        connectTimeout: 2,
+        maxConnectRetries: 0,
+        connectionRetryWaitTime: 1
+      });
       replication.applier.start();
 
       state = replication.applier.state();
@@ -2204,7 +2222,11 @@ function ReplicationSyncSuite () {
     testSyncNoEndpoint2 : function () {
       try {
         replication.sync({
-          endpoint: "tcp://9.9.9.9:9999"
+          endpoint: "tcp://9.9.9.9:9999",
+          connectTimeout: 2,
+          maxConnectRetries: 0,
+          connectionRetryWaitTime: 1,
+          verbose: true
         });
         fail();
       }
@@ -2220,7 +2242,10 @@ function ReplicationSyncSuite () {
     testSyncInvalidResponse : function () {
       try {
         replication.sync({
-          endpoint: "tcp://www.arangodb.com:80"
+          endpoint: "tcp://www.arangodb.com:80",
+          connectTimeout: 2,
+          maxConnectRetries: 0,
+          connectionRetryWaitTime: 1
         });
         fail();
       }

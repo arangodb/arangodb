@@ -217,6 +217,10 @@ namespace triagens {
       found = true;
       return (*find).second;
     }
+    
+    bool SimpleHttpResult::hasHeaderField (std::string const& name) const {
+      return _headerFields.find(name) != _headerFields.end();
+    }
 
     bool SimpleHttpResult::isJson () const {
       auto const& find = _headerFields.find("content-type");
