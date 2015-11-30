@@ -196,10 +196,6 @@ retry:
       LOG_WARNING("replication applier stopped for database '%s' because required tick is not present on master",
                   _vocbase->_name);
 
-      if (! _configuration._autoResync) {
-        return res;
-      }
-  
       // remove previous applier state
       abortOngoingTransactions();
 
@@ -207,6 +203,12 @@ retry:
 
       {
         WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+      
+        LOG_TRACE("stopped replication applier for database '%s' with lastProcessedContinuousTick: %llu, lastAppliedContinuousTick: %llu, safeResumeTick: %llu",
+                  _vocbase->_name,
+                  (unsigned long long) _applier->_state._lastProcessedContinuousTick,
+                  (unsigned long long) _applier->_state._lastAppliedContinuousTick,
+                  (unsigned long long) _applier->_state._safeResumeTick);
 
         _applier->_state._lastProcessedContinuousTick = 0;
         _applier->_state._lastAppliedContinuousTick = 0;
@@ -216,6 +218,10 @@ retry:
         _applier->_state._totalFailedConnects = 0;
 
         saveApplierState();
+      }
+      
+      if (! _configuration._autoResync) {
+        return res;
       }
       
       // do an automatic full resync
@@ -236,11 +242,11 @@ retry:
 
         if (res == TRI_ERROR_NO_ERROR) {
           TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
-          res =_applier->start(lastLogTick, true);
-
-          if (res == TRI_ERROR_NO_ERROR) {
-            goto retry;
-          }
+          LOG_TRACE("will restart continuous replication applier for database '%s' with tick %llu",
+                    _vocbase->_name,
+                    (unsigned long long) lastLogTick);
+          _initialTick = lastLogTick;
+          goto retry;
         }
         // fall through otherwise
       }
