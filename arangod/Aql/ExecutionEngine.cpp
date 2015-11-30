@@ -492,7 +492,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         static_cast<RemoteNode*>(clone)->server("server:" + triagens::arango::ServerState::instance()->getId());
         static_cast<RemoteNode*>(clone)->ownName(shardId);
         static_cast<RemoteNode*>(clone)->queryId(connectedId);
-        // only one of the remote blocks is responsible for forwarding the initializeCursor requests
+        // only one of the remote blocks is responsible for forwarding the initializeCursor and shutDown requests
         // for simplicity, we always use the first remote block if we have more than one
         static_cast<RemoteNode*>(clone)->isResponsibleForInitCursor(nr == 0);
       }
