@@ -477,7 +477,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 /// @brief generatePlanForOneShard
 ////////////////////////////////////////////////////////////////////////////////
 
-  triagens::basics::Json generatePlanForOneShard (EngineInfo const& info,
+  triagens::basics::Json generatePlanForOneShard (size_t nr,
+                                                  EngineInfo const& info,
                                                   QueryId& connectedId,
                                                   std::string const& shardId,
                                                   bool verbose) {
@@ -496,6 +497,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         static_cast<RemoteNode*>(clone)->server("server:" + triagens::arango::ServerState::instance()->getId());
         static_cast<RemoteNode*>(clone)->ownName(shardId);
         static_cast<RemoteNode*>(clone)->queryId(connectedId);
+        // only one of the remote blocks is responsible for forwarding the initializeCursor requests
+        // for simplicity, we always use the first remote block if we have more than one
+        static_cast<RemoteNode*>(clone)->isResponsibleForInitCursor(nr == 0);
       }
     
       if (previous != nullptr) {
@@ -658,10 +662,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(cc != nullptr);
 
     // iterate over all shards of the collection
+    size_t nr = 0;
     for (auto& shardId : collection->shardIds()) {
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
-      auto jsonPlan = generatePlanForOneShard(info, connectedId, shardId, true);
+      auto jsonPlan = generatePlanForOneShard(nr++, info, connectedId, shardId, true);
 
       distributePlanToShard(coordTransactionID, info, collection, connectedId, shardId, jsonPlan.steal());
     }

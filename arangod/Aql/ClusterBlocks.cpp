@@ -530,7 +530,6 @@ BlockWithClients::BlockWithClients (ExecutionEngine* engine,
                                     std::vector<std::string> const& shardIds) 
   : ExecutionBlock(engine, ep), 
     _nrClients(shardIds.size()),
-    _ignoreInitCursor(false),
     _ignoreShutdown(false) {
 
   _shardIdMap.reserve(_nrClients);
@@ -545,8 +544,6 @@ BlockWithClients::BlockWithClients (ExecutionEngine* engine,
 
 int BlockWithClients::initializeCursor (AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
-  TRI_ASSERT(! _ignoreInitCursor);
-  _ignoreInitCursor = true;
   
   int res = ExecutionBlock::initializeCursor(items, pos);
   
@@ -590,7 +587,6 @@ AqlItemBlock* BlockWithClients::getSomeForShard (size_t atLeast,
                                                  size_t atMost, 
                                                  std::string const& shardId) {
   ENTER_BLOCK
-  _ignoreInitCursor = false;
   _ignoreShutdown = false;
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
@@ -617,7 +613,6 @@ size_t BlockWithClients::skipSomeForShard (size_t atLeast,
                                            size_t atMost, 
                                            std::string const& shardId) {
   ENTER_BLOCK
-  _ignoreInitCursor = false;
   _ignoreShutdown = false;
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
@@ -681,9 +676,6 @@ size_t BlockWithClients::getClientId (std::string const& shardId) {
 
 int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
-  if (_ignoreInitCursor) {
-    return TRI_ERROR_NO_ERROR;
-  }
   
   int res = BlockWithClients::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
@@ -735,7 +727,6 @@ bool ScatterBlock::hasMoreForShard (std::string const& shardId) {
   }
 
   // TODO is this correct? 
-  _ignoreInitCursor = false;
   _ignoreShutdown = false;
 
   std::pair<size_t,size_t> pos = _posForClient.at(clientId); 
@@ -891,9 +882,6 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
 
 int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
-  if (_ignoreInitCursor) {
-    return TRI_ERROR_NO_ERROR;
-  }
   
   int res = BlockWithClients::initializeCursor(items, pos);
 
@@ -948,7 +936,6 @@ bool DistributeBlock::hasMoreForShard (std::string const& shardId) {
   }
 
   // TODO is this correct? 
-  _ignoreInitCursor = false;
   _ignoreShutdown = false;
         
   if (! _distBuffer.at(clientId).empty()) {
@@ -1473,6 +1460,11 @@ int RemoteBlock::initialize () {
 int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
+
+  if (! static_cast<RemoteNode const*>(_exeNode)->isResponsibleForInitCursor()) {
+    // do nothing...
+    return TRI_ERROR_NO_ERROR; 
+  }
 
   Json body(Json::Object, 4);
   if (items == nullptr) {

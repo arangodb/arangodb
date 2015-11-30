@@ -91,7 +91,7 @@ This behavior can be changed on a per-collection level by creating collections w
 
 Using `keyOptions` it is possible to disallow user-specified keys completely, or to force a specific regime for auto-generating the `_key` values.
 
-There are some restrictions for user-defined keys (see [NamingConventions for document keys](../NamingConventions/DocumentKeys.html).
+There are some restrictions for user-defined keys (see [NamingConventions for document keys](../NamingConventions/DocumentKeys.md).
 
 !SUBSECTION Document Revision
 

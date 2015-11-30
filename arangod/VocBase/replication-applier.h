@@ -57,7 +57,7 @@ struct TRI_vocbase_t;
 /// @brief struct containing a replication apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_replication_applier_configuration_s {
+struct TRI_replication_applier_configuration_t {
   char*         _endpoint;
   char*         _database;
   char*         _username;
@@ -67,27 +67,29 @@ typedef struct TRI_replication_applier_configuration_s {
   uint64_t      _ignoreErrors;
   uint64_t      _maxConnectRetries;
   uint64_t      _chunkSize;
+  uint64_t      _connectionRetryWaitTime;  // 30 * 1000 * 1000;
+  uint64_t      _idleMinWaitTime;          // 500 * 1000
+  uint64_t      _idleMaxWaitTime;          // 5 * 500 * 1000
   uint32_t      _sslProtocol;
   bool          _autoStart;
   bool          _adaptivePolling;
+  bool          _autoResync;
   bool          _includeSystem;
   bool          _requireFromPresent;
   bool          _verbose;
   std::string   _restrictType;
   std::unordered_map<std::string, bool> _restrictCollections;
-}
-TRI_replication_applier_configuration_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief struct containing a replication apply error
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_replication_applier_error_s {
+struct TRI_replication_applier_error_t {
   int           _code;
   char*         _msg;
   char          _time[24];
-}
-TRI_replication_applier_error_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state information about replication application

@@ -15819,7 +15819,7 @@ AQLGenerator.prototype._edges = function(edgeExample,options){this._clearCursor(
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -15868,7 +15868,7 @@ AQLGenerator.prototype.edges = function(example){this._addToPrint("edges",exampl
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -15918,7 +15918,7 @@ AQLGenerator.prototype.outEdges = function(example){this._addToPrint("outEdges",
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -15977,7 +15977,7 @@ AQLGenerator.prototype._vertices = function(example,options,mergeWith){this._cle
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -16027,7 +16027,7 @@ AQLGenerator.prototype.vertices = function(example){this._addToPrint("vertices",
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -16077,7 +16077,7 @@ AQLGenerator.prototype.fromVertices = function(example){this._addToPrint("fromVe
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -16170,12 +16170,12 @@ AQLGenerator.prototype.path = function(){this._clearCursor();var statement=new A
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @PARAM{options, object, optional}
 ///   An object defining further options. Can have the following values:
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
+///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition-of-examples)
 ///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
 ///       considered to be on the path.
 ///   * *vertexCollectionRestriction* : One or a list of vertex-collection names that should be
@@ -16296,7 +16296,7 @@ AQLGenerator.prototype.restrict = function(restrictions){var rest=stringToArray(
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -16879,7 +16879,7 @@ Object.keys(graph).forEach(function(key){if(key.substring(0,1) !== "_"){delete g
 /// `graph.vertexCollectionName.remove(vertexId, options)`
 ///
 /// Additionally removes all ingoing and outgoing edges of the vertex recursively
-/// (see [edge remove](#edge.remove)).
+/// (see [edge remove](#remove-an-edge)).
 ///
 /// @PARAMS
 ///
@@ -17158,7 +17158,7 @@ Graph.prototype._OUTEDGES = function(vertexId){var err;if(vertexId.indexOf("/") 
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -17200,7 +17200,7 @@ return AQLStmt.outEdges(edgeExample);}; ////////////////////////////////////////
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -17298,12 +17298,12 @@ Graph.prototype._getVertexCollectionByName = function(name){if(this.__vertexColl
 /// @PARAMS
 ///
 /// @PARAM{vertexExample, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeExamples*: Filter the edges, see [Definition of examples](#definition_of_examples)
-///   * *neighborExamples*: Filter the neighbor vertices, see [Definition of examples](#definition_of_examples)
+///   * *edgeExamples*: Filter the edges, see [Definition of examples](#definition-of-examples)
+///   * *neighborExamples*: Filter the neighbor vertices, see [Definition of examples](#definition-of-examples)
 ///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
 ///       considered to be on the path.
 ///   * *vertexCollectionRestriction* : One or a list of vertex-collection names that should be
@@ -17344,7 +17344,7 @@ if(!options){options = {};}return AQLStmt.vertices(vertexExample).neighbors(opti
 ///
 /// This function returns the intersection of *graph_module._neighbors(vertex1Example, optionsVertex1)*
 /// and *graph_module._neighbors(vertex2Example, optionsVertex2)*.
-/// For parameter documentation see [_neighbors](#_neighbors).
+/// For parameter documentation see [_neighbors](#neighbors).
 ///
 /// The complexity of this method is **O(n\*m^x)** with *n* being the maximal amount of vertices
 /// defined by the parameters vertexExamples, *m* the average amount of neighbors and *x* the
@@ -17384,7 +17384,7 @@ Graph.prototype._commonNeighbors = function(vertex1Example,vertex2Example,option
 ///
 /// `graph._countCommonNeighbors(vertex1Example, vertex2Examples, optionsVertex1, optionsVertex2)`
 ///
-/// Similar to [_commonNeighbors](#_commonNeighbors) but returns count instead of the elements.
+/// Similar to [_commonNeighbors](#commonneighbors) but returns count instead of the elements.
 ///
 /// @EXAMPLES
 ///
@@ -17427,10 +17427,10 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example,vertex2Example,o
 /// @PARAMS
 ///
 /// @PARAM{vertex1Examples, object, optional}
-/// Filter the set of source vertices, see [Definition of examples](#definition_of_examples)
+/// Filter the set of source vertices, see [Definition of examples](#definition-of-examples)
 ///
 /// @PARAM{vertex2Examples, object, optional}
-/// Filter the set of vertices compared to, see [Definition of examples](#definition_of_examples)
+/// Filter the set of vertices compared to, see [Definition of examples](#definition-of-examples)
 ///
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
@@ -17469,7 +17469,7 @@ Graph.prototype._commonProperties = function(vertex1Example,vertex2Example,optio
 ///
 /// `graph._countCommonProperties(vertex1Example, vertex2Examples, options)`
 ///
-/// Similar to [_commonProperties](#_commonProperties) but returns count instead of
+/// Similar to [_commonProperties](#commonproperties) but returns count instead of
 /// the objects.
 ///
 /// @EXAMPLES
@@ -17564,17 +17564,17 @@ Graph.prototype._paths = function(options){var query="RETURN" + " GRAPH_PATHS(@g
 /// representing the length.
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @PARAMS
 ///
 /// @PARAM{startVertexExample, object, optional}
 /// An example for the desired start Vertices
-/// (see [Definition of examples](#definition_of_examples)).
+/// (see [Definition of examples](#definition-of-examples)).
 ///
 /// @PARAM{endVertexExample, object, optional}
 /// An example for the desired
-/// end Vertices (see [Definition of examples](#definition_of_examples)).
+/// end Vertices (see [Definition of examples](#definition-of-examples)).
 ///
 /// @PARAM{options, object, optional}
 /// An object containing options, see below:
@@ -17590,7 +17590,7 @@ Graph.prototype._paths = function(options){var query="RETURN" + " GRAPH_PATHS(@g
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the
 ///   edges in the shortest paths
-///   (see [example](#short_explaination_of_the_vertex_example_parameter)).
+///   (see [example](#definition-of-examples)).
 ///   * *algorithm*                        : The algorithm to calculate
 ///   the shortest paths. If both start and end vertex examples are empty
 ///   [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
@@ -17634,7 +17634,7 @@ Graph.prototype._shortestPath = function(startVertexExample,endVertexExample,opt
 ///
 /// `graph._distanceTo(startVertexExample, endVertexExample, options)`
 ///
-/// This function is a wrapper of [graph._shortestPath](#_shortestpath).
+/// This function is a wrapper of [graph._shortestPath](#shortestpath).
 /// It does not return the actual path but only the distance between two vertices.
 ///
 /// @EXAMPLES
@@ -17674,12 +17674,12 @@ Graph.prototype._distanceTo = function(startVertexExample,endVertexExample,optio
 /// example as parameter for vertexExample.
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @PARAMS
 ///
 /// @PARAM{vertexExample, object, optional}
-/// Filter the vertices, see [Definition of examples](#definition_of_examples)
+/// Filter the vertices, see [Definition of examples](#definition-of-examples)
 ///
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
@@ -17690,7 +17690,7 @@ Graph.prototype._distanceTo = function(startVertexExample,endVertexExample,optio
 ///       considered for source vertices.
 ///   * *endVertexCollectionRestriction* : One or a list of vertex-collection names that should be
 ///       considered for target vertices.
-///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
+///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition-of-examples)
 ///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
 ///       [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
 ///       [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
@@ -17745,10 +17745,10 @@ Graph.prototype._absoluteEccentricity = function(vertexExample,options){var ex1=
 ///
 /// `graph._eccentricity(vertexExample, options)`
 ///
-/// Similar to [_absoluteEccentricity](#_absoluteeccentricity) but returns a normalized result.
+/// Similar to [_absoluteEccentricity](#absoluteeccentricity) but returns a normalized result.
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @EXAMPLES
 ///
@@ -17785,12 +17785,12 @@ Graph.prototype._eccentricity = function(options){var query="RETURN" + " GRAPH_E
 /// example as parameter for *vertexExample*.
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @PARAMS
 ///
 /// @PARAM{vertexExample, object, optional}
-/// Filter the vertices, see [Definition of examples](#definition_of_examples)
+/// Filter the vertices, see [Definition of examples](#definition-of-examples)
 ///
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
@@ -17801,7 +17801,7 @@ Graph.prototype._eccentricity = function(options){var query="RETURN" + " GRAPH_E
 ///       considered for source vertices.
 ///   * *endVertexCollectionRestriction* : One or a list of vertex-collection names that should be
 ///       considered for target vertices.
-///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
+///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition-of-examples)
 ///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
 ///       [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
 ///       [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
@@ -17855,10 +17855,10 @@ Graph.prototype._absoluteCloseness = function(vertexExample,options){var ex1=tra
 ///
 /// `graph._closeness(options)`
 ///
-/// Similar to [_absoluteCloseness](#_absolutecloseness) but returns a normalized value.
+/// Similar to [_absoluteCloseness](#absolutecloseness) but returns a normalized value.
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @EXAMPLES
 ///
@@ -17903,12 +17903,12 @@ Graph.prototype._closeness = function(options){var query="RETURN" + " GRAPH_CLOS
 /// `graph._absoluteBetweenness(vertexExample, options)`
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @PARAMS
 ///
 /// @PARAM{vertexExample, object, optional}
-/// Filter the vertices, see [Definition of examples](#definition_of_examples)
+/// Filter the vertices, see [Definition of examples](#definition-of-examples)
 ///
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
@@ -17962,7 +17962,7 @@ Graph.prototype._absoluteBetweenness = function(example,options){var query="RETU
 ///
 /// `graph_module._betweenness(options)`
 ///
-/// Similar to [_absoluteBetweeness](#_absolutebetweeness) but returns normalized values.
+/// Similar to [_absoluteBetweeness](#absolutebetweenness) but returns normalized values.
 ///
 /// @EXAMPLES
 ///
@@ -18007,7 +18007,7 @@ Graph.prototype._betweenness = function(options){var query="RETURN" + " GRAPH_BE
 /// `graph._radius(options)`
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @PARAMS
 ///
@@ -18067,7 +18067,7 @@ Graph.prototype._radius = function(options){var query="RETURN" + " GRAPH_RADIUS(
 /// `graph._diameter(graphName, options)`
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @PARAMS
 ///
@@ -18356,12 +18356,12 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName,dropColl
 /// @PARAMS
 ///
 /// @PARAM{vertexExample1, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](Functions.md#definition-of-examples)
 /// @PARAM{vertexExample2, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](Functions.md#definition-of-examples)
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
-///   * *edgeExamples*: Filter the edges, see [Definition of examples](#definition_of_examples)
+///   * *edgeExamples*: Filter the edges, see [Definition of examples](Functions.md#definition-of-examples)
 ///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
 ///       considered to be on the path.
 ///   * *vertex1CollectionRestriction* : One or a list of vertex-collection names that should be
@@ -24162,7 +24162,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
 
       $('#repl-progress table tr:nth-child(1) > td:nth-child(2)').html(object.state.progress.message);
-      $('#repl-progress table tr:nth-child(2) > td:nth-child(2)').html(object.state.progress.failedConnects);
+      $('#repl-progress table tr:nth-child(2) > td:nth-child(2)').html(object.state.progress.time);
+      $('#repl-progress table tr:nth-child(3) > td:nth-child(2)').html(object.state.progress.failedConnects);
     },
 
     getReplicationStatistics: function() {

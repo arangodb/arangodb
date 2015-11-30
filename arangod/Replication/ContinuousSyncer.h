@@ -76,7 +76,7 @@ namespace triagens {
 
         ContinuousSyncer (TRI_server_t*,
                           TRI_vocbase_t*,
-                          struct TRI_replication_applier_configuration_s const*,
+                          struct TRI_replication_applier_configuration_t const*,
                           TRI_voc_tick_t,
                           bool); 
 
@@ -111,6 +111,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abort all ongoing transactions
+////////////////////////////////////////////////////////////////////////////////
+
+        void abortOngoingTransactions ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the applier progress

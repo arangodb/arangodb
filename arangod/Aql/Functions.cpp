@@ -3390,8 +3390,8 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Round (triagens::aql::Query* query,
-                          triagens::arango::AqlTransaction* trx,
-                          FunctionParameters const& parameters) {
+                           triagens::arango::AqlTransaction* trx,
+                           FunctionParameters const& parameters) {
   size_t const n = parameters.size();
 
   if (n != 1) {
