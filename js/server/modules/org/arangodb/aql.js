@@ -7372,6 +7372,15 @@ function AQL_NEIGHBORS (vertexCollection,
   'use strict';
 
   vertex = TO_ID(vertex, vertexCollection);
+  var collectionFromVertex = vertex.slice(0, vertexCollection.length);
+  if (collectionFromVertex !== vertexCollection) {
+    THROW("NEIGHBORS",
+          INTERNAL.errors.ERROR_GRAPH_INVALID_PARAMETER,
+          "",
+          "specified vertex collection '" + collectionFromVertex +
+          "' does not match start vertex collection '" + vertexCollection + "'");
+
+  } 
   options = CLONE(options) || {};
   // Fallback to JS if we are in the cluster
   // Improve the examples. LocalServer can match String -> _id

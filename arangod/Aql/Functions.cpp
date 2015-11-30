@@ -1869,15 +1869,15 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
       std::string const collectionName = vertexId.substr(0, split);
       if (collectionName.compare(vColName) != 0) {
         THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_INVALID_PARAMETER,
-                                      "specified vertex collection `%s` does not match start vertex collection `%s`",
+                                      "specified vertex collection '%s' does not match start vertex collection '%s'",
                                       vColName.c_str(),
                                       collectionName.c_str());
-    }
+      }
       auto coli = resolver->getCollectionStruct(collectionName);
 
       if (coli == nullptr) {
         THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                      "`%s`",
+                                      "'%s'",
                                       collectionName.c_str());
       }
 
@@ -1904,7 +1904,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
     std::string const collectionName = vertexId.substr(0, split);
     if (collectionName.compare(vColName) != 0) {
       THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_GRAPH_INVALID_PARAMETER,
-                                    "specified vertex collection `%s` does not match start vertex collection `%s`",
+                                    "specified vertex collection '%s' does not match start vertex collection '%s'",
                                     vColName.c_str(),
                                     collectionName.c_str());
     }
@@ -1912,7 +1912,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
 
     if (coli == nullptr) {
       THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                    "`%s`",
+                                    "'%s'",
                                     collectionName.c_str());
     }
 
