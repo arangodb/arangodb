@@ -64,7 +64,7 @@ function ReplicationLoggerSuite () {
       var found = false;
       entries.forEach(function(e) {
         if (! found) {
-          if ((e.type === 2300 || e.type === 2301) && e.cname.substr(0, 11) === '_statistics') {
+          if ((e.type === 2300 || e.type === 2301) && e.cname && e.cname.substr(0, 11) === '_statistics') {
             // exclude statistics markers here
             return;
           }
@@ -79,7 +79,7 @@ function ReplicationLoggerSuite () {
     }
     else {
       entries.forEach(function(e) {
-        if ((e.type === 2300 || e.type === 2301) && e.cname.substr(0, 11) === '_statistics') {
+        if ((e.type === 2300 || e.type === 2301) && e.cname && e.cname.substr(0, 11) === '_statistics') {
           // exclude statistics markers here
           return;
         }

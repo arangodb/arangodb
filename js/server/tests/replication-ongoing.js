@@ -230,6 +230,8 @@ function ReplicationSuite () {
             db._collection(cn).save({ value: i });
             internal.wal.flush(); //true, true);
           }
+          db._collection(cn).save({ value: i });
+          internal.wal.flush(true, true);
           internal.wait(6, false);
         },
 
