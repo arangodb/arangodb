@@ -40,18 +40,18 @@ book-check-mdpp-leftovers:
 	fi
 
 ppbook-check-html-link:
-	@if test "`grep -r '\[.*\]\(.*\)' ppbooks/$(NAME)  |grep html |grep -v http://|grep -v https:// |grep -v header.css |wc -l`" -gt 0; then \
+	@if test "`grep -r '\[.*\]\(.*\)' ppbooks/$(NAME) |grep '\.md:' |grep html |grep -v http://|grep -v https:// |grep -v header.css |wc -l`" -gt 0; then \
 		echo "Found links to .html files inside of the document! use <foo>.md instead!"; \
 		echo; \
-		grep -r '\[.*\]\(.*\)' ppbooks/$(NAME)  |grep html |grep -v http://|grep -v https:// |grep -v header.css ; \
+		grep -r '\[.*\]\(.*\)' ppbooks/$(NAME)  | grep '\.md:' | grep html |grep -v http://|grep -v https:// |grep -v header.css ; \
 		exit 1; \
 	fi
 
 ppbook-check-directory-link:
-	@if test "`egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME)  |grep -v html |grep -v http://|grep -v https:// |grep -v header.css |grep -v node_modules |grep -v node_modules | grep -v '\.md' | wc -l`" -gt 0; then \
-		echo "Found links to .html files inside of the document! use <foo>.md instead!"; \
+	@if test "`egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME) | grep '\.md:' |grep -v html |grep -v http://|grep -v https:// |grep -v header.css |grep -v node_modules |grep -v node_modules | grep -v '\.md' | wc -l`" -gt 0; then \
+		echo "Found director links! use ../<directory>/README.md instead!"; \
 		echo; \
-		egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME)  |grep -v html |grep -v http://|grep -v https:// |grep -v header.css |grep -v node_modules |grep -v node_modules | grep -v '\.md' ; \
+		egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME) |grep '\.md:' |grep -v html |grep -v http://|grep -v https:// |grep -v header.css |grep -v node_modules |grep -v node_modules | grep -v '\.md' ; \
 		exit 1; \
 	fi
 
