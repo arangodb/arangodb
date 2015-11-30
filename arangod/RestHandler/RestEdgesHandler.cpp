@@ -29,6 +29,7 @@
 
 #include "RestEdgesHandler.h"
 #include "Basics/ScopeGuard.h"
+#include "Cluster/ClusterMethods.h"
 #include "VocBase/Traverser.h"
 
 using namespace triagens::rest;
@@ -198,7 +199,6 @@ HttpHandler::status_t RestEdgesHandler::execute () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> const& expressions) {
   std::vector<std::string> const& suffix = _request->suffix();
 
@@ -214,7 +214,6 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
   CollectionNameResolver resolver(_vocbase);
   TRI_col_type_t colType = resolver.getCollectionTypeCluster(collectionName);
   if (colType == TRI_COL_TYPE_UNKNOWN) {
-    std::cout << "Unknown type\n";
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return false;
   }
@@ -259,9 +258,25 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    // TODO
-    // return getDocumentCoordinator(collection, key, generateBody);
-    return false;
+    std::string vertexString(startVertex);
+    triagens::rest::HttpResponse::HttpResponseCode responseCode;
+    std::string contentType;
+    triagens::basics::Json resultDocument(triagens::basics::Json::Object, 3);
+    int res = getFilteredEdgesOnCoordinator(_vocbase->_name,
+                                            collectionName,
+                                            vertexString,
+                                            direction,
+                                            expressions,
+                                            responseCode,
+                                            contentType,
+                                            resultDocument);
+    if (res != TRI_ERROR_NO_ERROR) {
+      generateError(responseCode, res);
+      return false;
+    }
+    resultDocument.set("error", triagens::basics::Json(false));
+    resultDocument.set("code", triagens::basics::Json(200));
+    return true;
   }
 
   // find and load collection given by name or identifier
