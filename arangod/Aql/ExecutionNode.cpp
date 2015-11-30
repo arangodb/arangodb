@@ -3119,7 +3119,8 @@ RemoteNode::RemoteNode (ExecutionPlan* plan,
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
     _server(JsonHelper::checkAndGetStringValue(base.json(), "server")), 
     _ownName(JsonHelper::checkAndGetStringValue(base.json(), "ownName")), 
-    _queryId(JsonHelper::checkAndGetStringValue(base.json(), "queryId")) {
+    _queryId(JsonHelper::checkAndGetStringValue(base.json(), "queryId")),
+    _isResponsibleForInitCursor(JsonHelper::checkAndGetBooleanValue(base.json(), "isResponsibleForInitCursor")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3138,7 +3139,8 @@ void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
       ("collection", triagens::basics::Json(_collection->getName()))
       ("server", triagens::basics::Json(_server))
       ("ownName", triagens::basics::Json(_ownName))
-      ("queryId", triagens::basics::Json(_queryId));
+      ("queryId", triagens::basics::Json(_queryId))
+      ("isResponsibleForInitCursor", triagens::basics::Json(_isResponsibleForInitCursor));
 
   // And add it:
   nodes(json);
