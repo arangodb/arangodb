@@ -32,11 +32,14 @@ db._useDatabase("_system");
 require("org/arangodb/replication").sync({
   endpoint: "tcp://master.domain.org:8529",
   username: "myuser",
-  password: "mypasswd"
+  password: "mypasswd",
+  verbose: false
 });
 ```
 
 Username and password only need to be specified when the master server requires authentication.
+To check what the synchronization is currently doing, supply set the *verbose* option to *true*.
+If set, the synchronization will create log messages with the current synchronization status.
 
 **Warning**: The sync command will replace data in the slave database with data from the master 
 database! Only execute these commands if you have verified you are on the correct server, in the
@@ -99,7 +102,12 @@ when both *requireFromPresent* and *autoResync* are set to *true* and the master
 log data the slave had requested, the replication applier will stop as usual. But due to the fact
 that *autoResync* is set to true, the slave will automatically trigger a full resync of all data with 
 the master. After that, the replication applier will go into continuous replication mode again.
-If *requireFromPresent* is set to *false*, then the *autoResync* option will not have any effect.
+Additionally, setting *autoResync* to *true* will trigger a full re-synchronization of data when
+the continuous replication is started and detects that there is no start tick value.
+
+Note that automatic re-synchronization (*autoResync* option set to *true*) may transfer a lot of 
+data from the master to the slave and can therefore be expensive. Still it's turned on here so
+there's less need for manual intervention. 
 
 Now it's time to start the replication applier on the slave using the last log tick we got
 before:

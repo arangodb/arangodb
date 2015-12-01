@@ -332,10 +332,15 @@ If set to *false*, then the replication applier will still start, and ignore the
 
 The *autoResync* option can be used in conjunction with the *requireFromPresent* option as follows:
 when both *requireFromPresent* and *autoResync* are set to *true* and the master cannot provide the 
-log data the slave had requested, the replication applier will stop as usual. But due to the fact
+log data the slave requests, the replication applier will stop as usual. But due to the fact
 that *autoResync* is set to true, the slave will automatically trigger a full resync of all data with 
 the master. After that, the replication applier will go into continuous replication mode again.
-If *requireFromPresent* is set to *false*, then the *autoResync* option will not have any effect.
+Additionally, setting *autoResync* to *true* will trigger a full re-synchronization of data when
+the continuous replication is started and detects that there is no start tick value.
+
+Automatic re-synchronization may transfer a lot of data from the master to the slave and can be 
+expensive. It is therefore turned off by default. When turned off, the slave will never perform an 
+automatic re-synchronization with the master.
 
 The *verbose* attribute controls the verbosity of the replication logger. Setting it to `true` will
 make the replication applier write a line to the log for every operation it performs. This should
