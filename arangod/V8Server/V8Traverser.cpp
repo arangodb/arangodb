@@ -701,11 +701,27 @@ Json* SingleServerTraversalPath::pathToJson (Transaction* trx,
   std::unique_ptr<Json> path(new Json(Json::Object, 2));
   Json vertices(Json::Array);
   for (size_t i = 0; i < _path.vertices.size(); ++i) {
-    vertices(*vertexToJson(trx, resolver, _path.vertices[i]));
+    auto v = vertexToJson(trx, resolver, _path.vertices[i]);
+    try {
+      vertices(*v);
+      delete v;
+    }
+    catch (...) {
+      delete v;
+      throw;
+    }
   }
   Json edges(Json::Array);
   for (size_t i = 0; i < _path.edges.size(); ++i) {
-    edges(*edgeToJson(trx, resolver, _path.edges[i]));
+    auto e = edgeToJson(trx, resolver, _path.edges[i]);
+    try {
+      edges(*e);
+      delete e;
+    }
+    catch (...) {
+      delete e;
+      throw;
+    }
   }
   (*path)("vertices", vertices)
          ("edges", edges);

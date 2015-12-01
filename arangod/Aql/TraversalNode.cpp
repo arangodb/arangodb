@@ -415,11 +415,13 @@ void TraversalNode::storeSimpleExpression(bool isEdgeAccess,
                                           AstNode const* varAccess,
                                           AstNode const* compareTo) {
   auto it = _expressions.find(indexAccess);
+
   if (it == _expressions.end()) {
     std::vector<triagens::arango::traverser::TraverserExpression* > sec;
     _expressions.emplace(indexAccess, sec);
     it = _expressions.find(indexAccess);
   }
+
   std::unique_ptr<SimpleTraverserExpression> e(new SimpleTraverserExpression(isEdgeAccess,
                                                                              comparisonType,
                                                                              varAccess,

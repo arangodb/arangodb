@@ -108,9 +108,14 @@ namespace triagens {
         TraversalNode (ExecutionPlan* plan,
                        triagens::basics::Json const& base);
 
-
         ~TraversalNode () {
           delete _condition;
+
+          for (auto& it : _expressions) {
+            for (auto& it2 : it.second) {
+              delete it2;
+            }
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////

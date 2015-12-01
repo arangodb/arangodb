@@ -320,28 +320,6 @@ int TraversalBlock::initializeCursor (AqlItemBlock* items,
   return ExecutionBlock::initializeCursor(items, pos);
 }
 
-bool TraversalBlock::executeExpressions (AqlValue& pathValue) {
-  return true;
-  TRI_ASSERT(_condition != nullptr);
-
-  auto& toReplace = _nonConstExpressions[0];
-  auto exp = toReplace->expression;
-
-  TRI_document_collection_t const* myCollection = nullptr;
-
-  AqlItemBlock b(1, 3);
-  b.setValue(0, 2, pathValue);
-  std::vector<Variable const*> outVars({_vertexVar, _edgeVar, _pathVar});
-  AqlValue a = exp->execute(_trx, &b, 0, outVars, _inRegs[0], &myCollection);
-  b.eraseValue(0, 2);
-
-  bool rc = a.isTrue();
-  a.destroy();
-
-  return rc;
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read more paths
 ////////////////////////////////////////////////////////////////////////////////
@@ -366,12 +344,6 @@ bool TraversalBlock::morePaths (size_t hint) {
     
     if (usesPathOutput() || (en->condition() != nullptr)) {
       pathValue = AqlValue(p->pathToJson(_trx, _resolver));
-    }
-
-    if ((en->condition() != nullptr) && 
-        ! executeExpressions(pathValue)) {
-      _traverser->prune();
-      continue;
     }
 
     if ( usesVertexOutput() ) {
