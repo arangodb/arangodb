@@ -1,6 +1,8 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* added cluster execution site info in explain output for AQL queries
+
 * replication improvements:
 
   - added `autoResync` configuration parameter for continuous replication. 
