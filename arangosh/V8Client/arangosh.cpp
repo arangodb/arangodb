@@ -2168,6 +2168,8 @@ static int WarmupEnvironment (v8::Isolate *isolate,
   files.push_back("common/bootstrap/modules/buffer.js"); // deps: internal
   files.push_back("common/bootstrap/modules/fs.js"); // deps: internal, buffer (hidden)
   files.push_back("common/bootstrap/modules/path.js"); // deps: internal, fs
+  files.push_back("common/bootstrap/modules/events.js"); // deps: -
+  files.push_back("common/bootstrap/modules/process.js"); // deps: internal, fs, events, console
   files.push_back("common/bootstrap/modules.js"); // must come last before patches
 
   if (runMode != eJsLint) {

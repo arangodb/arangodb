@@ -1,10 +1,15 @@
+/*jshint -W051:true */
+/*eslint-disable */
+global.DEFINE_MODULE('process', (function () {
 'use strict';
+/*eslint-enable */
 
 const EventEmitter = require('events').EventEmitter;
 const internal = require('internal');
+const console = require('console');
 const fs = require('fs');
 
-module.exports = exports = new EventEmitter();
+var exports = new EventEmitter();
 
 exports.env = internal.env;
 exports.argv = [];
@@ -20,3 +25,6 @@ exports.cwd = function () {
 exports.nextTick = function (fn) {
   fn();
 };
+
+return exports;
+}()));
