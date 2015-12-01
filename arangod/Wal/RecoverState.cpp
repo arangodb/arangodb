@@ -244,7 +244,7 @@ TRI_vocbase_t* RecoverState::useDatabase (TRI_voc_tick_t databaseId) {
     return nullptr;
   }
         
-  openedDatabases.insert(it, std::make_pair(databaseId, vocbase));
+  openedDatabases.emplace(databaseId, vocbase);
   return vocbase;
 }
 
@@ -346,7 +346,7 @@ TRI_vocbase_col_t* RecoverState::useCollection (TRI_vocbase_t* vocbase,
   // disable secondary indexes for the moment
   document->useSecondaryIndexes(false);
 
-  openedCollections.insert(it, std::make_pair(collectionId, collection));
+  openedCollections.emplace(collectionId, collection);
   res = TRI_ERROR_NO_ERROR;
   return collection;
 }
@@ -500,7 +500,7 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       // insert this transaction into the list of failed transactions
       // we do this because if we don't find a commit marker for this transaction,
       // we'll have it in the failed list at the end of the scan and can ignore it
-      state->failedTransactions.emplace(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, false)));
+      state->failedTransactions.emplace(m->_transactionId, std::make_pair(m->_databaseId, false));
       break;
     }
 
@@ -523,14 +523,14 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       }
 
       // and (re-)insert
-      state->failedTransactions.emplace(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, true)));
+      state->failedTransactions.emplace(m->_transactionId, std::make_pair(m->_databaseId, true));
       break;
     }
 
     case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION: {
       transaction_remote_begin_marker_t const* m = reinterpret_cast<transaction_remote_begin_marker_t const*>(marker);
       // insert this transaction into the list of failed transactions
-      state->failedTransactions.emplace(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, false)));
+      state->failedTransactions.emplace(m->_transactionId, std::make_pair(m->_databaseId, false));
       break;
     }
 
@@ -552,7 +552,7 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       }
       
       // and (re-)insert
-      state->failedTransactions.emplace(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, true)));
+      state->failedTransactions.emplace(m->_transactionId, std::make_pair(m->_databaseId, true));
       break;
     }
 /*

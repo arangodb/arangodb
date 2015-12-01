@@ -615,13 +615,13 @@ namespace triagens {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate optimizer rule name");
           }
 
-          _ruleLookup.emplace(std::make_pair(name, level));
+          _ruleLookup.emplace(name, level);
 
           if (_rules.find(level) != _rules.end()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate optimizer rule level");
           }
 
-          _rules.emplace(std::make_pair(level, Rule(name, func, level, canBeDisabled, isHidden)));
+          _rules.emplace(level, Rule(name, func, level, canBeDisabled, isHidden));
         }
 
 ////////////////////////////////////////////////////////////////////////////////

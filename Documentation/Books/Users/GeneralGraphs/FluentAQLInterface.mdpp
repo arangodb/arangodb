@@ -8,7 +8,7 @@ As an example you can start with a set of vertices, select their direct neighbor
 The result of this query will be the set of outgoing edges.
 For each part of the query it is possible to further refine the resulting set of elements by giving examples for them.
 
-Examples will explain the API on the [social graph](../Graphs/README.md#the_social_graph):
+Examples will explain the API on the [social graph](../Graphs/README.md#the-social-graph):
 
 ![Social Example Graph](../Graphs/social_graph.png)
 

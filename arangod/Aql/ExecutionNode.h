@@ -491,7 +491,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_set<VariableId> getVariableIdsUsedHere () const  {
-          auto&& v = getVariablesUsedHere();
+          auto v(std::move(getVariablesUsedHere()));
 
           std::unordered_set<VariableId> ids;
           ids.reserve(v.size());

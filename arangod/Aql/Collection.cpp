@@ -213,7 +213,7 @@ Index const* Collection::getIndex (std::string const& id) const {
 
 bool Collection::usesDefaultSharding () const {
   // check if collection shard keys are only _key
-  std::vector<std::string>&& sk = shardKeys();
+  std::vector<std::string> sk(shardKeys());
 
   if (sk.size() != 1 || sk[0] != TRI_VOC_ATTRIBUTE_KEY) {
     return false;

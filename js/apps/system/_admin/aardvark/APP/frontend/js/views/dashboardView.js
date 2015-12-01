@@ -440,7 +440,8 @@
       }
 
       $('#repl-progress table tr:nth-child(1) > td:nth-child(2)').html(object.state.progress.message);
-      $('#repl-progress table tr:nth-child(2) > td:nth-child(2)').html(object.state.progress.failedConnects);
+      $('#repl-progress table tr:nth-child(2) > td:nth-child(2)').html(object.state.progress.time);
+      $('#repl-progress table tr:nth-child(3) > td:nth-child(2)').html(object.state.progress.failedConnects);
     },
 
     getReplicationStatistics: function() {

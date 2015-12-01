@@ -282,7 +282,7 @@ void CollectionKeys::dumpDocs (triagens::basics::Json& json,
     }
 
     // convert rid from uint64_t to string
-    std::string const&& rid = triagens::basics::StringUtils::itoa(TRI_EXTRACT_MARKER_RID(df));
+    std::string rid(std::move(triagens::basics::StringUtils::itoa(TRI_EXTRACT_MARKER_RID(df))));
     TRI_json_t* revJson = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
 
     if (revJson != nullptr) {
@@ -293,16 +293,16 @@ void CollectionKeys::dumpDocs (triagens::basics::Json& json,
 
     if (type == TRI_DOC_MARKER_KEY_EDGE) {
       TRI_doc_edge_key_marker_t const* marker = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(df);
-      std::string const&& from = DocumentHelper::assembleDocumentId(resolver.getCollectionNameCluster(marker->_fromCid), std::string((char*) marker + marker->_offsetFromKey));
-      std::string const&& to = DocumentHelper::assembleDocumentId(resolver.getCollectionNameCluster(marker->_toCid), std::string((char*) marker +  marker->_offsetToKey));
+      std::string from(std::move(DocumentHelper::assembleDocumentId(resolver.getCollectionNameCluster(marker->_fromCid), std::string((char*) marker + marker->_offsetFromKey))));
+      std::string to(std::move(DocumentHelper::assembleDocumentId(resolver.getCollectionNameCluster(marker->_toCid), std::string((char*) marker +  marker->_offsetToKey))));
 
       TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
       TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_TO, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
     }
     else if (type == TRI_WAL_MARKER_EDGE) {
       triagens::wal::edge_marker_t const* marker = reinterpret_cast<triagens::wal::edge_marker_t const*>(df);  // PROTECTED by trx passed from above
-      std::string const&& from = DocumentHelper::assembleDocumentId(resolver.getCollectionNameCluster(marker->_fromCid), std::string((char*) marker + marker->_offsetFromKey));
-      std::string const&& to = DocumentHelper::assembleDocumentId(resolver.getCollectionNameCluster(marker->_toCid), std::string((char*) marker +  marker->_offsetToKey));
+      std::string from(std::move(DocumentHelper::assembleDocumentId(resolver.getCollectionNameCluster(marker->_fromCid), std::string((char*) marker + marker->_offsetFromKey))));
+      std::string to(std::move(DocumentHelper::assembleDocumentId(resolver.getCollectionNameCluster(marker->_toCid), std::string((char*) marker +  marker->_offsetToKey))));
 
       TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
       TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_TO, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));

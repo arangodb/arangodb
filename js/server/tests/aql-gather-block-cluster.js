@@ -84,6 +84,31 @@ function gatherBlockTestSuite () {
       c2 = null;
       c3 = null;
     },
+    
+    testSubqueryValuePropagation : function () {
+      c3.truncate();
+      c3.insert({Hallo:1});
+      var query = "FOR i IN 1..1 LET s = (FOR j IN 1..i FOR k IN " + cn3 + " RETURN j) RETURN s";
+      // check the return value
+      var expected = [ [ 1 ] ];
+      var actual = AQL_EXECUTE(query).json;
+
+      assertEqual(expected, actual, query);
+    },
+    
+    testCalculationNotMovedOverBoundary : function () {
+      c3.truncate();
+      c3.insert({Hallo:1});
+      var query = "FOR i IN " + cn3 + " FOR j IN 1..1 FOR k IN " + cn3 + " RETURN j";
+      // check the GatherNode is in the plan!
+      assertTrue(explain(AQL_EXPLAIN(query)).indexOf("GatherNode") !== -1, query);
+      
+      // check the return value
+      var expected = [ 1 ];
+      var actual = AQL_EXECUTE(query).json;
+
+      assertEqual(expected, actual, query);
+    },
 
     testSimple1 : function () {
       var query = "FOR d IN " + cn1 + " LIMIT 10 RETURN d.Hallo";

@@ -60,7 +60,7 @@ or given in a wrong format, or there already exists a user with the specified
 name.
 
 The new user account can only be used after the server is either restarted or
-the server authentication cache is [reloaded](#examples_reload).
+the server authentication cache is [reloaded](#reload).
 
 **Note**: this function will not work from within the web interface
 

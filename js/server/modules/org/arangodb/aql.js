@@ -6709,15 +6709,15 @@ function IS_EXAMPLE_SET (example) {
 /// representing the length.
 ///
 /// The complexity of the function is described
-/// [here](#the_complexity_of_the_shortest_path_algorithms).
+/// [here](#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample* : An example for the desired start Vertices
-///   (see [example](#short_explanation_of_the_example_parameter)).
+///   (see [example](#short-explanation-of-the-example-parameter)).
 /// * *endVertexExample*   : An example for the desired
-///   end Vertices (see [example](#short_explanation_of_the_example_parameter)).
+///   end Vertices (see [example](#short-explanation-of-the-example-parameter)).
 /// * *options* (optional) : An object containing the following options:
 ///   * *direction*                        : The direction of the edges as a string.
 ///     Possible values are *outbound*, *inbound* and *any* (default).
@@ -6731,7 +6731,7 @@ function IS_EXAMPLE_SET (example) {
 ///     end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the
 ///     edges in the shortest paths
-///     (see [example](#short_explanation_of_the_example_parameter)).
+///     (see [example](#short-explanation-of-the-example-parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
 ///     the shortest paths. If both start and end vertex examples are empty
 ///     [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
@@ -6952,7 +6952,7 @@ function AQL_TRAVERSAL (vertexCollection,
 /// *Parameters*
 /// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample*        : An example for the desired
-/// vertices (see [example](#short_explanation_of_the_example_parameter)).
+/// vertices (see [example](#short-explanation-of-the-example-parameter)).
 /// * *direction*          : The direction of the edges as a string. Possible values
 /// are *outbound*, *inbound* and *any* (default).
 /// * *options*: Object containing optional options.
@@ -7128,7 +7128,7 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 ///
 /// `GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
 ///
-/// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#graph_shortest_path).
+/// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#graphshortestpath).
 /// It does not return the actual path but only the distance between two vertices.
 /// 
 /// @EXAMPLES
@@ -7209,13 +7209,13 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample*         : An example for the desired
-/// vertices (see [example](#short_explanation_of_the_example_parameter)).
+/// vertices (see [example](#short-explanation-of-the-example-parameter)).
 /// * *direction*          : The direction of the edges as a string.
 ///  Possible values are *outbound*, *inbound* and *any* (default).
 /// * *connectName*        : The result attribute which
 ///  contains the connection.
 /// * *options* (optional) : An object containing options, see
-///  [Graph Traversals](../Aql/GraphOperations.html#graph_traversal):
+///  [Graph Traversals](../Aql/GraphOperations.md#graphtraversal):
 ///
 /// @EXAMPLES
 ///
@@ -7427,11 +7427,11 @@ function AQL_NEIGHBORS (vertexCollection,
   vertex = TO_ID(vertex, vertexCollection);
   var collectionFromVertex = vertex.slice(0, vertexCollection.length);
   if (collectionFromVertex !== vertexCollection) {
-    THROW("AQL_NEIGBORS",
+    THROW("NEIGHBORS",
           INTERNAL.errors.ERROR_GRAPH_INVALID_PARAMETER,
           "",
-          "You specified vertex collection `" + collectionFromVertex +
-          "...` for start vertext from the collection `" + vertexCollection + "`");
+          "specified vertex collection '" + collectionFromVertex +
+          "' does not match start vertex collection '" + vertexCollection + "'");
 
   } 
   options = CLONE(options) || {};
@@ -7485,14 +7485,14 @@ function AQL_NEIGHBORS (vertexCollection,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-///   vertices (see [example](#short_explanation_of_the_example_parameter)).
+///   vertices (see [example](#short-explanation-of-the-example-parameter)).
 /// * *options*            : An object containing the following options:
 ///   * *direction*                        : The direction
 ///     of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeExamples*                     : A filter example for the edges to
-///     the neighbors (see [example](#short_explanation_of_the_example_parameter)).
+///     the neighbors (see [example](#short-explanation-of-the-example-parameter)).
 ///   * *neighborExamples*                 : An example for the desired neighbors
-///     (see [example](#short_explanation_of_the_example_parameter)).
+///     (see [example](#short-explanation-of-the-example-parameter)).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
 ///   collection names. Only edges from these collections will be considered for the path.
 ///   * *vertexCollectionRestriction* : One or multiple vertex
@@ -7712,7 +7712,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short_explanation_of_the_example_parameter)).
+/// vertices (see [example](#short-explanation-of-the-example-parameter)).
 /// * *options* (optional) : An object containing the following options:
 ///   * *direction*                        : The direction
 /// of the edges as a string. Possible values are *outbound*, *inbound* and *any* (default).
@@ -7725,7 +7725,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 ///   collection names. Only vertices from these collections will be considered as
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example
-/// for the edges (see [example](#short_explanation_of_the_example_parameter)).
+/// for the edges (see [example](#short-explanation-of-the-example-parameter)).
 ///   * *minDepth*                         : Defines the minimal length of a path from an edge
 ///  to a vertex (default is 1, which means only the edges directly connected to a vertex would
 ///  be returned).
@@ -7880,7 +7880,7 @@ function AQL_GRAPH_EDGES (graphName,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short_explanation_of_the_example_parameter)).
+/// vertices (see [example](#short-explanation-of-the-example-parameter)).
 /// * *options* (optional)           : An object containing the following options:
 ///   * *direction*        : The direction of the edges as a string. Possible values are
 ///      *outbound*, *inbound* and *any* (default).
@@ -7956,7 +7956,7 @@ function AQL_GRAPH_VERTICES (graphName,
 /// Hence the default call would have a complexity of **O(n\*m)**;
 ///
 /// For parameter documentation read the documentation of
-/// [GRAPH_NEIGHBORS](#graph_neighbors).
+/// [GRAPH_NEIGHBORS](#graphneighbors).
 ///
 /// @EXAMPLES
 ///
@@ -8094,9 +8094,9 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertex1Example*     : An example for the desired
-/// vertices (see [example](#short_explanation_of_the_example_parameter)).
+/// vertices (see [example](#short-explanation-of-the-example-parameter)).
 /// * *vertex2Example*     : An example for the desired
-/// vertices (see [example](#short_explanation_of_the_example_parameter)).
+/// vertices (see [example](#short-explanation-of-the-example-parameter)).
 /// * *options* (optional)    : An object containing the following options:
 ///   * *vertex1CollectionRestriction* : One or multiple vertex
 ///   collection names. Only vertices from these collections will be considered.
@@ -8259,13 +8259,13 @@ function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
 /// of the vertices defined by the examples.
 ///
 /// The complexity of the function is described
-/// [here](#the_complexity_of_the_shortest_path_algorithms).
+/// [here](#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short_explanation_of_the_example_parameter)).
+/// vertices (see [example](#short-explanation-of-the-example-parameter)).
 /// * *options* (optional)    : An object containing the following options:
 ///   * *direction*                        : The direction of the edges as a string.
 /// Possible values are *outbound*, *inbound* and *any* (default).
@@ -8278,7 +8278,7 @@ function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
 ///   collection names. Only vertices from these collections will be considered as
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the edges in the
-///  shortest paths (see [example](#short_explanation_of_the_example_parameter)).
+///  shortest paths (see [example](#short-explanation-of-the-example-parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
 ///  the shortest paths as a string. If vertex example is empty
 ///  [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
@@ -8372,7 +8372,7 @@ function TRAVERSAL_ECCENTRICITY_VISITOR (config, result, node, path) {
 /// of the graphs vertices
 ///
 /// The complexity of the function is described
-/// [here](#the_complexity_of_the_shortest_path_algorithms).
+/// [here](#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// *Parameters*
 ///
@@ -8472,17 +8472,17 @@ function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
 /// `GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options)`
 ///
 /// The GRAPH\_ABSOLUTE\_CLOSENESS function returns the
-/// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
+/// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness-centrality)
 /// of the vertices defined by the examples.
 ///
 /// The complexity of the function is described
-/// [here](#the_complexity_of_the_shortest_path_algorithms).
+/// [here](#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*     : An example for the desired
-/// vertices (see [example](#short_explanation_of_the_example_parameter)).
+/// vertices (see [example](#short-explanation-of-the-example-parameter)).
 /// * *options*     : An object containing the following options:
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
@@ -8496,7 +8496,7 @@ function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the
 /// edges in the shortest paths (
-/// see [example](#short_explanation_of_the_example_parameter)).
+/// see [example](#short-explanation-of-the-example-parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
 /// the shortest paths. Possible values are
 /// [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) (default)
@@ -8630,11 +8630,11 @@ function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
 /// `GRAPH_CLOSENESS (graphName, options)`
 ///
 /// The GRAPH\_CLOSENESS function returns the normalized
-/// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
+/// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness-centrality)
 /// of graphs vertices.
 ///
 /// The complexity of the function is described
-/// [here](#the_complexity_of_the_shortest_path_algorithms).
+/// [here](#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// *Parameters*
 ///
@@ -8742,7 +8742,7 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 /// of all vertices in the graph.
 ///
 /// The complexity of the function is described
-/// [here](#the_complexity_of_the_shortest_path_algorithms).
+/// [here](#the-complexity-of-the-shortest-path-algorithms).
 ///
 ///
 /// * *graphName*          : The name of the graph as a string.
@@ -8838,7 +8838,7 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// of graphs vertices.
 ///
 /// The complexity of the function is described
-/// [here](#the_complexity_of_the_shortest_path_algorithms).
+/// [here](#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// *Parameters*
 ///
@@ -8919,7 +8919,7 @@ function AQL_GRAPH_BETWEENNESS (graphName, options) {
 /// of a graph.*
 ///
 /// The complexity of the function is described
-/// [here](#the_complexity_of_the_shortest_path_algorithms).
+/// [here](#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// * *graphName*       : The name of the graph as a string.
 /// * *options*     : An object containing the following options:
@@ -9006,7 +9006,7 @@ function AQL_GRAPH_RADIUS (graphName, options) {
 /// of a graph.
 ///
 /// The complexity of the function is described
-/// [here](#the_complexity_of_the_shortest_path_algorithms).
+/// [here](#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// *Parameters*
 ///

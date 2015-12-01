@@ -251,7 +251,7 @@ The result might look like this:
 
 ```js
 { 
-  "requestTimeout" : 300, 
+  "requestTimeout" : 600, 
   "connectTimeout" : 10, 
   "ignoreErrors" : 0, 
   "maxConnectRetries" : 10, 
@@ -289,11 +289,26 @@ master database for changes with a variable frequency. The replication applier w
 frequency when the master is idle, and increase it when the master can provide new events).
 Otherwise the replication applier will poll the master database for changes with a constant frequency.
 
+The *idleMinWaitTime* attribute controls the minimum wait time (in seconds) that the replication applier 
+will intentionally idle before fetching more log data from the master in case the master has already 
+sent all its log data. This wait time can be used to control the frequency with which the replication 
+applier sends HTTP log fetch requests to the master in case there is no write activity on the master.
+
+The *idleMaxWaitTime* attribute controls the maximum wait time (in seconds) that the replication 
+applier will intentionally idle before fetching more log data from the master in case the master has 
+already sent all its log data and there have been previous log fetch attempts that resulted in no more 
+log data. This wait time can be used to control the maximum frequency with which the replication 
+applier sends HTTP log fetch requests to the master in case there is no write activity on the master 
+for longer periods. Note that this configuration value will only be used if the option *adaptivePolling* 
+is set to *true*.
+
 To set a timeout for connection and following request attempts, use the *connectTimeout* and 
 *requestTimeout* values. The *maxConnectRetries* attribute configures after how many failed 
 connection attempts in a row the replication applier will give up and turn itself off. 
 You may want to set this to a high value so that temporary network outages do not lead to the 
 replication applier stopping itself.
+The *connectRetryWaitTime* attribute configures how long the replication applier will wait
+before retrying the connection to the master in case of connection problems.
 
 The *chunkSize* attribute can be used to control the approximate maximum size of a master's
 response (in bytes). Setting it to a low value may make the master respond faster (less data is
@@ -314,6 +329,18 @@ and when the replication is re-started after a longer pause. When *requireFromPr
 or resumes replication is still present on the master. If not, then there would be data loss. If 
 *requireFromPresent* is *true*, the replication applier will abort with an appropriate error message. 
 If set to *false*, then the replication applier will still start, and ignore the data loss.
+
+The *autoResync* option can be used in conjunction with the *requireFromPresent* option as follows:
+when both *requireFromPresent* and *autoResync* are set to *true* and the master cannot provide the 
+log data the slave requests, the replication applier will stop as usual. But due to the fact
+that *autoResync* is set to true, the slave will automatically trigger a full resync of all data with 
+the master. After that, the replication applier will go into continuous replication mode again.
+Additionally, setting *autoResync* to *true* will trigger a full re-synchronization of data when
+the continuous replication is started and detects that there is no start tick value.
+
+Automatic re-synchronization may transfer a lot of data from the master to the slave and can be 
+expensive. It is therefore turned off by default. When turned off, the slave will never perform an 
+automatic re-synchronization with the master.
 
 The *verbose* attribute controls the verbosity of the replication logger. Setting it to `true` will
 make the replication applier write a line to the log for every operation it performs. This should
@@ -376,7 +403,6 @@ require("org/arangodb/replication").sync({
 ```
 
 Using a *restrictType* of *exclude*, all collections but the specified will be synchronized.
-
 
 **Warning**: *sync* will do a full synchronization of the collections in the current database with
 collections present in the master database.

@@ -696,7 +696,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess (AstNode const* node,
       return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
     }
     else if (indexResult.isString()) {
-      auto&& value = indexResult.toString();
+      auto value(std::move(indexResult.toString()));
       indexResult.destroy();
 
       try {

@@ -1159,7 +1159,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 /// **sparse** can be *true* or *false*.
 ///
 /// For *hash*, and *skiplist* the sparsity can be controlled, *fulltext* and *geo*
-/// are [sparse](WhichIndex.html) by definition.
+/// are [sparse](WhichIndex.md) by definition.
 ///
 /// **unique** can be *true* or *false* and is supported by *hash* or *skiplist*
 ///
