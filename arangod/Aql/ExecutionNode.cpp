@@ -1448,15 +1448,10 @@ bool SubqueryNode::isModificationQuery () const {
     auto current = stack.back();
     stack.pop_back();
     
-    auto type = current->getType();
-
-    if (type == ExecutionNode::REMOVE ||
-        type == ExecutionNode::INSERT ||
-        type == ExecutionNode::UPDATE ||
-        type == ExecutionNode::REPLACE ||
-        type == ExecutionNode::UPSERT) {
+    if (current->isModificationNode()) {
       return true;
     }
+
     current->addDependencies(stack); 
   }
 

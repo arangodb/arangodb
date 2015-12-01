@@ -1710,8 +1710,13 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
     else {
       auto nn = static_cast<SubqueryNode*>(n);
 
-      if (nn->canThrow() || nn->isModificationQuery()) {
+      if (nn->canThrow()) {
         // subqueries that can throw must not be optimized away
+        continue;
+      }
+ 
+      if (nn->isModificationQuery()) {
+        // subqueries that modify data must not be optimized away
         continue;
       }
     }
@@ -2318,15 +2323,23 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
   bool wasModified = false;
 
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
+    // find subqueries
+    std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;
+
+    for (auto& it : plan->findNodesOfType(ExecutionNode::SUBQUERY, true)) {
+      subqueries.emplace(static_cast<SubqueryNode const*>(it)->getSubquery(), it);
+    }
+
     // we are a coordinator. now look in the plan for nodes of type
-    // EnumerateCollectionNode and IndexNode
+    // EnumerateCollectionNode, IndexNode and modification nodes
     std::vector<ExecutionNode::NodeType> const types = { 
       ExecutionNode::ENUMERATE_COLLECTION, 
       ExecutionNode::INDEX,
       ExecutionNode::INSERT,
       ExecutionNode::UPDATE,
       ExecutionNode::REPLACE,
-      ExecutionNode::REMOVE
+      ExecutionNode::REMOVE,
+      ExecutionNode::UPSERT // TODO: check if ok here
     }; 
 
     std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(types, true);
@@ -2337,13 +2350,15 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
       auto const& parents = node->getParents();
       auto const& deps = node->getDependencies();
       TRI_ASSERT(deps.size() == 1);
-      bool const isRootNode = plan->isRoot(node);
+
       // don't do this if we are already distributing!
       if (deps[0]->getType() == ExecutionNode::REMOTE &&
           deps[0]->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE) {
         continue;
       }
-      plan->unlinkNode(node, isRootNode);
+
+      bool const isRootNode = plan->isRoot(node);
+      plan->unlinkNode(node, true);
 
       auto const nodeType = node->getType();
 
@@ -2408,6 +2423,13 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
       // and now link the gather node with the rest of the plan
       if (parents.size() == 1) {
         parents[0]->replaceDependency(deps[0], gatherNode);
+      }
+
+      // check if the node that we modified was at the end of a subquery
+      auto it = subqueries.find(node);
+
+      if (it != subqueries.end()) {
+        static_cast<SubqueryNode*>((*it).second)->setSubquery(gatherNode, true);
       }
 
       if (isRootNode) {

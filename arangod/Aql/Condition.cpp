@@ -173,6 +173,7 @@ ConditionPart::ConditionPart (Variable const* variable,
   : ConditionPart(variable, "", operatorNode, side, data) {
 
   TRI_AttributeNamesToString(attributeNames, attributeName, false);
+  isExpanded = (attributeName.find("[*]") != std::string::npos);
 }
 
 ConditionPart::~ConditionPart () {
@@ -248,6 +249,16 @@ bool ConditionPart::isCoveredBy (ConditionPart const& other) const {
         return true;
       }
     }
+  }
+  else if (isExpanded && 
+           other.isExpanded &&
+           operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+           other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+           other.valueNode->isConstant()) {
+    if (CompareAstNodes(other.valueNode, valueNode, false) == 0) {
+      return true;
+    }
+    return false;
   }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
@@ -1302,7 +1313,7 @@ bool Condition::canRemove (ConditionPart const& me,
     if (operand->isComparisonOperator()) {
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
-     
+
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
           

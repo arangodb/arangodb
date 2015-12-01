@@ -178,6 +178,15 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a parent
+////////////////////////////////////////////////////////////////////////////////
+
+        void addParent (ExecutionNode* ep) {
+          ep->_dependencies.emplace_back(this);
+          _parents.emplace_back(ep);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get all dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -562,6 +571,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual bool canThrow () {
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node is a data modification node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual bool isModificationNode () const {
+          // derived classes can change this
           return false;
         }
 
@@ -1513,9 +1531,9 @@ namespace triagens {
 /// @brief setter for subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setSubquery (ExecutionNode* subquery) {
+        void setSubquery (ExecutionNode* subquery, bool forceOverwrite) {
           TRI_ASSERT(subquery != nullptr);
-          TRI_ASSERT(_subquery == nullptr); // do not allow overwriting an existing subquery
+          TRI_ASSERT((forceOverwrite && _subquery != nullptr) || (! forceOverwrite && _subquery == nullptr)); 
           _subquery = subquery;
         }
 
