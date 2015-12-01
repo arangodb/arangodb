@@ -307,9 +307,9 @@ Condition* Condition::fromJson (ExecutionPlan* plan,
   std::unique_ptr<Condition> condition(new Condition(plan->getAst()));
 
   if (json.isObject() && json.members() != 0) {
-    std::unique_ptr<AstNode> node(new AstNode(plan->getAst(), json)); 
-    condition->andCombine(node.get());
-    node.release();
+    // note: the AST is responsible for freeing the AstNode later!
+    AstNode* node = new AstNode(plan->getAst(), json); 
+    condition->andCombine(node);
   }
 
   condition->_isNormalized = true;

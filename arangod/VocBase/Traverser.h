@@ -111,17 +111,17 @@ namespace triagens {
           ) : isEdgeAccess(pisEdgeAccess),
               comparisonType(pcomparisonType),
               varAccess(pvarAccess),
-              compareTo(nullptr),
-              _freeVarAccess(false) {
+              compareTo(nullptr) {
           }
 
-          TraverserExpression (
-            TRI_json_t const*
-          );
+          TraverserExpression (TRI_json_t const*);
 
           virtual ~TraverserExpression () {
-            if (_freeVarAccess) {
-              delete varAccess;
+            // no need to destroy varAccess here. Its memory is managed via the
+            // _nodeRegister variable in this class
+
+            for (auto& it : _stringRegister) {
+              delete it;
             }
           }
 
@@ -132,7 +132,7 @@ namespace triagens {
                              TRI_document_collection_t* collection,
                              CollectionNameResolver const* resolver) const;
 
-          bool matchesCheck (TRI_json_t* element) const;
+          bool matchesCheck (TRI_json_t const* element) const;
 
           bool matchesCheck (DocumentAccessor& accessor) const;
 
@@ -144,10 +144,9 @@ namespace triagens {
 
           // Required when creating this expression without AST
           std::vector<std::unique_ptr<triagens::aql::AstNode const>>  _nodeRegister;
-          std::vector<std::string>                                    _stringRegister;
-          bool                                                        _freeVarAccess;
-
+          std::vector<std::string*>                                   _stringRegister;
       };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class TraversalPath
 // -----------------------------------------------------------------------------
@@ -161,6 +160,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           TraversalPath () {
+          }
+
+          virtual ~TraversalPath () {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,7 +301,7 @@ namespace triagens {
 /// @brief Get the next possible path in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-          virtual const TraversalPath* next () = 0;
+          virtual TraversalPath* next () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Prune the current path prefix. Do not evaluate it any further.

@@ -639,7 +639,6 @@ AstNode::AstNode (Ast* ast,
   ast->query()->addNode(this);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the node from JSON
 ////////////////////////////////////////////////////////////////////////////////
@@ -654,11 +653,11 @@ AstNode::AstNode (std::function<void (AstNode*)> registerNode,
 
   switch (type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS: {
-      /* TODO
       std::string const str(JsonHelper::getStringValue(json.json(), "name", ""));
       value.type = VALUE_TYPE_STRING;
-      setStringValue(query->registerString(str), str.size());
-      */
+      auto p = registerString(str);
+      TRI_ASSERT(p != nullptr);
+      setStringValue(p, str.size());
       break;
     }
     case NODE_TYPE_VALUE: {
@@ -780,9 +779,6 @@ AstNode::AstNode (std::function<void (AstNode*)> registerNode,
 
   registerNode(this);
 }
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the node

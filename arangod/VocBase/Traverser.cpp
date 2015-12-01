@@ -63,20 +63,26 @@ triagens::arango::traverser::VertexId triagens::arango::traverser::IdStringToVer
 /// @brief Creates an expression from a TRI_json_t*
 ////////////////////////////////////////////////////////////////////////////////
 
-TraverserExpression::TraverserExpression (TRI_json_t const* json) 
-    : _freeVarAccess(true) {
+TraverserExpression::TraverserExpression (TRI_json_t const* json) {
   isEdgeAccess = basics::JsonHelper::checkAndGetBooleanValue(json, "isEdgeAccess");
   comparisonType = static_cast<aql::AstNodeType>(basics::JsonHelper::checkAndGetNumericValue<uint32_t>(json, "comparisonType"));
   auto registerNode = [&](aql::AstNode const* node) -> void {
     _nodeRegister.emplace_back(node);
   };
   auto registerString = [&](std::string const& str) -> char const* {
-    _stringRegister.emplace_back(str);
-    return _stringRegister.back().c_str();
+    std::unique_ptr<std::string> copy(new std::string(str.c_str(), str.size()));
+    _stringRegister.emplace_back(copy.get());
+    auto p = copy.release();
+    TRI_ASSERT(p != nullptr);
+    TRI_ASSERT(p->c_str() != nullptr);
+    return p->c_str(); // should never change its position, even if vector grows/shrinks
   };
-  triagens::basics::Json varNode(TRI_UNKNOWN_MEM_ZONE, basics::JsonHelper::checkAndGetObjectValue(json, "varAccess"));
+  triagens::basics::Json varNode(TRI_UNKNOWN_MEM_ZONE, basics::JsonHelper::checkAndGetObjectValue(json, "varAccess"), triagens::basics::Json::NOFREE);
 
-  compareTo.reset(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, basics::JsonHelper::getObjectElement(json, "compareTo")));
+  compareTo.reset(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, basics::JsonHelper::getObjectElement(json, "compareTo"), triagens::basics::Json::NOFREE));
+  if (compareTo->json() == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid compareTo value");
+  }
   // If this fails everything before does not leak
   varAccess = new aql::AstNode(registerNode, registerString, varNode);
 }
@@ -106,7 +112,6 @@ bool TraverserExpression::recursiveCheck (triagens::aql::AstNode const* node,
     case triagens::aql::NODE_TYPE_REFERENCE:
       // We are on the variable access
       return true;
-      break;
     case triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
       char const* attributeName = node->getStringValue();
       TRI_ASSERT(attributeName != nullptr);
@@ -146,8 +151,15 @@ bool TraverserExpression::recursiveCheck (triagens::aql::AstNode const* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TraverserExpression::matchesCheck (DocumentAccessor& accessor) const {
-  recursiveCheck(varAccess, accessor);
+  if (! recursiveCheck(varAccess, accessor)) {
+    return false;
+  }
+
   triagens::basics::Json result = accessor.toJson();
+
+  TRI_ASSERT(compareTo != nullptr);
+  TRI_ASSERT(compareTo->json() != nullptr);
+
   switch (comparisonType) {
     case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), false) == 0;
@@ -167,12 +179,11 @@ bool TraverserExpression::matchesCheck (DocumentAccessor& accessor) const {
   return false;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief evalutes if an element matches the given expression
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraverserExpression::matchesCheck (TRI_json_t* element) const {
+bool TraverserExpression::matchesCheck (TRI_json_t const* element) const {
   DocumentAccessor accessor(element);
   return matchesCheck(accessor);
 }

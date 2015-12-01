@@ -255,7 +255,7 @@ bool ClusterTraverser::vertexMatchesCondition (TRI_json_t* v, std::vector<Traver
   return true;
 }
 
-const triagens::arango::traverser::TraversalPath* ClusterTraverser::next () {
+triagens::arango::traverser::TraversalPath* ClusterTraverser::next () {
   TRI_ASSERT(!_done);
   if (_pruneNext) {
     _pruneNext = false;

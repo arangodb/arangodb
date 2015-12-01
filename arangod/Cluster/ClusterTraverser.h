@@ -64,7 +64,7 @@ namespace triagens {
 
           void setStartVertex (VertexId& v) override;
 
-          const TraversalPath* next () override;
+          TraversalPath* next () override;
 
           triagens::basics::Json* edgeToJson (std::string) const;
 

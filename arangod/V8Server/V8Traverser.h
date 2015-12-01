@@ -311,7 +311,7 @@ namespace triagens {
 /// @brief Get the next possible path in the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-          const TraversalPath*  next () override;
+          TraversalPath* next () override;
 
       };
 

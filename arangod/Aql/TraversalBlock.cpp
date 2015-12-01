@@ -248,9 +248,9 @@ void TraversalBlock::executeExpressions () {
     for (size_t i = 0; i < map.second.size(); ++i) {
       // Right now no inVars are allowed.
       SimpleTraverserExpression* it = dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
-      TRI_document_collection_t const* myCollection = nullptr; 
-      if (it->expression != nullptr) {
+      if (it != nullptr && it->expression != nullptr) {
         // inVars and inRegs needs fixx
+        TRI_document_collection_t const* myCollection = nullptr; 
         AqlValue a = it->expression->execute(_trx, cur, _pos, _inVars[i], _inRegs[i], &myCollection);
         it->compareTo.reset(new Json(a.toJson(_trx, myCollection, true)));
         a.destroy();
@@ -277,7 +277,9 @@ void TraversalBlock::executeFilterExpressions () {
             for (auto const& map : *_expressions) {
               for (auto const& e : map.second) {
                 auto casted = dynamic_cast<SimpleTraverserExpression*>(e);
-                casted->expression->invalidate();
+                if (casted != nullptr) {
+                  casted->expression->invalidate();
+                }
               }
             }
           
@@ -353,7 +355,8 @@ bool TraversalBlock::morePaths (size_t hint) {
   auto en = static_cast<TraversalNode const*>(getPlanNode());
 
   for (size_t j = 0; j < hint; ++j) {
-    auto p = _traverser->next();
+    std::unique_ptr<triagens::arango::traverser::TraversalPath> p(_traverser->next());
+
     if (p == nullptr) {
       // There are no further paths available.
       break;
@@ -378,7 +381,7 @@ bool TraversalBlock::morePaths (size_t hint) {
       _edges.emplace_back(p->lastEdgeToJson(_trx, _resolver));
     }
     if ( usesPathOutput() ) {
-      _paths.push_back(pathValue);
+      _paths.emplace_back(pathValue);
     }
   }
   // This is only save as long as _vertices is still build
@@ -422,8 +425,8 @@ void TraversalBlock::initializePaths (AqlItemBlock const* items) {
     }
     else if (in.isObject()) {
       Json input = in.toJson(_trx, nullptr, false);
-      if (input.has("_id") ) {
-        Json _idJson = input.get("_id");
+      if (input.has(TRI_VOC_ATTRIBUTE_ID) ) {
+        Json _idJson = input.get(TRI_VOC_ATTRIBUTE_ID);
         if (_idJson.isString()) {
           _vertexId = JsonHelper::getStringValue(_idJson.json(), "");
           VertexId v = triagens::arango::traverser::IdStringToVertexId (
@@ -436,8 +439,8 @@ void TraversalBlock::initializePaths (AqlItemBlock const* items) {
       else if (input.has("vertex")) {
         // This is used whenever the input is the result of another traversal.
         Json vertexJson = input.get("vertex");
-        if (vertexJson.has("_id") ) {
-          Json _idJson = vertexJson.get("_id");
+        if (vertexJson.has(TRI_VOC_ATTRIBUTE_ID) ) {
+          Json _idJson = vertexJson.get(TRI_VOC_ATTRIBUTE_ID);
           if (_idJson.isString()) {
             _vertexId = JsonHelper::getStringValue(_idJson.json(), "");
             VertexId v = triagens::arango::traverser::IdStringToVertexId (

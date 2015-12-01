@@ -64,7 +64,7 @@ class DocumentAccessor {
                       TRI_document_collection_t* document,
                       TRI_doc_mptr_t const* mptr);
 
-    explicit DocumentAccessor (TRI_json_t* json);
+    explicit DocumentAccessor (TRI_json_t const* json);
 
     ~DocumentAccessor ();
 
@@ -116,7 +116,7 @@ class DocumentAccessor {
 
     std::unique_ptr<TRI_json_t> _json; // the JSON that we own
 
-    TRI_json_t* _current; // the JSON that we point to
+    TRI_json_t const* _current; // the JSON that we point to
 
 };
 

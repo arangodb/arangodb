@@ -988,7 +988,7 @@ void DepthFirstTraverser::setStartVertex (VertexId& v) {
   _done = false;
 }
 
-const TraversalPath* DepthFirstTraverser::next () {
+TraversalPath* DepthFirstTraverser::next () {
   TRI_ASSERT(!_done);
   if (_pruneNext) {
     _pruneNext = false;
