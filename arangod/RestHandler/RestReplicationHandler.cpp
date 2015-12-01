@@ -3735,7 +3735,8 @@ void RestReplicationHandler::handleCommandDump () {
 ///
 /// @RESTBODYPARAM{autoResync,boolean,optional,}
 /// whether or not the slave should perform an automatic resynchronization with
-/// the master in case the master cannot serve log data requested by the slave
+/// the master in case the master cannot serve log data requested by the slave,
+/// or when the replication is started and no tick value can be found.
 ///
 /// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
 /// the maximum wait time (in seconds) that the initial synchronization will
@@ -4337,7 +4338,8 @@ void RestReplicationHandler::handleCommandServerId () {
 ///
 /// - *autoResync*: whether or not the slave should perform a full automatic 
 ///   resynchronization with the master in case the master cannot serve log data 
-///   requested by the slave
+///   requested by the slave, or when the replication is started and no tick value
+///   can be found.
 ///
 /// - *initialSyncMaxWaitTime*: the maximum wait time (in seconds) that the initial 
 ///   synchronization will wait for a response from the master when fetching initial 
@@ -4490,7 +4492,8 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// @RESTBODYPARAM{autoResync,boolean,optional,}
 /// whether or not the slave should perform a full automatic resynchronization 
-/// with the master in case the master cannot serve log data requested by the slave
+/// with the master in case the master cannot serve log data requested by the slave,
+/// or when the replication is started and no tick value can be found.
 ///
 /// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
 /// the maximum wait time (in seconds) that the initial synchronization will

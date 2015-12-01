@@ -192,9 +192,12 @@ retry:
     // stop ourselves
     _applier->stop(false);
 
-    if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) {
-      LOG_WARNING("replication applier stopped for database '%s' because required tick is not present on master",
-                  _vocbase->_name);
+    if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT ||
+        res == TRI_ERROR_REPLICATION_NO_START_TICK) {
+      if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) {
+        LOG_WARNING("replication applier stopped for database '%s' because required tick is not present on master",
+                    _vocbase->_name);
+      }
 
       // remove previous applier state
       abortOngoingTransactions();
@@ -242,10 +245,11 @@ retry:
 
         if (res == TRI_ERROR_NO_ERROR) {
           TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
-          LOG_TRACE("will restart continuous replication applier for database '%s' with tick %llu",
-                    _vocbase->_name,
-                    (unsigned long long) lastLogTick);
+          LOG_INFO("automatic resynchronization for database '%s' finished. restarting continous replication applier from tick %llu",
+                   _vocbase->_name,
+                   (unsigned long long) lastLogTick);
           _initialTick = lastLogTick;
+          _useTick = true;
           goto retry;
         }
         // fall through otherwise
@@ -295,7 +299,7 @@ void ContinuousSyncer::abortOngoingTransactions () {
 
 void ContinuousSyncer::setProgress (char const* msg) {
   _applier->setProgress(msg, true);
-          
+         
   if (_verbose) {
     LOG_INFO("applier progress: %s", msg);
   }

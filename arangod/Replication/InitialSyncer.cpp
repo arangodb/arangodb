@@ -829,7 +829,7 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   string const baseUrl = BaseUrl + "/keys";
   string url = baseUrl + "?collection=" + cid + "&to=" + std::to_string(maxTick);
   
-  std::string progress = "fetching collection keys from " + url;
+  std::string progress = "fetching collection keys for collection '" + collectionName + "' from " + url;
   setProgress(progress);
    
   // send an initial async request to collect the collection keys on the other side
@@ -939,7 +939,7 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   
   auto shutdown = [&] () -> void { 
     url = baseUrl + "/" + id;
-    string progress = "deleting remote collection keys object from " + url;
+    string progress = "deleting remote collection keys object for collection '" + collectionName + "' from " + url;
     setProgress(progress);
 
     // now delete the keys we ordered
@@ -1006,7 +1006,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           
   bool const isEdge = (trx.documentCollection()->_info._type == TRI_COL_TYPE_EDGE);
    
-  string progress = "collecting local keys";
+  string progress = "collecting local keys for collection '" + collectionName + "'";
   setProgress(progress);
 
   // fetch all local keys from primary index
@@ -1032,7 +1032,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       markers.emplace_back(df);
     }
 
-    string progress = "sorting " + std::to_string(markers.size()) + " local key(s)";
+    string progress = "sorting " + std::to_string(markers.size()) + " local key(s) for collection '" + collectionName + "'";
     setProgress(progress);
     
     // sort all our local keys
@@ -1055,7 +1055,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   string const baseUrl = BaseUrl + "/keys";
     
   string url = baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
-  progress = "fetching remote keys chunks from " + url;
+  progress = "fetching remote keys chunks for collection '" + collectionName + "' from " + url;
   setProgress(progress);
    
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_GET,
@@ -1140,9 +1140,12 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
     if (checkAborted()) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
+  
+    size_t const currentChunkId = i;
+    progress = "processing keys chunk " + std::to_string(currentChunkId) + " for collection '" + collectionName + "'";
+    setProgress(progress);
 
     sendExtendBatch();
-    size_t const currentChunkId = i;
 
     // read remote chunk
     auto chunk = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), i));
@@ -1200,7 +1203,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       // no match
       // must transfer keys for non-matching range
       std::string url = baseUrl + "/" + keysId + "?type=keys&chunk=" + std::to_string(i) + "&chunkSize=" + std::to_string(chunkSize);
-      progress = "fetching keys from " + url;
+      progress = "fetching keys chunk " + std::to_string(currentChunkId) + " for collection '" + collectionName + "' from " + url;
       setProgress(progress);
 
       std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_PUT,
@@ -1351,7 +1354,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         }
       
         std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" + std::to_string(currentChunkId) + "&chunkSize=" + std::to_string(chunkSize);
-        progress = "fetching documents from " + url;
+        progress = "fetching documents chunk " + std::to_string(currentChunkId) + " for collection '" + collectionName + "' from " + url;
         setProgress(progress);
 
         auto const keyJsonString = triagens::basics::JsonHelper::toString(keysJson.json());
@@ -1733,7 +1736,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
       size_t const n = TRI_LengthVector(&indexes->_value._objects);
 
       if (n > 0) {
-        string const progress = "creating indexes for " + collectionMsg;
+        string const progress = "creating " + std::to_string(n) + " index(es) for " + collectionMsg;
         setProgress(progress);
 
         READ_LOCKER(_vocbase->_inventoryLock);
@@ -1756,7 +1759,15 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
             for (size_t i = 0; i < n; ++i) {
               TRI_json_t const* idxDef = static_cast<TRI_json_t const*>(TRI_AtVector(&indexes->_value._objects, i));
               triagens::arango::Index* idx = nullptr;
- 
+        
+              if (TRI_IsObjectJson(idxDef)) {
+                TRI_json_t const* type = TRI_LookupObjectJson(idxDef, "type");
+                if (TRI_IsStringJson(type)) {
+                  string const progress = "creating index of type " + std::string(type->_value._string.data, type->_value._string.length - 1) + " for " + collectionMsg;
+                  setProgress(progress);
+                } 
+              }
+
               // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
     
               res = TRI_FromJsonIndexDocumentCollection(document, idxDef, &idx);
