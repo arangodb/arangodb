@@ -5,33 +5,33 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 [ 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.80319/journals/logfile-176956.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.7903/journals/logfile-133711.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
-    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"373564"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"638890812"</span> 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"330319"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"639240783"</span> 
   }, 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.80319/journals/logfile-639021884.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.7903/journals/logfile-639371855.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
-    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"639349564"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"641708860"</span> 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"639699535"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"642058831"</span> 
   }, 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.80319/journals/logfile-641839932.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.7903/journals/logfile-642189903.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
-    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"641971004"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"762229564"</span> 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"642320975"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"767167055"</span> 
   }, 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.80319/journals/logfile-762360636.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.7903/journals/logfile-767298127.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"collected"</span>, 
-    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"762491708"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"762622780"</span> 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"767429199"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"767560271"</span> 
   }, 
   { 
-    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.80319/journals/logfile-762753852.db"</span>, 
+    <span class="hljs-string">"datafile"</span> : <span class="hljs-string">"/tmp/vocdir.7903/journals/logfile-767691343.db"</span>, 
     <span class="hljs-string">"status"</span> : <span class="hljs-string">"open"</span>, 
-    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"762950460"</span>, 
-    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"771011388"</span> 
+    <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"767822415"</span>, 
+    <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"772344399"</span> 
   } 
 ]
