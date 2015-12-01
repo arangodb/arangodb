@@ -218,7 +218,7 @@ var syncCollection = function (collection, config) {
   return requestResult;
 };
 
-var checkSyncStatus = function (id) {
+var getSyncResult = function (id) {
   var db = internal.db;
 
   var requestResult = db._connection.PUT_RAW("/_api/job/" + encodeURIComponent(id), "");
@@ -253,7 +253,7 @@ exports.logger          = logger;
 exports.applier         = applier;
 exports.sync            = sync;
 exports.syncCollection  = syncCollection;
-exports.checkSyncStatus = checkSyncStatus;
+exports.getSyncResult   = getSyncResult;
 exports.serverId        = serverId;
 
 // -----------------------------------------------------------------------------
