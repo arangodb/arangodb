@@ -74,8 +74,8 @@ var optionsDocumentation = [
   '     of a small local cluster',
   '   - `clusterNodes`: number of DB-Servers to use',
   '   - valgrindHosts  - configure which clustercomponents to run using valgrintd',
-  '        Coordinator - run Coordinator with valgrind',
-  '        DBServer    - run DBServers with valgrind',
+  '        Coordinator - flag to run Coordinator with valgrind',
+  '        DBServer    - flag to run DBServers with valgrind',
   '   - `test`: path to single test to execute for "single" test target',
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
@@ -327,7 +327,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
     }
 
     if (options.valgrindHosts.DBServer === true) {
-      valgrindHosts += 'DBServer';
+      valgrindHosts += 'DBserver';
     }
     
   }
