@@ -43,7 +43,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_json_t;
-struct TRI_replication_applier_configuration_s;
+struct TRI_replication_applier_configuration_t;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_t;
 struct TRI_vocbase_col_s;
@@ -79,7 +79,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Syncer (TRI_vocbase_t*,
-                struct TRI_replication_applier_configuration_s const*);
+                struct TRI_replication_applier_configuration_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -90,6 +90,18 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sleeps (nanoseconds)
+////////////////////////////////////////////////////////////////////////////////
+
+        void sleep (uint64_t time) {
+#ifdef _WIN32
+          usleep((unsigned long) time);
+#else
+          usleep((useconds_t) time);
+#endif
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request location rewriter (injects database name)

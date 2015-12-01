@@ -1319,7 +1319,7 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a ttl URL parameter
+/// @brief creates a ttl query parameter
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::ttlParam (double ttl,

@@ -74,8 +74,27 @@ namespace triagens {
             _collection(collection),
             _server(server),
             _ownName(ownName),
-            _queryId(queryId) {
+            _queryId(queryId),
+            _isResponsibleForInitCursor(true) {
           // note: server, ownName and queryId may be empty and filled later
+        }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not this node will forward initializeCursor or shutDown
+/// requests
+////////////////////////////////////////////////////////////////////////////////
+
+        void isResponsibleForInitCursor (bool value) {
+          _isResponsibleForInitCursor = value;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not this node will forward initializeCursor or shutDown
+/// requests
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isResponsibleForInitCursor () const {
+          return _isResponsibleForInitCursor;
         }
 
         RemoteNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -221,6 +240,12 @@ namespace triagens {
 
         std::string _queryId;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not this node will forward initializeCursor and shutDown
+/// requests
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _isResponsibleForInitCursor;
     };
 
 // -----------------------------------------------------------------------------

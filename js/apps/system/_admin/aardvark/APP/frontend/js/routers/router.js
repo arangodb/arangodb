@@ -226,6 +226,9 @@
     },
 
     queryManagement: function () {
+      if (!this.checkUser()) {
+        return;
+      }
       if (!this.queryManagementView) {
         this.queryManagementView = new window.queryManagementView({
           collection: undefined

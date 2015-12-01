@@ -214,7 +214,7 @@ namespace triagens {
             return (*it).second.size();
           }
 
-          std::string&& name(getCollectionName(cid));
+          std::string name(std::move(getCollectionName(cid)));
 
           memcpy(buffer, name.c_str(), name.size());
           return name.size();

@@ -436,7 +436,7 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
   const char* value = _request->value("chunkSize", found);
 
   if (found) {
-    // url parameter "chunkSize" was specified
+    // query parameter "chunkSize" was specified
     chunkSize = StringUtils::uint64(value);
 
     // don't allow overly big allocations
@@ -787,7 +787,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 ///
 /// - *id*: the id of the batch
 ///
-/// **Note**: on a coordinator, this request must have the URL parameter
+/// **Note**: on a coordinator, this request must have the query parameter
 /// *DBserver* which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
@@ -828,7 +828,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 ///
 /// If the batch's ttl can be extended successfully, the response is empty.
 ///
-/// **Note**: on a coordinator, this request must have the URL parameter
+/// **Note**: on a coordinator, this request must have the query parameter
 /// *DBserver* which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
@@ -862,7 +862,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick () {
 /// @RESTDESCRIPTION
 /// Deletes the existing dump batch, allowing compaction and cleanup to resume.
 ///
-/// **Note**: on a coordinator, this request must have the URL parameter
+/// **Note**: on a coordinator, this request must have the query parameter
 /// *DBserver* which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
@@ -1081,20 +1081,20 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 /// from the logger server. In this case, they should provide the *from* value so
 /// they will only get returned the log events since their last fetch.
 ///
-/// When the *from* URL parameter is not used, the logger server will return log
+/// When the *from* query parameter is not used, the logger server will return log
 /// entries starting at the beginning of its replication log. When the *from*
 /// parameter is used, the logger server will only return log entries which have
 /// higher tick values than the specified *from* value (note: the log entry with a
 /// tick value equal to *from* will be excluded). Use the *from* value when
 /// incrementally fetching log data.
 ///
-/// The *to* URL parameter can be used to optionally restrict the upper bound of
+/// The *to* query parameter can be used to optionally restrict the upper bound of
 /// the result to a certain tick value. If used, the result will contain only log events
 /// with tick values up to (including) *to*. In incremental fetching, there is no
 /// need to use the *to* parameter. It only makes sense in special situations,
 /// when only parts of the change log are required.
 ///
-/// The *chunkSize* URL parameter can be used to control the size of the result.
+/// The *chunkSize* query parameter can be used to control the size of the result.
 /// It must be specified in bytes. The *chunkSize* value will only be honored
 /// approximately. Otherwise a too low *chunkSize* value could cause the server
 /// to not be able to put just one log entry into the result and return it.
@@ -1539,7 +1539,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
 ///   response will be empty and clients can go to sleep for a while and try again
 ///   later.
 ///
-/// **Note**: on a coordinator, this request must have the URL parameter
+/// **Note**: on a coordinator, this request must have the query parameter
 /// *DBserver* which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
@@ -3421,16 +3421,16 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
 /// @RESTDESCRIPTION
 /// Returns the data from the collection for the requested range.
 ///
-/// When the *from* URL parameter is not used, collection events are returned from
+/// When the *from* query parameter is not used, collection events are returned from
 /// the beginning. When the *from* parameter is used, the result will only contain
 /// collection entries which have higher tick values than the specified *from* value
 /// (note: the log entry with a tick value equal to *from* will be excluded).
 ///
-/// The *to* URL parameter can be used to optionally restrict the upper bound of
+/// The *to* query parameter can be used to optionally restrict the upper bound of
 /// the result to a certain tick value. If used, the result will only contain
 /// collection entries with tick values up to (including) *to*.
 ///
-/// The *chunkSize* URL parameter can be used to control the size of the result.
+/// The *chunkSize* query parameter can be used to control the size of the result.
 /// It must be specified in bytes. The *chunkSize* value will only be honored
 /// approximately. Otherwise a too low *chunkSize* value could cause the server
 /// to not be able to put just one entry into the result and return it.
@@ -3544,6 +3544,7 @@ void RestReplicationHandler::handleCommandDump () {
   bool flush                  = true; // flush WAL before dumping?
   bool withTicks              = true;
   bool translateCollectionIds = true;
+  uint64_t flushWait          = 0;
 
   bool found;
   char const* value;
@@ -3553,6 +3554,16 @@ void RestReplicationHandler::handleCommandDump () {
 
   if (found) {
     flush = StringUtils::boolean(value);
+  }
+  
+  // determine flush WAL wait time value
+  value = _request->value("flushWait", found);
+
+  if (found) {
+    flushWait = StringUtils::uint64(value);
+    if (flushWait > 60) {
+      flushWait = 60;
+    }
   }
 
   // determine start tick for dump
@@ -3612,6 +3623,11 @@ void RestReplicationHandler::handleCommandDump () {
   try {
     if (flush) {
       triagens::wal::LogfileManager::instance()->flush(true, true, false);
+ 
+      // additionally wait for the collector 
+      if (flushWait > 0) {
+        triagens::wal::LogfileManager::instance()->waitForCollectorQueue(c->_cid, static_cast<double>(flushWait));
+      }
     }
 
     triagens::arango::CollectionGuard guard(_vocbase, c->_cid, false);
@@ -3699,26 +3715,65 @@ void RestReplicationHandler::handleCommandDump () {
 /// will be sychronised. If *restrictType* is *exclude*, all but the specified
 /// collections will be synchronized.
 ///
-/// @RESTBODYPARAM{maxConnectRetries,integer,required,int64}
+/// @RESTBODYPARAM{maxConnectRetries,integer,optional,int64}
 /// the maximum number of connection attempts the applier
 /// will make in a row. If the applier cannot establish a connection to the
 /// endpoint in this number of attempts, it will stop itself.
 ///
-/// @RESTBODYPARAM{connectTimeout,integer,required,int64}
+/// @RESTBODYPARAM{connectTimeout,integer,optional,int64}
 /// the timeout (in seconds) when attempting to connect to the
 /// endpoint. This value is used for each connection attempt.
 ///
-/// @RESTBODYPARAM{requestTimeout,integer,required,int64}
+/// @RESTBODYPARAM{requestTimeout,integer,optional,int64}
 /// the timeout (in seconds) for individual requests to the endpoint.
 ///
-/// @RESTBODYPARAM{chunkSize,integer,required,int64}
+/// @RESTBODYPARAM{chunkSize,integer,optional,int64}
 /// the requested maximum size for log transfer packets that
 /// is used when the endpoint is contacted.
 ///
-/// @RESTBODYPARAM{adaptivePolling,boolean,required,}
+/// @RESTBODYPARAM{adaptivePolling,boolean,optional,}
 /// whether or not the replication applier will use adaptive polling.
 ///
-/// @RESTBODYPARAM{requireFromPresent,boolean,required,}
+/// @RESTBODYPARAM{autoResync,boolean,optional,}
+/// whether or not the slave should perform an automatic resynchronization with
+/// the master in case the master cannot serve log data requested by the slave,
+/// or when the replication is started and no tick value can be found.
+///
+/// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
+/// the maximum wait time (in seconds) that the initial synchronization will
+/// wait for a response from the master when fetching initial collection data.
+/// This wait time can be used to control after what time the initial synchronization
+/// will give up waiting for a response and fail. This value is relevant even
+/// for continuous replication when *autoResync* is set to *true* because this
+/// may re-start the initial synchronization when the master cannot provide
+/// log data the slave requires.
+/// This value will be ignored if set to *0*.
+///
+/// @RESTBODYPARAM{connectionRetryWaitTime,integer,optional,int64}
+/// the time (in seconds) that the applier will intentionally idle before
+/// it retries connecting to the master in case of connection problems.
+/// This value will be ignored if set to *0*.
+///
+/// @RESTBODYPARAM{idleMinWaitTime,integer,optional,int64}
+/// the minimum wait time (in seconds) that the applier will intentionally idle 
+/// before fetching more log data from the master in case the master has 
+/// already sent all its log data. This wait time can be used to control the
+/// frequency with which the replication applier sends HTTP log fetch requests 
+/// to the master in case there is no write activity on the master.
+/// This value will be ignored if set to *0*.
+///
+/// @RESTBODYPARAM{idleMaxWaitTime,integer,optional,int64}
+/// the maximum wait time (in seconds) that the applier will intentionally idle 
+/// before fetching more log data from the master in case the master has 
+/// already sent all its log data and there have been previous log fetch attempts
+/// that resulted in no more log data. This wait time can be used to control the
+/// maximum frequency with which the replication applier sends HTTP log fetch 
+/// requests to the master in case there is no write activity on the master for
+/// longer periods. This configuration value will only be used if the option 
+/// *adaptivePolling* is set to *true*.
+/// This value will be ignored if set to *0*.
+///
+/// @RESTBODYPARAM{requireFromPresent,boolean,optional,}
 /// if set to *true*, then the replication applier will check
 /// at start of its continuous replication if the start tick from the dump phase
 /// is still present on the master. If not, then there would be data loss. If 
@@ -3866,22 +3921,27 @@ void RestReplicationHandler::handleCommandMakeSlave () {
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
 
-  config._endpoint           = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
-  config._database           = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
-  config._username           = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
-  config._password           = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
-  config._includeSystem      = JsonHelper::getBooleanValue(json.get(), "includeSystem", true);
-  config._autoStart          = true;
-  config._requestTimeout     = JsonHelper::getNumericValue<double>(json.get(), "requestTimeout", defaults._requestTimeout);
-  config._connectTimeout     = JsonHelper::getNumericValue<double>(json.get(), "connectTimeout", defaults._connectTimeout);
-  config._ignoreErrors       = JsonHelper::getNumericValue<uint64_t>(json.get(), "ignoreErrors", defaults._ignoreErrors);
-  config._maxConnectRetries  = JsonHelper::getNumericValue<uint64_t>(json.get(), "maxConnectRetries", defaults._maxConnectRetries);
-  config._sslProtocol        = JsonHelper::getNumericValue<uint32_t>(json.get(), "sslProtocol", defaults._sslProtocol);
-  config._chunkSize          = JsonHelper::getNumericValue<uint64_t>(json.get(), "chunkSize", defaults._chunkSize);
-  config._adaptivePolling    = JsonHelper::getBooleanValue(json.get(), "adaptivePolling", defaults._adaptivePolling);
-  config._verbose            = JsonHelper::getBooleanValue(json.get(), "verbose", defaults._verbose);
-  config._requireFromPresent = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", defaults._requireFromPresent);
-  config._restrictType       = JsonHelper::getStringValue(json.get(), "restrictType", defaults._restrictType);
+  config._endpoint                = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
+  config._database                = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
+  config._username                = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
+  config._password                = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
+  config._includeSystem           = JsonHelper::getBooleanValue(json.get(), "includeSystem", true);
+  config._requestTimeout          = JsonHelper::getNumericValue<double>(json.get(), "requestTimeout", defaults._requestTimeout);
+  config._connectTimeout          = JsonHelper::getNumericValue<double>(json.get(), "connectTimeout", defaults._connectTimeout);
+  config._ignoreErrors            = JsonHelper::getNumericValue<uint64_t>(json.get(), "ignoreErrors", defaults._ignoreErrors);
+  config._maxConnectRetries       = JsonHelper::getNumericValue<uint64_t>(json.get(), "maxConnectRetries", defaults._maxConnectRetries);
+  config._sslProtocol             = JsonHelper::getNumericValue<uint32_t>(json.get(), "sslProtocol", defaults._sslProtocol);
+  config._chunkSize               = JsonHelper::getNumericValue<uint64_t>(json.get(), "chunkSize", defaults._chunkSize);
+  config._autoStart               = true;
+  config._adaptivePolling         = JsonHelper::getBooleanValue(json.get(), "adaptivePolling", defaults._adaptivePolling);
+  config._autoResync              = JsonHelper::getBooleanValue(json.get(), "autoResync", defaults._autoResync);
+  config._verbose                 = JsonHelper::getBooleanValue(json.get(), "verbose", defaults._verbose);
+  config._requireFromPresent      = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", defaults._requireFromPresent);
+  config._restrictType            = JsonHelper::getStringValue(json.get(), "restrictType", defaults._restrictType);
+  config._connectionRetryWaitTime = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "connectionRetryWaitTime", static_cast<double>(defaults._connectionRetryWaitTime) / (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "initialSyncMaxWaitTime", static_cast<double>(defaults._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
+  config._idleMinWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMinWaitTime", static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
+  config._idleMaxWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMaxWaitTime", static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
   
   TRI_json_t* restriction = JsonHelper::getObjectElement(json.get(), "restrictCollections");
 
@@ -4013,7 +4073,14 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 /// an optional array of collections for use with
 /// *restrictType*. If *restrictType* is *include*, only the specified collections
 /// will be sychronised. If *restrictType* is *exclude*, all but the specified
-///  collections will be synchronized.
+/// collections will be synchronized.
+///
+/// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
+/// the maximum wait time (in seconds) that the initial synchronization will
+/// wait for a response from the master when fetching initial collection data.
+/// This wait time can be used to control after what time the initial synchronization
+/// will give up waiting for a response and fail. 
+/// This value will be ignored if set to *0*.
 ///
 /// @RESTDESCRIPTION
 /// Starts a full data synchronization from a remote endpoint into the local
@@ -4270,6 +4337,43 @@ void RestReplicationHandler::handleCommandServerId () {
 ///
 /// - *includeSystem*: whether or not system collection operations will be applied
 ///
+/// - *autoResync*: whether or not the slave should perform a full automatic 
+///   resynchronization with the master in case the master cannot serve log data 
+///   requested by the slave, or when the replication is started and no tick value
+///   can be found.
+///
+/// - *initialSyncMaxWaitTime*: the maximum wait time (in seconds) that the initial 
+///   synchronization will wait for a response from the master when fetching initial 
+///   collection data.
+///   This wait time can be used to control after what time the initial synchronization
+///   will give up waiting for a response and fail. This value is relevant even
+///   for continuous replication when *autoResync* is set to *true* because this
+///   may re-start the initial synchronization when the master cannot provide
+///   log data the slave requires.
+///   This value will be ignored if set to *0*.
+///
+/// - *connectionRetryWaitTime*: the time (in seconds) that the applier will 
+///   intentionally idle before it retries connecting to the master in case of 
+///   connection problems.
+///   This value will be ignored if set to *0*.
+///
+/// - *idleMinWaitTime*: the minimum wait time (in seconds) that the applier will 
+///   intentionally idle before fetching more log data from the master in case 
+///   the master has already sent all its log data. This wait time can be used 
+///   to control the frequency with which the replication applier sends HTTP log 
+///   fetch requests to the master in case there is no write activity on the master.
+///   This value will be ignored if set to *0*.
+///
+/// - *idleMaxWaitTime*: the maximum wait time (in seconds) that the applier will 
+///   intentionally idle before fetching more log data from the master in case the 
+///   master has already sent all its log data and there have been previous log 
+///   fetch attempts that resulted in no more log data. This wait time can be used 
+///   to control the maximum frequency with which the replication applier sends HTTP 
+///   log fetch requests to the master in case there is no write activity on the 
+///   master for longer periods. This configuration value will only be used if the 
+///   option *adaptivePolling* is set to *true*.
+///   This value will be ignored if set to *0*.
+///
 /// - *requireFromPresent*: if set to *true*, then the replication applier will check
 ///   at start whether the start tick from which it starts or resumes replication is
 ///   still present on the master. If not, then there would be data loss. If 
@@ -4386,6 +4490,45 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// @RESTBODYPARAM{includeSystem,boolean,required,}
 /// whether or not system collection operations will be applied
+///
+/// @RESTBODYPARAM{autoResync,boolean,optional,}
+/// whether or not the slave should perform a full automatic resynchronization 
+/// with the master in case the master cannot serve log data requested by the slave,
+/// or when the replication is started and no tick value can be found.
+///
+/// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
+/// the maximum wait time (in seconds) that the initial synchronization will
+/// wait for a response from the master when fetching initial collection data.
+/// This wait time can be used to control after what time the initial synchronization
+/// will give up waiting for a response and fail. This value is relevant even
+/// for continuous replication when *autoResync* is set to *true* because this
+/// may re-start the initial synchronization when the master cannot provide
+/// log data the slave requires.
+/// This value will be ignored if set to *0*.
+///
+/// @RESTBODYPARAM{connectionRetryWaitTime,integer,optional,int64}
+/// the time (in seconds) that the applier will intentionally idle before
+/// it retries connecting to the master in case of connection problems.
+/// This value will be ignored if set to *0*.
+///
+/// @RESTBODYPARAM{idleMinWaitTime,integer,optional,int64}
+/// the minimum wait time (in seconds) that the applier will intentionally idle 
+/// before fetching more log data from the master in case the master has 
+/// already sent all its log data. This wait time can be used to control the
+/// frequency with which the replication applier sends HTTP log fetch requests 
+/// to the master in case there is no write activity on the master.
+/// This value will be ignored if set to *0*.
+///
+/// @RESTBODYPARAM{idleMaxWaitTime,integer,optional,int64}
+/// the maximum wait time (in seconds) that the applier will intentionally idle 
+/// before fetching more log data from the master in case the master has 
+/// already sent all its log data and there have been previous log fetch attempts
+/// that resulted in no more log data. This wait time can be used to control the
+/// maximum frequency with which the replication applier sends HTTP log fetch 
+/// requests to the master in case there is no write activity on the master for
+/// longer periods. This configuration value will only be used if the option 
+/// *adaptivePolling* is set to *true*.
+/// This value will be ignored if set to *0*.
 ///
 /// @RESTBODYPARAM{requireFromPresent,boolean,required,}
 /// if set to *true*, then the replication applier will check
@@ -4512,18 +4655,23 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
     config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
   }
 
-  config._requestTimeout     = JsonHelper::getNumericValue<double>(json.get(), "requestTimeout", config._requestTimeout);
-  config._connectTimeout     = JsonHelper::getNumericValue<double>(json.get(), "connectTimeout", config._connectTimeout);
-  config._ignoreErrors       = JsonHelper::getNumericValue<uint64_t>(json.get(), "ignoreErrors", config._ignoreErrors);
-  config._maxConnectRetries  = JsonHelper::getNumericValue<uint64_t>(json.get(), "maxConnectRetries", config._maxConnectRetries);
-  config._sslProtocol        = JsonHelper::getNumericValue<uint32_t>(json.get(), "sslProtocol", config._sslProtocol);
-  config._chunkSize          = JsonHelper::getNumericValue<uint64_t>(json.get(), "chunkSize", config._chunkSize);
-  config._autoStart          = JsonHelper::getBooleanValue(json.get(), "autoStart", config._autoStart);
-  config._adaptivePolling    = JsonHelper::getBooleanValue(json.get(), "adaptivePolling", config._adaptivePolling);
-  config._includeSystem      = JsonHelper::getBooleanValue(json.get(), "includeSystem", config._includeSystem);
-  config._verbose            = JsonHelper::getBooleanValue(json.get(), "verbose", config._verbose);
-  config._requireFromPresent = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", config._requireFromPresent);
-  config._restrictType       = JsonHelper::getStringValue(json.get(), "restrictType", config._restrictType);
+  config._requestTimeout          = JsonHelper::getNumericValue<double>(json.get(), "requestTimeout", config._requestTimeout);
+  config._connectTimeout          = JsonHelper::getNumericValue<double>(json.get(), "connectTimeout", config._connectTimeout);
+  config._ignoreErrors            = JsonHelper::getNumericValue<uint64_t>(json.get(), "ignoreErrors", config._ignoreErrors);
+  config._maxConnectRetries       = JsonHelper::getNumericValue<uint64_t>(json.get(), "maxConnectRetries", config._maxConnectRetries);
+  config._sslProtocol             = JsonHelper::getNumericValue<uint32_t>(json.get(), "sslProtocol", config._sslProtocol);
+  config._chunkSize               = JsonHelper::getNumericValue<uint64_t>(json.get(), "chunkSize", config._chunkSize);
+  config._autoStart               = JsonHelper::getBooleanValue(json.get(), "autoStart", config._autoStart);
+  config._adaptivePolling         = JsonHelper::getBooleanValue(json.get(), "adaptivePolling", config._adaptivePolling);
+  config._autoResync              = JsonHelper::getBooleanValue(json.get(), "autoResync", config._autoResync);
+  config._includeSystem           = JsonHelper::getBooleanValue(json.get(), "includeSystem", config._includeSystem);
+  config._verbose                 = JsonHelper::getBooleanValue(json.get(), "verbose", config._verbose);
+  config._requireFromPresent      = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", config._requireFromPresent);
+  config._restrictType            = JsonHelper::getStringValue(json.get(), "restrictType", config._restrictType);
+  config._connectionRetryWaitTime = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "connectionRetryWaitTime", static_cast<double>(config._connectionRetryWaitTime) / (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "initialSyncMaxWaitTime", static_cast<double>(config._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
+  config._idleMinWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMinWaitTime", static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
+  config._idleMaxWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMaxWaitTime", static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
 
   value = JsonHelper::getObjectElement(json.get(), "restrictCollections");
 
@@ -4624,7 +4772,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
 
   TRI_voc_tick_t initialTick = 0;
   if (found) {
-    // url parameter "from" specified
+    // query parameter "from" specified
     initialTick = (TRI_voc_tick_t) StringUtils::uint64(value);
   }
 

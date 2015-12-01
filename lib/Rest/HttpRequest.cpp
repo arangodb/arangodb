@@ -943,7 +943,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
               ++paramEnd;
             }
 
-            // set full url = complete path + url parameters
+            // set full url = complete path + query parameters
             setFullUrl(pathBegin, paramEnd);
 
             // now that the full url was saved, we can insert the null bytes

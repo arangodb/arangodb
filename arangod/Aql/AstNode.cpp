@@ -377,7 +377,7 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
     // (this saves us from writing our own compare function
     // for array AstNodes)
     auto lJson = lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
-    auto rJson = lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+    auto rJson = rhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
 
     int res = TRI_CompareValuesJson(lJson, rJson, compareUtf8);
 
@@ -885,7 +885,7 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
   }
 
   // dump node type
-  auto&& typeString = getTypeString();
+  std::string const& typeString(getTypeString());
   TRI_json_t json;
   if (TRI_InitStringCopyJson(zone, &json, typeString.c_str(), typeString.size()) != TRI_ERROR_NO_ERROR) {
     TRI_FreeJson(zone, node);

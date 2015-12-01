@@ -201,7 +201,7 @@ https://www.arangodb.com/2015/05/reusable-foxx-apps-with-configurations/
 And the blog post on Foxx dependencies can be found here:
 https://www.arangodb.com/2015/05/foxx-dependencies-for-more-composable-foxx-apps/
 
-For more information on manifests see the [Manifest chapter](../Foxx/Develop/Manifest.html). More information on using dependencies can be found in the chapter on [Foxx exports](../Foxx/Develop/Exports.html).
+For more information on manifests see the [Manifest chapter](../Foxx/Develop/Manifest.md). More information on using dependencies can be found in the chapter on [Foxx exports](../Foxx/Develop/Exports.md).
 
 !SUBSECTION Mocha Tests
 
@@ -215,7 +215,7 @@ https://docs.arangodb.com/cookbook/FoxxTesting.html
 
 The API documentation has been updated to Swagger 2. You can now also mount API
 documentation in your own Foxx apps. For more information see the
-[API Documentation chapter](../Foxx/Develop/ApiDocumentation.html) in the
+[API Documentation chapter](../Foxx/Develop/ApiDocumentation.md) in the
 Foxx documentation.
 
 Also see the blog post introducing this feature:

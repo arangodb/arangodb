@@ -152,7 +152,8 @@ function request(req) {
   let options = {
     method: (req.method || 'get').toUpperCase(),
     headers: headers,
-    returnBodyAsBuffer: true
+    returnBodyAsBuffer: true,
+    returnBodyOnError: req.returnBodyOnError !== false
   };
   if (is.existy(req.timeout)) {
     options.timeout = req.timeout;

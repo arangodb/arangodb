@@ -140,14 +140,14 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 /// as soon as the document has been accepted. It will not wait until the
 /// document has been synced to disk.
 ///
-/// Optionally, the URL parameter *waitForSync* can be used to force
+/// Optionally, the query parameter *waitForSync* can be used to force
 /// synchronization of the document creation operation to disk even in case that
 /// the *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* URL parameter can be used to force synchronization of just
+/// the *waitForSync* query parameter can be used to force synchronization of just
 /// this specific operations. To use this, set the *waitForSync* parameter to
 /// *true*. If the *waitForSync* parameter is not specified or set to *false*,
 /// then the collection's default *waitForSync* behavior is applied. The
-/// *waitForSync* URL parameter cannot be used to disable synchronization for
+/// *waitForSync* query parameter cannot be used to disable synchronization for
 /// collections that have a default *waitForSync* value of *true*.
 ///
 /// @RESTRETURNCODES
@@ -210,7 +210,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// Create a document in a collection with a collection-level *waitForSync*
-/// value of *false*, but using the *waitForSync* URL parameter.
+/// value of *false*, but using the *waitForSync* query parameter.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostWait1}
 ///     var cn = "products";
@@ -889,7 +889,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (string const& collname,
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally fetch a document based on a target revision id by
-/// using the *rev* URL parameter.
+/// using the *rev* query parameter.
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -978,7 +978,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally replace a document based on a target revision id by
-/// using the *rev* URL parameter.
+/// using the *rev* query parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
@@ -1001,14 +1001,14 @@ bool RestDocumentHandler::checkDocument () {
 /// relevant in order to avoid confusion when using proxies.
 ///
 ///
-/// Optionally, the URL parameter *waitForSync* can be used to force
+/// Optionally, the query parameter *waitForSync* can be used to force
 /// synchronization of the document replacement operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* URL parameter can be used to force synchronization
+/// Thus, the *waitForSync* query parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* URL parameter cannot be used to disable
+/// applied. The *waitForSync* query parameter cannot be used to disable
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
@@ -1031,7 +1031,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 ///
 /// Specifying a target revision is optional, however, if done, only one of the
-/// described mechanisms must be used (either the *rev* URL parameter or the
+/// described mechanisms must be used (either the *rev* query parameter or the
 /// *if-match* HTTP header).
 /// Regardless which mechanism is used, the parameter needs to contain the target
 /// document revision id as returned in the *_rev* attribute of a document or
@@ -1226,7 +1226,7 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally patch a document based on a target revision id by
-/// using the *rev* URL parameter.
+/// using the *rev* query parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
@@ -1248,14 +1248,14 @@ bool RestDocumentHandler::replaceDocument () {
 /// Setting an attribute value to *null* in the patch document will cause a
 /// value of *null* be saved for the attribute by default.
 ///
-/// Optionally, the URL parameter *waitForSync* can be used to force
+/// Optionally, the query parameter *waitForSync* can be used to force
 /// synchronization of the document update operation to disk even in case
 /// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* URL parameter can be used to force synchronization
+/// Thus, the *waitForSync* query parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
 /// to *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* URL parameter cannot be used to disable
+/// applied. The *waitForSync* query parameter cannot be used to disable
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
@@ -1269,7 +1269,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// body of the response contains an error document.
 ///
 /// You can conditionally update a document based on a target revision id by
-/// using either the *rev* URL parameter or the *if-match* HTTP header.
+/// using either the *rev* query parameter or the *if-match* HTTP header.
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the *policy* parameter. This is the same as when replacing
 /// documents (see replacing documents for details).
@@ -1676,7 +1676,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally remove a document based on a target revision id by
-/// using the *rev* URL parameter.
+/// using the *rev* query parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
@@ -1701,7 +1701,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 ///
 /// If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* URL parameter cannot be used to disable
+/// applied. The *waitForSync* query parameter cannot be used to disable
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///

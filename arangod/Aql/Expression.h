@@ -485,6 +485,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlValue executeSimpleExpressionIterator (AstNode const*,
+                                                  TRI_document_collection_t const**, 
                                                   triagens::arango::AqlTransaction*,
                                                   AqlItemBlock const*,
                                                   size_t,

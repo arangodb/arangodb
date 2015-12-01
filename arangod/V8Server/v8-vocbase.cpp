@@ -622,6 +622,10 @@ static void JS_WaitCollectorWal (const v8::FunctionCallbackInfo<v8::Value>& args
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
@@ -629,7 +633,7 @@ static void JS_WaitCollectorWal (const v8::FunctionCallbackInfo<v8::Value>& args
   }
 
   if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("WAL_WAITCOLLECTOR(<collection-id>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("WAL_WAITCOLLECTOR(<collection-id>, <timeout>)");
   }
 
   std::string const name = TRI_ObjectToString(args[0]);

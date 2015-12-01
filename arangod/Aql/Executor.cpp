@@ -208,7 +208,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "IS_IN_POLYGON",               Function("IS_IN_POLYGON",               "AQL_IS_IN_POLYGON", "l,ln|nb", true, true, false, true, true) },
 
   // fulltext functions
-  { "FULLTEXT",                    Function("FULLTEXT",                    "AQL_FULLTEXT", "h,s,s|n", true, false, true, false, true) },
+  { "FULLTEXT",                    Function("FULLTEXT",                    "AQL_FULLTEXT", "h,s,s|n", true, false, true, false, true, &Functions::Fulltext, NotInCluster) },
 
   // graph functions
   { "PATHS",                       Function("PATHS",                       "AQL_PATHS", "c,h|s,ba", true, false, true, false, false) },

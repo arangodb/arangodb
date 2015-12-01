@@ -119,7 +119,7 @@ std::map<std::string, std::string> getForwardableRequestHeaders (triagens::rest:
         key != "host" &&
         key != "origin" &&
         key.substr(0, 14) != "access-control") {
-      result.emplace(make_pair(key, (*it).second));
+      result.emplace(key, (*it).second);
     }
     ++it;
   }

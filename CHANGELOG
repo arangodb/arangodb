@@ -1,7 +1,67 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
-* web interface: aql editor now supports bind parameters
+* replication improvements:
+
+  - added `autoResync` configuration parameter for continuous replication. 
+ 
+    When set to `true`, a replication slave will automatically trigger a full data 
+    re-synchronization with the master when the master cannot provide the log data 
+    the slave had asked for. Note that `autoResync` will only work when the option
+    `requireFromPresent` is also set to `true` for the continuous replication, or
+    when the continuous syncer is started and detects that no start tick is present.
+    
+    Automatic re-synchronization may transfer a lot of data from the master to the
+    slave and may be expensive. It is therefore turned off by default. 
+    When turned off, the slave will never perform an automatic re-synchronization
+    with the master.
+
+  - added `idleMinWaitTime` and `idleMaxWaitTime` configuration parameters for
+    continuous replication. 
+
+    These parameters can be used to control the minimum and maximum wait time the 
+    slave will (intentionally) idle and not poll for master log changes in case the 
+    master had sent the full logs already. 
+    The `idleMaxWaitTime` value will only be used when `adapativePolling` is set
+    to `true`. When `adaptivePolling` is disable, only `idleMinWaitTime` will be
+    used as a constant time span in which the slave will not poll the master for
+    further changes. The default values are 0.5 seconds for `idleMinWaitTime` and
+    2.5 seconds for `idleMaxWaitTime`, which correspond to the hard-coded values
+    used in previous versions of ArangoDB.
+
+  - added `initialSyncMaxWaitTime` configuration parameter for initial and continuous
+    replication
+
+    This option controls the maximum wait time (in seconds) that the initial 
+    synchronization will wait for a response from the master when fetching initial 
+    collection data. If no response is received within this time period, the initial
+    synchronization will give up and fail. This option is also relevant for 
+    continuous replication in case *autoResync* is set to *true*, as then the
+    continuous replication may trigger a full data re-synchronization in case
+    the master cannot the log data the slave had asked for.
+
+  - HTTP requests sent from the slave to the master during initial synchronization
+    will now be retried if they fail with connection problems.
+ 
+  - the initial synchronization now logs its progress so it can be queried using
+    the regular replication status check APIs.
+
+* fixed non-deterministic query results in some cluster queries
+
+* fixed issue #1589
+
+* return HTTP status code 410 (gone) instead of HTTP 408 (request timeout) for
+  server-side operations that are canceled / killed. Sending 410 instead of 408
+  prevents clients from re-starting the same (canceled) operation. Google Chrome
+  for example sends the HTTP request again in case it is responded with an HTTP
+  408, and this is exactly the opposite of the desired behavior when an operation
+  is canceled / killed by the user.
+
+* web interface: queries in AQL editor now cancelable
+
+* web interface: dashboard - added replication information
+
+* web interface: AQL editor now supports bind parameters
 
 * added startup option `--server.hide-product-header` to make the server not send
   the HTTP response header `"Server: ArangoDB"` in its HTTP responses. By default,
@@ -24,14 +84,15 @@ v2.8.0 (XXXX-XX-XX)
   - ABS
   - APPEND
   - COLLECTIONS
-  - CONTAINS
   - CURRENT_DATABASE
   - DOCUMENT
   - EDGES
+  - FIRST
   - FIRST_DOCUMENT
   - FIRST_LIST
   - FLATTEN
   - FLOOR
+  - FULLTEXT
   - LAST
   - MEDIAN
   - MERGE_RECURSIVE
@@ -99,13 +160,27 @@ v2.8.0 (XXXX-XX-XX)
 * added convenience function `db._explain(query)` for human-readable explanation
   of AQL queries
 
+* module resolution as used by `require` now behaves more like in node.js
+
+* the `org/arangodb/request` module now returns response bodies for error responses
+  by default. The old behaviour of not returning bodies for error responses can be
+  re-enabled by explicitly setting the option `returnBodyOnError` to `false` (#1437)
+
 
 v2.7.2 (XXXX-XX-XX)
 -------------------
 
+* fixed undefined behavior when accessing the top level of a document with the `[*]`
+  operator
+
 * fixed potentially invalid pointer access in shaper when the currently accessed
   document got re-located by the WAL collector at the very same time
 
+* Foxx: optional configuration options no longer log validation errors when assigned
+  empty values (#1495)
+
+* Foxx: constructors provided to Repository and Model sub-classes via extend are
+  now correctly called (#1592)
 
 v2.7.1 (2015-11-07)
 -------------------

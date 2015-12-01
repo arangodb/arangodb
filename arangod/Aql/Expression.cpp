@@ -325,7 +325,7 @@ bool Expression::findInArray (AqlValue const& left,
  
   size_t const n = right.arraySize();
 
-  if (node->getMember(1)->isSorted()) {
+  if (n > 3 && node->getMember(1)->isSorted()) {
     // node values are sorted. can use binary search
     size_t l = 0;
     size_t r = n - 1;
@@ -529,7 +529,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     case NODE_TYPE_EXPANSION:
       return executeSimpleExpressionExpansion(node, trx, argv, startPos, vars, regs);
     case NODE_TYPE_ITERATOR:
-      return executeSimpleExpressionIterator(node, trx, argv, startPos, vars, regs);
+      return executeSimpleExpressionIterator(node, collection, trx, argv, startPos, vars, regs);
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
     case NODE_TYPE_OPERATOR_BINARY_MINUS:
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
@@ -696,7 +696,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess (AstNode const* node,
       return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
     }
     else if (indexResult.isString()) {
-      auto&& value = indexResult.toString();
+      auto value(std::move(indexResult.toString()));
       indexResult.destroy();
 
       try {
@@ -935,8 +935,7 @@ AqlValue Expression::executeSimpleExpressionFCall (AstNode const* node,
         parameters.emplace_back(AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, arg->getStringValue(), arg->getStringLength())), nullptr);
       }
       else {
-        auto value = executeSimpleExpression(arg, &myCollection, trx, argv, startPos, vars, regs, false);
-        parameters.emplace_back(value, myCollection);
+        parameters.emplace_back(executeSimpleExpression(arg, &myCollection, trx, argv, startPos, vars, regs, false), myCollection);
       }
     }
 
@@ -1290,6 +1289,7 @@ AqlValue Expression::executeSimpleExpressionExpansion (AstNode const* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpressionIterator (AstNode const* node,
+                                                      TRI_document_collection_t const** collection, 
                                                       triagens::arango::AqlTransaction* trx,
                                                       AqlItemBlock const* argv,
                                                       size_t startPos,
@@ -1298,9 +1298,8 @@ AqlValue Expression::executeSimpleExpressionIterator (AstNode const* node,
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  // intentionally do not stringify node 0
-  TRI_document_collection_t const* myCollection = nullptr;
-  return executeSimpleExpression(node->getMember(1), &myCollection, trx, argv, startPos, vars, regs, true);
+  *collection = nullptr;
+  return executeSimpleExpression(node->getMember(1), collection, trx, argv, startPos, vars, regs, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

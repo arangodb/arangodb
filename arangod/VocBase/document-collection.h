@@ -565,6 +565,15 @@ static inline bool TRI_IS_EDGE_MARKER (TRI_df_marker_t const* marker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the master pointer points to an edge marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool TRI_IS_EDGE_MARKER (TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
+  return TRI_IS_EDGE_MARKER(marker);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the pointer to the _from key from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -698,6 +707,15 @@ static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID (TRI_df_marker_t const* marke
 #endif
 
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the revision id from a master pointer
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID (TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
+  return TRI_EXTRACT_MARKER_RID(marker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

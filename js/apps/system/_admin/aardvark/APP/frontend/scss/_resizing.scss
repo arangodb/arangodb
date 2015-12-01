@@ -157,7 +157,7 @@
         .dashboard-interior-chart {
           float: left;
           $int-height: (($dashboard-height - 29px) / 2) - $tendency-height-corrector;
-          height: $int-height;
+          //height: $int-height + 10px;
           width: (($int-width - 11px) / 3) - 2px;
         }
       }

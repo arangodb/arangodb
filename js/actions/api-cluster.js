@@ -913,7 +913,7 @@ actions.defineHttp({
 ///
 /// @ RESTRETURNCODE{200} is returned when everything went well.
 ///
-/// @ RESTRETURNCODE{400} the primary was not given as URL parameter.
+/// @ RESTRETURNCODE{400} the primary was not given as query parameter.
 ///
 /// @ RESTRETURNCODE{403} server is not a coordinator or method was not GET.
 ///

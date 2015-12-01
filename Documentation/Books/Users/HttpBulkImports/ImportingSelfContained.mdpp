@@ -11,7 +11,7 @@ Example input data:
     { "_key": "key2", ... }
     ...
 
-To use this method, the *type* URL parameter should be set to *documents*.
+To use this method, the *type* query parameter should be set to *documents*.
 
 It is also possible to upload self-contained JSON documents that are embedded
 into a JSON array. Each element from the array will be treated as a document and
@@ -34,9 +34,9 @@ format requires ArangoDB to parse the complete array and keep it in memory for
 the duration of the import. This might be more resource-intensive than the
 line-wise processing.
 
-To use this method, the *type* URL parameter should be set to *array*.
+To use this method, the *type* query parameter should be set to *array*.
 
-Setting the *type* URL parameter to *auto* will make the server auto-detect whether
+Setting the *type* query parameter to *auto* will make the server auto-detect whether
 the data are line-wise JSON documents (type = documents) or a JSON array (type = array).
 
 *Examples*

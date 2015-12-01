@@ -34,6 +34,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/WriteLocker.h"
+#include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -100,15 +101,7 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 ContinuousSyncer::~ContinuousSyncer () {
-  // abort all running transactions
-  for (auto& it : _ongoingTransactions) {
-    auto trx = it.second;
-
-    if (trx != nullptr) {
-      trx->abort();
-      delete trx;
-    }
-  }
+  abortOngoingTransactions();
 }
 
 // -----------------------------------------------------------------------------
@@ -126,6 +119,7 @@ int ContinuousSyncer::run () {
     return TRI_ERROR_INTERNAL;
   }
 
+retry:
   string errorMsg;
 
   int res = TRI_ERROR_NO_ERROR;
@@ -154,7 +148,7 @@ int ContinuousSyncer::run () {
 
       if (connectRetries <= _configuration._maxConnectRetries) {
         // check if we are aborted externally
-        if (_applier->wait(10 * 1000 * 1000)) {
+        if (_applier->wait(_configuration._connectionRetryWaitTime)) {
           continue;
         }
 
@@ -198,6 +192,74 @@ int ContinuousSyncer::run () {
     // stop ourselves
     _applier->stop(false);
 
+    if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT ||
+        res == TRI_ERROR_REPLICATION_NO_START_TICK) {
+      if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) {
+        LOG_WARNING("replication applier stopped for database '%s' because required tick is not present on master",
+                    _vocbase->_name);
+      }
+
+      // remove previous applier state
+      abortOngoingTransactions();
+
+      TRI_RemoveStateReplicationApplier(_vocbase);
+
+      {
+        WRITE_LOCKER_EVENTUAL(_applier->_statusLock, 1000);
+      
+        LOG_TRACE("stopped replication applier for database '%s' with lastProcessedContinuousTick: %llu, lastAppliedContinuousTick: %llu, safeResumeTick: %llu",
+                  _vocbase->_name,
+                  (unsigned long long) _applier->_state._lastProcessedContinuousTick,
+                  (unsigned long long) _applier->_state._lastAppliedContinuousTick,
+                  (unsigned long long) _applier->_state._safeResumeTick);
+
+        _applier->_state._lastProcessedContinuousTick = 0;
+        _applier->_state._lastAppliedContinuousTick = 0;
+        _applier->_state._safeResumeTick = 0;
+        _applier->_state._failedConnects = 0;
+        _applier->_state._totalRequests = 0;
+        _applier->_state._totalFailedConnects = 0;
+
+        saveApplierState();
+      }
+      
+      if (! _configuration._autoResync) {
+        return res;
+      }
+      
+      // do an automatic full resync
+      LOG_WARNING("restarting initial synchronization for database '%s' because autoResync option is set", 
+                  _vocbase->_name);
+    
+      // start initial synchronization
+      errorMsg = "";
+
+      try {
+        InitialSyncer syncer(_vocbase, 
+            &_configuration, 
+            _configuration._restrictCollections, 
+            _configuration._restrictType, 
+            _configuration._verbose);
+
+        res = syncer.run(errorMsg, true);
+
+        if (res == TRI_ERROR_NO_ERROR) {
+          TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
+          LOG_INFO("automatic resynchronization for database '%s' finished. restarting continous replication applier from tick %llu",
+                   _vocbase->_name,
+                   (unsigned long long) lastLogTick);
+          _initialTick = lastLogTick;
+          _useTick = true;
+          goto retry;
+        }
+        // fall through otherwise
+      }
+      catch (...) {
+        errorMsg = "caught an exception";
+        res = TRI_ERROR_INTERNAL;
+      }
+    }
+
     return res;
   }
 
@@ -209,12 +271,35 @@ int ContinuousSyncer::run () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief abort all ongoing transactions
+////////////////////////////////////////////////////////////////////////////////
+
+void ContinuousSyncer::abortOngoingTransactions () {  
+  try {
+    // abort all running transactions
+    for (auto& it : _ongoingTransactions) {
+      auto trx = it.second;
+
+      if (trx != nullptr) {
+        trx->abort();
+        delete trx;
+      }
+    }
+
+    _ongoingTransactions.clear();
+  }
+  catch (...) {
+    // ignore errors here
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set the applier progress
 ////////////////////////////////////////////////////////////////////////////////
 
 void ContinuousSyncer::setProgress (char const* msg) {
   _applier->setProgress(msg, true);
-          
+         
   if (_verbose) {
     LOG_INFO("applier progress: %s", msg);
   }
@@ -978,7 +1063,14 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
     if (res == TRI_ERROR_REPLICATION_NO_RESPONSE ||
         res == TRI_ERROR_REPLICATION_MASTER_ERROR) {
       // master error. try again after a sleep period
-      sleepTime = 30 * 1000 * 1000;
+      if (_configuration._connectionRetryWaitTime > 0) {
+        sleepTime = _configuration._connectionRetryWaitTime;
+      }
+      else {
+        // default to prevent spinning too busy here
+        sleepTime = 30 * 1000 * 1000;
+      }
+      
       connectRetries++;
 
       {
@@ -1016,12 +1108,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
         sleepTime      = 0;
       }
       else {
-        if (masterActive) {
-          sleepTime = 500 * 1000;
-        }
-        else {
-          sleepTime = 5 * 1000 * 1000;
-        }
+        sleepTime = _configuration._idleMinWaitTime;
 
         if (_configuration._adaptivePolling) {
           inactiveCycles++;
@@ -1033,6 +1120,10 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
           }
           if (inactiveCycles > 15) {
             sleepTime *= 2;
+          }
+       
+          if (sleepTime > _configuration._idleMaxWaitTime) {
+            sleepTime = _configuration._idleMaxWaitTime;
           }
         }
       }

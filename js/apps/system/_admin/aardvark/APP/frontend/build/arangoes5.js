@@ -1959,7 +1959,7 @@ n = 0;}return new Array(n).join(" ");}function wrap(str,width){'use strict';var 
 return "[ " + node.subNodes.slice(0,20).map(buildExpression).join(", ") + " ... ]";}return "[ " + node.subNodes.map(buildExpression).join(", ") + " ]";}return "[ ]";case "unary not":return "! " + buildExpression(node.subNodes[0]);case "unary plus":return "+ " + buildExpression(node.subNodes[0]);case "unary minus":return "- " + buildExpression(node.subNodes[0]);case "array limit":return buildExpression(node.subNodes[0]) + ", " + buildExpression(node.subNodes[1]);case "attribute access":return buildExpression(node.subNodes[0]) + "." + attribute(node.name);case "indexed access":return buildExpression(node.subNodes[0]) + "[" + buildExpression(node.subNodes[1]) + "]";case "range":return buildExpression(node.subNodes[0]) + " .. " + buildExpression(node.subNodes[1]) + "   " + annotation("/* range */");case "expand":case "expansion":if(node.subNodes.length > 2){ // [FILTER ...]
 references[node.subNodes[0].subNodes[0].name] = [node.levels,node.subNodes[0].subNodes[1],node.subNodes[2],node.subNodes[3],node.subNodes[4]];}else { // [*]
 references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];}_x = node.subNodes[1];_again = true;continue _function;case "user function call":return func(node.name) + "(" + (node.subNodes && node.subNodes[0].subNodes || []).map(buildExpression).join(", ") + ")" + "   " + annotation("/* user-defined function */");case "function call":return func(node.name) + "(" + (node.subNodes && node.subNodes[0].subNodes || []).map(buildExpression).join(", ") + ")";case "plus":return buildExpression(node.subNodes[0]) + " + " + buildExpression(node.subNodes[1]);case "minus":return buildExpression(node.subNodes[0]) + " - " + buildExpression(node.subNodes[1]);case "times":return buildExpression(node.subNodes[0]) + " * " + buildExpression(node.subNodes[1]);case "division":return buildExpression(node.subNodes[0]) + " / " + buildExpression(node.subNodes[1]);case "modulus":return buildExpression(node.subNodes[0]) + " % " + buildExpression(node.subNodes[1]);case "compare not in":return buildExpression(node.subNodes[0]) + " not in " + buildExpression(node.subNodes[1]);case "compare in":return buildExpression(node.subNodes[0]) + " in " + buildExpression(node.subNodes[1]);case "compare ==":return buildExpression(node.subNodes[0]) + " == " + buildExpression(node.subNodes[1]);case "compare !=":return buildExpression(node.subNodes[0]) + " != " + buildExpression(node.subNodes[1]);case "compare >":return buildExpression(node.subNodes[0]) + " > " + buildExpression(node.subNodes[1]);case "compare >=":return buildExpression(node.subNodes[0]) + " >= " + buildExpression(node.subNodes[1]);case "compare <":return buildExpression(node.subNodes[0]) + " < " + buildExpression(node.subNodes[1]);case "compare <=":return buildExpression(node.subNodes[0]) + " <= " + buildExpression(node.subNodes[1]);case "logical or":return buildExpression(node.subNodes[0]) + " || " + buildExpression(node.subNodes[1]);case "logical and":return buildExpression(node.subNodes[0]) + " && " + buildExpression(node.subNodes[1]);case "ternary":return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);case "n-ary or":if(node.hasOwnProperty("subNodes")){return node.subNodes.map(function(sub){return buildExpression(sub);}).join(" || ");}return "";case "n-ary and":if(node.hasOwnProperty("subNodes")){return node.subNodes.map(function(sub){return buildExpression(sub);}).join(" && ");}return "";default:return "unhandled node type (" + node.type + ")";}}};var buildBound=function buildBound(attr,operators,bound){var boundValue=bound.isConstant?value(JSON.stringify(bound.bound)):buildExpression(bound.bound);return attribute(attr) + " " + operators[bound.include?1:0] + " " + boundValue;};var buildRanges=function buildRanges(ranges){var results=[];ranges.forEach(function(range){var attr=range.attr;if(range.lowConst.hasOwnProperty("bound") && range.highConst.hasOwnProperty("bound") && JSON.stringify(range.lowConst.bound) === JSON.stringify(range.highConst.bound)){range.equality = true;}if(range.equality){if(range.lowConst.hasOwnProperty("bound")){results.push(buildBound(attr,["==","=="],range.lowConst));}else if(range.hasOwnProperty("lows")){range.lows.forEach(function(bound){results.push(buildBound(attr,["==","=="],bound));});}}else {if(range.lowConst.hasOwnProperty("bound")){results.push(buildBound(attr,[">",">="],range.lowConst));}if(range.highConst.hasOwnProperty("bound")){results.push(buildBound(attr,["<","<="],range.highConst));}if(range.hasOwnProperty("lows")){range.lows.forEach(function(bound){results.push(buildBound(attr,[">",">="],bound));});}if(range.hasOwnProperty("highs")){range.highs.forEach(function(bound){results.push(buildBound(attr,["<","<="],bound));});}}});if(results.length > 1){return "(" + results.join(" && ") + ")";}return results[0];};var label=function label(node){switch(node.type){case "SingletonNode":return keyword("ROOT");case "NoResultsNode":return keyword("EMPTY") + "   " + annotation("/* empty result set */");case "EnumerateCollectionNode":collectionVariables[node.outVariable.id] = node.collection;return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* full collection scan" + (node.random?", random order":"") + " */");case "EnumerateListNode":return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + variableName(node.inVariable) + "   " + annotation("/* list iteration */");case "IndexNode":collectionVariables[node.outVariable.id] = node.collection;var types=[];node.indexes.forEach(function(idx,i){types.push((idx.reverse?"reverse ":"") + idx.type + " index scan");idx.collection = node.collection;idx.node = node.id;if(node.condition.type && node.condition.type === 'n-ary or'){idx.condition = buildExpression(node.condition.subNodes[i]);}else {idx.condition = "*"; // empty condition. this is likely an index used for sorting only
-}indexes.push(idx);});return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");case "IndexRangeNode":collectionVariables[node.outVariable.id] = node.collection;var index=node.index;index.ranges = node.ranges.map(buildRanges).join(" || ");index.collection = node.collection;index.node = node.id;indexes.push(index);return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse?"reverse ":"") + node.index.type + " index scan */");case "CalculationNode":return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");case "FilterNode":return keyword("FILTER") + " " + variableName(node.inVariable);case "AggregateNode":return keyword("COLLECT") + " " + node.aggregates.map(function(node){return variableName(node.outVariable) + " = " + variableName(node.inVariable);}).join(", ") + (node.count?" " + keyword("WITH COUNT"):"") + (node.outVariable?" " + keyword("INTO") + " " + variableName(node.outVariable):"") + (node.keepVariables?" " + keyword("KEEP") + " " + node.keepVariables.map(function(variable){return variableName(variable);}).join(", "):"") + "   " + annotation("/* " + node.aggregationOptions.method + "*/");case "SortNode":return keyword("SORT") + " " + node.elements.map(function(node){return variableName(node.inVariable) + " " + keyword(node.ascending?"ASC":"DESC");}).join(", ");case "LimitNode":return keyword("LIMIT") + " " + value(JSON.stringify(node.offset)) + ", " + value(JSON.stringify(node.limit));case "ReturnNode":return keyword("RETURN") + " " + variableName(node.inVariable);case "SubqueryNode":return keyword("LET") + " " + variableName(node.outVariable) + " = ...   " + annotation("/* subquery */");case "InsertNode":modificationFlags = node.modificationFlags;return keyword("INSERT") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpdateNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("UPDATE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("UPDATE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "ReplaceNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("REPLACE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("REPLACE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpsertNode":modificationFlags = node.modificationFlags;return keyword("UPSERT") + " " + variableName(node.inDocVariable) + " " + keyword("INSERT") + " " + variableName(node.insertVariable) + " " + keyword(node.isReplace?"REPLACE":"UPDATE") + " " + variableName(node.updateVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoveNode":modificationFlags = node.modificationFlags;return keyword("REMOVE") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoteNode":return keyword("REMOTE");case "DistributeNode":return keyword("DISTRIBUTE");case "ScatterNode":return keyword("SCATTER");case "GatherNode":return keyword("GATHER");}return "unhandled node type (" + node.type + ")";};var level=0,subqueries=[];var indent=function indent(level,isRoot){return pad(1 + level + level) + (isRoot?"* ":"- ");};var preHandle=function preHandle(node){usedVariables = {};isConst = true;if(node.type === "SubqueryNode"){subqueries.push(level);}};var postHandle=function postHandle(node){if(["EnumerateCollectionNode","EnumerateListNode","IndexRangeNode","IndexNode","SubqueryNode"].indexOf(node.type) !== -1){level++;}else if(node.type === "ReturnNode" && subqueries.length > 0){level = subqueries.pop();}else if(node.type === "SingletonNode"){level++;}};var constNess=function constNess(){if(isConst){return "   " + annotation("/* const assignment */");}return "";};var variablesUsed=function variablesUsed(){var used=[];for(var a in usedVariables) {if(usedVariables.hasOwnProperty(a)){used.push(variable(a) + " : " + collection(usedVariables[a]));}}if(used.length > 0){return "   " + annotation("/* collections used:") + " " + used.join(", ") + " " + annotation("*/");}return "";};var printNode=function printNode(node){preHandle(node);var line=" " + pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " + keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   " + pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + "   " + indent(level,node.type === "SingletonNode") + label(node);if(node.type === "CalculationNode"){line += variablesUsed() + constNess();}stringBuilder.appendLine(line);postHandle(node);};printQuery(query);stringBuilder.appendLine(section("Execution plan:"));var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   " + pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " + header("Comment");stringBuilder.appendLine(line);var walk=[rootNode];while(walk.length > 0) {var id=walk.pop();var node=nodes[id];printNode(node);if(parents.hasOwnProperty(id)){walk = walk.concat(parents[id]);}if(node.type === "SubqueryNode"){walk = walk.concat([node.subquery.nodes[0].id]);}}stringBuilder.appendLine();printIndexes(indexes);stringBuilder.appendLine();printRules(plan.rules);printModificationFlags(modificationFlags);printWarnings(explain.warnings);} /* the exposed function */function explain(data,options,shouldPrint){'use strict';if(typeof data === "string"){data = {query:data};}if(!(data instanceof Object)){throw "ArangoStatement needs initial data";}options = options || {};setColors(options.colors === undefined?true:options.colors);var stmt=db._createStatement(data);var result=stmt.explain(options);stringBuilder.clearOutput();processQuery(data.query,result,true);if(shouldPrint === undefined || shouldPrint){print(stringBuilder.getOutput());}else {return stringBuilder.getOutput();}}exports.explain = explain;});module.define("org/arangodb/aql/functions",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+}indexes.push(idx);});return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");case "IndexRangeNode":collectionVariables[node.outVariable.id] = node.collection;var index=node.index;index.ranges = node.ranges.map(buildRanges).join(" || ");index.collection = node.collection;index.node = node.id;indexes.push(index);return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse?"reverse ":"") + node.index.type + " index scan */");case "CalculationNode":return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");case "FilterNode":return keyword("FILTER") + " " + variableName(node.inVariable);case "AggregateNode":return keyword("COLLECT") + " " + node.aggregates.map(function(node){return variableName(node.outVariable) + " = " + variableName(node.inVariable);}).join(", ") + (node.count?" " + keyword("WITH COUNT"):"") + (node.outVariable?" " + keyword("INTO") + " " + variableName(node.outVariable):"") + (node.keepVariables?" " + keyword("KEEP") + " " + node.keepVariables.map(function(variable){return variableName(variable);}).join(", "):"") + "   " + annotation("/* " + node.aggregationOptions.method + "*/");case "SortNode":return keyword("SORT") + " " + node.elements.map(function(node){return variableName(node.inVariable) + " " + keyword(node.ascending?"ASC":"DESC");}).join(", ");case "LimitNode":return keyword("LIMIT") + " " + value(JSON.stringify(node.offset)) + ", " + value(JSON.stringify(node.limit));case "ReturnNode":return keyword("RETURN") + " " + variableName(node.inVariable);case "SubqueryNode":return keyword("LET") + " " + variableName(node.outVariable) + " = ...   " + annotation("/* subquery */");case "InsertNode":modificationFlags = node.modificationFlags;return keyword("INSERT") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpdateNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("UPDATE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("UPDATE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "ReplaceNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("REPLACE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("REPLACE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpsertNode":modificationFlags = node.modificationFlags;return keyword("UPSERT") + " " + variableName(node.inDocVariable) + " " + keyword("INSERT") + " " + variableName(node.insertVariable) + " " + keyword(node.isReplace?"REPLACE":"UPDATE") + " " + variableName(node.updateVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoveNode":modificationFlags = node.modificationFlags;return keyword("REMOVE") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoteNode":return keyword("REMOTE");case "DistributeNode":return keyword("DISTRIBUTE");case "ScatterNode":return keyword("SCATTER");case "GatherNode":return keyword("GATHER");}return "unhandled node type (" + node.type + ")";};var level=0,subqueries=[];var indent=function indent(level,isRoot){return pad(1 + level + level) + (isRoot?"* ":"- ");};var preHandle=function preHandle(node){usedVariables = {};isConst = true;if(node.type === "SubqueryNode"){subqueries.push(level);}};var postHandle=function postHandle(node){if(["EnumerateCollectionNode","EnumerateListNode","IndexRangeNode","IndexNode","SubqueryNode"].indexOf(node.type) !== -1){level++;}else if(node.type === "ReturnNode" && subqueries.length > 0){level = subqueries.pop();}else if(node.type === "SingletonNode"){level++;}};var constNess=function constNess(){if(isConst){return "   " + annotation("/* const assignment */");}return "";};var variablesUsed=function variablesUsed(){var used=[];for(var a in usedVariables) {if(usedVariables.hasOwnProperty(a)){used.push(variable(a) + " : " + collection(usedVariables[a]));}}if(used.length > 0){return "   " + annotation("/* collections used:") + " " + used.join(", ") + " " + annotation("*/");}return "";};var printNode=function printNode(node){preHandle(node);var line=" " + pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " + keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   " + pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + "   " + indent(level,node.type === "SingletonNode") + label(node);if(node.type === "CalculationNode"){line += variablesUsed() + constNess();}stringBuilder.appendLine(line);postHandle(node);};printQuery(query);stringBuilder.appendLine(section("Execution plan:"));var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   " + pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " + header("Comment");stringBuilder.appendLine(line);var walk=[rootNode];while(walk.length > 0) {var id=walk.pop();var node=nodes[id];printNode(node);if(parents.hasOwnProperty(id)){walk = walk.concat(parents[id]);}if(node.type === "SubqueryNode"){walk = walk.concat([node.subquery.nodes[0].id]);}}stringBuilder.appendLine();printIndexes(indexes);stringBuilder.appendLine();printRules(plan.rules);printModificationFlags(modificationFlags);printWarnings(explain.warnings);} /* the exposed function */function explain(data,options,shouldPrint){'use strict';if(typeof data === "string"){data = {query:data};}if(!(data instanceof Object)){throw "ArangoStatement needs initial data";}if(options === undefined){options = data.options;}options = options || {};setColors(options.colors === undefined?true:options.colors);var stmt=db._createStatement(data);var result=stmt.explain(options);stringBuilder.clearOutput();processQuery(data.query,result,true);if(shouldPrint === undefined || shouldPrint){print(stringBuilder.getOutput());}else {return stringBuilder.getOutput();}}exports.explain = explain;});module.define("org/arangodb/aql/functions",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL user functions management
 ///
 /// @file
@@ -3091,7 +3091,7 @@ AQLGenerator.prototype._edges = function(edgeExample,options){this._clearCursor(
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -3140,7 +3140,7 @@ AQLGenerator.prototype.edges = function(example){this._addToPrint("edges",exampl
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -3190,7 +3190,7 @@ AQLGenerator.prototype.outEdges = function(example){this._addToPrint("outEdges",
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -3249,7 +3249,7 @@ AQLGenerator.prototype._vertices = function(example,options,mergeWith){this._cle
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -3299,7 +3299,7 @@ AQLGenerator.prototype.vertices = function(example){this._addToPrint("vertices",
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -3349,7 +3349,7 @@ AQLGenerator.prototype.fromVertices = function(example){this._addToPrint("fromVe
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -3442,12 +3442,12 @@ AQLGenerator.prototype.path = function(){this._clearCursor();var statement=new A
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @PARAM{options, object, optional}
 ///   An object defining further options. Can have the following values:
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
+///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition-of-examples)
 ///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
 ///       considered to be on the path.
 ///   * *vertexCollectionRestriction* : One or a list of vertex-collection names that should be
@@ -3568,7 +3568,7 @@ AQLGenerator.prototype.restrict = function(restrictions){var rest=stringToArray(
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -4151,7 +4151,7 @@ Object.keys(graph).forEach(function(key){if(key.substring(0,1) !== "_"){delete g
 /// `graph.vertexCollectionName.remove(vertexId, options)`
 ///
 /// Additionally removes all ingoing and outgoing edges of the vertex recursively
-/// (see [edge remove](#edge.remove)).
+/// (see [edge remove](#remove-an-edge)).
 ///
 /// @PARAMS
 ///
@@ -4430,7 +4430,7 @@ Graph.prototype._OUTEDGES = function(vertexId){var err;if(vertexId.indexOf("/") 
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -4472,7 +4472,7 @@ return AQLStmt.outEdges(edgeExample);}; ////////////////////////////////////////
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 ///
 /// @EXAMPLES
 ///
@@ -4570,12 +4570,12 @@ Graph.prototype._getVertexCollectionByName = function(name){if(this.__vertexColl
 /// @PARAMS
 ///
 /// @PARAM{vertexExample, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](#definition-of-examples)
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeExamples*: Filter the edges, see [Definition of examples](#definition_of_examples)
-///   * *neighborExamples*: Filter the neighbor vertices, see [Definition of examples](#definition_of_examples)
+///   * *edgeExamples*: Filter the edges, see [Definition of examples](#definition-of-examples)
+///   * *neighborExamples*: Filter the neighbor vertices, see [Definition of examples](#definition-of-examples)
 ///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
 ///       considered to be on the path.
 ///   * *vertexCollectionRestriction* : One or a list of vertex-collection names that should be
@@ -4616,7 +4616,7 @@ if(!options){options = {};}return AQLStmt.vertices(vertexExample).neighbors(opti
 ///
 /// This function returns the intersection of *graph_module._neighbors(vertex1Example, optionsVertex1)*
 /// and *graph_module._neighbors(vertex2Example, optionsVertex2)*.
-/// For parameter documentation see [_neighbors](#_neighbors).
+/// For parameter documentation see [_neighbors](#neighbors).
 ///
 /// The complexity of this method is **O(n\*m^x)** with *n* being the maximal amount of vertices
 /// defined by the parameters vertexExamples, *m* the average amount of neighbors and *x* the
@@ -4656,7 +4656,7 @@ Graph.prototype._commonNeighbors = function(vertex1Example,vertex2Example,option
 ///
 /// `graph._countCommonNeighbors(vertex1Example, vertex2Examples, optionsVertex1, optionsVertex2)`
 ///
-/// Similar to [_commonNeighbors](#_commonNeighbors) but returns count instead of the elements.
+/// Similar to [_commonNeighbors](#commonneighbors) but returns count instead of the elements.
 ///
 /// @EXAMPLES
 ///
@@ -4699,10 +4699,10 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example,vertex2Example,o
 /// @PARAMS
 ///
 /// @PARAM{vertex1Examples, object, optional}
-/// Filter the set of source vertices, see [Definition of examples](#definition_of_examples)
+/// Filter the set of source vertices, see [Definition of examples](#definition-of-examples)
 ///
 /// @PARAM{vertex2Examples, object, optional}
-/// Filter the set of vertices compared to, see [Definition of examples](#definition_of_examples)
+/// Filter the set of vertices compared to, see [Definition of examples](#definition-of-examples)
 ///
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
@@ -4741,7 +4741,7 @@ Graph.prototype._commonProperties = function(vertex1Example,vertex2Example,optio
 ///
 /// `graph._countCommonProperties(vertex1Example, vertex2Examples, options)`
 ///
-/// Similar to [_commonProperties](#_commonProperties) but returns count instead of
+/// Similar to [_commonProperties](#commonproperties) but returns count instead of
 /// the objects.
 ///
 /// @EXAMPLES
@@ -4836,17 +4836,17 @@ Graph.prototype._paths = function(options){var query="RETURN" + " GRAPH_PATHS(@g
 /// representing the length.
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @PARAMS
 ///
 /// @PARAM{startVertexExample, object, optional}
 /// An example for the desired start Vertices
-/// (see [Definition of examples](#definition_of_examples)).
+/// (see [Definition of examples](#definition-of-examples)).
 ///
 /// @PARAM{endVertexExample, object, optional}
 /// An example for the desired
-/// end Vertices (see [Definition of examples](#definition_of_examples)).
+/// end Vertices (see [Definition of examples](#definition-of-examples)).
 ///
 /// @PARAM{options, object, optional}
 /// An object containing options, see below:
@@ -4862,7 +4862,7 @@ Graph.prototype._paths = function(options){var query="RETURN" + " GRAPH_PATHS(@g
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the
 ///   edges in the shortest paths
-///   (see [example](#short_explaination_of_the_vertex_example_parameter)).
+///   (see [example](#definition-of-examples)).
 ///   * *algorithm*                        : The algorithm to calculate
 ///   the shortest paths. If both start and end vertex examples are empty
 ///   [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
@@ -4906,7 +4906,7 @@ Graph.prototype._shortestPath = function(startVertexExample,endVertexExample,opt
 ///
 /// `graph._distanceTo(startVertexExample, endVertexExample, options)`
 ///
-/// This function is a wrapper of [graph._shortestPath](#_shortestpath).
+/// This function is a wrapper of [graph._shortestPath](#shortestpath).
 /// It does not return the actual path but only the distance between two vertices.
 ///
 /// @EXAMPLES
@@ -4946,12 +4946,12 @@ Graph.prototype._distanceTo = function(startVertexExample,endVertexExample,optio
 /// example as parameter for vertexExample.
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @PARAMS
 ///
 /// @PARAM{vertexExample, object, optional}
-/// Filter the vertices, see [Definition of examples](#definition_of_examples)
+/// Filter the vertices, see [Definition of examples](#definition-of-examples)
 ///
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
@@ -4962,7 +4962,7 @@ Graph.prototype._distanceTo = function(startVertexExample,endVertexExample,optio
 ///       considered for source vertices.
 ///   * *endVertexCollectionRestriction* : One or a list of vertex-collection names that should be
 ///       considered for target vertices.
-///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
+///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition-of-examples)
 ///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
 ///       [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
 ///       [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
@@ -5017,10 +5017,10 @@ Graph.prototype._absoluteEccentricity = function(vertexExample,options){var ex1=
 ///
 /// `graph._eccentricity(vertexExample, options)`
 ///
-/// Similar to [_absoluteEccentricity](#_absoluteeccentricity) but returns a normalized result.
+/// Similar to [_absoluteEccentricity](#absoluteeccentricity) but returns a normalized result.
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @EXAMPLES
 ///
@@ -5057,12 +5057,12 @@ Graph.prototype._eccentricity = function(options){var query="RETURN" + " GRAPH_E
 /// example as parameter for *vertexExample*.
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @PARAMS
 ///
 /// @PARAM{vertexExample, object, optional}
-/// Filter the vertices, see [Definition of examples](#definition_of_examples)
+/// Filter the vertices, see [Definition of examples](#definition-of-examples)
 ///
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
@@ -5073,7 +5073,7 @@ Graph.prototype._eccentricity = function(options){var query="RETURN" + " GRAPH_E
 ///       considered for source vertices.
 ///   * *endVertexCollectionRestriction* : One or a list of vertex-collection names that should be
 ///       considered for target vertices.
-///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
+///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition-of-examples)
 ///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
 ///       [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
 ///       [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
@@ -5127,10 +5127,10 @@ Graph.prototype._absoluteCloseness = function(vertexExample,options){var ex1=tra
 ///
 /// `graph._closeness(options)`
 ///
-/// Similar to [_absoluteCloseness](#_absolutecloseness) but returns a normalized value.
+/// Similar to [_absoluteCloseness](#absolutecloseness) but returns a normalized value.
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @EXAMPLES
 ///
@@ -5175,12 +5175,12 @@ Graph.prototype._closeness = function(options){var query="RETURN" + " GRAPH_CLOS
 /// `graph._absoluteBetweenness(vertexExample, options)`
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @PARAMS
 ///
 /// @PARAM{vertexExample, object, optional}
-/// Filter the vertices, see [Definition of examples](#definition_of_examples)
+/// Filter the vertices, see [Definition of examples](#definition-of-examples)
 ///
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
@@ -5234,7 +5234,7 @@ Graph.prototype._absoluteBetweenness = function(example,options){var query="RETU
 ///
 /// `graph_module._betweenness(options)`
 ///
-/// Similar to [_absoluteBetweeness](#_absolutebetweeness) but returns normalized values.
+/// Similar to [_absoluteBetweeness](#absolutebetweenness) but returns normalized values.
 ///
 /// @EXAMPLES
 ///
@@ -5279,7 +5279,7 @@ Graph.prototype._betweenness = function(options){var query="RETURN" + " GRAPH_BE
 /// `graph._radius(options)`
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @PARAMS
 ///
@@ -5339,7 +5339,7 @@ Graph.prototype._radius = function(options){var query="RETURN" + " GRAPH_RADIUS(
 /// `graph._diameter(graphName, options)`
 ///
 /// The complexity of the function is described
-/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+/// [here](../Aql/GraphOperations.md#the-complexity-of-the-shortest-path-algorithms).
 ///
 /// @PARAMS
 ///
@@ -5628,12 +5628,12 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName,dropColl
 /// @PARAMS
 ///
 /// @PARAM{vertexExample1, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](Functions.md#definition-of-examples)
 /// @PARAM{vertexExample2, object, optional}
-/// See [Definition of examples](#definition_of_examples)
+/// See [Definition of examples](Functions.md#definition-of-examples)
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
-///   * *edgeExamples*: Filter the edges, see [Definition of examples](#definition_of_examples)
+///   * *edgeExamples*: Filter the edges, see [Definition of examples](Functions.md#definition-of-examples)
 ///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
 ///       considered to be on the path.
 ///   * *vertex1CollectionRestriction* : One or a list of vertex-collection names that should be

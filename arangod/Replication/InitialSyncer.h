@@ -39,7 +39,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_json_t;
-struct TRI_replication_applier_configuration_s;
+struct TRI_replication_applier_configuration_t;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_t;
 
@@ -88,7 +88,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         InitialSyncer (TRI_vocbase_t*,
-                       struct TRI_replication_applier_configuration_s const*,
+                       struct TRI_replication_applier_configuration_t const*,
                        std::unordered_map<std::string, bool> const&,
                        std::string const&,
                        bool);
@@ -159,11 +159,15 @@ namespace triagens {
 /// @brief set a progress message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setProgress (std::string const& message) {
-          _progress = message;
+        void setProgress (std::string const& msg) {
+          _progress = msg;
 
           if (_verbose) {
-            LOG_INFO("synchronization progress: %s", message.c_str());
+            LOG_INFO("synchronization progress: %s", msg.c_str());
+          }
+   
+          if (_vocbase->_replicationApplier != nullptr) {
+            _vocbase->_replicationApplier->setProgress(msg.c_str(), true);
           }
         }
 
@@ -190,6 +194,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int sendFinishBatch ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the initial synchronization should be aborted
+////////////////////////////////////////////////////////////////////////////////
+
+        bool checkAborted ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump

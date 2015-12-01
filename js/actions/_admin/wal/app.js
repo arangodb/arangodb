@@ -93,15 +93,14 @@ actions.defineHttp({
         return body[name];
       }
 
-      // need to handle strings because URL parameter values are strings
+      // need to handle strings because parameter values are strings
       return (req.parameters.hasOwnProperty(name) &&
               (req.parameters[name] === "true" || req.parameters[name] === true));
     };
     
     internal.wal.flush({ 
       waitForSync:           getParam("waitForSync"),
-      waitForCollector:      getParam("waitForCollector"),
-      waitForCollectorQueue: getParam("waitForCollectorQueue")
+      waitForCollector:      getParam("waitForCollector")
     });
 
     actions.resultOk(req, res, actions.HTTP_OK);

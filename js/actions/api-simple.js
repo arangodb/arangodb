@@ -925,7 +925,7 @@ actions.defineHttp({
 /// The attribute that contains the texts.
 ///
 /// @RESTBODYPARAM{query,string,required,string}
-/// The fulltext query. Please refer to [Fulltext queries](../SimpleQueries/FulltextQueries.html)
+/// The fulltext query. Please refer to [Fulltext queries](../SimpleQueries/FulltextQueries.md)
 ///   for details.
 ///
 /// @RESTBODYPARAM{skip,string,required,string}
