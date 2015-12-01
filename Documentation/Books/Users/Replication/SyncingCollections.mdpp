@@ -48,8 +48,8 @@ slave will wait for a master's response. This wait time can be used to control a
 the synchronization will give up and fail. 
 
 When *syncCollection* is called from the ArangoShell, the optional *async* attribute can be used
-to trigger the synchronization as a background process on the slave. If *async* is set to *true*,
-the call to *syncCollection* will return almost instantly with a id string. Using this id string,
+to start the synchronization as a background process on the slave. If *async* is set to *true*,
+the call to *syncCollection* will return almost instantly with an id string. Using this id string,
 the status of the sync job on the slave can be queried using the *getSyncResult* function as follows:
 
 
@@ -66,5 +66,5 @@ var id = replication.syncCollection("test", {
 print(replication.getSyncResult(id));
 ```
 
-*getSyncResult* will return false as long as the synchronization is not complete, and return the
+*getSyncResult* will return *false* as long as the synchronization is not complete, and return the
 synchronization result otherwise.
