@@ -44,7 +44,6 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/Exceptions.h"
-#include <iostream> /// TODO: remove me.
 
 using namespace triagens::aql;
 using namespace triagens::basics;
@@ -1529,7 +1528,6 @@ ExecutionNode* ExecutionPlan::fromNode (AstNode const* node) {
       }
 
       default: {
-                 std::cout << member->type << std::endl;
         // node type not implemented
         en = nullptr;
         break;

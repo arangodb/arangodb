@@ -33,10 +33,9 @@
 #include "Aql/TraversalBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Basics/ScopeGuard.h"
+#include "Cluster/ClusterTraverser.h"
 #include "V8/v8-globals.h"
 #include "V8Server/V8Traverser.h"
-#include "Cluster/ClusterTraverser.h"
-#include <iostream> /// TODO: remove me.
 
 using namespace std;
 using namespace triagens::basics;
@@ -58,7 +57,6 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
     _vertexReg(0),
     _edgeReg(0),
     _pathReg(0),
-    _condition((ep->condition()) ? ep->condition()->root(): nullptr),
     _expressions(ep->expressions()),
     _hasV8Expression(false) {
 
@@ -142,19 +140,7 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
   if (ep->usesPathOutVariable()) {
     _pathVar = ep->pathOutVariable();
   }
-  _CalculationNodeId = ep->getCalculationNodeId();
-  /*
-  auto pruner = [] (const TraversalPath<TRI_doc_mptr_copy_t, VertexId>& path) -> bool {
-    if (strcmp(path.vertices.back().key, "1") == 0) {
-      return true;
-    }
-    if (strcmp(path.vertices.back().key, "31") == 0) {
-      return true;
-    }
-    return false;
-  };
-  opts.setPruningFunction(pruner);
-  */
+  _calculationNodeId = ep->getCalculationNodeId();
 }
 
 TraversalBlock::~TraversalBlock () {
@@ -179,8 +165,6 @@ void TraversalBlock::freeCaches () {
 
 int TraversalBlock::initialize () {
   int res = ExecutionBlock::initialize();
-  auto en = static_cast<TraversalNode const*>(getPlanNode());
-  auto ast = en->_plan->getAst();
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
   if (usesVertexOutput()) {
     auto it = varInfo.find(_vertexVar->id);
@@ -201,44 +185,6 @@ int TraversalBlock::initialize () {
     _pathReg = it->second.registerId;
   }
   
-
-  // instantiate expressions:
-  auto instantiateExpression = [&] (AstNode const* a) -> void {
-    // all new AstNodes are registered with the Ast in the Query
-    std::unique_ptr<Expression> e(new Expression(ast, a));
-
-    TRI_IF_FAILURE("TraversalBlock::initialize") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    _hasV8Expression |= e->isV8();
-    
-    std::unordered_set<Variable const*> inVars;
-    e->variables(inVars);
-    
-    std::unique_ptr<NonConstExpression> nce(new NonConstExpression(0, 0, 0, e.get()));
-    e.release();
-    _nonConstExpressions.push_back(nce.get());
-    nce.release();
-
-    // Prepare _inVars and _inRegs:
-    _inVars.emplace_back();
-    auto& inVarsCur = _inVars.back();
-    _inRegs.emplace_back();
-    auto& inRegsCur = _inRegs.back();
-
-    for (auto const& v : inVars) {
-      inVarsCur.emplace_back(v);
-      auto it = getPlanNode()->getRegisterPlan()->varInfo.find(v->id);
-      TRI_ASSERT(it != getPlanNode()->getRegisterPlan()->varInfo.end());
-      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-      inRegsCur.emplace_back(it->second.registerId);
-    }
-  };
-
-  if (_condition) {
-    instantiateExpression(_condition);
-  }
   return res;
 }
 
