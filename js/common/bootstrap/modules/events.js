@@ -1,4 +1,4 @@
-/*jshint -W051:true */
+/*jshint ignore:start */
 /*eslint-disable */
 global.DEFINE_MODULE('events', (function () {
 'use strict';
