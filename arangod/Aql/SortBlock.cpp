@@ -181,7 +181,7 @@ void SortBlock::doSorting () {
                   TRI_IF_FAILURE("SortBlock::doSortingCache") {
                     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
                   }
-                  cache.emplace(make_pair(a, b));
+                  cache.emplace(a, b);
                 }
                 catch (...) {
                   b.destroy();
@@ -226,7 +226,7 @@ void SortBlock::doSorting () {
 
                 // If the following does not work, we will create a
                 // few unnecessary copies, but this does not matter:
-                cache.emplace(make_pair(a, a));
+                cache.emplace(a, a);
               }
             }
           }

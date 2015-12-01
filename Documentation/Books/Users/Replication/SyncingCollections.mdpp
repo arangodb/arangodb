@@ -35,3 +35,11 @@ require("org/arangodb/replication").syncCollection("test", {
 with data from the master database! Only execute these commands if you have verified you are on 
 the correct server, in the correct database!
 
+Setting the optional *incremental* attribute in the call to *syncCollection* will start an
+incremental transfer of data. This may be useful in case when the slave already has
+parts or almost all of the data in the collection and only the differences need to be
+synchronized.
+
+The *initialSyncMaxWaitTime* attribute in the call to *syncCollection* controls how long the
+slave will wait for a master's response. This wait time can be used to control after what time 
+the synchronization will give up and fail. 

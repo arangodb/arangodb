@@ -33,7 +33,7 @@
 #include "Basics/logging.h"
 #include "Basics/StringUtils.h"
 #include "GeneralClientConnection.h"
-#include "SimpleHttpResult.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -122,13 +122,29 @@ namespace triagens {
                                                       std::string const& location,
                                                       char const* body,
                                                       size_t bodyLength) {
+      return retryRequest(method, location, body, bodyLength, NoHeaders);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send out a request, creating a new HttpResult object
+/// this version does not allow specifying custom headers
+/// if the request fails because of connection problems, the request will be
+/// retried until it either succeeds (at least no connection problem) or there
+/// have been _maxRetries retries
+////////////////////////////////////////////////////////////////////////////////
+
+    SimpleHttpResult* SimpleHttpClient::retryRequest (rest::HttpRequest::HttpRequestType method,
+                                                      std::string const& location,
+                                                      char const* body,
+                                                      size_t bodyLength,
+                                                      std::map<std::string, std::string> const& headers) {
       SimpleHttpResult* result = nullptr;
       size_t tries = 0;
 
       while (true) {
         TRI_ASSERT(result == nullptr);
 
-        result = doRequest(method, location, body, bodyLength, NoHeaders);
+        result = doRequest(method, location, body, bodyLength, headers);
 
         if (result != nullptr && result->isComplete()) {
           break;

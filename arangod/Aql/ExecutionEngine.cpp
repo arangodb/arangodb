@@ -497,7 +497,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         static_cast<RemoteNode*>(clone)->server("server:" + triagens::arango::ServerState::instance()->getId());
         static_cast<RemoteNode*>(clone)->ownName(shardId);
         static_cast<RemoteNode*>(clone)->queryId(connectedId);
-        // only one of the remote blocks is responsible for forwarding the initializeCursor requests
+        // only one of the remote blocks is responsible for forwarding the initializeCursor and shutDown requests
         // for simplicity, we always use the first remote block if we have more than one
         static_cast<RemoteNode*>(clone)->isResponsibleForInitCursor(nr == 0);
       }
@@ -617,7 +617,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             = triagens::basics::StringUtils::itoa(info.idOfRemoteNode)
             + ":" + res->shardID;
           if (info.part == triagens::aql::PART_MAIN) {
-            queryIds.emplace(theID, queryId+"*");
+            queryIds.emplace(theID, queryId + "*");
           }
           else {
             queryIds.emplace(theID, queryId);
@@ -775,7 +775,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         engine->root(eb);
    
         // put it into our cache:
-        cache.emplace(std::make_pair((*en), eb));
+        cache.emplace(*en, eb);
       }
 
       TRI_ASSERT(engine->root() != nullptr);

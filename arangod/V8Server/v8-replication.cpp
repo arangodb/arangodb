@@ -319,7 +319,12 @@ static void JS_SynchronizeReplication (const v8::FunctionCallbackInfo<v8::Value>
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint: " + errorMsg);
+    if (errorMsg.empty()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint");
+    }
+    else {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint: " + errorMsg);
+    }
   }
 
   TRI_V8_RETURN(result);
@@ -555,6 +560,15 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
         double value = TRI_ObjectToDouble(object->Get(TRI_V8_ASCII_STRING("connectionRetryWaitTime")));
         if (value > 0.0) {
           config._connectionRetryWaitTime = static_cast<uint64_t>(value * 1000.0 * 1000.0); 
+        }
+      }
+    }
+    
+    if (object->Has(TRI_V8_ASCII_STRING("initialSyncMaxWaitTime"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("initialSyncMaxWaitTime"))->IsNumber()) {
+        double value = TRI_ObjectToDouble(object->Get(TRI_V8_ASCII_STRING("initialSyncMaxWaitTime")));
+        if (value > 0.0) {
+          config._initialSyncMaxWaitTime = static_cast<uint64_t>(value * 1000.0 * 1000.0); 
         }
       }
     }

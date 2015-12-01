@@ -231,7 +231,7 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
   triagens::basics::Json result = _root->toJson(zone, verbose); 
 
   // set up rules 
-  auto const&& appliedRules = Optimizer::translateRules(_appliedRules);
+  auto appliedRules(std::move(Optimizer::translateRules(_appliedRules)));
   triagens::basics::Json rules(triagens::basics::Json::Array, appliedRules.size());
 
   for (auto const& r : appliedRules) {
@@ -534,7 +534,7 @@ ExecutionNode* ExecutionPlan::registerNode (ExecutionNode* node) {
   TRI_ASSERT(node->id() > 0);
 
   try {
-    _ids.emplace(std::make_pair(node->id(), node));
+    _ids.emplace(node->id(), node);
   }
   catch (...) {
     delete node;
@@ -1680,9 +1680,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
     void after (ExecutionNode* en) override final {
       // Add variables set here to _valid:
-      auto&& setHere = en->getVariablesSetHere();
-      
-      for (auto& v : setHere) {
+      for (auto& v : en->getVariablesSetHere()) {
         _valid.emplace(v);
         _varSetBy->emplace(v->id, en);
       }

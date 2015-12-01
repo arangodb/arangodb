@@ -3544,6 +3544,7 @@ void RestReplicationHandler::handleCommandDump () {
   bool flush                  = true; // flush WAL before dumping?
   bool withTicks              = true;
   bool translateCollectionIds = true;
+  uint64_t flushWait          = 0;
 
   bool found;
   char const* value;
@@ -3553,6 +3554,16 @@ void RestReplicationHandler::handleCommandDump () {
 
   if (found) {
     flush = StringUtils::boolean(value);
+  }
+  
+  // determine flush WAL wait time value
+  value = _request->value("flushWait", found);
+
+  if (found) {
+    flushWait = StringUtils::uint64(value);
+    if (flushWait > 60) {
+      flushWait = 60;
+    }
   }
 
   // determine start tick for dump
@@ -3612,6 +3623,11 @@ void RestReplicationHandler::handleCommandDump () {
   try {
     if (flush) {
       triagens::wal::LogfileManager::instance()->flush(true, true, false);
+ 
+      // additionally wait for the collector 
+      if (flushWait > 0) {
+        triagens::wal::LogfileManager::instance()->waitForCollectorQueue(c->_cid, static_cast<double>(flushWait));
+      }
     }
 
     triagens::arango::CollectionGuard guard(_vocbase, c->_cid, false);
@@ -3720,7 +3736,18 @@ void RestReplicationHandler::handleCommandDump () {
 ///
 /// @RESTBODYPARAM{autoResync,boolean,optional,}
 /// whether or not the slave should perform an automatic resynchronization with
-/// the master in case the master cannot serve log data requested by the slave
+/// the master in case the master cannot serve log data requested by the slave,
+/// or when the replication is started and no tick value can be found.
+///
+/// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
+/// the maximum wait time (in seconds) that the initial synchronization will
+/// wait for a response from the master when fetching initial collection data.
+/// This wait time can be used to control after what time the initial synchronization
+/// will give up waiting for a response and fail. This value is relevant even
+/// for continuous replication when *autoResync* is set to *true* because this
+/// may re-start the initial synchronization when the master cannot provide
+/// log data the slave requires.
+/// This value will be ignored if set to *0*.
 ///
 /// @RESTBODYPARAM{connectionRetryWaitTime,integer,optional,int64}
 /// the time (in seconds) that the applier will intentionally idle before
@@ -3912,6 +3939,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
   config._requireFromPresent      = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", defaults._requireFromPresent);
   config._restrictType            = JsonHelper::getStringValue(json.get(), "restrictType", defaults._restrictType);
   config._connectionRetryWaitTime = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "connectionRetryWaitTime", static_cast<double>(defaults._connectionRetryWaitTime) / (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "initialSyncMaxWaitTime", static_cast<double>(defaults._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
   config._idleMinWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMinWaitTime", static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
   config._idleMaxWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMaxWaitTime", static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
   
@@ -4045,7 +4073,14 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 /// an optional array of collections for use with
 /// *restrictType*. If *restrictType* is *include*, only the specified collections
 /// will be sychronised. If *restrictType* is *exclude*, all but the specified
-///  collections will be synchronized.
+/// collections will be synchronized.
+///
+/// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
+/// the maximum wait time (in seconds) that the initial synchronization will
+/// wait for a response from the master when fetching initial collection data.
+/// This wait time can be used to control after what time the initial synchronization
+/// will give up waiting for a response and fail. 
+/// This value will be ignored if set to *0*.
 ///
 /// @RESTDESCRIPTION
 /// Starts a full data synchronization from a remote endpoint into the local
@@ -4304,7 +4339,18 @@ void RestReplicationHandler::handleCommandServerId () {
 ///
 /// - *autoResync*: whether or not the slave should perform a full automatic 
 ///   resynchronization with the master in case the master cannot serve log data 
-///   requested by the slave
+///   requested by the slave, or when the replication is started and no tick value
+///   can be found.
+///
+/// - *initialSyncMaxWaitTime*: the maximum wait time (in seconds) that the initial 
+///   synchronization will wait for a response from the master when fetching initial 
+///   collection data.
+///   This wait time can be used to control after what time the initial synchronization
+///   will give up waiting for a response and fail. This value is relevant even
+///   for continuous replication when *autoResync* is set to *true* because this
+///   may re-start the initial synchronization when the master cannot provide
+///   log data the slave requires.
+///   This value will be ignored if set to *0*.
 ///
 /// - *connectionRetryWaitTime*: the time (in seconds) that the applier will 
 ///   intentionally idle before it retries connecting to the master in case of 
@@ -4447,7 +4493,18 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// @RESTBODYPARAM{autoResync,boolean,optional,}
 /// whether or not the slave should perform a full automatic resynchronization 
-/// with the master in case the master cannot serve log data requested by the slave
+/// with the master in case the master cannot serve log data requested by the slave,
+/// or when the replication is started and no tick value can be found.
+///
+/// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
+/// the maximum wait time (in seconds) that the initial synchronization will
+/// wait for a response from the master when fetching initial collection data.
+/// This wait time can be used to control after what time the initial synchronization
+/// will give up waiting for a response and fail. This value is relevant even
+/// for continuous replication when *autoResync* is set to *true* because this
+/// may re-start the initial synchronization when the master cannot provide
+/// log data the slave requires.
+/// This value will be ignored if set to *0*.
 ///
 /// @RESTBODYPARAM{connectionRetryWaitTime,integer,optional,int64}
 /// the time (in seconds) that the applier will intentionally idle before
@@ -4612,6 +4669,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   config._requireFromPresent      = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", config._requireFromPresent);
   config._restrictType            = JsonHelper::getStringValue(json.get(), "restrictType", config._restrictType);
   config._connectionRetryWaitTime = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "connectionRetryWaitTime", static_cast<double>(config._connectionRetryWaitTime) / (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "initialSyncMaxWaitTime", static_cast<double>(config._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
   config._idleMinWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMinWaitTime", static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
   config._idleMaxWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMaxWaitTime", static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
 

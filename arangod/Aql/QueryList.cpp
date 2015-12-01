@@ -99,7 +99,7 @@ QueryList::QueryList (TRI_vocbase_t*)
 QueryList::~QueryList () {
   WRITE_LOCKER(_lock);
 
-  for (auto it : _current) {
+  for (auto& it : _current) {
     delete it.second;
   }
   _current.clear();
@@ -132,7 +132,7 @@ bool QueryList::insert (Query const* query,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     } 
 
-    auto it = _current.emplace(std::make_pair(query->id(), entry.get()));
+    auto it = _current.emplace(query->id(), entry.get());
     if (it.second) {
       entry.release();
       return true;

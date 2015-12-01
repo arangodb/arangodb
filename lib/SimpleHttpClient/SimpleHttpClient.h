@@ -109,6 +109,21 @@ namespace triagens {
       void keepConnectionOnDestruction (bool b) {
         _keepConnectionOnDestruction = b;
       }
+                                 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief make an http request, creating a new HttpResult object
+/// the caller has to delete the result object
+/// this version does not allow specifying custom headers
+/// if the request fails because of connection problems, the request will be
+/// retried until it either succeeds (at least no connection problem) or there
+/// have been _maxRetries retries
+////////////////////////////////////////////////////////////////////////////////
+
+      SimpleHttpResult* retryRequest (rest::HttpRequest::HttpRequestType,
+                                      std::string const&,
+                                      char const*,
+                                      size_t,
+                                      std::map<std::string, std::string> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief make an http request, creating a new HttpResult object

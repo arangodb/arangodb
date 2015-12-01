@@ -159,11 +159,15 @@ namespace triagens {
 /// @brief set a progress message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setProgress (std::string const& message) {
-          _progress = message;
+        void setProgress (std::string const& msg) {
+          _progress = msg;
 
           if (_verbose) {
-            LOG_INFO("synchronization progress: %s", message.c_str());
+            LOG_INFO("synchronization progress: %s", msg.c_str());
+          }
+   
+          if (_vocbase->_replicationApplier != nullptr) {
+            _vocbase->_replicationApplier->setProgress(msg.c_str(), true);
           }
         }
 
@@ -190,6 +194,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int sendFinishBatch ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the initial synchronization should be aborted
+////////////////////////////////////////////////////////////////////////////////
+
+        bool checkAborted ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump

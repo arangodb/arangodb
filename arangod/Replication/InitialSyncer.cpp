@@ -184,7 +184,6 @@ int InitialSyncer::run (string& errorMsg,
 
     return TRI_ERROR_INTERNAL;
   }
-
   int res = _vocbase->_replicationApplier->preventStart();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -193,88 +192,105 @@ int InitialSyncer::run (string& errorMsg,
 
   TRI_DEFER(_vocbase->_replicationApplier->allowStart());
 
-  setProgress("fetching master state");
+  try {
+    setProgress("fetching master state");
 
-  res = getMasterState(errorMsg);
+    res = getMasterState(errorMsg);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  if (_masterInfo._majorVersion == 1 ||
-      (_masterInfo._majorVersion == 2 && _masterInfo._minorVersion <= 6)) {
-    LOG_WARNING("incremental replication is not supported with a master < ArangoDB 2.7");
-    incremental = false;
-  }
-
-  if (incremental) {
-    res = sendFlush(errorMsg);
-  
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
-  }
 
-  res = sendStartBatch(errorMsg);
+    if (_masterInfo._majorVersion == 1 ||
+        (_masterInfo._majorVersion == 2 && _masterInfo._minorVersion <= 6)) {
+      LOG_WARNING("incremental replication is not supported with a master < ArangoDB 2.7");
+      incremental = false;
+    }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
+    if (incremental) {
+      res = sendFlush(errorMsg);
+    
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
 
-  string url = BaseUrl + "/inventory?serverId=" + _localServerIdString;
-  if (_includeSystem) {
-    url += "&includeSystem=true";
-  }
+    res = sendStartBatch(errorMsg);
 
-  // send request
-  string const progress = "fetching master inventory from " + url;
-  setProgress(progress);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
 
-  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_GET,
-                                                                   url,
-                                                                   nullptr,
-                                                                   0));
+    string url = BaseUrl + "/inventory?serverId=" + _localServerIdString;
+    if (_includeSystem) {
+      url += "&includeSystem=true";
+    }
 
-  if (response == nullptr || ! response->isComplete()) {
-    errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
-               ": " + _client->getErrorMessage();
+    // send request
+    string const progress = "fetching master inventory from " + url;
+    setProgress(progress);
+
+    std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_GET,
+                                                                    url,
+                                                                    nullptr,
+                                                                    0));
+
+    if (response == nullptr || ! response->isComplete()) {
+      errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
+                ": " + _client->getErrorMessage();
+
+      sendFinishBatch();
+
+      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    }
+
+    TRI_ASSERT(response != nullptr);
+
+    if (response->wasHttpError()) {
+      res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+
+      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
+                ": " + response->getHttpReturnMessage();
+    }
+    else {
+      std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
+
+      if (JsonHelper::isObject(json.get())) {
+        res = handleInventoryResponse(json.get(), incremental, errorMsg);
+      }
+      else {
+        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+
+        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+          ": invalid JSON";
+      }
+    }
 
     sendFinishBatch();
 
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
-  }
-
-  TRI_ASSERT(response != nullptr);
-
-  if (response->wasHttpError()) {
-    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
-               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
-               ": " + response->getHttpReturnMessage();
-  }
-  else {
-    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
-
-    if (JsonHelper::isObject(json.get())) {
-      res = handleInventoryResponse(json.get(), incremental, errorMsg);
+    if (res != TRI_ERROR_NO_ERROR &&
+        errorMsg.empty()) {
+      errorMsg = TRI_errno_string(res);
     }
-    else {
-      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
-        ": invalid JSON";
-    }
+    return res;
   }
-
-  sendFinishBatch();
-
-  if (res != TRI_ERROR_NO_ERROR &&
-      errorMsg.empty()) {
-    errorMsg = TRI_errno_string(res);
+  catch (triagens::basics::Exception const& ex) {
+    sendFinishBatch();
+    errorMsg = ex.what();
+    return ex.code();
   }
-
-  return res;
+  catch (std::exception const& ex) {
+    sendFinishBatch();
+    errorMsg = ex.what();
+    return TRI_ERROR_INTERNAL;
+  }
+  catch (...) {
+    sendFinishBatch();
+    errorMsg = "an unknown exception occurred";
+    return TRI_ERROR_NO_ERROR;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -391,7 +407,7 @@ int InitialSyncer::sendExtendBatch () {
 
   double now = TRI_microtime();
 
-  if (now <= _batchUpdateTime + _batchTtl - 60) {
+  if (now <= _batchUpdateTime + _batchTtl - 60.0) {
     // no need to extend the batch yet
     return TRI_ERROR_NO_ERROR;
   }
@@ -435,34 +451,50 @@ int InitialSyncer::sendFinishBatch () {
     return TRI_ERROR_NO_ERROR;
   }
 
-  string const url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId);
+  try {
+    string const url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId);
 
-  // send request
-  string const progress = "send batch finish command to url " + url;
-  setProgress(progress);
+    // send request
+    string const progress = "send batch finish command to url " + url;
+    setProgress(progress);
 
-  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_DELETE,
-                                                                   url,
-                                                                   nullptr,
-                                                                   0));
+    std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_DELETE,
+                                                                    url,
+                                                                    nullptr,
+                                                                    0));
 
-  if (response == nullptr || ! response->isComplete()) {
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    if (response == nullptr || ! response->isComplete()) {
+      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    }
+
+    TRI_ASSERT(response != nullptr);
+
+    int res = TRI_ERROR_NO_ERROR;
+
+    if (response->wasHttpError()) {
+      res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+    }
+    else {
+      _batchId = 0;
+      _batchUpdateTime = 0;
+    }
+    return res;
   }
-
-  TRI_ASSERT(response != nullptr);
-
-  int res = TRI_ERROR_NO_ERROR;
-
-  if (response->wasHttpError()) {
-    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
+  catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
-  else {
-    _batchId = 0;
-    _batchUpdateTime = 0;
-  }
+}
 
-  return res;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the initial synchronization should be aborted
+////////////////////////////////////////////////////////////////////////////////
+
+bool InitialSyncer::checkAborted () {
+  if (_vocbase->_replicationApplier != nullptr &&
+      _vocbase->_replicationApplier->stopInitialSynchronization()) {
+    return true;
+  }
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -590,7 +622,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
   }
   else {
     // only flush WAL once
-    appendix = "&flush=true";
+    appendix = "&flush=true&flushWait=1";
     _hasFlushed = true;
   }
 
@@ -606,6 +638,10 @@ int InitialSyncer::handleCollectionDump (string const& cid,
   uint64_t markersProcessed = 0;
 
   while (true) {
+    if (checkAborted()) {
+      return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+    }
+
     sendExtendBatch();
 
     std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
@@ -627,20 +663,22 @@ int InitialSyncer::handleCollectionDump (string const& cid,
 
     setProgress(progress.c_str());
 
+    // use async mode for first batch
+    std::map<std::string, std::string> headers;
+    if (batch == 1) {
+      headers["X-Arango-Async"] = "store";
+    }
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_GET,
                                                                      url,
                                                                      nullptr,
-                                                                     0));
+                                                                     0,
+                                                                     headers));
 
     if (response == nullptr || ! response->isComplete()) {
       errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
                  ": " + _client->getErrorMessage();
 
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
-    }
-
-    if (response->hasContentLength()) {
-      bytesReceived += response->getContentLength();
     }
 
     TRI_ASSERT(response != nullptr);
@@ -652,6 +690,70 @@ int InitialSyncer::handleCollectionDump (string const& cid,
 
       return TRI_ERROR_REPLICATION_MASTER_ERROR;
     }
+ 
+    // use async mode for first batch
+    if (batch == 1) { 
+      bool found = false;
+      std::string jobId = response->getHeaderField("X-Arango-Async-Id", found);
+      if (! found) {
+        jobId = response->getHeaderField("x-arango-async-id", found);
+      }
+
+      if (! found) {
+        errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+                   ": could not find 'X-Arango-Async' header";
+        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      }
+
+      double const startTime = TRI_microtime();
+
+      // wait until we get a responsable response
+      while (true) {
+        sendExtendBatch();
+        
+        std::string const jobUrl = "/_api/job/" + jobId; 
+        response.reset(_client->request(HttpRequest::HTTP_REQUEST_PUT, jobUrl, nullptr, 0));
+
+        if (response != nullptr && response->isComplete()) {
+          if (response->hasHeaderField("x-arango-async-id")) {
+            // got the actual response
+            break;
+          }
+        }
+
+        double waitTime = TRI_microtime() - startTime;
+
+        if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= _configuration._initialSyncMaxWaitTime) {
+          errorMsg = "timed out waiting for response from master at " + string(_masterInfo._endpoint);
+          return TRI_ERROR_REPLICATION_NO_RESPONSE;
+        }
+
+        double sleepTime;
+        if (waitTime < 5.0) {
+          sleepTime = 0.25;
+        }
+        else if (waitTime < 20.0) {
+          sleepTime = 0.5;
+        }
+        else if (waitTime < 60.0) {
+          sleepTime = 1.0;
+        }
+        else {
+          sleepTime = 2.0;
+        }
+
+        if (checkAborted()) {
+          return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+        }
+        this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
+      }
+      // fallthrough here in case everything went well
+    }
+    
+    if (response->hasContentLength()) {
+      bytesReceived += response->getContentLength();
+    }
+
 
     int res = TRI_ERROR_NO_ERROR;  // Just to please the compiler
     bool checkMore = false;
@@ -723,16 +825,24 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
                                          TRI_voc_tick_t maxTick,
                                          string& errorMsg) {
 
+  sendExtendBatch();
+
   string const baseUrl = BaseUrl + "/keys";
   string url = baseUrl + "?collection=" + cid + "&to=" + std::to_string(maxTick);
   
-  std::string progress = "fetching collection keys from " + url;
+  std::string progress = "fetching collection keys for collection '" + collectionName + "' from " + url;
   setProgress(progress);
    
+  // send an initial async request to collect the collection keys on the other side
+  // sending this request in a blocking fashion may require very long to complete,
+  // so we're sending the x-arango-async header here
+  std::map<std::string, std::string> headers;
+  headers["X-Arango-Async"] = "store";
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_POST,
                                                                    url,
                                                                    nullptr,
-                                                                   0));
+                                                                   0,
+                                                                   headers));
 
   if (response == nullptr || ! response->isComplete()) {
     errorMsg = "could not connect to master at " + string(_masterInfo._endpoint) +
@@ -750,7 +860,61 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
 
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
-  
+
+  bool found = false;
+  std::string jobId = response->getHeaderField("X-Arango-Async-Id", found);
+  if (! found) {
+    jobId = response->getHeaderField("x-arango-async-id", found);
+  }
+
+  if (! found) {
+    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+               ": could not find 'X-Arango-Async' header";
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
+  double const startTime = TRI_microtime();
+
+  while (true) {
+    sendExtendBatch();
+    
+    std::string const jobUrl = "/_api/job/" + jobId; 
+    response.reset(_client->request(HttpRequest::HTTP_REQUEST_PUT, jobUrl, nullptr, 0));
+
+    if (response != nullptr && response->isComplete()) {
+      if (response->hasHeaderField("x-arango-async-id")) {
+        // got the actual response
+        break;
+      }
+    }
+
+    double waitTime = TRI_microtime() - startTime;
+
+    if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= _configuration._initialSyncMaxWaitTime) {
+      errorMsg = "timed out waiting for response from master at " + string(_masterInfo._endpoint);
+      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    }
+
+    double sleepTime;
+    if (waitTime < 5.0) {
+      sleepTime = 0.25;
+    }
+    else if (waitTime < 20.0) {
+      sleepTime = 0.5;
+    }
+    else if (waitTime < 60.0) {
+      sleepTime = 1.0;
+    }
+    else {
+      sleepTime = 2.0;
+    }
+        
+    if (checkAborted()) {
+      return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+    }
+    this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
+  }
+
   StringBuffer& data = response->getBody();
 
   // order collection keys
@@ -776,7 +940,7 @@ int InitialSyncer::handleCollectionSync (std::string const& cid,
   
   auto shutdown = [&] () -> void { 
     url = baseUrl + "/" + id;
-    string progress = "deleting remote collection keys object from " + url;
+    string progress = "deleting remote collection keys object for collection '" + collectionName + "' from " + url;
     setProgress(progress);
 
     // now delete the keys we ordered
@@ -843,7 +1007,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           
   bool const isEdge = (trx.documentCollection()->_info._type == TRI_COL_TYPE_EDGE);
    
-  string progress = "collecting local keys";
+  string progress = "collecting local keys for collection '" + collectionName + "'";
   setProgress(progress);
 
   // fetch all local keys from primary index
@@ -869,7 +1033,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       markers.emplace_back(df);
     }
 
-    string progress = "sorting " + std::to_string(markers.size()) + " local key(s)";
+    string progress = "sorting " + std::to_string(markers.size()) + " local key(s) for collection '" + collectionName + "'";
     setProgress(progress);
     
     // sort all our local keys
@@ -879,6 +1043,12 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       return res < 0;
     });
   }
+    
+  if (checkAborted()) {
+    return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+  }
+
+  sendExtendBatch();
 
   std::vector<size_t> toFetch;
 
@@ -886,7 +1056,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   string const baseUrl = BaseUrl + "/keys";
     
   string url = baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
-  progress = "fetching remote keys chunks from " + url;
+  progress = "fetching remote keys chunks for collection '" + collectionName + "' from " + url;
   setProgress(progress);
    
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_GET,
@@ -968,7 +1138,15 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
   // now process each chunk
   for (size_t i = 0; i < n; ++i) {
+    if (checkAborted()) {
+      return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+    }
+  
     size_t const currentChunkId = i;
+    progress = "processing keys chunk " + std::to_string(currentChunkId) + " for collection '" + collectionName + "'";
+    setProgress(progress);
+
+    sendExtendBatch();
 
     // read remote chunk
     auto chunk = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), i));
@@ -1026,7 +1204,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
       // no match
       // must transfer keys for non-matching range
       std::string url = baseUrl + "/" + keysId + "?type=keys&chunk=" + std::to_string(i) + "&chunkSize=" + std::to_string(chunkSize);
-      progress = "fetching keys from " + url;
+      progress = "fetching keys chunk " + std::to_string(currentChunkId) + " for collection '" + collectionName + "' from " + url;
       setProgress(progress);
 
       std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_PUT,
@@ -1177,7 +1355,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         }
       
         std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" + std::to_string(currentChunkId) + "&chunkSize=" + std::to_string(chunkSize);
-        progress = "fetching documents from " + url;
+        progress = "fetching documents chunk " + std::to_string(currentChunkId) + " for collection '" + collectionName + "' from " + url;
         setProgress(progress);
 
         auto const keyJsonString = triagens::basics::JsonHelper::toString(keysJson.json());
@@ -1357,6 +1535,10 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
                                      bool incremental,
                                      string& errorMsg,
                                      sync_phase_e phase) {
+
+  if (checkAborted()) {
+    return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+  }
 
   sendExtendBatch();
 
@@ -1555,7 +1737,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
       size_t const n = TRI_LengthVector(&indexes->_value._objects);
 
       if (n > 0) {
-        string const progress = "creating indexes for " + collectionMsg;
+        string const progress = "creating " + std::to_string(n) + " index(es) for " + collectionMsg;
         setProgress(progress);
 
         READ_LOCKER(_vocbase->_inventoryLock);
@@ -1578,7 +1760,15 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
             for (size_t i = 0; i < n; ++i) {
               TRI_json_t const* idxDef = static_cast<TRI_json_t const*>(TRI_AtVector(&indexes->_value._objects, i));
               triagens::arango::Index* idx = nullptr;
- 
+        
+              if (TRI_IsObjectJson(idxDef)) {
+                TRI_json_t const* type = TRI_LookupObjectJson(idxDef, "type");
+                if (TRI_IsStringJson(type)) {
+                  string const progress = "creating index of type " + std::string(type->_value._string.data, type->_value._string.length - 1) + " for " + collectionMsg;
+                  setProgress(progress);
+                } 
+              }
+
               // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
     
               res = TRI_FromJsonIndexDocumentCollection(document, idxDef, &idx);

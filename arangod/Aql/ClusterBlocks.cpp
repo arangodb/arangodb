@@ -529,8 +529,7 @@ BlockWithClients::BlockWithClients (ExecutionEngine* engine,
                                     ExecutionNode const* ep, 
                                     std::vector<std::string> const& shardIds) 
   : ExecutionBlock(engine, ep), 
-    _nrClients(shardIds.size()),
-    _ignoreShutdown(false) {
+    _nrClients(shardIds.size()) {
 
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
@@ -570,9 +569,6 @@ int BlockWithClients::initializeCursor (AqlItemBlock* items, size_t pos) {
 int BlockWithClients::shutdown (int errorCode) {
   ENTER_BLOCK
 
-  TRI_ASSERT(! _ignoreShutdown);
-  _ignoreShutdown = true;
-
   _doneForClient.clear();
 
   return ExecutionBlock::shutdown(errorCode);
@@ -587,7 +583,6 @@ AqlItemBlock* BlockWithClients::getSomeForShard (size_t atLeast,
                                                  size_t atMost, 
                                                  std::string const& shardId) {
   ENTER_BLOCK
-  _ignoreShutdown = false;
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
 
@@ -613,7 +608,6 @@ size_t BlockWithClients::skipSomeForShard (size_t atLeast,
                                            size_t atMost, 
                                            std::string const& shardId) {
   ENTER_BLOCK
-  _ignoreShutdown = false;
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSomeForShard(atLeast, atMost, true, result, skipped, shardId);
@@ -698,10 +692,6 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
 int ScatterBlock::shutdown (int errorCode) {
   ENTER_BLOCK
-  if (_ignoreShutdown) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  
   int res = BlockWithClients::shutdown(errorCode);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -725,9 +715,6 @@ bool ScatterBlock::hasMoreForShard (std::string const& shardId) {
   if (_doneForClient.at(clientId)) {
     return false;
   }
-
-  // TODO is this correct? 
-  _ignoreShutdown = false;
 
   std::pair<size_t,size_t> pos = _posForClient.at(clientId); 
   // (i, j) where i is the position in _buffer, and j is the position in
@@ -907,10 +894,6 @@ int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
 int DistributeBlock::shutdown (int errorCode) {
   ENTER_BLOCK
-  if (_ignoreShutdown) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  
   int res = BlockWithClients::shutdown(errorCode);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -935,9 +918,6 @@ bool DistributeBlock::hasMoreForShard (std::string const& shardId) {
     return false;
   }
 
-  // TODO is this correct? 
-  _ignoreShutdown = false;
-        
   if (! _distBuffer.at(clientId).empty()) {
     return true;
   }
@@ -1184,7 +1164,7 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
       if (! hasCreatedKeyAttribute && 
           TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) == nullptr) {
         // there is no _key attribute present, so we are responsible for creating one
-        std::string const&& keyString(createKey());
+        std::string keyString(createKey());
 
         TRI_json_t* obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
       
@@ -1212,7 +1192,7 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
       }
 
       // no _key given. now create one
-      std::string const&& keyString(createKey());
+      std::string keyString(createKey());
 
       TRI_json_t* obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -1409,7 +1389,7 @@ ClusterCommResult* RemoteBlock::sendRequest (
   CoordTransactionID const coordTransactionId = TRI_NewTickServer(); //1;
   std::map<std::string, std::string> headers;
   if (! _ownName.empty()) {
-    headers.emplace(make_pair("Shard-Id", _ownName));
+    headers.emplace("Shard-Id", _ownName);
   }
 
   auto currentThread = triagens::rest::DispatcherThread::currentDispatcherThread;
@@ -1504,6 +1484,12 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
 int RemoteBlock::shutdown (int errorCode) {
   ENTER_BLOCK
+
+  if (! static_cast<RemoteNode const*>(_exeNode)->isResponsibleForInitCursor()) {
+    // do nothing...
+    return TRI_ERROR_NO_ERROR; 
+  }
+
   // For every call we simply forward via HTTP
 
   std::unique_ptr<ClusterCommResult> res;

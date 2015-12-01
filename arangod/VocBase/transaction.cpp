@@ -219,7 +219,7 @@ static void FreeOperations (TRI_transaction_t* trx) {
           auto it2 = stats.find(fid);
 
           if (it2 == stats.end()) {
-            stats.insert(it2, std::make_pair(fid, std::make_pair(1, TRI_DF_ALIGN_BLOCK(marker->_size))));
+            stats.emplace(fid, std::make_pair(1, TRI_DF_ALIGN_BLOCK(marker->_size)));
           }
           else {
             (*it2).second.first++;
