@@ -299,10 +299,10 @@ namespace triagens {
 
         v8::Handle<v8::Value> requestData (v8::Isolate* isolate,
                                            rest::HttpRequest::HttpRequestType method,
-                                         std::string const& location,
-                                         const char* body,
-                                         const size_t bodySize,
-                                         std::map<std::string, std::string> const& headerFields);
+                                           std::string const& location,
+                                           const char* body,
+                                           const size_t bodySize,
+                                           std::map<std::string, std::string> const& headerFields);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a request
