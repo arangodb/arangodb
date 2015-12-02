@@ -30,6 +30,7 @@
 #include "Traverser.h"
 #include "Basics/json-utilities.h"
 #include "VocBase/KeyGenerator.h"
+#include <iostream>
 
 using TraverserExpression = triagens::arango::traverser::TraverserExpression;
 
@@ -167,13 +168,13 @@ bool TraverserExpression::matchesCheck (DocumentAccessor& accessor) const {
     case triagens::aql::NODE_TYPE_OPERATOR_BINARY_NE:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), false) != 0;
     case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) < 0;
+      return TRI_CompareValuesJson(result.json(), compareTo->json(), true) < 0;
     case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) <= 0;
+      return TRI_CompareValuesJson(result.json(), compareTo->json(), true) <= 0;
     case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) >= 0;
+      return TRI_CompareValuesJson(result.json(), compareTo->json(), true) >= 0;
     case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) > 0;
+      return TRI_CompareValuesJson(result.json(), compareTo->json(), true) > 0;
     default:
       TRI_ASSERT(false);
   }
