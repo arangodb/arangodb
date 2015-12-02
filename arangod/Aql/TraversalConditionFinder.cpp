@@ -80,7 +80,7 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
           (indexAccessNode->value.value._int < 0)) {
         return false;
       }
-      conditionIsImpossible = !tn->isInRange(indexAccessNode->value.value._int);
+      conditionIsImpossible = ! tn->isInRange(indexAccessNode->value.value._int, isEdgeAccess);
     }
     else if ((onePath[len - 3]->type == NODE_TYPE_ITERATOR) &&
              (onePath[len - 4]->type == NODE_TYPE_EXPANSION)){

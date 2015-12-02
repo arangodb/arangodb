@@ -360,9 +360,11 @@ namespace triagens {
 /// @brief check whether an access is inside the specified range
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isInRange(uint64_t thisIndex) {
-          // TODO: is there a way not to have it specified?((_maxDepth == ) ||
-          return (thisIndex < _maxDepth);
+        bool isInRange(uint64_t thisIndex, bool isEdge) {
+          if (isEdge) {
+            return (thisIndex < _maxDepth);
+          }
+          return (thisIndex <= _maxDepth);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -434,10 +436,10 @@ namespace triagens {
         std::string _vertexId;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief input graphName only used for serialisation & info
+/// @brief input graphJson only used for serialisation & info
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string _graphName;
+        triagens::basics::Json _graphJson;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The minimal depth included in the result

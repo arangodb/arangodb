@@ -52,27 +52,24 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
   TRI_ASSERT(graph != nullptr);
   std::unique_ptr<arango::CollectionNameResolver> resolver(new arango::CollectionNameResolver(vocbase));
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
+    size_t edgeCollectionCount = graph->numMembers();
+    _graphJson = triagens::basics::Json(triagens::basics::Json::Array, edgeCollectionCount);
     // List of edge collection names
-    _graphName = '[';
-    for (size_t i = 0; i <  graph->numMembers(); ++i) {
+    for (size_t i = 0; i <  edgeCollectionCount; ++i) {
       auto eColName = graph->getMember(i)->getStringValue();
       auto eColType = resolver->getCollectionTypeCluster(eColName);
-      if (_graphName.length() > 1) {
-        _graphName += "'";
-      }
-      _graphName += "'";
-      _graphName += eColName;
-      _graphName += "'";
       if (eColType != TRI_COL_TYPE_EDGE) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
       }
+      _graphJson.add(triagens::basics::Json(eColName));
       _edgeColls.push_back(eColName);
     }
   } else {
     if (_edgeColls.size() == 0) {
       if (graph->isStringValue()) {
-        _graphName = graph->getStringValue();
-        _graphObj = plan->getAst()->query()->lookupGraphByName(_graphName);
+        std::string graphName = graph->getStringValue();
+        _graphJson = triagens::basics::Json(graphName);
+        _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
 
         auto eColls = _graphObj->edgeCollections();
@@ -269,12 +266,11 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
     return;
   }
 
-  // Now put info about vocbase and cid in there
   json("database", triagens::basics::Json(_vocbase->_name))
-    ("minDepth", triagens::basics::Json(static_cast<int32_t>(_minDepth)))
-    ("maxDepth", triagens::basics::Json(static_cast<int32_t>(_maxDepth)))
-    ("direction", triagens::basics::Json(static_cast<int32_t>(_direction)));
-  json("graph" , triagens::basics::Json(_graphName));
+      ("minDepth", triagens::basics::Json(static_cast<int32_t>(_minDepth)))
+      ("maxDepth", triagens::basics::Json(static_cast<int32_t>(_maxDepth)))
+      ("direction", triagens::basics::Json(static_cast<int32_t>(_direction)))
+      ("graph" , _graphJson.copy());
 
   // In variable
   if (usesInVariable()) {
