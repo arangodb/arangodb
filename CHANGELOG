@@ -1,3 +1,11 @@
+v2.7.3 (XXXX-XX-XX)
+-------------------
+
+* fixed disappearing of documents for collections transferred via `sync` or
+  `syncCollection` if the collection was dropped right before synchronization 
+  and drop and (re-)create collection markers were located in the same WAL file
+
+
 v2.7.2 (2015-12-01)
 -------------------
 
