@@ -250,7 +250,7 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
     case TRI_WAL_MARKER_ABORT_TRANSACTION: {
       transaction_abort_marker_t const* m = reinterpret_cast<transaction_abort_marker_t const*>(marker);
       // note which abort markers we found
-      state->handledTransactions.insert(m->_transactionId);
+      state->handledTransactions.emplace(m->_transactionId);
       break;
     }
     
@@ -262,7 +262,7 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
     case TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION: {
       transaction_remote_abort_marker_t const* m = reinterpret_cast<transaction_remote_abort_marker_t const*>(marker);
       // note which abort markers we found
-      state->handledTransactions.insert(m->_transactionId);
+      state->handledTransactions.emplace(m->_transactionId);
       break;
     }
     
@@ -276,7 +276,7 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
     case TRI_WAL_MARKER_DROP_COLLECTION: {
       collection_drop_marker_t const* m = reinterpret_cast<collection_drop_marker_t const*>(marker);
       // note that the collection was dropped and doesn't need to be collected
-      state->droppedCollections.insert(m->_collectionId);
+      state->droppedCollections.emplace(m->_collectionId);
       state->structuralOperations.erase(m->_collectionId);
       state->documentOperations.erase(m->_collectionId);
       state->operationsCount.erase(m->_collectionId);
@@ -294,12 +294,12 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
     case TRI_WAL_MARKER_DROP_DATABASE: {
       database_drop_marker_t const* m = reinterpret_cast<database_drop_marker_t const*>(marker);
       // note that the database was dropped and doesn't need to be collected
-      state->droppedDatabases.insert(m->_databaseId);
+      state->droppedDatabases.emplace(m->_databaseId);
       
       // find all collections for the same database and erase their state, too
       for (auto it = state->collections.begin(); it != state->collections.end(); /* no hoisting */) {
         if ((*it).second == m->_databaseId) {
-          state->droppedCollections.insert((*it).first);
+          state->droppedCollections.emplace((*it).first);
           state->structuralOperations.erase((*it).first);
           state->documentOperations.erase((*it).first);
           state->operationsCount.erase((*it).first);
@@ -926,7 +926,7 @@ int CollectorThread::collect (Logfile* logfile) {
     auto cid = (*it).first;
 
     if (! ShouldIgnoreCollection(&state, cid)) {
-      collectionIds.insert((*it).first);
+      collectionIds.emplace((*it).first);
     }
   }
 
@@ -935,7 +935,7 @@ int CollectorThread::collect (Logfile* logfile) {
 
     if (state.structuralOperations.find(cid) == state.structuralOperations.end() &&
         ! ShouldIgnoreCollection(&state, cid)) {
-      collectionIds.insert(cid);
+      collectionIds.emplace(cid);
     }
   }
 
