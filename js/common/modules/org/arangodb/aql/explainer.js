@@ -655,7 +655,7 @@ function processQuery (query, explain) {
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " +
       keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   ";
 
-    if (cluster && cluster.isCluster()) { 
+    if (cluster && cluster.isCluster && cluster.isCluster()) { 
       line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + "  ";
     }
 
@@ -676,7 +676,7 @@ function processQuery (query, explain) {
     pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " +
     header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   ";
 
-  if (cluster && cluster.isCluster()) { 
+  if (cluster && cluster.isCluster && cluster.isCluster()) { 
     line += header("Site") + pad(1 + maxSiteLen - String("Site").length) + "  ";
   }
 
