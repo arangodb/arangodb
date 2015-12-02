@@ -69,8 +69,7 @@ void Graph::addVertexCollection (std::string name) {
 }
 
 triagens::basics::Json Graph::toJson (TRI_memory_zone_t* z,
-                           bool verbose) const
-{
+                                      bool verbose) const {
   triagens::basics::Json json(z, triagens::basics::Json::Object);
 
   if (_vertexColls.size() > 0) {
