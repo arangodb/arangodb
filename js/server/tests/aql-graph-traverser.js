@@ -38,6 +38,7 @@ const errors = require("org/arangodb").errors;
 const gm = require("org/arangodb/general-graph");
 const vn = "UnitTestVertexCollection";
 const en = "UnitTestEdgeCollection";
+const isCluster = require("org/arangodb/cluster").isCluster();
 var vertex = {};
 var edge = {};
 var vc;
@@ -862,7 +863,12 @@ function complexFilteringSuite () {
       // 1 Primary (Tri1)
       // 1 Edge (Tri1->Tri2)
       // 1 Primary (Tri2)
-      assertEqual(stats.scannedIndex, 3);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 3);
+      }
+      else {
+        assertEqual(stats.scannedIndex, 2);
+      }
       assertEqual(stats.filtered, 1);
     },
 
@@ -893,7 +899,13 @@ function complexFilteringSuite () {
       assertEqual(stats.scannedFull, 0);
       // 1 Primary (Tri1)
       // 1 Edge (Tri1->Tri2)
-      assertEqual(stats.scannedIndex, 2);
+      if (isCluster) {
+        assertEqual(stats.scannedIndex, 2);
+      }
+      else {
+        // SingleServer can go shortcut here
+        assertEqual(stats.scannedIndex, 1);
+      }
       assertEqual(stats.filtered, 1);
     },
 
@@ -931,12 +943,27 @@ function complexFilteringSuite () {
       assertEqual(cursor.toArray(), ["B", "C", "F"]);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      // 1 Primary lookup A
-      // 2 Edge Lookups (A)
-      // 2 Primary lookup B,D
-      // 2 Edge Lookups (2 B) (0 D)
-      // 2 Primary Lookups (C, F)
-      assertEqual(stats.scannedIndex, 9);
+      if (isCluster) {
+        // 1 Primary lookup A
+        // 2 Edge Lookups (A)
+        // 2 Primary lookup B,D
+        // 2 Edge Lookups (2 B) (0 D)
+        // 2 Primary Lookups (C, F)
+        assertEqual(stats.scannedIndex, 9);
+      }
+      else {
+        // Cluster uses a lookup cache.
+        // Pointless in single-server mode
+        // Makes Primary Lookups for data
+        
+        // 2 Edge Lookups (A)
+        // 2 Primary (B, D) for Filtering
+        // 2 Edge Lookups (B)
+        // 3 Primary Lookups A -> B
+        // 4 Primary Lookups A -> B -> C
+        // 4 Primary Lookups A -> B -> F
+        assertEqual(stats.scannedIndex, 17);
+      }
       // 1 Filter On D
       assertEqual(stats.filtered, 1);
     },
@@ -957,12 +984,22 @@ function complexFilteringSuite () {
       assertEqual(cursor.toArray(), ["C", "F"]);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      // 1 Primary lookup A
-      // 2 Edge Lookups (A)
-      // 2 Primary lookup B,D
-      // 4 Edge Lookups (2 B) (2 D)
-      // 4 Primary Lookups (C, F, E, G)
-      assertEqual(stats.scannedIndex, 13);
+      if (isCluster) {
+        // 1 Primary lookup A
+        // 2 Primary lookup B,D
+        // 4 Primary Lookups (C, F, E, G)
+        assertEqual(stats.scannedIndex, 13);
+      }
+      else {
+        // 2 Edge Lookups (A)
+        // 4 Edge Lookups (2 B) (2 D)
+        // 4 Primary Lookups for Eval (C, E, G, F)
+        // 3 Primary Lookups A -> B
+        // 3 Primary Lookups A -> D
+        // 4 Primary Lookups A -> B -> C
+        // 4 Primary Lookups A -> B -> F
+        assertEqual(stats.scannedIndex, 24);
+      }
       // 2 Filter (E, G)
       // 2 Filter A->B, A->D path too short
       assertEqual(stats.filtered, 4);
@@ -983,12 +1020,22 @@ function complexFilteringSuite () {
       assertEqual(cursor.count(), 0);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      // 1 Primary lookup A
-      // 2 Edge Lookups (A)
-      // 2 Primary lookup B,D
-      // 2 Edge Lookups (0 B) (2 D)
-      // 2 Primary Lookups (E, G)
-      assertEqual(stats.scannedIndex, 9);
+      if (isCluster) {
+        // 1 Primary lookup A
+        // 2 Edge Lookups (A)
+        // 2 Primary lookup B,D
+        // 2 Edge Lookups (0 B) (2 D)
+        // 2 Primary Lookups (E, G)
+        assertEqual(stats.scannedIndex, 9);
+      }
+      else {
+        // 2 Edge Lookups (A)
+        // 2 Primary Lookups for Eval (B, D)
+        // 2 Edge Lookups (0 B) (2 D)
+        // 2 Primary Lookups for Eval (E, G)
+        // 3 Primary Lookups A -> D
+        assertEqual(stats.scannedIndex, 11);
+      }
       // 1 Filter (B)
       // 2 Filter (E, G)
       // Filter A->D too short
@@ -1009,12 +1056,22 @@ function complexFilteringSuite () {
       assertEqual(cursor.toArray(), ["B", "C", "F"]);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      // 1 Primary (A)
-      // 2 Edge
-      // 1 Primary (B)
-      // 2 Edge
-      // 2 Primary (C,F)
-      assertEqual(stats.scannedIndex, 8);
+      if (isCluster) {
+        // 1 Primary (A)
+        // 2 Edge
+        // 1 Primary (B)
+        // 2 Edge
+        // 2 Primary (C,F)
+        assertEqual(stats.scannedIndex, 8);
+      }
+      else {
+        // 2 Edge Lookups (A)
+        // 2 Edge Lookups (B)
+        // 3 Primary Lookups A -> B
+        // 4 Primary Lookups A -> B -> C
+        // 4 Primary Lookups A -> B -> F
+        assertEqual(stats.scannedIndex, 15);
+      }
       // 1 Filter (A->D)
       assertEqual(stats.filtered, 1);
     },
@@ -1033,12 +1090,23 @@ function complexFilteringSuite () {
       assertEqual(cursor.toArray(), ["C", "F"]);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      // 1 Primary lookup A
-      // 2 Edge Lookups (A)
-      // 2 Primary lookup B,D
-      // 4 Edge Lookups (2 B) (2 D)
-      // 2 Primary Lookups (C, F)
-      assertEqual(stats.scannedIndex, 11);
+      if (isCluster) {
+        // 1 Primary lookup A
+        // 2 Edge Lookups (A)
+        // 2 Primary lookup B,D
+        // 4 Edge Lookups (2 B) (2 D)
+        // 2 Primary Lookups (C, F)
+        assertEqual(stats.scannedIndex, 11);
+      }
+      else {
+        // 2 Edge Lookups (A)
+        // 4 Edge Lookups (2 B) (2 D)
+        // 3 Primary Lookups A -> B
+        // 3 Primary Lookups A -> D
+        // 4 Primary Lookups A -> B -> C
+        // 4 Primary Lookups A -> B -> F
+        assertEqual(stats.scannedIndex, 20);
+      }
       // 2 Filter On (D->E, D->G)
       // Filter on A->D, A->B because path is too short is not counted. No Document!
       assertEqual(stats.filtered, 4);
@@ -1057,4 +1125,3 @@ jsunity.run(complexInternaSuite);
 jsunity.run(complexFilteringSuite);
 
 return jsunity.done();
-

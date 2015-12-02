@@ -313,6 +313,18 @@ namespace triagens {
 
           TraversalPath* next () override;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+        private:
+
+          bool edgeMatchesConditions (TRI_doc_mptr_t&,
+                                      size_t&,
+                                      size_t);
+
+          bool vertexMatchesConditions (VertexId const&,
+                                        size_t);
       };
 
     }
