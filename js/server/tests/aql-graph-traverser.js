@@ -825,9 +825,9 @@ function complexFilteringSuite () {
       var vc = db._create(vn, {numberOfShards: 4});
       var ec = db._createEdgeCollection(en, {numberOfShards: 4});
       vertex.A = vc.save({_key: "A", left: false, right: false})._id;
-      vertex.B = vc.save({_key: "B", left: true, right: false})._id;
+      vertex.B = vc.save({_key: "B", left: true, right: false, value: 25})._id;
       vertex.C = vc.save({_key: "C", left: true, right: false})._id;
-      vertex.D = vc.save({_key: "D", left: false, right: true})._id;
+      vertex.D = vc.save({_key: "D", left: false, right: true, value: 75})._id;
       vertex.E = vc.save({_key: "E", left: false, right: true})._id;
       vertex.F = vc.save({_key: "F", left: true, right: false})._id;
       vertex.G = vc.save({_key: "G", left: false, right: true})._id;
@@ -1110,9 +1110,110 @@ function complexFilteringSuite () {
       // 2 Filter On (D->E, D->G)
       // Filter on A->D, A->B because path is too short is not counted. No Document!
       assertEqual(stats.filtered, 4);
+    },
+
+    testVertexLevel1Less: function () {
+      var filters = [
+        "FILTER p.vertices[1].value <= 50",
+        "FILTER p.vertices[1].value <= 25",
+        "FILTER 25 >= p.vertices[1].value",
+        "FILTER 50 >= p.vertices[1].value",
+        "FILTER p.vertices[1].value < 50",
+        "FILTER p.vertices[1].value < 75",
+        "FILTER 75 > p.vertices[1].value",
+        "FILTER 50 > p.vertices[1].value"
+      ];
+      for (var f of filters) {
+        var query = `FOR v, e, p IN 1..2 OUTBOUND @start @@ecol
+        ${f}
+        SORT v._key
+        RETURN v._key`;
+        var bindVars = {
+          "@ecol": en,
+          start: vertex.A
+        };
+        var cursor = db._query(query, bindVars);
+        assertEqual(cursor.count(), 3, query);
+        assertEqual(cursor.toArray(), ["B", "C", "F"]);
+        var stats = cursor.getExtra().stats;
+        assertEqual(stats.scannedFull, 0);
+        if (isCluster) {
+          // 1 Primary lookup A
+          // 2 Edge Lookups (A)
+          // 2 Primary lookup B,D
+          // 2 Edge Lookups (2 B) (0 D)
+          // 2 Primary Lookups (C, F)
+          assertEqual(stats.scannedIndex, 9);
+        }
+        else {
+          // Cluster uses a lookup cache.
+          // Pointless in single-server mode
+          // Makes Primary Lookups for data
+          
+          // 2 Edge Lookups (A)
+          // 2 Primary (B, D) for Filtering
+          // 2 Edge Lookups (B)
+          // 3 Primary Lookups A -> B
+          // 4 Primary Lookups A -> B -> C
+          // 4 Primary Lookups A -> B -> F
+          assertEqual(stats.scannedIndex, 17);
+        }
+        // 1 Filter On D
+        assertEqual(stats.filtered, 1);
+      }
+    },
+
+    testVertexLevel1Greater: function () {
+      var filters = [
+        "FILTER p.vertices[1].value > 50",
+        "FILTER p.vertices[1].value > 25",
+        "FILTER 25 < p.vertices[1].value",
+        "FILTER 50 < p.vertices[1].value",
+        "FILTER p.vertices[1].value > 50",
+        "FILTER p.vertices[1].value >= 75",
+        "FILTER 75 <= p.vertices[1].value",
+        "FILTER 50 < p.vertices[1].value"
+      ];
+      for (var f of filters) {
+        var query = `FOR v, e, p IN 1..2 OUTBOUND @start @@ecol
+        ${f}
+        SORT v._key
+        RETURN v._key`;
+        var bindVars = {
+          "@ecol": en,
+          start: vertex.A
+        };
+        var cursor = db._query(query, bindVars);
+        assertEqual(cursor.count(), 3, query);
+        assertEqual(cursor.toArray(), ["D", "E", "G"]);
+        var stats = cursor.getExtra().stats;
+        assertEqual(stats.scannedFull, 0);
+        if (isCluster) {
+          // 1 Primary lookup A
+          // 2 Edge Lookups (A)
+          // 2 Primary lookup B,D
+          // 2 Edge Lookups (2 B) (0 D)
+          // 2 Primary Lookups (C, F)
+          assertEqual(stats.scannedIndex, 9);
+        }
+        else {
+          // Cluster uses a lookup cache.
+          // Pointless in single-server mode
+          // Makes Primary Lookups for data
+          
+          // 2 Edge Lookups (A)
+          // 2 Primary (B, D) for Filtering
+          // 2 Edge Lookups (B)
+          // 3 Primary Lookups A -> B
+          // 4 Primary Lookups A -> B -> C
+          // 4 Primary Lookups A -> B -> F
+          assertEqual(stats.scannedIndex, 17);
+        }
+        // 1 Filter On D
+        assertEqual(stats.filtered, 1);
+      }
     }
 
-    
 
   };
 

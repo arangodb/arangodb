@@ -197,16 +197,16 @@ bool extractSimplePathAccesses (AstNode const* node,
         auto expressionOperator = compareNode->type;
         if (flipOperator) {
           if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_LT ) {
-            expressionOperator = NODE_TYPE_OPERATOR_BINARY_GE;
-          }
-          else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_LE ) {
             expressionOperator = NODE_TYPE_OPERATOR_BINARY_GT;
           }
+          else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_LE ) {
+            expressionOperator = NODE_TYPE_OPERATOR_BINARY_GE;
+          }
           else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_GT ) { 
-            expressionOperator = NODE_TYPE_OPERATOR_BINARY_LE;
+            expressionOperator = NODE_TYPE_OPERATOR_BINARY_LT;
           }
           else if (expressionOperator == NODE_TYPE_OPERATOR_BINARY_GE ) {
-            expressionOperator = NODE_TYPE_OPERATOR_BINARY_LT;
+            expressionOperator = NODE_TYPE_OPERATOR_BINARY_LE;
           }
         }
         tn->storeSimpleExpression(isEdgeAccess,
