@@ -162,13 +162,13 @@ namespace triagens {
           }
 
           triagens::basics::Json* pathToJson (Transaction*,
-                                              CollectionNameResolver*) const;
+                                              CollectionNameResolver*);
 
           triagens::basics::Json* lastEdgeToJson (Transaction*,
-                                                  CollectionNameResolver*) const;
+                                                  CollectionNameResolver*);
 
           triagens::basics::Json* lastVertexToJson (Transaction*,
-                                                    CollectionNameResolver*) const;
+                                                    CollectionNameResolver*);
 
         private:
 

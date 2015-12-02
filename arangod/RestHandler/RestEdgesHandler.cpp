@@ -32,6 +32,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "VocBase/Traverser.h"
 
+#include <iostream>
 using namespace triagens::rest;
 using namespace triagens::arango;
 
@@ -315,6 +316,7 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
 
   TRI_transaction_collection_t* collection = trx.trxCollection();
 
+  size_t filtered = 0;
   std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(
     collection->_collection->_collection,
     direction,
@@ -340,7 +342,7 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
       // Expressions symbolize an and, so all have to be matched
       for (auto& exp : expressions) {
         if (exp->isEdgeAccess && ! exp->matchesCheck(e, docCol, trx.resolver())) {
-
+          ++filtered;
           add = false;
           break;
         }
@@ -362,6 +364,8 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
   result("edges", documents);
   result("error", triagens::basics::Json(false));
   result("code", triagens::basics::Json(200));
+  result("scannedIndex", triagens::basics::Json(static_cast<int32_t>(edges.size())));
+  result("filtered", triagens::basics::Json(static_cast<int32_t>(filtered)));
 
   // and generate a response
   generateResult(result.json());
@@ -382,13 +386,17 @@ bool RestEdgesHandler::readFilteredEdges () {
   triagens::basics::ScopeGuard guard{
     []() -> void { },
     [&expressions]() -> void {
+      std::cout << "Before free Expressions\n";
       for (auto& e : expressions) {
         delete e;
       }
+      std::cout << "After free Expressions\n";
     }
   };
   if (json == nullptr) {
+    std::cout << "Before free\n";
     delete _response;
+    std::cout << "After free\n";
     _response = nullptr;
     return readEdges(expressions);
   }

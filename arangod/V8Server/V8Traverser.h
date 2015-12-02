@@ -206,13 +206,13 @@ namespace triagens {
           }
 
           triagens::basics::Json* pathToJson (Transaction*,
-                                              CollectionNameResolver*) const override;
+                                              CollectionNameResolver*) override;
 
           triagens::basics::Json* lastEdgeToJson (Transaction*,
-                                                  CollectionNameResolver*) const override;
+                                                  CollectionNameResolver*) override;
 
           triagens::basics::Json* lastVertexToJson (Transaction*,
-                                                    CollectionNameResolver*) const override;
+                                                    CollectionNameResolver*) override;
 
         private:
 
@@ -222,11 +222,11 @@ namespace triagens {
 
           triagens::basics::Json* edgeToJson (Transaction* trx,
                                               CollectionNameResolver* resolver,
-                                              EdgeInfo const& e) const;
+                                              EdgeInfo const& e);
 
           triagens::basics::Json* vertexToJson (Transaction* trx,
                                                 CollectionNameResolver* resolver,
-                                                VertexId const& v) const;
+                                                VertexId const& v);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

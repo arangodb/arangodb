@@ -273,7 +273,9 @@ int TraversalBlock::initializeCursor (AqlItemBlock* items,
 bool TraversalBlock::morePaths (size_t hint) {
   freeCaches();
   _posInPaths = 0;
-  if (!_traverser->hasMore()) {
+  if (! _traverser->hasMore()) {
+    _engine->_stats.scannedIndex += _traverser->getAndResetReadDocuments();
+    _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
     return false;
   }
   auto en = static_cast<TraversalNode const*>(getPlanNode());
@@ -301,7 +303,11 @@ bool TraversalBlock::morePaths (size_t hint) {
     if ( usesPathOutput() ) {
       _paths.emplace_back(pathValue);
     }
+    _engine->_stats.scannedIndex += p->getReadDocuments();
   }
+
+  _engine->_stats.scannedIndex += _traverser->getAndResetReadDocuments();
+  _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
   // This is only save as long as _vertices is still build
   return _vertices.size() > 0;
 }

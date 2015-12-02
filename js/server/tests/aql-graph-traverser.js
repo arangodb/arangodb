@@ -518,7 +518,7 @@
       };
     };
 
-    var potentialErrorsSuite = function () {
+    function potentialErrorsSuite () {
       var vc, ec;
 
       return {
@@ -671,7 +671,7 @@
       };
     };
 
-    var complexInternaSuite = function () {
+    function complexInternaSuite () {
 
       return {
 
@@ -800,7 +800,7 @@
 
   };
 
-  var complexFilteringSuite = function() {
+  function complexFilteringSuite () {
 
     /***********************************************************************
      * Graph under test:
@@ -854,55 +854,206 @@
         var query = "FOR v, e, p IN 100 OUTBOUND @start @@eCol FILTER p.vertices[1]._key == 'wrong' RETURN v";
         var bindVars = {
           "@eCol": en,
-          "start": vertex.A
+          "start": vertex.Tri1
         };
-        var result = db._query(query, bindVars).toArray();
-        assertEqual(result.length, 0);
+        var cursor = db._query(query, bindVars);
+        assertEqual(cursor.count(), 0);
+        var stats = cursor.getExtra().stats;
+        assertEqual(stats.scannedFull, 0);
+        // 1 Primary (Tri1)
+        // 1 Edge (Tri1->Tri2)
+        // 1 Primary (Tri2)
+        assertEqual(stats.scannedIndex, 3);
+        assertEqual(stats.filtered, 1);
       },
 
       testStartVertexEarlyPruneHighDepth: function () {
         var query = "FOR v, e, p IN 100 OUTBOUND @start @@eCol FILTER p.vertices[0]._key == 'wrong' RETURN v";
         var bindVars = {
           "@eCol": en,
-          "start": vertex.A
+          "start": vertex.Tri1
         };
-        var result = db._query(query, bindVars).toArray();
-        assertEqual(result.length, 0);
+        var cursor = db._query(query, bindVars);
+        assertEqual(cursor.count(), 0);
+        var stats = cursor.getExtra().stats;
+        assertEqual(stats.scannedFull, 0);
+        // 1 Primary (Tri1)
+        assertEqual(stats.scannedIndex, 1);
+        assertEqual(stats.filtered, 1);
       },
 
       testEdgesEarlyPruneHighDepth: function () {
         var query = "FOR v, e, p IN 100 OUTBOUND @start @@eCol FILTER p.edges[0]._key == 'wrong' RETURN v";
         var bindVars = {
           "@eCol": en,
-          "start": vertex.A
+          "start": vertex.Tri1
         };
-        var result = db._query(query, bindVars).toArray();
-        assertEqual(result.length, 0);
+        var cursor = db._query(query, bindVars);
+        assertEqual(cursor.count(), 0);
+        var stats = cursor.getExtra().stats;
+        assertEqual(stats.scannedFull, 0);
+        // 1 Primary (Tri1)
+        // 1 Edge (Tri1->Tri2)
+        assertEqual(stats.scannedIndex, 2);
+        assertEqual(stats.filtered, 1);
       },
 
       testVertexLevel0: function () {
         var query = `FOR v, e, p IN 1..2 OUTBOUND @start @@ecol
                      FILTER p.vertices[0].left == true
-                     RETURN v`;
+                     SORT v._key
+                     RETURN v._key`;
         var bindVars = {
           "@ecol": en,
           start: vertex.A
         };
         var cursor = db._query(query, bindVars);
         assertEqual(cursor.count(), 0);
-        assertEqual(cursor.getExtra().stats.scannedFull, 0);
-        assertEqual(cursor.getExtra().stats.scannedIndex, 2);
-        assertEqual(cursor.getExtra().stats.filtered, 1);
-      }
+        var stats = cursor.getExtra().stats;
+        assertEqual(stats.scannedFull, 0);
+        // 1 Primary (A)
+        // 0 Edge
+        assertEqual(stats.scannedIndex, 1);
+        // 1 Filter (A)
+        assertEqual(stats.filtered, 1);
+      },
+
+      testVertexLevel1: function () {
+        var query = `FOR v, e, p IN 1..2 OUTBOUND @start @@ecol
+                     FILTER p.vertices[1].left == true
+                     SORT v._key
+                     RETURN v._key`;
+        var bindVars = {
+          "@ecol": en,
+          start: vertex.A
+        };
+        var cursor = db._query(query, bindVars);
+        assertEqual(cursor.count(), 3);
+        assertEqual(cursor.toArray(), ["B", "C", "F"]);
+        var stats = cursor.getExtra().stats;
+        assertEqual(stats.scannedFull, 0);
+        // 1 Primary lookup A
+        // 2 Edge Lookups (A)
+        // 2 Primary lookup B,D
+        // 2 Edge Lookups (2 B) (0 D)
+        // 2 Primary Lookups (C, F)
+        assertEqual(stats.scannedIndex, 9);
+        // 1 Filter On D
+        assertEqual(stats.filtered, 1);
+      },
+
+      testVertexLevel2: function () {
+        var query = `FOR v, e, p IN 1..2 OUTBOUND @start @@ecol
+                     FILTER p.vertices[2].left == true
+                     SORT v._key
+                     RETURN v._key`;
+        var bindVars = {
+          "@ecol": en,
+          start: vertex.A
+        };
+        var cursor = db._query(query, bindVars);
+        // We expect to find C, F
+        // B and D will be post filtered
+        assertEqual(cursor.count(), 2);
+        assertEqual(cursor.toArray(), ["C", "F"]);
+        var stats = cursor.getExtra().stats;
+        assertEqual(stats.scannedFull, 0);
+        // 1 Primary lookup A
+        // 2 Edge Lookups (A)
+        // 2 Primary lookup B,D
+        // 4 Edge Lookups (2 B) (2 D)
+        // 4 Primary Lookups (C, F, E, G)
+        assertEqual(stats.scannedIndex, 13);
+        // 2 Filter (E, G)
+        assertEqual(stats.filtered, 2);
+      },
+
+      testVertexLevelsCombined: function () {
+        var query = `FOR v, e, p IN 1..2 OUTBOUND @start @@ecol
+                     FILTER p.vertices[1].right == true
+                     FILTER p.vertices[2].left == true
+                     SORT v._key
+                     RETURN v._key`;
+        var bindVars = {
+          "@ecol": en,
+          start: vertex.A
+        };
+        var cursor = db._query(query, bindVars);
+        // Everything should be filtered, no results
+        assertEqual(cursor.count(), 0);
+        var stats = cursor.getExtra().stats;
+        assertEqual(stats.scannedFull, 0);
+        // 1 Primary lookup A
+        // 2 Edge Lookups (A)
+        // 2 Primary lookup B,D
+        // 2 Edge Lookups (0 B) (2 D)
+        // 2 Primary Lookups (E, G)
+        assertEqual(stats.scannedIndex, 9);
+        // 1 Filter (B)
+        // 2 Filter (E, G)
+        assertEqual(stats.filtered, 3);
+      },
+
+      testEdgeLevel0: function () {
+        var query = `FOR v, e, p IN 1..2 OUTBOUND @start @@ecol
+                     FILTER p.edges[0].left == true
+                     SORT v._key
+                     RETURN v._key`;
+        var bindVars = {
+          "@ecol": en,
+          start: vertex.A
+        };
+        var cursor = db._query(query, bindVars);
+        assertEqual(cursor.count(), 3);
+        assertEqual(cursor.toArray(), ["B", "C", "F"]);
+        var stats = cursor.getExtra().stats;
+        assertEqual(stats.scannedFull, 0);
+        // 1 Primary (A)
+        // 2 Edge
+        // 1 Primary (B)
+        // 2 Edge
+        // 2 Primary (C,F)
+        assertEqual(stats.scannedIndex, 8);
+        // 1 Filter (A->D)
+        assertEqual(stats.filtered, 1);
+      },
+
+      testEdgeLevel1: function () {
+        var query = `FOR v, e, p IN 1..2 OUTBOUND @start @@ecol
+                     FILTER p.edges[1].left == true
+                     SORT v._key
+                     RETURN v._key`;
+        var bindVars = {
+          "@ecol": en,
+          start: vertex.A
+        };
+        var cursor = db._query(query, bindVars);
+        assertEqual(cursor.count(), 4);
+        assertEqual(cursor.toArray(), ["B", "C", "D", "F"]);
+        var stats = cursor.getExtra().stats;
+        assertEqual(stats.scannedFull, 0);
+        // 1 Primary lookup A
+        // 2 Edge Lookups (A)
+        // 2 Primary lookup B,D
+        // 2 Edge Lookups (2 B) (2 D)
+        // 2 Primary Lookups (C, F)
+        assertEqual(stats.scannedIndex, 9);
+        // 2 Filter On (D->E, D->G)
+        assertEqual(stats.filtered, 2);
+      },
+
+ 
 
     };
 
   };
 
+  /*
   jsunity.run(namedGraphSuite);
   jsunity.run(multiCollectionGraphSuite);
   jsunity.run(potentialErrorsSuite);
   jsunity.run(complexInternaSuite);
+  */
   jsunity.run(complexFilteringSuite);
 
   return jsunity.done();

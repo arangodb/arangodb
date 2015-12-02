@@ -697,7 +697,7 @@ void TRI_RunNeighborsSearch (
 // -----------------------------------------------------------------------------
 
 Json* SingleServerTraversalPath::pathToJson (Transaction* trx,
-                                             CollectionNameResolver* resolver) const {
+                                             CollectionNameResolver* resolver) {
   std::unique_ptr<Json> path(new Json(Json::Object, 2));
   Json vertices(Json::Array);
   for (size_t i = 0; i < _path.vertices.size(); ++i) {
@@ -731,18 +731,18 @@ Json* SingleServerTraversalPath::pathToJson (Transaction* trx,
 
 
 Json* SingleServerTraversalPath::lastEdgeToJson (Transaction* trx,
-                                                 CollectionNameResolver* resolver) const {
+                                                 CollectionNameResolver* resolver) {
   return edgeToJson(trx, resolver, _path.edges.back());
 }
 
 Json* SingleServerTraversalPath::lastVertexToJson (Transaction* trx,
-                                                   CollectionNameResolver* resolver) const {
+                                                   CollectionNameResolver* resolver) {
   return vertexToJson(trx, resolver, _path.vertices.back());
 }
 
 Json* SingleServerTraversalPath::edgeToJson (Transaction* trx,
                                              CollectionNameResolver* resolver,
-                                             EdgeInfo const& e) const {
+                                             EdgeInfo const& e) {
   auto collection = trx->trxCollection(e.cid);
   TRI_shaped_json_t shapedJson;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, &e.mptr);
@@ -756,7 +756,7 @@ Json* SingleServerTraversalPath::edgeToJson (Transaction* trx,
 
 Json* SingleServerTraversalPath::vertexToJson (Transaction* trx,
                                                CollectionNameResolver* resolver,
-                                               VertexId const& v) const {
+                                               VertexId const& v) {
   auto collection = trx->trxCollection(v.cid);
   if (collection == nullptr) {
     SingleCollectionReadOnlyTransaction intTrx(new StandaloneTransactionContext(), trx->vocbase(), v.cid);
@@ -768,6 +768,7 @@ Json* SingleServerTraversalPath::vertexToJson (Transaction* trx,
     collection = intTrx.trxCollection();
     TRI_doc_mptr_copy_t mptr;
     intTrx.read(&mptr, v.key);
+    ++_readDocuments;
     std::unique_ptr<Json> tmp(new Json(TRI_ExpandShapedJson(
       collection->_collection->_collection->getShaper(),
       resolver,
@@ -779,6 +780,7 @@ Json* SingleServerTraversalPath::vertexToJson (Transaction* trx,
   }
   TRI_doc_mptr_copy_t mptr;
   trx->readSingle(collection, &mptr, v.key);
+  ++_readDocuments;
   return new Json(TRI_ExpandShapedJson(
     collection->_collection->_collection->getShaper(),
     resolver,
@@ -807,7 +809,6 @@ DepthFirstTraverser::DepthFirstTraverser (
 void DepthFirstTraverser::_defInternalFunctions () {
   _getVertex = [] (EdgeInfo const& edge, VertexId const& vertex, size_t depth, VertexId& result) -> bool {
     auto mptr = edge.mptr;
-    // TODO fill Statistics
     if (strcmp(TRI_EXTRACT_MARKER_FROM_KEY(&mptr), vertex.key) == 0 &&
         TRI_EXTRACT_MARKER_FROM_CID(&mptr) == vertex.cid) {
       result = VertexId(TRI_EXTRACT_MARKER_TO_CID(&mptr), TRI_EXTRACT_MARKER_TO_KEY(&mptr));
@@ -822,12 +823,12 @@ void DepthFirstTraverser::_defInternalFunctions () {
     _getEdge = [&] (VertexId const& startVertex, std::vector<EdgeInfo>& edges, TRI_doc_mptr_copy_t*& last, size_t& eColIdx, bool& dir) {
       std::vector<TRI_doc_mptr_copy_t> tmp;
       TRI_ASSERT(eColIdx < _edgeCols.size());
-      // TODO fill Statistics
-      // TODO Self referencing edges
       triagens::arango::EdgeIndex* edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
       if (dir) {
         TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid, startVertex.key);
         edgeIndex->lookup(&it, tmp, last, 1);
+        ++_readDocuments;
+
         while (last == nullptr) {
           // Switch back direction
           dir = false;
@@ -839,20 +840,24 @@ void DepthFirstTraverser::_defInternalFunctions () {
           TRI_edge_index_iterator_t it(TRI_EDGE_IN, startVertex.cid, startVertex.key);
           edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
           edgeIndex->lookup(&it, tmp, last, 1);
+          ++_readDocuments;
           if (last == nullptr) {
             dir = true;
             TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid, startVertex.key);
             edgeIndex->lookup(&it, tmp, last, 1);
+            ++_readDocuments;
           }
         }
       } else {
         TRI_edge_index_iterator_t it(TRI_EDGE_IN, startVertex.cid, startVertex.key);
         edgeIndex->lookup(&it, tmp, last, 1);
+        ++_readDocuments;
         while (last == nullptr) {
           // now change direction
           dir = true;
           TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid, startVertex.key);
           edgeIndex->lookup(&it, tmp, last, 1);
+          ++_readDocuments;
           if (last == nullptr) {
             // The other direction also has no further edges
             dir = false;
@@ -864,6 +869,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
             TRI_edge_index_iterator_t it(TRI_EDGE_IN, startVertex.cid, startVertex.key);
             edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
             edgeIndex->lookup(&it, tmp, last, 1);
+            ++_readDocuments;
           }
         }
       }
@@ -878,6 +884,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
         if (it != _expressions->end()) {
           for (auto const& exp : it->second) {
             if (exp->isEdgeAccess && ! exp->matchesCheck(tmp.back(), _edgeCols.at(eColIdx), _resolver)) {
+              ++_filteredPaths;
               // Retry with the next element
               _getEdge(startVertex, edges, last, eColIdx, dir);
               return;
@@ -907,12 +914,14 @@ void DepthFirstTraverser::_defInternalFunctions () {
 
               TRI_doc_mptr_copy_t mptr;
               int res = _trx->readSingle(collection, &mptr, other.key); 
+              ++_readDocuments;
               if (res != TRI_ERROR_NO_ERROR) {
                 // Vertex does not exist
                 _getEdge(startVertex, edges, last, eColIdx, dir);
                 return;
               }
               if (! exp->matchesCheck(mptr, collection->_collection->_collection, _resolver)) {
+                ++_filteredPaths;
                 _getEdge(startVertex, edges, last, eColIdx, dir);
                 return;
               }
@@ -927,10 +936,10 @@ void DepthFirstTraverser::_defInternalFunctions () {
       std::vector<TRI_doc_mptr_copy_t> tmp;
       TRI_ASSERT(eColIdx < _edgeCols.size());
       // Do not touch the bool parameter, as long as it is default the first encountered nullptr is final
-      // TODO fill Statistics
       TRI_edge_index_iterator_t it(_opts.direction, startVertex.cid, startVertex.key);
       triagens::arango::EdgeIndex* edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
       edgeIndex->lookup(&it, tmp, last, 1);
+      ++_readDocuments;
       while (last == nullptr) {
         // This edge collection does not have any more edges for this vertex. Check the next one
         ++eColIdx;
@@ -940,6 +949,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
         }
         edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
         edgeIndex->lookup(&it, tmp, last, 1);
+        ++_readDocuments;
       }
       if (last != nullptr) {
         // sth is stored in tmp. Now push it on edges
@@ -952,6 +962,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
         if (it != _expressions->end()) {
           for (auto const& exp : it->second) {
             if (exp->isEdgeAccess && ! exp->matchesCheck(tmp.back(), _edgeCols.at(eColIdx), _resolver)) {
+              ++_filteredPaths;
               // Retry with the next element
               _getEdge(startVertex, edges, last, eColIdx, dir);
               return;
@@ -981,12 +992,14 @@ void DepthFirstTraverser::_defInternalFunctions () {
 
               TRI_doc_mptr_copy_t mptr;
               int res = _trx->readSingle(collection, &mptr, other.key); 
+              ++_readDocuments;
               if (res != TRI_ERROR_NO_ERROR) {
                 // Vertex does not exist
                 _getEdge(startVertex, edges, last, eColIdx, dir);
                 return;
               }
               if (! exp->matchesCheck(mptr, collection->_collection->_collection, _resolver)) {
+                ++_filteredPaths;
                 _getEdge(startVertex, edges, last, eColIdx, dir);
                 return;
               }

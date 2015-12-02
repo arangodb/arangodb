@@ -30,6 +30,7 @@
 #include "Cluster/ClusterTraverser.h"
 #include "Cluster/ClusterMethods.h"
 
+#include <iostream>
 using ClusterTraversalPath = triagens::arango::traverser::ClusterTraversalPath;
 using ClusterTraverser = triagens::arango::traverser::ClusterTraverser;
 
@@ -38,7 +39,7 @@ using ClusterTraverser = triagens::arango::traverser::ClusterTraverser;
 // -----------------------------------------------------------------------------
 
 triagens::basics::Json* ClusterTraversalPath::pathToJson (Transaction*,
-                                                          CollectionNameResolver*) const {
+                                                          CollectionNameResolver*) {
   std::unique_ptr<triagens::basics::Json> result(new triagens::basics::Json(triagens::basics::Json::Object));
   size_t vCount = _path.vertices.size();
   triagens::basics::Json vertices(triagens::basics::Json::Array, vCount);
@@ -55,12 +56,12 @@ triagens::basics::Json* ClusterTraversalPath::pathToJson (Transaction*,
 }
 
 triagens::basics::Json* ClusterTraversalPath::lastEdgeToJson (Transaction*,
-                                                              CollectionNameResolver*) const {
+                                                              CollectionNameResolver*) {
   return _traverser->edgeToJson(_path.edges.back());
 }
 
 triagens::basics::Json* ClusterTraversalPath::lastVertexToJson (Transaction*,
-                                                                CollectionNameResolver*) const {
+                                                                CollectionNameResolver*) {
   return _traverser->vertexToJson(_path.vertices.back());
 }
 
@@ -87,6 +88,7 @@ bool ClusterTraverser::VertexGetter::operator() (std::string const& edgeId,
     if (exp != _traverser->_expressions->end()) {
       auto v = _traverser->_vertices.find(result);
       if (v == _traverser->_vertices.end()) {
+        ++_traverser->_filteredPaths;
         return false;
       }
       if (! _traverser->vertexMatchesCondition(v->second, exp->second)) {
@@ -135,6 +137,12 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
       THROW_ARANGO_EXCEPTION(res);
     }
     triagens::basics::Json edgesJson = resultEdges.get("edges");
+    size_t read = triagens::basics::JsonHelper::getNumericValue<size_t>(resultEdges.json(), "scannedIndex", 0);
+    size_t filter = triagens::basics::JsonHelper::getNumericValue<size_t>(resultEdges.json(), "filter", 0);
+    _traverser->_readDocuments += read;
+    std::cout << "Added filtered Edges: " << filter << std::endl;
+    _traverser->_filteredPaths += filter;
+    
     size_t count = edgesJson.size();
     if (count == 0) {
       last = nullptr;
@@ -166,6 +174,7 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     }
 
     std::map<std::string, std::string> headers;
+    size_t beforeFetching = _traverser->_vertices.size();
     res = getFilteredDocumentsOnCoordinator(_traverser->_dbname,
                                             expVertices,
                                             headers,
@@ -174,10 +183,13 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    if (! expVertices.empty() && ! verticesToFetch.empty()) {
+    if (! expVertices.empty()) {
       // There are some vertices that either do not exist or do not match the filter.
       // We have to exclude these from the traversal
+      _traverser->_filteredPaths += _traverser->_vertices.size() - beforeFetching;
+      std::cout << "Added filtered vertices: " << _traverser->_vertices.size() - beforeFetching << std::endl;
     }
+    _traverser->_readDocuments += verticesToFetch.size();
     std::string next = stack.top();
     stack.pop();
     last = &_continueConst;
@@ -229,6 +241,7 @@ void ClusterTraverser::setStartVertex (VertexId& v) {
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
+    ++_readDocuments;
     if (responseCode == triagens::rest::HttpResponse::HttpResponseCode::NOT_FOUND) {
       _vertices.emplace(id, nullptr);
     }
@@ -239,6 +252,7 @@ void ClusterTraverser::setStartVertex (VertexId& v) {
   }
   auto exp = _expressions->find(0);
   if (exp != _expressions->end() && ! vertexMatchesCondition(it->second, exp->second)) {
+    std::cout << "Filtered on set start vertex\n";
     // We can stop here. The start vertex does not match condition
     _done = true;
   }
@@ -248,6 +262,7 @@ bool ClusterTraverser::vertexMatchesCondition (TRI_json_t* v, std::vector<Traver
   for (auto const& e : exp) {
     if (! e->isEdgeAccess) {
       if (v == nullptr || ! e->matchesCheck(v)) {
+        ++_filteredPaths;
         return false;
       }
     }

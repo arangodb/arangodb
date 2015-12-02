@@ -75,7 +75,7 @@ namespace triagens {
         }
 
         std::string toString (CollectionNameResolver const* resolver) {
-            return resolver->getCollectionNameCluster(cid) + "/" + std::string(key);
+          return resolver->getCollectionNameCluster(cid) + "/" + std::string(key);
         }
 
 
@@ -159,7 +159,7 @@ namespace triagens {
 /// @brief Constructor. This is an abstract only class.
 ////////////////////////////////////////////////////////////////////////////////
 
-          TraversalPath () {
+          TraversalPath () : _readDocuments(0) {
           }
 
           virtual ~TraversalPath () {
@@ -175,22 +175,38 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           virtual triagens::basics::Json* pathToJson (Transaction*,
-                                                      CollectionNameResolver*) const = 0;
+                                                      CollectionNameResolver*) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Builds only the last edge on the path as Json
 ////////////////////////////////////////////////////////////////////////////////
 
           virtual triagens::basics::Json* lastEdgeToJson (Transaction*,
-                                                          CollectionNameResolver*) const = 0;
+                                                          CollectionNameResolver*) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Builds only the last vertex as Json
 ////////////////////////////////////////////////////////////////////////////////
 
           virtual triagens::basics::Json* lastVertexToJson (Transaction*,
-                                                            CollectionNameResolver*) const = 0;
+                                                            CollectionNameResolver*) = 0;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the amount of read documents
+////////////////////////////////////////////////////////////////////////////////
+
+          size_t getReadDocuments () const {
+            return _readDocuments;
+          }
+
+
+        protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Count how many documents have been read
+////////////////////////////////////////////////////////////////////////////////
+
+          size_t _readDocuments;
     };
 
 // -----------------------------------------------------------------------------
@@ -250,7 +266,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           Traverser () 
-          : _pruneNext(false),
+          : _readDocuments(0),
+            _filteredPaths(0),
+            _pruneNext(false),
             _done(false),
             _expressions(nullptr) {
           }
@@ -261,7 +279,9 @@ namespace triagens {
 
           Traverser (TraverserOptions& opts,
                      std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expressions) 
-          : _pruneNext(false),
+          : _readDocuments(0),
+            _filteredPaths(0),
+            _pruneNext(false),
             _done(false),
             _opts(opts),
             _expressions(expressions) {
@@ -287,7 +307,7 @@ namespace triagens {
           size_t skip (size_t amount) {
             size_t skipped = 0;
             for (size_t i = 0; i < amount; ++i) {
-              std::unique_ptr<const TraversalPath> p(next());
+              std::unique_ptr<TraversalPath> p(next());
               if (p == nullptr) {
                 _done = true;
                 break;
@@ -302,6 +322,26 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           virtual TraversalPath* next () = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the number of filtered paths
+////////////////////////////////////////////////////////////////////////////////
+
+          size_t getAndResetFilteredPaths () {
+            size_t tmp = _filteredPaths;
+            _filteredPaths = 0;
+            return tmp;
+          }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the number of documents loaded 
+////////////////////////////////////////////////////////////////////////////////
+
+          size_t getAndResetReadDocuments () {
+            size_t tmp = _readDocuments;
+            _readDocuments = 0;
+            return tmp;
+          }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Prune the current path prefix. Do not evaluate it any further.
@@ -322,6 +362,18 @@ namespace triagens {
           }
 
         protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief counter for all read documents
+////////////////////////////////////////////////////////////////////////////////
+
+          size_t _readDocuments;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief counter for all filtered paths
+////////////////////////////////////////////////////////////////////////////////
+
+          size_t _filteredPaths;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toggle if this path should be pruned on next step

@@ -1036,8 +1036,6 @@ static void insertIntoShardMap (ClusterInfo* ci,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a list of filtered documents in a coordinator
 ///        All found documents will be inserted into result.
-///        After execution the documentIds will contain only all those
-///        ids that could not be found.
 ////////////////////////////////////////////////////////////////////////////////
 
 int getFilteredDocumentsOnCoordinator (
@@ -1289,21 +1287,17 @@ int getFilteredEdgesOnCoordinator (
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headers = new map<string, string>;
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
-                           triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" + it->first + queryParameters,
-                           0, false, headers, nullptr, 3600.0);
-/*
-    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" + it->first + queryParameters,
                            &reqBodyString, false, headers, nullptr, 3600.0);
-                           */
     delete res;
   }
   // Now listen to the results:
   int count;
   responseCode = triagens::rest::HttpResponse::OK;
   contentType = "application/json; charset=utf-8";
+  size_t filtered = 0;
+  size_t scannedIndex = 0;
 
   triagens::basics::Json documents(triagens::basics::Json::Array);
   
@@ -1345,10 +1339,15 @@ int getFilteredEdgesOnCoordinator (
       documents.transfer(doc);
     }
 
+    filtered += triagens::basics::JsonHelper::getNumericValue<size_t>(shardResult.get(), "filtered", 0);
+    scannedIndex += triagens::basics::JsonHelper::getNumericValue<size_t>(shardResult.get(), "scannedIndex", 0);
+
     delete res;
   }
   
   result("edges", documents);
+  result("filtered", triagens::basics::Json(static_cast<int32_t>(filtered)));
+  result("scannedIndex", triagens::basics::Json(static_cast<int32_t>(scannedIndex)));
 
   return TRI_ERROR_NO_ERROR;
 }
