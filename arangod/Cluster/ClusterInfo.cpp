@@ -146,7 +146,16 @@ CollectionInfo::CollectionInfo (CollectionInfo const& other) :
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from json
+/// @brief move constructs a collection info object from another
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfo::CollectionInfo (CollectionInfo& other) 
+    : _json(other._json) {
+  other._json = nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy assigns a collection info object from another one
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
@@ -156,6 +165,24 @@ CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
   else {
     _json = nullptr;
   }
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move assigns a collection info object from another one
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfo& CollectionInfo::operator= (CollectionInfo& other) {
+  if (this == &other) {
+    return *this;
+  }
+
+  if (_json != nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
+  }
+  _json = other._json;
+  other._json = nullptr;
 
   return *this;
 }
@@ -203,7 +230,15 @@ CollectionInfoCurrent::CollectionInfoCurrent (CollectionInfoCurrent const& other
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from json
+/// @brief moves a collection info current object from another
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfoCurrent::CollectionInfoCurrent (CollectionInfoCurrent&& other) {
+  _jsons.swap(other._jsons);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy assigns a collection info current object from another one
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfoCurrent& CollectionInfoCurrent::operator= (CollectionInfoCurrent const& other) {
@@ -213,6 +248,21 @@ CollectionInfoCurrent& CollectionInfoCurrent::operator= (CollectionInfoCurrent c
   freeAllJsons();
   _jsons = other._jsons;
   copyAllJsons();
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a collection info object from json
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfoCurrent& CollectionInfoCurrent::operator= (
+    CollectionInfoCurrent&& other) {
+  if (this == &other) {
+    return *this;
+  }
+  freeAllJsons();
+  _jsons.clear();
+  _jsons.swap(other._jsons);
   return *this;
 }
 
@@ -229,8 +279,7 @@ CollectionInfoCurrent::~CollectionInfoCurrent () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionInfoCurrent::freeAllJsons () {
-  map<ShardID, TRI_json_t*>::iterator it;
-  for (it = _jsons.begin(); it != _jsons.end(); ++it) {
+  for (auto it = _jsons.begin(); it != _jsons.end(); ++it) {
     if (it->second != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it->second);
     }
@@ -242,8 +291,7 @@ void CollectionInfoCurrent::freeAllJsons () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionInfoCurrent::copyAllJsons () {
-  map<ShardID, TRI_json_t*>::iterator it;
-  for (it = _jsons.begin(); it != _jsons.end(); ++it) {
+  for (auto it = _jsons.begin(); it != _jsons.end(); ++it) {
     if (nullptr != it->second) {
       it->second = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it->second);
     }

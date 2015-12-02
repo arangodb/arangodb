@@ -890,25 +890,9 @@ static void JS_GetCollectionInfoCurrentClusterInfo (const v8::FunctionCallbackIn
                                      TRI_ObjectToString(args[0]), cid);
 
   result->Set(TRI_V8_ASCII_STRING("type"), v8::Number::New(isolate, (int) ci->type()));
-  // Now the Current information, if we actually got it:
-  TRI_vocbase_col_status_e s = cic->status(shardID);
-  result->Set(TRI_V8_ASCII_STRING("status"), v8::Number::New(isolate, (int) cic->status(shardID)));
-  if (s == TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_V8_RETURN(result);
-  }
-  const string statusString = TRI_GetStatusStringCollectionVocBase(s);
-  result->Set(TRI_V8_ASCII_STRING("statusString"),TRI_V8_STD_STRING(statusString));
-  result->Set(TRI_V8_ASCII_STRING("deleted"),     v8::Boolean::New(isolate, cic->deleted(shardID)));
-  result->Set(TRI_V8_ASCII_STRING("doCompact"),   v8::Boolean::New(isolate, cic->doCompact(shardID)));
-  result->Set(TRI_V8_ASCII_STRING("isSystem"),    v8::Boolean::New(isolate, cic->isSystem(shardID)));
-  result->Set(TRI_V8_ASCII_STRING("isVolatile"),  v8::Boolean::New(isolate, cic->isVolatile(shardID)));
-  result->Set(TRI_V8_ASCII_STRING("waitForSync"), v8::Boolean::New(isolate, cic->waitForSync(shardID)));
-  result->Set(TRI_V8_ASCII_STRING("journalSize"), v8::Number::New (isolate, cic->journalSize(shardID)));
-  const std::string serverID = cic->responsibleServer(shardID);
-  result->Set(TRI_V8_ASCII_STRING("DBServer"),    TRI_V8_STD_STRING(serverID));
 
-  // TODO: fill "indexes"
-  v8::Handle<v8::Array> indexes = v8::Array::New(isolate);
+  TRI_json_t const* json = cic->getIndexes(shardID);
+  v8::Handle<v8::Value> indexes = TRI_ObjectJson(isolate, json);
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
 
   // Finally, report any possible error:

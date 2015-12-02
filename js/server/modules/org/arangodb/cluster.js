@@ -412,12 +412,21 @@ function handleDatabaseChanges (plan) {
 /// @brief create collections if they exist in the plan but not locally
 ////////////////////////////////////////////////////////////////////////////////
 
-function createLocalCollections (plannedCollections) {
+function createLocalCollections (plannedCollections, planVersion) {
   var ourselves = global.ArangoServerState.id();
 
   var createCollectionAgency = function (database, shard, payload) {
+    var realPayload = { error: payload.error,
+                        errorNum: payload.errorNum,
+                        errorMessage: payload.errorMessage,
+                        planVersion: payload.planVersion,
+                        indexes: payload.indexes,
+                        leader: payload.leader,
+                        inSync: payload.inSync,
+                        DBServer: payload.DBServer,
+                        planVersion: planVersion };
     global.ArangoAgency.set("Current/Collections/" + database + "/" + payload.planId + "/" + shard,
-                     payload);
+                     realPayload);
   };
 
   var db = require("internal").db;
@@ -789,7 +798,7 @@ function handleCollectionChanges (plan) {
   var ok = true;
 
   try {
-    createLocalCollections(plannedCollections);
+    createLocalCollections(plannedCollections, plan.Version);
     dropLocalCollections(plannedCollections);
     cleanupCurrentCollections(plannedCollections);
   }
