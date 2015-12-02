@@ -965,7 +965,8 @@
         // 4 Primary Lookups (C, F, E, G)
         assertEqual(stats.scannedIndex, 13);
         // 2 Filter (E, G)
-        assertEqual(stats.filtered, 2);
+        // 2 Filter A->B, A->D path too short
+        assertEqual(stats.filtered, 4);
       },
 
       testVertexLevelsCombined: function () {
@@ -991,7 +992,8 @@
         assertEqual(stats.scannedIndex, 9);
         // 1 Filter (B)
         // 2 Filter (E, G)
-        assertEqual(stats.filtered, 3);
+        // Filter A->D too short
+        assertEqual(stats.filtered, 4);
       },
 
       testEdgeLevel0: function () {
@@ -1028,19 +1030,20 @@
           start: vertex.A
         };
         var cursor = db._query(query, bindVars);
-        assertEqual(cursor.count(), 4);
-        assertEqual(cursor.toArray(), ["B", "C", "D", "F"]);
+        assertEqual(cursor.count(), 2);
+        assertEqual(cursor.toArray(), ["C", "F"]);
         var stats = cursor.getExtra().stats;
         assertEqual(stats.scannedFull, 0);
         // 1 Primary lookup A
         // 2 Edge Lookups (A)
         // 2 Primary lookup B,D
-        // 2 Edge Lookups (2 B) (2 D)
+        // 4 Edge Lookups (2 B) (2 D)
         // 2 Primary Lookups (C, F)
-        assertEqual(stats.scannedIndex, 9);
+        assertEqual(stats.scannedIndex, 11);
         // 2 Filter On (D->E, D->G)
-        assertEqual(stats.filtered, 2);
-      },
+        // Filter on A->D, A->B because path is too short is not counted. No Document!
+        assertEqual(stats.filtered, 4);
+      }
 
  
 
@@ -1048,12 +1051,10 @@
 
   };
 
-  /*
   jsunity.run(namedGraphSuite);
   jsunity.run(multiCollectionGraphSuite);
   jsunity.run(potentialErrorsSuite);
   jsunity.run(complexInternaSuite);
-  */
   jsunity.run(complexFilteringSuite);
 
   return jsunity.done();
