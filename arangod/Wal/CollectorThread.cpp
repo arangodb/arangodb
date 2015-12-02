@@ -146,6 +146,10 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
 
       state->collections[collectionId] = databaseId;
 
+      if (ShouldIgnoreCollection(state, collectionId)) {
+        break;
+      }
+
       // fill list of structural operations
       state->structuralOperations[collectionId].push_back(marker);
       // state->operationsCount[collectionId]++; // do not count this operation
@@ -156,8 +160,12 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
       shape_marker_t const* m = reinterpret_cast<shape_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId = m->_databaseId;
-
+      
       state->collections[collectionId] = databaseId;
+      
+      if (ShouldIgnoreCollection(state, collectionId)) {
+        break;
+      }
 
       // fill list of structural operations
       state->structuralOperations[collectionId].push_back(marker);
@@ -169,17 +177,22 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
       document_marker_t const* m = reinterpret_cast<document_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tid_t transactionId = m->_transactionId;
+    
+      state->collections[collectionId] = m->_databaseId;
 
       if (state->failedTransactions.find(transactionId) != state->failedTransactions.end()) {
         // transaction had failed
         state->operationsCount[collectionId]++;
         break;
       }
+      
+      if (ShouldIgnoreCollection(state, collectionId)) {
+        break;
+      }
 
       char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
       state->documentOperations[collectionId][std::string(key)] = marker;
       state->operationsCount[collectionId]++;
-      state->collections[collectionId] = m->_databaseId;
       break;
     }
 
@@ -187,17 +200,22 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
       edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tid_t transactionId = m->_transactionId;
+      
+      state->collections[collectionId] = m->_databaseId;
 
       if (state->failedTransactions.find(transactionId) != state->failedTransactions.end()) {
         // transaction had failed
         state->operationsCount[collectionId]++;
         break;
       }
+      
+      if (ShouldIgnoreCollection(state, collectionId)) {
+        break;
+      }
 
       char const* key = reinterpret_cast<char const*>(m) + m->_offsetKey;
       state->documentOperations[collectionId][std::string(key)] = marker;
       state->operationsCount[collectionId]++;
-      state->collections[collectionId] = m->_databaseId;
       break;
     }
 
@@ -205,17 +223,22 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
       remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tid_t transactionId = m->_transactionId;
+      
+      state->collections[collectionId] = m->_databaseId;
 
       if (state->failedTransactions.find(transactionId) != state->failedTransactions.end()) {
         // transaction had failed
         state->operationsCount[collectionId]++;
         break;
       }
+      
+      if (ShouldIgnoreCollection(state, collectionId)) {
+        break;
+      }
 
       char const* key = reinterpret_cast<char const*>(m) + sizeof(remove_marker_t);
       state->documentOperations[collectionId][std::string(key)] = marker;
       state->operationsCount[collectionId]++;
-      state->collections[collectionId] = m->_databaseId;
       break;
     }
 
@@ -242,11 +265,29 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
       state->handledTransactions.insert(m->_transactionId);
       break;
     }
+    
+    case TRI_WAL_MARKER_CREATE_COLLECTION: {
+      collection_create_marker_t const* m = reinterpret_cast<collection_create_marker_t const*>(marker);
+      // note that the collection is now considered not dropped 
+      state->droppedCollections.erase(m->_collectionId);
+      break;
+    }
 
     case TRI_WAL_MARKER_DROP_COLLECTION: {
       collection_drop_marker_t const* m = reinterpret_cast<collection_drop_marker_t const*>(marker);
       // note that the collection was dropped and doesn't need to be collected
       state->droppedCollections.insert(m->_collectionId);
+      state->structuralOperations.erase(m->_collectionId);
+      state->documentOperations.erase(m->_collectionId);
+      state->operationsCount.erase(m->_collectionId);
+      state->collections.erase(m->_collectionId);
+      break;
+    }
+    
+    case TRI_WAL_MARKER_CREATE_DATABASE: {
+      database_create_marker_t const* m = reinterpret_cast<database_create_marker_t const*>(marker);
+      // note that the database is now considered not dropped 
+      state->droppedDatabases.erase(m->_databaseId);
       break;
     }
 
@@ -254,6 +295,20 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
       database_drop_marker_t const* m = reinterpret_cast<database_drop_marker_t const*>(marker);
       // note that the database was dropped and doesn't need to be collected
       state->droppedDatabases.insert(m->_databaseId);
+      
+      // find all collections for the same database and erase their state, too
+      for (auto it = state->collections.begin(); it != state->collections.end(); /* no hoisting */) {
+        if ((*it).second == m->_databaseId) {
+          state->droppedCollections.insert((*it).first);
+          state->structuralOperations.erase((*it).first);
+          state->documentOperations.erase((*it).first);
+          state->operationsCount.erase((*it).first);
+          it = state->collections.erase(it);
+        }
+        else {
+          ++it;
+        }
+      }
       break;
     }
 
