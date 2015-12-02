@@ -171,8 +171,69 @@ v2.8.0 (XXXX-XX-XX)
   re-enabled by explicitly setting the option `returnBodyOnError` to `false` (#1437)
 
 
-v2.7.2 (XXXX-XX-XX)
+v2.7.3 (XXXX-XX-XX)
 -------------------
+
+* fixed disappearing of documents for collections transferred via `sync` or
+  `syncCollection` if the collection was dropped right before synchronization 
+  and drop and (re-)create collection markers were located in the same WAL file
+
+
+v2.7.2 (2015-12-01)
+-------------------
+
+* replication improvements:
+
+  - added `autoResync` configuration parameter for continuous replication. 
+ 
+    When set to `true`, a replication slave will automatically trigger a full data 
+    re-synchronization with the master when the master cannot provide the log data 
+    the slave had asked for. Note that `autoResync` will only work when the option
+    `requireFromPresent` is also set to `true` for the continuous replication, or
+    when the continuous syncer is started and detects that no start tick is present.
+    
+    Automatic re-synchronization may transfer a lot of data from the master to the
+    slave and may be expensive. It is therefore turned off by default. 
+    When turned off, the slave will never perform an automatic re-synchronization
+    with the master.
+
+  - added `idleMinWaitTime` and `idleMaxWaitTime` configuration parameters for
+    continuous replication. 
+
+    These parameters can be used to control the minimum and maximum wait time the 
+    slave will (intentionally) idle and not poll for master log changes in case the 
+    master had sent the full logs already. 
+    The `idleMaxWaitTime` value will only be used when `adapativePolling` is set
+    to `true`. When `adaptivePolling` is disable, only `idleMinWaitTime` will be
+    used as a constant time span in which the slave will not poll the master for
+    further changes. The default values are 0.5 seconds for `idleMinWaitTime` and
+    2.5 seconds for `idleMaxWaitTime`, which correspond to the hard-coded values
+    used in previous versions of ArangoDB.
+
+  - added `initialSyncMaxWaitTime` configuration parameter for initial and continuous
+    replication
+
+    This option controls the maximum wait time (in seconds) that the initial 
+    synchronization will wait for a response from the master when fetching initial 
+    collection data. If no response is received within this time period, the initial
+    synchronization will give up and fail. This option is also relevant for 
+    continuous replication in case *autoResync* is set to *true*, as then the
+    continuous replication may trigger a full data re-synchronization in case
+    the master cannot the log data the slave had asked for.
+
+  - HTTP requests sent from the slave to the master during initial synchronization
+    will now be retried if they fail with connection problems.
+ 
+  - the initial synchronization now logs its progress so it can be queried using
+    the regular replication status check APIs.
+
+* fixed non-deterministic query results in some cluster queries
+
+* added missing lock instruction for primary index in compactor size calculation
+
+* fixed issue #1589
+
+* fixed issue #1583
 
 * fixed undefined behavior when accessing the top level of a document with the `[*]`
   operator
@@ -185,6 +246,7 @@ v2.7.2 (XXXX-XX-XX)
 
 * Foxx: constructors provided to Repository and Model sub-classes via extend are
   now correctly called (#1592)
+
 
 v2.7.1 (2015-11-07)
 -------------------
