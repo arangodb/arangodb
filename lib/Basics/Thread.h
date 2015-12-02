@@ -53,7 +53,7 @@ namespace triagens {
 
     class Thread {
       private:
-        Thread (Thread const&);
+        explicit Thread (Thread const&);
         Thread& operator= (Thread const&);
 
 // -----------------------------------------------------------------------------

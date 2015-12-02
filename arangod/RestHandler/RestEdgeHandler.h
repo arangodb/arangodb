@@ -57,7 +57,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestEdgeHandler (rest::HttpRequest*);
+        explicit RestEdgeHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods

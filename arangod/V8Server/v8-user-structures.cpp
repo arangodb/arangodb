@@ -86,7 +86,7 @@ struct KeySpaceElement {
 
 class KeySpace {
   public:
-    KeySpace (uint32_t initialSize) 
+    explicit KeySpace (uint32_t initialSize) 
       : _lock() {
 
       TRI_InitAssociativePointer(&_hash, 

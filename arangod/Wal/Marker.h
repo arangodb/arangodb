@@ -505,7 +505,7 @@ namespace triagens {
 
       public:
 
-        DropDatabaseMarker (TRI_voc_tick_t);
+        explicit DropDatabaseMarker (TRI_voc_tick_t);
 
         ~DropDatabaseMarker ();
 

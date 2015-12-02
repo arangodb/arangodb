@@ -60,7 +60,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestBaseHandler (rest::HttpRequest* request);
+        explicit RestBaseHandler (rest::HttpRequest* request);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods

@@ -224,7 +224,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
   ExecutionBlock*  root;
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
 
-  Instanciator (ExecutionEngine* engine) 
+  explicit Instanciator (ExecutionEngine* engine) 
     : engine(engine),
       root(nullptr) {
   }

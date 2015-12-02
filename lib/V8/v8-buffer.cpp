@@ -566,7 +566,7 @@ namespace {
 
   class RetainedBufferInfo : public v8::RetainedObjectInfo {
     public:
-      RetainedBufferInfo (V8Buffer* buffer);
+      explicit RetainedBufferInfo (V8Buffer* buffer);
 
     public:
       virtual void Dispose ();

@@ -588,15 +588,16 @@ AqlItemBlock* BlockWithClients::getSomeForShard (size_t atLeast,
 
   int out = getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
 
-  if (out != TRI_ERROR_NO_ERROR) {
-    if (result != nullptr) {
-      delete result;
-    }
-
-    THROW_ARANGO_EXCEPTION(out);
+  if (out == TRI_ERROR_NO_ERROR) {
+    return result;
+  }
+    
+  if (result != nullptr) {
+    delete result;
   }
 
-  return result;
+  THROW_ARANGO_EXCEPTION(out);
+
   LEAVE_BLOCK
 }
 

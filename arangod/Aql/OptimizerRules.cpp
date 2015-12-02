@@ -1465,7 +1465,7 @@ class triagens::aql::RedundantCalculationsReplacer final : public WalkerWorker<E
 
   public:
 
-    RedundantCalculationsReplacer (std::unordered_map<VariableId, Variable const*> const& replacements)
+    explicit RedundantCalculationsReplacer (std::unordered_map<VariableId, Variable const*> const& replacements)
       : _replacements(replacements) {
     }
 
@@ -1788,7 +1788,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
   public:
 
-    SortToIndexNode (ExecutionPlan* plan)
+    explicit SortToIndexNode (ExecutionPlan* plan)
       : _plan(plan),
         _sortNode(nullptr),
         _sorts(),
