@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue */
+/*global assertTrue, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the random document selector 
@@ -84,7 +84,7 @@ function AnySuite () {
     return { average: E, variance: V,
              averageStddev: Math.sqrt(V) / Math.sqrt(N),
              varianceStddev: Math.sqrt(VY) / Math.sqrt(N) };
-  }
+  };
  
   var statsFound = function (dist) {
     var v;
