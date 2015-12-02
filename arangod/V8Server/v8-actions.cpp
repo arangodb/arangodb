@@ -1269,7 +1269,8 @@ static void JS_ClusterTest (const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
   }
 
-  string body = TRI_ObjectToString(args[6]);
+  std::shared_ptr<std::string const> body
+      (new std::string( TRI_ObjectToString(args[6]) ));
 
   double timeout = TRI_ObjectToDouble(args[7]);
   if (timeout == 0.0) {
@@ -1284,7 +1285,7 @@ static void JS_ClusterTest (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   if (asyncMode) {
     res = cc->asyncRequest(clientTransactionId,TRI_NewTickServer(),destination,
-                         reqType, path, &body, false, headerFields,
+                         reqType, path, body, headerFields,
                          new CallbackTest("Hello Callback"), timeout);
 
     if (res == nullptr) {
@@ -1376,7 +1377,7 @@ static void JS_ClusterTest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
   else {   // synchronous mode
     res = cc->syncRequest(clientTransactionId, TRI_NewTickServer(),destination,
-                          reqType, path, body, *headerFields, timeout);
+                          reqType, path, *(body.get()), *headerFields, timeout);
     delete headerFields;
     if (res != 0) {
       LOG_DEBUG("JS_ClusterTest: request has been sent synchronously, "

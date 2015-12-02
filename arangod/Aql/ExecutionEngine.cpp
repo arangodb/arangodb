@@ -552,7 +552,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     optimizerOptions.set("rules", optimizerOptionsRules);
     options.set("optimizer", optimizerOptions);
     result.set("options", options);
-    std::unique_ptr<std::string> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
+    std::shared_ptr<std::string const> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
     
     // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
     
@@ -568,8 +568,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                 "shard:" + shardId,  
                                 triagens::rest::HttpRequest::HTTP_REQUEST_POST, 
                                 url,
-                                body.release(),
-                                true,
+                                body,
                                 headers,
                                 nullptr,
                                 30.0);

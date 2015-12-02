@@ -1831,19 +1831,20 @@ static void JS_AsyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   triagens::rest::HttpRequest::HttpRequestType reqType;
   string destination;
   string path;
-  string *body = new string();
+  shared_ptr<string> body(new string());
   map<string, string>* headerFields = new map<string, string>;
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
 
-  PrepareClusterCommRequest(args, reqType, destination, path,*body,headerFields,
-                            clientTransactionID, coordTransactionID, timeout);
+  PrepareClusterCommRequest(args, reqType, destination, path, *body,
+                            headerFields, clientTransactionID,
+                            coordTransactionID, timeout);
 
   ClusterCommResult const* res;
 
   res = cc->asyncRequest(clientTransactionID, coordTransactionID, destination,
-                         reqType, path, body, true, headerFields, 0, timeout);
+                         reqType, path, body, headerFields, 0, timeout);
 
   if (res == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

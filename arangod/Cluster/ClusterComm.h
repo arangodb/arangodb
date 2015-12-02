@@ -180,8 +180,7 @@ namespace triagens {
     struct ClusterCommOperation : public ClusterCommResult {
       rest::HttpRequest::HttpRequestType reqtype;
       std::string path;
-      std::string const* body;
-      bool freeBody;
+      std::shared_ptr<std::string const> body;
       std::map<std::string, std::string>* headerFields;
       ClusterCommCallback* callback;
       ClusterCommTimeout endTime;
@@ -198,9 +197,6 @@ namespace triagens {
         }
         if (_deleteOnDestruction && nullptr != callback) {
           delete callback;
-        }
-        if (_deleteOnDestruction && nullptr != body && freeBody) {
-          delete body;
         }
       }
     };
@@ -305,8 +301,7 @@ void ClusterCommRestCallback (std::string& coordinator, rest::HttpResponse* resp
                 std::string const&                   destination,
                 rest::HttpRequest::HttpRequestType   reqtype,
                 std::string const                    path,
-                std::string const*                   body,
-                bool                                 freeBody,
+                std::shared_ptr<std::string const>   body,
                 std::map<std::string, std::string>*  headerFields,
                 ClusterCommCallback*                 callback,
                 ClusterCommTimeout                   timeout);
