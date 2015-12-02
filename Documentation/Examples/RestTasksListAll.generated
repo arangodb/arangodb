@@ -5,21 +5,12 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 [ 
   { 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"18415753"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"18447548"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"user-defined task"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1447828207.227021</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1449091876.286964</span>, 
     <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function () {\n      require('org/arangodb/foxx/queues/manager').manage();\n    })(params)"</span>, 
-    <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-gc"</span>, 
-    <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-gc"</span>, 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
-    <span class="hljs-string">"period"</span> : <span class="hljs-number">450</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1447828207.106033</span>, 
-    <span class="hljs-string">"command"</span> : <span class="hljs-string">"require('org/arangodb/statistics').garbageCollector();"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
   }, 
   { 
@@ -27,8 +18,17 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">900</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1447828207.105538</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1449091876.171665</span>, 
     <span class="hljs-string">"command"</span> : <span class="hljs-string">"require('org/arangodb/statistics').historianAverage();"</span>, 
+    <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-gc"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-gc"</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
+    <span class="hljs-string">"period"</span> : <span class="hljs-number">450</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1449091876.171933</span>, 
+    <span class="hljs-string">"command"</span> : <span class="hljs-string">"require('org/arangodb/statistics').garbageCollector();"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
   }, 
   { 
@@ -36,7 +36,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-collector"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">10</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1447828207.105449</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1449091876.171617</span>, 
     <span class="hljs-string">"command"</span> : <span class="hljs-string">"require('org/arangodb/statistics').historian();"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
   } 
