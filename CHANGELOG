@@ -1,6 +1,10 @@
 v2.6.12 (XXXX-XX-XX)
 --------------------
 
+* fixed disappearing of documents for collections transferred via `sync` if the
+  the collection was dropped right before synchronization and drop and (re-)create 
+  collection markers were located in the same WAL file
+
 * added missing lock instruction for primary index in compactor size calculation
 
 * fixed issue #1589
