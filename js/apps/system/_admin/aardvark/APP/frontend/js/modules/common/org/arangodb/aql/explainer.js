@@ -560,12 +560,14 @@ function processQuery (query, explain) {
         }
         for (var i = 0; i < simpleExpressions[indexNo].length; i++) {
           var item = simpleExpressions[indexNo][i];
+          rc += attribute("Path") + ".";
           if (item.isEdgeAccess) {
-            rc += "Path.edges[" + indexNo + "].";
+            rc += attribute("edges");
           }
           else {
-            rc += "Path.vertices[" + indexNo + "].";
+            rc += attribute("vertices");
           }
+          rc += "[" + value(indexNo) + "] -> ";
           rc += buildExpression(item.varAccess);
           rc += " " + item.comparisonType + " ";
           rc += buildExpression(item.compareTo);
@@ -669,57 +671,57 @@ function processQuery (query, explain) {
 
       case "TraversalNode":
 
-      node.minMaxDepth = node.minDepth + ".." + node.maxDepth;
-      node.minMaxDepthLen = node.minMaxDepth.length;
+        node.minMaxDepth = node.minDepth + ".." + node.maxDepth;
+        node.minMaxDepthLen = node.minMaxDepth.length;
 
-      var rc = keyword("FOR ") + 
-        variableName(node.vertexOutVariable) + 
-        "  " + annotation("/* vertex */");
-      
-      if (node.hasOwnProperty('edgeOutVariable')) {
-        rc += "  , " + variableName(node.edgeOutVariable) +
-          "  " + annotation("/* edge */");
-      }
-      if (node.hasOwnProperty('pathOutVariable')) {
-        rc += "  , " + variableName(node.pathOutVariable) +
-          "  " + annotation("/* paths */");
-      }
-      rc += "  " +
-        keyword("IN") + " " +
-        node.minMaxDepth + "  " + annotation("/* min..maxPathDepth */") + "  " +
-        keyword("OUTBOUND") +
-        " '" + node.vertexId + "'  " + annotation("/* Startnode */") + "  " +
-        keyword("GRAPH") +  " '" + node.graph + "'";
+        var rc = keyword("FOR ") + 
+          variableName(node.vertexOutVariable) + 
+          "  " + annotation("/* vertex */");
+        
+        if (node.hasOwnProperty('edgeOutVariable')) {
+          rc += "  , " + variableName(node.edgeOutVariable) +
+            "  " + annotation("/* edge */");
+        }
+        if (node.hasOwnProperty('pathOutVariable')) {
+          rc += "  , " + variableName(node.pathOutVariable) +
+            "  " + annotation("/* paths */");
+        }
+        rc += "  " +
+          keyword("IN") + " " +
+          node.minMaxDepth + "  " + annotation("/* min..maxPathDepth */") + "  " +
+          keyword("OUTBOUND") +
+          " '" + node.vertexId + "'  " + annotation("/* Startnode */") + "  " +
+          keyword("GRAPH") +  " '" + node.graph + "'";
 
-      traversalDetails.push(node);
-      if (node.hasOwnProperty('simpleExpressions')) {
-        node.ConditionStr = buildSimpleExpression(node.simpleExpressions);
-      }
+        traversalDetails.push(node);
+        if (node.hasOwnProperty('simpleExpressions')) {
+          node.ConditionStr = buildSimpleExpression(node.simpleExpressions);
+        }
 
-      var e = [];
-      if (node.hasOwnProperty('graphDefinition')) {
-        var v = [];
-        node.graphDefinition.vertexCollectionNames.forEach(function(vcn) {
-          v.push(collection(vcn));
-        });
-        node.vertexCollectionNameStr = v.join(", ");
-        node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(", ").length;
+        var e = [];
+        if (node.hasOwnProperty('graphDefinition')) {
+          var v = [];
+          node.graphDefinition.vertexCollectionNames.forEach(function(vcn) {
+            v.push(collection(vcn));
+          });
+          node.vertexCollectionNameStr = v.join(", ");
+          node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(", ").length;
 
-        node.graphDefinition.edgeCollectionNames.forEach(function(ecn) {
-          e.push(collection(ecn));
-        });
-        node.edgeCollectionNameStr = e.join(", ");
-        node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;
-      }
-      else {
-        var edgeCols = JSON.parse(node.graph);
-        edgeCols.forEach(function(ecn) {
-          e.push(collection(ecn));
-        });
-        node.edgeCollectionNameStr = e.join(", ");
-        node.edgeCollectionNameStrLen = edgeCols.join(", ").length;
-        node.graph = "<anonymous>";
-      }
+          node.graphDefinition.edgeCollectionNames.forEach(function(ecn) {
+            e.push(collection(ecn));
+          });
+          node.edgeCollectionNameStr = e.join(", ");
+          node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;
+        }
+        else {
+          var edgeCols = node.graph;
+          edgeCols.forEach(function(ecn) {
+            e.push(collection(ecn));
+          });
+          node.edgeCollectionNameStr = e.join(", ");
+          node.edgeCollectionNameStrLen = edgeCols.join(", ").length;
+          node.graph = "<anonymous>";
+        }
         return rc;
 
       case "CalculationNode":
