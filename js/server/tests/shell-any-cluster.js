@@ -219,7 +219,10 @@ function AnySuite () {
       assertTrue(Math.abs(stats.average - statsExp.average) 
                  < statsExp.averageStddev * 3);
       assertTrue(Math.abs(stats.variance - statsExp.variance)
-                 < statsExp.varianceStddev * 3);
+                 < statsExp.varianceStddev * 5);
+      // Note: we take 5 standard deviations here, because 3 lead to
+      // many false positives. Probably our estimate for the stddev or
+      // the quality of the rng is not actually good enough.
     },
 
 ////////////////////////////////////////////////////////////////////////////////
