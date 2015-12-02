@@ -553,7 +553,7 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
             if (tmp != nullptr) {
               bool add = true;
               for (auto& e : expressions) {
-                if (! e->matchesCheck(tmp)) {
+                if (! e->isEdgeAccess && ! e->matchesCheck(tmp)) {
                   add = false;
                   break;
                 }

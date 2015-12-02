@@ -30,7 +30,6 @@
 #include "Cluster/ClusterTraverser.h"
 #include "Cluster/ClusterMethods.h"
 
-#include <iostream>
 using ClusterTraversalPath = triagens::arango::traverser::ClusterTraversalPath;
 using ClusterTraverser = triagens::arango::traverser::ClusterTraverser;
 
@@ -88,6 +87,7 @@ bool ClusterTraverser::VertexGetter::operator() (std::string const& edgeId,
     if (exp != _traverser->_expressions->end()) {
       auto v = _traverser->_vertices.find(result);
       if (v == _traverser->_vertices.end()) {
+        // If the vertex ist not in list it means it has not passed any filtering up to now
         ++_traverser->_filteredPaths;
         return false;
       }
@@ -97,7 +97,7 @@ bool ClusterTraverser::VertexGetter::operator() (std::string const& edgeId,
     }
     return true;
   }
-  TRI_ASSERT(false);
+  // This should never be reached
   result = def;
   return false;
 }
@@ -175,7 +175,6 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     }
 
     std::map<std::string, std::string> headers;
-    size_t beforeFetching = _traverser->_vertices.size();
     res = getFilteredDocumentsOnCoordinator(_traverser->_dbname,
                                             expVertices,
                                             headers,
@@ -183,12 +182,6 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
                                             _traverser->_vertices);
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
-    }
-    if (! expVertices.empty()) {
-      // There are some vertices that either do not exist or do not match the filter.
-      // We have to exclude these from the traversal
-      _traverser->_filteredPaths += _traverser->_vertices.size() - beforeFetching;
-      std::cout << "Added filtered vertices: " << _traverser->_vertices.size() - beforeFetching << std::endl;
     }
     _traverser->_readDocuments += verticesToFetch.size();
     std::string next = stack.top();
@@ -253,7 +246,6 @@ void ClusterTraverser::setStartVertex (VertexId& v) {
   }
   auto exp = _expressions->find(0);
   if (exp != _expressions->end() && ! vertexMatchesCondition(it->second, exp->second)) {
-    std::cout << "Filtered on set start vertex\n";
     // We can stop here. The start vertex does not match condition
     _done = true;
   }

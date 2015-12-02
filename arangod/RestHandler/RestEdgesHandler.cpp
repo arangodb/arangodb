@@ -32,7 +32,6 @@
 #include "Cluster/ClusterMethods.h"
 #include "VocBase/Traverser.h"
 
-#include <iostream>
 using namespace triagens::rest;
 using namespace triagens::arango;
 
@@ -365,6 +364,7 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
   result("error", triagens::basics::Json(false));
   result("code", triagens::basics::Json(200));
   triagens::basics::Json stats(triagens::basics::Json::Object, 2);
+
   stats("scannedIndex", triagens::basics::Json(static_cast<int32_t>(edges.size())));
   stats("filtered", triagens::basics::Json(static_cast<int32_t>(filtered)));
   result("stats", stats);
