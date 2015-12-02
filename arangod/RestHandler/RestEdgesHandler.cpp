@@ -360,12 +360,14 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
     return false;
   }
 
-  triagens::basics::Json result(triagens::basics::Json::Object);
+  triagens::basics::Json result(triagens::basics::Json::Object, 4);
   result("edges", documents);
   result("error", triagens::basics::Json(false));
   result("code", triagens::basics::Json(200));
-  result("scannedIndex", triagens::basics::Json(static_cast<int32_t>(edges.size())));
-  result("filtered", triagens::basics::Json(static_cast<int32_t>(filtered)));
+  triagens::basics::Json stats(triagens::basics::Json::Object, 2);
+  stats("scannedIndex", triagens::basics::Json(static_cast<int32_t>(edges.size())));
+  stats("filtered", triagens::basics::Json(static_cast<int32_t>(filtered)));
+  result("stats", stats);
 
   // and generate a response
   generateResult(result.json());
@@ -386,17 +388,13 @@ bool RestEdgesHandler::readFilteredEdges () {
   triagens::basics::ScopeGuard guard{
     []() -> void { },
     [&expressions]() -> void {
-      std::cout << "Before free Expressions\n";
       for (auto& e : expressions) {
         delete e;
       }
-      std::cout << "After free Expressions\n";
     }
   };
   if (json == nullptr) {
-    std::cout << "Before free\n";
     delete _response;
-    std::cout << "After free\n";
     _response = nullptr;
     return readEdges(expressions);
   }

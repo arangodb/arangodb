@@ -1339,15 +1339,23 @@ int getFilteredEdgesOnCoordinator (
       documents.transfer(doc);
     }
 
-    filtered += triagens::basics::JsonHelper::getNumericValue<size_t>(shardResult.get(), "filtered", 0);
-    scannedIndex += triagens::basics::JsonHelper::getNumericValue<size_t>(shardResult.get(), "scannedIndex", 0);
+    TRI_json_t* stats = triagens::basics::JsonHelper::getObjectElement(shardResult.get(), "stats");
+    // We do not own stats, do not delete it.
+
+    if (stats != nullptr) {
+      filtered += triagens::basics::JsonHelper::getNumericValue<size_t>(stats, "filtered", 0);
+      scannedIndex += triagens::basics::JsonHelper::getNumericValue<size_t>(stats, "scannedIndex", 0);
+    }
 
     delete res;
   }
   
   result("edges", documents);
-  result("filtered", triagens::basics::Json(static_cast<int32_t>(filtered)));
-  result("scannedIndex", triagens::basics::Json(static_cast<int32_t>(scannedIndex)));
+
+  triagens::basics::Json stats(triagens::basics::Json::Object, 2);
+  stats("scannedIndex", triagens::basics::Json(static_cast<int32_t>(scannedIndex)));
+  stats("filtered", triagens::basics::Json(static_cast<int32_t>(filtered)));
+  result("stats", stats);
 
   return TRI_ERROR_NO_ERROR;
 }

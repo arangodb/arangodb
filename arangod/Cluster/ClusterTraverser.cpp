@@ -137,10 +137,11 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
       THROW_ARANGO_EXCEPTION(res);
     }
     triagens::basics::Json edgesJson = resultEdges.get("edges");
-    size_t read = triagens::basics::JsonHelper::getNumericValue<size_t>(resultEdges.json(), "scannedIndex", 0);
-    size_t filter = triagens::basics::JsonHelper::getNumericValue<size_t>(resultEdges.json(), "filter", 0);
+
+    triagens::basics::Json statsJson = resultEdges.get("stats");
+    size_t read = triagens::basics::JsonHelper::getNumericValue<size_t>(statsJson.json(), "scannedIndex", 0);
+    size_t filter = triagens::basics::JsonHelper::getNumericValue<size_t>(statsJson.json(), "filtered", 0);
     _traverser->_readDocuments += read;
-    std::cout << "Added filtered Edges: " << filter << std::endl;
     _traverser->_filteredPaths += filter;
     
     size_t count = edgesJson.size();
