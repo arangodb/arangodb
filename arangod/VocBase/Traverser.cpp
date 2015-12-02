@@ -96,8 +96,9 @@ void TraverserExpression::toJson (triagens::basics::Json& json,
   json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
       ("comparisonType", triagens::basics::Json(static_cast<int32_t>(comparisonType)))
       ("varAccess", varAccess->toJson(zone, true));
-  if (compareTo != nullptr) {
-    json("compareTo", *compareTo);
+  if (compareTo.get() != nullptr) {
+    // We have to copy compareTo. The json is greedy and steals it...
+    json("compareTo", compareTo->copy());
   }
 }
 
