@@ -240,7 +240,7 @@ namespace triagens {
 
           public:
 
-            HashElementFunc (size_t n) 
+            explicit HashElementFunc (size_t n) 
               : _numFields(n) {
             }
 
@@ -278,7 +278,7 @@ namespace triagens {
 
           public:
 
-            IsEqualElementElementByKey (size_t n) 
+            explicit IsEqualElementElementByKey (size_t n) 
               : _numFields(n) {
             }
 

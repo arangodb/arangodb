@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.0.4.  */
+/* A Bison parser, made by GNU Bison 3.0.2.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -110,10 +110,10 @@ extern int Aqldebug;
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-
+typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 17 "arangod/Aql/grammar.y" /* yacc.c:1915  */
+#line 17 "arangod/Aql/grammar.y" /* yacc.c:1909  */
 
   triagens::aql::AstNode*  node;
   struct {
@@ -123,10 +123,8 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 127 "arangod/Aql/grammar.hpp" /* yacc.c:1915  */
+#line 127 "arangod/Aql/grammar.hpp" /* yacc.c:1909  */
 };
-
-typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif

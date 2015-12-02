@@ -147,7 +147,6 @@ void HeartbeatThread::runDBServer () {
     LOG_TRACE("sending heartbeat to agency");
 
     const double start = TRI_microtime();
-    double remain;
 
     // send our state to the agency.
     // we don't care if this fails
@@ -173,7 +172,8 @@ void HeartbeatThread::runDBServer () {
     // The following loop will run until the interval has passed, at which
     // time a break will be called.
     while (true) {
-      remain = interval - (TRI_microtime() - start);
+      double remain = interval - (TRI_microtime() - start);
+
       if (remain <= 0.0) {
         break;
       }

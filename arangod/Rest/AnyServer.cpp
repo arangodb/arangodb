@@ -378,7 +378,7 @@ void AnyServer::beginShutdown () {
 #ifdef TRI_HAVE_FORK
 
 int AnyServer::startupSupervisor () {
-  static time_t MIN_TIME_ALIVE_IN_SEC = 30;
+  static time_t const MIN_TIME_ALIVE_IN_SEC = 30;
 
   LOG_INFO("starting up in supervisor mode");
 

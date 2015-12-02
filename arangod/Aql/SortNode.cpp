@@ -81,7 +81,7 @@ public:
   SortElementVector _elms;
   std::vector<std::pair<ExecutionNode*, bool>> _myVars;
 
-  SortNodeFindMyExpressions(SortNode* me)
+  explicit SortNodeFindMyExpressions (SortNode* me)
     : _foundCalcNodes(0),
       _elms(me->getElements()) {
     _myVars.resize(_elms.size());

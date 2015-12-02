@@ -267,7 +267,7 @@ int TRI_InetPton6 (char const* src, unsigned char* dst) {
   static const char xdigits_u[] = "0123456789ABCDEF";
 
   unsigned char tmp[sizeof(struct in6_addr)], *tp, *endp, *colonp;
-  const char *xdigits, *curtok;
+  const char *curtok;
   int ch, seen_xdigits;
   unsigned int val;
 
@@ -292,6 +292,7 @@ int TRI_InetPton6 (char const* src, unsigned char* dst) {
 
   while ((ch = *src++) != '\0') {
     const char *pch;
+    const char *xdigits;
 
     if ((pch = strchr((xdigits = xdigits_l), ch)) == nullptr) {
       pch = strchr((xdigits = xdigits_u), ch);
