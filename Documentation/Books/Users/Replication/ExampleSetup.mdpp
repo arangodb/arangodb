@@ -24,8 +24,11 @@ require("org/arangodb/replication").applier.stop();
 
 The *stop* operation will terminate any replication activity in the _system database on the slave.
 
-After that, do an initial sync of the slave with data from the master. Execute the following
-commands on the slave:
+
+!SECTION Initial synchronization
+
+After that, we perform an initial sync of the slave with data from the master. To do this,
+execute the following commands on the slave:
 
 ```js
 db._useDatabase("_system");
@@ -55,6 +58,8 @@ assume we got the following last log tick:
   ...
 }
 ```
+
+!SECTION Continuous synchronization
 
 Now, we could start the replication applier in the slave database using the last log tick.
 However, there is one thing to consider: replication on the slave will be running until the 
@@ -140,4 +145,30 @@ a write lock on the collections involved in the transaction.
 
 You may also want to check the master and slave states via the HTTP APIs 
 (see [HTTP Interface for Replication](../HttpReplications/README.md)).
+
+
+!SECTION Initial synchronization from the ArangoShell
+
+The *sync* may take a long time to complete. If it's called from the ArangoShell, the connection
+may time out, which will effectively discard the result of the *sync* operation. Therefore in the
+ArangoShell, the optional *async* attribute can be used to start the synchronization as a background 
+process on the slave. If the *async* attribute is set to *true*, the call to *sync* will return 
+almost instantly with an id string. Using this id string, the status of the sync job on the slave 
+can be queried using the *getSyncResult* function as follows:
+
+```js
+db._useDatabase("_system");
+var replication = require("org/arangodb/replication");
+var id = replication.sync({
+  endpoint: "tcp://master.domain.org:8529",
+  username: "myuser",
+  password: "mypasswd",
+  async: true
+});
+
+print(replication.getSyncResult(id));
+```
+
+*getSyncResult* will return *false* as long as the synchronization is not complete, and return the
+synchronization result otherwise.
 

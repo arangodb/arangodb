@@ -87,7 +87,7 @@ class KeyGenerator {
 /// @brief create the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    KeyGenerator (bool);
+    explicit KeyGenerator (bool);
 
   public:
 
@@ -199,7 +199,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
 /// @brief create the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    TraditionalKeyGenerator (bool);
+    explicit TraditionalKeyGenerator (bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the generator

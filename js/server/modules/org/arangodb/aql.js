@@ -2767,6 +2767,16 @@ function AQL_SQRT (value) {
   return NUMERIC_VALUE(Math.sqrt(AQL_TO_NUMBER(value)));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exponentation
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_POW (base, exp) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.pow(AQL_TO_NUMBER(base), AQL_TO_NUMBER(exp)));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                         list processing functions
 // -----------------------------------------------------------------------------
@@ -9154,6 +9164,7 @@ exports.AQL_ROUND = AQL_ROUND;
 exports.AQL_ABS = AQL_ABS;
 exports.AQL_RAND = AQL_RAND;
 exports.AQL_SQRT = AQL_SQRT;
+exports.AQL_POW = AQL_POW;
 exports.AQL_LENGTH = AQL_LENGTH;
 exports.AQL_FIRST = AQL_FIRST;
 exports.AQL_LAST = AQL_LAST;

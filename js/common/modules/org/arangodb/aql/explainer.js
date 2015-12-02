@@ -264,10 +264,12 @@ function processQuery (query, explain) {
     parents = { },
     rootNode = null,
     maxTypeLen = 0,
+    maxSiteLen = 0,
     maxIdLen = String("Id").length,
     maxEstimateLen = String("Est.").length,
-    plan = explain.plan;
-
+    plan = explain.plan,
+    cluster = require("org/arangodb/cluster");
+  
   var recursiveWalk = function (n, level) {
     n.forEach(function(node) {
       nodes[node.id] = node;
@@ -290,10 +292,24 @@ function processQuery (query, explain) {
       if (String(node.type).length > maxTypeLen) {
         maxTypeLen = String(node.type).length;
       }
+      if (String(node.site).length > maxSiteLen) {
+        maxSiteLen = String(node.site).length;
+      }
       if (String(node.estimatedNrItems).length > maxEstimateLen) {
         maxEstimateLen = String(node.estimatedNrItems).length;
       }
     });
+
+    var count = n.length, site = "COOR";
+    while (count > 0) {
+      --count;
+      var node = n[count];
+      node.site = site;
+
+      if (node.type === "RemoteNode") {
+        site = (site === "COOR" ? "DBS" : "COOR");
+      }
+    }
   };
   recursiveWalk(plan.nodes, 0);
 
@@ -504,7 +520,10 @@ function processQuery (query, explain) {
         collectionVariables[node.outVariable.id] = node.collection;
         var types = [ ];
         node.indexes.forEach(function (idx, i) {
-          types.push((idx.reverse ? "reverse " : "") + idx.type + " index scan");
+          var what = (idx.reverse ? "reverse " : "") + idx.type + " index scan";
+          if (types.length === 0 || what !== types[types.length - 1]) {
+            types.push(what);
+          }
           idx.collection = node.collection;
           idx.node = node.id;
           if (node.condition.type && node.condition.type === 'n-ary or') {
@@ -630,13 +649,19 @@ function processQuery (query, explain) {
     }
     return "";
   };
-    
+      
+
   var printNode = function (node) {
     preHandle(node);
     var line = " " +  
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " +
-      keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   " + 
-      pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + "   " +
+      keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   ";
+
+    if (cluster && cluster.isCluster && cluster.isCluster()) { 
+      line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + "  ";
+    }
+
+    line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + "   " +
       indent(level, node.type === "SingletonNode") + label(node);
 
     if (node.type === "CalculationNode") {
@@ -651,8 +676,13 @@ function processQuery (query, explain) {
 
   var line = " " + 
     pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " +
-    header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   " +   
-    pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " +
+    header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   ";
+
+  if (cluster && cluster.isCluster && cluster.isCluster()) { 
+    line += header("Site") + pad(1 + maxSiteLen - String("Site").length) + "  ";
+  }
+
+  line += pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " +
     header("Comment");
 
   stringBuilder.appendLine(line);

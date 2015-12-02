@@ -95,7 +95,7 @@ namespace RandomHelper {
   template<int N>
   class RandomDeviceDirect : public RandomDevice {
     public:
-      RandomDeviceDirect (std::string const& path)
+      explicit RandomDeviceDirect (std::string const& path)
         : fd(-1), pos(0)  {
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
 
@@ -158,7 +158,7 @@ namespace RandomHelper {
   template<int N>
   class RandomDeviceCombined : public RandomDevice {
     public:
-      RandomDeviceCombined (std::string const& path)
+      explicit RandomDeviceCombined (std::string const& path)
         : fd(-1),  pos(0), rseed(0) {
 
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
@@ -325,11 +325,9 @@ namespace RandomHelper {
       UniformGenerator& operator= (UniformGenerator const&);
 
     public:
-      UniformGenerator (RandomDevice* device)
+      explicit UniformGenerator (RandomDevice* device)
         : device(device) {
       }
-
-
 
       virtual ~UniformGenerator () {
       }
@@ -462,7 +460,7 @@ namespace triagens {
 
       // RANDOM DEVICE
       struct UniformIntegerRandom : public UniformIntegerImpl, private RandomHelper::UniformGenerator {
-        UniformIntegerRandom (RandomHelper::RandomDevice* device)
+        explicit UniformIntegerRandom (RandomHelper::RandomDevice* device)
           : RandomHelper::UniformGenerator(device) {
         }
 
@@ -474,7 +472,7 @@ namespace triagens {
 
       // RANDOM DEVICE
       struct UniformIntegerWin32 : public UniformIntegerImpl, private RandomHelper::UniformGenerator {
-        UniformIntegerWin32 (RandomHelper::RandomDevice* device) : RandomHelper::UniformGenerator(device) {
+        explicit UniformIntegerWin32 (RandomHelper::RandomDevice* device) : RandomHelper::UniformGenerator(device) {
         }
 
         int32_t random (int32_t left, int32_t right) {

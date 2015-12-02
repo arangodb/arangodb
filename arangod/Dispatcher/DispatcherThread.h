@@ -81,7 +81,7 @@ namespace triagens {
 /// @brief constructs a dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        DispatcherThread (DispatcherQueue*);
+        explicit DispatcherThread (DispatcherQueue*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    Thread methods
