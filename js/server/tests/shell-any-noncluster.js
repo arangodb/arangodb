@@ -46,17 +46,55 @@ function AnySuite () {
   var cn = "example";
   var c;
 
-  var threshold = 15; // maximum tolerated stddev for distribution
+  var statsExpected = function (list, N) {
+    // list is a list of numbers, we assume that we draw N times one number
+    // from list with a uniform distribution, we compute the expected value
+    // of the average and the variance, as well as the variance
+    // of these two:
 
-  var stddev = function (dist) {
+    // First the expected value and the standard deviation of the uniform
+    // distribution:
+    var E = 0;
+    var n = list.length;
+    var i;
+    for (i = 0; i < n; i++) {
+      E += list[i];
+    }
+    E /= n;
+    var V = 0;
+    for (i = 0; i < n; i++) {
+      V += Math.pow(list[i] - E, 2);
+    }
+    V = V / n;
+
+    // Now we apply the central limit theorem to the random variable
+    // Y = (X - E)^2, first compute its expected value and standard 
+    // deviation:
+    var EY = V;
+    var VY = 0;
+    for (i = 0; i < n; i++) {
+      VY += Math.pow(Math.pow(list[i] - E, 2) - EY, 2);
+    }
+    VY = VY / n;
+    // Now EY is V and sY is its variance, by the central limit theorem
+    // taking the average of a sample of size N of Y values will be close 
+    // to the normal distribution with expected value EY and variance
+    // VY / N
+    
+    return { average: E, variance: V,
+             averageStddev: Math.sqrt(V) / Math.sqrt(N),
+             varianceStddev: Math.sqrt(VY) / Math.sqrt(N) };
+  }
+ 
+  var statsFound = function (dist) {
     var v;
     var sum = 0;
     var count = 0;
 
     for (v in dist) {
       if (dist.hasOwnProperty(v)) {
-        sum += dist[v];
-        count++;
+        sum += dist[v] * Number(v);
+        count += dist[v];
       }
     }
 
@@ -65,12 +103,12 @@ function AnySuite () {
 
     for (v in dist) {
       if (dist.hasOwnProperty(v)) {
-        var d = dist[v] - avg;
-        sum2 += d * d;
+        var d = Number(v) - avg;
+        sum2 += d * d * dist[v];
       }
     }
 
-    return Math.sqrt(sum2 / count);
+    return { average: avg, count: count, variance : sum2 / (count-1) };
   };
 
   var getDistribution = function (n, rng) {
@@ -115,19 +153,27 @@ function AnySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckEntropyNative : function () {
-      var i, n;
+      var i, n, l;
 
       n = 100;
 
+      l = [];
       for (i = 0; i < n; ++i) {
         c.save({ value: i });
+        l.push(i);
       }
 
       var dist = getDistribution(n * 100, function () {
         return parseInt(Math.random() * 100, 10);
       });
 
-      assertTrue(stddev(dist) < threshold);
+      var statsExp = statsExpected(l, n * 100);
+      var stats = statsFound(dist);
+      assertEqual(stats.count, n * 100);
+      assertTrue(Math.abs(stats.average - statsExp.average) 
+                 < statsExp.averageStddev * 3);
+      assertTrue(Math.abs(stats.variance - statsExp.variance)
+                 < statsExp.varianceStddev * 3);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,7 +187,11 @@ function AnySuite () {
         return c.any().value;
       });
       
-      assertTrue(stddev(dist) <= 0.01);
+      var statsExp = statsExpected([1], 100);
+      var stats = statsFound(dist);
+      assertEqual(stats.count, 100);
+      assertTrue(Math.abs(stats.average - statsExp.average) < 0.000001);
+      assertTrue(Math.abs(stats.variance - statsExp.variance) < 0.000001);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,19 +199,27 @@ function AnySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckEntropyCollectionFew1 : function () {
-      var i, n;
+      var i, n, l;
 
       n = 3;
 
+      l = [];
       for (i = 0; i < n; ++i) {
         c.save({ value: i });
+        l.push(i);
       }
 
       var dist = getDistribution(n * 200, function () {
         return c.any().value;
       });
       
-      assertTrue(stddev(dist) < threshold * 3.0);
+      var statsExp = statsExpected(l, n * 200);
+      var stats = statsFound(dist);
+      assertEqual(stats.count, n * 200);
+      assertTrue(Math.abs(stats.average - statsExp.average) 
+                 < statsExp.averageStddev * 3);
+      assertTrue(Math.abs(stats.variance - statsExp.variance)
+                 < statsExp.varianceStddev * 3);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,19 +227,27 @@ function AnySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckEntropyCollectionFew2 : function () {
-      var i, n;
+      var i, n, l;
 
       n = 10;
 
+      l = [];
       for (i = 0; i < n; ++i) {
         c.save({ value: i });
+        l.push(i);
       }
 
       var dist = getDistribution(n * 100, function () {
         return c.any().value;
       });
       
-      assertTrue(stddev(dist) < threshold * 1.5);
+      var statsExp = statsExpected(l, n * 100);
+      var stats = statsFound(dist);
+      assertEqual(stats.count, n * 100);
+      assertTrue(Math.abs(stats.average - statsExp.average) 
+                 < statsExp.averageStddev * 3);
+      assertTrue(Math.abs(stats.variance - statsExp.variance)
+                 < statsExp.varianceStddev * 3);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,19 +255,28 @@ function AnySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckEntropyCollectionMore : function () {
-      var i, n;
+      var i, n, l;
 
       n = 500;
 
+      l = [];
       for (i = 0; i < n; ++i) {
         c.save({ value: i });
+        l.push(i);
       }
       
       var dist = getDistribution(n * 100, function () {
         return c.any().value;
       });
 
-      assertTrue(stddev(dist) < threshold);
+      
+      var statsExp = statsExpected(l, n * 100);
+      var stats = statsFound(dist);
+      assertEqual(stats.count, n * 100);
+      assertTrue(Math.abs(stats.average - statsExp.average) 
+                 < statsExp.averageStddev * 3);
+      assertTrue(Math.abs(stats.variance - statsExp.variance)
+                 < statsExp.varianceStddev * 3);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,7 +284,7 @@ function AnySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckEntropyCollectionHalf : function () {
-      var i, n;
+      var i, n, l;
 
       n = 500;
 
@@ -223,11 +298,19 @@ function AnySuite () {
         c.remove(c.any());
       }
 
+      l = db._query(`FOR d IN ${cn} RETURN d.value`).toArray();
+
       var dist = getDistribution(n * 50, function () {
         return c.any().value;
       });
 
-      assertTrue(stddev(dist) < threshold);
+      var statsExp = statsExpected(l, n * 50);
+      var stats = statsFound(dist);
+      assertEqual(stats.count, n * 50);
+      assertTrue(Math.abs(stats.average - statsExp.average) 
+                 < statsExp.averageStddev * 3);
+      assertTrue(Math.abs(stats.variance - statsExp.variance)
+                 < statsExp.varianceStddev * 3);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,7 +318,7 @@ function AnySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCheckEntropyCollectionSparse : function () {
-      var i, n;
+      var i, n, l;
 
       n = 500;
 
@@ -253,7 +336,15 @@ function AnySuite () {
         return c.any().value;
       });
 
-      assertTrue(stddev(dist) < threshold);
+      l = db._query(`FOR d IN ${cn} RETURN d.value`).toArray();
+
+      var statsExp = statsExpected(l, n * 5);
+      var stats = statsFound(dist);
+      assertEqual(stats.count, n * 5);
+      assertTrue(Math.abs(stats.average - statsExp.average) 
+                 < statsExp.averageStddev * 3);
+      assertTrue(Math.abs(stats.variance - statsExp.variance)
+                 < statsExp.varianceStddev * 3);
     }
 
   };
