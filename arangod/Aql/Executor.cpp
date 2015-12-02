@@ -149,6 +149,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "ABS",                         Function("ABS",                         "AQL_ABS", "n", true, true, false, true, true, &Functions::Abs) },
   { "RAND",                        Function("RAND",                        "AQL_RAND", "", false, false, false, true, true, &Functions::Rand) },
   { "SQRT",                        Function("SQRT",                        "AQL_SQRT", "n", true, true, false, true, true, &Functions::Sqrt) },
+  { "POW",                         Function("POW",                         "AQL_POW", "n,n", true, true, false, true, true, &Functions::Pow) },
   
   // list functions
   { "RANGE",                       Function("RANGE",                       "AQL_RANGE", "n,n|n", true, true, false, true, true, &Functions::Range) },

@@ -1,6 +1,8 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* issue #1593: added AQL `POW` function for exponentation
+
 * added cluster execution site info in explain output for AQL queries
 
 * replication improvements:
