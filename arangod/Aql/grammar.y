@@ -129,6 +129,8 @@ void Aqlerror (YYLTYPE* locp,
 %token T_INBOUND "inbound direction"
 %token T_ANY "any direction"
 
+%token T_ALL "all modifier"
+
 /* define operator precedence */
 %left T_COMMA
 %left T_DISTINCT
