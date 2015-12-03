@@ -117,25 +117,48 @@ In the current state `OR` combined filters cannot be optimized, `AND` combined f
 This allows for the most powerful filtering and may have the highest impact on performance.
 Using the path variable you can filter on specific iteration depths.
 You can filter for absolute positions in the path by **(specifying a positive number)** **(which then qualifies for the optimizations)** or relative positions to the end of the path by specifying a negative number.
-**Note**: In the current state there is no way to define **for all elements on the path**. This will be added in the future.
+**Note**: In the current state there is no way to define a filter **for all elements on the path**. This will be added in the future.
 
-*Filtering edges on the path*
+#### Filtering edges on the path
 
-FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.edges[0].theTruth == true return p
+```
+FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+  FILTER p.edges[0].theTruth == true
+  RETURN p
+```
 
-will filter all paths where the start edge (# 0) has the attribute `theTruth` equaling true.
+will filter all paths where the start edge (# 0) has the attribute `theTruth` equaling `true`.
 The resulting paths will be up to 5 items long.
 
+#### Filtering vertices on the path
 
-*combining several filters*
+Similar to filtering the edges on the path you can also filter the vertices:
 
-FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.edges[0].theTruth == true AND p.edges[1].theFalse == false RETURN p
+```
+FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+  FILTER p.vertices[1]._key == "G"
+  RETURN p
+```
 
-will filter all paths where the start edge (# 0) has the attribute `theTruth` equaling true and the second edge (# 1) having the attribute `theFalse` equaling false.
+#### Combining several filters
+
+And of course you can combine these filters in any way you like: 
+
+```
+FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+  FILTER p.edges[0].theTruth == true
+  AND p.edges[1].theFalse == false
+  FILTER p.vertices[1]._key == "G"
+  RETURN p
+```
+
+will filter all paths where the first edge has the attribute `theTruth` equaling `true`, the first vertex is "G" and the second edge has the attribute `theFalse` equaling `false`.
 The resulting paths will be up to 5 items long.
+**Note here**: Although we have defined a `MIN` of `1` we will only get results of depth `2`.
+This is because for all results in depth `1` the second edge does not exist and hence cannot fulfill the condition.
 
 !SUBSUBSECTION Examples
-We will create a simple symetric traversal demonstration graph:
+We will create a simple symmetric traversal demonstration graph:
 ![traversal graph](../Graphs/traversal_graph.png)
 
     @startDocuBlockInline GRAPHTRAV_01_create_graph
