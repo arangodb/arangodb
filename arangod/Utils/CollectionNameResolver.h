@@ -98,7 +98,7 @@ namespace triagens {
 /// @brief look up a collection type for a collection name (local case)
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_col_type_t const getCollectionType (std::string const& name) const {
+        TRI_col_type_t getCollectionType (std::string const& name) const {
           if (name[0] >= '0' && name[0] <= '9') {
             // name is a numeric id
             return getCollectionType(getCollectionName(static_cast<TRI_voc_cid_t>(triagens::basics::StringUtils::uint64(name))));
@@ -162,7 +162,7 @@ namespace triagens {
 ///        coordinator and for a shard name on the db server
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_col_type_t const getCollectionTypeCluster (std::string const& name) const {
+        TRI_col_type_t getCollectionTypeCluster (std::string const& name) const {
           // This fires in Single server case as well
           if (! ServerState::instance()->isCoordinator()) {
             return getCollectionType(name);
