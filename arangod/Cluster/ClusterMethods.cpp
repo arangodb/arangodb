@@ -1072,13 +1072,12 @@ int getFilteredDocumentsOnCoordinator (
       }
       reqBody("filter", filter);
     }
-    std::string* bodyString = new std::string(reqBody.toString());
+    std::shared_ptr<std::string> bodyString(new std::string(reqBody.toString()));
 
     res = cc->asyncRequest("", coordTransactionID, "shard:" + shard.first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/simple/lookup-by-keys",
                            bodyString, 
-                           true, 
                            headersCopy.release(), 
                            nullptr,
                            60.0);
@@ -1268,7 +1267,7 @@ int getFilteredEdgesOnCoordinator (
   else if (direction == TRI_EDGE_OUT) {
     queryParameters += "&direction=out";
   }
-  std::string reqBodyString = "";
+  std::shared_ptr<std::string> reqBodyString(new std::string);
   if (! expressions.empty()) {
     triagens::basics::Json body(Json::Array, expressions.size());
     for (auto& e : expressions) {
@@ -1276,14 +1275,14 @@ int getFilteredEdgesOnCoordinator (
       e->toJson(tmp, TRI_UNKNOWN_MEM_ZONE);
       body.add(tmp.steal());
     }
-    reqBodyString = body.toString();
+    reqBodyString->append(body.toString());
   }
   for (it = shards.begin(); it != shards.end(); ++it) {
     map<string, string>* headers = new map<string, string>;
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" + it->first + queryParameters,
-                           &reqBodyString, false, headers, nullptr, 3600.0);
+                           reqBodyString, headers, nullptr, 3600.0);
     delete res;
   }
   // Now listen to the results:
