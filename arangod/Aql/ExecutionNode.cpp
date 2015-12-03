@@ -1459,6 +1459,30 @@ ExecutionNode* SubqueryNode::clone (ExecutionPlan* plan,
   return static_cast<ExecutionNode*>(c);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the subquery is a data-modification operation
+////////////////////////////////////////////////////////////////////////////////
+
+bool SubqueryNode::isModificationQuery () const {
+  std::vector<ExecutionNode*> stack({ _subquery });
+
+  while (! stack.empty()) {
+    auto current = stack.back();
+    stack.pop_back();
+    
+    if (current->isModificationNode()) {
+      return true;
+    }
+
+    current->addDependencies(stack); 
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace the out variable, so we can adjust the name.
+////////////////////////////////////////////////////////////////////////////////
 
 void SubqueryNode::replaceOutVariable(Variable const* var) {
   _outVariable = var;

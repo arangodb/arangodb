@@ -654,6 +654,19 @@ AstNode* Ast::createNodeVariable (char const* name,
   }
 
   if (_scopes.existsVariable(name, nameLength)) {
+    if (! isUserDefined &&
+        (strcmp(name, Variable::NAME_OLD) == 0 ||
+         strcmp(name, Variable::NAME_NEW) == 0)) {
+      // special variable
+      auto variable = _variables.createVariable(name, nameLength, isUserDefined);
+      _scopes.replaceVariable(variable);
+
+      AstNode* node = createNode(NODE_TYPE_VARIABLE);
+      node->setData(static_cast<void*>(variable));
+
+      return node;
+    }
+
     _query->registerError(TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
     return nullptr;
   }
@@ -1584,9 +1597,11 @@ AstNode* Ast::replaceVariableReference (AstNode* node,
 
 void Ast::validateAndOptimize () {
   struct TraversalContext {
-    int64_t stopOptimizationRequests = 0;
-    bool isInFilter       = false;
-    bool hasSeenWriteNode = false;
+    std::unordered_set<std::string> writeCollectionsSeen;
+    int64_t stopOptimizationRequests    = 0;
+    bool isInFilter                     = false;
+    bool hasSeenAnyWriteNode            = false;
+    bool hasSeenWriteNodeInCurrentScope = false;
   };
 
   auto preVisitor = [&](AstNode const* node, void* data) -> bool {
@@ -1605,6 +1620,19 @@ void Ast::validateAndOptimize () {
     else if (node->hasFlag(FLAG_BIND_PARAMETER)) {
       return false;
     }
+    else if (node->type == NODE_TYPE_REMOVE ||
+             node->type == NODE_TYPE_INSERT ||
+             node->type == NODE_TYPE_UPDATE ||
+             node->type == NODE_TYPE_REPLACE ||
+             node->type == NODE_TYPE_UPSERT) {
+      auto c = static_cast<TraversalContext*>(data);
+
+      if (c->hasSeenWriteNodeInCurrentScope) {
+        // no two data-modification nodes are allowed in the same scope
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_MULTI_MODIFY);
+      }
+      c->hasSeenWriteNodeInCurrentScope = true;
+    }
 
     return true;
   };
@@ -1613,13 +1641,20 @@ void Ast::validateAndOptimize () {
     if (node->type == NODE_TYPE_FILTER) {
       static_cast<TraversalContext*>(data)->isInFilter = false;
     }
+    else if (node->type == NODE_TYPE_REMOVE ||
+             node->type == NODE_TYPE_INSERT ||
+             node->type == NODE_TYPE_UPDATE ||
+             node->type == NODE_TYPE_REPLACE ||
+             node->type == NODE_TYPE_UPSERT) {
+      auto c = static_cast<TraversalContext*>(data);
+      c->hasSeenAnyWriteNode = true;
 
-    if (node->type == NODE_TYPE_REMOVE ||
-        node->type == NODE_TYPE_INSERT ||
-        node->type == NODE_TYPE_UPDATE ||
-        node->type == NODE_TYPE_REPLACE ||
-        node->type == NODE_TYPE_UPSERT) {
-      static_cast<TraversalContext*>(data)->hasSeenWriteNode = true;
+      TRI_ASSERT(c->hasSeenWriteNodeInCurrentScope);
+      c->hasSeenWriteNodeInCurrentScope = false;
+
+      auto collection = node->getMember(1);
+      auto name = collection->getStringValue();
+      c->writeCollectionsSeen.emplace(name);
     }
     else if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
@@ -1688,7 +1723,7 @@ void Ast::validateAndOptimize () {
     if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
 
-      if (static_cast<TraversalContext*>(data)->hasSeenWriteNode &&
+      if (static_cast<TraversalContext*>(data)->hasSeenAnyWriteNode &&
           ! func->canRunOnDBServer) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
       }
@@ -1728,9 +1763,14 @@ void Ast::validateAndOptimize () {
 
     // collection
     if (node->type == NODE_TYPE_COLLECTION) {
-      if (static_cast<TraversalContext*>(data)->hasSeenWriteNode) {
+      char const* name = node->getStringValue();
+
+      auto c = static_cast<TraversalContext*>(data);
+
+      if (c->writeCollectionsSeen.find(name) != c->writeCollectionsSeen.end()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
       }
+
       return node;
     }
     

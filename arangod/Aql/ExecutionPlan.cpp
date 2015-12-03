@@ -1743,7 +1743,9 @@ void ExecutionPlan::unlinkNode (ExecutionNode* node,
                                      "Cannot unlink root node of plan");
     }
     // adjust root node. the caller needs to make sure that a new root node gets inserted
-    _root = nullptr;
+    if (node == _root) {
+      _root = nullptr;
+    }
   }
 
   auto dep = node->getDependencies();  // Intentionally copy the vector!
@@ -1855,7 +1857,7 @@ ExecutionNode* ExecutionPlan::fromJson (triagens::basics::Json const& json) {
       auto subqueryNode = fromJson(subquery);
     
       // register the just created subquery 
-      static_cast<SubqueryNode*>(ret)->setSubquery(subqueryNode); 
+      static_cast<SubqueryNode*>(ret)->setSubquery(subqueryNode, false); 
     }
   }
 

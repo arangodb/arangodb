@@ -211,34 +211,27 @@ void Aqlerror (YYLTYPE* locp,
 %%
 
 query: 
-    optional_statement_block_statements return_statement {
-    }
-  | optional_statement_block_statements remove_statement optional_post_modification_block {
-    }
-  | optional_statement_block_statements insert_statement optional_post_modification_block {
-    }
-  | optional_statement_block_statements update_statement optional_post_modification_block {
-    }
-  | optional_statement_block_statements replace_statement optional_post_modification_block {
-    }
-  | optional_statement_block_statements upsert_statement optional_post_modification_block {
+    optional_statement_block_statements final_statement {
     }
   ;
 
-optional_post_modification_lets:
-    /* empty */ {
+final_statement:
+    return_statement {
     }
-  | optional_post_modification_lets let_statement {
-    }
-  ;
-
-optional_post_modification_block:
-    /* empty */ {
-      // still need to close the scope opened by the data-modification statement
+  | remove_statement {
       parser->ast()->scopes()->endNested();
     }
-  | optional_post_modification_lets return_statement {
-      // the RETURN statement will close the scope opened by the data-modification statement
+  | insert_statement {
+      parser->ast()->scopes()->endNested();
+    }
+  | update_statement {
+      parser->ast()->scopes()->endNested();
+    }
+  | replace_statement {
+      parser->ast()->scopes()->endNested();
+    }
+  | upsert_statement {
+      parser->ast()->scopes()->endNested();
     }
   ;
 
@@ -261,6 +254,16 @@ statement_block_statement:
   | sort_statement {
     }
   | limit_statement {
+    }
+  | remove_statement {
+    }
+  | insert_statement {
+    }
+  | update_statement {
+    }
+  | replace_statement {
+    }
+  | upsert_statement {
     }
   ;
 
@@ -885,9 +888,11 @@ expression_or_query:
       $$ = $1;
     }
   | {
+#if 0    
       if (parser->isModificationQuery()) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
       }
+#endif      
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     } query {
@@ -1184,9 +1189,11 @@ reference:
       }
     }
   | T_OPEN {
+#if 0    
       if (parser->isModificationQuery()) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
       }
+#endif      
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     } query T_CLOSE {

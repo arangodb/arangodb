@@ -349,7 +349,7 @@ function printTraversalDetails (traversals) {
 function processQuery (query, explain) {
   'use strict';
   var nodes = { }, 
-    parents = { }, 
+    parents = { },
     rootNode = null,
     maxTypeLen = 0,
     maxSiteLen = 0,
@@ -793,6 +793,8 @@ function processQuery (query, explain) {
   };
 
   var postHandle = function (node) {
+    var isLeafNode = ! parents.hasOwnProperty(node.id);
+
     if ([ "EnumerateCollectionNode",
           "EnumerateListNode",
           "IndexRangeNode",
@@ -800,7 +802,7 @@ function processQuery (query, explain) {
           "SubqueryNode" ].indexOf(node.type) !== -1) {
       level++;
     }
-    else if (node.type === "ReturnNode" && subqueries.length > 0) {
+    else if (isLeafNode && subqueries.length > 0) {
       level = subqueries.pop();
     }
     else if (node.type === "SingletonNode") {
