@@ -852,7 +852,7 @@ int triagens::aql::removeSortRandRule (Optimizer* opt,
         case EN::TRAVERSAL:
         case EN::INDEX: { 
           // if we found another SortNode, an AggregateNode, FilterNode, a SubqueryNode, 
-          // an EnumerateListNode or an IndexNode
+          // an EnumerateListNode, a TraversalNode or an IndexNode
           // this means we cannot apply our optimization
           collectionNode = nullptr;
           current = nullptr;
