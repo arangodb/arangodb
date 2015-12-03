@@ -1329,7 +1329,7 @@ static void JS_ByExampleSkiplist (const v8::FunctionCallbackInfo<v8::Value>& arg
 ////////////////////////////////////////////////////////////////////////////////
 
 struct collection_checksum_t {
-  collection_checksum_t (CollectionNameResolver const* resolver)
+  explicit collection_checksum_t (CollectionNameResolver const* resolver)
     : _resolver(resolver),
       _checksum(0) {
   }

@@ -66,7 +66,7 @@ namespace triagens {
 
       private:
 
-        GeneralClientConnection (GeneralClientConnection const&);
+        explicit GeneralClientConnection (GeneralClientConnection const&);
         GeneralClientConnection& operator= (GeneralClientConnection const&);
 
       public:

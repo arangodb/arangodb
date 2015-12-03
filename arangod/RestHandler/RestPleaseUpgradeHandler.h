@@ -57,7 +57,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestPleaseUpgradeHandler (rest::HttpRequest*);
+        explicit RestPleaseUpgradeHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods

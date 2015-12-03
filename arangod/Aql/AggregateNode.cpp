@@ -172,7 +172,7 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
-  UserVarFinder (int mindepth) 
+  explicit UserVarFinder (int mindepth) 
     : mindepth(mindepth), depth(-1) { 
   }
 

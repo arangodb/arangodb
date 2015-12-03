@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.0.2.  */
+/* A Bison parser, made by GNU Bison 3.0.4.  */
 
 /* Bison implementation for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2013 Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@
 #define YYBISON 1
 
 /* Bison version.  */
-#define YYBISON_VERSION "3.0.2"
+#define YYBISON_VERSION "3.0.4"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -180,7 +180,7 @@ extern int Aqldebug;
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef union YYSTYPE YYSTYPE;
+
 union YYSTYPE
 {
 #line 17 "arangod/Aql/grammar.y" /* yacc.c:355  */
@@ -195,6 +195,8 @@ union YYSTYPE
 
 #line 197 "arangod/Aql/grammar.cpp" /* yacc.c:355  */
 };
+
+typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif
@@ -254,7 +256,7 @@ void Aqlerror (YYLTYPE* locp,
 #define scanner parser->scanner()
 
 
-#line 258 "arangod/Aql/grammar.cpp" /* yacc.c:358  */
+#line 260 "arangod/Aql/grammar.cpp" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -1821,217 +1823,217 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 214 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 214 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1828 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1830 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 3:
-#line 216 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 216 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1835 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1837 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 4:
-#line 218 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 218 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1842 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1844 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 5:
-#line 220 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 220 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1849 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1851 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 6:
-#line 222 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 222 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1856 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1858 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 7:
-#line 224 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 224 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1863 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1865 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 8:
-#line 229 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 229 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1870 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1872 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 9:
-#line 231 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 231 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1877 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1879 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 10:
-#line 236 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 236 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // still need to close the scope opened by the data-modification statement
       parser->ast()->scopes()->endNested();
     }
-#line 1886 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1888 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 11:
-#line 240 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 240 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // the RETURN statement will close the scope opened by the data-modification statement
     }
-#line 1894 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1896 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 12:
-#line 246 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 246 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1901 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1903 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 13:
-#line 248 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 248 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1908 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1910 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 14:
-#line 253 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 253 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1915 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1917 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 15:
-#line 255 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 255 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1922 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1924 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 16:
-#line 257 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 257 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1929 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1931 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 17:
-#line 259 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 259 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1936 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1938 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 18:
-#line 261 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 261 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1943 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1945 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 19:
-#line 263 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 263 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 1950 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1952 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 20:
-#line 268 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 268 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
      
       auto node = parser->ast()->createNodeFor((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node), true);
       parser->ast()->addOperation(node);
     }
-#line 1961 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1963 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 21:
-#line 274 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 274 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
       auto node = parser->ast()->createNodeTraversal((yyvsp[-4].strval).value, (yyvsp[-4].strval).length, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 1971 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1973 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 22:
-#line 279 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 279 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
       auto node = parser->ast()->createNodeTraversal((yyvsp[-6].strval).value, (yyvsp[-6].strval).length, (yyvsp[-4].strval).value, (yyvsp[-4].strval).length, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 1981 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1983 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 23:
-#line 284 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 284 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
       auto node = parser->ast()->createNodeTraversal((yyvsp[-8].strval).value, (yyvsp[-8].strval).length, (yyvsp[-6].strval).value, (yyvsp[-6].strval).length, (yyvsp[-4].strval).value, (yyvsp[-4].strval).length, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 1991 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 1993 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 24:
-#line 292 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 292 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // operand is a reference. can use it directly
       auto node = parser->ast()->createNodeFilter((yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2001 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2003 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 25:
-#line 300 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 300 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 2008 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2010 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 26:
-#line 305 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 305 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 2015 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2017 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 27:
-#line 307 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 307 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 2022 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2024 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 28:
-#line 312 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 312 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto node = parser->ast()->createNodeLet((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node), true);
       parser->ast()->addOperation(node);
     }
-#line 2031 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2033 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 29:
-#line 319 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 319 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (! TRI_CaseEqualString((yyvsp[-2].strval).value, "COUNT")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", (yyvsp[-2].strval).value, yylloc.first_line, yylloc.first_column);
@@ -2039,20 +2041,20 @@ yyreduce:
 
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 2043 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2045 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 30:
-#line 329 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 329 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 2052 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2054 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 31:
-#line 332 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 332 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     { 
       auto list = static_cast<AstNode*>(parser->popStack());
 
@@ -2061,11 +2063,11 @@ yyreduce:
       }
       (yyval.node) = list;
     }
-#line 2065 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2067 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 32:
-#line 343 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 343 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto scopes = parser->ast()->scopes();
 
@@ -2082,11 +2084,11 @@ yyreduce:
       auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), (yyvsp[-1].strval).value, (yyvsp[-1].strval).length, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2086 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2088 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 33:
-#line 359 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 359 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto scopes = parser->ast()->scopes();
 
@@ -2114,11 +2116,11 @@ yyreduce:
       auto node = parser->ast()->createNodeCollectCount((yyvsp[-2].node), (yyvsp[-1].strval).value, (yyvsp[-1].strval).length, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2118 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2120 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 34:
-#line 386 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 386 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto scopes = parser->ast()->scopes();
 
@@ -2146,11 +2148,11 @@ yyreduce:
       auto node = parser->ast()->createNodeCollect((yyvsp[-2].node), (yyvsp[-1].strval).value, (yyvsp[-1].strval).length, nullptr, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2150 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2152 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 35:
-#line 413 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 413 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto scopes = parser->ast()->scopes();
 
@@ -2183,11 +2185,11 @@ yyreduce:
       auto node = parser->ast()->createNodeCollect((yyvsp[-3].node), (yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2187 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2189 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 36:
-#line 445 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 445 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto scopes = parser->ast()->scopes();
 
@@ -2215,52 +2217,52 @@ yyreduce:
       auto node = parser->ast()->createNodeCollectExpression((yyvsp[-5].node), (yyvsp[-3].strval).value, (yyvsp[-3].strval).length, (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2219 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2221 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 37:
-#line 475 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 475 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 2226 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2228 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 38:
-#line 477 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 477 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 2233 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2235 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 39:
-#line 482 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 482 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto node = parser->ast()->createNodeAssign((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
       parser->pushArrayElement(node);
     }
-#line 2242 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2244 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 40:
-#line 489 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 489 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.strval).value = nullptr;
       (yyval.strval).length = 0;
     }
-#line 2251 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2253 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 41:
-#line 493 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 493 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.strval).value = (yyvsp[0].strval).value;
       (yyval.strval).length = (yyvsp[0].strval).length;
     }
-#line 2260 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2262 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 42:
-#line 500 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 500 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (! parser->ast()->scopes()->existsVariable((yyvsp[0].strval).value, (yyvsp[0].strval).length)) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", (yyvsp[0].strval).value, yylloc.first_line, yylloc.first_column);
@@ -2275,11 +2277,11 @@ yyreduce:
       node->setFlag(FLAG_KEEP_VARIABLENAME);
       parser->pushArrayElement(node);
     }
-#line 2279 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2281 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 43:
-#line 514 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 514 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (! parser->ast()->scopes()->existsVariable((yyvsp[0].strval).value, (yyvsp[0].strval).length)) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", (yyvsp[0].strval).value, yylloc.first_line, yylloc.first_column);
@@ -2294,11 +2296,11 @@ yyreduce:
       node->setFlag(FLAG_KEEP_VARIABLENAME);
       parser->pushArrayElement(node);
     }
-#line 2298 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2300 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 44:
-#line 531 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 531 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (! TRI_CaseEqualString((yyvsp[0].strval).value, "KEEP")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", (yyvsp[0].strval).value, yylloc.first_line, yylloc.first_column);
@@ -2307,140 +2309,140 @@ yyreduce:
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 2311 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2313 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 45:
-#line 538 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 538 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto list = static_cast<AstNode*>(parser->popStack());
       (yyval.node) = list;
     }
-#line 2320 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2322 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 46:
-#line 545 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 545 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 2329 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2331 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 47:
-#line 548 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 548 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto list = static_cast<AstNode const*>(parser->popStack());
       auto node = parser->ast()->createNodeSort(list);
       parser->ast()->addOperation(node);
     }
-#line 2339 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2341 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 48:
-#line 556 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 556 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 2347 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2349 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 49:
-#line 559 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 559 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 2355 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2357 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 50:
-#line 565 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 565 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeSortElement((yyvsp[-1].node), (yyvsp[0].node));
     }
-#line 2363 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2365 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 51:
-#line 571 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 571 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 2371 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2373 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 52:
-#line 574 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 574 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 2379 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2381 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 53:
-#line 577 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 577 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeValueBool(false);
     }
-#line 2387 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2389 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 54:
-#line 580 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 580 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2395 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2397 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 55:
-#line 586 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 586 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto offset = parser->ast()->createNodeValueInt(0);
       auto node = parser->ast()->createNodeLimit(offset, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2405 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2407 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 56:
-#line 591 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 591 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto node = parser->ast()->createNodeLimit((yyvsp[-2].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2414 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2416 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 57:
-#line 598 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 598 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto node = parser->ast()->createNodeReturn((yyvsp[0].node));
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
-#line 2424 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2426 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 58:
-#line 606 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 606 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2432 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2434 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 59:
-#line 609 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 609 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
        (yyval.node) = (yyvsp[0].node);
      }
-#line 2440 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2442 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 60:
-#line 615 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 615 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -2448,11 +2450,11 @@ yyreduce:
       auto node = parser->ast()->createNodeRemove((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2452 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2454 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 61:
-#line 625 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 625 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -2460,11 +2462,11 @@ yyreduce:
       auto node = parser->ast()->createNodeInsert((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2464 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2466 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 62:
-#line 635 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 635 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -2473,11 +2475,11 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeUpdate(nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2477 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2479 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 63:
-#line 643 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 643 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -2486,18 +2488,18 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeUpdate((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2490 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2492 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 64:
-#line 654 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 654 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 2497 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2499 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 65:
-#line 659 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 659 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -2506,11 +2508,11 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeReplace(nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2510 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2512 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 66:
-#line 667 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 667 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -2519,44 +2521,44 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeReplace((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2523 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2525 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 67:
-#line 678 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 678 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 2530 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2532 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 68:
-#line 683 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 683 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.intval) = static_cast<int64_t>(NODE_TYPE_UPDATE);
     }
-#line 2538 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2540 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 69:
-#line 686 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 686 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.intval) = static_cast<int64_t>(NODE_TYPE_REPLACE);
     }
-#line 2546 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2548 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 70:
-#line 692 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 692 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     { 
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
       parser->pushStack(parser->ast()->createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), true));
     }
-#line 2556 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2558 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 71:
-#line 696 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 696 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (! parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -2601,11 +2603,11 @@ yyreduce:
       auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>((yyvsp[-3].intval)), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 2605 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2607 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 72:
-#line 743 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 743 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto const scopeType = parser->ast()->scopes()->type();
 
@@ -2614,83 +2616,83 @@ yyreduce:
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "cannot use DISTINCT modifier on top-level query element", yylloc.first_line, yylloc.first_column);
       }
     }
-#line 2618 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2620 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 73:
-#line 750 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 750 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeDistinct((yyvsp[0].node));
     }
-#line 2626 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2628 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 74:
-#line 753 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 753 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2634 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2636 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 75:
-#line 759 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 759 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2642 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2644 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 76:
-#line 762 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 762 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2650 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2652 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 77:
-#line 765 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 765 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2658 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2660 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 78:
-#line 768 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 768 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2666 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2668 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 79:
-#line 771 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 771 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2674 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2676 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 80:
-#line 774 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 774 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeRange((yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2682 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2684 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 81:
-#line 780 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 780 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 2690 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2692 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 82:
-#line 783 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 783 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       std::string temp((yyvsp[-2].strval).value, (yyvsp[-2].strval).length);
       temp.append("::");
@@ -2704,205 +2706,205 @@ yyreduce:
       (yyval.strval).value = p;
       (yyval.strval).length = temp.size();
     }
-#line 2708 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2710 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 83:
-#line 799 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 799 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       parser->pushStack((yyvsp[0].strval).value);
 
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 2719 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2721 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 84:
-#line 804 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 804 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto list = static_cast<AstNode const*>(parser->popStack());
       (yyval.node) = parser->ast()->createNodeFunctionCall(static_cast<char const*>(parser->popStack()), list);
     }
-#line 2728 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2730 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 85:
-#line 811 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 811 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, (yyvsp[0].node));
     }
-#line 2736 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2738 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 86:
-#line 814 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 814 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, (yyvsp[0].node));
     }
-#line 2744 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2746 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 87:
-#line 817 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 817 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     { 
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, (yyvsp[0].node));
     }
-#line 2752 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2754 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 88:
-#line 823 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 823 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_OR, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2760 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2762 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 89:
-#line 826 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 826 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2768 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2770 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 90:
-#line 829 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 829 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_PLUS, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2776 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2778 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 91:
-#line 832 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 832 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MINUS, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2784 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2786 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 92:
-#line 835 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 835 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_TIMES, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2792 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2794 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 93:
-#line 838 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 838 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_DIV, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2800 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2802 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 94:
-#line 841 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 841 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MOD, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2808 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2810 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 95:
-#line 844 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 844 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2816 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2818 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 96:
-#line 847 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 847 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2824 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2826 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 97:
-#line 850 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 850 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LT, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2832 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2834 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 98:
-#line 853 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 853 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GT, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2840 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2842 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 99:
-#line 856 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 856 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2848 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2850 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 100:
-#line 859 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 859 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2856 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2858 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 101:
-#line 862 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 862 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2864 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2866 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 102:
-#line 865 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 865 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, (yyvsp[-3].node), (yyvsp[0].node));
     }
-#line 2872 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2874 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 103:
-#line 871 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 871 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeTernaryOperator((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 2880 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2882 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 104:
-#line 877 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 877 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 2887 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2889 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 105:
-#line 879 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 879 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 2894 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2896 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 106:
-#line 884 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 884 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2902 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2904 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 107:
-#line 887 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 887 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (parser->isModificationQuery()) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
@@ -2910,11 +2912,11 @@ yyreduce:
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     }
-#line 2914 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2916 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 108:
-#line 893 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 893 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
@@ -2925,98 +2927,98 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeReference(variableName);
     }
-#line 2929 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2931 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 109:
-#line 906 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 906 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 2937 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2939 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 110:
-#line 909 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 909 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 2945 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2947 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 111:
-#line 915 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 915 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2953 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2955 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 112:
-#line 918 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 918 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2961 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2963 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 113:
-#line 924 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 924 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 2970 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2972 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 114:
-#line 927 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 927 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = static_cast<AstNode*>(parser->popStack());
     }
-#line 2978 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2980 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 115:
-#line 933 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 933 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 2985 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2987 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 116:
-#line 935 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 935 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 2992 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 2994 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 117:
-#line 940 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 940 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 3000 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3002 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 118:
-#line 943 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 943 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 3008 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3010 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 119:
-#line 949 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 949 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = nullptr;
     }
-#line 3016 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3018 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 120:
-#line 952 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 952 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if ((yyvsp[0].node) == nullptr) {
         ABORT_OOM
@@ -3028,56 +3030,56 @@ yyreduce:
 
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3032 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3034 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 121:
-#line 966 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 966 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto node = parser->ast()->createNodeObject();
       parser->pushStack(node);
     }
-#line 3041 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3043 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 122:
-#line 969 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 969 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = static_cast<AstNode*>(parser->popStack());
     }
-#line 3049 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3051 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 123:
-#line 975 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 975 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 3056 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3058 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 124:
-#line 977 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 977 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 3063 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3065 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 125:
-#line 982 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 982 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 3070 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3072 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 126:
-#line 984 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 984 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
     }
-#line 3077 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3079 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 127:
-#line 989 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 989 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // attribute-name-only (comparable to JS enhanced object literals, e.g. { foo, bar })
       auto ast = parser->ast();
@@ -3092,20 +3094,20 @@ yyreduce:
       auto node = ast->createNodeReference(variable);
       parser->pushObjectElement((yyvsp[0].strval).value, (yyvsp[0].strval).length, node);
     }
-#line 3096 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3098 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 128:
-#line 1003 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1003 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 3105 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3107 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 129:
-#line 1007 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1007 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // bind-parameter : attribute-value
       if ((yyvsp[-2].strval).length < 1 || (yyvsp[-2].strval).value[0] == '@') {
@@ -3115,214 +3117,214 @@ yyreduce:
       auto param = parser->ast()->createNodeParameter((yyvsp[-2].strval).value, (yyvsp[-2].strval).length);
       parser->pushObjectElement(param, (yyvsp[0].node));
     }
-#line 3119 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3121 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 130:
-#line 1016 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1016 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // [ attribute-name-expression ] : attribute-value
       parser->pushObjectElement((yyvsp[-3].node), (yyvsp[0].node));
     }
-#line 3128 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3130 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 131:
-#line 1023 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1023 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.intval) = 1;
     }
-#line 3136 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3138 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 132:
-#line 1026 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1026 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.intval) = (yyvsp[-1].intval) + 1;
     }
-#line 3144 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3146 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 133:
-#line 1032 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1032 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = nullptr;
     }
-#line 3152 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3154 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 134:
-#line 1035 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1035 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3160 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3162 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 135:
-#line 1041 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1041 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = nullptr;
     }
-#line 3168 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3170 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 136:
-#line 1044 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1044 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeArrayLimit(nullptr, (yyvsp[0].node));
     }
-#line 3176 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3178 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 137:
-#line 1047 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1047 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeArrayLimit((yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 3184 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3186 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 138:
-#line 1053 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1053 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = nullptr;
     }
-#line 3192 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3194 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 139:
-#line 1056 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1056 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3200 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3202 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 140:
-#line 1062 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1062 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 3208 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3210 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 141:
-#line 1065 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1065 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // TODO FIXME check @s
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3217 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3219 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 142:
-#line 1072 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1072 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 3226 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3228 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 143:
-#line 1076 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1076 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 3235 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3237 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 144:
-#line 1083 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1083 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto node = parser->ast()->createNodeArray();
       node->addMember((yyvsp[0].node));
       (yyval.node) = parser->ast()->createNodeCollectionList(node);
     }
-#line 3245 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3247 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 145:
-#line 1089 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1089 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
       node->addMember((yyvsp[-1].node));
     }
-#line 3255 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3257 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 146:
-#line 1093 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1093 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto node = static_cast<AstNode*>(parser->popStack());
       (yyval.node) = parser->ast()->createNodeCollectionList(node);
     }
-#line 3264 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3266 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 147:
-#line 1097 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1097 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // graph name
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3273 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3275 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 148:
-#line 1101 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1101 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // graph name
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 3282 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3284 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 149:
-#line 1110 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1110 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.intval) = 2;
     }
-#line 3290 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3292 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 150:
-#line 1113 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1113 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.intval) = 1;
     }
-#line 3298 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3300 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 151:
-#line 1116 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1116 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.intval) = 0; 
     }
-#line 3306 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3308 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 152:
-#line 1122 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1122 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeDirection((yyvsp[0].intval), 1);
     }
-#line 3314 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3316 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 153:
-#line 1125 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1125 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeDirection((yyvsp[0].intval), (yyvsp[-1].node));
     }
-#line 3322 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3324 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 154:
-#line 1131 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1131 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // variable or collection
       auto ast = parser->ast();
@@ -3355,27 +3357,27 @@ yyreduce:
 
       (yyval.node) = node;
     }
-#line 3359 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3361 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 155:
-#line 1163 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1163 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3367 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3369 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 156:
-#line 1166 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1166 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3375 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3377 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 157:
-#line 1169 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1169 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
       
@@ -3383,11 +3385,11 @@ yyreduce:
         ABORT_OOM
       }
     }
-#line 3387 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3389 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 158:
-#line 1176 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1176 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if ((yyvsp[-1].node)->type == NODE_TYPE_EXPANSION) {
         // create a dummy passthru node that reduces and evaluates the expansion first
@@ -3398,11 +3400,11 @@ yyreduce:
         (yyval.node) = (yyvsp[-1].node);
       }
     }
-#line 3402 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3404 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 159:
-#line 1186 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1186 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if (parser->isModificationQuery()) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
@@ -3410,11 +3412,11 @@ yyreduce:
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     }
-#line 3414 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3416 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 160:
-#line 1192 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1192 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
@@ -3425,11 +3427,11 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeReference(variableName);
     }
-#line 3429 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3431 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 161:
-#line 1202 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1202 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // named variable access, e.g. variable.reference
       if ((yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
@@ -3445,11 +3447,11 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeAttributeAccess((yyvsp[-2].node), (yyvsp[0].strval).value, (yyvsp[0].strval).length);
       }
     }
-#line 3449 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3451 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 162:
-#line 1217 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1217 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // named variable access, e.g. variable.@reference
       if ((yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
@@ -3464,11 +3466,11 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeBoundAttributeAccess((yyvsp[-2].node), (yyvsp[0].node));
       }
     }
-#line 3468 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3470 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 163:
-#line 1231 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1231 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // indexed variable access, e.g. variable[index]
       if ((yyvsp[-3].node)->type == NODE_TYPE_EXPANSION) {
@@ -3483,11 +3485,11 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeIndexedAccess((yyvsp[-3].node), (yyvsp[-1].node));
       }
     }
-#line 3487 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3489 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 164:
-#line 1245 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1245 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       // variable expansion, e.g. variable[*], with optional FILTER, LIMIT and RETURN clauses
       if ((yyvsp[0].intval) > 1 && (yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
@@ -3511,11 +3513,11 @@ yyreduce:
       auto scopes = parser->ast()->scopes();
       scopes->stackCurrentVariable(scopes->getVariable(nextName));
     }
-#line 3515 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3517 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 165:
-#line 1267 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1267 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       auto scopes = parser->ast()->scopes();
       scopes->unstackCurrentVariable();
@@ -3534,27 +3536,27 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeExpansion((yyvsp[-5].intval), iterator, parser->ast()->createNodeReference(variable->name), (yyvsp[-3].node), (yyvsp[-2].node), (yyvsp[-1].node));
       }
     }
-#line 3538 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3540 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 166:
-#line 1288 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1288 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3546 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3548 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 167:
-#line 1291 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1291 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3554 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3556 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 168:
-#line 1297 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1297 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if ((yyvsp[0].node) == nullptr) {
         ABORT_OOM
@@ -3562,11 +3564,11 @@ yyreduce:
       
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3566 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3568 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 169:
-#line 1304 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1304 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if ((yyvsp[0].node) == nullptr) {
         ABORT_OOM
@@ -3574,67 +3576,67 @@ yyreduce:
 
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3578 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3580 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 170:
-#line 1314 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1314 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 3586 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3588 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 171:
-#line 1317 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1317 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3594 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3596 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 172:
-#line 1320 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1320 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeValueNull();
     }
-#line 3602 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3604 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 173:
-#line 1323 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1323 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 3610 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3612 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 174:
-#line 1326 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1326 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeValueBool(false);
     }
-#line 3618 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3620 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 175:
-#line 1332 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1332 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeCollection((yyvsp[0].strval).value, TRI_TRANSACTION_WRITE);
     }
-#line 3626 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3628 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 176:
-#line 1335 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1335 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeCollection((yyvsp[0].strval).value, TRI_TRANSACTION_WRITE);
     }
-#line 3634 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3636 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 177:
-#line 1338 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1338 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       if ((yyvsp[0].strval).length < 2 || (yyvsp[0].strval).value[0] != '@') {
         parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), (yyvsp[0].strval).value, yylloc.first_line, yylloc.first_column);
@@ -3642,43 +3644,43 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeParameter((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 3646 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3648 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 178:
-#line 1348 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1348 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.node) = parser->ast()->createNodeParameter((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 3654 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3656 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 179:
-#line 1354 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1354 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 3662 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3664 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 180:
-#line 1357 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1357 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 3670 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3672 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
   case 181:
-#line 1362 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+#line 1362 "arangod/Aql/grammar.y" /* yacc.c:1661  */
     {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 3678 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3680 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
     break;
 
 
-#line 3682 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3684 "arangod/Aql/grammar.cpp" /* yacc.c:1661  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires

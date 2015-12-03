@@ -161,7 +161,7 @@ class CloneNodeAdder final : public WalkerWorker<ExecutionNode> {
 
     bool success;
 
-    CloneNodeAdder (ExecutionPlan* plan) 
+    explicit CloneNodeAdder (ExecutionPlan* plan) 
       : _plan(plan), 
         success(true) {
     }

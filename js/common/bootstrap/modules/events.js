@@ -1,3 +1,9 @@
+/*jshint ignore:start */
+/*eslint-disable */
+global.DEFINE_MODULE('events', (function () {
+'use strict';
+/*eslint-enable */
+
 // Copyright Node.js contributors. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -18,14 +24,12 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
-'use strict';
-
 var domain;
 
 function EventEmitter() {
   EventEmitter.init.call(this);
 }
-module.exports = EventEmitter;
+var exports = EventEmitter;
 
 // Backwards-compat with node 0.10.x
 EventEmitter.EventEmitter = EventEmitter;
@@ -452,3 +456,6 @@ function arrayClone(arr, i) {
     copy[i] = arr[i];
   return copy;
 }
+
+return exports;
+}()));

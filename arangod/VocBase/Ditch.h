@@ -445,7 +445,7 @@ namespace triagens {
         Ditches& operator= (Ditches const&) = delete;
         Ditches () = delete;
 
-        Ditches (struct TRI_document_collection_t*);
+        explicit Ditches (struct TRI_document_collection_t*);
         ~Ditches ();
 
 // -----------------------------------------------------------------------------
