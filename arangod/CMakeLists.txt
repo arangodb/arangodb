@@ -112,6 +112,8 @@ add_executable(
     Aql/SortNode.cpp
     Aql/SubqueryBlock.cpp
     Aql/tokens.cpp
+    Aql/TraversalBlock.cpp
+    Aql/TraversalNode.cpp
     Aql/V8Expression.cpp
     Aql/Variable.cpp
     Aql/VariableGenerator.cpp
@@ -173,6 +175,7 @@ add_executable(
     RestHandler/RestCursorHandler.cpp
     RestHandler/RestDocumentHandler.cpp
     RestHandler/RestEdgeHandler.cpp
+    RestHandler/RestEdgesHandler.cpp
     RestHandler/RestExportHandler.cpp
     RestHandler/RestImportHandler.cpp
     RestHandler/RestJobHandler.cpp
@@ -242,6 +245,7 @@ add_executable(
     VocBase/DocumentAccessor.cpp
     VocBase/ExampleMatcher.cpp
     VocBase/edge-collection.cpp
+    VocBase/Graphs.cpp
     VocBase/headers.cpp
     VocBase/KeyGenerator.cpp
     VocBase/Legends.cpp
@@ -254,6 +258,7 @@ add_executable(
     VocBase/shaped-json.cpp
     VocBase/Shaper.cpp
     VocBase/transaction.cpp
+    VocBase/Traverser.cpp
     VocBase/vocbase.cpp
     VocBase/vocbase-defaults.cpp
     VocBase/VocShaper.cpp

@@ -395,6 +395,18 @@
       margin-right: -18px;
     }
   }
+
+  fieldset {
+
+    input {
+      float: left;
+    }
+
+    label {
+      float: left;
+      margin-left: 10px;
+    }
+  }
 }
 
 .createModalDialog {

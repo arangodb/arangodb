@@ -31,6 +31,7 @@
 #include "Aql/AggregationOptions.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ConditionFinder.h"
+#include "Aql/TraversalConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
@@ -1987,6 +1988,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         case EN::REMOTE:
         case EN::ILLEGAL:
         case EN::LIMIT:                      // LIMIT is criterion to stop
+        case EN::TRAVERSAL:
           return true;  // abort.
 
         case EN::SORT:     // pulling two sorts together is done elsewhere.
@@ -2686,6 +2688,7 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
         case EN::SORT:
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
+        case EN::TRAVERSAL:
           //do break
           stopSearching = true;
           break;
@@ -2791,6 +2794,7 @@ int triagens::aql::distributeSortToClusterRule (Optimizer* opt,
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::INDEX:
+        case EN::TRAVERSAL:
         case EN::ENUMERATE_COLLECTION:
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -3062,8 +3066,9 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::ILLEGAL:
-        case EN::LIMIT:           
+        case EN::LIMIT:
         case EN::SORT:
+        case EN::TRAVERSAL:
         case EN::INDEX: {
           // if we meet any of the above, then we abort . . .
         }
@@ -3664,6 +3669,36 @@ int triagens::aql::patchUpdateStatementsRule (Optimizer* opt,
   // always re-add the original plan, be it modified or not
   // only a flag in the plan will be modified
   opt->addPlan(plan, rule, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merges filter nodes into graph traversal nodes
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::mergeFilterIntoTraversal (Optimizer* opt, 
+                                             ExecutionPlan* plan, 
+                                             Optimizer::Rule const* rule) {
+
+  std::vector<ExecutionNode*>&& tNodes = plan->findNodesOfType(EN::TRAVERSAL, true);
+
+  if (tNodes.size() == 0) {
+    opt->addPlan(plan, rule, false);
+
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // These are all the FILTER nodes where we start
+  std::vector<ExecutionNode*>&& nodes = plan->findEndNodes(true);
+
+  bool planAltered = false; 
+  for (auto const& n : nodes) {
+    TraversalConditionFinder finder(plan, &planAltered);
+    n->walk(&finder);
+  }
+
+  opt->addPlan(plan, rule, planAltered);
 
   return TRI_ERROR_NO_ERROR;
 }

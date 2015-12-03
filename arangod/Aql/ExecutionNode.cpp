@@ -1,4 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Infrastructure for ExecutionPlans
 ///
 /// @file arangod/Aql/ExecutionNode.cpp
@@ -31,6 +30,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/TraversalNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SortNode.h"
@@ -80,7 +80,8 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
   { static_cast<int>(DISTRIBUTE),                   "DistributeNode" },
   { static_cast<int>(GATHER),                       "GatherNode" },
   { static_cast<int>(NORESULTS),                    "NoResultsNode" },
-  { static_cast<int>(UPSERT),                       "UpsertNode" }
+  { static_cast<int>(UPSERT),                       "UpsertNode" },
+  { static_cast<int>(TRAVERSAL),                    "TraversalNode" }
 };
           
 // -----------------------------------------------------------------------------
@@ -245,6 +246,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       return new ScatterNode(plan, oneNode);
     case DISTRIBUTE: 
       return new DistributeNode(plan, oneNode);
+    case TRAVERSAL:
+      return new TraversalNode(plan, oneNode);
     case ILLEGAL: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type");
     }
@@ -1034,6 +1037,25 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       // these node types do not produce any new registers
       break;
     }
+    
+    case ExecutionNode::TRAVERSAL: {
+      depth++;
+      auto ep = static_cast<TraversalNode const*>(en);
+      TRI_ASSERT(ep != nullptr);
+      auto vars = ep->getVariablesSetHere();
+      nrRegsHere.emplace_back(vars.size());
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      RegisterId registerId = vars.size() + nrRegs.back();
+      nrRegs.emplace_back(registerId);
+
+      for (auto& it : vars) {
+        varInfo.emplace(make_pair(it->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      break;
+    }
 
     case ExecutionNode::ILLEGAL: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not implemented");
@@ -1720,4 +1742,3 @@ double NoResultsNode::estimateCost (size_t& nrItems) const {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-

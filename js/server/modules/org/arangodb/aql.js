@@ -8745,7 +8745,7 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_aql_general_graph_absolute_betweenness
 ///
-/// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, vertexExample, options)`
+/// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, options)`
 ///
 /// The GRAPH\_ABSOLUTE\_BETWEENNESS function returns the
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)

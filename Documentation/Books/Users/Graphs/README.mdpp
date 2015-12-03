@@ -4,7 +4,10 @@
 General graphs are completely managed by arangodb, and thus also [visible in the webinterface](../WebInterface/README.md#graphs-tab).
 They use the ful spectrum of ArangoDBs graph features. You may access them via several interfaces.
 
- - [AQL Graph Operations](../Aql/GraphOperations.md)
+ - [AQL Graph Operations](../Aql/Graphs.md) with several flavous:
+   - [AQL Graph traversals](../Aql/GraphTraversals.md) on both managed and unmanaged graphs
+   - [AQL operations on named Graphs](../Aql/GraphOperations.md)
+   - [AQL operations on raw vertex & edge collections](../Aql/GraphFunctions.md)
  - [the RESTful General Graph interface](../HttpGharial/README.md)
  - [The javascript General Graph implementation, as you may use it in FOXX Services](../GeneralGraphs/README.md)
     * [Graph Management](../GeneralGraphs/Management.md)
@@ -87,6 +90,40 @@ The example has the cities as *vertices* in several *vertex collections* - `germ
     examples.dropGraph("routeplanner");
     @END_EXAMPLE_ARANGOSH_RUN
     @endDocuBlock graph_create_cities_sample
+
+!SUBSUBSECTION The Traversal Graph
+This graph was designed to demonstrate filters in traversals. It has some labels to filter on it.
+
+![traversal graph](traversal_graph.png)
+
+The example has all its vertices in the *circles* collection, and an *edges* edge collection to connect them.
+Circles have uniq numeric labels. Edges have two boolean attributes (*theFalse* always being false, *theTruth* always being true) and a label sorting *B* - *D* to the left side, *G* - *K* to the right side. Left and right side split into Paths - at *B* and *G* which are each direct neighbours of the root-node *A*. Starting from *A* the graph has a depth of 3 on all its paths.
+
+    @startDocuBlockInline graph_create_traversal_sample
+    @EXAMPLE_ARANGOSH_OUTPUT{graph_create_traversal_sample}
+    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var g = examples.loadGraph("traversalGraph");
+    db.circles.toArray();
+    db.edges.toArray();
+    examples.dropGraph("traversalGraph");
+    @END_EXAMPLE_ARANGOSH_RUN
+    @endDocuBlock graph_create_traversal_sample
+
+!SUBSUBSECTION The World Graph
+The world contry graph structures its nodes like that: world -> continet -> country -> capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One with graph management (*worldCountry*), one without (*worldCountryUnManaged*). 
+It is used to demonstrate raw traversal operations.
+
+    @startDocuBlockInline graph_create_world_sample
+    @EXAMPLE_ARANGOSH_OUTPUT{graph_create_world_sample}
+    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var g = examples.loadGraph("worldCountry");
+    db.worldVertices.toArray();
+    db.worldEdges.toArray();
+    examples.dropGraph("worldCountry");
+    var g = examples.loadGraph("worldCountryUnManaged");
+    examples.dropGraph("worldCountryUnManaged");
+    @END_EXAMPLE_ARANGOSH_RUN
+    @endDocuBlock graph_create_world_sample
 
 
 !SUBSECTION Cookbook examples

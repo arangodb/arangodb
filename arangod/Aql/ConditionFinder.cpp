@@ -50,6 +50,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
     case EN::UPDATE:
     case EN::UPSERT:
     case EN::RETURN:
+    case EN::TRAVERSAL:
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.

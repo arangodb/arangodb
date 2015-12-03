@@ -155,6 +155,9 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_PASSTHRU),                 "passthru" },
   { static_cast<int>(NODE_TYPE_ARRAY_LIMIT),              "array limit" },
   { static_cast<int>(NODE_TYPE_DISTINCT),                 "distinct" },
+  { static_cast<int>(NODE_TYPE_TRAVERSAL),                "traversal" },
+  { static_cast<int>(NODE_TYPE_DIRECTION),                "direction" },
+  { static_cast<int>(NODE_TYPE_COLLECTION_LIST),          "collection list" },
   { static_cast<int>(NODE_TYPE_OPERATOR_NARY_AND),        "n-ary and" },
   { static_cast<int>(NODE_TYPE_OPERATOR_NARY_OR),         "n-ary or" }
 };
@@ -608,6 +611,9 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_PASSTHRU:
     case NODE_TYPE_ARRAY_LIMIT:
     case NODE_TYPE_DISTINCT:
+    case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_DIRECTION:
+    case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
       break;
@@ -631,6 +637,147 @@ AstNode::AstNode (Ast* ast,
   }
 
   ast->query()->addNode(this);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the node from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode::AstNode (std::function<void (AstNode*)> registerNode,
+                  std::function<char const* (std::string const&)> registerString,
+                  triagens::basics::Json const& json) 
+  : AstNode(getNodeTypeFromJson(json)) {
+
+  TRI_ASSERT_EXPENSIVE(flags == 0);
+  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
+
+  switch (type) {
+    case NODE_TYPE_ATTRIBUTE_ACCESS: {
+      std::string const str(JsonHelper::getStringValue(json.json(), "name", ""));
+      value.type = VALUE_TYPE_STRING;
+      auto p = registerString(str);
+      TRI_ASSERT(p != nullptr);
+      setStringValue(p, str.size());
+      break;
+    }
+    case NODE_TYPE_VALUE: {
+      int vType = JsonHelper::checkAndGetNumericValue<int>(json.json(), "vTypeID");
+      validateValueType(vType);
+      value.type = static_cast<AstNodeValueType>(vType);
+
+      switch (value.type) {
+        case VALUE_TYPE_NULL:
+          break;
+        case VALUE_TYPE_BOOL:
+          value.value._bool = JsonHelper::checkAndGetBooleanValue(json.json(), "value");
+          break;
+        case VALUE_TYPE_INT:
+          setIntValue(JsonHelper::checkAndGetNumericValue<int64_t>(json.json(), "value"));
+          break;
+        case VALUE_TYPE_DOUBLE:
+          setDoubleValue(JsonHelper::checkAndGetNumericValue<double>(json.json(), "value"));
+          break;
+        case VALUE_TYPE_STRING: {
+          std::string const str (JsonHelper::checkAndGetStringValue(json.json(), "value"));
+          setStringValue(registerString(str), str.size());
+          break;
+        }
+        default: {
+        }
+      }
+      break;
+    }
+    case NODE_TYPE_REFERENCE: {
+      // We use the edge here
+      /*
+      auto variableId = JsonHelper::checkAndGetNumericValue<VariableId>(json.json(), "id");
+      auto variable = ast->variables()->getVariable(variableId);
+
+      TRI_ASSERT(variable != nullptr);
+      setData(variable);
+      */
+      break;
+    }
+    case NODE_TYPE_EXPANSION: {
+      setIntValue(JsonHelper::checkAndGetNumericValue<int64_t>(json.json(), "levels"));
+      break;
+    }
+    case NODE_TYPE_FCALL_USER:
+    case NODE_TYPE_OBJECT_ELEMENT:
+    case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_VARIABLE:
+    case NODE_TYPE_FCALL:
+    case NODE_TYPE_FOR:
+    case NODE_TYPE_LET:
+    case NODE_TYPE_FILTER:
+    case NODE_TYPE_RETURN:
+    case NODE_TYPE_REMOVE:
+    case NODE_TYPE_INSERT:
+    case NODE_TYPE_UPDATE:
+    case NODE_TYPE_REPLACE:
+    case NODE_TYPE_UPSERT:
+    case NODE_TYPE_COLLECT:
+    case NODE_TYPE_COLLECT_COUNT:
+    case NODE_TYPE_COLLECT_EXPRESSION:
+    case NODE_TYPE_SORT:
+    case NODE_TYPE_SORT_ELEMENT:
+    case NODE_TYPE_LIMIT:
+    case NODE_TYPE_ASSIGN:
+    case NODE_TYPE_SUBQUERY:
+    case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
+    case NODE_TYPE_EXAMPLE:
+    case NODE_TYPE_DISTINCT:
+    case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_DIRECTION:
+    case NODE_TYPE_COLLECTION_LIST:
+    case NODE_TYPE_PASSTHRU: {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Unsupported node type");
+    }
+    case NODE_TYPE_OBJECT:
+    case NODE_TYPE_ROOT:
+    case NODE_TYPE_OPERATOR_UNARY_PLUS:
+    case NODE_TYPE_OPERATOR_UNARY_MINUS:
+    case NODE_TYPE_OPERATOR_UNARY_NOT:
+    case NODE_TYPE_OPERATOR_BINARY_AND:
+    case NODE_TYPE_OPERATOR_BINARY_OR:
+    case NODE_TYPE_OPERATOR_BINARY_PLUS:
+    case NODE_TYPE_OPERATOR_BINARY_MINUS:
+    case NODE_TYPE_OPERATOR_BINARY_TIMES:
+    case NODE_TYPE_OPERATOR_BINARY_DIV:
+    case NODE_TYPE_OPERATOR_BINARY_MOD:
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
+    case NODE_TYPE_OPERATOR_TERNARY:
+    case NODE_TYPE_INDEXED_ACCESS:
+    case NODE_TYPE_ITERATOR:
+    case NODE_TYPE_ARRAY:
+    case NODE_TYPE_RANGE:
+    case NODE_TYPE_NOP:
+    case NODE_TYPE_ARRAY_LIMIT:
+    case NODE_TYPE_OPERATOR_NARY_AND:
+    case NODE_TYPE_OPERATOR_NARY_OR:
+      break;
+  }
+
+  Json subNodes = json.get("subNodes");
+
+  if (subNodes.isArray()) {
+    size_t const len = subNodes.size();
+    for (size_t i = 0; i < len; i++) {
+      Json subNode(subNodes.at(i));
+      addMember(new AstNode(registerNode, registerString, subNode));
+    }
+  }
+
+  registerNode(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -985,6 +1132,35 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
 
   return node;
 }
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterates whether a node of type "searchType" can be found
+////////////////////////////////////////////////////////////////////////////////
+bool AstNode::containsNodeType (AstNodeType searchType) const {
+
+  if (type == searchType)
+    return true;
+
+  // iterate sub-nodes
+  size_t const n = members.size();
+
+  if (n > 0) {
+    for (size_t i = 0; i < n; ++i) {
+      AstNode* member = getMemberUnchecked(i);
+      if (member != nullptr) {
+        if (member->containsNodeType(searchType)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the node's value to a boolean value
@@ -2088,6 +2264,286 @@ std::string AstNode::toString () const {
    triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
    stringify(&buffer, false, false);
    return std::string(buffer.c_str(), buffer.length());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locate a variable including the direct path vector leading to it.
+////////////////////////////////////////////////////////////////////////////////
+
+void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
+                                 std::vector<std::vector<AstNode const*>>& paths,
+                                 Variable const* findme) const
+{
+  currentPath.push_back(this);
+  switch (type) {
+  case NODE_TYPE_VARIABLE:
+  case NODE_TYPE_REFERENCE: {
+    
+    auto variable = static_cast<Variable*>(getData());
+    TRI_ASSERT(variable != nullptr);
+    if (variable->id == findme->id) {
+      paths.emplace_back(currentPath);
+    }
+  }
+    break;
+
+    case NODE_TYPE_OPERATOR_NARY_AND:
+    case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_OBJECT: // yes, keys can't be vars, but... 
+    case NODE_TYPE_ARRAY: {
+      size_t const n = numMembers();
+      for (size_t i = 0; (i < n); ++i) {
+        AstNode* member = getMember(i);
+        if (member != nullptr) {
+          member->findVariableAccess(currentPath, paths, findme);
+        }
+      }
+    }
+      break;
+
+      // One subnode:
+    case NODE_TYPE_FCALL:
+    case NODE_TYPE_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_OPERATOR_UNARY_PLUS:
+    case NODE_TYPE_OPERATOR_UNARY_MINUS:
+    case NODE_TYPE_OPERATOR_UNARY_NOT:
+      getMember(0)->findVariableAccess(currentPath, paths, findme);
+      break;
+
+      // two subnodes to inspect:
+    case NODE_TYPE_RANGE:
+    case NODE_TYPE_ITERATOR:
+    case NODE_TYPE_ARRAY_LIMIT:
+    case NODE_TYPE_INDEXED_ACCESS: 
+    case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_OPERATOR_BINARY_AND:
+    case NODE_TYPE_OPERATOR_BINARY_OR:
+    case NODE_TYPE_OPERATOR_BINARY_PLUS:
+    case NODE_TYPE_OPERATOR_BINARY_MINUS:
+    case NODE_TYPE_OPERATOR_BINARY_TIMES:
+    case NODE_TYPE_OPERATOR_BINARY_DIV:
+    case NODE_TYPE_OPERATOR_BINARY_MOD:
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
+      getMember(0)->findVariableAccess(currentPath, paths, findme);
+      getMember(1)->findVariableAccess(currentPath, paths, findme);
+      break;
+
+    case NODE_TYPE_EXPANSION: {
+      getMember(0)->findVariableAccess(currentPath, paths, findme);
+      getMember(1)->findVariableAccess(currentPath, paths, findme);
+      auto filterNode = getMember(2);
+      if (filterNode != nullptr) {
+        filterNode->findVariableAccess(currentPath, paths, findme);
+      }
+      auto limitNode = getMember(3);
+      if (limitNode != nullptr) {
+        limitNode->findVariableAccess(currentPath, paths, findme);
+      }
+      auto returnNode = getMember(4);
+      if (returnNode != nullptr) {
+        returnNode->findVariableAccess(currentPath, paths, findme);
+      }
+    }
+      break;
+      // no sub nodes, not a variable:
+    case NODE_TYPE_OPERATOR_TERNARY:
+    case NODE_TYPE_SUBQUERY:
+    case NODE_TYPE_VALUE:
+    case NODE_TYPE_ROOT:
+    case NODE_TYPE_FOR:
+    case NODE_TYPE_LET:
+    case NODE_TYPE_FILTER:
+    case NODE_TYPE_RETURN:
+    case NODE_TYPE_REMOVE:
+    case NODE_TYPE_INSERT:
+    case NODE_TYPE_UPDATE:
+    case NODE_TYPE_REPLACE:
+    case NODE_TYPE_COLLECT:
+    case NODE_TYPE_SORT:
+    case NODE_TYPE_SORT_ELEMENT:
+    case NODE_TYPE_LIMIT:
+    case NODE_TYPE_ASSIGN:
+    case NODE_TYPE_OBJECT_ELEMENT:
+    case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_FCALL_USER:
+    case NODE_TYPE_NOP:
+    case NODE_TYPE_COLLECT_COUNT:
+    case NODE_TYPE_COLLECT_EXPRESSION:
+    case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
+    case NODE_TYPE_UPSERT:
+    case NODE_TYPE_EXAMPLE:
+    case NODE_TYPE_PASSTHRU:
+    case NODE_TYPE_DISTINCT:
+    case NODE_TYPE_TRAVERSAL:
+    case NODE_TYPE_COLLECTION_LIST:
+    case NODE_TYPE_DIRECTION:
+      break;
+  }
+
+  currentPath.pop_back();
+}
+
+AstNode const* AstNode::findReference(AstNode const* findme) const
+{
+  if (this == findme) {
+    return this;
+  }
+
+  const AstNode* ret = nullptr;
+  switch (type) {
+
+  case NODE_TYPE_OBJECT: // yes, keys can't be vars, but... 
+  case NODE_TYPE_ARRAY: {
+    size_t const n = numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      AstNode* member = getMember(i);
+      if (member == findme) {
+        return this;
+      }
+      if (member != nullptr) {
+        ret = member->findReference(findme);
+        if (ret != nullptr)
+          return ret;
+      }
+    }
+  }
+    break;
+
+    // One subnode:
+  case NODE_TYPE_FCALL:
+  case NODE_TYPE_ATTRIBUTE_ACCESS:
+  case NODE_TYPE_OPERATOR_UNARY_PLUS:
+  case NODE_TYPE_OPERATOR_UNARY_MINUS:
+  case NODE_TYPE_OPERATOR_UNARY_NOT:
+    if (getMember(0) == findme)
+      return this;
+    return getMember(0)->findReference(findme);
+
+    // two subnodes to inspect:
+  case NODE_TYPE_RANGE:
+  case NODE_TYPE_ITERATOR:
+  case NODE_TYPE_ARRAY_LIMIT:
+  case NODE_TYPE_INDEXED_ACCESS: 
+  case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
+  case NODE_TYPE_OPERATOR_BINARY_AND:
+  case NODE_TYPE_OPERATOR_BINARY_OR:
+  case NODE_TYPE_OPERATOR_BINARY_PLUS:
+  case NODE_TYPE_OPERATOR_BINARY_MINUS:
+  case NODE_TYPE_OPERATOR_BINARY_TIMES:
+  case NODE_TYPE_OPERATOR_BINARY_DIV:
+  case NODE_TYPE_OPERATOR_BINARY_MOD:
+  case NODE_TYPE_OPERATOR_BINARY_EQ:
+  case NODE_TYPE_OPERATOR_BINARY_NE:
+  case NODE_TYPE_OPERATOR_BINARY_LT:
+  case NODE_TYPE_OPERATOR_BINARY_LE:
+  case NODE_TYPE_OPERATOR_BINARY_GT:
+  case NODE_TYPE_OPERATOR_BINARY_GE:
+  case NODE_TYPE_OPERATOR_BINARY_IN:
+  case NODE_TYPE_OPERATOR_BINARY_NIN:
+    if (getMember(0) == findme)
+      return this;
+    ret = getMember(0)->findReference(findme);
+    if (ret != nullptr) {
+      return ret;
+    }
+    if (getMember(1) == findme)
+      return this;
+    ret = getMember(1)->findReference(findme);
+    break;
+
+  case NODE_TYPE_EXPANSION: {
+    if (getMember(0) == findme)
+      return this;
+    ret = getMember(0)->findReference(findme);
+    if (ret != nullptr) {
+      return ret;
+    }
+    if (getMember(1) == findme)
+      return this;
+    ret = getMember(1)->findReference(findme);
+    if (ret != nullptr) {
+      return ret;
+    }
+    auto filterNode = getMember(2);
+    if (filterNode != nullptr) {
+      if (filterNode->getMember(0) == findme)
+        return this;
+
+      ret = filterNode->getMember(0)->findReference(findme);
+      if (ret != nullptr) {
+        return ret;
+      }
+    }
+    auto limitNode = getMember(3);
+    if (limitNode != nullptr) {
+      if (limitNode->getMember(0) == findme)
+        return this;
+      ret = limitNode->getMember(0)->findReference(findme);
+      if (ret != nullptr) {
+        return ret;
+      }
+      ret = limitNode->getMember(1)->findReference(findme);
+      if (ret != nullptr) {
+        return ret;
+      }
+    }
+    auto returnNode = getMember(4);
+    if (returnNode != nullptr) {
+      if (returnNode->getMember(0) == findme)
+        return this;
+      ret = returnNode->getMember(0)->findReference(findme);
+    }
+  }
+    break;
+
+    // no subnodes here:
+  case NODE_TYPE_OPERATOR_TERNARY:
+  case NODE_TYPE_SUBQUERY:
+  case NODE_TYPE_VALUE:
+  case NODE_TYPE_ROOT:
+  case NODE_TYPE_FOR:
+  case NODE_TYPE_LET:
+  case NODE_TYPE_FILTER:
+  case NODE_TYPE_RETURN:
+  case NODE_TYPE_REMOVE:
+  case NODE_TYPE_INSERT:
+  case NODE_TYPE_UPDATE:
+  case NODE_TYPE_REPLACE:
+  case NODE_TYPE_COLLECT:
+  case NODE_TYPE_SORT:
+  case NODE_TYPE_SORT_ELEMENT:
+  case NODE_TYPE_LIMIT:
+  case NODE_TYPE_ASSIGN:
+  case NODE_TYPE_VARIABLE:
+  case NODE_TYPE_REFERENCE:
+  case NODE_TYPE_OBJECT_ELEMENT:
+  case NODE_TYPE_COLLECTION:
+  case NODE_TYPE_PARAMETER:
+  case NODE_TYPE_FCALL_USER:
+  case NODE_TYPE_NOP:
+  case NODE_TYPE_COLLECT_COUNT:
+  case NODE_TYPE_COLLECT_EXPRESSION:
+  case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
+  case NODE_TYPE_UPSERT:
+  case NODE_TYPE_EXAMPLE:
+  case NODE_TYPE_PASSTHRU:
+  case NODE_TYPE_DISTINCT:
+  case NODE_TYPE_TRAVERSAL:
+  case NODE_TYPE_COLLECTION_LIST:
+  case NODE_TYPE_DIRECTION:
+  case NODE_TYPE_OPERATOR_NARY_AND:
+  case NODE_TYPE_OPERATOR_NARY_OR:
+    break;
+  }
+  return ret;
 }
 
 // -----------------------------------------------------------------------------

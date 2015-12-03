@@ -284,6 +284,37 @@ controller.get("/query/result/download/:query", function(req, res) {
 }).summary("Download the result of a query")
   .notes("This function downloads the result of a user query.");
 
+ /** Create sample graphs
+ *
+ * Create one of the given sample graphs.
+ *
+ */
+
+controller.post("/graph-examples/create/:name", function(req, res) {
+  var name = req.params("name"), g,
+  examples = require("org/arangodb/graph-examples/example-graph.js");
+
+  if (name === 'knows_graph') {
+    g = examples.loadGraph("knows_graph");
+  }
+  else if (name === 'social') {
+    g = examples.loadGraph("social");
+  }
+  else if (name === 'routeplanner') {
+    g = examples.loadGraph("routeplanner");
+  }
+
+  if (typeof g === 'object') {
+    res.json({error: false});
+  }
+  else {
+    res.json({error: true});
+  }
+
+}).summary("Create a sample graph")
+  .notes("This function executes the internal scripts to create one example graph.");
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

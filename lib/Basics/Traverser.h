@@ -1231,6 +1231,155 @@ namespace triagens {
         bool _bidirectional;
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                             struct EnumeratedPath
+// -----------------------------------------------------------------------------
+
+    template <typename edgeIdentifier, typename vertexIdentifier>
+    struct EnumeratedPath {
+      std::vector<edgeIdentifier> edges;
+      std::vector<vertexIdentifier> vertices;
+      EnumeratedPath () {}
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                class PathIterator
+// -----------------------------------------------------------------------------
+
+    template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
+    class PathEnumerator {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       constructor
+// -----------------------------------------------------------------------------
+
+      private: 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 enumeration state
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief List of the last path is used to 
+////////////////////////////////////////////////////////////////////////////////
+      EnumeratedPath<edgeIdentifier, vertexIdentifier> _enumeratedPath;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief The pointers returned for edge indexes on this path. Used to continue
+///        the search on respective levels.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::stack<edgeItem*> _lastEdges;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief The boolean value indicating the direction for 'any' search
+////////////////////////////////////////////////////////////////////////////////
+
+        std::stack<bool> _lastEdgesDir;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief An internal index for the edge collection used at each depth level
+////////////////////////////////////////////////////////////////////////////////
+
+        std::stack<size_t> _lastEdgesIdx;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     data provider
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Function to get the next edge from index.
+////////////////////////////////////////////////////////////////////////////////
+       std::function<void (vertexIdentifier&, std::vector<edgeIdentifier>&, edgeItem*&, size_t&, bool&)> _getEdge;
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Function to get the connected vertex from index.
+///        Returns false if the vertex does not match the filter
+////////////////////////////////////////////////////////////////////////////////
+       std::function<bool (edgeIdentifier const&, vertexIdentifier const&, size_t, vertexIdentifier&)> _getVertex;
+
+      public: 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       constructor
+// -----------------------------------------------------------------------------
+
+        PathEnumerator (
+          std::function<void(vertexIdentifier const&, std::vector<edgeIdentifier>&, edgeItem*&, size_t&, bool&)> getEdge,
+          std::function<bool (edgeIdentifier const&, vertexIdentifier const&, size_t, vertexIdentifier&)> getVertex,
+          vertexIdentifier& startVertex
+        ) : _getEdge(getEdge),
+            _getVertex(getVertex) {
+          _enumeratedPath.vertices.push_back(startVertex);
+          _lastEdges.push(nullptr);
+          _lastEdgesDir.push(false);
+          _lastEdgesIdx.push(0);
+          TRI_ASSERT(_enumeratedPath.vertices.size() == 1);
+          TRI_ASSERT(_lastEdges.size() == 1);
+          TRI_ASSERT(_lastEdgesDir.size() == 1);
+        };
+
+        ~PathEnumerator () {
+        };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the next Path element from the traversal.
+////////////////////////////////////////////////////////////////////////////////
+      const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next () {
+        if (_lastEdges.size() == 0) {
+          _enumeratedPath.edges.clear();
+          _enumeratedPath.vertices.clear();
+          return _enumeratedPath;
+        }
+        _getEdge(_enumeratedPath.vertices.back(), _enumeratedPath.edges, _lastEdges.top(), _lastEdgesIdx.top(), _lastEdgesDir.top());
+        if (_lastEdges.top() != nullptr) {
+          // Could continue the path in the next depth.
+          _lastEdges.push(nullptr); 
+          _lastEdgesDir.push(false);
+          _lastEdgesIdx.push(0);
+          vertexIdentifier v;
+          bool isValid = _getVertex(_enumeratedPath.edges.back(), _enumeratedPath.vertices.back(), _enumeratedPath.vertices.size(), v);
+          _enumeratedPath.vertices.push_back(v);
+          TRI_ASSERT(_enumeratedPath.vertices.size() == _enumeratedPath.edges.size() + 1);
+          if (! isValid) {
+            prune();
+            return next();
+          }
+        } else {
+          if (_enumeratedPath.edges.size() == 0) {
+            // We are done with enumerating paths
+            _enumeratedPath.edges.clear();
+            _enumeratedPath.vertices.clear();
+          } else {
+            prune();
+            return next();
+          }
+        }
+        return _enumeratedPath;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Prunes the current path prefix, the next function should not return
+///        any path having this prefix anymore.
+////////////////////////////////////////////////////////////////////////////////
+      void prune () {
+        if (_lastEdges.size() > 0) {
+          _lastEdges.pop();
+          _lastEdgesDir.pop();
+          _lastEdgesIdx.pop();
+          if (_enumeratedPath.edges.size() > 0) {
+            _enumeratedPath.edges.pop_back();
+            _enumeratedPath.vertices.pop_back();
+          }
+        }
+      }
+
+    };
 
     template <typename VertexId, typename EdgeId>
     class ConstDistanceFinder {
@@ -1406,6 +1555,7 @@ namespace triagens {
     };
   }
 }
+
 
 #endif
 

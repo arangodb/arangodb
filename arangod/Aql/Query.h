@@ -36,6 +36,7 @@
 #include "Aql/Collections.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/ShortStringStorage.h"
+#include "Aql/Graphs.h"
 #include "Aql/types.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/V8TransactionContext.h"
@@ -483,6 +484,12 @@ namespace triagens {
           DoDisableQueryTracking = value;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a TransactionContext
+////////////////////////////////////////////////////////////////////////////////
+
+        Graph const* lookupGraphByName (std::string &name);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -597,6 +604,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::arango::ApplicationV8::V8Context* _context;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief warnings collected during execution
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<std::string, Graph*> _graphs;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual query string
