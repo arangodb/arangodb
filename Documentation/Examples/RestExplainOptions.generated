@@ -30,7 +30,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
           <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span> 
         }, 
         { 
-          <span class="hljs-string">"type"</span> : <span class="hljs-string">"IndexRangeNode"</span>, 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"IndexNode"</span>, 
           <span class="hljs-string">"dependencies"</span> : [ 
             <span class="hljs-number">1</span> 
           ], 
@@ -43,17 +43,18 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
             <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
             <span class="hljs-string">"name"</span> : <span class="hljs-string">"p"</span> 
           }, 
-          <span class="hljs-string">"ranges"</span> : [ 
-            [ ] 
+          <span class="hljs-string">"indexes"</span> : [ 
+            { 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+              <span class="hljs-string">"id"</span> : <span class="hljs-string">"737493849"</span>, 
+              <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+              <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+              <span class="hljs-string">"fields"</span> : [ 
+                <span class="hljs-string">"id"</span> 
+              ] 
+            } 
           ], 
-          <span class="hljs-string">"index"</span> : { 
-            <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"739563975"</span>, 
-            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
-            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
-            <span class="hljs-string">"fields"</span> : [ 
-              <span class="hljs-string">"id"</span> 
-            ] 
+          <span class="hljs-string">"condition"</span> : { 
           }, 
           <span class="hljs-string">"reverse"</span> : <span class="hljs-literal">false</span> 
         }, 
@@ -240,8 +241,8 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
   ], 
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"stats"</span> : { 
-    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">4</span>, 
-    <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">31</span>, 
+    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">2</span>, 
+    <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">34</span>, 
     <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span> 
   }, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 

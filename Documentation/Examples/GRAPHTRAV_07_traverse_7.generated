@@ -1,7 +1,7 @@
-arangosh&gt; db._explain(<span class="hljs-string">"FOR v,e,p IN 1..3 OUTBOUND 'circles/' GRAPH 'traversalGraph' LET localScopeVar = RAND() &gt; 0.5 FILTER p.edges[0].theTruth != localScopeVar return v._key"</span>, {}, {colors:<span class="hljs-literal">false</span>});
+arangosh&gt; db._explain(<span class="hljs-string">"FOR v,e,p IN 1..3 OUTBOUND 'circles/' GRAPH 'traversalGraph' LET localScopeVar = RAND() &gt; 0.5 FILTER p.edges[0].theTruth != localScopeVar RETURN v._key"</span>, {}, {colors: <span class="hljs-literal">false</span>});
 Query string:
  FOR v,e,p IN <span class="hljs-number">1.</span>.<span class="hljs-number">3</span> OUTBOUND <span class="hljs-string">'circles/'</span> GRAPH <span class="hljs-string">'traversalGraph'</span> LET localScopeVar = RAND() &gt; <span class="hljs-number">0.5</span> FILTER 
- p.edges[<span class="hljs-number">0</span>].theTruth != localScopeVar <span class="hljs-keyword">return</span> v._key
+ p.edges[<span class="hljs-number">0</span>].theTruth != localScopeVar RETURN v._key
 
 Execution plan:
  Id   NodeType          Est.   Comment
@@ -17,8 +17,8 @@ Indexes used:
  none
 
 Traversals on graphs:
- Id   traversal depth   Vertex collections   Edge collections   Filter conditions
-  <span class="hljs-number">2</span>   <span class="hljs-number">1.</span>.<span class="hljs-number">3</span>              circles              edges              
+ Id   Depth   Vertex collections   Edge collections   Filter conditions
+  <span class="hljs-number">2</span>   <span class="hljs-number">1.</span>.<span class="hljs-number">3</span>    circles              edges              
 
 Optimization rules applied:
  Id   RuleName
@@ -26,10 +26,10 @@ Optimization rules applied:
   <span class="hljs-number">2</span>   move-calculations-down
 
 
-arangosh&gt; db._explain(<span class="hljs-string">"FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.edges[0].label == 'right_foo' return v._key"</span>, {}, {colors:<span class="hljs-literal">false</span>});
+arangosh&gt; db._explain(<span class="hljs-string">"FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.edges[0].label == 'right_foo' RETURN v._key"</span>, {}, {colors: <span class="hljs-literal">false</span>});
 Query string:
  FOR v,e,p IN <span class="hljs-number">1.</span>.<span class="hljs-number">3</span> OUTBOUND <span class="hljs-string">'circles/A'</span> GRAPH <span class="hljs-string">'traversalGraph'</span> FILTER p.edges[<span class="hljs-number">0</span>].label == <span class="hljs-string">'right_foo'</span> 
- <span class="hljs-keyword">return</span> v._key
+ RETURN v._key
 
 Execution plan:
  Id   NodeType          Est.   Comment
@@ -44,8 +44,8 @@ Indexes used:
  none
 
 Traversals on graphs:
- Id   traversal depth   Vertex collections   Edge collections   Filter conditions
-  <span class="hljs-number">2</span>   <span class="hljs-number">1.</span>.<span class="hljs-number">3</span>              circles              edges              p.<span class="hljs-string">`edges`</span>[<span class="hljs-number">0</span>].<span class="hljs-string">`label`</span> == <span class="hljs-string">"right_foo"</span>
+ Id   Depth   Vertex collections   Edge collections   Filter conditions
+  <span class="hljs-number">2</span>   <span class="hljs-number">1.</span>.<span class="hljs-number">3</span>    circles              edges              <span class="hljs-string">`Path`</span>.<span class="hljs-string">`edges`</span>[<span class="hljs-number">0</span>] -&gt; e.<span class="hljs-string">`label`</span> == <span class="hljs-string">"right_foo"</span>
 
 Optimization rules applied:
  Id   RuleName

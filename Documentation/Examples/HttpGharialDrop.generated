@@ -1,4 +1,4 @@
-shell> curl -X DELETE --dump - http://localhost:8529/_api/gharial/social
+shell> curl -X DELETE --dump - http://localhost:8529/_api/gharial/social?dropCollections=true
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json

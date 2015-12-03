@@ -1,9 +1,9 @@
 arangosh&gt; db._create(<span class="hljs-string">"test"</span>); 
-[ArangoCollection <span class="hljs-number">1092291992475</span>, <span class="hljs-string">"test"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">477315929</span>, <span class="hljs-string">"test"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; <span class="hljs-keyword">for</span> (i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">100</span>; ++i) { db.test.save({ value: i }); }
-arangosh&gt; db.test.ensureSkiplist(<span class="hljs-string">"value"</span>);
+arangosh&gt; db.test.ensureIndex({ type: <span class="hljs-string">"skiplist"</span>, fields: [ <span class="hljs-string">"value"</span> ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/1092311980955"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/497304409"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"value"</span> 
@@ -22,8 +22,8 @@ Execution plan:
  Id   NodeType          Est.   Comment
   <span class="hljs-number">1</span>   SingletonNode        <span class="hljs-number">1</span>   * ROOT
   <span class="hljs-number">9</span>   IndexNode           <span class="hljs-number">50</span>     - FOR i IN test   <span class="hljs-comment">/* skiplist index scan */</span>
-  <span class="hljs-number">5</span>   CalculationNode     <span class="hljs-number">50</span>     - LET #<span class="hljs-number">3</span> = i.<span class="hljs-string">`value`</span>   <span class="hljs-comment">/* attribute expression */</span>   <span class="hljs-comment">/* collections used: i : test */</span>
-  <span class="hljs-number">8</span>   ReturnNode          <span class="hljs-number">50</span>     - RETURN #<span class="hljs-number">3</span>
+  <span class="hljs-number">5</span>   CalculationNode     <span class="hljs-number">50</span>       - LET #<span class="hljs-number">3</span> = i.<span class="hljs-string">`value`</span>   <span class="hljs-comment">/* attribute expression */</span>   <span class="hljs-comment">/* collections used: i : test */</span>
+  <span class="hljs-number">8</span>   ReturnNode          <span class="hljs-number">50</span>       - RETURN #<span class="hljs-number">3</span>
 
 Indexes used:
  By   Type       Collection   Unique   Sparse   Selectivity   Fields        Ranges

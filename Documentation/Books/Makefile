@@ -147,7 +147,7 @@ build-book:
 	python deprecated.py
 
 	make book-check-markdown-leftovers
-	make book-check-dangling-anchors
+	# make book-check-dangling-anchors
 
 clean-book:
 	@rm -rvf books/$(NAME) ppbooks/$(NAME)

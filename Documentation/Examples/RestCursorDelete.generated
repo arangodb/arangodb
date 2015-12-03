@@ -12,20 +12,20 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"hello3"</span> : <span class="hljs-string">"world1"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/650172871"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"650172871"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"650172871"</span> 
+      <span class="hljs-string">"hello2"</span> : <span class="hljs-string">"world1"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/652559193"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"652559193"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"652559193"</span> 
     }, 
     { 
       <span class="hljs-string">"hello1"</span> : <span class="hljs-string">"world1"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/649517511"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"649517511"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"649517511"</span> 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/652231513"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"652231513"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"652231513"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"651024839"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"653738841"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"extra"</span> : { 
     <span class="hljs-string">"stats"</span> : { 
@@ -41,5 +41,5 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }
-shell> curl -X DELETE --dump - http://localhost:8529/_api/cursor/651024839
+shell> curl -X DELETE --dump - http://localhost:8529/_api/cursor/653738841
 

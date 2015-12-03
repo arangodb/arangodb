@@ -12,12 +12,12 @@ arangosh&gt; stmt.explain();
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span> 
       }, 
       { 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"IndexRangeNode"</span>, 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"IndexNode"</span>, 
         <span class="hljs-string">"dependencies"</span> : [ 
           <span class="hljs-number">1</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">6</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">1.9899995050000001</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
         <span class="hljs-string">"collection"</span> : <span class="hljs-string">"_users"</span>, 
@@ -25,36 +25,46 @@ arangosh&gt; stmt.explain();
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"doc"</span> 
         }, 
-        <span class="hljs-string">"ranges"</span> : [ 
-          [ 
-            { 
-              <span class="hljs-string">"variable"</span> : <span class="hljs-string">"doc"</span>, 
-              <span class="hljs-string">"attr"</span> : <span class="hljs-string">"user"</span>, 
-              <span class="hljs-string">"lowConst"</span> : { 
-                <span class="hljs-string">"bound"</span> : <span class="hljs-string">"root"</span>, 
-                <span class="hljs-string">"include"</span> : <span class="hljs-literal">true</span>, 
-                <span class="hljs-string">"isConstant"</span> : <span class="hljs-literal">true</span> 
-              }, 
-              <span class="hljs-string">"highConst"</span> : { 
-                <span class="hljs-string">"bound"</span> : <span class="hljs-string">"root"</span>, 
-                <span class="hljs-string">"include"</span> : <span class="hljs-literal">true</span>, 
-                <span class="hljs-string">"isConstant"</span> : <span class="hljs-literal">true</span> 
-              }, 
-              <span class="hljs-string">"lows"</span> : [ ], 
-              <span class="hljs-string">"highs"</span> : [ ], 
-              <span class="hljs-string">"valid"</span> : <span class="hljs-literal">true</span>, 
-              <span class="hljs-string">"equality"</span> : <span class="hljs-literal">true</span> 
-            } 
-          ] 
+        <span class="hljs-string">"indexes"</span> : [ 
+          { 
+            <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
+            <span class="hljs-string">"id"</span> : <span class="hljs-string">"541529"</span>, 
+            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
+            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
+            <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
+            <span class="hljs-string">"fields"</span> : [ 
+              <span class="hljs-string">"user"</span> 
+            ] 
+          } 
         ], 
-        <span class="hljs-string">"index"</span> : { 
-          <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
-          <span class="hljs-string">"id"</span> : <span class="hljs-string">"580039"</span>, 
-          <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-          <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
-          <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
-          <span class="hljs-string">"fields"</span> : [ 
-            <span class="hljs-string">"user"</span> 
+        <span class="hljs-string">"condition"</span> : { 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"n-ary or"</span>, 
+          <span class="hljs-string">"subNodes"</span> : [ 
+            { 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"n-ary and"</span>, 
+              <span class="hljs-string">"subNodes"</span> : [ 
+                { 
+                  <span class="hljs-string">"type"</span> : <span class="hljs-string">"compare =="</span>, 
+                  <span class="hljs-string">"subNodes"</span> : [ 
+                    { 
+                      <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 
+                      <span class="hljs-string">"name"</span> : <span class="hljs-string">"user"</span>, 
+                      <span class="hljs-string">"subNodes"</span> : [ 
+                        { 
+                          <span class="hljs-string">"type"</span> : <span class="hljs-string">"reference"</span>, 
+                          <span class="hljs-string">"name"</span> : <span class="hljs-string">"doc"</span>, 
+                          <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span> 
+                        } 
+                      ] 
+                    }, 
+                    { 
+                      <span class="hljs-string">"type"</span> : <span class="hljs-string">"value"</span>, 
+                      <span class="hljs-string">"value"</span> : <span class="hljs-string">"root"</span> 
+                    } 
+                  ] 
+                } 
+              ] 
+            } 
           ] 
         }, 
         <span class="hljs-string">"reverse"</span> : <span class="hljs-literal">false</span> 
@@ -65,7 +75,7 @@ arangosh&gt; stmt.explain();
           <span class="hljs-number">6</span> 
         ], 
         <span class="hljs-string">"id"</span> : <span class="hljs-number">5</span>, 
-        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">2.989999505</span>, 
+        <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">3</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"inVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
@@ -74,7 +84,7 @@ arangosh&gt; stmt.explain();
       } 
     ], 
     <span class="hljs-string">"rules"</span> : [ 
-      <span class="hljs-string">"use-index-range"</span>, 
+      <span class="hljs-string">"use-indexes"</span>, 
       <span class="hljs-string">"remove-filter-covered-by-index"</span> 
     ], 
     <span class="hljs-string">"collections"</span> : [ 
@@ -93,12 +103,12 @@ arangosh&gt; stmt.explain();
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"doc"</span> 
       } 
     ], 
-    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">2.989999505</span>, 
+    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">3</span>, 
     <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"stats"</span> : { 
-    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">23</span>, 
+    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">24</span>, 
     <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span> 
   } 
