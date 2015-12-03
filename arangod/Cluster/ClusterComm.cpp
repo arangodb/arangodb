@@ -152,14 +152,9 @@ OperationID ClusterComm::getOperationID () {
 /// either in the callback or via poll. The caller has to call delete on
 /// the resulting ClusterCommResult*. The library takes ownerships of
 /// the pointers `headerFields` and `callback` and releases
-/// the memory when the operation has been finished. If `freeBody`
-/// is `true`, then the library takes ownership of the pointer `body`
-/// as well and deletes it at the end. If `freeBody` is `false, it
-/// is the caller's responsibility to ensure that the object object
-/// to which `body` points is retained until the full asynchronous
-/// operation is finished and has been reported back to the caller
-/// and that the object is destructed after the operation has finally
-/// terminated.
+/// the memory when the operation has been finished. We use a shared_ptr
+/// for the body string such that it is possible to use the same body
+/// in multiple requests.
 ///
 /// Arguments: `clientTransactionID` is a string coming from the client
 /// and describing the transaction the client is doing, `coordTransactionID`
