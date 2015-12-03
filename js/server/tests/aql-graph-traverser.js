@@ -252,7 +252,7 @@ function namedGraphSuite () {
     }
 
   };
-};
+}
 
 function multiCollectionGraphSuite () {
 
@@ -516,7 +516,7 @@ function multiCollectionGraphSuite () {
     },
 
   };
-};
+}
 
 function potentialErrorsSuite () {
   var vc, ec;
@@ -669,7 +669,7 @@ function potentialErrorsSuite () {
     }
 
   };
-};
+}
 
 function complexInternaSuite () {
 
@@ -798,7 +798,7 @@ function complexInternaSuite () {
 
   };
 
-};
+}
 
 function complexFilteringSuite () {
 
@@ -1217,7 +1217,7 @@ function complexFilteringSuite () {
 
   };
 
-};
+}
 
 jsunity.run(namedGraphSuite);
 jsunity.run(multiCollectionGraphSuite);

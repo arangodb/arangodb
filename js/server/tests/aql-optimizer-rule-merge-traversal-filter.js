@@ -31,7 +31,7 @@
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var isEqual = helper.isEqual;
-var getLinearizedPlan = helper.getLinearizedPlan;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,7 +39,6 @@ var getLinearizedPlan = helper.getLinearizedPlan;
 function optimizerRuleTestSuite () {
   var ruleName = "merge-traversal-filter";
   // various choices to control the optimizer: 
-  var paramNone     = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
   var graphName = "myGraph";
