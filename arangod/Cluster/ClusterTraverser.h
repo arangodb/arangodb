@@ -60,6 +60,9 @@ namespace triagens {
           }
 
           ~ClusterTraverser () {
+            for (auto& it : _vertices) {
+              delete it.second;
+            }
           }
 
           void setStartVertex (VertexId& v) override;
