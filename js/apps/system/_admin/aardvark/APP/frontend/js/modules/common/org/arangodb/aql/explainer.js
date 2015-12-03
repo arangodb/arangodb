@@ -270,7 +270,7 @@ function printTraversalDetails (traversals) {
   stringBuilder.appendLine(section("Traversals on graphs:"));
 
   var maxIdLen = String("Id").length;
-  var maxMinMaxDepth = String("traversal depth").length;
+  var maxMinMaxDepth = String("Depth").length;
   var maxVertexCollectionNameStrLen = String("Vertex collections").length;
   var maxEdgeCollectionNameStrLen = String("Edge collections").length;
   var maxConditionsLen = String("Filter conditions").length;
@@ -305,7 +305,7 @@ function printTraversalDetails (traversals) {
   });
 
   var line = " " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " +
-    header("traversal depth") +  pad(1 + maxMinMaxDepth - String("traversal depth").length) + "   " +
+    header("Depth") +  pad(1 + maxMinMaxDepth - String("Depth").length) + "   " +
     header("Vertex collections") + pad(1 + maxVertexCollectionNameStrLen - "Vertex collections".length) + "   " +
     header("Edge collections") + pad(1 + maxEdgeCollectionNameStrLen - "Edge collections".length) + "   " +
     header("Filter conditions");
@@ -313,20 +313,17 @@ function printTraversalDetails (traversals) {
   stringBuilder.appendLine(line);
 
   for (var i = 0; i < traversals.length; ++i) {
-    line = '';
+    line = " " + pad(1 + maxIdLen - String(traversals[i].id).length) + 
+      traversals[i].id + "   ";
 
-    line += " " + pad(1 + maxIdLen - String(traversals[i].id).length) + 
-      traversals[i].id + "  ";
-
-    line += " " + traversals[i].minMaxDepth + pad(1 + maxMinMaxDepth - traversals[i].minMaxDepthLen) +  "   ";
+    line += traversals[i].minMaxDepth + pad(1 + maxMinMaxDepth - traversals[i].minMaxDepthLen) +  "   ";
 
     if (traversals[i].hasOwnProperty('vertexCollectionNameStr')) {
       line += traversals[i].vertexCollectionNameStr + 
         pad(1 + maxVertexCollectionNameStrLen - traversals[i].vertexCollectionNameStrLen) + "   ";
-
     }
     else {
-      line += pad(maxVertexCollectionNameStrLen) + "   ";
+      line += pad(1 + maxVertexCollectionNameStrLen) + "   ";
     }
 
     if (traversals[i].hasOwnProperty('edgeCollectionNameStr')) {
@@ -334,7 +331,7 @@ function printTraversalDetails (traversals) {
         pad(1 + maxEdgeCollectionNameStrLen - traversals[i].edgeCollectionNameStrLen) + "   ";
     }
     else {
-        line += pad(maxEdgeCollectionNameStrLen) + "   ";
+      line += pad(1 + maxEdgeCollectionNameStrLen) + "   ";
     }
 
     if (traversals[i].hasOwnProperty('ConditionStr')) {
@@ -670,7 +667,6 @@ function processQuery (query, explain) {
         return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse ? "reverse " : "") + node.index.type + " index scan */");
 
       case "TraversalNode":
-
         node.minMaxDepth = node.minDepth + ".." + node.maxDepth;
         node.minMaxDepthLen = node.minMaxDepth.length;
 
