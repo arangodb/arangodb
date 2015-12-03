@@ -112,6 +112,7 @@ add_executable(
     Aql/SortNode.cpp
     Aql/SubqueryBlock.cpp
     Aql/tokens.cpp
+    Aql/TraversalConditionFinder.cpp
     Aql/TraversalBlock.cpp
     Aql/TraversalNode.cpp
     Aql/V8Expression.cpp
@@ -122,6 +123,7 @@ add_executable(
     Cluster/ApplicationCluster.cpp
     Cluster/ClusterComm.cpp
     Cluster/ClusterInfo.cpp
+    Cluster/ClusterTraverser.cpp
     Cluster/ClusterMethods.cpp
     Cluster/HeartbeatThread.cpp
     Cluster/RestShardHandler.cpp
