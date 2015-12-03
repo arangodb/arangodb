@@ -1,12 +1,9 @@
-
 !CHAPTER Graph traversals in AQL
 Graph traversal are natively executed. They start at a provided origin vertex, and traverse up to a specified depth of edges. You may apply `AQL FILTER` statements that will stop the traversal.
 
+TODO:
 Circle detection not detected! Double traversed edges not detected
 Undirected edegs will traverse back and forth
-
-Can work on managed graphs
-
 
 
 !SUBSECTION Syntax
@@ -16,34 +13,28 @@ Can work on managed graphs
 `FOR ` vertex[, edge[, path]]
  `IN` `MIN`[..`MAX`]
  `OUTBOUND|INBOUND|ANY` startVertex
- `GRAPH` graphName [`FILTER` ...]
- `RETURN` {v: vertex[, e: edge[, p: path]]}
+ `GRAPH` graphName
 
- - `FOR` - emmits up to three variables:
+ - `FOR` - emits up to three variables:
    - **vertex**: the current vertex in a traversal
-   - **edge**: *(optional)* the currend edge in a traversal
+   - **edge**: *(optional)* the current edge in a traversal
    - **path**: *(optional, requires edge to be present)* an object representing the current path with two members:
-     - `vertices`: an array of all vertices already visited 
-     - `edges`: an array of all edges already visited 
+     - `vertices`: an array of all vertices on this path.
+     - `edges`: an array of all edges on this path.
  - `IN` `MIN`..`MAX` `OUTBOUND` startVertex `GRAPH` graphName
    - `OUTBOUND|INBOUND|ANY` traversal will be done for outbound / inbound / inbound+outbound pointing edges
-   - **startVertex**: a vertex at which the traversal will originate from
-   - **graphName**: the name of a managed graph. Its vertex and edge collections will be looked up.
+   - **startVertex**: one vertex where the traversal will originate from
+   - **graphName**: the name of a managed graph. It's vertex and edge collections will be looked up.
    - `MIN`: edges and vertices returned by this query will start at the traversal depth of `MIN` (thus edges and vertices below will not be returned). If not specified, defaults to `1`.
-   - `MAX`: up to `MAX` length paths are traversed. If ommited in the query, `MAX` equals `MIN`. Thus only the vertices and edges in the range of `MIN` are returned.
- - `FILTER`:
-  - arbitrary filters on vertex, edges, paths. While filters on edges and vertices may reduce the result set, filters on paths may preliminary terminate a traversal approach, and thus improve execution time.
- - `RETURN`: which aspects of the traversal you want to return
+   - `MAX`: up to `MAX` length paths are traversed. If omitted in the query, `MAX` equals `MIN`. Thus only the vertices and edges in the range of `MIN` are returned.
 
 !SUBSUBSECTION Working on collection sets:
 
 `FOR ` vertex[, edge[, path]]
  `IN` `MIN`[..`MAX`]
  `OUTBOUND|INBOUND|ANY` startVertex edeCollection1, .., edgeCollectionN
- [`FILTER` ...]
- `RETURN` {v: vertex[, e: edge[, p: path]]}
 
-Instead of the Graph you may specify a **list of edge collections**. Vertex collections are evaluated from the edges. The rest of the behaviour is similar to the managed version.
+Instead of the Graph you may specify a **list of edge collections**. Vertex collections are evaluated from the edges. The rest of the behavior is similar to the managed version.
 
 !SUBSECTION using filters and the explainer to extrapolate the costs
 
