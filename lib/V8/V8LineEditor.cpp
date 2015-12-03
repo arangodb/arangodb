@@ -57,8 +57,38 @@ static std::atomic<V8LineEditor*> SINGLETON(nullptr);
 /// @brief signal handler for CTRL-C
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef _WIN32
+#ifdef _WIN32
+static bool SignalHandler (DWORD eventType) {
+  switch (eventType) {
+    case CTRL_BREAK_EVENT: 
+    case CTRL_C_EVENT: 
+    case CTRL_CLOSE_EVENT: 
+    case CTRL_LOGOFF_EVENT: 
+    case CTRL_SHUTDOWN_EVENT: {
+      // get the instance of the console
+      auto instance = SINGLETON.load();
 
+      if (instance != nullptr) {
+        if (instance->isExecutingCommand()) {
+          v8::Isolate* isolate = instance->isolate();
+
+          if (!v8::V8::IsExecutionTerminating(isolate)) {
+            v8::V8::TerminateExecution(isolate);
+          }
+        }
+
+        instance->signal();
+      }
+
+      return true;
+    }
+    default: {
+      return true;
+    }
+  } 
+
+}
+#else
 static void SignalHandler (int signal) {
 
   // get the instance of the console
@@ -76,7 +106,6 @@ static void SignalHandler (int signal) {
     instance->signal();
   }
 }
-
 #endif
 
 // -----------------------------------------------------------------------------
@@ -426,7 +455,14 @@ V8LineEditor::V8LineEditor (v8::Isolate* isolate,
   _shell = ShellBase::buildShell(history, new V8Completer());
   
   // handle control-c
-#ifndef _WIN32
+#ifdef _WIN32
+  int res = SetConsoleCtrlHandler((PHANDLER_ROUTINE) SignalHandler, true);
+
+  if (res == 0) {
+    LOG_ERROR("unable to install signal handler");
+  }
+
+#else
   struct sigaction sa;
   sa.sa_flags = 0;
   sigemptyset(&sa.sa_mask);

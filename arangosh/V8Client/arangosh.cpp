@@ -1620,7 +1620,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
       string exception;
 
       if (! tryCatch.CanContinue() || tryCatch.HasTerminated()) {
-        exception = "command locally aborted";
+        exception = "command locally aborted\n";
       }
       else {
         exception = TRI_StringifyV8Exception(isolate, &tryCatch);
