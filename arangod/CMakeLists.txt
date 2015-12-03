@@ -213,6 +213,7 @@ add_executable(
     Utils/Cursor.cpp
     Utils/CursorRepository.cpp
     Utils/DocumentHelper.cpp
+    Utils/ShapedJsonTransformer.cpp
     Utils/StandaloneTransactionContext.cpp
     Utils/Transaction.cpp
     Utils/TransactionContext.cpp
