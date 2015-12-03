@@ -237,7 +237,7 @@ namespace triagens {
 /// @brief checks if the vertex out variable is used
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool const usesVertexOutVariable () const {
+        bool usesVertexOutVariable () const {
           return _vertexOutVariable != nullptr;
         }
 
@@ -261,7 +261,7 @@ namespace triagens {
 /// @brief checks if the edge out variable is used
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool const usesEdgeOutVariable () const {
+        bool usesEdgeOutVariable () const {
           return _edgeOutVariable != nullptr;
         }
 
@@ -277,7 +277,7 @@ namespace triagens {
 /// @brief checks if the path out variable is used
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool const usesPathOutVariable () const {
+        bool usesPathOutVariable () const {
           return _pathOutVariable != nullptr;
         }
 
