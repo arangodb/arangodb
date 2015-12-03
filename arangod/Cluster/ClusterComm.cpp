@@ -177,8 +177,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
                 string const&                       destination,
                 triagens::rest::HttpRequest::HttpRequestType  reqtype,
                 string const                        path,
-                string const*                       body,
-                bool                                freeBody,
+                shared_ptr<string const>            body,
                 map<string, string>*                headerFields,
                 ClusterCommCallback*                callback,
                 ClusterCommTimeout                  timeout) {
@@ -238,14 +237,13 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->reqtype              = reqtype;
   op->path                 = path;
   op->body                 = body;
-  op->freeBody             = freeBody;
   op->headerFields         = headerFields;
   op->callback             = callback;
   op->endTime              = timeout == 0.0 ? TRI_microtime() + 24 * 60 * 60.0
                                             : TRI_microtime() + timeout;
 
   // LOCKING-DEBUG
-  // std::cout << "asyncRequest: sending " << triagens::rest::HttpRequest::translateMethod(reqtype) << " request to DB server '" << op->serverID << ":" << path << "\n" << body << "\n";
+  // std::cout << "asyncRequest: sending " << triagens::rest::HttpRequest::translateMethod(reqtype) << " request to DB server '" << op->serverID << ":" << path << "\n" << *(body.get()) << "\n";
   // for (auto& h : *headerFields) {
   //   std::cout << h.first << ":" << h.second << std::endl;
   // }
@@ -1086,7 +1084,7 @@ void ClusterCommThread::run () {
               }
             }
             else {
-              if (nullptr != op->body) {
+              if (nullptr != op->body.get()) {
                 LOG_DEBUG("sending %s request to DB server '%s': %s",
                    triagens::rest::HttpRequest::translateMethod(op->reqtype)
                      .c_str(), op->serverID.c_str(), op->body->c_str());
@@ -1107,7 +1105,7 @@ void ClusterCommThread::run () {
 
               // We add this result to the operation struct without acquiring
               // a lock, since we know that only we do such a thing:
-              if (nullptr != op->body) {
+              if (nullptr != op->body.get()) {
                 op->result = client->request(op->reqtype, op->path,
                              op->body->c_str(), op->body->size(),
                              *(op->headerFields));

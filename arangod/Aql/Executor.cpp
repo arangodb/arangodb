@@ -149,6 +149,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "ABS",                         Function("ABS",                         "AQL_ABS", "n", true, true, false, true, true, &Functions::Abs) },
   { "RAND",                        Function("RAND",                        "AQL_RAND", "", false, false, false, true, true, &Functions::Rand) },
   { "SQRT",                        Function("SQRT",                        "AQL_SQRT", "n", true, true, false, true, true, &Functions::Sqrt) },
+  { "POW",                         Function("POW",                         "AQL_POW", "n,n", true, true, false, true, true, &Functions::Pow) },
   
   // list functions
   { "RANGE",                       Function("RANGE",                       "AQL_RANGE", "n,n|n", true, true, false, true, true, &Functions::Range) },
@@ -202,13 +203,13 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, true, false, true, true, &Functions::Zip) },
 
   // geo functions
-  { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", true, false, true, false, true, &Functions::Near, NotInCluster) },
-  { "WITHIN",                      Function("WITHIN",                      "AQL_WITHIN", "h,n,n,n|s", true, false, true, false, true, &Functions::Within, NotInCluster) },
-  { "WITHIN_RECTANGLE",            Function("WITHIN_RECTANGLE",            "AQL_WITHIN_RECTANGLE", "h,d,d,d,d", true, false, true, false, true) },
+  { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "hs,n,n|nz,s", true, false, true, false, true, &Functions::Near, NotInCluster) },
+  { "WITHIN",                      Function("WITHIN",                      "AQL_WITHIN", "hs,n,n,n|s", true, false, true, false, true, &Functions::Within, NotInCluster) },
+  { "WITHIN_RECTANGLE",            Function("WITHIN_RECTANGLE",            "AQL_WITHIN_RECTANGLE", "hs,d,d,d,d", true, false, true, false, true) },
   { "IS_IN_POLYGON",               Function("IS_IN_POLYGON",               "AQL_IS_IN_POLYGON", "l,ln|nb", true, true, false, true, true) },
 
   // fulltext functions
-  { "FULLTEXT",                    Function("FULLTEXT",                    "AQL_FULLTEXT", "h,s,s|n", true, false, true, false, true, &Functions::Fulltext, NotInCluster) },
+  { "FULLTEXT",                    Function("FULLTEXT",                    "AQL_FULLTEXT", "hs,s,s|n", true, false, true, false, true, &Functions::Fulltext, NotInCluster) },
 
   // graph functions
   { "PATHS",                       Function("PATHS",                       "AQL_PATHS", "c,h|s,ba", true, false, true, false, false) },
@@ -216,14 +217,14 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "SHORTEST_PATH",               Function("SHORTEST_PATH",               "AQL_SHORTEST_PATH", "h,h,s,s,s|a", true, false, true, false, false) },
   { "GRAPH_SHORTEST_PATH",         Function("GRAPH_SHORTEST_PATH",         "AQL_GRAPH_SHORTEST_PATH", "s,als,als|a", false, false, true, false, false) },
   { "GRAPH_DISTANCE_TO",           Function("GRAPH_DISTANCE_TO",           "AQL_GRAPH_DISTANCE_TO", "s,als,als|a", false, false, true, false, false) },
-  { "TRAVERSAL",                   Function("TRAVERSAL",                   "AQL_TRAVERSAL", "h,h,s,s|a", false, false, true, false, false) },
+  { "TRAVERSAL",                   Function("TRAVERSAL",                   "AQL_TRAVERSAL", "hs,hs,s,s|a", false, false, true, false, false) },
   { "GRAPH_TRAVERSAL",             Function("GRAPH_TRAVERSAL",             "AQL_GRAPH_TRAVERSAL", "s,als,s|a", false, false, true, false, false) },
-  { "TRAVERSAL_TREE",              Function("TRAVERSAL_TREE",              "AQL_TRAVERSAL_TREE", "h,h,s,s,s|a", false, false, true, false, false) },
+  { "TRAVERSAL_TREE",              Function("TRAVERSAL_TREE",              "AQL_TRAVERSAL_TREE", "hs,hs,s,s,s|a", false, false, true, false, false) },
   { "GRAPH_TRAVERSAL_TREE",        Function("GRAPH_TRAVERSAL_TREE",        "AQL_GRAPH_TRAVERSAL_TREE", "s,als,s,s|a", false, false, true, false, false) },
-  { "EDGES",                       Function("EDGES",                       "AQL_EDGES", "h,s,s|l,o", true, false, true, false, false, &Functions::Edges, NotInCluster) },
+  { "EDGES",                       Function("EDGES",                       "AQL_EDGES", "hs,s,s|l,o", true, false, true, false, false, &Functions::Edges, NotInCluster) },
   { "GRAPH_EDGES",                 Function("GRAPH_EDGES",                 "AQL_GRAPH_EDGES", "s,als|a", false, false, true, false, false) },
   { "GRAPH_VERTICES",              Function("GRAPH_VERTICES",              "AQL_GRAPH_VERTICES", "s,als|a", false, false, true, false, false) },
-  { "NEIGHBORS",                   Function("NEIGHBORS",                   "AQL_NEIGHBORS", "h,h,s,s|l,a", true, false, true, false, false, &Functions::Neighbors, NotInCluster) },
+  { "NEIGHBORS",                   Function("NEIGHBORS",                   "AQL_NEIGHBORS", "hs,hs,s,s|l,a", true, false, true, false, false, &Functions::Neighbors, NotInCluster) },
   { "GRAPH_NEIGHBORS",             Function("GRAPH_NEIGHBORS",             "AQL_GRAPH_NEIGHBORS", "s,als|a", false, false, true, false, false) },
   { "GRAPH_COMMON_NEIGHBORS",      Function("GRAPH_COMMON_NEIGHBORS",      "AQL_GRAPH_COMMON_NEIGHBORS", "s,als,als|a,a", false, false, true, false, false) },
   { "GRAPH_COMMON_PROPERTIES",     Function("GRAPH_COMMON_PROPERTIES",     "AQL_GRAPH_COMMON_PROPERTIES", "s,als,als|a", false, false, true, false, false) },

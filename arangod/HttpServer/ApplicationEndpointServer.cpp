@@ -56,7 +56,7 @@ using namespace std;
 namespace {
   class BIOGuard {
     public:
-      BIOGuard(BIO *bio)
+      explicit BIOGuard(BIO *bio)
         : _bio(bio) {
       }
 

@@ -87,7 +87,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestImportHandler (rest::HttpRequest*);
+        explicit RestImportHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods

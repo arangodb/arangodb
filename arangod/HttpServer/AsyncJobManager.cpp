@@ -59,7 +59,7 @@ class triagens::rest::AsyncCallbackContext {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    AsyncCallbackContext (string const& coordHeader)
+    explicit AsyncCallbackContext (string const& coordHeader)
       : _coordHeader(coordHeader),
         _response(nullptr) {
     }

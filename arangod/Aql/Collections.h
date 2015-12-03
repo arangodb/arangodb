@@ -49,7 +49,7 @@ namespace triagens {
 
         Collections& operator= (Collections const& other) = delete;
       
-        Collections (TRI_vocbase_t*); 
+        explicit Collections (TRI_vocbase_t*); 
       
         ~Collections ();
 

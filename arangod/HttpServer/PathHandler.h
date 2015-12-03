@@ -52,7 +52,7 @@ namespace triagens {
             : allowSymbolicLink(false), cacheMaxAge(0) {
           }
 
-          Options (std::string const& path)
+          explicit Options (std::string const& path)
             : path(path), contentType("text/html"), allowSymbolicLink(false), cacheMaxAge(0) {
           }
 

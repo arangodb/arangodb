@@ -125,7 +125,7 @@ namespace {
 
   class V8GcThread : public Thread {
     public:
-      V8GcThread (ApplicationV8* applicationV8)
+      explicit V8GcThread (ApplicationV8* applicationV8)
         : Thread("v8-gc"),
           _applicationV8(applicationV8),
           _lastGcStamp(static_cast<uint64_t>(TRI_microtime())) {

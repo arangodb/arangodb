@@ -62,7 +62,7 @@ namespace triagens {
 
    class Scheduler : private TaskManager {
       private:
-        Scheduler (Scheduler const&);
+        explicit Scheduler (Scheduler const&);
         Scheduler& operator= (Scheduler const&);
 
 // -----------------------------------------------------------------------------
@@ -85,7 +85,7 @@ namespace triagens {
 /// threads other than the scheduler.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Scheduler (size_t nrThreads);
+        explicit Scheduler (size_t nrThreads);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor

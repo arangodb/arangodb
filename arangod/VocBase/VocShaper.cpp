@@ -1366,6 +1366,7 @@ int TRI_CompareShapeTypes (char const* leftDocument,
 
   // left is either a shaped json or a shaped sub object
   if (leftDocument != nullptr) {
+    TRI_ASSERT(leftObject != nullptr);
     left._sid = leftObject->_sid;
     TRI_InspectShapedSub(leftObject, leftDocument, left);
   }
@@ -1375,6 +1376,7 @@ int TRI_CompareShapeTypes (char const* leftDocument,
 
   // right is either a shaped json or a shaped sub object
   if (rightDocument != nullptr) {
+    TRI_ASSERT(rightObject != nullptr);
     right._sid = rightObject->_sid;
     TRI_InspectShapedSub(rightObject, rightDocument, right);
   }

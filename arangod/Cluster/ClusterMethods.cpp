@@ -218,16 +218,16 @@ int usersOnCoordinator (std::string const& dbname,
     map<string, string>* headers = new map<string, string>;
 
     // set collection name (shard id)
-    string* body = new string;
+    std::shared_ptr<std::string> body(new string);
     body->append("{\"collection\":\"");
     body->append((*it).first);
     body->append("\"}");
 
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/simple/all",
+                           "/_db/" + StringUtils::urlEncode(dbname) + 
+                           "/_api/simple/all",
                            body,
-                           true,
                            headers, 
                            nullptr, 
                            10.0);
@@ -311,8 +311,7 @@ int revisionOnCoordinator (std::string const& dbname,
                            triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
                            StringUtils::urlEncode(it->first) + "/revision",
-                           0, 
-                           false, 
+                           std::shared_ptr<std::string const>(), 
                            headers, 
                            nullptr, 
                            300.0);
@@ -398,8 +397,7 @@ int figuresOnCoordinator (string const& dbname,
                            triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
                            StringUtils::urlEncode(it->first) + "/figures",
-                           0, 
-                           false, 
+                           std::shared_ptr<std::string const>(), 
                            headers, 
                            nullptr, 
                            300.0);
@@ -497,8 +495,7 @@ int countOnCoordinator (
                            triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
                            StringUtils::urlEncode(it->first) + "/count",
-                           0, 
-                           false, 
+                           std::shared_ptr<std::string>(nullptr), 
                            headers, 
                            nullptr, 
                            300.0);
@@ -751,8 +748,7 @@ int deleteDocumentOnCoordinator (
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/" +
                            StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) +
                            "?waitForSync=" + (waitForSync ? "true" : "false") + revstr + policystr, 
-                           0, 
-                           false, 
+                           std::shared_ptr<std::string const>(), 
                            headersCopy, 
                            nullptr, 
                            60.0);
@@ -815,8 +811,7 @@ int truncateCollectionOnCoordinator ( string const& dbname,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                            "/_db/" + StringUtils::urlEncode(dbname) +
                            "/_api/collection/" + it->first + "/truncate",
-                           0, 
-                           false, 
+                           std::shared_ptr<std::string>(nullptr), 
                            headersCopy, 
                            nullptr, 
                            60.0);
@@ -949,8 +944,7 @@ int getDocumentOnCoordinator (
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/"+
                            StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) +
                            revstr, 
-                           0, 
-                           false, 
+                           std::shared_ptr<std::string const>(), 
                            headersCopy, 
                            nullptr, 
                            60.0);
@@ -1014,7 +1008,7 @@ int getAllDocumentsOnCoordinator (
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection=" +
-                           it->first + "&type=" + StringUtils::urlEncode(returnType), 0, false, headers, nullptr, 3600.0);
+                           it->first + "&type=" + StringUtils::urlEncode(returnType), std::shared_ptr<std::string const>(), headers, nullptr, 3600.0);
     delete res;
   }
   // Now listen to the results:
@@ -1170,7 +1164,7 @@ int modifyDocumentOnCoordinator (
     policystr = "&policy=last";
   }
 
-  string body = JsonHelper::toString(json);
+  std::shared_ptr<std::string const> body(new std::string(JsonHelper::toString(json)));
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (! isPatch ||
@@ -1184,7 +1178,7 @@ int modifyDocumentOnCoordinator (
                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/" +
                           StringUtils::urlEncode(shardID) + "/" + StringUtils::urlEncode(key) +
                           "?waitForSync=" + (waitForSync ? "true" : "false") +
-                          revstr + policystr, body, headers, 60.0);
+                          revstr + policystr, *(body.get()), headers, 60.0);
 
     if (res->status == CL_COMM_TIMEOUT) {
       // No reply, we give up:
@@ -1227,8 +1221,7 @@ int modifyDocumentOnCoordinator (
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/"+
                            StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) +
                            "?waitForSync=" + (waitForSync ? "true" : "false") + revstr + policystr,
-                           &body, 
-                           false, 
+                           body, 
                            headersCopy, 
                            nullptr, 
                            60.0);
@@ -1378,17 +1371,16 @@ int flushWalOnAllDBServers (bool waitForSync, bool waitForCollector) {
                "&waitForCollector=" +
                (waitForCollector ? "true" : "false");
   ClusterCommResult* res;
+  std::shared_ptr<std::string const> body(new string);
   for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
     map<string, string>* headers = new map<string, string>;
 
     // set collection name (shard id)
-    string* body = new string;
 
     res = cc->asyncRequest("", coordTransactionID, "server:" + *it,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                            url, 
                            body, 
-                           true, 
                            headers,
                            nullptr, 
                            120.0);

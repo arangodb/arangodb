@@ -67,7 +67,7 @@ namespace triagens {
     class SocketTask : virtual public Task,
                        public ConnectionStatisticsAgent {
       private:
-        SocketTask (SocketTask const&);
+        explicit SocketTask (SocketTask const&);
         SocketTask& operator= (SocketTask const&);
 
       private:

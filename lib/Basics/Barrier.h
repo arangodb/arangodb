@@ -51,7 +51,7 @@ namespace triagens {
         Barrier (Barrier const&) = delete;
         Barrier& operator= (Barrier const&) = delete;
 
-        Barrier (size_t);
+        explicit Barrier (size_t);
 
         ~Barrier ();
 

@@ -55,7 +55,7 @@ namespace triagens {
 
       public:
 
-        SimpleAttributeEqualityMatcher (std::vector<std::vector<triagens::basics::AttributeName>> const&);
+        explicit SimpleAttributeEqualityMatcher (std::vector<std::vector<triagens::basics::AttributeName>> const&);
          
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
