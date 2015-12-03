@@ -73,13 +73,9 @@ book-check-markdown-leftovers:
 	fi
 
 book-check-dangling-anchors:
-	@grep -R "a href" books/$(NAME) | \
-		grep -v styles/header.js | \
-		grep -v /app.js | \
-		grep -v navigation| \
-		grep -v 'http://' | \
-		grep -v 'https://' | \
-		grep '#'  |sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' > /tmp/anchorlist.txt
+	@grep -R "a href.*#" books/$(NAME) | \
+		egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://)" | \
+		sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' > /tmp/anchorlist.txt
 
 	@NO=0; \
 	for i in `cat /tmp/anchorlist.txt`; do \
