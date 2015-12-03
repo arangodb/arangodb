@@ -2,7 +2,7 @@ v2.8.0 (XXXX-XX-XX)
 -------------------
 
 * added AQL keywords `GRAPH`, `OUTBOUND`, `INBOUND` and `ANY` for use in graph 
-  traversals
+  traversals, reserved AQL keyword `ALL` for future use
 
   Usage of these keywords as collection names, variable names or attribute names
   in AQL queries will not be possible without quoting. For example, the following
