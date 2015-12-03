@@ -1,6 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertFalse, assertNull, assertNotNull, assertTrue, 
-  assertNotEqual, assertUndefined, fail, AQL_EXECUTE */
+/*global assertEqual, assertFalse, assertTrue, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for multi-modify operations
@@ -34,20 +33,7 @@ var internal = require("internal");
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var getModifyQueryResults = helper.getModifyQueryResults;
-var getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
-var isEqual = helper.isEqual;
 var assertQueryError = helper.assertQueryError;
-var errors = internal.errors;
-
-var sanitizeStats = function (stats) {
-  // remove these members from the stats because they don't matter
-  // for the comparisons
-  delete stats.scannedFull;
-  delete stats.scannedIndex;
-  delete stats.filtered;
-  return stats;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
