@@ -1,12 +1,15 @@
 !CHAPTER Graphs in AQL
 
 As you already [read about graphs in ArangoDB](../Graphs/README.md) you can have several views on graphs.
-There are also several ways to work with graphs in AQL. You can use managed graphs where ArangoDB manages the collections involved in one graph. You can also use graph functions on a combination of document and edge collections. Manged graphs are described by an entry in the `_graphs` system collection, that contains the name of the graph, and the vertex and edge collections involved.
- Since the management functions are layered on top of simple sets of document and edge collections, you can also use regular AQL functions to work with them. 
+There are also several ways to work with graphs in AQL.
+You can use managed graphs where ArangoDB manages the collections involved in one graph.
+You can also use graph functions on a combination of document and edge collections.
+Managed graphs are defined though the [graph-module](../GeneralGraphs/README.md), that contains the name of the graph, and the vertex and edge collections involved.
+Since the management functions are layered on top of simple sets of document and edge collections, you can also use regular AQL functions to work with them. 
 
 In AQL you can reach several graphing functions:
-* [Traversion](GraphTraversals.md) is natively implemented and therefore best perfromance is to be expected. It can work on managed graphs and loosely coupled collection sets. You can use AQL filter conditions on traversals.
+* [AQL Traversals](GraphTraversals.md) is making full use of optimisations and therefore best perfromance is to be expected. It can work on managed graphs and loosely coupled collection sets. You can use AQL filter conditions on traversals.
 * [Named graph Operations](GraphOperations.md) work on managed graphs; offer a versatile range of parameters.
-* [Other graph functions](GraphFunctions.md) work on collection sets (which may also be part of managed graphs) 
+* [Other graph functions](GraphFunctions.md) work on single edge collection (which may also be part of managed graphs).
 
 
