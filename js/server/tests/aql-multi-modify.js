@@ -28,7 +28,6 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO: test usage of OLD/NEW etc. in queries
 var internal = require("internal");
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
@@ -58,7 +57,7 @@ function ahuacatlMultiModifySuite () {
       db._drop(cn3);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
-      c3 = db._create(cn3);
+      c3 = db._createEdgeCollection(cn3);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,6 +71,11 @@ function ahuacatlMultiModifySuite () {
       c1 = null;
       c2 = null;
       c3 = null;
+    },
+    
+    testTraversalAfterModification : function () {
+      var q = "INSERT { _key: '1', foo: 'bar' } INTO @@cn FOR doc IN OUTBOUND 'v/1' @@e RETURN doc";
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn1, "@e": cn3 });
     },
 
     testMultiInsertSameCollection : function () {
@@ -171,13 +175,9 @@ function ahuacatlMultiModifySuite () {
     },
 
     testMultiInsertLoopSubquerySameCollectionIndependent : function () {
-//      AQL_EXECUTE("FOR i IN 1..10 INSERT { value: i } INTO @@cn", { "@cn" : cn1 });
+      AQL_EXECUTE("FOR i IN 1..10 INSERT { value: i } INTO @@cn", { "@cn" : cn1 });
       var q = "FOR i IN @@cn LET sub1 = (FOR j IN 1..2 INSERT { value: j } INTO @@cn) LET sub2 = (FOR j IN 1..2 INSERT { value: j } INTO @@cn) RETURN 1";
       assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, {"@cn": cn1 });
-//      var actual = AQL_EXECUTE(q, { "@cn": cn1 });
-//      assertEqual(10, actual.json.length);
-//      assertEqual(40, actual.stats.writesExecuted);
-//      assertEqual(50, c1.count());
     },
 
     testMultiRemoveSameCollection : function () {
@@ -247,21 +247,8 @@ function ahuacatlMultiModifySuite () {
       AQL_EXECUTE("FOR i IN 1..10 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
       var q = "FOR i IN @@cn LET sub1 = (INSERT { _key: CONCAT('test', i) } INTO @@cn) LET sub2 = (REMOVE { _key: CONCAT('test', i) } INTO @@cn) RETURN 1";
       assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, {"@cn": cn1 });
-//      var actual = AQL_EXECUTE(q, { "@cn": cn1 });
-//      assertEqual(10, actual.json.length);
-//      assertEqual(40, actual.stats.writesExecuted);
-//      assertEqual(50, c1.count());
     },
 
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-/*
     testRemoveInSubqueryNoResult : function () {
       AQL_EXECUTE("FOR i IN 1..10 INSERT { value: i } INTO @@cn", { "@cn" : cn1 });
       var actual = AQL_EXECUTE("FOR doc IN @@cn SORT doc.value LET f = (REMOVE doc IN @@cn) RETURN f", { "@cn" : cn1 }).json; 
@@ -269,10 +256,9 @@ function ahuacatlMultiModifySuite () {
       for (var i = 1; i <= 10; ++i) {
         expected.push([ ]);
       }
-      require("internal").print(actual);
       assertEqual(expected, actual);
     },
-*/
+
     testRemoveInSubqueryReturnKeys : function () {
       AQL_EXECUTE("FOR i IN 1..10 INSERT { value: i } INTO @@cn", { "@cn" : cn1 });
       var actual = AQL_EXECUTE("FOR doc IN @@cn SORT doc.value LET f = (REMOVE doc IN @@cn RETURN OLD.value) RETURN f", { "@cn" : cn1 }).json; 

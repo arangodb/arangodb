@@ -1725,6 +1725,8 @@ void Ast::validateAndOptimize () {
 
       if (static_cast<TraversalContext*>(data)->hasSeenAnyWriteNode &&
           ! func->canRunOnDBServer) {
+        // if canRunOnDBServer is true, then this is an indicator for a 
+        // document-accessing function
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
       }
 
@@ -1768,6 +1770,16 @@ void Ast::validateAndOptimize () {
       auto c = static_cast<TraversalContext*>(data);
 
       if (c->writeCollectionsSeen.find(name) != c->writeCollectionsSeen.end()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
+      }
+
+      return node;
+    }
+    
+    // traversal
+    if (node->type == NODE_TYPE_TRAVERSAL) {
+      // traversals must not be used after a modification operation
+      if (static_cast<TraversalContext*>(data)->hasSeenAnyWriteNode) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
       }
 
