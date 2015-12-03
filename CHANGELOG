@@ -50,6 +50,29 @@ v2.8.0 (XXXX-XX-XX)
   - the initial synchronization now logs its progress so it can be queried using
     the regular replication status check APIs.
 
+  - added `async` attribute for `sync` and `syncCollection` operations called from
+    the ArangoShell. Setthing this attribute to `true` will make the synchronization 
+    job on the server go into the background, so that the shell does not block. The
+    status of the started asynchronous synchronization job can be queried from the 
+    ArangoShell like this:
+
+        /* starts initial synchronization */
+        var replication = require("org/arangodb/replication");
+        var id = replication.sync({
+          endpoint: "tcp://master.domain.org:8529",
+          username: "myuser",
+          password: "mypasswd",
+          async: true
+       });
+
+       /* now query the id of the returned async job and print the status */
+       print(replication.getSyncResult(id));
+
+    The result of `getSyncResult()` will be `false` while the server-side job
+    has not completed, and different to `false` if it has completed. When it has
+    completed, all job result details will be returned by the call to `getSyncResult()`.
+
+
 * fixed non-deterministic query results in some cluster queries
 
 * fixed issue #1589
