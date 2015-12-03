@@ -239,3 +239,6 @@ And finally clean it up again:
     ~removeIgnoreCollection("edges");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHTRAV_99_drop_graph
+
+
+If this traversal is not powerful enough for your needs, so you cannot describe your conditions as AQL filter statements you might want to look at [manually crafted traverser](../Traversals/README.md)
