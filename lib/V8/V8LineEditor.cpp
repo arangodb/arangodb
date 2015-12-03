@@ -58,6 +58,7 @@ static std::atomic<V8LineEditor*> SINGLETON(nullptr);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
+
 static bool SignalHandler (DWORD eventType) {
   switch (eventType) {
     case CTRL_BREAK_EVENT: 
@@ -86,9 +87,10 @@ static bool SignalHandler (DWORD eventType) {
       return true;
     }
   } 
-
 }
+
 #else
+
 static void SignalHandler (int signal) {
 
   // get the instance of the console
@@ -106,6 +108,7 @@ static void SignalHandler (int signal) {
     instance->signal();
   }
 }
+
 #endif
 
 // -----------------------------------------------------------------------------

@@ -53,7 +53,8 @@ GeneralClientConnection::GeneralClientConnection (Endpoint* endpoint,
   _connectTimeout(connectTimeout),
   _connectRetries(connectRetries),
   _numConnectRetries(0),
-  _isConnected(false) {
+  _isConnected(false),
+  _isInterrupted(false) {
 
 }
 
@@ -92,6 +93,7 @@ GeneralClientConnection* GeneralClientConnection::factory (Endpoint* endpoint,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralClientConnection::connect () {
+  _isInterrupted = false;
   disconnect();
 
   if (_numConnectRetries < _connectRetries + 1) {
@@ -122,6 +124,7 @@ void GeneralClientConnection::disconnect () {
   }
 
   _isConnected = false;
+  _isInterrupted = false;
   _numConnectRetries = 0;
 }
 
