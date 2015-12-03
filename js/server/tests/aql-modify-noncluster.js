@@ -157,78 +157,6 @@ function ahuacatlModifySuite () {
 /// @brief test subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRemoveInSubquery : function () {
-      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (REMOVE d.foobar IN @@cn) RETURN d", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testInsertInSubquery : function () {
-      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (INSERT { _key: 'test' } IN @@cn) RETURN d", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testUpdateInSubquery : function () {
-      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (UPDATE { _key: 'test' } IN @@cn) RETURN d", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testReplaceInSubquery : function () {
-      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (REPLACE { _key: 'test' } IN @@cn) RETURN d", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testReplaceInSubquery2 : function () {
-      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (FOR i IN 1..2 REPLACE { _key: 'test' } IN @@cn) RETURN d", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testUpsertInSubquery1 : function () {
-      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (UPSERT { _key: 'test' } INSERT { foo: 1 } UPDATE { bar: 2 } IN @@cn) RETURN d", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testUpsertInSubquery2 : function () {
-      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (FOR i IN 1..2 UPSERT { _key: 'test' } INSERT { } UPDATE { } IN @@cn) RETURN d", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testMultiModify : function () {
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR d IN @@cn1 REMOVE d IN @@cn1 FOR e IN @@cn2 REMOVE e IN @@cn2", { "@cn1": cn1, "@cn2": cn2 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testMultiModify2 : function () {
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR d IN @@cn1 FOR e IN @@cn2 REMOVE d IN @@cn1 REMOVE e IN @@cn2", { "@cn1": cn1, "@cn2": cn2 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
     testDynamicOptions1 : function () {
       assertQueryError(errors.ERROR_QUERY_COMPILE_TIME_OPTIONS.code, "FOR d IN @@cn REMOVE d IN @@cn OPTIONS { foo: d }", { "@cn": cn1 });
     },
@@ -813,7 +741,7 @@ function ahuacatlModifySuite () {
       ];
 
       queries.forEach(function(query) { 
-        assertQueryError(errors.ERROR_QUERY_PARSE.code, query, { "@cn": cn1 }, query);
+        assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, query, { "@cn": cn1 }, query);
       });
     }
 

@@ -118,12 +118,51 @@ function ahuacatlMultiModifySuite () {
       assertEqual(10, c2.count());
     },
 
-    testMultiInsertLoopSubquery : function () {
+    testMultiInsertLoopSubquerySingle : function () {
+      var q = "FOR i IN 1..1 LET sub = (FOR j IN 1..i INSERT { value: j } INTO @@cn) RETURN 1";
+      var actual = AQL_EXECUTE(q, { "@cn": cn1 });
+      assertEqual(1, actual.json.length);
+      assertEqual([ 1 ], actual.json);
+      assertEqual(1, c1.count());
+    },
+
+    testMultiInsertLoopSubquerySingleReturned : function () {
+      var q = "FOR i IN 1..1 LET sub = (FOR j IN 1..i INSERT { value: j } INTO @@cn) RETURN sub";
+      var actual = AQL_EXECUTE(q, { "@cn": cn1 });
+      assertEqual(1, actual.json.length);
+      assertEqual([ [ ] ], actual.json);
+      assertEqual(1, c1.count());
+    },
+
+    testMultiInsertLoopSubqueryTwo : function () {
+      var q = "FOR i IN 1..2 LET sub = (FOR j IN 1..i INSERT { value: j } INTO @@cn) RETURN 1";
+      var actual = AQL_EXECUTE(q, { "@cn": cn1 });
+      assertEqual(2, actual.json.length);
+      assertEqual([ 1, 1 ], actual.json);
+      assertEqual(3, c1.count());
+    },
+
+    testMultiInsertLoopSubqueryTwoReturned : function () {
+      var q = "FOR i IN 1..2 LET sub = (FOR j IN 1..i INSERT { value: j } INTO @@cn) RETURN sub";
+      var actual = AQL_EXECUTE(q, { "@cn": cn1 });
+      assertEqual(2, actual.json.length);
+      assertEqual([ [ ], [ ] ], actual.json);
+      assertEqual(3, c1.count());
+    },
+
+    testMultiInsertLoopSubqueryMore : function () {
       var q = "FOR i IN 1..10 LET sub = (FOR j IN 1..i INSERT { value: j } INTO @@cn) RETURN 1";
       var actual = AQL_EXECUTE(q, { "@cn": cn1 });
       assertEqual(10, actual.json.length);
-      assertEqual(55, actual.stats.writesExecuted);
       assertEqual(55, c1.count());
+    },
+
+    testMultiInsertLoopSubqueryReturned : function () {
+      var q = "FOR i IN 1..2 LET sub = (FOR j IN 1..i INSERT { value: j } INTO @@cn) RETURN sub";
+      var actual = AQL_EXECUTE(q, { "@cn": cn1 });
+      assertEqual(2, actual.json.length);
+      assertEqual([ [ ], [ ] ], actual.json);
+      assertEqual(3, c1.count());
     },
 
     testMultiInsertLoopSubquerySameCollection : function () {
