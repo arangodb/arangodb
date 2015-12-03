@@ -43,11 +43,27 @@ triagens::basics::Json* ClusterTraversalPath::pathToJson (Transaction*,
   size_t vCount = _path.vertices.size();
   triagens::basics::Json vertices(triagens::basics::Json::Array, vCount);
   for (auto& it : _path.vertices) {
-    vertices.add(*_traverser->vertexToJson(it));
+    auto v = _traverser->vertexToJson(it);
+    try {
+      vertices.add(*v);
+      delete v;
+    }
+    catch (...) {
+      delete v;
+      throw;
+    }
   } 
   triagens::basics::Json edges(triagens::basics::Json::Array, _path.edges.size());
   for (auto& it : _path.edges) {
-    edges.add(*_traverser->edgeToJson(it));
+    auto e = _traverser->edgeToJson(it);
+    try {
+      edges.add(*e);
+      delete e;
+    }
+    catch (...) {
+      delete e;
+      throw;
+    }
   } 
   result->set("edges", edges);
   result->set("vertices", vertices);
