@@ -27,7 +27,7 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/ClusterTraverser.h"
+#include "ClusterTraverser.h"
 #include "Cluster/ClusterMethods.h"
 
 using ClusterTraversalPath = triagens::arango::traverser::ClusterTraversalPath;
@@ -37,8 +37,8 @@ using ClusterTraverser = triagens::arango::traverser::ClusterTraverser;
 // --SECTION--                                        class ClusterTraversalPath
 // -----------------------------------------------------------------------------
 
-triagens::basics::Json* ClusterTraversalPath::pathToJson (Transaction*,
-                                                          CollectionNameResolver*) {
+triagens::basics::Json* ClusterTraversalPath::pathToJson (triagens::arango::Transaction*,
+                                                          triagens::arango::CollectionNameResolver*) {
   std::unique_ptr<triagens::basics::Json> result(new triagens::basics::Json(triagens::basics::Json::Object));
   size_t vCount = _path.vertices.size();
   triagens::basics::Json vertices(triagens::basics::Json::Array, vCount);
@@ -70,13 +70,13 @@ triagens::basics::Json* ClusterTraversalPath::pathToJson (Transaction*,
   return result.release();
 }
 
-triagens::basics::Json* ClusterTraversalPath::lastEdgeToJson (Transaction*,
-                                                              CollectionNameResolver*) {
+triagens::basics::Json* ClusterTraversalPath::lastEdgeToJson (triagens::arango::Transaction*,
+                                                              triagens::arango::CollectionNameResolver*) {
   return _traverser->edgeToJson(_path.edges.back());
 }
 
-triagens::basics::Json* ClusterTraversalPath::lastVertexToJson (Transaction*,
-                                                                CollectionNameResolver*) {
+triagens::basics::Json* ClusterTraversalPath::lastVertexToJson (triagens::arango::Transaction*,
+                                                                triagens::arango::CollectionNameResolver*) {
   return _traverser->vertexToJson(_path.vertices.back());
 }
 
@@ -227,7 +227,7 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
   }
 }
 
-void ClusterTraverser::setStartVertex (VertexId& v) {
+void ClusterTraverser::setStartVertex (triagens::arango::traverser::VertexId const& v) {
   std::string id = v.toString(_resolver);
   _enumerator.reset(new triagens::basics::PathEnumerator<std::string, std::string, size_t> (_edgeGetter, _vertexGetter, id));
   _done = false;
@@ -267,7 +267,7 @@ void ClusterTraverser::setStartVertex (VertexId& v) {
   }
 }
 
-bool ClusterTraverser::vertexMatchesCondition (TRI_json_t* v, std::vector<TraverserExpression*> const& exp) {
+bool ClusterTraverser::vertexMatchesCondition (TRI_json_t* v, std::vector<triagens::arango::traverser::TraverserExpression*> const& exp) {
   for (auto const& e : exp) {
     if (! e->isEdgeAccess) {
       if (v == nullptr || ! e->matchesCheck(v)) {
@@ -308,13 +308,13 @@ triagens::arango::traverser::TraversalPath* ClusterTraverser::next () {
   return p.release();
 }
 
-triagens::basics::Json* ClusterTraverser::edgeToJson (std::string id) const {
+triagens::basics::Json* ClusterTraverser::edgeToJson (std::string const& id) const {
   auto it = _edges.find(id);
   TRI_ASSERT(it != _edges.end());
   return new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it->second));
 }
 
-triagens::basics::Json* ClusterTraverser::vertexToJson (std::string id) const {
+triagens::basics::Json* ClusterTraverser::vertexToJson (std::string const& id) const {
   auto it = _vertices.find(id);
   TRI_ASSERT(it != _vertices.end());
   return new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it->second));

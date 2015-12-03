@@ -34,6 +34,7 @@
 #include "Basics/Traverser.h"
 #include "Basics/JsonHelper.h"
 #include "Aql/AstNode.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "VocBase/DocumentAccessor.h"
 #include "VocBase/voc-types.h"
@@ -74,21 +75,19 @@ namespace triagens {
           return false;
         }
 
-        std::string toString (CollectionNameResolver const* resolver) {
+        std::string toString (triagens::arango::CollectionNameResolver const* resolver) {
           return resolver->getCollectionNameCluster(cid) + "/" + std::string(key);
         }
-
 
       };
 
       // EdgeId and VertexId are similar here. both have a key and a cid
       typedef VertexId EdgeId; 
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper function to convert an _id string into a VertexId
 ////////////////////////////////////////////////////////////////////////////////
+
       VertexId IdStringToVertexId (triagens::arango::CollectionNameResolver const* resolver,
                                    std::string const& vertex);
 
@@ -298,7 +297,7 @@ namespace triagens {
 /// @brief Reset the traverser to use another start vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-          virtual void setStartVertex (VertexId& v) = 0;
+          virtual void setStartVertex (VertexId const& v) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Skip amount many paths of the graph.

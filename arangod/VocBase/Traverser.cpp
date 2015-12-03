@@ -196,7 +196,7 @@ bool TraverserExpression::matchesCheck (TRI_json_t const* element) const {
 
 bool TraverserExpression::matchesCheck (TRI_doc_mptr_t& element,
                                         TRI_document_collection_t* collection,
-                                        CollectionNameResolver const* resolver) const {
+                                        triagens::arango::CollectionNameResolver const* resolver) const {
   DocumentAccessor accessor(resolver, collection, &element);
   return matchesCheck(accessor);
 }

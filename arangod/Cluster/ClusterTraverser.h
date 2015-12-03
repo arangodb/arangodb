@@ -34,6 +34,9 @@
 
 namespace triagens {
   namespace arango {
+    class CollectionNameResolver;
+    class Transaction;
+
     namespace traverser {
 
       class ClusterTraversalPath;
@@ -65,13 +68,13 @@ namespace triagens {
             }
           }
 
-          void setStartVertex (VertexId& v) override;
+          void setStartVertex (VertexId const& v) override;
 
           TraversalPath* next () override;
 
-          triagens::basics::Json* edgeToJson (std::string) const;
+          triagens::basics::Json* edgeToJson (std::string const&) const;
 
-          triagens::basics::Json* vertexToJson (std::string) const;
+          triagens::basics::Json* vertexToJson (std::string const&) const;
 
         private:
 

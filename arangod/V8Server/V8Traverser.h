@@ -305,7 +305,7 @@ namespace triagens {
 /// @brief Reset the traverser to use another start vertex
 ////////////////////////////////////////////////////////////////////////////////
 
-          void setStartVertex (VertexId& v) override;
+          void setStartVertex (VertexId const& v) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the next possible path in the graph.

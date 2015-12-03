@@ -30,6 +30,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/TraversalNode.h"
+#include "VocBase/Traverser.h"
 
 namespace triagens {
   namespace aql {
@@ -116,15 +117,10 @@ namespace triagens {
         std::unique_ptr<triagens::arango::traverser::Traverser> _traverser;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief The information to get the starting point. Can either be a constant
-///        which is known at construction time _startId, or a variable, which
-///        has to be extracted from register _reg.
+/// @brief The information to get the starting point, when a register id is used
 ////////////////////////////////////////////////////////////////////////////////
 
-        union {
-          triagens::arango::traverser::VertexId _startId;
-          size_t _reg;
-        };
+        triagens::aql::RegisterId _reg;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Keep a copy of the start vertex id-string. Can be freed if this start

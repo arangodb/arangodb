@@ -1093,7 +1093,7 @@ int getFilteredDocumentsOnCoordinator (
       }
       bool isError = triagens::basics::JsonHelper::checkAndGetBooleanValue(resultBody.get(), "error");
       if (isError) {
-        size_t errorNum = triagens::basics::JsonHelper::getNumericValue<size_t>(resultBody.get(), "errorNum", TRI_ERROR_INTERNAL);
+        int errorNum = triagens::basics::JsonHelper::getNumericValue<int>(resultBody.get(), "errorNum", TRI_ERROR_INTERNAL);
         std::string message = triagens::basics::JsonHelper::getStringValue(resultBody.get(), "errorMessage", "");
         THROW_ARANGO_EXCEPTION_MESSAGE(errorNum, message);
       }

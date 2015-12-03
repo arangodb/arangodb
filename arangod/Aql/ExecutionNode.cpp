@@ -1043,10 +1043,10 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       auto ep = static_cast<TraversalNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       auto vars = ep->getVariablesSetHere();
-      nrRegsHere.emplace_back(vars.size());
+      nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
       // create a copy of the last value here
       // this is requried because back returns a reference and emplace/push_back may invalidate all references
-      RegisterId registerId = vars.size() + nrRegs.back();
+      RegisterId registerId = static_cast<RegisterId>(vars.size() + nrRegs.back());
       nrRegs.emplace_back(registerId);
 
       for (auto& it : vars) {

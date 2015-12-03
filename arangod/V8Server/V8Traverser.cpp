@@ -995,7 +995,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
   }
 }
 
-void DepthFirstTraverser::setStartVertex (VertexId& v) {
+void DepthFirstTraverser::setStartVertex (triagens::arango::traverser::VertexId const& v) {
   auto it = _expressions->find(0);
   if (it != _expressions->end()) {
     if (! it->second.empty()) {

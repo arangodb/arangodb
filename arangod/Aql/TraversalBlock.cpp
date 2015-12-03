@@ -113,12 +113,6 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
-    auto pos = _vertexId.find("/");
-    
-    _startId = VertexId(
-      _resolver->getCollectionIdCluster(_vertexId.substr(0, pos).c_str()),
-      _vertexId.c_str() + pos + 1
-    );
   }
   else {
     auto it = ep->getRegisterPlan()->varInfo.find(ep->inVariable()->id);
@@ -337,7 +331,13 @@ void TraversalBlock::initializePaths (AqlItemBlock const* items) {
   if (! _useRegister) {
     if (! _usedConstant) {
       _usedConstant = true;
-      _traverser->setStartVertex(_startId);
+      auto pos = _vertexId.find("/");
+      auto v(triagens::arango::traverser::VertexId(
+        _resolver->getCollectionIdCluster(_vertexId.substr(0, pos).c_str()),
+        _vertexId.c_str() + pos + 1
+      ));
+
+      _traverser->setStartVertex(v);
     }
   }
   else {
